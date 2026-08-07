@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
+import { ApplicationRoot } from './ApplicationRoot';
 import './styles.css';
 
 const rootElement = document.getElementById('root');
@@ -11,6 +11,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <ApplicationRoot pathname={window.location.pathname} />
   </StrictMode>,
 );
