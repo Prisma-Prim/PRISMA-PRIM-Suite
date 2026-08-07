@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('design lab index and a placeholder route render', async ({
+test('design lab index and an implemented direction route render', async ({
   page,
 }, testInfo) => {
   await page.goto('/design-lab');
@@ -17,11 +17,11 @@ test('design lab index and a placeholder route render', async ({
   await page.goto('/design-lab/institutional-assurance/dashboard');
 
   await expect(
-    page.getByRole('heading', { name: 'Institutional assurance' }),
+    page.getByRole('heading', { name: 'Assurance register' }),
   ).toBeVisible();
-  await expect(page.getByText('Direction slot reserved')).toBeVisible();
+  await expect(page.getByText('Human review required')).toBeVisible();
   await page.screenshot({
     fullPage: true,
-    path: testInfo.outputPath('direction-placeholder.png'),
+    path: testInfo.outputPath('implemented-direction.png'),
   });
 });
