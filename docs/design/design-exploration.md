@@ -52,6 +52,8 @@ A valid set cannot be six palettes on one shell. Each direction must differ mean
 
 Concept-specific components are allowed during divergence. Prematurely forcing every direction into one component system is prohibited when it suppresses meaningful alternatives.
 
+For agent execution, the initial round is split into a neutral design-lab harness, one bounded issue per direction, and a final comparison issue. Direction issues may proceed independently after the harness is complete and must remain isolated enough to avoid turning the first completed concept into a shared shell for the others.
+
 ## Evaluation
 
 Every round is reviewed against the same questions:
