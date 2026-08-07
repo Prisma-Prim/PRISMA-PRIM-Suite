@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { ComparisonFixture } from './comparisonFixture';
+import { InstitutionalAssuranceConcept } from './concepts/institutional-assurance/Concept';
 
 export const designLabScreens = [
   'dashboard',
@@ -26,6 +27,7 @@ export const directionSlots: ReadonlyArray<DirectionSlot> = [
     id: 'institutional-assurance',
     title: 'Institutional assurance',
     prompt: 'Calm, rigorous, and conventionally trustworthy.',
+    Concept: InstitutionalAssuranceConcept,
   },
   {
     id: 'premium-editorial',
