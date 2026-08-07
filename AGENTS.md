@@ -6,6 +6,8 @@ This repository contains PRISMA-PRIM Suite. Implement only the scope of the assi
 
 Before changing business behaviour, read the complete issue, `CONTEXT.md`, and the relevant ADRs in `docs/adr/`. Use the canonical domain terms in code, tests, issues, and documentation.
 
+Before changing product UI, also read `docs/design/design-exploration.md`. Production UI work is blocked until the design approval gate is closed and T00 has consolidated the approved direction. Design-lab issues may explore alternatives with synthetic data but must not smuggle in production business behaviour.
+
 ## Durable technical decisions
 
 - Frontend: React + Vite + TypeScript.
@@ -31,6 +33,7 @@ Before changing business behaviour, read the complete issue, `CONTEXT.md`, and t
 ## Delivery workflow
 
 - Deliver one GitHub issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that is what makes the behaviour complete.
+- Treat each design iteration as one bounded issue. Never infer visual approval or close the design gate on the product owner's behalf.
 - Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
 - Prefer tests through public module interfaces, the API, or the user interface over tests coupled to implementation details.
 - Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
