@@ -1,0 +1,63 @@
+# PRISMA-PRIM Suite
+
+PRISMA-PRIM Suite is the repository for the PRISMA CERT AI MVP: an internal platform that will assist PRISMA-PRIM and BIC from client request analysis through deterministic quotation, human approval, contract generation, and approved-document search.
+
+This first commit contains only the executable engineering foundation. Business features will be implemented from scoped GitHub issues with Codex CLI.
+
+## Architecture
+
+| Area            | Choice                                                       |
+| --------------- | ------------------------------------------------------------ |
+| Web application | React, Vite, TypeScript                                      |
+| Business API    | NestJS, TypeScript                                           |
+| Database        | PostgreSQL with Drizzle ORM                                  |
+| Authentication  | Clerk, added in a dedicated issue                            |
+| AI workloads    | External APIs initially; a Python worker only when justified |
+| Workspace       | pnpm monorepo without an additional build orchestrator       |
+
+NestJS owns business data, workflows, permissions, and final decisions. A future Python worker may analyze documents and propose AI results, but it must not own business rules or write uncontrolled decisions.
+
+## Repository layout
+
+```text
+apps/
+  api/         NestJS API and Drizzle database access
+  web/         React application
+  ai-worker/   Reserved boundary for a future Python AI worker
+docs/
+  architecture/  Durable technical decisions
+```
+
+## Local setup
+
+Prerequisites: Node.js 24+, pnpm 11+, Docker with Compose.
+
+```bash
+cp .env.example .env
+docker compose up -d postgres
+pnpm install
+pnpm db:migrate
+pnpm dev
+```
+
+The web application runs at `http://localhost:5173`. The API health endpoint is available at `http://localhost:3000/api/health`.
+
+No migration exists yet because the initial commit deliberately contains no business table. The first issue introducing persistent data must add a reviewed, versioned SQL migration.
+
+## Quality commands
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm format:check
+```
+
+## Development workflow
+
+1. Design and product decisions are recorded before implementation.
+2. Each business slice starts from a detailed GitHub issue.
+3. Codex CLI reads `AGENTS.md` and the complete issue before editing.
+4. The implementation includes relevant tests and migrations.
+5. Generated SQL migrations are inspected and committed; schema push is not used in production.
