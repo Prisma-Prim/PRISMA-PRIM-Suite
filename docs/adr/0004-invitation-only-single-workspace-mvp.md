@@ -1,0 +1,3 @@
+# Start with invitation-only access and one workspace
+
+Clerk provides invitation-only identity for the MVP, and all business data belongs to one PRISMA Workspace. This avoids premature role and tenant administration while local user records still attribute approvals and Activity Log entries to authenticated people.

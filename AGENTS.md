@@ -4,6 +4,8 @@
 
 This repository contains PRISMA-PRIM Suite. Implement only the scope of the assigned GitHub issue. Do not infer missing prices, legal clauses, certification decisions, or business rules.
 
+Before changing business behaviour, read the complete issue, `CONTEXT.md`, and the relevant ADRs in `docs/adr/`. Use the canonical domain terms in code, tests, issues, and documentation.
+
 ## Durable technical decisions
 
 - Frontend: React + Vite + TypeScript.
@@ -26,6 +28,16 @@ This repository contains PRISMA-PRIM Suite. Implement only the scope of the assi
 - Never commit secrets or real client documents.
 - Preserve the boundary between confirmed, inferred, missing, and contradictory AI-extracted information.
 
+## Delivery workflow
+
+- Deliver one GitHub issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that is what makes the behaviour complete.
+- Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
+- Prefer tests through public module interfaces, the API, or the user interface over tests coupled to implementation details.
+- Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
+- Review the finished diff twice: first against repository standards, then against the originating issue/specification.
+- Run `thermo-nuclear-code-quality-review` after structurally significant slices and at milestone boundaries, not as a reason to expand every small issue.
+- Run `improve-codebase-architecture` periodically after several business slices exist. Treat its output as candidate work requiring a separate decision or issue.
+
 ## Required verification
 
 Before committing, run the checks affected by the change. For repository-wide or foundational changes, run:
@@ -39,3 +51,17 @@ pnpm format:check
 ```
 
 Report any check that could not be run and the exact reason.
+
+## Agent skills
+
+### Issue tracker
+
+Product specs and implementation tickets live in GitHub Issues for `Dan-Popescu/PRISMA-PRIM-Suite`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+This repository uses a single domain context in `CONTEXT.md`, with durable decisions in `docs/adr/`. See `docs/agents/domain.md`.
+
+### Workflow skills
+
+Use the repository skills under `.agents/skills/` when their descriptions match the task. In particular: sharpen language and decisions before a spec; synthesize approved discussion with `to-spec`; create vertical tickets with `to-tickets`; implement with `implement` and `tdd`; close with `code-review`; reserve the thermo-nuclear and architecture reviews for structural checkpoints.

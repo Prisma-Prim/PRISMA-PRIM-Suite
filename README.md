@@ -25,7 +25,9 @@ apps/
   web/         React application
   ai-worker/   Reserved boundary for a future Python AI worker
 docs/
-  architecture/  Durable technical decisions
+  adr/           Durable technical decisions
+  agents/        Agent workflow configuration
+  product/       Product specifications
 ```
 
 ## Local setup
@@ -56,8 +58,12 @@ pnpm format:check
 
 ## Development workflow
 
-1. Design and product decisions are recorded before implementation.
-2. Each business slice starts from a detailed GitHub issue.
-3. Codex CLI reads `AGENTS.md` and the complete issue before editing.
-4. The implementation includes relevant tests and migrations.
-5. Generated SQL migrations are inspected and committed; schema push is not used in production.
+1. Domain language lives in `CONTEXT.md`; durable decisions live in `docs/adr/`.
+2. Product behaviour is approved in a master specification before ticketing.
+3. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
+4. Codex CLI reads `AGENTS.md`, the complete ticket, the glossary, and relevant ADRs before editing.
+5. Implementation follows red-green-refactor at the highest stable test seam.
+6. The final diff is reviewed against both repository standards and the originating specification.
+7. Generated SQL migrations are inspected and committed; schema push is not used in production.
+
+Repository-scoped Codex skills are stored under `.agents/skills/` and pinned in `skills-lock.json`. They include the Matt Pocock planning and delivery workflow plus the thermo-nuclear structural quality review.
