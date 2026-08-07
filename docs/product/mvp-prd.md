@@ -1,7 +1,7 @@
 # PRISMA-PRIM Suite MVP Product Requirements
 
-**Status:** Ready for ticket decomposition  
-**Version:** 0.1  
+**Status:** Ready for design exploration and ticket decomposition  
+**Version:** 0.2  
 **Date:** 2026-08-07  
 **Pilot:** HACCP and ISO 22000 services for a food-industry Client
 
@@ -165,6 +165,17 @@ The product must work with clearly marked demonstration configuration before rea
 - Approved knowledge search with citations.
 - Minimal Activity Log.
 
+### User experience quality and design approval gate
+
+- The production interface must follow one coherent visual and interaction system rather than allowing each implementation ticket to invent its own page patterns.
+- Product UI implementation begins only after the design exploration gate is explicitly approved by the product owner and the selected direction is consolidated in T00.
+- Design exploration is iterative. The first round provides at least six structurally distinct directions; subsequent bounded rounds respond to recorded feedback until one direction or hybrid is explicitly approved.
+- Variants must differ in information architecture, navigation, density, interaction model, and visual expression where appropriate. Recoloring one shared dashboard does not count as meaningful variation.
+- All comparable variants use the same representative business data and core tasks, including a Dashboard, a Client Request detail, and an Analysis review with Confirmed, Inferred, Missing, and Contradictory fields.
+- Exploration prototypes use synthetic data and no production API, authentication, database, or business workflow implementation.
+- The approved direction must be consolidated into design tokens, canonical layouts and components, responsive rules, state patterns, accessibility rules, reference screens, and frontend agent instructions before functional UI slices start.
+- The design process, evaluation criteria, iteration protocol, and approval conditions are defined in [`docs/design/design-exploration.md`](../design/design-exploration.md).
+
 ## Testing Decisions
 
 ### Primary seam
@@ -183,6 +194,7 @@ Tests should assert business outcomes, persisted state, allowed transitions, and
 - Knowledge retrieval tests verify approval/version filters and citation provenance. Cited Answer evaluation uses a small deterministic demonstration corpus before real cases are available.
 - Authentication tests verify protected API behaviour and attribution while external identity-network behaviour remains the provider's responsibility.
 - Critical pilot journeys receive browser-level tests only after their underlying API slice is stable.
+- UI slices provide deterministic browser captures at the approved reference viewports and check the relevant empty, loading, error, success, and responsive states. Visual review complements behavioural tests; it does not replace them.
 
 ### Required feedback loop
 
@@ -190,7 +202,7 @@ Each implementation ticket begins with a failing test at its agreed seam, reache
 
 ## MVP Acceptance
 
-The MVP is acceptable when an invited Internal User can complete the HACCP and ISO 22000 pilot from Client Request through an Approved Offer, Accepted Offer, approved Contract, and Cited Answer; every critical value, calculation, version, check, and Approval remains traceable.
+The MVP is acceptable when an invited Internal User can complete the HACCP and ISO 22000 pilot from Client Request through an Approved Offer, Accepted Offer, approved Contract, and Cited Answer; every critical value, calculation, version, check, and Approval remains traceable. The production interface must also conform to the approved T00 visual system across the core desktop and mobile journeys.
 
 When real evaluation data is available, the pilot supports comparison across at least 20 anonymized cases with these target measures:
 
@@ -221,3 +233,5 @@ Targets guide evaluation; failed targets produce evidence and follow-up issues r
 Real Tariffs, quantity rules, tax and currency combinations, discount thresholds, numbering conventions, DOCX templates, clauses, approved knowledge corpus, and historical cases are still to be supplied. Their absence does not block implementation when the relevant behaviour uses explicit replaceable configuration and clearly marked synthetic fixtures.
 
 Ticket decomposition must use vertical tracer bullets sized for one fresh Codex context. Tickets declare blocking edges, explicit exclusions, acceptance criteria, test seams, and relevant glossary or ADR pointers. Horizontal schema-only, API-only, and UI-only tickets are avoided unless an unavoidable wide mechanical change requires an expand-contract sequence.
+
+Design iteration is the deliberate exception to a fixed ticket count: every implementation round remains a bounded, reviewable issue, while the design approval gate stays open until the product owner explicitly names an approved direction or hybrid. No agent may infer approval from scores, issue inactivity, or the absence of further criticism.
