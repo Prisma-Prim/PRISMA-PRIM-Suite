@@ -27,6 +27,7 @@ apps/
 docs/
   adr/           Durable technical decisions
   agents/        Agent workflow configuration
+  design/        UI/UX exploration and visual approval process
   product/       Product specifications
 ```
 
@@ -60,10 +61,11 @@ pnpm format:check
 
 1. Domain language lives in `CONTEXT.md`; durable decisions live in `docs/adr/`.
 2. Product behaviour is approved in a master specification before ticketing.
-3. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
-4. Codex CLI reads `AGENTS.md`, the complete ticket, the glossary, and relevant ADRs before editing.
-5. Implementation follows red-green-refactor at the highest stable test seam.
-6. The final diff is reviewed against both repository standards and the originating specification.
-7. Generated SQL migrations are inspected and committed; schema push is not used in production.
+3. The production UI direction passes the iterative design approval gate and T00 consolidation before functional frontend slices start.
+4. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
+5. Codex CLI reads `AGENTS.md`, the complete ticket, the glossary, and relevant ADRs before editing.
+6. Implementation follows red-green-refactor at the highest stable test seam.
+7. The final diff is reviewed against both repository standards and the originating specification.
+8. Generated SQL migrations are inspected and committed; schema push is not used in production.
 
 Repository-scoped Codex skills are stored under `.agents/skills/` and pinned in `skills-lock.json`. They include the Matt Pocock planning and delivery workflow plus the thermo-nuclear structural quality review.
