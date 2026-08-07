@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { ComparisonFixture } from './comparisonFixture';
 import { InstitutionalAssuranceConcept } from './concepts/institutional-assurance/Concept';
+import { PremiumEditorialConcept } from './concepts/premium-editorial/Concept';
 
 export const designLabScreens = [
   'dashboard',
@@ -33,6 +34,7 @@ export const directionSlots: ReadonlyArray<DirectionSlot> = [
     id: 'premium-editorial',
     title: 'Premium editorial',
     prompt: 'Refined dossier composition with strong hierarchy.',
+    Concept: PremiumEditorialConcept,
   },
   {
     id: 'operations-cockpit',

@@ -1,0 +1,174 @@
+.pe-shell {
+  --pe-paper: #f4f0e7;
+  --pe-paper-deep: #e8e0d1;
+  --pe-ink: #211e1a;
+  --pe-muted: #686056;
+  --pe-rule: #b7ad9d;
+  --pe-accent: #8a2f2b;
+  min-height: 100vh;
+  color: var(--pe-ink);
+  background: var(--pe-paper);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.pe-shell *,
+.pe-shell *::before,
+.pe-shell *::after {
+  box-sizing: border-box;
+}
+
+.pe-contents {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  display: flex;
+  width: 17.5rem;
+  flex-direction: column;
+  padding: 2rem 1.75rem 1.5rem;
+  color: #f4f0e7;
+  background: #20231f;
+}
+
+.pe-wordmark {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pe-wordmark span {
+  display: block;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.25rem;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+}
+
+.pe-wordmark strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: #c8b993;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.pe-edition {
+  margin: 1.8rem 0 4rem;
+  color: #b5b3a8;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pe-kicker {
+  margin: 0 0 0.65rem;
+  color: var(--pe-accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.pe-contents .pe-kicker {
+  color: #8f9284;
+}
+
+.pe-contents ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pe-contents li {
+  border-top: 1px solid #4d5049;
+}
+
+.pe-contents li:last-child {
+  border-bottom: 1px solid #4d5049;
+}
+
+.pe-contents nav a {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  align-items: center;
+  padding: 1.1rem 0;
+  color: #c8c8c0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  text-decoration: none;
+}
+
+.pe-contents nav a span {
+  color: #777b72;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.65rem;
+}
+
+.pe-contents nav a[aria-current='page'] {
+  color: #fffdf6;
+}
+
+.pe-contents nav a[aria-current='page']::after {
+  width: 1.75rem;
+  height: 1px;
+  margin-left: auto;
+  background: #c8b993;
+  content: '';
+}
+
+.pe-confidential {
+  margin: auto 0 0;
+  color: #7f8279;
+  font-size: 0.58rem;
+  letter-spacing: 0.11em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.pe-stage {
+  min-width: 0;
+  margin-left: 17.5rem;
+}
+
+.pe-running-head,
+.pe-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem clamp(1.5rem, 4vw, 4.75rem);
+  border-bottom: 1px solid var(--pe-rule);
+  color: var(--pe-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pe-page {
+  width: min(76rem, 100%);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 6rem) clamp(1.5rem, 5vw, 5rem);
+}
+
+.pe-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: clamp(2rem, 6vw, 7rem);
+  padding-bottom: clamp(3rem, 7vw, 6.5rem);
+}
+
+.pe-hero h1,
+.pe-request-title h1,
+.pe-analysis-title h1,
+.pe-analysis-title h2,
+.pe-state-key h2,
+.pe-field-title h2,
+.pe-review-close h2,
+.pe-request-grid h2,
+.pe-site-register h2,
+.pe-request-status h2,
+.pe-section-heading h2,
+.pe-lead-story h2 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
