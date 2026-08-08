@@ -6,14 +6,14 @@ Last validated: 2026-08-08.
 
 ## Canonical baseline
 
-| Concern | Contract | Source of truth |
-| --- | --- | --- |
-| Node.js | `>=24.0.0 <25.0.0` | root `package.json` and `.node-version` |
-| pnpm | `11.20.0` | root `packageManager` and lockfile |
-| Dependencies | `pnpm install --frozen-lockfile` | `pnpm-lock.yaml` |
-| Browser | Playwright Chromium | `@prisma-prim/web` |
-| Database | isolated local PostgreSQL | issue #36 and the versioned scripts |
-| CI | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17 | `.github/workflows/ci.yml` |
+| Concern      | Contract                                     | Source of truth                         |
+| ------------ | -------------------------------------------- | --------------------------------------- |
+| Node.js      | `>=24.0.0 <25.0.0`                           | root `package.json` and `.node-version` |
+| pnpm         | `11.20.0`                                    | root `packageManager` and lockfile      |
+| Dependencies | `pnpm install --frozen-lockfile`             | `pnpm-lock.yaml`                        |
+| Browser      | Playwright Chromium                          | `@prisma-prim/web`                      |
+| Database     | isolated local PostgreSQL                    | issue #36 and the versioned scripts     |
+| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17 | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
 
@@ -103,12 +103,12 @@ Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses tha
 
 ## Capability matrix
 
-| Harness | Local files and tests | Git branch/commit | Push/PR | CI visibility | Merge |
-| --- | --- | --- | --- | --- | --- |
-| Codex Cloud | Yes, isolated cloud checkout | Usually yes | Yes when GitHub is connected | Task-dependent | Only with applicable explicit or standing authorization |
-| Codex CLI | Yes | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
-| Claude Code | Yes | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
-| Generic harness | Must be verified | Must be verified | Must be verified | Must be verified | Never assume |
+| Harness         | Local files and tests        | Git branch/commit            | Push/PR                         | CI visibility                | Merge                                                   |
+| --------------- | ---------------------------- | ---------------------------- | ------------------------------- | ---------------------------- | ------------------------------------------------------- |
+| Codex Cloud     | Yes, isolated cloud checkout | Usually yes                  | Yes when GitHub is connected    | Task-dependent               | Only with applicable explicit or standing authorization |
+| Codex CLI       | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
+| Claude Code     | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
+| Generic harness | Must be verified             | Must be verified             | Must be verified                | Must be verified             | Never assume                                            |
 
 ## Updating this contract
 
