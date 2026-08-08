@@ -1,0 +1,121 @@
+name: Agent friction
+description: Report reproducible repository or harness friction that deserves a durable fix.
+title: '[Agent friction] '
+labels:
+  - agent-friction
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for repeatable environment, repository, CI, or harness friction. Do not use it for ordinary implementation bugs or expected TDD failures.
+  - type: input
+    id: originating-pr
+    attributes:
+      label: Originating pull request
+      description: Link the PR or task where the friction was observed.
+      placeholder: https://github.com/Dan-Popescu/PRISMA-PRIM-Suite/pull/123
+    validations:
+      required: true
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options:
+        - Codex Cloud
+        - Codex CLI
+        - Claude Code
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, runtime, package manager, and named hosted environment when applicable.
+      placeholder: Linux; Codex Cloud prisma-prim-suite; Node 24.14.0; pnpm 11.20.0
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Describe the blocked check, repeated effort, or reliability risk.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include the command, concise error output, and reproducible symptom. Remove secrets and client data.
+    validations:
+      required: true
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: Root cause
+      description: State the confirmed or suspected cause and the evidence supporting it.
+    validations:
+      required: true
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Root-cause confidence
+      options:
+        - Confirmed
+        - Suspected
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround used
+      description: Describe the temporary recovery, or state that none exists.
+    validations:
+      required: true
+  - type: textarea
+    id: durable-fix
+    attributes:
+      label: Recommended durable fix
+      description: Identify the smallest change that prevents recurrence.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Define how a future PR will prove the durable fix works.
+      placeholder: |
+        - [ ] The original reproduction no longer fails.
+        - [ ] Affected environments are aligned.
+        - [ ] Relevant automated guards and documentation are updated.
+    validations:
+      required: true
+  - type: checkboxes
+    id: affected
+    attributes:
+      label: Potentially affected environments
+      options:
+        - label: Codex Cloud
+        - label: Codex CLI or local development
+        - label: Claude Code
+        - label: GitHub Actions CI
+        - label: Other harnesses
+  - type: textarea
+    id: blocked-checks
+    attributes:
+      label: Required checks not run
+      description: List blocked checks and why, or write "None".
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched for an existing friction issue before filing this one.
+          required: true
+        - label: This report contains no secrets, credentials, or real client data.
+          required: true
+        - label: This is reusable environment or repository friction, not an ordinary implementation bug.
+          required: true

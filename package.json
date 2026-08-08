@@ -5,15 +5,19 @@
   "description": "AI-assisted consulting workflow platform for PRISMA-PRIM and BIC.",
   "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
+    "agent:doctor": "node scripts/agent-doctor.mjs",
+    "agent:doctor:web": "node scripts/agent-doctor.mjs --profile web",
     "build": "pnpm --recursive build",
     "dev": "pnpm --parallel --filter @prisma-prim/api --filter @prisma-prim/web dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "test": "pnpm --recursive test",
+    "test": "pnpm test:agent-governance && pnpm --recursive test",
+    "test:agent-doctor": "node --test scripts/agent-doctor.test.mjs",
+    "test:agent-governance": "node --test scripts/*.test.mjs",
     "typecheck": "pnpm --recursive typecheck",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",
     "db:migrate": "pnpm --filter @prisma-prim/api db:migrate"
