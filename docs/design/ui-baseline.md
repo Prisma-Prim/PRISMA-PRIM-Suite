@@ -38,13 +38,13 @@ unless a later GitHub issue explicitly connects the slice to the API.
 
 ## Source layout
 
-| Path | Responsibility |
-| --- | --- |
-| `apps/web/src/ui-baseline/PrismaCertUiBaseline.tsx` | Complete interactive mockup and screen routing |
-| `apps/web/src/ui-baseline/prisma-data.ts` | Synthetic requests, extracted fields, and coverage fixtures |
-| `apps/web/src/ui-baseline/prisma-cert-ui-baseline.css` | Full Atlas Blue visual and responsive system |
-| `apps/web/src/ui-baseline/prisma-logo.ts` | Self-contained original PRISMA Prim logo asset |
-| `apps/web/e2e/ui-baseline.spec.ts` | Baseline rendering and responsive overflow checks |
+| Path                                                   | Responsibility                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| `apps/web/src/ui-baseline/PrismaCertUiBaseline.tsx`    | Complete interactive mockup and screen routing              |
+| `apps/web/src/ui-baseline/prisma-data.ts`              | Synthetic requests, extracted fields, and coverage fixtures |
+| `apps/web/src/ui-baseline/prisma-cert-ui-baseline.css` | Full Atlas Blue visual and responsive system                |
+| `apps/web/src/ui-baseline/prisma-logo.ts`              | Self-contained original PRISMA Prim logo asset              |
+| `apps/web/e2e/ui-baseline.spec.ts`                     | Baseline rendering and responsive overflow checks           |
 
 The logo is embedded as a data URL so this preserved snapshot cannot silently
 lose its source asset. A later production asset pipeline may replace that
