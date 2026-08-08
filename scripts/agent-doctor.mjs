@@ -84,12 +84,10 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     ),
     result(
       'pnpm',
-      Boolean(
-        requiredPnpm &&
+      requiredPnpm &&
         actualPnpm &&
         parsedRequiredPnpm &&
-        compareVersions(actualPnpm, parsedRequiredPnpm) === 0,
-      )
+        compareVersions(actualPnpm, parsedRequiredPnpm) === 0
         ? 'PASS'
         : 'FAIL',
       requiredPnpm
