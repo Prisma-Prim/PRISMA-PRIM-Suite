@@ -11,7 +11,7 @@ Last validated: 2026-08-08.
 | Node.js      | `>=24.0.0 <25.0.0`                           | root `package.json` and `.node-version` |
 | pnpm         | `11.20.0`                                    | root `packageManager` and lockfile      |
 | Dependencies | `pnpm install --frozen-lockfile`             | `pnpm-lock.yaml`                        |
-| Browser      | Playwright Chromium                          | `@prisma-prim/web`                      |
+| Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI |
 | Database     | isolated local PostgreSQL                    | issue #36 and the versioned scripts     |
 | CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17 | `.github/workflows/ci.yml`              |
 
@@ -21,20 +21,23 @@ Run the zero-dependency diagnostic after setup:
 node scripts/agent-doctor.mjs
 ```
 
-The profiles are cumulative:
+The profiles are composable:
 
 ```bash
 # Node, pnpm, workspace, lockfile, and dependencies
 node scripts/agent-doctor.mjs
 
+# Base checks plus safe PostgreSQL variables and real connectivity
+node scripts/agent-doctor.mjs --profile postgres
+
 # Base checks plus Playwright Chromium
 node scripts/agent-doctor.mjs --profile web
 
-# Web checks plus safe PostgreSQL variables and real test-database connectivity
+# Browser and PostgreSQL checks together
 node scripts/agent-doctor.mjs --profile web-postgres
 ```
 
-Use `web-postgres` before any slice that needs both browser and persistent-data coverage. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its connectivity probe runs only `SELECT 1`; it never migrates or truncates data.
+Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its connectivity probe runs only `SELECT 1`; it never migrates or truncates data.
 
 ## Codex Cloud environment
 
@@ -42,7 +45,7 @@ Configure the repository environment in [Codex settings](https://chatgpt.com/cod
 
 ### Package version
 
-Set Node.js to `24` with **Set package versions**. Do not bootstrap a different runtime with `mise`; Codex Cloud supports pinning the environment runtime directly.
+Keep the `universal` image. The repository pins Node 24 through `.node-version` and `package.json`, and the setup doctor rejects runtime drift. If the package-version selector exposes Node 24, selecting it is valid but not required; do not choose a different major or add an inline runtime bootstrap.
 
 ### Environment variables
 
@@ -61,7 +64,7 @@ These credentials belong only to the isolated task container. Never replace eith
 bash scripts/codex-cloud-setup.sh
 ```
 
-Setup activates the exact repository pnpm version, installs the frozen dependency graph, installs Chromium and its operating-system dependencies, installs and starts local PostgreSQL, creates both databases idempotently, and runs the `web-postgres` doctor.
+Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, installs and starts local PostgreSQL, creates both databases idempotently, and runs the `postgres` doctor. It reports each phase duration. Chromium and graphical operating-system packages are deliberately excluded from the standard environment.
 
 ### Maintenance script
 
@@ -69,7 +72,18 @@ Setup activates the exact repository pnpm version, installs the frozen dependenc
 bash scripts/codex-cloud-maintenance.sh
 ```
 
-Maintenance runs when Codex resumes a cached container. It rechecks pnpm, synchronizes dependencies, restores Chromium, restarts PostgreSQL, recreates missing databases, and reruns the doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, restarts PostgreSQL, recreates missing databases, and reruns the `postgres` doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+
+### Browser tests
+
+The standard Codex Cloud environment does not install Chromium. Browser tests remain fully enforced by GitHub Actions. For an exceptional Codex task that must execute Playwright locally, install Chromium on demand:
+
+```bash
+pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
+node scripts/agent-doctor.mjs --profile web
+```
+
+This cost belongs only to the browser task and is not added to every cold environment.
 
 ### Network and credentials
 
@@ -88,7 +102,7 @@ Use **Reset cache** only when:
 - repository changes add a new system-level prerequisite;
 - setup, maintenance, or environment values changed but automatic invalidation did not occur.
 
-After changing the environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs --profile web-postgres` to pass before implementation.
+After changing the environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs --profile postgres` to pass before implementation. Install Chromium explicitly and run `--profile web` or `--profile web-postgres` only for tasks that need browser execution.
 
 ## Local and other harnesses
 
