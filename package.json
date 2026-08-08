@@ -10,6 +10,7 @@
   "scripts": {
     "agent:doctor": "node scripts/agent-doctor.mjs",
     "agent:doctor:web": "node scripts/agent-doctor.mjs --profile web",
+    "agent:doctor:web-postgres": "node scripts/agent-doctor.mjs --profile web-postgres",
     "build": "pnpm --recursive build",
     "dev": "pnpm --parallel --filter @prisma-prim/api --filter @prisma-prim/web dev",
     "format": "prettier --write .",

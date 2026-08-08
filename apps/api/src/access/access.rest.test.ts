@@ -12,10 +12,22 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
     'TEST_DATABASE_URL is required for the destructive PostgreSQL Access REST suite.',
   );
 }
-if (databaseUrl && !new URL(databaseUrl).pathname.endsWith('_test')) {
-  throw new Error(
-    'TEST_DATABASE_URL must identify a database whose name ends with "_test".',
-  );
+if (databaseUrl) {
+  const databaseTarget = new URL(databaseUrl);
+  const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
+  const databaseName = decodeURIComponent(databaseTarget.pathname.slice(1));
+  const isSafeTestTarget =
+    new Set(['postgres:', 'postgresql:']).has(databaseTarget.protocol) &&
+    !databaseTarget.search &&
+    !databaseTarget.hash &&
+    localHosts.has(databaseTarget.hostname) &&
+    databaseName.endsWith('_test');
+
+  if (!isSafeTestTarget) {
+    throw new Error(
+      'TEST_DATABASE_URL must identify a local database whose name ends with "_test", without connection-target overrides.',
+    );
+  }
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 

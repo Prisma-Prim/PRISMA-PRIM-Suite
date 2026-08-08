@@ -49,6 +49,57 @@ export function packageManagerVersion(packageManager) {
   return match?.[1] ?? null;
 }
 
+export function parseDatabaseTarget(value) {
+  try {
+    const url = new URL(String(value));
+    if (url.search || url.hash) {
+      return null;
+    }
+    if (!new Set(['postgres:', 'postgresql:']).has(url.protocol)) {
+      return null;
+    }
+
+    const database = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+    if (!database || database.includes('/')) {
+      return null;
+    }
+
+    return {
+      database,
+      hostname: url.hostname,
+      port: url.port || '5432',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isLoopbackHost(hostname) {
+  return new Set(['127.0.0.1', 'localhost', '[::1]']).has(hostname);
+}
+
+export function databaseTargetsAreSafe(databaseUrl, testDatabaseUrl) {
+  const developmentDatabase = parseDatabaseTarget(databaseUrl);
+  const testDatabase = parseDatabaseTarget(testDatabaseUrl);
+
+  return Boolean(
+    developmentDatabase &&
+    testDatabase &&
+    isLoopbackHost(developmentDatabase.hostname) &&
+    isLoopbackHost(testDatabase.hostname) &&
+    developmentDatabase.database !== testDatabase.database &&
+    testDatabase.database.endsWith('_test'),
+  );
+}
+
+function requiresChromium(profile) {
+  return profile === 'web' || profile === 'web-postgres';
+}
+
+function requiresPostgres(profile) {
+  return profile === 'web-postgres';
+}
+
 function result(id, status, summary, remediation = null) {
   return {
     id,
@@ -65,6 +116,16 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   const requiredPnpm = packageManagerVersion(snapshot.packageManager);
   const actualPnpm = parseVersion(snapshot.pnpmVersion);
   const parsedRequiredPnpm = parseVersion(requiredPnpm);
+  const needsChromium = requiresChromium(profile);
+  const needsPostgres = requiresPostgres(profile);
+  const developmentDatabase = parseDatabaseTarget(snapshot.databaseUrl);
+  const testDatabase = parseDatabaseTarget(snapshot.testDatabaseUrl);
+  const databaseVariablesValid =
+    developmentDatabase !== null && testDatabase !== null;
+  const databaseTargetsSafe = databaseTargetsAreSafe(
+    snapshot.databaseUrl,
+    snapshot.testDatabaseUrl,
+  );
 
   return [
     result(
@@ -123,26 +184,54 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     ),
     result(
       'chromium',
-      profile === 'web'
-        ? snapshot.chromiumAvailable
-          ? 'PASS'
-          : 'FAIL'
-        : 'SKIP',
-      profile === 'web'
+      needsChromium ? (snapshot.chromiumAvailable ? 'PASS' : 'FAIL') : 'SKIP',
+      needsChromium
         ? snapshot.chromiumAvailable
           ? 'Playwright Chromium is installed and executable.'
           : 'Playwright Chromium is missing or not executable.'
-        : 'Playwright Chromium is not required by the base profile.',
+        : 'Playwright Chromium is not required by the selected profile.',
       'Run pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium.',
+    ),
+    result(
+      'database-variables',
+      needsPostgres ? (databaseVariablesValid ? 'PASS' : 'FAIL') : 'SKIP',
+      needsPostgres
+        ? databaseVariablesValid
+          ? 'DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.'
+          : 'DATABASE_URL or TEST_DATABASE_URL is missing or invalid.'
+        : 'Database variables are not required by the selected profile.',
+      'Configure both PostgreSQL URLs as Codex environment variables.',
+    ),
+    result(
+      'database-safety',
+      needsPostgres ? (databaseTargetsSafe ? 'PASS' : 'FAIL') : 'SKIP',
+      needsPostgres
+        ? databaseTargetsSafe
+          ? 'Development and test databases are distinct local targets; the test name ends in _test.'
+          : 'Database targets must be local, distinct, and the test database name must end in _test.'
+        : 'Database target safety is not required by the selected profile.',
+      'Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud.',
+    ),
+    result(
+      'postgres',
+      needsPostgres ? (snapshot.postgresAvailable ? 'PASS' : 'FAIL') : 'SKIP',
+      needsPostgres
+        ? snapshot.postgresAvailable
+          ? 'The isolated PostgreSQL test database accepts a read-only connectivity probe.'
+          : 'The isolated PostgreSQL test database is unavailable.'
+        : 'PostgreSQL connectivity is not required by the selected profile.',
+      'Run bash scripts/codex-cloud-maintenance.sh, then retry the doctor.',
     ),
   ];
 }
 
-function run(command, args) {
+function run(command, args, options = {}) {
   return spawnSync(command, args, {
     cwd: repositoryRoot,
     encoding: 'utf8',
     shell: false,
+    timeout: 10_000,
+    ...options,
   });
 }
 
@@ -172,9 +261,52 @@ function playwrightChromiumIsAvailable() {
   return command.status === 0;
 }
 
+function postgresIsAvailable(testDatabaseUrl) {
+  if (!testDatabaseUrl) {
+    return false;
+  }
+
+  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const probe = [
+    'import pg from "pg";',
+    'const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 3000 });',
+    'try {',
+    'await client.connect();',
+    'const response = await client.query("SELECT 1 AS ok");',
+    'process.exitCode = response.rows[0]?.ok === 1 ? 0 : 1;',
+    '} catch { process.exitCode = 1; }',
+    'finally { await client.end().catch(() => undefined); }',
+  ].join(' ');
+  const command = run(
+    executable,
+    [
+      '--filter',
+      '@prisma-prim/api',
+      'exec',
+      'node',
+      '--input-type=module',
+      '--eval',
+      probe,
+    ],
+    {
+      env: { ...process.env, TEST_DATABASE_URL: testDatabaseUrl },
+    },
+  );
+
+  return command.status === 0;
+}
+
 export function collectEnvironment(profile = 'base') {
   const packageJson = JSON.parse(
     readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'),
+  );
+  const needsChromium = requiresChromium(profile);
+  const needsPostgres = requiresPostgres(profile);
+  const databaseUrl = process.env.DATABASE_URL ?? '';
+  const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? '';
+  const databaseTargetsSafe = databaseTargetsAreSafe(
+    databaseUrl,
+    testDatabaseUrl,
   );
 
   return {
@@ -187,8 +319,13 @@ export function collectEnvironment(profile = 'base') {
     ),
     lockfileExists: existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
     dependenciesInstalled: existsSync(resolve(repositoryRoot, 'node_modules')),
-    chromiumAvailable:
-      profile === 'web' ? playwrightChromiumIsAvailable() : false,
+    chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
+    databaseUrl,
+    testDatabaseUrl,
+    postgresAvailable:
+      needsPostgres && databaseTargetsSafe
+        ? postgresIsAvailable(testDatabaseUrl)
+        : false,
   };
 }
 
@@ -209,9 +346,9 @@ export function main() {
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
   const json = process.argv.includes('--json');
 
-  if (!new Set(['base', 'web']).has(profile)) {
+  if (!new Set(['base', 'web', 'web-postgres']).has(profile)) {
     process.stderr.write(
-      `Unknown profile: ${profile}. Expected base or web.\n`,
+      `Unknown profile: ${profile}. Expected base, web, or web-postgres.\n`,
     );
     process.exitCode = 2;
     return;
