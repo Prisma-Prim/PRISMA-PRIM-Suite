@@ -172,7 +172,7 @@ The product must work with clearly marked demonstration configuration before rea
 - Atlas Blue, preserved in `/ui-baseline`, is the preferred visual and interaction starting point. It is an evolving baseline rather than a frozen or formally approved final design.
 - Production capabilities may now be delivered as narrow vertical slices. Each UI slice extends or deliberately changes Atlas Blue only as needed for its acceptance criteria and records consequential visual decisions.
 - `/ui-baseline` remains a recoverable snapshot of the mockup while production components and real behavior evolve separately from it.
-- The completed exploration and the superseded gate are recorded in [`docs/design/design-exploration.md`](../design/design-exploration.md); current implementation guidance is in [`docs/design/ui-baseline.md`](../design/ui-baseline.md).
+- Rejected historical directions remain available only through Git history and must not be treated as current implementation guidance.
 
 ## Testing Decisions
 
@@ -232,4 +232,4 @@ Real Tariffs, quantity rules, tax and currency combinations, discount thresholds
 
 Ticket decomposition must use vertical tracer bullets sized for one fresh Codex context. Tickets declare blocking edges, explicit exclusions, acceptance criteria, test seams, and relevant glossary or ADR pointers. Horizontal schema-only, API-only, and UI-only tickets are avoided unless an unavoidable wide mechanical change requires an expand-contract sequence.
 
-The former design exploration issues #2 through #10 and consolidation issue #11 are historical, superseded work. They are not dependencies of new implementation tickets. Current work proceeds one bounded vertical feature issue at a time from the evolving Atlas Blue baseline.
+Current work proceeds one bounded vertical feature issue at a time from the evolving Atlas Blue baseline.

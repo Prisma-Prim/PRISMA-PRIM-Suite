@@ -6,9 +6,9 @@ This repository contains PRISMA-PRIM Suite. Implement only the scope of the assi
 
 Before changing business behaviour, read the complete issue, `CONTEXT.md`, and the relevant ADRs in `docs/adr/`. Use the canonical domain terms in code, tests, issues, and documentation.
 
-The complete current Atlas Blue frontend mockup is preserved at `/ui-baseline`. Before extending or connecting it, read `docs/design/ui-baseline.md`. Treat it as the preferred, evolving visual and interaction baseline, not as proof of implemented business behavior. Production UI may evolve from it deliberately in narrow feature slices; preserve `/ui-baseline` as the recoverable snapshot and do not silently replace synthetic interactions while implementing an unrelated issue.
+The complete current Atlas Blue frontend mockup is preserved at `/ui-baseline`. Treat it as the preferred, evolving visual and interaction baseline, not as proof of implemented business behavior. Production UI may evolve from it deliberately in narrow feature slices; preserve `/ui-baseline` as the recoverable snapshot and do not silently replace synthetic interactions while implementing an unrelated issue.
 
-Before changing product UI, also read `docs/design/design-exploration.md` for the historical exploration record. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
+For product UI work, ground visual decisions in `/ui-baseline` and the assigned issue. Do not revive rejected historical directions or invent an independent visual system. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
 
 ## Durable technical decisions
 
