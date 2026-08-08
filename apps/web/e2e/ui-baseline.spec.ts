@@ -19,10 +19,26 @@ for (const viewport of viewports) {
 
     const geometry = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
+      overflowElements: [...document.querySelectorAll("*")]
+        .map((element) => {
+          const rectangle = element.getBoundingClientRect();
+
+          return {
+            className: element.getAttribute("class"),
+            right: rectangle.right,
+            tagName: element.tagName,
+            width: rectangle.width,
+          };
+        })
+        .filter(({ right }) => right > window.innerWidth + 1)
+        .slice(0, 12),
       viewportWidth: window.innerWidth,
     }));
 
-    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+    expect(
+      geometry.documentWidth,
+      JSON.stringify(geometry.overflowElements),
+    ).toBeLessThanOrEqual(geometry.viewportWidth);
   });
 }
 
@@ -33,8 +49,8 @@ test("keeps the baseline navigation interactive", async ({ page }) => {
     name: "Ouvrir la navigation",
   });
 
-  if (await mobileMenu.isVisible()) {
-    await mobileMenu.click();
+  if (await page.evaluate(() => matchMedia("(max-width: 820px)").matches)) {
+    await mobileMenu.click({ force: true });
   }
 
   await page
