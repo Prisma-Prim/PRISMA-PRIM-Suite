@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { ApplicationRoot } from './ApplicationRoot';
 
 describe('ApplicationRoot', () => {
-  it('keeps the normal application entry point unchanged', () => {
+  it('renders the production shell at the normal application entry point', () => {
     render(<ApplicationRoot pathname="/" />);
 
     expect(
-      screen.getByRole('heading', { name: 'PRISMA-PRIM Suite' }),
+      screen.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Foundation operational')).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
   it('isolates the design lab from the normal application', () => {
@@ -19,7 +19,7 @@ describe('ApplicationRoot', () => {
       screen.getByRole('heading', { name: 'Design direction lab' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('Foundation operational'),
+      screen.queryByRole('navigation', { name: 'Primary navigation' }),
     ).not.toBeInTheDocument();
   });
 });
