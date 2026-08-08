@@ -56,7 +56,7 @@ if ! command -v psql >/dev/null 2>&1 || ! command -v pg_ctlcluster >/dev/null 2>
   fi
 
   run_as_root apt-get update
-  run_as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql postgresql-client
+  run_as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends postgresql postgresql-client
 fi
 
 cluster_found=false
