@@ -60,7 +60,7 @@ If no friction occurred, state that explicitly. The retrospective is mandatory e
 - Escalate product decisions that would change observable business rules, prices, legal clauses, certification decisions, permissions, workflow meaning, or issue acceptance criteria when the assigned issue and its references do not decide them.
 - Take reversible technical decisions autonomously when they stay inside the issue's public boundary and comply with the durable technical decisions above. Document consequential choices in the pull request.
 - Stop for a genuine external or product blocker. Resolve ordinary implementation choices, fixable check failures, and formatting issues without handing routine work back to the user.
-- Do not merge without explicit user or repository authorization, even when the harness has merge access.
+- The repository owner has granted standing authorization for AI agents with merge access to squash-merge conformant PRs without asking again. Merge only after every required check is green, Standards and Spec reviews are complete, the final scope matches the issue, and no blocking feedback remains. Stop instead of merging if any precondition is failed, unresolved, or uncertain, or if this standing authorization is revoked.
 
 ## Required verification
 
