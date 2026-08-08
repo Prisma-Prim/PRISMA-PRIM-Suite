@@ -2,6 +2,12 @@
 
 Use this workflow for Codex Cloud, Codex CLI, Claude Code, and other AI coding harnesses. Replace `FULL_ISSUE_URL` with the complete URL of the single issue on the execution frontier. Start with a fresh session whenever the harness supports it.
 
+## Codex Cloud kickoff
+
+When a GitHub issue defines the implementation contract, launch Codex Cloud from an `@codex` comment on that originating issue. This is the default repository workflow because the task inherits the complete issue body and available comments without depending on agent-phase Internet access.
+
+Do not create a manual Codex Cloud task whose prompt contains only the issue URL. A manual task is acceptable only when its prompt contains the complete execution contract or when the work is fully specified by repository files available to the task.
+
 ## Invariant workflow
 
 Every harness must follow these steps even when it cannot perform GitHub or local Git actions itself.
