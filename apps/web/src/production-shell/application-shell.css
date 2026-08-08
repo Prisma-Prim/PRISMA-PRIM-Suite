@@ -80,7 +80,7 @@
 }
 
 .production-user-area small {
-  color: var(--shell-muted);
+  color: inherit;
 }
 
 .production-access-state {
