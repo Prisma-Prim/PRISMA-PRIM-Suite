@@ -56,9 +56,9 @@ Verification and review:
 Publication:
 
 - Commit only the issue's changes with an intentional English commit message.
-- Push the branch and open one PR whose body includes “Closes #N”, the behavior
-  delivered, tests run, browser evidence, decisions taken, and remaining
-  limitations.
+- Push the branch and open one PR targeting `main` whose body includes “Closes
+  #N”, the behavior delivered, tests run, browser evidence, decisions taken,
+  and remaining limitations.
 - Monitor CI and fix failures caused by this PR autonomously.
 - When reviews are complete and CI is green, squash-merge the PR and remove the
   issue branch/worktree unless repository protection prevents it.
