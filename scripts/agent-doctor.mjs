@@ -52,6 +52,9 @@ export function packageManagerVersion(packageManager) {
 export function parseDatabaseTarget(value) {
   try {
     const url = new URL(String(value));
+    if (url.search || url.hash) {
+      return null;
+    }
     if (!new Set(['postgres:', 'postgresql:']).has(url.protocol)) {
       return null;
     }
@@ -73,6 +76,20 @@ export function parseDatabaseTarget(value) {
 
 function isLoopbackHost(hostname) {
   return new Set(['127.0.0.1', 'localhost', '[::1]']).has(hostname);
+}
+
+export function databaseTargetsAreSafe(databaseUrl, testDatabaseUrl) {
+  const developmentDatabase = parseDatabaseTarget(databaseUrl);
+  const testDatabase = parseDatabaseTarget(testDatabaseUrl);
+
+  return Boolean(
+    developmentDatabase &&
+      testDatabase &&
+      isLoopbackHost(developmentDatabase.hostname) &&
+      isLoopbackHost(testDatabase.hostname) &&
+      developmentDatabase.database !== testDatabase.database &&
+      testDatabase.database.endsWith('_test'),
+  );
 }
 
 function requiresChromium(profile) {
@@ -105,12 +122,10 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   const testDatabase = parseDatabaseTarget(snapshot.testDatabaseUrl);
   const databaseVariablesValid =
     developmentDatabase !== null && testDatabase !== null;
-  const databaseTargetsSafe =
-    databaseVariablesValid &&
-    isLoopbackHost(developmentDatabase.hostname) &&
-    isLoopbackHost(testDatabase.hostname) &&
-    developmentDatabase.database !== testDatabase.database &&
-    testDatabase.database.endsWith('_test');
+  const databaseTargetsSafe = databaseTargetsAreSafe(
+    snapshot.databaseUrl,
+    snapshot.testDatabaseUrl,
+  );
 
   return [
     result(
@@ -289,6 +304,10 @@ export function collectEnvironment(profile = 'base') {
   const needsPostgres = requiresPostgres(profile);
   const databaseUrl = process.env.DATABASE_URL ?? '';
   const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? '';
+  const databaseTargetsSafe = databaseTargetsAreSafe(
+    databaseUrl,
+    testDatabaseUrl,
+  );
 
   return {
     nodeRange: packageJson.engines?.node ?? '',
@@ -303,9 +322,10 @@ export function collectEnvironment(profile = 'base') {
     chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
     databaseUrl,
     testDatabaseUrl,
-    postgresAvailable: needsPostgres
-      ? postgresIsAvailable(testDatabaseUrl)
-      : false,
+    postgresAvailable:
+      needsPostgres && databaseTargetsSafe
+        ? postgresIsAvailable(testDatabaseUrl)
+        : false,
   };
 }
 
