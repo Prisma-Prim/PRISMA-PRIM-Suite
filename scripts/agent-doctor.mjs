@@ -169,11 +169,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     ),
     result(
       'chromium',
-      needsChromium
-        ? snapshot.chromiumAvailable
-          ? 'PASS'
-          : 'FAIL'
-        : 'SKIP',
+      needsChromium ? (snapshot.chromiumAvailable ? 'PASS' : 'FAIL') : 'SKIP',
       needsChromium
         ? snapshot.chromiumAvailable
           ? 'Playwright Chromium is installed and executable.'
@@ -203,11 +199,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     ),
     result(
       'postgres',
-      needsPostgres
-        ? snapshot.postgresAvailable
-          ? 'PASS'
-          : 'FAIL'
-        : 'SKIP',
+      needsPostgres ? (snapshot.postgresAvailable ? 'PASS' : 'FAIL') : 'SKIP',
       needsPostgres
         ? snapshot.postgresAvailable
           ? 'The isolated PostgreSQL test database accepts a read-only connectivity probe.'
@@ -308,9 +300,7 @@ export function collectEnvironment(profile = 'base') {
     ),
     lockfileExists: existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
     dependenciesInstalled: existsSync(resolve(repositoryRoot, 'node_modules')),
-    chromiumAvailable: needsChromium
-      ? playwrightChromiumIsAvailable()
-      : false,
+    chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
     databaseUrl,
     testDatabaseUrl,
     postgresAvailable: needsPostgres
