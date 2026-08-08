@@ -24,13 +24,19 @@ localization state. Representative deep links include:
 
 ## Status and authority
 
-The baseline fixes the visual progress of the published prototype as captured
-on 2026-08-08 after the responsive and shared status-alignment passes.
+The baseline preserves the visual progress of the published prototype as
+captured on 2026-08-08 after the responsive and shared status-alignment passes.
 
-It is authoritative for the current visual language, information architecture,
-responsive shell, representative screens, and intended interaction shape. It
-does **not** close the repository's design approval gate, replace the product
-specification, or prove that a workflow is implemented.
+Atlas Blue is the preferred current reference for visual language, information
+architecture, responsive shell, representative screens, and intended
+interaction shape. It is an evolving baseline, not a frozen or formally
+approved final design, and it does not replace the product specification or
+prove that a workflow is implemented.
+
+Future vertical feature issues may change the production design deliberately
+when their scope requires it. They must preserve `/ui-baseline` as this
+recoverable snapshot, explain consequential departures, and avoid redesigning
+unrelated surfaces.
 
 All records are synthetic. State transitions, uploads, search, AI answers,
 pricing, approvals, signatures, invitations, and persistence are simulated
