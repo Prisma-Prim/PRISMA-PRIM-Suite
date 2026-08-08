@@ -1,14 +1,35 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from './ApplicationRoot';
 
 describe('ApplicationRoot', () => {
-  it('renders the production shell at the normal application entry point', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            displayName: 'Ada Ionescu',
+            email: 'ada@example.test',
+            workspaceName: 'PRISMA Workspace',
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+  });
+
+  it('renders the protected production shell with local identity', async () => {
     render(<ApplicationRoot pathname="/" />);
 
     expect(
-      screen.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+      await screen.findByRole('heading', {
+        name: 'Welcome to PRISMA-PRIM Suite',
+      }),
     ).toBeInTheDocument();
     expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.getByText('Ada Ionescu')).toBeInTheDocument();
+    expect(screen.getByText('ada@example.test')).toBeInTheDocument();
+    expect(screen.getByText('PRISMA Workspace')).toBeInTheDocument();
   });
 });

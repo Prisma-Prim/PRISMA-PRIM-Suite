@@ -3,6 +3,19 @@ import { expect, test } from '@playwright/test';
 test('renders the production shell at the normal application entry point', async ({
   page,
 }, testInfo) => {
+  await page.route('**/api/access/current-actor', (route) => {
+    expect(route.request().headers()).toMatchObject({
+      'x-test-external-provider': 'local-demo',
+      'x-test-external-subject': 'local-demonstration-user',
+    });
+    return route.fulfill({
+      json: {
+        displayName: 'Ada Ionescu',
+        email: 'ada@example.test',
+        workspaceName: 'PRISMA Workspace',
+      },
+    });
+  });
   await page.goto('/');
 
   await expect(page.getByRole('banner')).toBeVisible();
@@ -18,6 +31,9 @@ test('renders the production shell at the normal application entry point', async
   await expect(
     page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
   ).toBeVisible();
+  await expect(page.getByText('Ada Ionescu')).toBeVisible();
+  await expect(page.getByText('ada@example.test')).toBeVisible();
+  await expect(page.getByText('PRISMA Workspace')).toBeVisible();
 
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -34,6 +50,15 @@ test('makes primary navigation available on a narrow viewport', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'narrow');
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({
+      json: {
+        displayName: 'Ada Ionescu',
+        email: 'ada@example.test',
+        workspaceName: 'PRISMA Workspace',
+      },
+    }),
+  );
   await page.goto('/');
 
   const navigation = page.getByRole('navigation', {

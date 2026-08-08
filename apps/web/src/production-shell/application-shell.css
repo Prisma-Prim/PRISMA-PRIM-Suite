@@ -74,6 +74,24 @@
   font-size: 0.85rem;
 }
 
+.production-user-area span {
+  display: grid;
+  text-align: right;
+}
+
+.production-user-area small {
+  color: var(--shell-muted);
+}
+
+.production-access-state {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
 .production-menu-button {
   display: none;
   width: 2.75rem;

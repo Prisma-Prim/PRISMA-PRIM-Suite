@@ -1,13 +1,31 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 describe('App', () => {
-  it('renders the production application shell', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            displayName: 'Ada Ionescu',
+            email: 'ada@example.test',
+            workspaceName: 'PRISMA Workspace',
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+  });
+
+  it('renders the production application shell', async () => {
     render(<App />);
 
     expect(
-      screen.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+      await screen.findByRole('heading', {
+        name: 'Welcome to PRISMA-PRIM Suite',
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Primary navigation' }),

@@ -1,0 +1,51 @@
+openapi: 3.1.0
+info:
+  title: PRISMA-PRIM Suite API
+  version: 0.1.0
+paths:
+  /api/access/current-actor:
+    get:
+      operationId: getCurrentActor
+      summary: Resolve the verified external identity to the current Internal User
+      tags:
+        - Access
+      responses:
+        '200':
+          description: The active local actor and persistent Workspace context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActorContext'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The resolved Internal User is inactive.
+components:
+  schemas:
+    ActorContext:
+      type: object
+      additionalProperties: false
+      required:
+        - internalUserId
+        - workspaceId
+        - workspaceName
+        - displayName
+        - email
+        - active
+      properties:
+        internalUserId:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        workspaceName:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        active:
+          type: boolean
+          const: true

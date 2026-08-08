@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "pnpm test:agent-governance && pnpm --recursive test",
+    "test:access:postgres": "pnpm --filter @prisma-prim/api test:access:postgres",
     "test:agent-doctor": "node --test scripts/agent-doctor.test.mjs",
     "test:agent-governance": "node --test scripts/*.test.mjs",
     "typecheck": "pnpm --recursive typecheck",
