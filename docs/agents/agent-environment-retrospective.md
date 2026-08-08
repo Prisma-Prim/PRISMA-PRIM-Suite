@@ -68,6 +68,8 @@ Create an issue with the `Agent friction` form when the problem is likely to rec
 
 Link the originating PR and deduplicate against existing friction issues. Never silently broaden a product PR to fix speculative environment concerns.
 
+The repository's `Agent metadata` workflow ensures the `agent-friction` label exists after this governance package reaches `main`. API-based agents should apply that label when creating an issue from `agent-friction-template.md`.
+
 ## Promotion rule
 
 PR retrospectives are observation records. Only confirmed, reproducible, and actionable findings become repository configuration, documentation, or an `agent-friction` issue. Re-evaluate whether to enforce retrospective presence in CI after 2–3 trial PRs; until then, the PR template and repository instructions provide the guardrail.
