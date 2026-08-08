@@ -1051,7 +1051,7 @@ p {
   background: transparent;
 }
 .stepper > div > button:not(:last-child):after {
-  content: "";
+  content: '';
   position: absolute;
   z-index: 0;
   left: 55%;
@@ -3798,7 +3798,7 @@ textarea {
   white-space: normal;
 }
 .status.status::before {
-  content: "";
+  content: '';
   width: 7px;
   height: 7px;
   flex: 0 0 7px;
