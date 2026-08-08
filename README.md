@@ -49,6 +49,9 @@ Prerequisites: Node.js 24, pnpm 11.20.0, Docker with Compose.
 
 ```bash
 cp .env.example .env
+set -a
+. ./.env
+set +a
 docker compose up -d postgres
 pnpm install --frozen-lockfile
 pnpm db:migrate
