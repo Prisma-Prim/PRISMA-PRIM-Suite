@@ -31,6 +31,16 @@ docs/
   product/       Product specifications
 ```
 
+## Preserved UI baseline
+
+The complete PRISMA CERT AI frontend mockup is preserved as an isolated,
+backend-free reference at `/ui-baseline#/dashboard`. It uses synthetic data and
+simulated interactions so local agents can work from the current approved visual
+progress without confusing the mockup with implemented business behavior.
+
+Read [`docs/design/ui-baseline.md`](docs/design/ui-baseline.md) before extending
+or connecting this interface.
+
 ## Local setup
 
 Prerequisites: Node.js 24+, pnpm 11+, Docker with Compose.
