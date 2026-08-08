@@ -28,6 +28,15 @@ for (const viewport of viewports) {
 
 test("keeps the baseline navigation interactive", async ({ page }) => {
   await page.goto("/ui-baseline#/dashboard");
+
+  const mobileMenu = page.getByRole("button", {
+    name: "Ouvrir la navigation",
+  });
+
+  if (await mobileMenu.isVisible()) {
+    await mobileMenu.click();
+  }
+
   await page
     .getByRole("button", { name: "Clients & contacts", exact: true })
     .click();
