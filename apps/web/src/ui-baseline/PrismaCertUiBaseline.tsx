@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -50,7 +50,7 @@ import {
   UsersRound,
   X,
   XCircle,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   baseFields,
   coverageRows,
@@ -62,309 +62,309 @@ import {
   type ReviewField,
   type Stage,
   type Tone,
-} from "./prisma-data";
-import { prismaLogoDataUrl } from "./prisma-logo";
-import "./prisma-cert-ui-baseline.css";
+} from './prisma-data';
+import { prismaLogoDataUrl } from './prisma-logo';
+import './prisma-cert-ui-baseline.css';
 
 type PageId =
-  | "dashboard"
-  | "requests"
-  | "request"
-  | "clients"
-  | "offers"
-  | "contracts"
-  | "projects"
-  | "documents"
-  | "catalog"
-  | "activity"
-  | "users"
-  | "coverage";
+  | 'dashboard'
+  | 'requests'
+  | 'request'
+  | 'clients'
+  | 'offers'
+  | 'contracts'
+  | 'projects'
+  | 'documents'
+  | 'catalog'
+  | 'activity'
+  | 'users'
+  | 'coverage';
 type ModalKind =
-  | "create"
-  | "field"
-  | "client"
-  | "acceptance"
-  | "signature"
-  | "document"
-  | "catalog"
-  | "invite"
-  | "event"
-  | "assistant"
-  | "search"
-  | "help"
-  | "notifications"
-  | "account"
-  | "case"
-  | "confirm";
+  | 'create'
+  | 'field'
+  | 'client'
+  | 'acceptance'
+  | 'signature'
+  | 'document'
+  | 'catalog'
+  | 'invite'
+  | 'event'
+  | 'assistant'
+  | 'search'
+  | 'help'
+  | 'notifications'
+  | 'account'
+  | 'case'
+  | 'confirm';
 type ModalState = { kind: ModalKind; data?: string } | null;
-type Locale = "fr" | "ro";
+type Locale = 'fr' | 'ro';
 
 const nav = [
   {
-    label: "Pilotage",
+    label: 'Pilotage',
     items: [
-      ["dashboard", "Vue d’ensemble", LayoutDashboard],
-      ["requests", "Demandes", Inbox],
-      ["clients", "Clients & contacts", ContactRound],
-      ["offers", "Offres", FileCheck2],
-      ["contracts", "Contrats", ClipboardCheck],
-      ["projects", "Projets", FolderKanban],
+      ['dashboard', 'Vue d’ensemble', LayoutDashboard],
+      ['requests', 'Demandes', Inbox],
+      ['clients', 'Clients & contacts', ContactRound],
+      ['offers', 'Offres', FileCheck2],
+      ['contracts', 'Contrats', ClipboardCheck],
+      ['projects', 'Projets', FolderKanban],
     ],
   },
   {
-    label: "Connaissance",
+    label: 'Connaissance',
     items: [
-      ["documents", "Documents & RAG", BookOpen],
-      ["catalog", "Services & tarifs", BriefcaseBusiness],
-      ["activity", "Journal d’audit", History],
+      ['documents', 'Documents & RAG', BookOpen],
+      ['catalog', 'Services & tarifs', BriefcaseBusiness],
+      ['activity', 'Journal d’audit', History],
     ],
   },
   {
-    label: "Configuration",
+    label: 'Configuration',
     items: [
-      ["users", "Utilisateurs", UsersRound],
-      ["coverage", "Couverture MVP", ShieldCheck],
+      ['users', 'Utilisateurs', UsersRound],
+      ['coverage', 'Couverture MVP', ShieldCheck],
     ],
   },
 ] as const;
 
 const ro: Record<string, string> = {
-  "Vue d’ensemble": "Prezentare generală",
-  Demandes: "Solicitări",
-  "Clients & contacts": "Clienți și contacte",
-  Offres: "Oferte",
-  Contrats: "Contracte",
-  Projets: "Proiecte",
-  "Documents & RAG": "Documente și RAG",
-  "Services & tarifs": "Servicii și tarife",
-  "Journal d’audit": "Jurnal de audit",
-  Utilisateurs: "Utilizatori",
-  "Couverture MVP": "Acoperire MVP",
-  "Nouvelle demande": "Solicitare nouă",
-  "Interroger PRISMA": "Întreabă PRISMA",
-  "Recherche globale": "Căutare globală",
-  Ouvrir: "Deschide",
-  Enregistrer: "Salvează",
+  'Vue d’ensemble': 'Prezentare generală',
+  Demandes: 'Solicitări',
+  'Clients & contacts': 'Clienți și contacte',
+  Offres: 'Oferte',
+  Contrats: 'Contracte',
+  Projets: 'Proiecte',
+  'Documents & RAG': 'Documente și RAG',
+  'Services & tarifs': 'Servicii și tarife',
+  'Journal d’audit': 'Jurnal de audit',
+  Utilisateurs: 'Utilizatori',
+  'Couverture MVP': 'Acoperire MVP',
+  'Nouvelle demande': 'Solicitare nouă',
+  'Interroger PRISMA': 'Întreabă PRISMA',
+  'Recherche globale': 'Căutare globală',
+  Ouvrir: 'Deschide',
+  Enregistrer: 'Salvează',
 };
 
 const pageLabels: Record<PageId, string> = {
-  dashboard: "Vue d’ensemble",
-  requests: "Demandes",
-  request: "Dossier",
-  clients: "Clients & contacts",
-  offers: "Offres",
-  contracts: "Contrats",
-  projects: "Projets",
-  documents: "Documents & RAG",
-  catalog: "Services & tarifs",
-  activity: "Journal d’audit",
-  users: "Utilisateurs",
-  coverage: "Couverture MVP",
+  dashboard: 'Vue d’ensemble',
+  requests: 'Demandes',
+  request: 'Dossier',
+  clients: 'Clients & contacts',
+  offers: 'Offres',
+  contracts: 'Contrats',
+  projects: 'Projets',
+  documents: 'Documents & RAG',
+  catalog: 'Services & tarifs',
+  activity: 'Journal d’audit',
+  users: 'Utilisateurs',
+  coverage: 'Couverture MVP',
 };
 
 const offersSeed = [
   {
-    id: "OFR-2026-142",
-    client: "AgroNova SRL",
-    version: "v2",
-    status: "sent",
-    label: "Envoyée",
-    tone: "info" as Tone,
-    total: "8 424,60 €",
-    source: "CAL-0281-03",
+    id: 'OFR-2026-142',
+    client: 'AgroNova SRL',
+    version: 'v2',
+    status: 'sent',
+    label: 'Envoyée',
+    tone: 'info' as Tone,
+    total: '8 424,60 €',
+    source: 'CAL-0281-03',
   },
   {
-    id: "OFR-2026-139",
-    client: "Purcari Wineries",
-    version: "v3",
-    status: "accepted",
-    label: "Acceptée",
-    tone: "success" as Tone,
-    total: "4 800,00 €",
-    source: "CAL-0278-02",
+    id: 'OFR-2026-139',
+    client: 'Purcari Wineries',
+    version: 'v3',
+    status: 'accepted',
+    label: 'Acceptée',
+    tone: 'success' as Tone,
+    total: '4 800,00 €',
+    source: 'CAL-0278-02',
   },
   {
-    id: "OFR-2026-145",
-    client: "Codru Foods",
-    version: "v1",
-    status: "qa_failed",
-    label: "QA échouée",
-    tone: "danger" as Tone,
-    total: "6 190,00 €",
-    source: "CAL-0284-01",
+    id: 'OFR-2026-145',
+    client: 'Codru Foods',
+    version: 'v1',
+    status: 'qa_failed',
+    label: 'QA échouée',
+    tone: 'danger' as Tone,
+    total: '6 190,00 €',
+    source: 'CAL-0284-01',
   },
   {
-    id: "OFR-2026-141",
-    client: "Nord Audit",
-    version: "v2",
-    status: "pending_approval",
-    label: "À approuver",
-    tone: "warning" as Tone,
-    total: "3 240,00 €",
-    source: "CAL-0277-03",
+    id: 'OFR-2026-141',
+    client: 'Nord Audit',
+    version: 'v2',
+    status: 'pending_approval',
+    label: 'À approuver',
+    tone: 'warning' as Tone,
+    total: '3 240,00 €',
+    source: 'CAL-0277-03',
   },
   {
-    id: "OFR-2026-134",
-    client: "Orhei Logistic",
-    version: "v1",
-    status: "superseded",
-    label: "Remplacée",
-    tone: "neutral" as Tone,
-    total: "2 980,00 €",
-    source: "CAL-0270-01",
+    id: 'OFR-2026-134',
+    client: 'Orhei Logistic',
+    version: 'v1',
+    status: 'superseded',
+    label: 'Remplacée',
+    tone: 'neutral' as Tone,
+    total: '2 980,00 €',
+    source: 'CAL-0270-01',
   },
   {
-    id: "OFR-2026-132",
-    client: "Dacia Retail",
-    version: "v1",
-    status: "expired",
-    label: "Expirée",
-    tone: "warning" as Tone,
-    total: "2 460,00 €",
-    source: "CAL-0268-01",
+    id: 'OFR-2026-132',
+    client: 'Dacia Retail',
+    version: 'v1',
+    status: 'expired',
+    label: 'Expirée',
+    tone: 'warning' as Tone,
+    total: '2 460,00 €',
+    source: 'CAL-0268-01',
   },
 ];
 
 const contractsSeed = [
   {
-    id: "CTR-2026-096",
-    client: "Purcari Wineries",
-    version: "v1",
-    offer: "OFR-2026-139 v3",
-    status: "signed",
-    label: "Signé",
-    tone: "success" as Tone,
-    total: "4 800,00 €",
+    id: 'CTR-2026-096',
+    client: 'Purcari Wineries',
+    version: 'v1',
+    offer: 'OFR-2026-139 v3',
+    status: 'signed',
+    label: 'Signé',
+    tone: 'success' as Tone,
+    total: '4 800,00 €',
   },
   {
-    id: "CTR-2026-099",
-    client: "Codru Foods",
-    version: "v2",
-    offer: "OFR-2026-145 v2",
-    status: "qa_failed",
-    label: "QA échouée",
-    tone: "danger" as Tone,
-    total: "6 190,00 €",
+    id: 'CTR-2026-099',
+    client: 'Codru Foods',
+    version: 'v2',
+    offer: 'OFR-2026-145 v2',
+    status: 'qa_failed',
+    label: 'QA échouée',
+    tone: 'danger' as Tone,
+    total: '6 190,00 €',
   },
   {
-    id: "CTR-2026-094",
-    client: "Nord Audit",
-    version: "v1",
-    offer: "OFR-2026-137 v2",
-    status: "approved",
-    label: "Approuvé",
-    tone: "info" as Tone,
-    total: "3 240,00 €",
+    id: 'CTR-2026-094',
+    client: 'Nord Audit',
+    version: 'v1',
+    offer: 'OFR-2026-137 v2',
+    status: 'approved',
+    label: 'Approuvé',
+    tone: 'info' as Tone,
+    total: '3 240,00 €',
   },
   {
-    id: "CTR-2026-088",
-    client: "Orhei Logistic",
-    version: "v1",
-    offer: "OFR-2026-128 v1",
-    status: "superseded",
-    label: "Remplacé",
-    tone: "neutral" as Tone,
-    total: "2 980,00 €",
+    id: 'CTR-2026-088',
+    client: 'Orhei Logistic',
+    version: 'v1',
+    offer: 'OFR-2026-128 v1',
+    status: 'superseded',
+    label: 'Remplacé',
+    tone: 'neutral' as Tone,
+    total: '2 980,00 €',
   },
 ];
 
 const auditSeed = [
   [
-    "15:06",
-    "Indexation reprise",
-    "DOC-0441 v2 indexé après remplacement du fichier",
-    "Elena Rusu",
-    "Document",
+    '15:06',
+    'Indexation reprise',
+    'DOC-0441 v2 indexé après remplacement du fichier',
+    'Elena Rusu',
+    'Document',
   ],
   [
-    "14:42",
-    "Contrat signé",
-    "CTR-2026-096 v1 · preuve SIG-7712",
-    "Dan Popescu",
-    "Contrat",
+    '14:42',
+    'Contrat signé',
+    'CTR-2026-096 v1 · preuve SIG-7712',
+    'Dan Popescu',
+    'Contrat',
   ],
   [
-    "13:28",
-    "Offre acceptée",
-    "OFR-2026-139 v3 · email MSG-9021",
-    "Dan Popescu",
-    "Offre",
+    '13:28',
+    'Offre acceptée',
+    'OFR-2026-139 v3 · email MSG-9021',
+    'Dan Popescu',
+    'Offre',
   ],
   [
-    "11:16",
-    "Snapshot créé",
-    "CAL-0281-03 · 8 424,60 € TTC",
-    "Dan Popescu",
-    "Calcul",
+    '11:16',
+    'Snapshot créé',
+    'CAL-0281-03 · 8 424,60 € TTC',
+    'Dan Popescu',
+    'Calcul',
   ],
   [
-    "10:18",
-    "Donnée corrigée",
-    "REQ-0281 · nombre de sites : 3 → 2",
-    "Dan Popescu",
-    "Revue",
+    '10:18',
+    'Donnée corrigée',
+    'REQ-0281 · nombre de sites : 3 → 2',
+    'Dan Popescu',
+    'Revue',
   ],
   [
-    "09:54",
-    "Analyse remplacée",
-    "ANA-0281-01 → ANA-0281-02 · pipeline extract-v1.8",
-    "Système",
-    "IA",
+    '09:54',
+    'Analyse remplacée',
+    'ANA-0281-01 → ANA-0281-02 · pipeline extract-v1.8',
+    'Système',
+    'IA',
   ],
   [
-    "09:11",
-    "Tarif activé",
-    "TAR-HACCP-2026 v4 · validité 15/08–31/12",
-    "Irina Ceban",
-    "Tarif",
+    '09:11',
+    'Tarif activé',
+    'TAR-HACCP-2026 v4 · validité 15/08–31/12',
+    'Irina Ceban',
+    'Tarif',
   ],
 ] as const;
 
 function routeInfo() {
-  if (typeof window === "undefined")
+  if (typeof window === 'undefined')
     return {
-      path: "/dashboard",
-      parts: ["dashboard"],
+      path: '/dashboard',
+      parts: ['dashboard'],
       query: new URLSearchParams(),
     };
-  const raw = window.location.hash.replace(/^#/, "") || "/dashboard";
-  const [path, search = ""] = raw.split("?");
+  const raw = window.location.hash.replace(/^#/, '') || '/dashboard';
+  const [path, search = ''] = raw.split('?');
   return {
     path,
-    parts: path.split("/").filter(Boolean),
+    parts: path.split('/').filter(Boolean),
     query: new URLSearchParams(search),
   };
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
     minimumFractionDigits: 2,
   }).format(value);
 }
 function initials(name: string) {
   return name
-    .split(" ")
+    .split(' ')
     .map((x) => x[0])
     .slice(0, 2)
-    .join("")
+    .join('')
     .toUpperCase();
 }
 function workflowLabel(value: string) {
   return (
     (
       {
-        draft: "Brouillon",
-        qa_failed: "QA échouée",
-        pending_approval: "À approuver",
-        approved: "Approuvé",
-        sent: "Envoyé",
-        accepted: "Accepté",
-        rejected: "Rejeté",
-        expired: "Expiré",
-        signed: "Signé",
-        superseded: "Remplacé",
+        draft: 'Brouillon',
+        qa_failed: 'QA échouée',
+        pending_approval: 'À approuver',
+        approved: 'Approuvé',
+        sent: 'Envoyé',
+        accepted: 'Accepté',
+        rejected: 'Rejeté',
+        expired: 'Expiré',
+        signed: 'Signé',
+        superseded: 'Remplacé',
       } as Record<string, string>
     )[value] || value
   );
@@ -372,7 +372,7 @@ function workflowLabel(value: string) {
 
 function Status({
   children,
-  tone = "neutral",
+  tone = 'neutral',
 }: {
   children: ReactNode;
   tone?: Tone;
@@ -381,17 +381,17 @@ function Status({
 }
 function Button({
   children,
-  kind = "secondary",
+  kind = 'secondary',
   onClick,
   disabled,
-  type = "button",
+  type = 'button',
   ariaLabel,
 }: {
   children: ReactNode;
-  kind?: "primary" | "secondary" | "ghost" | "danger";
+  kind?: 'primary' | 'secondary' | 'ghost' | 'danger';
   onClick?: () => void;
   disabled?: boolean;
-  type?: "button" | "submit";
+  type?: 'button' | 'submit';
   ariaLabel?: string;
 }) {
   return (
@@ -408,7 +408,7 @@ function Button({
 }
 function Surface({
   children,
-  className = "",
+  className = '',
 }: {
   children: ReactNode;
   className?: string;
@@ -460,7 +460,7 @@ function Empty({
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div
-      className={`brand brand-logo-card ${compact ? "brand-compact" : ""}`}
+      className={`brand brand-logo-card ${compact ? 'brand-compact' : ''}`}
       aria-label="PRISMA Prim"
     >
       <img src={prismaLogoDataUrl} alt="" aria-hidden="true" />
@@ -485,7 +485,7 @@ function Sidebar({
   mobileOpen?: boolean;
   closeMobile?: () => void;
 }) {
-  const t = (s: string) => (locale === "ro" ? ro[s] || s : s);
+  const t = (s: string) => (locale === 'ro' ? ro[s] || s : s);
   const navigate = (path: string) => {
     go(path);
     closeMobile();
@@ -493,20 +493,20 @@ function Sidebar({
   return (
     <>
       <button
-        className={`sidebar-scrim ${mobileOpen ? "visible" : ""}`}
+        className={`sidebar-scrim ${mobileOpen ? 'visible' : ''}`}
         onClick={closeMobile}
         aria-label="Fermer la navigation"
         tabIndex={mobileOpen ? 0 : -1}
       />
       <aside
-        className={`sidebar ${compact ? "compact" : ""} ${mobileOpen ? "mobile-open" : ""}`}
+        className={`sidebar ${compact ? 'compact' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
       >
         <div className="brand-row">
           <Brand compact={compact} />
           <button
             onClick={() => setCompact(!compact)}
             aria-label={
-              compact ? "Déployer la navigation" : "Réduire la navigation"
+              compact ? 'Déployer la navigation' : 'Réduire la navigation'
             }
           >
             {compact ? <ChevronRight /> : <ChevronLeft />}
@@ -534,17 +534,17 @@ function Sidebar({
                 <button
                   key={id}
                   className={
-                    page === id || (page === "request" && id === "requests")
-                      ? "active"
-                      : ""
+                    page === id || (page === 'request' && id === 'requests')
+                      ? 'active'
+                      : ''
                   }
-                  aria-current={page === id ? "page" : undefined}
+                  aria-current={page === id ? 'page' : undefined}
                   onClick={() => navigate(`/${id}`)}
                   title={compact ? t(label) : undefined}
                 >
                   <Icon size={19} />
                   <span>{t(label)}</span>
-                  {id === "requests" && <em>3</em>}
+                  {id === 'requests' && <em>3</em>}
                 </button>
               ))}
             </section>
@@ -578,7 +578,7 @@ function Topbar({
   setLocale: (l: Locale) => void;
   openMobile: () => void;
 }) {
-  const t = (s: string) => (locale === "ro" ? ro[s] || s : s);
+  const t = (s: string) => (locale === 'ro' ? ro[s] || s : s);
   return (
     <header className="topbar">
       <button
@@ -594,9 +594,9 @@ function Topbar({
         <b>{context}</b>
       </div>
       <div className="top-actions">
-        <button className="search-trigger" onClick={() => open("search")}>
+        <button className="search-trigger" onClick={() => open('search')}>
           <Search size={17} />
-          <span>{t("Recherche globale")}</span>
+          <span>{t('Recherche globale')}</span>
           <kbd>Ctrl K</kbd>
         </button>
         <span className="demo">
@@ -604,14 +604,14 @@ function Topbar({
         </span>
         <div className="locale" aria-label="Langue de l’interface">
           <button
-            className={locale === "fr" ? "active" : ""}
-            onClick={() => setLocale("fr")}
+            className={locale === 'fr' ? 'active' : ''}
+            onClick={() => setLocale('fr')}
           >
             FR
           </button>
           <button
-            className={locale === "ro" ? "active" : ""}
-            onClick={() => setLocale("ro")}
+            className={locale === 'ro' ? 'active' : ''}
+            onClick={() => setLocale('ro')}
           >
             RO
           </button>
@@ -619,26 +619,26 @@ function Topbar({
         <button
           className="icon-btn"
           aria-label="Aide"
-          onClick={() => open("help")}
+          onClick={() => open('help')}
         >
           <CircleHelp size={19} />
         </button>
         <button
           className="icon-btn notification"
           aria-label="3 notifications"
-          onClick={() => open("notifications")}
+          onClick={() => open('notifications')}
         >
           <Bell size={19} />
           <i>3</i>
         </button>
-        <Button kind="primary" onClick={() => open("assistant")}>
+        <Button kind="primary" onClick={() => open('assistant')}>
           <Sparkles size={17} />
-          {t("Interroger PRISMA")}
+          {t('Interroger PRISMA')}
         </Button>
         <button
           className="avatar"
           aria-label="Compte de Dan Popescu"
-          onClick={() => open("account")}
+          onClick={() => open('account')}
         >
           DP
         </button>
@@ -656,32 +656,32 @@ function Dashboard({
 }) {
   const kpis = [
     [
-      "Demandes par statut",
-      "12",
-      "3 analyse · 2 revue · 4 offre · 3 clôturées",
+      'Demandes par statut',
+      '12',
+      '3 analyse · 2 revue · 4 offre · 3 clôturées',
       Inbox,
-      "info",
+      'info',
     ],
     [
-      "Offres par statut",
-      "7",
-      "2 brouillons · 2 à approuver · 3 acceptées",
+      'Offres par statut',
+      '7',
+      '2 brouillons · 2 à approuver · 3 acceptées',
       FileCheck2,
-      "warning",
+      'warning',
     ],
     [
-      "Contrats générés",
-      "5",
-      "3 signés · 1 approuvé · 1 QA",
+      'Contrats générés',
+      '5',
+      '3 signés · 1 approuvé · 1 QA',
       ClipboardCheck,
-      "success",
+      'success',
     ],
     [
-      "Temps moyen du flux",
-      "27 min",
-      "référence manuelle 71 min · 12 dossiers",
+      'Temps moyen du flux',
+      '27 min',
+      'référence manuelle 71 min · 12 dossiers',
       Clock3,
-      "success",
+      'success',
     ],
   ] as const;
   return (
@@ -691,7 +691,7 @@ function Dashboard({
         title="Décisions et performance"
         subtitle="Une vue mesurée du travail réel, des blocages et des résultats du pilote."
         action={
-          <Button kind="primary" onClick={() => open("create")}>
+          <Button kind="primary" onClick={() => open('create')}>
             <Plus size={17} /> Nouvelle demande
           </Button>
         }
@@ -715,7 +715,7 @@ function Dashboard({
         <Status tone="danger">2 blocages</Status>
         <Button
           kind="primary"
-          onClick={() => go("/request/REQ-0280/validation")}
+          onClick={() => go('/request/REQ-0280/validation')}
         >
           Ouvrir la revue <ArrowRight size={16} />
         </Button>
@@ -741,7 +741,7 @@ function Dashboard({
               <small>FILE DE TRAVAIL</small>
               <h2>Actions prioritaires</h2>
             </div>
-            <button onClick={() => go("/requests")}>
+            <button onClick={() => go('/requests')}>
               Toutes les demandes <ChevronRight size={16} />
             </button>
           </header>
@@ -803,12 +803,12 @@ function Dashboard({
             aria-label="Demandes : 9, 12, 11, 15, 14, 18. Contrats : 5, 7, 8, 9, 10, 11."
           >
             {[
-              ["S27", 9, 5],
-              ["S28", 12, 7],
-              ["S29", 11, 8],
-              ["S30", 15, 9],
-              ["S31", 14, 10],
-              ["S32", 18, 11],
+              ['S27', 9, 5],
+              ['S28', 12, 7],
+              ['S29', 11, 8],
+              ['S30', 15, 9],
+              ['S31', 14, 10],
+              ['S32', 18, 11],
             ].map(([w, a, b]) => (
               <div className="bar-group" key={w}>
                 <div>
@@ -848,12 +848,12 @@ function Dashboard({
               </thead>
               <tbody>
                 {[
-                  ["S27", 9, 5],
-                  ["S28", 12, 7],
-                  ["S29", 11, 8],
-                  ["S30", 15, 9],
-                  ["S31", 14, 10],
-                  ["S32", 18, 11],
+                  ['S27', 9, 5],
+                  ['S28', 12, 7],
+                  ['S29', 11, 8],
+                  ['S30', 15, 9],
+                  ['S31', 14, 10],
+                  ['S32', 18, 11],
                 ].map((x) => (
                   <tr key={x[0]}>
                     <td>{x[0]}</td>
@@ -872,28 +872,28 @@ function Dashboard({
             <small>ÉVALUATION DU PILOTE</small>
             <h2>16 des 20 cas manuels comparés à PRISMA</h2>
           </div>
-          <Button onClick={() => open("case", "all")}>Voir les 20 cas</Button>
+          <Button onClick={() => open('case', 'all')}>Voir les 20 cas</Button>
         </header>
         <div>
           {[
             [
-              "Temps gagné",
-              "62 %",
-              "596 min économisées / 960 min de référence",
+              'Temps gagné',
+              '62 %',
+              '596 min économisées / 960 min de référence',
               Clock3,
             ],
-            ["Extraction", "93 %", "268 champs exacts / 288 contrôlés", Bot],
-            ["Calcul exact", "100 %", "16 résultats exacts / 16", Gauge],
-            ["Traçabilité", "100 %", "16 dossiers complets / 16", History],
+            ['Extraction', '93 %', '268 champs exacts / 288 contrôlés', Bot],
+            ['Calcul exact', '100 %', '16 résultats exacts / 16', Gauge],
+            ['Traçabilité', '100 %', '16 dossiers complets / 16', History],
             [
-              "Erreurs détectées",
-              "9",
-              "7 erreurs · 2 avertissements",
+              'Erreurs détectées',
+              '9',
+              '7 erreurs · 2 avertissements',
               AlertTriangle,
             ],
-            ["Corrections humaines", "20", "20 valeurs corrigées / 288", Edit3],
+            ['Corrections humaines', '20', '20 valeurs corrigées / 288', Edit3],
           ].map(([a, b, c, Icon]) => (
-            <button key={String(a)} onClick={() => open("case", String(a))}>
+            <button key={String(a)} onClick={() => open('case', String(a))}>
               <Icon />
               <small>{a as string}</small>
               <strong>{b as string}</strong>
@@ -913,18 +913,18 @@ function RequestsPage({
   go: (p: string) => void;
   open: (k: ModalKind, d?: string) => void;
 }) {
-  const [filter, setFilter] = useState("all");
-  const [query, setQuery] = useState("");
-  const [system, setSystem] = useState<"ready" | "loading" | "error">("ready");
+  const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const [system, setSystem] = useState<'ready' | 'loading' | 'error'>('ready');
   const shown = requests.filter(
     (r) =>
       `${r.ref} ${r.client} ${r.service}`
         .toLowerCase()
         .includes(query.toLowerCase()) &&
-      (filter === "all" ||
+      (filter === 'all' ||
         filter === r.analysis ||
         filter === r.stage ||
-        (filter === "blocked" && r.blockers > 0)),
+        (filter === 'blocked' && r.blockers > 0)),
   );
   return (
     <div className="page">
@@ -933,7 +933,7 @@ function RequestsPage({
         title="Demandes clients"
         subtitle="États contractuels, blocages, échéances et prochaine action pour chaque dossier."
         action={
-          <Button kind="primary" onClick={() => open("create")}>
+          <Button kind="primary" onClick={() => open('create')}>
             <Plus /> Nouvelle demande
           </Button>
         }
@@ -950,14 +950,14 @@ function RequestsPage({
         </label>
         <div className="segmented">
           {[
-            ["all", "Toutes"],
-            ["blocked", "Bloquées"],
-            ["analysis", "Analyse"],
-            ["offer", "Offre"],
-            ["archive", "Terminées"],
+            ['all', 'Toutes'],
+            ['blocked', 'Bloquées'],
+            ['analysis', 'Analyse'],
+            ['offer', 'Offre'],
+            ['archive', 'Terminées'],
           ].map(([id, label]) => (
             <button
-              className={filter === id ? "active" : ""}
+              className={filter === id ? 'active' : ''}
               onClick={() => setFilter(id)}
               key={id}
             >
@@ -968,31 +968,31 @@ function RequestsPage({
         <Button
           onClick={() =>
             setSystem(
-              system === "ready"
-                ? "loading"
-                : system === "loading"
-                  ? "error"
-                  : "ready",
+              system === 'ready'
+                ? 'loading'
+                : system === 'loading'
+                  ? 'error'
+                  : 'ready',
             )
           }
         >
           <Settings2 /> États système
         </Button>
       </div>
-      {system === "loading" ? (
+      {system === 'loading' ? (
         <Surface>
           <div className="loading">
             <RefreshCw className="spin" />
             <b>Chargement des demandes…</b>
           </div>
         </Surface>
-      ) : system === "error" ? (
+      ) : system === 'error' ? (
         <Surface>
           <Empty
             title="Les demandes ne peuvent pas être chargées"
             text="La dernière synchronisation a échoué. Les données existantes n’ont pas été modifiées."
             action={
-              <Button onClick={() => setSystem("ready")}>
+              <Button onClick={() => setSystem('ready')}>
                 <RefreshCw /> Réessayer
               </Button>
             }
@@ -1033,7 +1033,7 @@ function RequestsPage({
                     <small>
                       {r.blockers
                         ? `${r.blockers} point(s) bloquant(s)`
-                        : "Aucun blocage"}
+                        : 'Aucun blocage'}
                     </small>
                   </td>
                   <td>{r.owner}</td>
@@ -1093,7 +1093,7 @@ function Stepper({
         {stages.map((s, i) => (
           <button
             key={s.id}
-            className={`${i < currentIndex ? "done" : i === currentIndex ? "current" : "next"} ${current === s.id ? "viewing" : ""}`}
+            className={`${i < currentIndex ? 'done' : i === currentIndex ? 'current' : 'next'} ${current === s.id ? 'viewing' : ''}`}
             onClick={() => go(`/request/${request.ref}/${s.id}`)}
           >
             <span>{i < currentIndex ? <Check /> : i + 1}</span>
@@ -1102,7 +1102,7 @@ function Stepper({
         ))}
       </div>
       <footer>
-        <Eye /> Étape consultée :{" "}
+        <Eye /> Étape consultée :{' '}
         <b>{stages.find((s) => s.id === current)?.label}</b>. Consulter une
         étape ne change pas l’état réel.
       </footer>
@@ -1148,7 +1148,7 @@ function IntakePanel({
           </div>
         </dl>
         <div className="doc-list">
-          <button onClick={() => open("document", "DOC-0440")}>
+          <button onClick={() => open('document', 'DOC-0440')}>
             <FileText />
             <span>
               <b>Email_client.eml</b>
@@ -1156,7 +1156,7 @@ function IntakePanel({
             </span>
             <Status tone="success">Lisible</Status>
           </button>
-          <button onClick={() => open("document", "DOC-0441")}>
+          <button onClick={() => open('document', 'DOC-0441')}>
             <FileText />
             <span>
               <b>Cahier_des_besoins.docx</b>
@@ -1181,7 +1181,7 @@ function IntakePanel({
         <p>
           <CheckCircle2 /> Original conservé
         </p>
-        <Button onClick={() => open("create")}>
+        <Button onClick={() => open('create')}>
           Voir les erreurs d’import
         </Button>
       </Surface>
@@ -1194,40 +1194,40 @@ const analysisCopy: Record<
   { title: string; text: string; tone: Tone; action?: string }
 > = {
   pending: {
-    title: "Analyse en attente",
-    text: "Exécution ANA-0279-03 dans la file. Aucun résultat disponible.",
-    tone: "neutral",
-    action: "Annuler",
+    title: 'Analyse en attente',
+    text: 'Exécution ANA-0279-03 dans la file. Aucun résultat disponible.',
+    tone: 'neutral',
+    action: 'Annuler',
   },
   running: {
-    title: "Analyse en cours",
-    text: "Lecture des documents et extraction structurée. Étape courante : rapprochement des preuves.",
-    tone: "info",
-    action: "Actualiser",
+    title: 'Analyse en cours',
+    text: 'Lecture des documents et extraction structurée. Étape courante : rapprochement des preuves.',
+    tone: 'info',
+    action: 'Actualiser',
   },
   completed: {
-    title: "Analyse terminée",
-    text: "18 champs extraits. Les incertitudes sont transmises à la revue humaine.",
-    tone: "success",
-    action: "Créer une nouvelle analyse",
+    title: 'Analyse terminée',
+    text: '18 champs extraits. Les incertitudes sont transmises à la revue humaine.',
+    tone: 'success',
+    action: 'Créer une nouvelle analyse',
   },
   partial: {
-    title: "Résultat partiel",
-    text: "Quatre pages sont illisibles. Les champs concernés restent inconnus, sans valeur inventée.",
-    tone: "warning",
-    action: "Remplacer le fichier",
+    title: 'Résultat partiel',
+    text: 'Quatre pages sont illisibles. Les champs concernés restent inconnus, sans valeur inventée.',
+    tone: 'warning',
+    action: 'Remplacer le fichier',
   },
   failed: {
-    title: "Analyse échouée",
-    text: "Le PDF est protégé par mot de passe. Erreur DOC_PASSWORD · aucune donnée partielle retenue.",
-    tone: "danger",
-    action: "Remplacer puis relancer",
+    title: 'Analyse échouée',
+    text: 'Le PDF est protégé par mot de passe. Erreur DOC_PASSWORD · aucune donnée partielle retenue.',
+    tone: 'danger',
+    action: 'Remplacer puis relancer',
   },
   superseded: {
-    title: "Analyse remplacée",
-    text: "ANA-0281-01 a été remplacée par ANA-0281-02 après correction. Elle reste consultable.",
-    tone: "neutral",
-    action: "Voir l’exécution active",
+    title: 'Analyse remplacée',
+    text: 'ANA-0281-01 a été remplacée par ANA-0281-02 après correction. Elle reste consultable.',
+    tone: 'neutral',
+    action: 'Voir l’exécution active',
   },
 };
 
@@ -1244,18 +1244,18 @@ function AnalysisPanel({
 }) {
   const c = analysisCopy[state];
   const act = () => {
-    if (state === "failed" || state === "partial" || state === "pending") {
-      setState("running");
+    if (state === 'failed' || state === 'partial' || state === 'pending') {
+      setState('running');
       notify(
-        "Nouvelle analyse lancée. L’ancienne exécution reste dans le journal.",
+        'Nouvelle analyse lancée. L’ancienne exécution reste dans le journal.',
       );
-    } else if (state === "running") {
-      setState("completed");
-      notify("Analyse terminée : 18 champs transmis à la revue.");
-    } else if (state === "completed") {
-      setState("superseded");
-      notify("Une nouvelle version d’analyse a été créée.");
-    } else setState("completed");
+    } else if (state === 'running') {
+      setState('completed');
+      notify('Analyse terminée : 18 champs transmis à la revue.');
+    } else if (state === 'completed') {
+      setState('superseded');
+      notify('Une nouvelle version d’analyse a été créée.');
+    } else setState('completed');
   };
   return (
     <div>
@@ -1264,20 +1264,20 @@ function AnalysisPanel({
         {(Object.keys(analysisCopy) as AnalysisState[]).map((k) => (
           <button
             key={k}
-            className={state === k ? "active" : ""}
+            className={state === k ? 'active' : ''}
             onClick={() => setState(k)}
           >
-            {analysisCopy[k].title.replace("Analyse ", "")}
+            {analysisCopy[k].title.replace('Analyse ', '')}
           </button>
         ))}
       </div>
       <div className={`state-banner ${c.tone}`}>
         <span>
-          {c.tone === "danger" ? (
+          {c.tone === 'danger' ? (
             <XCircle />
-          ) : c.tone === "warning" ? (
+          ) : c.tone === 'warning' ? (
             <AlertTriangle />
-          ) : c.tone === "success" ? (
+          ) : c.tone === 'success' ? (
             <CheckCircle2 />
           ) : (
             <Bot />
@@ -1299,7 +1299,7 @@ function AnalysisPanel({
           <header>
             <div>
               <small>EXÉCUTION ACTIVE</small>
-              <h2>ANA-{request.ref.replace("REQ-", "")}-03</h2>
+              <h2>ANA-{request.ref.replace('REQ-', '')}-03</h2>
             </div>
             <Status tone={c.tone}>{c.title}</Status>
           </header>
@@ -1318,7 +1318,7 @@ function AnalysisPanel({
             </div>
             <div>
               <dt>Durée</dt>
-              <dd>{state === "running" ? "En cours · 38 s" : "1 min 42 s"}</dd>
+              <dd>{state === 'running' ? 'En cours · 38 s' : '1 min 42 s'}</dd>
             </div>
             <div>
               <dt>Corpus</dt>
@@ -1333,14 +1333,14 @@ function AnalysisPanel({
         <Surface className="side-card">
           <small>HISTORIQUE DES EXÉCUTIONS</small>
           <h2>Traçabilité reproductible</h2>
-          <button onClick={() => setState("superseded")}>
+          <button onClick={() => setState('superseded')}>
             <History />
             <span>
               <b>ANA-01 · remplacée</b>
               <small>pipeline v1.7 · 09:32</small>
             </span>
           </button>
-          <button onClick={() => setState("completed")}>
+          <button onClick={() => setState('completed')}>
             <CheckCircle2 />
             <span>
               <b>ANA-02 · terminée</b>
@@ -1364,26 +1364,26 @@ function ReviewPanel({
   go: (p: string) => void;
   notify: (s: string) => void;
 }) {
-  const [filter, setFilter] = useState("all");
-  const shown = fields.filter((f) => filter === "all" || f.state === filter);
+  const [filter, setFilter] = useState('all');
+  const shown = fields.filter((f) => filter === 'all' || f.state === filter);
   const blockers = fields.filter(
     (f) =>
       f.critical &&
-      (!f.retained || f.state === "missing" || f.state === "conflict"),
+      (!f.retained || f.state === 'missing' || f.state === 'conflict'),
   );
-  const labels: Record<ReviewField["state"], string> = {
-    confirmed: "Confirmé",
-    inferred: "Déduit",
-    missing: "Manquant",
-    conflict: "Contradictoire",
-    corrected: "Corrigé",
+  const labels: Record<ReviewField['state'], string> = {
+    confirmed: 'Confirmé',
+    inferred: 'Déduit',
+    missing: 'Manquant',
+    conflict: 'Contradictoire',
+    corrected: 'Corrigé',
   };
-  const tones: Record<ReviewField["state"], Tone> = {
-    confirmed: "success",
-    inferred: "info",
-    missing: "danger",
-    conflict: "warning",
-    corrected: "info",
+  const tones: Record<ReviewField['state'], Tone> = {
+    confirmed: 'success',
+    inferred: 'info',
+    missing: 'danger',
+    conflict: 'warning',
+    corrected: 'info',
   };
   return (
     <div>
@@ -1393,14 +1393,14 @@ function ReviewPanel({
           <span>champs contrôlés</span>
         </div>
         <div>
-          <b>{fields.filter((f) => f.state === "confirmed").length}</b>
+          <b>{fields.filter((f) => f.state === 'confirmed').length}</b>
           <span>confirmés</span>
         </div>
         <div>
-          <b>{fields.filter((f) => f.state === "inferred").length}</b>
+          <b>{fields.filter((f) => f.state === 'inferred').length}</b>
           <span>déduits</span>
         </div>
-        <div className={blockers.length ? "danger" : "success"}>
+        <div className={blockers.length ? 'danger' : 'success'}>
           <b>{blockers.length}</b>
           <span>critiques à résoudre</span>
         </div>
@@ -1408,16 +1408,16 @@ function ReviewPanel({
       <div className="toolbar">
         <div className="segmented">
           {[
-            ["all", "Tous"],
-            ["confirmed", "Confirmés"],
-            ["inferred", "Déduits"],
-            ["missing", "Manquants"],
-            ["conflict", "Contradictoires"],
-            ["corrected", "Corrigés"],
+            ['all', 'Tous'],
+            ['confirmed', 'Confirmés'],
+            ['inferred', 'Déduits'],
+            ['missing', 'Manquants'],
+            ['conflict', 'Contradictoires'],
+            ['corrected', 'Corrigés'],
           ].map(([id, label]) => (
             <button
               key={id}
-              className={filter === id ? "active" : ""}
+              className={filter === id ? 'active' : ''}
               onClick={() => setFilter(id)}
             >
               {label}
@@ -1445,20 +1445,20 @@ function ReviewPanel({
               <tr key={f.id}>
                 <td>
                   <b>{f.label}</b>
-                  <small>{f.critical ? "Critique" : "Non critique"}</small>
+                  <small>{f.critical ? 'Critique' : 'Non critique'}</small>
                 </td>
                 <td>
                   {f.ai}
                   <small>
                     {f.confidence == null
-                      ? "Confiance indisponible"
+                      ? 'Confiance indisponible'
                       : `Confiance ${f.confidence} %`}
                   </small>
                 </td>
                 <td>
                   <button
                     className="source-link"
-                    onClick={() => open("document", f.source)}
+                    onClick={() => open('document', f.source)}
                   >
                     {f.source}
                     <small>{f.fragment}</small>
@@ -1484,7 +1484,7 @@ function ReviewPanel({
                 <td>
                   <button
                     className="row-open"
-                    onClick={() => open("field", f.id)}
+                    onClick={() => open('field', f.id)}
                     aria-label={`Revoir ${f.label}`}
                   >
                     <Edit3 />
@@ -1495,27 +1495,27 @@ function ReviewPanel({
           </tbody>
         </table>
       </Surface>
-      <div className={`next-action ${blockers.length ? "blocked" : "ready"}`}>
+      <div className={`next-action ${blockers.length ? 'blocked' : 'ready'}`}>
         <span>{blockers.length ? <LockKeyhole /> : <CheckCircle2 />}</span>
         <div>
           <small>PROCHAINE ACTION</small>
           <b>
             {blockers.length
               ? `Calcul bloqué par ${blockers.length} champ(s) critique(s)`
-              : "Dossier prêt pour le calcul"}
+              : 'Dossier prêt pour le calcul'}
           </b>
           <p>
             {blockers.length
-              ? blockers.map((x) => x.label).join(" · ")
-              : "Les 18 champs possèdent une valeur humaine retenue et une preuve traçable."}
+              ? blockers.map((x) => x.label).join(' · ')
+              : 'Les 18 champs possèdent une valeur humaine retenue et une preuve traçable.'}
           </p>
         </div>
         <Button
           kind="primary"
           disabled={blockers.length > 0}
           onClick={() => {
-            notify("Revue déclarée prête. Ouverture du calcul déterministe.");
-            go("/request/REQ-0280/pricing");
+            notify('Revue déclarée prête. Ouverture du calcul déterministe.');
+            go('/request/REQ-0280/pricing');
           }}
         >
           Passer au calcul <ArrowRight />
@@ -1528,12 +1528,12 @@ function ReviewPanel({
 function PricingPanel({ notify }: { notify: (s: string) => void }) {
   const [draft, setDraft] = useState(false);
   const [discount, setDiscount] = useState(5);
-  const [reason, setReason] = useState("Fidélité client · périmètre groupé");
+  const [reason, setReason] = useState('Fidélité client · périmètre groupé');
   const [approved, setApproved] = useState(false);
   const [snapshots, setSnapshots] = useState([
-    "CAL-0281-01",
-    "CAL-0281-02",
-    "CAL-0281-03",
+    'CAL-0281-01',
+    'CAL-0281-02',
+    'CAL-0281-03',
   ]);
   const subtotal = 7390;
   const discountValue = (subtotal * discount) / 100;
@@ -1542,12 +1542,12 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
   const total = net + vat;
   const needsApproval = discount > 10;
   const create = () => {
-    if (!reason.trim()) return notify("Le motif de remise est obligatoire.");
+    if (!reason.trim()) return notify('Le motif de remise est obligatoire.');
     if (needsApproval && !approved)
       return notify(
-        "La remise dépasse 10 % : une approbation explicite est requise.",
+        'La remise dépasse 10 % : une approbation explicite est requise.',
       );
-    setSnapshots((x) => [...x, "CAL-0281-04"]);
+    setSnapshots((x) => [...x, 'CAL-0281-04']);
     setDraft(false);
     notify(`CAL-0281-04 créé et verrouillé : ${money(total)} TTC.`);
   };
@@ -1579,14 +1579,14 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
           <header>
             <div>
               <small>
-                SNAPSHOT DÉTERMINISTE {draft ? "EN PRÉPARATION" : "VERROUILLÉ"}
+                SNAPSHOT DÉTERMINISTE {draft ? 'EN PRÉPARATION' : 'VERROUILLÉ'}
               </small>
               <h2>
-                {draft ? "CAL-0281-04 · brouillon" : "CAL-0281-03 · actif"}
+                {draft ? 'CAL-0281-04 · brouillon' : 'CAL-0281-03 · actif'}
               </h2>
             </div>
-            <Status tone={draft ? "warning" : "success"}>
-              {draft ? "Non enregistré" : "Immuable"}
+            <Status tone={draft ? 'warning' : 'success'}>
+              {draft ? 'Non enregistré' : 'Immuable'}
             </Status>
           </header>
           <table>
@@ -1601,19 +1601,19 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
             </thead>
             <tbody>
               {[
-                ["Diagnostic HACCP", "TAR-HACCP v4", "2 jours", 1650, 3300],
+                ['Diagnostic HACCP', 'TAR-HACCP v4', '2 jours', 1650, 3300],
                 [
-                  "Préparation ISO 22000",
-                  "TAR-ISO22K v3",
-                  "2 jours",
+                  'Préparation ISO 22000',
+                  'TAR-ISO22K v3',
+                  '2 jours',
                   1450,
                   2900,
                 ],
-                ["Déplacement consultant", "FRAIS-MD v2", "2 unités", 170, 340],
-                ["Hébergement", "FRAIS-MD v2", "2 nuits", 180, 360],
-                ["Traduction roumain/russe", "TRAD v1", "7 pages", 70, 490],
-                ["Indemnités", "FRAIS-MD v2", "Inclus", 0, 0],
-                ["Commission", "COMM v1", "Non applicable", 0, 0],
+                ['Déplacement consultant', 'FRAIS-MD v2', '2 unités', 170, 340],
+                ['Hébergement', 'FRAIS-MD v2', '2 nuits', 180, 360],
+                ['Traduction roumain/russe', 'TRAD v1', '7 pages', 70, 490],
+                ['Indemnités', 'FRAIS-MD v2', 'Inclus', 0, 0],
+                ['Commission', 'COMM v1', 'Non applicable', 0, 0],
               ].map((x) => (
                 <tr key={String(x[0])}>
                   <td>
@@ -1677,7 +1677,7 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
                     type="checkbox"
                     checked={approved}
                     onChange={(e) => setApproved(e.target.checked)}
-                  />{" "}
+                  />{' '}
                   J’approuve explicitement cette remise supérieure au seuil de
                   10 %.
                 </label>
@@ -1719,7 +1719,7 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
         {snapshots.map((s, i) => (
           <button
             key={s}
-            className={i === snapshots.length - 1 ? "active" : ""}
+            className={i === snapshots.length - 1 ? 'active' : ''}
             onClick={() => notify(`${s} ouvert en lecture seule.`)}
           >
             <span>{i + 1}</span>
@@ -1727,12 +1727,12 @@ function PricingPanel({ notify }: { notify: (s: string) => void }) {
               <b>{s}</b>
               <small>
                 {i === 0
-                  ? "Initial · invalidé"
+                  ? 'Initial · invalidé'
                   : i === 1
-                    ? "Correction sites · invalidé"
+                    ? 'Correction sites · invalidé'
                     : i === 2
-                      ? "Actif · 8 424,60 €"
-                      : "Actif · nouveau calcul"}
+                      ? 'Actif · 8 424,60 €'
+                      : 'Actif · nouveau calcul'}
               </small>
             </div>
             <Eye />
@@ -1783,7 +1783,7 @@ function RequestPage({
   return (
     <div className="page">
       <div className="record-heading">
-        <button onClick={() => go("/requests")}>
+        <button onClick={() => go('/requests')}>
           <ArrowLeft />
           Demandes
         </button>
@@ -1797,7 +1797,7 @@ function RequestPage({
           </p>
         </div>
         <div>
-          <Button onClick={() => open("event", request.ref)}>
+          <Button onClick={() => open('event', request.ref)}>
             <History />
             Historique
           </Button>
@@ -1815,48 +1815,48 @@ function RequestPage({
       </div>
       <Stepper current={stage} request={request} go={go} />
       <div className="stage-content">
-        {stage === "intake" ? (
+        {stage === 'intake' ? (
           <IntakePanel request={request} open={open} />
-        ) : stage === "analysis" ? (
+        ) : stage === 'analysis' ? (
           <AnalysisPanel
             request={request}
             state={analysis}
             setState={setAnalysis}
             notify={notify}
           />
-        ) : stage === "validation" ? (
+        ) : stage === 'validation' ? (
           <ReviewPanel fields={fields} open={open} go={go} notify={notify} />
-        ) : stage === "pricing" ? (
+        ) : stage === 'pricing' ? (
           <PricingPanel notify={notify} />
-        ) : stage === "offer" ? (
+        ) : stage === 'offer' ? (
           <LinkedStage
             title="Offre active"
             text="OFR-2026-142 v2 · envoyée le 15 août 2026 à 12:04"
             action="Ouvrir l’offre"
-            onClick={() => go("/offers/OFR-2026-142")}
+            onClick={() => go('/offers/OFR-2026-142')}
           />
-        ) : stage === "contract" ? (
+        ) : stage === 'contract' ? (
           <LinkedStage
             title={
-              request.ref === "REQ-0278"
-                ? "Contrat signé"
-                : "Contrat non disponible"
+              request.ref === 'REQ-0278'
+                ? 'Contrat signé'
+                : 'Contrat non disponible'
             }
             text={
-              request.ref === "REQ-0278"
-                ? "CTR-2026-096 v1 · créé depuis OFR-2026-139 v3 sans ressaisie"
-                : "Une preuve d’acceptation de l’offre exacte est requise avant la génération."
+              request.ref === 'REQ-0278'
+                ? 'CTR-2026-096 v1 · créé depuis OFR-2026-139 v3 sans ressaisie'
+                : 'Une preuve d’acceptation de l’offre exacte est requise avant la génération.'
             }
             action={
-              request.ref === "REQ-0278"
-                ? "Ouvrir le contrat"
-                : "Revenir à l’offre"
+              request.ref === 'REQ-0278'
+                ? 'Ouvrir le contrat'
+                : 'Revenir à l’offre'
             }
             onClick={() =>
               go(
-                request.ref === "REQ-0278"
-                  ? "/contracts/CTR-2026-096"
-                  : "/offers/OFR-2026-142",
+                request.ref === 'REQ-0278'
+                  ? '/contracts/CTR-2026-096'
+                  : '/offers/OFR-2026-142',
               )
             }
           />
@@ -1865,7 +1865,7 @@ function RequestPage({
             title="Dossier archivé et projet créé"
             text="Les versions approuvées, preuves et événements restent consultables. Le RAG n’utilise que les documents éligibles."
             action="Voir le projet"
-            onClick={() => go("/projects/PRJ-0048")}
+            onClick={() => go('/projects/PRJ-0048')}
           />
         )}
       </div>
@@ -1910,25 +1910,25 @@ function ClientsPage({
 }) {
   const clients = [
     {
-      id: "CLI-001",
-      name: "AgroNova SRL",
-      sector: "Industrie alimentaire",
+      id: 'CLI-001',
+      name: 'AgroNova SRL',
+      sector: 'Industrie alimentaire',
       contacts: 2,
-      status: "Confirmé",
+      status: 'Confirmé',
     },
     {
-      id: "CLI-002",
-      name: "Fruct Moldova",
-      sector: "Agroalimentaire",
+      id: 'CLI-002',
+      name: 'Fruct Moldova',
+      sector: 'Agroalimentaire',
       contacts: 3,
-      status: "À compléter",
+      status: 'À compléter',
     },
     {
-      id: "CLI-003",
-      name: "Purcari Wineries",
-      sector: "Viticulture",
+      id: 'CLI-003',
+      name: 'Purcari Wineries',
+      sector: 'Viticulture',
       contacts: 2,
-      status: "Confirmé",
+      status: 'Confirmé',
     },
   ];
   const current = clients.find((c) => c.id === selected) || clients[0];
@@ -1939,7 +1939,7 @@ function ClientsPage({
         title="Clients et contacts"
         subtitle="Données juridiques, état de confirmation, contacts multiples et historique métier."
         action={
-          <Button kind="primary" onClick={() => open("client", "new")}>
+          <Button kind="primary" onClick={() => open('client', 'new')}>
             <Plus />
             Nouveau client
           </Button>
@@ -1956,7 +1956,7 @@ function ClientsPage({
           {clients.map((c) => (
             <button
               key={c.id}
-              className={c.id === current.id ? "active" : ""}
+              className={c.id === current.id ? 'active' : ''}
               onClick={() => go(`/clients/${c.id}`)}
             >
               <span>{initials(c.name)}</span>
@@ -1966,7 +1966,7 @@ function ClientsPage({
                   {c.id} · {c.sector}
                 </small>
               </div>
-              <Status tone={c.status === "Confirmé" ? "success" : "warning"}>
+              <Status tone={c.status === 'Confirmé' ? 'success' : 'warning'}>
                 {c.status}
               </Status>
             </button>
@@ -1981,7 +1981,7 @@ function ClientsPage({
                 <h2>{current.name}</h2>
               </div>
             </div>
-            <Button onClick={() => open("client", current.id)}>
+            <Button onClick={() => open('client', current.id)}>
               <Edit3 />
               Modifier
             </Button>
@@ -2047,7 +2047,7 @@ function ClientsPage({
                 kind="ghost"
                 onClick={() =>
                   notify(
-                    "Formulaire de modification du contact Ion Rusu ouvert.",
+                    'Formulaire de modification du contact Ion Rusu ouvert.',
                   )
                 }
               >
@@ -2065,7 +2065,7 @@ function ClientsPage({
                 kind="ghost"
                 onClick={() =>
                   notify(
-                    "Formulaire de modification du contact Ana Munteanu ouvert.",
+                    'Formulaire de modification du contact Ana Munteanu ouvert.',
                   )
                 }
               >
@@ -2075,7 +2075,7 @@ function ClientsPage({
             <Button
               onClick={() =>
                 notify(
-                  "Nouveau contact ajouté au brouillon de la fiche client.",
+                  'Nouveau contact ajouté au brouillon de la fiche client.',
                 )
               }
             >
@@ -2086,20 +2086,20 @@ function ClientsPage({
           <h3 className="section-title">Historique lié</h3>
           <div className="linked-tabs">
             {[
-              ["Demandes", "REQ-0281 · Offre envoyée"],
-              ["Offres", "OFR-2026-142 v2 · Envoyée"],
-              ["Contrats", "Aucun contrat"],
-              ["Documents", "6 documents · 4 indexés"],
+              ['Demandes', 'REQ-0281 · Offre envoyée'],
+              ['Offres', 'OFR-2026-142 v2 · Envoyée'],
+              ['Contrats', 'Aucun contrat'],
+              ['Documents', '6 documents · 4 indexés'],
             ].map(([a, b]) => (
               <button
                 key={a}
                 onClick={() =>
                   go(
-                    a === "Demandes"
-                      ? "/request/REQ-0281/intake"
-                      : a === "Offres"
-                        ? "/offers/OFR-2026-142"
-                        : "/documents",
+                    a === 'Demandes'
+                      ? '/request/REQ-0281/intake'
+                      : a === 'Offres'
+                        ? '/offers/OFR-2026-142'
+                        : '/documents',
                   )
                 }
               >
@@ -2135,18 +2135,18 @@ function OffersPage({
   const current = offersSeed.find((o) => o.id === selected) || offersSeed[0];
   const status = states[current.id];
   const qa = [
-    "Client et contact présents",
-    "Snapshot déterministe lié",
-    "Devise et TVA cohérentes",
-    "Modèle documentaire approuvé",
-    "Version du modèle enregistrée",
-    "Durée de validité renseignée",
-    "Numérotation unique",
-    "Périmètre non vide",
-    "Prestations détaillées",
-    "Total propagé sans écart",
-    "Langue du document conforme",
-    "Pièces jointes autorisées",
+    'Client et contact présents',
+    'Snapshot déterministe lié',
+    'Devise et TVA cohérentes',
+    'Modèle documentaire approuvé',
+    'Version du modèle enregistrée',
+    'Durée de validité renseignée',
+    'Numérotation unique',
+    'Périmètre non vide',
+    'Prestations détaillées',
+    'Total propagé sans écart',
+    'Langue du document conforme',
+    'Pièces jointes autorisées',
   ];
   const transition = (next: string, msg: string) => {
     if (!window.confirm(msg)) return;
@@ -2170,7 +2170,7 @@ function OffersPage({
           </header>
           {offersSeed.map((o) => (
             <button
-              className={o.id === current.id ? "active" : ""}
+              className={o.id === current.id ? 'active' : ''}
               key={o.id}
               onClick={() => go(`/offers/${o.id}`)}
             >
@@ -2198,11 +2198,11 @@ function OffersPage({
               </div>
               <Status
                 tone={
-                  status === "qa_failed"
-                    ? "danger"
-                    : status === "accepted"
-                      ? "success"
-                      : "info"
+                  status === 'qa_failed'
+                    ? 'danger'
+                    : status === 'accepted'
+                      ? 'success'
+                      : 'info'
                 }
               >
                 {workflowLabel(status)}
@@ -2213,7 +2213,7 @@ function OffersPage({
                 <span>Modèle documentaire</span>
                 <select
                   defaultValue="OFFRE-RO-v5"
-                  disabled={!["draft", "qa_failed"].includes(status)}
+                  disabled={!['draft', 'qa_failed'].includes(status)}
                 >
                   <option>OFFRE-RO-v5</option>
                   <option>OFFRE-RU-v3</option>
@@ -2223,14 +2223,14 @@ function OffersPage({
                 <span>Validité</span>
                 <input
                   defaultValue="30 jours · jusqu’au 14/09/2026"
-                  readOnly={!["draft", "qa_failed"].includes(status)}
+                  readOnly={!['draft', 'qa_failed'].includes(status)}
                 />
               </label>
               <label>
                 <span>Destinataire</span>
                 <input
                   defaultValue="Ion Rusu · director.calitate@agronova.md"
-                  readOnly={!["draft", "qa_failed"].includes(status)}
+                  readOnly={!['draft', 'qa_failed'].includes(status)}
                 />
               </label>
               <label>
@@ -2240,7 +2240,7 @@ function OffersPage({
             </div>
             <button
               className="document-preview"
-              onClick={() => open("document", current.id)}
+              onClick={() => open('document', current.id)}
             >
               <FileText />
               <span>
@@ -2255,14 +2255,14 @@ function OffersPage({
                 <p
                   key={x}
                   className={
-                    status === "qa_failed" && i === 5
-                      ? "error"
+                    status === 'qa_failed' && i === 5
+                      ? 'error'
                       : i === 8
-                        ? "warning"
-                        : "pass"
+                        ? 'warning'
+                        : 'pass'
                   }
                 >
-                  {status === "qa_failed" && i === 5 ? (
+                  {status === 'qa_failed' && i === 5 ? (
                     <XCircle />
                   ) : i === 8 ? (
                     <AlertTriangle />
@@ -2272,25 +2272,25 @@ function OffersPage({
                   <span>{x}</span>
                   <Status
                     tone={
-                      status === "qa_failed" && i === 5
-                        ? "danger"
+                      status === 'qa_failed' && i === 5
+                        ? 'danger'
                         : i === 8
-                          ? "warning"
-                          : "success"
+                          ? 'warning'
+                          : 'success'
                     }
                   >
-                    {status === "qa_failed" && i === 5
-                      ? "Erreur"
+                    {status === 'qa_failed' && i === 5
+                      ? 'Erreur'
                       : i === 8
-                        ? "Avertissement"
-                        : "Conforme"}
+                        ? 'Avertissement'
+                        : 'Conforme'}
                   </Status>
                   {i === 8 && (
                     <Button
                       kind="ghost"
                       onClick={() =>
                         notify(
-                          "Justification enregistrée : périmètre confirmé par le consultant.",
+                          'Justification enregistrée : périmètre confirmé par le consultant.',
                         )
                       }
                     >
@@ -2301,13 +2301,13 @@ function OffersPage({
               ))}
             </div>
             <div className="workflow-actions">
-              {status === "qa_failed" && (
+              {status === 'qa_failed' && (
                 <Button
                   kind="primary"
                   onClick={() =>
                     transition(
-                      "draft",
-                      "Créer une nouvelle version corrigée ? La version échouée restera consultable.",
+                      'draft',
+                      'Créer une nouvelle version corrigée ? La version échouée restera consultable.',
                     )
                   }
                 >
@@ -2315,13 +2315,13 @@ function OffersPage({
                   Corriger dans une nouvelle version
                 </Button>
               )}
-              {status === "draft" && (
+              {status === 'draft' && (
                 <Button
                   kind="primary"
                   onClick={() =>
                     transition(
-                      "pending_approval",
-                      "Exécuter les 12 contrôles et soumettre à approbation ?",
+                      'pending_approval',
+                      'Exécuter les 12 contrôles et soumettre à approbation ?',
                     )
                   }
                 >
@@ -2329,14 +2329,14 @@ function OffersPage({
                   Lancer le QA
                 </Button>
               )}
-              {status === "pending_approval" && (
+              {status === 'pending_approval' && (
                 <>
                   <Button
                     kind="danger"
                     onClick={() =>
                       transition(
-                        "rejected",
-                        "Rejeter cette version avec commentaire ?",
+                        'rejected',
+                        'Rejeter cette version avec commentaire ?',
                       )
                     }
                   >
@@ -2346,8 +2346,8 @@ function OffersPage({
                     kind="primary"
                     onClick={() =>
                       transition(
-                        "approved",
-                        "Approuver et verrouiller exactement cette version ?",
+                        'approved',
+                        'Approuver et verrouiller exactement cette version ?',
                       )
                     }
                   >
@@ -2356,13 +2356,13 @@ function OffersPage({
                   </Button>
                 </>
               )}
-              {status === "approved" && (
+              {status === 'approved' && (
                 <Button
                   kind="primary"
                   onClick={() =>
                     transition(
-                      "sent",
-                      "Enregistrer manuellement l’envoi de cette version ?",
+                      'sent',
+                      'Enregistrer manuellement l’envoi de cette version ?',
                     )
                   }
                 >
@@ -2370,31 +2370,31 @@ function OffersPage({
                   Enregistrer comme envoyée
                 </Button>
               )}
-              {status === "sent" && (
+              {status === 'sent' && (
                 <Button
                   kind="primary"
-                  onClick={() => open("acceptance", current.id)}
+                  onClick={() => open('acceptance', current.id)}
                 >
                   <Check />
                   Enregistrer la décision client
                 </Button>
               )}
-              {status === "accepted" && (
+              {status === 'accepted' && (
                 <Button
                   kind="primary"
-                  onClick={() => go("/contracts/CTR-2026-096")}
+                  onClick={() => go('/contracts/CTR-2026-096')}
                 >
                   <FilePlus2 />
                   Créer le contrat sans ressaisie
                 </Button>
               )}
-              {["rejected", "expired", "superseded"].includes(status) && (
+              {['rejected', 'expired', 'superseded'].includes(status) && (
                 <Button
                   kind="primary"
                   onClick={() =>
                     transition(
-                      "draft",
-                      "Créer une nouvelle version depuis cette version ?",
+                      'draft',
+                      'Créer une nouvelle version depuis cette version ?',
                     )
                   }
                 >
@@ -2413,7 +2413,7 @@ function OffersPage({
             </header>
             <button
               onClick={() =>
-                notify("Comparaison ouverte : v1 → v2, 4 changements métier.")
+                notify('Comparaison ouverte : v1 → v2, 4 changements métier.')
               }
             >
               <span>v2</span>
@@ -2424,7 +2424,7 @@ function OffersPage({
               <Eye />
             </button>
             <button
-              onClick={() => notify("Version v1 ouverte en lecture seule.")}
+              onClick={() => notify('Version v1 ouverte en lecture seule.')}
             >
               <span>v1</span>
               <div>
@@ -2447,14 +2447,14 @@ function OffersPage({
             </div>
             <Button
               onClick={() =>
-                notify("Export DOCX préparé pour OFR-2026-142 v2.")
+                notify('Export DOCX préparé pour OFR-2026-142 v2.')
               }
             >
               <Download />
               Exporter DOCX
             </Button>
             <Button
-              onClick={() => notify("Export PDF préparé pour OFR-2026-142 v2.")}
+              onClick={() => notify('Export PDF préparé pour OFR-2026-142 v2.')}
             >
               <Download />
               Exporter PDF
@@ -2462,8 +2462,8 @@ function OffersPage({
             <Button
               onClick={() =>
                 transition(
-                  "superseded",
-                  "Créer v3 remplacera v2 sans supprimer son historique. Continuer ?",
+                  'superseded',
+                  'Créer v3 remplacera v2 sans supprimer son historique. Continuer ?',
                 )
               }
             >
@@ -2524,7 +2524,7 @@ function ContractsPage({
           </header>
           {contractsSeed.map((c) => (
             <button
-              className={c.id === current.id ? "active" : ""}
+              className={c.id === current.id ? 'active' : ''}
               key={c.id}
               onClick={() => go(`/contracts/${c.id}`)}
             >
@@ -2552,11 +2552,11 @@ function ContractsPage({
               </div>
               <Status
                 tone={
-                  status === "qa_failed"
-                    ? "danger"
-                    : status === "signed"
-                      ? "success"
-                      : "info"
+                  status === 'qa_failed'
+                    ? 'danger'
+                    : status === 'signed'
+                      ? 'success'
+                      : 'info'
                 }
               >
                 {workflowLabel(status)}
@@ -2568,7 +2568,7 @@ function ContractsPage({
                 <small>CRÉÉ SANS RESSAISIE DEPUIS</small>
                 <b>{current.offer}</b>
               </span>
-              <Button kind="ghost" onClick={() => go("/offers/OFR-2026-139")}>
+              <Button kind="ghost" onClick={() => go('/offers/OFR-2026-139')}>
                 Ouvrir l’offre
               </Button>
             </div>
@@ -2576,11 +2576,11 @@ function ContractsPage({
               <div>
                 <h3>Comparaison avec l’offre acceptée</h3>
                 {[
-                  ["Client", "Identique"],
-                  ["Contact", "Identique"],
-                  ["Périmètre", "Identique"],
-                  ["Prestations", "Identiques"],
-                  ["Montant TTC", current.total],
+                  ['Client', 'Identique'],
+                  ['Contact', 'Identique'],
+                  ['Périmètre', 'Identique'],
+                  ['Prestations', 'Identiques'],
+                  ['Montant TTC', current.total],
                 ].map((x) => (
                   <p key={x[0]}>
                     <CheckCircle2 />
@@ -2591,11 +2591,11 @@ function ContractsPage({
               </div>
               <div>
                 <h3>Contrôles propres au contrat</h3>
-                <p className={status === "qa_failed" ? "error" : ""}>
-                  {status === "qa_failed" ? <XCircle /> : <CheckCircle2 />}
+                <p className={status === 'qa_failed' ? 'error' : ''}>
+                  {status === 'qa_failed' ? <XCircle /> : <CheckCircle2 />}
                   <b>Clause de résiliation</b>
                   <span>
-                    {status === "qa_failed" ? "Manquante" : "Présente"}
+                    {status === 'qa_failed' ? 'Manquante' : 'Présente'}
                   </span>
                 </p>
                 <p>
@@ -2611,54 +2611,54 @@ function ContractsPage({
               </div>
             </div>
             <div className="workflow-actions">
-              {status === "qa_failed" && (
-                <Button kind="primary" onClick={() => transition("draft")}>
+              {status === 'qa_failed' && (
+                <Button kind="primary" onClick={() => transition('draft')}>
                   <Edit3 />
                   Corriger dans v3
                 </Button>
               )}
-              {status === "draft" && (
+              {status === 'draft' && (
                 <Button
                   kind="primary"
-                  onClick={() => transition("pending_approval")}
+                  onClick={() => transition('pending_approval')}
                 >
                   <ShieldCheck />
                   Soumettre à approbation
                 </Button>
               )}
-              {status === "pending_approval" && (
+              {status === 'pending_approval' && (
                 <>
-                  <Button kind="danger" onClick={() => transition("rejected")}>
+                  <Button kind="danger" onClick={() => transition('rejected')}>
                     Rejeter avec commentaire
                   </Button>
-                  <Button kind="primary" onClick={() => transition("approved")}>
+                  <Button kind="primary" onClick={() => transition('approved')}>
                     <LockKeyhole />
                     Approuver et verrouiller
                   </Button>
                 </>
               )}
-              {status === "approved" && (
-                <Button kind="primary" onClick={() => transition("sent")}>
+              {status === 'approved' && (
+                <Button kind="primary" onClick={() => transition('sent')}>
                   <Send />
                   Enregistrer l’envoi
                 </Button>
               )}
-              {status === "sent" && (
+              {status === 'sent' && (
                 <Button
                   kind="primary"
-                  onClick={() => open("signature", current.id)}
+                  onClick={() => open('signature', current.id)}
                 >
                   Enregistrer la signature
                 </Button>
               )}
-              {status === "signed" && (
-                <Button kind="primary" onClick={() => go("/projects/PRJ-0048")}>
+              {status === 'signed' && (
+                <Button kind="primary" onClick={() => go('/projects/PRJ-0048')}>
                   <FolderKanban />
                   Ouvrir le projet minimal
                 </Button>
               )}
-              {["rejected", "superseded"].includes(status) && (
-                <Button onClick={() => transition("draft")}>
+              {['rejected', 'superseded'].includes(status) && (
+                <Button onClick={() => transition('draft')}>
                   <RotateCcw />
                   Créer une nouvelle version
                 </Button>
@@ -2672,7 +2672,7 @@ function ContractsPage({
                 <h2>Document verrouillé</h2>
               </div>
             </header>
-            <button onClick={() => open("document", current.id)}>
+            <button onClick={() => open('document', current.id)}>
               <span>v2</span>
               <div>
                 <b>Version consultée</b>
@@ -2683,7 +2683,7 @@ function ContractsPage({
             <button
               onClick={() =>
                 notify(
-                  "Comparaison du contrat v1 avec v2 ouverte : 3 modifications.",
+                  'Comparaison du contrat v1 avec v2 ouverte : 3 modifications.',
                 )
               }
             >
@@ -2694,11 +2694,11 @@ function ContractsPage({
               </div>
               <Eye />
             </button>
-            <Button onClick={() => notify("Export DOCX du contrat préparé.")}>
+            <Button onClick={() => notify('Export DOCX du contrat préparé.')}>
               <Download />
               Exporter DOCX
             </Button>
-            <Button onClick={() => notify("Export PDF du contrat préparé.")}>
+            <Button onClick={() => notify('Export PDF du contrat préparé.')}>
               <Download />
               Exporter PDF
             </Button>
@@ -2717,8 +2717,8 @@ function ProjectsPage({
   selected?: string;
 }) {
   const projects = [
-    ["PRJ-0048", "Purcari Wineries", "CTR-2026-096 v1", "Dan Popescu", "Actif"],
-    ["PRJ-0047", "Moldova Fruct", "CTR-2026-091 v2", "Irina Ceban", "Ouvert"],
+    ['PRJ-0048', 'Purcari Wineries', 'CTR-2026-096 v1', 'Dan Popescu', 'Actif'],
+    ['PRJ-0047', 'Moldova Fruct', 'CTR-2026-091 v2', 'Irina Ceban', 'Ouvert'],
   ];
   const current = projects.find((p) => p[0] === selected);
   return (
@@ -2758,7 +2758,7 @@ function ProjectsPage({
                 <td>
                   <button
                     className="source-link"
-                    onClick={() => go("/contracts/CTR-2026-096")}
+                    onClick={() => go('/contracts/CTR-2026-096')}
                   >
                     {p[2]}
                   </button>
@@ -2826,63 +2826,63 @@ function DocumentsPage({
   initialScenario?: string | null;
 }) {
   const [query, setQuery] = useState(
-    initialScenario === "tariff"
-      ? "Quel est le prix exact du diagnostic ?"
-      : "Quelles preuves confirment le périmètre HACCP ?",
+    initialScenario === 'tariff'
+      ? 'Quel est le prix exact du diagnostic ?'
+      : 'Quelles preuves confirment le périmètre HACCP ?',
   );
-  const [scenario, setScenario] = useState(initialScenario || "answer");
+  const [scenario, setScenario] = useState(initialScenario || 'answer');
   const [searched, setSearched] = useState(!!initialScenario);
-  const [indexState, setIndexState] = useState("failed");
+  const [indexState, setIndexState] = useState('failed');
   const run = () => {
     const q = query.toLowerCase();
     setScenario(
       /prix|tarif|tva|montant/.test(q)
-        ? "tariff"
+        ? 'tariff'
         : /contrad/.test(q)
-          ? "conflict"
+          ? 'conflict'
           : /aucune|inconnu/.test(q)
-            ? "insufficient"
-            : "answer",
+            ? 'insufficient'
+            : 'answer',
     );
     setSearched(true);
   };
   const docs = [
     [
-      "DOC-0441",
-      "Cahier des besoins",
-      "v2",
-      "Approuvé",
-      "Éligible",
-      "Terminée",
+      'DOC-0441',
+      'Cahier des besoins',
+      'v2',
+      'Approuvé',
+      'Éligible',
+      'Terminée',
     ],
     [
-      "DOC-0442",
-      "Offre OFR-2026-142",
-      "v2",
-      "Approuvé",
-      "Éligible",
-      "Terminée",
+      'DOC-0442',
+      'Offre OFR-2026-142',
+      'v2',
+      'Approuvé',
+      'Éligible',
+      'Terminée',
     ],
-    ["DOC-0443", "Tarif HACCP", "v4", "Approuvé", "Exclu du RAG", "—"],
+    ['DOC-0443', 'Tarif HACCP', 'v4', 'Approuvé', 'Exclu du RAG', '—'],
     [
-      "DOC-0444",
-      "Annexe illisible",
-      "v1",
-      "Brouillon",
-      "Non éligible",
+      'DOC-0444',
+      'Annexe illisible',
+      'v1',
+      'Brouillon',
+      'Non éligible',
       indexState,
     ],
     [
-      "DOC-0445",
-      "Procédure qualité",
-      "v3",
-      "À approuver",
-      "Non éligible",
-      "pending",
+      'DOC-0445',
+      'Procédure qualité',
+      'v3',
+      'À approuver',
+      'Non éligible',
+      'pending',
     ],
-    ["DOC-0420", "Ancienne procédure", "v1", "Remplacé", "Retiré", "—"],
-    ["DOC-0401", "Offre refusée", "v1", "Rejeté", "Non éligible", "—"],
-    ["DOC-0388", "Guide historique", "v2", "Archivé", "Retiré", "—"],
+    ['DOC-0420', 'Ancienne procédure', 'v1', 'Remplacé', 'Retiré', '—'],
+    ['DOC-0401', 'Offre refusée', 'v1', 'Rejeté', 'Non éligible', '—'],
+    ['DOC-0388', 'Guide historique', 'v2', 'Archivé', 'Retiré', '—'],
   ];
   return (
     <div className="page">
@@ -2891,7 +2891,7 @@ function DocumentsPage({
         title="Documents et recherche RAG"
         subtitle="Seules les versions approuvées, non remplacées et éligibles peuvent soutenir une réponse."
         action={
-          <Button kind="primary" onClick={() => open("document", "import")}>
+          <Button kind="primary" onClick={() => open('document', 'import')}>
             <UploadCloud />
             Importer
           </Button>
@@ -2914,7 +2914,7 @@ function DocumentsPage({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && run()}
+            onKeyDown={(e) => e.key === 'Enter' && run()}
           />
           <Button kind="primary" onClick={run}>
             Rechercher
@@ -2923,24 +2923,24 @@ function DocumentsPage({
         <div className="scenario-strip">
           <b>Tester un garde-fou</b>
           {[
-            ["answer", "Réponse sourcée"],
-            ["insufficient", "Sources insuffisantes"],
-            ["conflict", "Contradiction"],
-            ["tariff", "Question tarifaire"],
-            ["error", "Erreur technique"],
+            ['answer', 'Réponse sourcée'],
+            ['insufficient', 'Sources insuffisantes'],
+            ['conflict', 'Contradiction'],
+            ['tariff', 'Question tarifaire'],
+            ['error', 'Erreur technique'],
           ].map(([id, l]) => (
             <button
-              className={scenario === id ? "active" : ""}
+              className={scenario === id ? 'active' : ''}
               key={id}
               onClick={() => {
                 setScenario(id);
                 setSearched(true);
                 setQuery(
-                  id === "tariff"
-                    ? "Quel est le prix exact du diagnostic ?"
-                    : id === "conflict"
-                      ? "Les sources sont-elles contradictoires ?"
-                      : "Quelles preuves confirment le périmètre HACCP ?",
+                  id === 'tariff'
+                    ? 'Quel est le prix exact du diagnostic ?'
+                    : id === 'conflict'
+                      ? 'Les sources sont-elles contradictoires ?'
+                      : 'Quelles preuves confirment le périmètre HACCP ?',
                 );
               }}
             >
@@ -2956,56 +2956,56 @@ function DocumentsPage({
               <div>
                 <small>RÉPONSE CONTRÔLÉE</small>
                 <h2>
-                  {scenario === "answer"
-                    ? "Réponse étayée"
-                    : scenario === "tariff"
-                      ? "Refus : source non autorisée"
-                      : scenario === "conflict"
-                        ? "Réponse suspendue"
-                        : scenario === "error"
-                          ? "Recherche indisponible"
-                          : "Sources insuffisantes"}
+                  {scenario === 'answer'
+                    ? 'Réponse étayée'
+                    : scenario === 'tariff'
+                      ? 'Refus : source non autorisée'
+                      : scenario === 'conflict'
+                        ? 'Réponse suspendue'
+                        : scenario === 'error'
+                          ? 'Recherche indisponible'
+                          : 'Sources insuffisantes'}
                 </h2>
               </div>
               <Status
                 tone={
-                  scenario === "answer"
-                    ? "success"
-                    : scenario === "error"
-                      ? "danger"
-                      : "warning"
+                  scenario === 'answer'
+                    ? 'success'
+                    : scenario === 'error'
+                      ? 'danger'
+                      : 'warning'
                 }
               >
-                {scenario === "answer" ? "3 citations" : "Aucune affirmation"}
+                {scenario === 'answer' ? '3 citations' : 'Aucune affirmation'}
               </Status>
             </header>
             <p>
-              {scenario === "answer"
-                ? "Le périmètre couvre la production et le conditionnement sur deux sites. Cette synthèse reprend uniquement les versions approuvées et non remplacées."
-                : scenario === "tariff"
-                  ? "Le RAG n’est pas la source autorisée pour un prix, une TVA ou une règle juridique. Consultez le snapshot déterministe lié au dossier."
-                  : scenario === "conflict"
-                    ? "Deux versions approuvées donnent des périmètres différents. Une décision humaine est requise avant toute réponse."
-                    : scenario === "error"
-                      ? "La recherche a échoué sans modifier le corpus. Vous pouvez relancer ou consulter le diagnostic."
-                      : "Aucune source approuvée et suffisamment pertinente ne permet de répondre sans extrapoler."}
+              {scenario === 'answer'
+                ? 'Le périmètre couvre la production et le conditionnement sur deux sites. Cette synthèse reprend uniquement les versions approuvées et non remplacées.'
+                : scenario === 'tariff'
+                  ? 'Le RAG n’est pas la source autorisée pour un prix, une TVA ou une règle juridique. Consultez le snapshot déterministe lié au dossier.'
+                  : scenario === 'conflict'
+                    ? 'Deux versions approuvées donnent des périmètres différents. Une décision humaine est requise avant toute réponse.'
+                    : scenario === 'error'
+                      ? 'La recherche a échoué sans modifier le corpus. Vous pouvez relancer ou consulter le diagnostic.'
+                      : 'Aucune source approuvée et suffisamment pertinente ne permet de répondre sans extrapoler.'}
             </p>
-            {scenario === "answer" && (
+            {scenario === 'answer' && (
               <div className="citations">
                 {[
                   [
-                    "1",
-                    "Cahier des besoins v2",
-                    "p.4 · score 0,94 · indexé 15/08",
+                    '1',
+                    'Cahier des besoins v2',
+                    'p.4 · score 0,94 · indexé 15/08',
                   ],
-                  ["2", "Email client v1", "§2 · score 0,91 · indexé 15/08"],
+                  ['2', 'Email client v1', '§2 · score 0,91 · indexé 15/08'],
                   [
-                    "3",
-                    "Annexe périmètre v2",
-                    "p.1 · score 0,86 · indexé 15/08",
+                    '3',
+                    'Annexe périmètre v2',
+                    'p.1 · score 0,86 · indexé 15/08',
                   ],
                 ].map((x) => (
-                  <button key={x[0]} onClick={() => open("document", x[1])}>
+                  <button key={x[0]} onClick={() => open('document', x[1])}>
                     <span>{x[0]}</span>
                     <b>{x[1]}</b>
                     <small>{x[2]} · Approuvé</small>
@@ -3015,14 +3015,14 @@ function DocumentsPage({
             )}
             <footer>
               <Button
-                onClick={() => notify("Réponse signalée pour revue humaine.")}
+                onClick={() => notify('Réponse signalée pour revue humaine.')}
               >
                 Signaler
               </Button>
-              <Button onClick={() => open("document", "sources")}>
+              <Button onClick={() => open('document', 'sources')}>
                 Ouvrir les sources
               </Button>
-              {scenario === "error" && (
+              {scenario === 'error' && (
                 <Button kind="primary" onClick={run}>
                   <RefreshCw />
                   Réessayer
@@ -3034,12 +3034,12 @@ function DocumentsPage({
             <small>GARDE-FOUS ACTIFS</small>
             <h2>Pourquoi cette réponse est sûre</h2>
             {[
-              "Versions approuvées uniquement",
-              "Documents remplacés exclus",
-              "Citation avec page et score",
-              "Aucun calcul par le RAG",
-              "Refus en cas d’insuffisance",
-              "Journalisation de la requête",
+              'Versions approuvées uniquement',
+              'Documents remplacés exclus',
+              'Citation avec page et score',
+              'Aucun calcul par le RAG',
+              'Refus en cas d’insuffisance',
+              'Journalisation de la requête',
             ].map((x) => (
               <p key={x}>
                 <CheckCircle2 />
@@ -3059,7 +3059,7 @@ function DocumentsPage({
             <Button
               onClick={() =>
                 notify(
-                  "Filtres documentaires ouverts : statut, version, corpus et indexation.",
+                  'Filtres documentaires ouverts : statut, version, corpus et indexation.',
                 )
               }
             >
@@ -3068,7 +3068,7 @@ function DocumentsPage({
             </Button>
             <Button
               onClick={() =>
-                notify("Vue filtrée : documents éligibles au RAG.")
+                notify('Vue filtrée : documents éligibles au RAG.')
               }
             >
               Éligibles RAG
@@ -3092,7 +3092,7 @@ function DocumentsPage({
                 <td>
                   <button
                     className="entity-link"
-                    onClick={() => open("document", d[0])}
+                    onClick={() => open('document', d[0])}
                   >
                     <span>
                       <FileText />
@@ -3103,7 +3103,7 @@ function DocumentsPage({
                 </td>
                 <td>{d[2]}</td>
                 <td>
-                  <Status tone={d[3] === "Approuvé" ? "success" : "warning"}>
+                  <Status tone={d[3] === 'Approuvé' ? 'success' : 'warning'}>
                     {d[3]}
                   </Status>
                 </td>
@@ -3111,33 +3111,33 @@ function DocumentsPage({
                 <td>
                   <Status
                     tone={
-                      d[5] === "failed"
-                        ? "danger"
-                        : d[5] === "running"
-                          ? "info"
-                          : d[5] === "Terminée"
-                            ? "success"
-                            : "neutral"
+                      d[5] === 'failed'
+                        ? 'danger'
+                        : d[5] === 'running'
+                          ? 'info'
+                          : d[5] === 'Terminée'
+                            ? 'success'
+                            : 'neutral'
                     }
                   >
-                    {d[5] === "pending" ? "En attente" : d[5]}
+                    {d[5] === 'pending' ? 'En attente' : d[5]}
                   </Status>
                 </td>
                 <td>
                   <div className="inline-actions">
                     <button
-                      onClick={() => open("document", d[0])}
+                      onClick={() => open('document', d[0])}
                       aria-label={`Gérer ${d[0]}`}
                     >
                       <MoreHorizontal />
                     </button>
-                    {d[5] === "failed" && (
+                    {d[5] === 'failed' && (
                       <button
                         onClick={() => {
-                          setIndexState("running");
-                          setTimeout(() => setIndexState("Terminée"), 800);
+                          setIndexState('running');
+                          setTimeout(() => setIndexState('Terminée'), 800);
                           notify(
-                            "Réindexation lancée. L’erreur précédente reste consultable.",
+                            'Réindexation lancée. L’erreur précédente reste consultable.',
                           );
                         }}
                         aria-label="Réindexer"
@@ -3163,39 +3163,39 @@ function CatalogPage({
   open: (k: ModalKind, d?: string) => void;
   notify: (s: string) => void;
 }) {
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState('active');
   const data = {
     active: [
       [
-        "SRV-HACCP",
-        "Diagnostic HACCP",
-        "TAR-HACCP v4",
-        "EUR",
-        "TVA 20 %",
-        "15/08–31/12",
-        "Actif",
+        'SRV-HACCP',
+        'Diagnostic HACCP',
+        'TAR-HACCP v4',
+        'EUR',
+        'TVA 20 %',
+        '15/08–31/12',
+        'Actif',
       ],
     ],
     draft: [
       [
-        "SRV-ISO22K",
-        "Préparation ISO 22000",
-        "TAR-ISO22K v4",
-        "EUR",
-        "TVA 20 %",
-        "À définir",
-        "Brouillon",
+        'SRV-ISO22K',
+        'Préparation ISO 22000',
+        'TAR-ISO22K v4',
+        'EUR',
+        'TVA 20 %',
+        'À définir',
+        'Brouillon',
       ],
     ],
     archived: [
       [
-        "SRV-AUDIT",
-        "Audit interne",
-        "TAR-AUDIT v2",
-        "EUR",
-        "TVA 20 %",
-        "01/01–14/08",
-        "Archivé",
+        'SRV-AUDIT',
+        'Audit interne',
+        'TAR-AUDIT v2',
+        'EUR',
+        'TVA 20 %',
+        '01/01–14/08',
+        'Archivé',
       ],
     ],
   } as const;
@@ -3206,7 +3206,7 @@ function CatalogPage({
         title="Services et tarifs"
         subtitle="Catalogue versionné : services, règles, taxes, frais, auteurs, validité et activation explicite."
         action={
-          <Button kind="primary" onClick={() => open("catalog", "new")}>
+          <Button kind="primary" onClick={() => open('catalog', 'new')}>
             <Plus />
             Nouveau service
           </Button>
@@ -3214,12 +3214,12 @@ function CatalogPage({
       />
       <div className="tabs">
         {[
-          ["active", "Actifs"],
-          ["draft", "Brouillons"],
-          ["archived", "Archivés"],
+          ['active', 'Actifs'],
+          ['draft', 'Brouillons'],
+          ['archived', 'Archivés'],
         ].map(([id, l]) => (
           <button
-            className={tab === id ? "active" : ""}
+            className={tab === id ? 'active' : ''}
             key={id}
             onClick={() => setTab(id)}
           >
@@ -3257,11 +3257,11 @@ function CatalogPage({
                 <td>
                   <Status
                     tone={
-                      tab === "active"
-                        ? "success"
-                        : tab === "draft"
-                          ? "warning"
-                          : "neutral"
+                      tab === 'active'
+                        ? 'success'
+                        : tab === 'draft'
+                          ? 'warning'
+                          : 'neutral'
                     }
                   >
                     {r[6]}
@@ -3270,7 +3270,7 @@ function CatalogPage({
                 <td>
                   <button
                     className="row-open"
-                    onClick={() => open("catalog", r[0])}
+                    onClick={() => open('catalog', r[0])}
                     aria-label={`Ouvrir ${r[0]}`}
                   >
                     <ChevronRight />
@@ -3287,19 +3287,19 @@ function CatalogPage({
             <small>COMPARAISON DE VERSIONS</small>
             <h2>TAR-HACCP v3 → v4</h2>
           </div>
-          <Button onClick={() => notify("Comparaison v3/v4 exportée.")}>
+          <Button onClick={() => notify('Comparaison v3/v4 exportée.')}>
             <Download />
             Exporter
           </Button>
         </header>
         <div>
           {[
-            ["Consultant / jour", "1 580 € → 1 650 €"],
-            ["Auditeur / jour", "1 720 € → 1 790 €"],
-            ["Hébergement", "170 € → 180 €"],
-            ["Traduction / page", "65 € → 70 €"],
-            ["Indemnité", "0 € → 0 €"],
-            ["Commission", "Non applicable"],
+            ['Consultant / jour', '1 580 € → 1 650 €'],
+            ['Auditeur / jour', '1 720 € → 1 790 €'],
+            ['Hébergement', '170 € → 180 €'],
+            ['Traduction / page', '65 € → 70 €'],
+            ['Indemnité', '0 € → 0 €'],
+            ['Commission', 'Non applicable'],
           ].map((x) => (
             <p key={x[0]}>
               <CheckCircle2 />
@@ -3320,11 +3320,11 @@ function ActivityPage({
   open: (k: ModalKind, d?: string) => void;
   notify: (s: string) => void;
 }) {
-  const [type, setType] = useState("Tous");
-  const [query, setQuery] = useState("");
+  const [type, setType] = useState('Tous');
+  const [query, setQuery] = useState('');
   const rows = auditSeed.filter(
     (x) =>
-      (type === "Tous" || x[4] === type) &&
+      (type === 'Tous' || x[4] === type) &&
       `${x[1]} ${x[2]} ${x[3]}`.toLowerCase().includes(query.toLowerCase()),
   );
   return (
@@ -3336,7 +3336,7 @@ function ActivityPage({
         action={
           <Button
             onClick={() =>
-              notify("Export CSV du journal préparé avec les filtres actifs.")
+              notify('Export CSV du journal préparé avec les filtres actifs.')
             }
           >
             <Download />
@@ -3359,14 +3359,14 @@ function ActivityPage({
             <span>Type d’entité</span>
             <select value={type} onChange={(e) => setType(e.target.value)}>
               {[
-                "Tous",
-                "Document",
-                "Contrat",
-                "Offre",
-                "Calcul",
-                "Revue",
-                "IA",
-                "Tarif",
+                'Tous',
+                'Document',
+                'Contrat',
+                'Offre',
+                'Calcul',
+                'Revue',
+                'IA',
+                'Tarif',
               ].map((x) => (
                 <option key={x}>{x}</option>
               ))}
@@ -3391,8 +3391,8 @@ function ActivityPage({
           </label>
           <Button
             onClick={() => {
-              setType("Tous");
-              setQuery("");
+              setType('Tous');
+              setQuery('');
             }}
           >
             <RotateCcw />
@@ -3409,10 +3409,10 @@ function ActivityPage({
           {rows.map((x, i) => (
             <button
               key={`${x[0]}${x[1]}`}
-              onClick={() => open("event", String(i))}
+              onClick={() => open('event', String(i))}
             >
               <time>{x[0]}</time>
-              <i className={i < 4 ? "critical" : ""} />
+              <i className={i < 4 ? 'critical' : ''} />
               <span>
                 <b>{x[1]}</b>
                 <p>{x[2]}</p>
@@ -3436,7 +3436,7 @@ function UsersPage({
   open: (k: ModalKind, d?: string) => void;
   notify: (s: string) => void;
 }) {
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState('active');
   const [disabled, setDisabled] = useState(false);
   return (
     <div className="page">
@@ -3445,7 +3445,7 @@ function UsersPage({
         title="Utilisateurs"
         subtitle="Invitations nominatives, droits uniformes, expiration, désactivation et journal des accès."
         action={
-          <Button kind="primary" onClick={() => open("invite")}>
+          <Button kind="primary" onClick={() => open('invite')}>
             <UserRoundPlus />
             Inviter
           </Button>
@@ -3461,13 +3461,13 @@ function UsersPage({
       </div>
       <div className="tabs">
         {[
-          ["active", "Actifs"],
-          ["pending", "Invitations"],
-          ["disabled", "Désactivés"],
-          ["denied", "Accès refusé"],
+          ['active', 'Actifs'],
+          ['pending', 'Invitations'],
+          ['disabled', 'Désactivés'],
+          ['denied', 'Accès refusé'],
         ].map(([id, l]) => (
           <button
-            className={tab === id ? "active" : ""}
+            className={tab === id ? 'active' : ''}
             onClick={() => setTab(id)}
             key={id}
           >
@@ -3476,11 +3476,11 @@ function UsersPage({
         ))}
       </div>
       <Surface className="users-list">
-        {tab === "active" &&
+        {tab === 'active' &&
           [
-            ["DP", "Dan Popescu", "dan@prisma.md", "Aujourd’hui 11:02"],
-            ["IC", "Irina Ceban", "irina@prisma.md", "Aujourd’hui 09:44"],
-            ["ER", "Elena Rusu", "elena@prisma.md", "Hier 17:21"],
+            ['DP', 'Dan Popescu', 'dan@prisma.md', 'Aujourd’hui 11:02'],
+            ['IC', 'Irina Ceban', 'irina@prisma.md', 'Aujourd’hui 09:44'],
+            ['ER', 'Elena Rusu', 'elena@prisma.md', 'Hier 17:21'],
           ].map((u, i) => (
             <article key={u[2]}>
               <span>{u[0]}</span>
@@ -3489,15 +3489,15 @@ function UsersPage({
                 <small>{u[2]}</small>
               </div>
               <p>Dernière connexion · {u[3]}</p>
-              <Status tone={i === 2 && disabled ? "neutral" : "success"}>
-                {i === 2 && disabled ? "Désactivé" : "Actif"}
+              <Status tone={i === 2 && disabled ? 'neutral' : 'success'}>
+                {i === 2 && disabled ? 'Désactivé' : 'Actif'}
               </Status>
               <Button
                 kind="ghost"
                 onClick={() => {
                   if (window.confirm(`Désactiver ${u[1]} ?`)) {
                     setDisabled(true);
-                    notify("Accès désactivé et journalisé.");
+                    notify('Accès désactivé et journalisé.');
                   }
                 }}
               >
@@ -3505,16 +3505,16 @@ function UsersPage({
               </Button>
             </article>
           ))}
-        {tab === "pending" &&
+        {tab === 'pending' &&
           [
-            ["VM", "Victor Munteanu", "Expire dans 3 jours", "warning"],
-            ["AC", "Ana Cebotari", "Invitation expirée", "danger"],
+            ['VM', 'Victor Munteanu', 'Expire dans 3 jours', 'warning'],
+            ['AC', 'Ana Cebotari', 'Invitation expirée', 'danger'],
           ].map((u) => (
             <article key={u[1]}>
               <span>{u[0]}</span>
               <div>
                 <b>{u[1]}</b>
-                <small>{u[1].toLowerCase().replace(" ", ".")}@prisma.md</small>
+                <small>{u[1].toLowerCase().replace(' ', '.')}@prisma.md</small>
               </div>
               <p>{u[2]}</p>
               <Status tone={u[3] as Tone}>{u[2]}</Status>
@@ -3531,7 +3531,7 @@ function UsersPage({
               </Button>
             </article>
           ))}
-        {tab === "disabled" && (
+        {tab === 'disabled' && (
           <article>
             <span>MP</span>
             <div>
@@ -3542,19 +3542,19 @@ function UsersPage({
             <Status>Désactivé</Status>
             <Button
               kind="ghost"
-              onClick={() => notify("Utilisateur réactivé après confirmation.")}
+              onClick={() => notify('Utilisateur réactivé après confirmation.')}
             >
               Réactiver
             </Button>
           </article>
         )}
-        {tab === "denied" && (
+        {tab === 'denied' && (
           <Empty
             title="Accès refusé"
             text="Ce compte ne possède aucune invitation active pour l’espace PRISMA Consultant."
             action={
               <Button
-                onClick={() => notify("Demande de nouvel envoi enregistrée.")}
+                onClick={() => notify('Demande de nouvel envoi enregistrée.')}
               >
                 Demander une invitation
               </Button>
@@ -3570,10 +3570,10 @@ function UsersPage({
           </div>
         </header>
         {[
-          "Connexion réussie · Dan Popescu · 11:02",
-          "Invitation renvoyée · Ana Cebotari · 10:11",
-          "Accès refusé · compte inconnu · 09:58",
-          "Utilisateur désactivé · Mihai Popa · 01/08",
+          'Connexion réussie · Dan Popescu · 11:02',
+          'Invitation renvoyée · Ana Cebotari · 10:11',
+          'Accès refusé · compte inconnu · 09:58',
+          'Utilisateur désactivé · Mihai Popa · 01/08',
         ].map((x) => (
           <p key={x}>
             <History />
@@ -3643,7 +3643,7 @@ function CoveragePage({ go }: { go: (p: string) => void }) {
                   <td>
                     <button
                       className="row-open"
-                      onClick={() => go(r[2].replace(/^#/, ""))}
+                      onClick={() => go(r[2].replace(/^#/, ''))}
                       aria-label={`Ouvrir la preuve ${r[0]}`}
                     >
                       <ArrowRight />
@@ -3664,37 +3664,37 @@ function CoveragePage({ go }: { go: (p: string) => void }) {
         </header>
         <div>
           {[
-            ["Créer un client et importer un DOCX", "/clients/CLI-001"],
-            ["Gérer un fichier invalide ou un doublon", "/requests"],
-            ["Relancer une analyse échouée", "/request/REQ-0279/analysis"],
+            ['Créer un client et importer un DOCX', '/clients/CLI-001'],
+            ['Gérer un fichier invalide ou un doublon', '/requests'],
+            ['Relancer une analyse échouée', '/request/REQ-0279/analysis'],
             [
-              "Résoudre un champ critique manquant",
-              "/request/REQ-0280/validation",
+              'Résoudre un champ critique manquant',
+              '/request/REQ-0280/validation',
             ],
             [
-              "Arbitrer deux sources contradictoires",
-              "/request/REQ-0280/validation",
+              'Arbitrer deux sources contradictoires',
+              '/request/REQ-0280/validation',
             ],
             [
-              "Corriger une donnée et invalider le calcul",
-              "/request/REQ-0281/pricing",
+              'Corriger une donnée et invalider le calcul',
+              '/request/REQ-0281/pricing',
             ],
-            ["Dépasser le seuil de remise", "/request/REQ-0281/pricing"],
-            ["Corriger une offre rejetée par QA", "/offers/OFR-2026-145"],
-            ["Justifier un avertissement", "/offers/OFR-2026-142"],
-            ["Comparer deux versions d’offre", "/offers/OFR-2026-142"],
+            ['Dépasser le seuil de remise', '/request/REQ-0281/pricing'],
+            ['Corriger une offre rejetée par QA', '/offers/OFR-2026-145'],
+            ['Justifier un avertissement', '/offers/OFR-2026-142'],
+            ['Comparer deux versions d’offre', '/offers/OFR-2026-142'],
             [
-              "Transformer une offre acceptée en contrat",
-              "/offers/OFR-2026-139",
+              'Transformer une offre acceptée en contrat',
+              '/offers/OFR-2026-139',
             ],
-            ["Rejeter puis corriger un contrat", "/contracts/CTR-2026-099"],
-            ["Approuver puis indexer un document", "/documents"],
-            ["Reprendre une indexation échouée", "/documents"],
+            ['Rejeter puis corriger un contrat', '/contracts/CTR-2026-099'],
+            ['Approuver puis indexer un document', '/documents'],
+            ['Reprendre une indexation échouée', '/documents'],
             [
-              "Obtenir une réponse ou un refus RAG",
-              "/documents?scenario=tariff",
+              'Obtenir une réponse ou un refus RAG',
+              '/documents?scenario=tariff',
             ],
-            ["Renvoyer une invitation expirée", "/users"],
+            ['Renvoyer une invitation expirée', '/users'],
           ].map((x, i) => (
             <button key={x[0]} onClick={() => go(x[1])}>
               <span>{i + 1}</span>
@@ -3732,7 +3732,7 @@ function ModalShell({
     if (
       !dirty ||
       window.confirm(
-        "Des modifications ne sont pas enregistrées. Fermer quand même ?",
+        'Des modifications ne sont pas enregistrées. Fermer quand même ?',
       )
     )
       close();
@@ -3740,8 +3740,8 @@ function ModalShell({
   useEffect(() => {
     closeRef.current?.focus();
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") requestClose();
-      if (e.key !== "Tab" || !ref.current) return;
+      if (e.key === 'Escape') requestClose();
+      if (e.key !== 'Tab' || !ref.current) return;
       const all = Array.from(
         ref.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])',
@@ -3758,8 +3758,8 @@ function ModalShell({
         first.focus();
       }
     };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
   });
   return (
     <div
@@ -3768,7 +3768,7 @@ function ModalShell({
     >
       <section
         ref={ref}
-        className={`modal ${wide ? "wide" : ""}`}
+        className={`modal ${wide ? 'wide' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
@@ -3798,15 +3798,15 @@ function FieldModal({
   save: (
     id: string,
     value: string,
-    state: ReviewField["state"],
+    state: ReviewField['state'],
     reason: string,
   ) => void;
   close: () => void;
 }) {
   const [value, setValue] = useState(field.retained);
-  const [state, setState] = useState<ReviewField["state"]>(
-    field.state === "missing" || field.state === "conflict"
-      ? "corrected"
+  const [state, setState] = useState<ReviewField['state']>(
+    field.state === 'missing' || field.state === 'conflict'
+      ? 'corrected'
       : field.state,
   );
   const [reason, setReason] = useState(field.rationale);
@@ -3835,14 +3835,14 @@ function FieldModal({
       <div className="field-summary">
         <Status
           tone={
-            field.state === "missing"
-              ? "danger"
-              : field.state === "conflict"
-                ? "warning"
-                : "info"
+            field.state === 'missing'
+              ? 'danger'
+              : field.state === 'conflict'
+                ? 'warning'
+                : 'info'
           }
         >
-          {field.critical ? "Critique" : "Non critique"} · {field.state}
+          {field.critical ? 'Critique' : 'Non critique'} · {field.state}
         </Status>
         <p>Aucune valeur IA n’est retenue sans décision humaine explicite.</p>
       </div>
@@ -3852,7 +3852,7 @@ function FieldModal({
           <b>{field.ai}</b>
           <p>
             {field.confidence == null
-              ? "Confiance indisponible"
+              ? 'Confiance indisponible'
               : `Confiance ${field.confidence} %`}
           </p>
         </article>
@@ -3867,7 +3867,7 @@ function FieldModal({
         <select
           value={state}
           onChange={(e) => {
-            setState(e.target.value as ReviewField["state"]);
+            setState(e.target.value as ReviewField['state']);
             setDirty(true);
           }}
         >
@@ -3918,11 +3918,11 @@ function CreateRequestModal({
   notify: (s: string) => void;
 }) {
   const [step, setStep] = useState(1);
-  const [channel, setChannel] = useState("Email");
-  const [scenario, setScenario] = useState("valid");
+  const [channel, setChannel] = useState('Email');
+  const [scenario, setScenario] = useState('valid');
   const [newClient, setNewClient] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const valid = scenario === "valid";
+  const valid = scenario === 'valid';
   return (
     <ModalShell
       wide
@@ -3933,7 +3933,7 @@ function CreateRequestModal({
       footer={
         <>
           <Button onClick={() => (step === 1 ? close() : setStep(step - 1))}>
-            {step === 1 ? "Annuler" : "Retour"}
+            {step === 1 ? 'Annuler' : 'Retour'}
           </Button>
           <Button
             kind="primary"
@@ -3942,35 +3942,35 @@ function CreateRequestModal({
               if (step < 3) setStep(step + 1);
               else {
                 notify(
-                  "REQ-0285 créée. L’analyse attend une décision explicite.",
+                  'REQ-0285 créée. L’analyse attend une décision explicite.',
                 );
                 close();
-                go("/request/REQ-0281/intake");
+                go('/request/REQ-0281/intake');
               }
             }}
           >
-            {step < 3 ? "Continuer" : "Créer la demande"}
+            {step < 3 ? 'Continuer' : 'Créer la demande'}
             <ArrowRight />
           </Button>
         </>
       }
     >
       <div className="wizard-steps">
-        <span className={step >= 1 ? "active" : ""}>1 · Source</span>
-        <span className={step >= 2 ? "active" : ""}>2 · Client</span>
-        <span className={step >= 3 ? "active" : ""}>3 · Vérification</span>
+        <span className={step >= 1 ? 'active' : ''}>1 · Source</span>
+        <span className={step >= 2 ? 'active' : ''}>2 · Client</span>
+        <span className={step >= 3 ? 'active' : ''}>3 · Vérification</span>
       </div>
       {step === 1 && (
         <>
           <div className="channel-grid">
             {[
-              ["Email", Mail],
-              ["Documents", UploadCloud],
-              ["Formulaire", ClipboardCheck],
-              ["Saisie", Edit3],
+              ['Email', Mail],
+              ['Documents', UploadCloud],
+              ['Formulaire', ClipboardCheck],
+              ['Saisie', Edit3],
             ].map(([l, Icon]) => (
               <button
-                className={channel === l ? "active" : ""}
+                className={channel === l ? 'active' : ''}
                 key={String(l)}
                 onClick={() => {
                   setChannel(String(l));
@@ -3998,13 +3998,13 @@ function CreateRequestModal({
           <div className="scenario-strip">
             <b>Tester l’import</b>
             {[
-              ["valid", "Valide"],
-              ["invalid", "Illisible"],
-              ["duplicate", "Doublon"],
-              ["oversize", "Trop volumineux"],
+              ['valid', 'Valide'],
+              ['invalid', 'Illisible'],
+              ['duplicate', 'Doublon'],
+              ['oversize', 'Trop volumineux'],
             ].map(([id, l]) => (
               <button
-                className={scenario === id ? "active" : ""}
+                className={scenario === id ? 'active' : ''}
                 key={id}
                 onClick={() => {
                   setScenario(id);
@@ -4020,22 +4020,22 @@ function CreateRequestModal({
             <span>
               <b>Cahier_des_besoins.docx</b>
               <small>
-                {scenario === "valid"
-                  ? "1,2 Mo · format et contenu valides"
-                  : scenario === "invalid"
-                    ? "Document corrompu · remplacez le fichier"
-                    : scenario === "duplicate"
-                      ? "Déjà présent dans REQ-0272 · ouvrir ou remplacer"
-                      : "31 Mo · maximum autorisé 25 Mo"}
+                {scenario === 'valid'
+                  ? '1,2 Mo · format et contenu valides'
+                  : scenario === 'invalid'
+                    ? 'Document corrompu · remplacez le fichier'
+                    : scenario === 'duplicate'
+                      ? 'Déjà présent dans REQ-0272 · ouvrir ou remplacer'
+                      : '31 Mo · maximum autorisé 25 Mo'}
               </small>
             </span>
             {valid ? <CheckCircle2 /> : <XCircle />}
           </div>
-          {scenario === "duplicate" && (
+          {scenario === 'duplicate' && (
             <Button
               onClick={() => {
                 close();
-                go("/request/REQ-0279/intake");
+                go('/request/REQ-0279/intake');
               }}
             >
               Ouvrir le dossier existant
@@ -4049,7 +4049,7 @@ function CreateRequestModal({
             <span>Client *</span>
             <select
               onChange={(e) => {
-                setNewClient(e.target.value === "new");
+                setNewClient(e.target.value === 'new');
                 setDirty(true);
               }}
             >
@@ -4152,7 +4152,7 @@ function AppModal({
   saveField: (
     id: string,
     value: string,
-    state: ReviewField["state"],
+    state: ReviewField['state'],
     reason: string,
   ) => void;
   go: (p: string) => void;
@@ -4162,56 +4162,56 @@ function AppModal({
   setContractState: (id: string, state: string) => void;
 }) {
   if (!modal) return null;
-  if (modal.kind === "field") {
+  if (modal.kind === 'field') {
     const f = fields.find((x) => x.id === modal.data) || fields[0];
     return <FieldModal field={f} save={saveField} close={close} />;
   }
-  if (modal.kind === "create")
+  if (modal.kind === 'create')
     return <CreateRequestModal close={close} go={go} notify={notify} />;
-  if (modal.kind === "acceptance")
+  if (modal.kind === 'acceptance')
     return (
       <DecisionModal
-        id={modal.data || "OFR-2026-142"}
+        id={modal.data || 'OFR-2026-142'}
         close={close}
         notify={notify}
         complete={setOfferState}
       />
     );
-  if (modal.kind === "signature")
+  if (modal.kind === 'signature')
     return (
       <SignatureModal
-        id={modal.data || "CTR-2026-096"}
+        id={modal.data || 'CTR-2026-096'}
         close={close}
         notify={notify}
         complete={setContractState}
       />
     );
-  if (modal.kind === "client")
+  if (modal.kind === 'client')
     return (
       <FormModal
         title={
-          modal.data === "new" ? "Créer un client" : "Modifier la fiche client"
+          modal.data === 'new' ? 'Créer un client' : 'Modifier la fiche client'
         }
         eyebrow="DONNÉES JURIDIQUES ET CONTACTS"
         close={close}
         notify={notify}
       />
     );
-  if (modal.kind === "catalog")
+  if (modal.kind === 'catalog')
     return (
-      <CatalogModal id={modal.data || "new"} close={close} notify={notify} />
+      <CatalogModal id={modal.data || 'new'} close={close} notify={notify} />
     );
-  if (modal.kind === "invite")
+  if (modal.kind === 'invite')
     return <InviteModal close={close} notify={notify} />;
-  if (modal.kind === "assistant")
+  if (modal.kind === 'assistant')
     return <AssistantModal context={context} close={close} open={open} />;
-  if (modal.kind === "search") return <SearchModal close={close} go={go} />;
+  if (modal.kind === 'search') return <SearchModal close={close} go={go} />;
   const content: Record<string, [string, string, ReactNode]> = {
     help: [
-      "Centre d’aide",
-      "AIDE CONTEXTUELLE",
+      'Centre d’aide',
+      'AIDE CONTEXTUELLE',
       <div key="help" className="stack">
-        <button onClick={() => go("/coverage")}>
+        <button onClick={() => go('/coverage')}>
           <ShieldCheck />
           <span>
             <b>Vérifier la couverture MVP</b>
@@ -4221,7 +4221,7 @@ function AppModal({
         <button
           onClick={() =>
             notify(
-              "Aide ouverte : chaque blocage indique sa cause, son effet et sa résolution.",
+              'Aide ouverte : chaque blocage indique sa cause, son effet et sa résolution.',
             )
           }
         >
@@ -4234,8 +4234,8 @@ function AppModal({
       </div>,
     ],
     notifications: [
-      "Notifications",
-      "3 ACTIONS À TRAITER",
+      'Notifications',
+      '3 ACTIONS À TRAITER',
       <div key="notifications" className="stack">
         {requests.slice(0, 3).map((r) => (
           <button
@@ -4257,8 +4257,8 @@ function AppModal({
       </div>,
     ],
     account: [
-      "Compte utilisateur",
-      "ACCÈS INTERNE ACTIF",
+      'Compte utilisateur',
+      'ACCÈS INTERNE ACTIF',
       <dl key="account" className="facts">
         <div>
           <dt>Utilisateur</dt>
@@ -4279,21 +4279,21 @@ function AppModal({
       </dl>,
     ],
     document: [
-      `Document ${modal.data || ""}`,
-      "VERSION, PREUVE ET INDEXATION",
+      `Document ${modal.data || ''}`,
+      'VERSION, PREUVE ET INDEXATION',
       <DocumentActions
         key="document"
-        id={modal.data || "DOC-0441"}
+        id={modal.data || 'DOC-0441'}
         notify={notify}
       />,
     ],
     event: [
-      "Détail de l’événement",
-      "TRAÇABILITÉ CRITIQUE",
+      'Détail de l’événement',
+      'TRAÇABILITÉ CRITIQUE',
       <dl key="event" className="facts">
         <div>
           <dt>Entité</dt>
-          <dd>{modal.data || "REQ-0281"}</dd>
+          <dd>{modal.data || 'REQ-0281'}</dd>
         </div>
         <div>
           <dt>Avant</dt>
@@ -4318,8 +4318,8 @@ function AppModal({
       </dl>,
     ],
     case: [
-      "Résultats des 20 cas",
-      "ÉVALUATION DU PILOTE",
+      'Résultats des 20 cas',
+      'ÉVALUATION DU PILOTE',
       <CaseTable key="case" />,
     ],
   };
@@ -4329,7 +4329,7 @@ function AppModal({
       title={title}
       eyebrow={eyebrow}
       close={close}
-      wide={modal.kind === "case"}
+      wide={modal.kind === 'case'}
     >
       {body}
     </ModalShell>
@@ -4347,11 +4347,11 @@ function DecisionModal({
   notify: (s: string) => void;
   complete: (id: string, state: string) => void;
 }) {
-  const [decision, setDecision] = useState("Acceptée");
-  const [person, setPerson] = useState("");
-  const [date, setDate] = useState("");
-  const [proof, setProof] = useState("");
-  const [comment, setComment] = useState("");
+  const [decision, setDecision] = useState('Acceptée');
+  const [person, setPerson] = useState('');
+  const [date, setDate] = useState('');
+  const [proof, setProof] = useState('');
+  const [comment, setComment] = useState('');
   const valid = person && date && proof && comment;
   return (
     <ModalShell
@@ -4367,18 +4367,18 @@ function DecisionModal({
             disabled={!valid}
             onClick={() => {
               const state =
-                decision === "Acceptée"
-                  ? "accepted"
-                  : decision === "Refusée"
-                    ? "rejected"
-                    : decision === "Expirée"
-                      ? "expired"
-                      : "draft";
+                decision === 'Acceptée'
+                  ? 'accepted'
+                  : decision === 'Refusée'
+                    ? 'rejected'
+                    : decision === 'Expirée'
+                      ? 'expired'
+                      : 'draft';
               complete(id, state);
               notify(
-                decision === "Acceptée"
+                decision === 'Acceptée'
                   ? `Décision verrouillée. Créer le contrat depuis ${id} v2 sans ressaisie.`
-                  : "Nouvelle version requise avant poursuite.",
+                  : 'Nouvelle version requise avant poursuite.',
               );
               close();
             }}
@@ -4459,9 +4459,9 @@ function SignatureModal({
   notify: (s: string) => void;
   complete: (id: string, state: string) => void;
 }) {
-  const [signer, setSigner] = useState("");
-  const [date, setDate] = useState("");
-  const [ref, setRef] = useState("");
+  const [signer, setSigner] = useState('');
+  const [date, setDate] = useState('');
+  const [ref, setRef] = useState('');
   const [file, setFile] = useState(false);
   const valid = signer && date && ref && file;
   return (
@@ -4477,7 +4477,7 @@ function SignatureModal({
             kind="primary"
             disabled={!valid}
             onClick={() => {
-              complete(id, "signed");
+              complete(id, 'signed');
               notify(
                 `${id} signé : preuve enregistrée et version verrouillée.`,
               );
@@ -4542,7 +4542,7 @@ function FormModal({
   close: () => void;
   notify: (s: string) => void;
 }) {
-  const [name, setName] = useState("AgroNova SRL");
+  const [name, setName] = useState('AgroNova SRL');
   return (
     <ModalShell
       title={title}
@@ -4556,7 +4556,7 @@ function FormModal({
             kind="primary"
             disabled={!name.trim()}
             onClick={() => {
-              notify("Fiche client enregistrée avec historique avant/après.");
+              notify('Fiche client enregistrée avec historique avant/après.');
               close();
             }}
           >
@@ -4568,16 +4568,16 @@ function FormModal({
     >
       <div className="form-grid">
         {[
-          "Raison sociale *",
-          "Forme juridique *",
-          "Code fiscal *",
-          "Statut TVA *",
-          "Adresse *",
-          "Pays *",
-          "Site web",
-          "Secteur",
-          "Effectif",
-          "Nombre de sites",
+          'Raison sociale *',
+          'Forme juridique *',
+          'Code fiscal *',
+          'Statut TVA *',
+          'Adresse *',
+          'Pays *',
+          'Site web',
+          'Secteur',
+          'Effectif',
+          'Nombre de sites',
         ].map((x, i) => (
           <label className="field" key={x}>
             <span>{x}</span>
@@ -4590,7 +4590,7 @@ function FormModal({
       </div>
       <h3>Contact principal</h3>
       <div className="form-grid">
-        {["Nom *", "Fonction", "Email *", "Téléphone"].map((x) => (
+        {['Nom *', 'Fonction', 'Email *', 'Téléphone'].map((x) => (
           <label className="field" key={x}>
             <span>{x}</span>
             <input />
@@ -4612,7 +4612,7 @@ function CatalogModal({
 }) {
   return (
     <ModalShell
-      title={id === "new" ? "Nouveau service" : id}
+      title={id === 'new' ? 'Nouveau service' : id}
       eyebrow="SERVICE ET TARIF VERSIONNÉS"
       close={close}
       dirty
@@ -4621,7 +4621,7 @@ function CatalogModal({
           <Button onClick={close}>Annuler</Button>
           <Button
             onClick={() => {
-              notify("Brouillon tarifaire enregistré.");
+              notify('Brouillon tarifaire enregistré.');
               close();
             }}
           >
@@ -4631,7 +4631,7 @@ function CatalogModal({
             kind="primary"
             onClick={() => {
               notify(
-                "Version activée après confirmation ; l’ancienne reste archivée.",
+                'Version activée après confirmation ; l’ancienne reste archivée.',
               );
               close();
             }}
@@ -4643,20 +4643,20 @@ function CatalogModal({
     >
       <div className="form-grid">
         {[
-          "Nom du service *",
-          "Code *",
-          "Devise *",
-          "TVA *",
-          "Début de validité *",
-          "Fin de validité",
-          "Consultant / jour",
-          "Auditeur / jour",
-          "Expert / jour",
-          "Hébergement",
-          "Indemnité",
-          "Traduction / page",
-          "Commission",
-          "Conditions obligatoires",
+          'Nom du service *',
+          'Code *',
+          'Devise *',
+          'TVA *',
+          'Début de validité *',
+          'Fin de validité',
+          'Consultant / jour',
+          'Auditeur / jour',
+          'Expert / jour',
+          'Hébergement',
+          'Indemnité',
+          'Traduction / page',
+          'Commission',
+          'Conditions obligatoires',
         ].map((x) => (
           <label className="field" key={x}>
             <span>{x}</span>
@@ -4675,7 +4675,7 @@ function InviteModal({
   close: () => void;
   notify: (s: string) => void;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const valid = /^[^@]+@[^@]+\.[^@]+$/.test(email);
   return (
     <ModalShell
@@ -4770,14 +4770,14 @@ function DocumentActions({
       </dl>
       <div className="document-actions">
         {[
-          "Approuver",
-          "Rejeter",
-          "Créer une version",
-          "Indexer / réindexer",
-          "Retirer du corpus",
-          "Consulter l’erreur",
-          "Télécharger",
-          "Historique",
+          'Approuver',
+          'Rejeter',
+          'Créer une version',
+          'Indexer / réindexer',
+          'Retirer du corpus',
+          'Consulter l’erreur',
+          'Télécharger',
+          'Historique',
         ].map((x) => (
           <Button
             key={x}
@@ -4814,12 +4814,12 @@ function CaseTable() {
         <tbody>
           {Array.from({ length: 20 }, (_, i) => (
             <tr key={i}>
-              <td>CAS-{String(i + 1).padStart(2, "0")}</td>
-              <td>{i % 3 === 0 ? "HACCP" : "ISO 22000"}</td>
+              <td>CAS-{String(i + 1).padStart(2, '0')}</td>
+              <td>{i % 3 === 0 ? 'HACCP' : 'ISO 22000'}</td>
               <td>{56 + i * 2} min</td>
               <td>{20 + i} min</td>
-              <td>{i < 16 ? "93 %" : "À exécuter"}</td>
-              <td>{i < 16 ? "Complète" : "À exécuter"}</td>
+              <td>{i < 16 ? '93 %' : 'À exécuter'}</td>
+              <td>{i < 16 ? 'Complète' : 'À exécuter'}</td>
             </tr>
           ))}
         </tbody>
@@ -4837,14 +4837,14 @@ function AssistantModal({
   close: () => void;
   open: (k: ModalKind, d?: string) => void;
 }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const [answer, setAnswer] = useState(
-    "La prochaine action dépend de l’état affiché. Je peux expliquer une preuve ou un blocage sans approuver ni modifier le dossier.",
+    'La prochaine action dépend de l’état affiché. Je peux expliquer une preuve ou un blocage sans approuver ni modifier le dossier.',
   );
   const send = () =>
     setAnswer(
       /prix|tarif|tva/.test(q.toLowerCase())
-        ? "Je ne calcule pas les prix. Ouvrez le snapshot déterministe du dossier."
+        ? 'Je ne calcule pas les prix. Ouvrez le snapshot déterministe du dossier.'
         : `Dans le contexte « ${context} », je peux m’appuyer uniquement sur les données et documents approuvés visibles.`,
     );
   return (
@@ -4863,10 +4863,10 @@ function AssistantModal({
       <div className="assistant-answer">
         <b>{answer}</b>
         <p>L’assistant n’approuve, ne calcule et ne change aucun état.</p>
-        <button onClick={() => open("event", "assistant-source-1")}>
+        <button onClick={() => open('event', 'assistant-source-1')}>
           1 · Journal du contexte
         </button>
-        <button onClick={() => open("document", "assistant-source-2")}>
+        <button onClick={() => open('document', 'assistant-source-2')}>
           2 · Source approuvée
         </button>
       </div>
@@ -4876,7 +4876,7 @@ function AssistantModal({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Question dans ce périmètre"
-          onKeyDown={(e) => e.key === "Enter" && send()}
+          onKeyDown={(e) => e.key === 'Enter' && send()}
         />
         <Button kind="primary" onClick={send} ariaLabel="Envoyer">
           <Send />
@@ -4893,22 +4893,22 @@ function SearchModal({
   close: () => void;
   go: (p: string) => void;
 }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const results = [
     ...requests.map((r) => ({
       label: `${r.ref} · ${r.client}`,
       path: `/request/${r.ref}/${r.stage}`,
-      type: "Demande",
+      type: 'Demande',
     })),
     ...offersSeed.map((o) => ({
       label: `${o.id} · ${o.client}`,
       path: `/offers/${o.id}`,
-      type: "Offre",
+      type: 'Offre',
     })),
     ...contractsSeed.map((c) => ({
       label: `${c.id} · ${c.client}`,
       path: `/contracts/${c.id}`,
-      type: "Contrat",
+      type: 'Contrat',
     })),
   ].filter((x) => x.label.toLowerCase().includes(q.toLowerCase()));
   return (
@@ -4961,17 +4961,17 @@ export function PrismaCertUiBaseline() {
   const [compact, setCompact] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [locale, setLocaleState] = useState<Locale>(
-    initial.query.get("lang") === "ro" ? "ro" : "fr",
+    initial.query.get('lang') === 'ro' ? 'ro' : 'fr',
   );
   const [modal, setModal] = useState<ModalState>(null);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState('');
   const trigger = useRef<HTMLElement | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, AnalysisState>>(
     Object.fromEntries(requests.map((r) => [r.ref, r.analysis])),
   );
   const [fieldSets, setFieldSets] = useState<Record<string, ReviewField[]>>({
-    "REQ-0280": fructFields,
-    "REQ-0281": baseFields,
+    'REQ-0280': fructFields,
+    'REQ-0281': baseFields,
   });
   const [offerStates, setOfferStates] = useState<Record<string, string>>(
     Object.fromEntries(offersSeed.map((o) => [o.id, o.status])),
@@ -4984,29 +4984,29 @@ export function PrismaCertUiBaseline() {
       const r = routeInfo();
       setRoute(r.path);
       setQuery(r.query);
-      if (r.query.get("lang") === "ro") setLocaleState("ro");
+      if (r.query.get('lang') === 'ro') setLocaleState('ro');
     };
-    window.addEventListener("hashchange", sync);
-    window.addEventListener("popstate", sync);
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('popstate', sync);
     return () => {
-      window.removeEventListener("hashchange", sync);
-      window.removeEventListener("popstate", sync);
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('popstate', sync);
     };
   }, []);
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(""), 3200);
+    const id = setTimeout(() => setToast(''), 3200);
     return () => clearTimeout(id);
   }, [toast]);
   const go = (path: string) => {
-    window.location.hash = path.startsWith("#") ? path : `#${path}`;
-    setRoute(path.split("?")[0]);
-    setQuery(new URLSearchParams(path.split("?")[1] || ""));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.location.hash = path.startsWith('#') ? path : `#${path}`;
+    setRoute(path.split('?')[0]);
+    setQuery(new URLSearchParams(path.split('?')[1] || ''));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const setLocale = (l: Locale) => {
     setLocaleState(l);
-    const suffix = l === "ro" ? "?lang=ro" : "";
+    const suffix = l === 'ro' ? '?lang=ro' : '';
     go(`${route}${suffix}`);
   };
   const open = (kind: ModalKind, data?: string) => {
@@ -5020,50 +5020,50 @@ export function PrismaCertUiBaseline() {
   const notify = (s: string) => setToast(s);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        open("search");
+        open('search');
       }
     };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
   });
-  const parts = route.split("/").filter(Boolean);
-  let page = (parts[0] || "dashboard") as PageId;
+  const parts = route.split('/').filter(Boolean);
+  let page = (parts[0] || 'dashboard') as PageId;
   if (
     ![
-      "dashboard",
-      "requests",
-      "request",
-      "clients",
-      "offers",
-      "contracts",
-      "projects",
-      "documents",
-      "catalog",
-      "activity",
-      "users",
-      "coverage",
+      'dashboard',
+      'requests',
+      'request',
+      'clients',
+      'offers',
+      'contracts',
+      'projects',
+      'documents',
+      'catalog',
+      'activity',
+      'users',
+      'coverage',
     ].includes(page)
   )
-    page = "dashboard";
+    page = 'dashboard';
   const req = requests.find((r) => r.ref === parts[1]) || requests[0];
   const stage = (
     stages.some((s) => s.id === parts[2]) ? parts[2] : req.stage
   ) as Stage;
   const fields = fieldSets[req.ref] || baseFields;
   const context =
-    page === "request"
+    page === 'request'
       ? `${req.ref} · ${req.client} · ${stages.find((s) => s.id === stage)?.label}`
-      : page === "offers"
-        ? `${parts[1] || "Registre des offres"}`
-        : page === "contracts"
-          ? `${parts[1] || "Registre des contrats"}`
+      : page === 'offers'
+        ? `${parts[1] || 'Registre des offres'}`
+        : page === 'contracts'
+          ? `${parts[1] || 'Registre des contrats'}`
           : pageLabels[page];
   const saveField = (
     id: string,
     value: string,
-    state: ReviewField["state"],
+    state: ReviewField['state'],
     reason: string,
   ) => {
     setFieldSets((all) => ({
@@ -5075,20 +5075,20 @@ export function PrismaCertUiBaseline() {
               retained: value,
               state,
               rationale: reason,
-              reviewer: "Dan Popescu",
-              reviewedAt: "15 août 2026 · maintenant",
+              reviewer: 'Dan Popescu',
+              reviewedAt: '15 août 2026 · maintenant',
             }
           : f,
       ),
     }));
     close();
     notify(
-      "Décision enregistrée. Toute dépendance de calcul concernée est maintenant signalée comme invalide.",
+      'Décision enregistrée. Toute dépendance de calcul concernée est maintenant signalée comme invalide.',
     );
   };
   let content: ReactNode = <Dashboard go={go} open={open} />;
-  if (page === "requests") content = <RequestsPage go={go} open={open} />;
-  else if (page === "request")
+  if (page === 'requests') content = <RequestsPage go={go} open={open} />;
+  else if (page === 'request')
     content = (
       <RequestPage
         request={req}
@@ -5101,11 +5101,11 @@ export function PrismaCertUiBaseline() {
         notify={notify}
       />
     );
-  else if (page === "clients")
+  else if (page === 'clients')
     content = (
       <ClientsPage selected={parts[1]} go={go} open={open} notify={notify} />
     );
-  else if (page === "offers")
+  else if (page === 'offers')
     content = (
       <OffersPage
         selected={parts[1]}
@@ -5116,7 +5116,7 @@ export function PrismaCertUiBaseline() {
         setStates={setOfferStates}
       />
     );
-  else if (page === "contracts")
+  else if (page === 'contracts')
     content = (
       <ContractsPage
         selected={parts[1]}
@@ -5127,23 +5127,23 @@ export function PrismaCertUiBaseline() {
         setStates={setContractStates}
       />
     );
-  else if (page === "projects")
+  else if (page === 'projects')
     content = <ProjectsPage go={go} selected={parts[1]} />;
-  else if (page === "documents")
+  else if (page === 'documents')
     content = (
       <DocumentsPage
         open={open}
         notify={notify}
-        initialScenario={query.get("scenario")}
+        initialScenario={query.get('scenario')}
       />
     );
-  else if (page === "catalog")
+  else if (page === 'catalog')
     content = <CatalogPage open={open} notify={notify} />;
-  else if (page === "activity")
+  else if (page === 'activity')
     content = <ActivityPage open={open} notify={notify} />;
-  else if (page === "users")
+  else if (page === 'users')
     content = <UsersPage open={open} notify={notify} />;
-  else if (page === "coverage") content = <CoveragePage go={go} />;
+  else if (page === 'coverage') content = <CoveragePage go={go} />;
   return (
     <main className="app">
       <Sidebar
@@ -5164,7 +5164,7 @@ export function PrismaCertUiBaseline() {
           openMobile={() => setMobileNav(true)}
         />
         <div className="content">
-          {locale === "ro" && (
+          {locale === 'ro' && (
             <div className="locale-banner">
               <Languages />
               Scenariu de localizare în limba română activ. Datele și dovezile
