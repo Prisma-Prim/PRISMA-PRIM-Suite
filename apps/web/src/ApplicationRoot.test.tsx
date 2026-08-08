@@ -11,15 +11,4 @@ describe('ApplicationRoot', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
-
-  it('isolates the design lab from the normal application', () => {
-    render(<ApplicationRoot pathname="/design-lab" />);
-
-    expect(
-      screen.getByRole('heading', { name: 'Design direction lab' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('navigation', { name: 'Primary navigation' }),
-    ).not.toBeInTheDocument();
-  });
 });

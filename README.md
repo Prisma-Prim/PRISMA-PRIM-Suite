@@ -27,7 +27,6 @@ apps/
 docs/
   adr/           Durable technical decisions
   agents/        Cross-harness agent workflow and environment contract
-  design/        UI/UX exploration and visual approval process
   product/       Product specifications
 scripts/          Zero-dependency agent diagnostics and governance checks
 ```
@@ -39,8 +38,10 @@ backend-free reference at `/ui-baseline#/dashboard`. It uses synthetic data and
 simulated interactions so local agents can work from the current approved visual
 progress without confusing the mockup with implemented business behavior.
 
-Read [`docs/design/ui-baseline.md`](docs/design/ui-baseline.md) before extending
-or connecting this interface.
+Treat `/ui-baseline` as the recoverable Atlas Blue visual and interaction
+reference. Production slices may evolve it deliberately when their acceptance
+criteria require a change, but must not confuse its synthetic behavior with
+implemented product behavior.
 
 ## Local setup
 
@@ -75,7 +76,7 @@ pnpm format:check
 
 1. Domain language lives in `CONTEXT.md`; durable decisions live in `docs/adr/`.
 2. Product behaviour is approved in a master specification before ticketing.
-3. The production UI direction passes the iterative design approval gate and T00 consolidation before functional frontend slices start.
+3. Production UI slices evolve coherently from the preserved Atlas Blue baseline at `/ui-baseline`.
 4. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
 5. Every AI coding harness reads `AGENTS.md` and `docs/agents/issue-execution.md` before editing.
 6. Implementation follows red-green-refactor at the highest stable test seam.
