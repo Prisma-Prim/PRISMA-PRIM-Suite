@@ -49,6 +49,9 @@ Prerequisites: Node.js 24, pnpm 11.20.0, Docker with Compose.
 
 ```bash
 cp .env.example .env
+set -a
+. ./.env
+set +a
 docker compose up -d postgres
 pnpm install --frozen-lockfile
 pnpm db:migrate
@@ -58,7 +61,54 @@ pnpm dev
 
 The web application runs at `http://localhost:5173`. The API health endpoint is available at `http://localhost:3000/api/health`.
 
-No migration exists yet because the initial commit deliberately contains no business table. The first issue introducing persistent data must add a reviewed, versioned SQL migration.
+The repository now contains reviewed, versioned Drizzle migrations for persistent business data.
+
+## Local identity demonstration
+
+The root `.env` file is not loaded automatically when pnpm runs a filtered package script from a workspace package. Export it in each terminal before starting the API and web application.
+
+API terminal:
+
+```bash
+set -a
+. ./.env
+set +a
+pnpm --filter @prisma-prim/api dev
+```
+
+Web terminal:
+
+```bash
+set -a
+. ./.env
+set +a
+pnpm --filter @prisma-prim/web dev --mode local-demo
+```
+
+The local-demo mode is restricted to `NODE_ENV=development`. A normal production build and runtime fail closed even if demonstration variables are present.
+
+Public API demonstrations:
+
+```bash
+# 401: no verified principal
+curl -i http://localhost:3000/api/access/current-actor
+
+# 200: deterministic local demonstration principal
+curl -i http://localhost:3000/api/access/current-actor \
+  -H 'x-test-external-provider: local-demo' \
+  -H 'x-test-external-subject: local-demonstration-user' \
+  -H 'x-test-display-name: Local demonstration user' \
+  -H 'x-test-email: local-demo@example.test'
+
+# Persisted Workspace and Internal User
+docker compose exec postgres psql -U prisma_prim -d prisma_prim \
+  -c 'SELECT id, singleton_key, name FROM workspaces;' \
+  -c 'SELECT id, workspace_id, external_provider, external_subject, display_name, email, status FROM internal_users;'
+
+# 403: deactivate the demonstrated Internal User, then repeat the 200 request
+docker compose exec postgres psql -U prisma_prim -d prisma_prim \
+  -c "UPDATE internal_users SET status = 'inactive' WHERE external_subject = 'local-demonstration-user';"
+```
 
 ## Quality commands
 
