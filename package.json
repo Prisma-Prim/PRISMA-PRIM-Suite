@@ -9,6 +9,7 @@
   },
   "scripts": {
     "agent:doctor": "node scripts/agent-doctor.mjs",
+    "agent:doctor:postgres": "node scripts/agent-doctor.mjs --profile postgres",
     "agent:doctor:web": "node scripts/agent-doctor.mjs --profile web",
     "agent:doctor:web-postgres": "node scripts/agent-doctor.mjs --profile web-postgres",
     "build": "pnpm --recursive build",
