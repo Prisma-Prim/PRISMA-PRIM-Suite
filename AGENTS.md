@@ -71,12 +71,12 @@ Before committing, run the checks affected by the change. For repository-wide or
 node scripts/agent-doctor.mjs
 pnpm lint
 pnpm typecheck
-pnpm test
+pnpm test:unit
 pnpm build
 pnpm format:check
 ```
 
-Use `node scripts/agent-doctor.mjs --profile postgres` for PostgreSQL work, `node scripts/agent-doctor.mjs --profile web` for frontend/browser work, and `node scripts/agent-doctor.mjs --profile web-postgres` when both are required. Report any check that could not be run and the exact sanitized reason.
+The standard Codex environment uses `pnpm test:unit`; GitHub Actions remains responsible for the complete `pnpm test` command including Playwright. Use `node scripts/agent-doctor.mjs --profile postgres` for PostgreSQL work, `node scripts/agent-doctor.mjs --profile web` for a harness where Chromium is already available, and `node scripts/agent-doctor.mjs --profile web-postgres` when both are required. Report any check that could not be run and the exact sanitized reason.
 
 ## Agent skills
 
