@@ -1,0 +1,39 @@
+name: Agent metadata
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/ISSUE_TEMPLATE/agent-friction.yml
+      - .github/workflows/agent-metadata.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  ensure-agent-friction-label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Create or normalize agent-friction label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/labels/agent-friction" >/dev/null 2>&1; then
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/labels/agent-friction" \
+              -f new_name='agent-friction' \
+              -f color='BFD4F2' \
+              -f description='Repeatable repository, environment, CI, or AI harness friction'
+          else
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/labels" \
+              -f name='agent-friction' \
+              -f color='BFD4F2' \
+              -f description='Repeatable repository, environment, CI, or AI harness friction'
+          fi
