@@ -22,18 +22,34 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const localDemoHeaders =
+    const localDemoRequested =
       import.meta.env.MODE === 'local-demo' &&
-      import.meta.env.VITE_ACCESS_IDENTITY_MODE === 'local-demo'
-        ? {
-            'x-test-external-provider': import.meta.env
-              .VITE_DEMO_EXTERNAL_PROVIDER,
-            'x-test-external-subject': import.meta.env
-              .VITE_DEMO_EXTERNAL_SUBJECT,
-            'x-test-display-name': import.meta.env.VITE_DEMO_DISPLAY_NAME,
-            'x-test-email': import.meta.env.VITE_DEMO_EMAIL,
-          }
-        : undefined;
+      import.meta.env.VITE_ACCESS_IDENTITY_MODE === 'local-demo';
+    const localDemoIdentity = {
+      provider: import.meta.env.VITE_DEMO_EXTERNAL_PROVIDER,
+      subject: import.meta.env.VITE_DEMO_EXTERNAL_SUBJECT,
+      displayName: import.meta.env.VITE_DEMO_DISPLAY_NAME,
+      email: import.meta.env.VITE_DEMO_EMAIL,
+    };
+
+    if (
+      localDemoRequested &&
+      Object.values(localDemoIdentity).some(
+        (value) => typeof value !== 'string' || value.trim() === '',
+      )
+    ) {
+      setAccess({ status: 'error' });
+      return () => controller.abort();
+    }
+
+    const localDemoHeaders = localDemoRequested
+      ? {
+          'x-test-external-provider': localDemoIdentity.provider,
+          'x-test-external-subject': localDemoIdentity.subject,
+          'x-test-display-name': localDemoIdentity.displayName,
+          'x-test-email': localDemoIdentity.email,
+        }
+      : undefined;
 
     void fetch(
       `${import.meta.env.VITE_API_URL ?? '/api'}/access/current-actor`,
