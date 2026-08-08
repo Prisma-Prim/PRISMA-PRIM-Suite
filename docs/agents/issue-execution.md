@@ -38,6 +38,13 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 6. Correct every material finding and rerun affected checks.
 7. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
 
+For browser evidence:
+
+- write generated screenshots through Playwright's `testInfo.outputPath(...)` or another ignored test-output path;
+- never commit generated screenshot binaries to the repository;
+- let pull-request CI upload `apps/web/test-results/**/*.png` as `browser-evidence-pr-N`;
+- link the successful CI run or its downloadable artifact in the PR body.
+
 ## Capability-aware publication
 
 Harness capabilities and user authorization determine publication actions. A task prompt never grants capabilities or permissions the harness does not have.
