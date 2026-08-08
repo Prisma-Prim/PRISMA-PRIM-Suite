@@ -6,6 +6,8 @@ This repository contains PRISMA-PRIM Suite. Implement only the scope of the assi
 
 Before changing business behaviour, read the complete issue, `CONTEXT.md`, and the relevant ADRs in `docs/adr/`. Use the canonical domain terms in code, tests, issues, and documentation.
 
+The complete current frontend mockup is preserved at `/ui-baseline`. Before extending or connecting it, read `docs/design/ui-baseline.md`. Treat it as the current visual and interaction baseline, but not as proof of implemented business behavior or as an automatic closure of the design approval gate. Do not redesign its shell or silently replace synthetic interactions while implementing an unrelated issue.
+
 Before changing product UI, also read `docs/design/design-exploration.md`. Production UI work is blocked until the design approval gate is closed and T00 has consolidated the approved direction. Design-lab issues may explore alternatives with synthetic data but must not smuggle in production business behaviour.
 
 ## Durable technical decisions
