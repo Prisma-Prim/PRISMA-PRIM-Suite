@@ -59,12 +59,12 @@ Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses tha
 
 ## Capability matrix
 
-| Harness | Local files and tests | Git branch/commit | Push/PR | CI visibility | Merge |
-| --- | --- | --- | --- | --- | --- |
-| Codex Cloud | Yes, isolated cloud checkout | Usually yes | Yes when GitHub is connected | Task-dependent | Only with explicit authorization |
-| Codex CLI | Yes | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with explicit authorization |
-| Claude Code | Yes | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with explicit authorization |
-| Generic harness | Must be verified | Must be verified | Must be verified | Must be verified | Never assume |
+| Harness         | Local files and tests        | Git branch/commit            | Push/PR                         | CI visibility                | Merge                            |
+| --------------- | ---------------------------- | ---------------------------- | ------------------------------- | ---------------------------- | -------------------------------- |
+| Codex Cloud     | Yes, isolated cloud checkout | Usually yes                  | Yes when GitHub is connected    | Task-dependent               | Only with explicit authorization |
+| Codex CLI       | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with explicit authorization |
+| Claude Code     | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with explicit authorization |
+| Generic harness | Must be verified             | Must be verified             | Must be verified                | Must be verified             | Never assume                     |
 
 Current limitation: the Codex Cloud runtime selection UI does not expose Node 24 directly, so the setup script bootstraps it with `mise`. Reset the cloud environment cache whenever this script or its runtime assumptions change.
 
