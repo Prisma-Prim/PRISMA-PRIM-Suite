@@ -6,14 +6,14 @@ Last validated: 2026-08-08.
 
 ## Canonical baseline
 
-| Concern      | Contract                                     | Source of truth                         |
-| ------------ | -------------------------------------------- | --------------------------------------- |
-| Node.js      | `>=24.0.0 <25.0.0`                           | root `package.json` and `.node-version` |
-| pnpm         | `11.20.0`                                    | root `packageManager` and lockfile      |
-| Dependencies | `pnpm install --frozen-lockfile`             | `pnpm-lock.yaml`                        |
-| Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI |
-| Database     | isolated local PostgreSQL                    | issue #36 and the versioned scripts     |
-| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17 | `.github/workflows/ci.yml`              |
+| Concern      | Contract                                                | Source of truth                         |
+| ------------ | ------------------------------------------------------- | --------------------------------------- |
+| Node.js      | `>=24.0.0 <25.0.0`                                      | root `package.json` and `.node-version` |
+| pnpm         | `11.20.0`                                               | root `packageManager` and lockfile      |
+| Dependencies | `pnpm install --frozen-lockfile`                        | `pnpm-lock.yaml`                        |
+| Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI               |
+| Database     | isolated local PostgreSQL                               | issue #36 and the versioned scripts     |
+| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17            | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
 
