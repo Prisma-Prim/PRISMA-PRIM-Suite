@@ -37,7 +37,7 @@ For product UI work, ground visual decisions in `/ui-baseline` and the assigned 
 - Use a fresh AI-agent session for one GitHub issue and deliver only that issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that makes the behaviour complete.
 - For Codex Cloud work defined by a GitHub issue, launch from an `@codex` comment on the originating issue so the task inherits its complete context. A manual task is acceptable only when its prompt or repository files contain the complete contract; an issue URL alone is insufficient.
 - Follow `docs/agents/issue-execution.md`. Its implementation and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
-- Run `node scripts/agent-doctor.mjs` before editing, adding `--profile web` when browser work is required and `--profile web-postgres` when the slice also needs PostgreSQL.
+- Run `node scripts/agent-doctor.mjs` before editing. Use `--profile postgres` for PostgreSQL work, `--profile web` for browser work, and `--profile web-postgres` only when the same slice needs both.
 - Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
 - Give each owning module the narrowest stable public interface that completes the slice. Prefer tests through that interface, the API, or the user interface over tests coupled to implementation details.
 - Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
@@ -76,7 +76,7 @@ pnpm build
 pnpm format:check
 ```
 
-Use `node scripts/agent-doctor.mjs --profile web` for frontend/browser work and `node scripts/agent-doctor.mjs --profile web-postgres` when browser and PostgreSQL coverage are required. Report any check that could not be run and the exact sanitized reason.
+Use `node scripts/agent-doctor.mjs --profile postgres` for PostgreSQL work, `node scripts/agent-doctor.mjs --profile web` for frontend/browser work, and `node scripts/agent-doctor.mjs --profile web-postgres` when both are required. Report any check that could not be run and the exact sanitized reason.
 
 ## Agent skills
 
