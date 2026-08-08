@@ -2,14 +2,19 @@ import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
 
-const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+const databaseUrl = process.env.TEST_DATABASE_URL;
 if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
   throw new Error(
-    'TEST_DATABASE_URL or DATABASE_URL is required for the PostgreSQL Access REST suite.',
+    'TEST_DATABASE_URL is required for the destructive PostgreSQL Access REST suite.',
+  );
+}
+if (databaseUrl && !new URL(databaseUrl).pathname.endsWith('_test')) {
+  throw new Error(
+    'TEST_DATABASE_URL must identify a database whose name ends with "_test".',
   );
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
@@ -38,6 +43,11 @@ describeWithPostgres('Access REST API', () => {
     applicationPool = database.$client;
     await migrate(database, { migrationsFolder: './drizzle' });
     pool = new Pool({ connectionString: databaseUrl });
+  });
+
+  beforeEach(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.ACCESS_IDENTITY_MODE = 'test';
     await pool.query('TRUNCATE internal_users, workspaces CASCADE');
   });
 
@@ -63,7 +73,29 @@ describeWithPostgres('Access REST API', () => {
     const response = await fetch(`${origin}/api/access/current-actor`);
 
     expect(response.status).toBe(401);
+    await expect(persistedRecordCounts()).resolves.toEqual({
+      internalUsers: '0',
+      workspaces: '0',
+    });
   });
+
+  it.each(['test', 'local-demo'])(
+    'rejects %s identity injection when NODE_ENV is production',
+    async (identityMode) => {
+      process.env.NODE_ENV = 'production';
+      process.env.ACCESS_IDENTITY_MODE = identityMode;
+
+      const response = await fetch(`${origin}/api/access/current-actor`, {
+        headers: identityHeaders(),
+      });
+
+      expect(response.status).toBe(401);
+      await expect(persistedRecordCounts()).resolves.toEqual({
+        internalUsers: '0',
+        workspaces: '0',
+      });
+    },
+  );
 
   it('provisions one persistent actor for repeated and concurrent requests', async () => {
     const responses = await Promise.all(
@@ -86,14 +118,10 @@ describeWithPostgres('Access REST API', () => {
       workspaceName: 'PRISMA Workspace',
     });
 
-    const userCount = await pool.query<{ count: string }>(
-      'SELECT count(*) FROM internal_users',
-    );
-    const workspaceCount = await pool.query<{ count: string }>(
-      'SELECT count(*) FROM workspaces',
-    );
-    expect(userCount.rows[0]?.count).toBe('1');
-    expect(workspaceCount.rows[0]?.count).toBe('1');
+    await expect(persistedRecordCounts()).resolves.toEqual({
+      internalUsers: '1',
+      workspaces: '1',
+    });
   });
 
   it('synchronizes profile attributes without changing local identity', async () => {
@@ -142,8 +170,21 @@ describeWithPostgres('Access REST API', () => {
       ['subject-20'],
     );
     expect(persistedProfile.rows[0]).toEqual({
-      display_name: 'Ada Popescu',
-      email: 'ada.popescu@example.test',
+      display_name: 'Ada Ionescu',
+      email: 'ada@example.test',
     });
   });
+
+  async function persistedRecordCounts() {
+    const userCount = await pool.query<{ count: string }>(
+      'SELECT count(*) FROM internal_users',
+    );
+    const workspaceCount = await pool.query<{ count: string }>(
+      'SELECT count(*) FROM workspaces',
+    );
+    return {
+      internalUsers: userCount.rows[0]?.count,
+      workspaces: workspaceCount.rows[0]?.count,
+    };
+  }
 });

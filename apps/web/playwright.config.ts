@@ -24,7 +24,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4173',
+    command:
+      'pnpm build --mode local-demo && pnpm preview --host 127.0.0.1 --port 4173',
     env: {
       VITE_ACCESS_IDENTITY_MODE: 'local-demo',
       VITE_DEMO_EXTERNAL_PROVIDER: 'local-demo',

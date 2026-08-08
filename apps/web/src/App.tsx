@@ -23,6 +23,7 @@ export function App() {
   useEffect(() => {
     const controller = new AbortController();
     const localDemoHeaders =
+      import.meta.env.MODE === 'local-demo' &&
       import.meta.env.VITE_ACCESS_IDENTITY_MODE === 'local-demo'
         ? {
             'x-test-external-provider': import.meta.env

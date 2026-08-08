@@ -31,4 +31,14 @@ describe('App', () => {
       screen.getByRole('navigation', { name: 'Primary navigation' }),
     ).toBeInTheDocument();
   });
+
+  it('does not attach deterministic identity headers in a normal build mode', async () => {
+    render(<App />);
+
+    await screen.findByRole('banner');
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/access/current-actor',
+      expect.objectContaining({ headers: undefined }),
+    );
+  });
 });
