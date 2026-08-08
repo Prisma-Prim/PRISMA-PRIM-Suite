@@ -84,11 +84,11 @@ export function databaseTargetsAreSafe(databaseUrl, testDatabaseUrl) {
 
   return Boolean(
     developmentDatabase &&
-      testDatabase &&
-      isLoopbackHost(developmentDatabase.hostname) &&
-      isLoopbackHost(testDatabase.hostname) &&
-      developmentDatabase.database !== testDatabase.database &&
-      testDatabase.database.endsWith('_test'),
+    testDatabase &&
+    isLoopbackHost(developmentDatabase.hostname) &&
+    isLoopbackHost(testDatabase.hostname) &&
+    developmentDatabase.database !== testDatabase.database &&
+    testDatabase.database.endsWith('_test'),
   );
 }
 
