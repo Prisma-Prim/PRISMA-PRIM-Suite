@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   compareVersions,
+  databaseTargetsAreSafe,
   evaluateEnvironment,
   maximumExclusiveVersion,
   minimumVersion,
@@ -47,7 +48,37 @@ test('parses PostgreSQL targets without exposing credentials', () => {
     },
   );
   assert.equal(parseDatabaseTarget('https://example.test/database'), null);
+  assert.equal(
+    parseDatabaseTarget(
+      'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test?host=db.example.test',
+    ),
+    null,
+  );
   assert.equal(parseDatabaseTarget('not-a-url'), null);
+});
+
+test('certifies only distinct loopback targets before connectivity is attempted', () => {
+  assert.equal(
+    databaseTargetsAreSafe(
+      healthyEnvironment.databaseUrl,
+      healthyEnvironment.testDatabaseUrl,
+    ),
+    true,
+  );
+  assert.equal(
+    databaseTargetsAreSafe(
+      healthyEnvironment.databaseUrl,
+      'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test?host=db.example.test',
+    ),
+    false,
+  );
+  assert.equal(
+    databaseTargetsAreSafe(
+      healthyEnvironment.databaseUrl,
+      'postgresql://user:secret@db.example.test:5432/prisma_prim_test',
+    ),
+    false,
+  );
 });
 
 test('accepts the complete canonical environment', () => {
