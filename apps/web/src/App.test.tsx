@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { App } from './App';
 
 describe('App', () => {
-  it('renders the foundation status', () => {
+  it('renders the production application shell', () => {
     render(<App />);
 
     expect(
-      screen.getByRole('heading', { name: 'PRISMA-PRIM Suite' }),
+      screen.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Foundation operational')).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).toBeInTheDocument();
   });
 });
