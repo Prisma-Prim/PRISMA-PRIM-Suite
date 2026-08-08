@@ -123,7 +123,7 @@ pnpm build
 pnpm format:check
 ```
 
-For Codex Cloud setup, maintenance, isolated database variables, and cache-reset instructions, see [Codex Cloud environment](docs/agents/codex-cloud-environment.md).
+For Codex Cloud setup, maintenance, isolated database variables, and cache-reset instructions, see [AI agent environment contract](docs/agents/environment.md).
 
 ## Development workflow
 
