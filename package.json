@@ -9,6 +9,7 @@
   },
   "scripts": {
     "agent:doctor": "node scripts/agent-doctor.mjs",
+    "agent:doctor:postgres": "node scripts/agent-doctor.mjs --profile postgres",
     "agent:doctor:web": "node scripts/agent-doctor.mjs --profile web",
     "agent:doctor:web-postgres": "node scripts/agent-doctor.mjs --profile web-postgres",
     "build": "pnpm --recursive build",
@@ -17,6 +18,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "pnpm test:agent-governance && pnpm --recursive test",
+    "test:unit": "pnpm test:agent-governance && pnpm --filter @prisma-prim/api test && pnpm --filter @prisma-prim/web exec vitest run",
     "test:access:postgres": "pnpm --filter @prisma-prim/api test:access:postgres",
     "test:agent-doctor": "node --test scripts/agent-doctor.test.mjs",
     "test:agent-governance": "node --test scripts/*.test.mjs",

@@ -105,6 +105,20 @@ test('the web profile requires an executable Chromium', () => {
   assert.equal(missing.find((check) => check.id === 'chromium').status, 'FAIL');
 });
 
+test('the postgres profile verifies databases without requiring Chromium', () => {
+  const results = evaluateEnvironment(
+    { ...healthyEnvironment, chromiumAvailable: false },
+    'postgres',
+  );
+
+  assert.equal(results.find((check) => check.id === 'chromium').status, 'SKIP');
+  assert.equal(
+    results.find((check) => check.id === 'database-safety').status,
+    'PASS',
+  );
+  assert.equal(results.find((check) => check.id === 'postgres').status, 'PASS');
+});
+
 test('the web-postgres profile requires safe local database targets and connectivity', () => {
   const healthy = evaluateEnvironment(healthyEnvironment, 'web-postgres');
   const failedIds = healthy

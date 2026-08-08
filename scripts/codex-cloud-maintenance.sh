@@ -4,6 +4,7 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repository_root}"
 
+setup_started_at=${SECONDS}
 install_system_dependencies=false
 if [[ "${1:-}" == "--install-system-dependencies" ]]; then
   install_system_dependencies=true
@@ -11,6 +12,16 @@ elif [[ -n "${1:-}" ]]; then
   echo "Usage: bash scripts/codex-cloud-maintenance.sh [--install-system-dependencies]" >&2
   exit 2
 fi
+
+run_step() {
+  local description="$1"
+  shift
+  local started_at=${SECONDS}
+
+  echo "==> ${description}"
+  "$@"
+  echo "<== ${description} completed in $((SECONDS - started_at))s"
+}
 
 expected_pnpm="$(node --input-type=module --eval "import packageJson from './package.json' with { type: 'json' }; process.stdout.write(packageJson.packageManager.split('@').at(-1));")"
 
@@ -28,21 +39,53 @@ activate_exact_pnpm() {
   npm install --global "pnpm@${expected_pnpm}"
 }
 
-activate_exact_pnpm
+dependency_fingerprint() {
+  local -a manifests
+  mapfile -t manifests < <(
+    git ls-files -- package.json pnpm-lock.yaml pnpm-workspace.yaml ':(glob)**/package.json' |
+      LC_ALL=C sort --unique
+  )
+
+  if [[ "${#manifests[@]}" -eq 0 ]]; then
+    echo "No dependency manifests were found in the repository." >&2
+    return 1
+  fi
+
+  {
+    printf 'node=%s\npnpm=%s\n' "$(node --version)" "${expected_pnpm}"
+    sha256sum "${manifests[@]}"
+  } | sha256sum | awk '{print $1}'
+}
+
+synchronize_dependencies() {
+  local marker="node_modules/.codex-dependency-fingerprint"
+  local current_fingerprint
+  current_fingerprint="$(dependency_fingerprint)"
+
+  if [[ -f "${marker}" ]] && [[ "$(<"${marker}")" == "${current_fingerprint}" ]]; then
+    echo "Dependency manifests are unchanged; reusing cached node_modules."
+    return
+  fi
+
+  pnpm install --frozen-lockfile --prefer-offline
+  printf '%s\n' "${current_fingerprint}" >"${marker}"
+}
+
+run_step "Activate pnpm ${expected_pnpm}" activate_exact_pnpm
 
 if [[ "$(pnpm --version)" != "${expected_pnpm}" ]]; then
   echo "Unable to activate pnpm ${expected_pnpm}. Reset the Codex environment cache." >&2
   exit 1
 fi
 
-pnpm install --frozen-lockfile
+run_step "Synchronize workspace dependencies" synchronize_dependencies
 
 if [[ "${install_system_dependencies}" == "true" ]]; then
-  pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
-  bash scripts/codex-cloud-postgres.sh --install
+  run_step "Install and provision local PostgreSQL" bash scripts/codex-cloud-postgres.sh --install
 else
-  pnpm --filter @prisma-prim/web exec playwright install chromium
-  bash scripts/codex-cloud-postgres.sh --start
+  run_step "Restore local PostgreSQL" bash scripts/codex-cloud-postgres.sh --start
 fi
 
-node scripts/agent-doctor.mjs --profile web-postgres
+run_step "Verify the standard Codex environment" node scripts/agent-doctor.mjs --profile postgres
+
+echo "Codex environment preparation completed in $((SECONDS - setup_started_at))s."

@@ -97,7 +97,7 @@ function requiresChromium(profile) {
 }
 
 function requiresPostgres(profile) {
-  return profile === 'web-postgres';
+  return profile === 'postgres' || profile === 'web-postgres';
 }
 
 function result(id, status, summary, remediation = null) {
@@ -346,9 +346,9 @@ export function main() {
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
   const json = process.argv.includes('--json');
 
-  if (!new Set(['base', 'web', 'web-postgres']).has(profile)) {
+  if (!new Set(['base', 'postgres', 'web', 'web-postgres']).has(profile)) {
     process.stderr.write(
-      `Unknown profile: ${profile}. Expected base, web, or web-postgres.\n`,
+      `Unknown profile: ${profile}. Expected base, postgres, web, or web-postgres.\n`,
     );
     process.exitCode = 2;
     return;

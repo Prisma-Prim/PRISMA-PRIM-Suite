@@ -60,11 +60,25 @@ if ! command -v psql >/dev/null 2>&1 || ! command -v pg_ctlcluster >/dev/null 2>
 fi
 
 cluster_found=false
-while read -r version cluster _port status _owner _data_directory _log_file; do
+while read -r version cluster port status _owner _data_directory _log_file; do
   [[ -n "${version}" ]] || continue
   cluster_found=true
   if [[ "${status}" != "online" ]]; then
-    run_as_root pg_ctlcluster "${version}" "${cluster}" start
+    run_as_root timeout 45s pg_ctlcluster "${version}" "${cluster}" start
+  fi
+
+  database_ready=false
+  for _attempt in {1..30}; do
+    if pg_isready --host 127.0.0.1 --port "${port}" --timeout 1 >/dev/null 2>&1; then
+      database_ready=true
+      break
+    fi
+    sleep 1
+  done
+
+  if [[ "${database_ready}" != "true" ]]; then
+    echo "PostgreSQL cluster ${version}/${cluster} did not become ready within 30 seconds." >&2
+    exit 1
   fi
 done < <(pg_lsclusters --no-header)
 
