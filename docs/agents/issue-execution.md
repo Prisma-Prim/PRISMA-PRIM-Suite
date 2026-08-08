@@ -42,14 +42,16 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 
 Harness capabilities and user authorization determine publication actions. A task prompt never grants capabilities or permissions the harness does not have.
 
-| Capability                                  | Required behavior                                                                             |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| No Git or GitHub write access               | Produce a tested patch or diff and report the exact publication blocker.                      |
-| Git branch and commit access                | Create one focused English commit on an isolated issue branch.                                |
-| Push and PR access                          | Push the branch and open one PR targeting `main`.                                             |
-| CI visibility                               | Monitor CI and fix failures caused by the PR.                                                 |
-| Merge access without explicit authorization | Stop after a green, reviewable PR. Do not merge.                                              |
-| Merge access with explicit authorization    | Squash-merge only after reviews and green CI, then clean the issue branch/worktree when safe. |
+| Capability                                                              | Required behavior                                                                             |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| No Git or GitHub write access                                           | Produce a tested patch or diff and report the exact publication blocker.                      |
+| Git branch and commit access                                            | Create one focused English commit on an isolated issue branch.                                |
+| Push and PR access                                                      | Push the branch and open one PR targeting `main`.                                             |
+| CI visibility                                                           | Monitor CI and fix failures caused by the PR.                                                 |
+| Merge access without task-specific or standing repository authorization | Stop after a green, reviewable PR. Do not merge.                                              |
+| Merge access with task-specific or standing repository authorization    | Squash-merge only after reviews and green CI, then clean the issue branch/worktree when safe. |
+
+If `AGENTS.md` records standing repository authorization, it satisfies the authorization requirement for every conformant PR until explicitly revoked. Do not pause to request per-PR confirmation. Readiness remains mandatory: all required checks must be green, Standards and Spec reviews complete, scope conformant, and blocking feedback resolved.
 
 The PR body must include `Closes #N`, delivered behavior, checks, browser evidence when applicable, decisions, remaining limitations, Standards review, Spec review, and the environment retrospective.
 
