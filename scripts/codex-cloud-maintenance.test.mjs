@@ -6,6 +6,9 @@ const maintenanceScript = await readFile(
   new URL('./codex-cloud-maintenance.sh', import.meta.url),
   'utf8',
 );
+const packageJson = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+);
 
 test('keeps browser installation out of the standard Codex environment', () => {
   assert.doesNotMatch(maintenanceScript, /playwright install|chromium/i);
@@ -24,4 +27,10 @@ test('reuses dependencies when their complete manifest fingerprint is unchanged'
 test('reports the duration of each setup phase', () => {
   assert.match(maintenanceScript, /run_step/);
   assert.match(maintenanceScript, /Codex environment preparation completed in/);
+});
+
+test('provides browser-free repository verification for standard agents', () => {
+  assert.match(packageJson.scripts['test:unit'], /vitest run/);
+  assert.doesNotMatch(packageJson.scripts['test:unit'], /playwright/);
+  assert.match(packageJson.scripts.test, /recursive test/);
 });
