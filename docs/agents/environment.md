@@ -76,14 +76,9 @@ Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compar
 
 ### Browser tests
 
-The standard Codex Cloud environment does not install Chromium. Browser tests remain fully enforced by GitHub Actions. For an exceptional Codex task that must execute Playwright locally, install Chromium on demand:
+The standard Codex Cloud environment does not install Chromium. Its repository-wide verification uses `pnpm test:unit`, while GitHub Actions runs the complete `pnpm test` command including Playwright.
 
-```bash
-pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
-node scripts/agent-doctor.mjs --profile web
-```
-
-This cost belongs only to the browser task and is not added to every cold environment.
+Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Keep that cost out of the standard environment.
 
 ### Network and credentials
 
@@ -102,7 +97,7 @@ Use **Reset cache** only when:
 - repository changes add a new system-level prerequisite;
 - setup, maintenance, or environment values changed but automatic invalidation did not occur.
 
-After changing the environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs --profile postgres` to pass before implementation. Install Chromium explicitly and run `--profile web` or `--profile web-postgres` only for tasks that need browser execution.
+After changing the environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs --profile postgres` to pass before implementation. Use `--profile web` or `--profile web-postgres` only in a browser-capable environment.
 
 ## Local and other harnesses
 
