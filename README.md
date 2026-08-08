@@ -115,12 +115,15 @@ docker compose exec postgres psql -U prisma_prim -d prisma_prim \
 ```bash
 node scripts/agent-doctor.mjs
 node scripts/agent-doctor.mjs --profile web
+node scripts/agent-doctor.mjs --profile web-postgres
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
 pnpm format:check
 ```
+
+For Codex Cloud setup, maintenance, isolated database variables, and cache-reset instructions, see [Codex Cloud environment](docs/agents/codex-cloud-environment.md).
 
 ## Development workflow
 
