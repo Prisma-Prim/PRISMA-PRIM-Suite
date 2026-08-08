@@ -15,9 +15,7 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
 if (databaseUrl) {
   const databaseTarget = new URL(databaseUrl);
   const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
-  const databaseName = decodeURIComponent(
-    databaseTarget.pathname.replace(/^\\/+/, ''),
-  );
+  const databaseName = decodeURIComponent(databaseTarget.pathname.slice(1));
   const isSafeTestTarget =
     new Set(['postgres:', 'postgresql:']).has(databaseTarget.protocol) &&
     !databaseTarget.search &&
