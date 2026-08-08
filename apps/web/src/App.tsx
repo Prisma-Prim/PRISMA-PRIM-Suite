@@ -1,15 +1,23 @@
+import {
+  ApplicationContentSurface,
+  ApplicationShell,
+} from './production-shell/ApplicationShell';
+
 export function App() {
   return (
-    <main className="app-shell">
-      <section className="foundation-card">
-        <p className="eyebrow">PRISMA CERT AI</p>
-        <h1>PRISMA-PRIM Suite</h1>
+    <ApplicationShell
+      activeHref="/"
+      navigationItems={[{ href: '/', label: 'Home' }]}
+      userArea={<span>Internal workspace</span>}
+    >
+      <ApplicationContentSurface>
+        <p className="eyebrow">Workspace home</p>
+        <h1>Welcome to PRISMA-PRIM Suite</h1>
         <p>
-          The engineering foundation is ready. Business workflows will be added
-          from validated GitHub issues.
+          This workspace is ready to host your organization&apos;s workflows as
+          they become available.
         </p>
-        <span className="status">Foundation operational</span>
-      </section>
-    </main>
+      </ApplicationContentSurface>
+    </ApplicationShell>
   );
 }
