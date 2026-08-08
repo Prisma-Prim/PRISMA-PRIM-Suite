@@ -35,6 +35,7 @@ For product UI work, ground visual decisions in `/ui-baseline` and the assigned 
 ## Delivery workflow
 
 - Use a fresh AI-agent session for one GitHub issue and deliver only that issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that makes the behaviour complete.
+- For Codex Cloud work defined by a GitHub issue, launch from an `@codex` comment on the originating issue so the task inherits its complete context. A manual task is acceptable only when its prompt or repository files contain the complete contract; an issue URL alone is insufficient.
 - Follow `docs/agents/issue-execution.md`. Its implementation and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
 - Run `node scripts/agent-doctor.mjs` before editing, adding `--profile web` when browser work is required.
 - Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
