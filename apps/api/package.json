@@ -13,7 +13,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@clerk/backend": "^3.16.1",
+    "@clerk/backend": "3.16.1",
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",

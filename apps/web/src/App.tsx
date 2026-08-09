@@ -40,8 +40,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       )
       .then(async (response) => {
         if (response.status === 401) {
-          sessionStorage.setItem('deterministic-auth-state', 'signed-out');
-          return setAccess({ status: 'error' });
+          await identity.rejectSession();
+          return setAccess({ status: 'signed-out' });
         }
         if (response.status === 403) return setAccess({ status: 'forbidden' });
         if (!response.ok) return setAccess({ status: 'error' });

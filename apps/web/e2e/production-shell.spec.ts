@@ -114,9 +114,10 @@ test('keeps representative UI baseline routes isolated from production', async (
 test('fails closed for a signed-out deterministic session and recovers the protected route', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    sessionStorage.setItem('deterministic-auth-state', 'signed-out'),
-  );
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('deterministic-auth-state') === null)
+      sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+  });
   await page.goto('/protected-return-target?source=invitation');
   await expect(page.getByRole('alert')).toHaveText(
     'Sign in is required to access this workspace.',

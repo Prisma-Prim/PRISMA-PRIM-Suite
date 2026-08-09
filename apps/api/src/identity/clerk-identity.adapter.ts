@@ -2,6 +2,7 @@ import { createClerkClient } from '@clerk/backend';
 import { Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import type { ExternalPrincipal } from '../access/access.types.js';
 import type { IdentityRequest } from '../access/external-identity-verifier.js';
+import { identityConfiguration } from './identity-configuration.js';
 
 interface ClerkUserProfile {
   firstName: string | null;
@@ -14,22 +15,45 @@ export interface ClerkGateway {
   getUser(userId: string): Promise<ClerkUserProfile>;
 }
 
-function productionGateway(): ClerkGateway {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
-  if (!secretKey || !publishableKey) {
-    throw new Error('Clerk server configuration is incomplete.');
-  }
-  const client = createClerkClient({ secretKey, publishableKey });
+interface ClerkClientGateway {
+  authenticateRequest(
+    request: Request,
+    options: { authorizedParties: string[] },
+  ): Promise<{
+    isAuthenticated: boolean;
+    toAuth(): { userId: string | null } | null;
+  }>;
+  users: { getUser(userId: string): Promise<ClerkUserProfile> };
+}
+
+export function clerkGateway(
+  client: ClerkClientGateway,
+  webOrigin: string,
+): ClerkGateway {
   return {
     async authenticate(request) {
-      const state = await client.authenticateRequest(request);
+      const state = await client.authenticateRequest(request, {
+        authorizedParties: [webOrigin],
+      });
       if (!state.isAuthenticated) return null;
       const auth = state.toAuth();
-      return auth.userId ? { userId: auth.userId } : null;
+      return auth?.userId ? { userId: auth.userId } : null;
     },
     getUser: (userId) => client.users.getUser(userId),
   };
+}
+
+function productionGateway(): ClerkGateway {
+  const { secretKey, publishableKey, webOrigin } = identityConfiguration();
+  const client = createClerkClient({ secretKey, publishableKey });
+  return clerkGateway(
+    {
+      authenticateRequest: (request, options) =>
+        client.authenticateRequest(request, options),
+      users: client.users,
+    },
+    webOrigin,
+  );
 }
 
 @Injectable()
@@ -51,15 +75,15 @@ export class ClerkIdentityAdapter {
       if (!identity) throw new UnauthorizedException();
       const user = await gateway.getUser(identity.userId);
       const email = user.primaryEmailAddress?.emailAddress?.trim();
-      const displayName = [user.firstName, user.lastName]
+      const profileName = [user.firstName, user.lastName]
         .filter(Boolean)
         .join(' ')
         .trim();
-      if (!email || !displayName) throw new UnauthorizedException();
+      if (!email) throw new UnauthorizedException();
       return {
         provider: 'clerk',
         subject: identity.userId,
-        displayName,
+        displayName: profileName || email,
         email,
       };
     } catch {

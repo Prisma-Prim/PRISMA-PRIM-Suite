@@ -30,7 +30,7 @@ importers:
   apps/api:
     dependencies:
       '@clerk/backend':
-        specifier: ^3.16.1
+        specifier: 3.16.1
         version: 3.16.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@nestjs/common':
         specifier: 11.1.28
@@ -82,7 +82,7 @@ importers:
   apps/web:
     dependencies:
       '@clerk/react':
-        specifier: ^6.13.1
+        specifier: 6.13.1
         version: 6.13.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       lucide-react:
         specifier: 0.468.0

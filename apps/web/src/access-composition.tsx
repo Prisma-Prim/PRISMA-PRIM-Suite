@@ -10,6 +10,7 @@ export interface BrowserIdentity {
   loaded: boolean;
   signedIn: boolean;
   getToken(): Promise<string | null>;
+  rejectSession(): Promise<void>;
   signOut(): Promise<void>;
   signedOutView: ReactNode;
   requestHeaders?: Record<string, string>;
@@ -45,8 +46,9 @@ function ClerkIdentity({
       loaded: isLoaded,
       signedIn: Boolean(isSignedIn),
       getToken,
+      rejectSession: () => clerk.signOut(),
       signOut: () => clerk.signOut(),
-      signedOutView: <RedirectToSignIn redirectUrl={window.location.href} />,
+      signedOutView: <RedirectToSignIn />,
     }),
     [clerk, getToken, isLoaded, isSignedIn],
   );
@@ -62,6 +64,9 @@ export function deterministicBrowserIdentity(
     loaded: true,
     signedIn,
     getToken: async () => null,
+    rejectSession: async () => {
+      sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+    },
     signOut: async () => {
       sessionStorage.setItem('deterministic-auth-state', 'signed-out');
       window.location.reload();

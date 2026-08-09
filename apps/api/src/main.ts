@@ -1,15 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { identityConfiguration } from './identity/identity-configuration.js';
 
 function validateIdentityConfiguration(): void {
-  if (
-    process.env.NODE_ENV === 'production' &&
-    (!process.env.CLERK_SECRET_KEY || !process.env.CLERK_PUBLISHABLE_KEY)
-  ) {
-    throw new Error(
-      'CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY are required in production.',
-    );
-  }
+  if (process.env.NODE_ENV === 'production') identityConfiguration();
 }
 
 async function bootstrap(): Promise<void> {

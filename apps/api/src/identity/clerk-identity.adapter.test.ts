@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ClerkIdentityAdapter,
+  clerkGateway,
   type ClerkGateway,
 } from './clerk-identity.adapter.js';
 
@@ -16,6 +17,29 @@ function request(headers: Record<string, string> = {}) {
 }
 
 describe('ClerkIdentityAdapter', () => {
+  it('forwards the exact frontend origin as Clerk authorized parties', async () => {
+    const authenticateRequest = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      toAuth: () => ({ userId: 'user_123' }),
+    });
+    const gateway = clerkGateway(
+      {
+        authenticateRequest,
+        users: { getUser: vi.fn() },
+      },
+      'https://suite.example.test',
+    );
+    const webRequest = new Request(
+      'https://api.example.test/api/access/current-actor',
+    );
+
+    await gateway.authenticate(webRequest);
+
+    expect(authenticateRequest).toHaveBeenCalledWith(webRequest, {
+      authorizedParties: ['https://suite.example.test'],
+    });
+  });
+
   it('translates a verified Clerk identity into an External Principal', async () => {
     const gateway: ClerkGateway = {
       authenticate: vi.fn().mockResolvedValue({ userId: 'user_123' }),
@@ -46,5 +70,25 @@ describe('ClerkIdentityAdapter', () => {
     await expect(adapter.verify(request())).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+
+  it('uses the verified email when an invited user has no profile name', async () => {
+    const gateway: ClerkGateway = {
+      authenticate: vi.fn().mockResolvedValue({ userId: 'user_email_only' }),
+      getUser: vi.fn().mockResolvedValue({
+        firstName: null,
+        lastName: null,
+        primaryEmailAddress: { emailAddress: 'invitee@example.test' },
+      }),
+    };
+
+    await expect(
+      new ClerkIdentityAdapter(gateway).verify(request()),
+    ).resolves.toEqual({
+      provider: 'clerk',
+      subject: 'user_email_only',
+      displayName: 'invitee@example.test',
+      email: 'invitee@example.test',
+    });
   });
 });
