@@ -2,7 +2,7 @@
 
 This document is the canonical repository environment contract. Product-specific services, variables, and secrets still belong to their owning issue and must not be guessed or committed.
 
-Last validated: 2026-08-08.
+Last validated: 2026-08-09.
 
 ## Canonical baseline
 
@@ -12,7 +12,7 @@ Last validated: 2026-08-08.
 | pnpm         | `11.20.0`                                               | root `packageManager` and lockfile      |
 | Dependencies | `pnpm install --frozen-lockfile`                        | `pnpm-lock.yaml`                        |
 | Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI               |
-| Database     | isolated local PostgreSQL                               | issue #36 and the versioned scripts     |
+| Database     | on demand locally; PostgreSQL 17 in CI                  | profile scripts and CI workflow         |
 | CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17            | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
@@ -47,16 +47,9 @@ Configure the repository environment in [Codex settings](https://chatgpt.com/cod
 
 Keep the `universal` image. The repository pins Node 24 through `.node-version` and `package.json`, and the setup doctor rejects runtime drift. If the package-version selector exposes Node 24, selecting it is valid but not required; do not choose a different major or add an inline runtime bootstrap.
 
-### Environment variables
+### Standard environment variables
 
-Configure these as ordinary environment variables, not secrets, so they remain available during setup and the agent phase:
-
-```text
-DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
-TEST_DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
-```
-
-These credentials belong only to the isolated task container. Never replace either URL with a shared, remote, staging, or production database. The setup script accepts only the two exact loopback targets above.
+The standard Codex environment requires no database variables. Do not configure `DATABASE_URL` or `TEST_DATABASE_URL` there. If they remain from the former combined environment, remove them when applying this contract.
 
 ### Setup script
 
@@ -64,7 +57,7 @@ These credentials belong only to the isolated task container. Never replace eith
 bash scripts/codex-cloud-setup.sh
 ```
 
-Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, installs and starts local PostgreSQL, creates both databases idempotently, and runs the `postgres` doctor. It reports each phase duration. Chromium and graphical operating-system packages are deliberately excluded from the standard environment.
+Setup activates the exact repository pnpm version, installs the frozen dependency graph with the local package cache preferred, and runs the base doctor. It installs neither PostgreSQL nor Chromium and reports each phase duration.
 
 ### Maintenance script
 
@@ -72,7 +65,28 @@ Setup activates the exact repository pnpm version, installs the frozen dependenc
 bash scripts/codex-cloud-maintenance.sh
 ```
 
-Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, restarts PostgreSQL, recreates missing databases, and reruns the `postgres` doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, and reruns the base doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
+
+### Optional PostgreSQL environment
+
+Create a separate Codex environment only when a task genuinely requires local PostgreSQL. Configure these ordinary environment variables in that DB-specific environment:
+
+```text
+DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+TEST_DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+```
+
+These credentials belong only to the isolated task container. Never replace either URL with a shared, remote, staging, or production database. Use the explicit PostgreSQL profile for both lifecycle scripts:
+
+```bash
+# Setup
+bash scripts/codex-cloud-setup.sh --profile postgres
+
+# Maintenance
+bash scripts/codex-cloud-maintenance.sh --profile postgres
+```
+
+The PostgreSQL setup installs the system packages, creates both databases idempotently, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages.
 
 ### Browser tests
 
@@ -92,12 +106,13 @@ This follows the [official OpenAI Cloud environment contract](https://learn.chat
 
 Use **Reset cache** only when:
 
-- maintenance reports missing system packages or no PostgreSQL cluster;
+- maintenance reports missing cached dependencies;
 - a package-version change cannot be activated from the cached image;
-- repository changes add a new system-level prerequisite;
+- repository changes add a new system-level prerequisite for the selected profile;
+- a DB-specific environment reports missing PostgreSQL packages or no cluster;
 - setup, maintenance, or environment values changed but automatic invalidation did not occur.
 
-After changing the environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs --profile postgres` to pass before implementation. Use `--profile web` or `--profile web-postgres` only in a browser-capable environment.
+After changing the standard environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs` to pass before implementation. Require `--profile postgres` only in the separate DB environment, and use `--profile web` or `--profile web-postgres` only in a browser-capable environment.
 
 ## Local and other harnesses
 

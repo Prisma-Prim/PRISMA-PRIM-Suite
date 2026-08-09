@@ -5,11 +5,37 @@ repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repository_root}"
 
 setup_started_at=${SECONDS}
+profile="base"
 install_system_dependencies=false
-if [[ "${1:-}" == "--install-system-dependencies" ]]; then
-  install_system_dependencies=true
-elif [[ -n "${1:-}" ]]; then
-  echo "Usage: bash scripts/codex-cloud-maintenance.sh [--install-system-dependencies]" >&2
+
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --profile)
+      if [[ "$#" -lt 2 ]]; then
+        echo "Missing value for --profile." >&2
+        exit 2
+      fi
+      profile="$2"
+      shift 2
+      ;;
+    --install-system-dependencies)
+      install_system_dependencies=true
+      shift
+      ;;
+    *)
+      echo "Usage: bash scripts/codex-cloud-maintenance.sh [--profile base|postgres] [--install-system-dependencies]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "${profile}" != "base" && "${profile}" != "postgres" ]]; then
+  echo "Unknown profile: ${profile}. Expected base or postgres." >&2
+  exit 2
+fi
+
+if [[ "${install_system_dependencies}" == "true" && "${profile}" != "postgres" ]]; then
+  echo "--install-system-dependencies is valid only with --profile postgres." >&2
   exit 2
 fi
 
@@ -80,12 +106,14 @@ fi
 
 run_step "Synchronize workspace dependencies" synchronize_dependencies
 
-if [[ "${install_system_dependencies}" == "true" ]]; then
-  run_step "Install and provision local PostgreSQL" bash scripts/codex-cloud-postgres.sh --install
-else
-  run_step "Restore local PostgreSQL" bash scripts/codex-cloud-postgres.sh --start
+if [[ "${profile}" == "postgres" ]]; then
+  if [[ "${install_system_dependencies}" == "true" ]]; then
+    run_step "Install and provision local PostgreSQL" bash scripts/codex-cloud-postgres.sh --install
+  else
+    run_step "Restore local PostgreSQL" bash scripts/codex-cloud-postgres.sh --start
+  fi
 fi
 
-run_step "Verify the standard Codex environment" node scripts/agent-doctor.mjs --profile postgres
+run_step "Verify the ${profile} Codex environment" node scripts/agent-doctor.mjs --profile "${profile}"
 
 echo "Codex environment preparation completed in $((SECONDS - setup_started_at))s."

@@ -185,6 +185,10 @@ test('reports PostgreSQL connectivity independently from URL safety', () => {
     'PASS',
   );
   assert.equal(results.find((check) => check.id === 'postgres').status, 'FAIL');
+  assert.match(
+    results.find((check) => check.id === 'postgres').remediation,
+    /--profile postgres/,
+  );
 });
 
 test('reports an outdated Node runtime with a durable remediation', () => {

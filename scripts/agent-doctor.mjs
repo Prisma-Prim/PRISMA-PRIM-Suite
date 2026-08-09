@@ -220,7 +220,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'The isolated PostgreSQL test database accepts a read-only connectivity probe.'
           : 'The isolated PostgreSQL test database is unavailable.'
         : 'PostgreSQL connectivity is not required by the selected profile.',
-      'Run bash scripts/codex-cloud-maintenance.sh, then retry the doctor.',
+      'Run bash scripts/codex-cloud-maintenance.sh --profile postgres, then retry the doctor.',
     ),
   ];
 }

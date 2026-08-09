@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const setupScript = await readFile(
+  new URL('./codex-cloud-setup.sh', import.meta.url),
+  'utf8',
+);
 const maintenanceScript = await readFile(
   new URL('./codex-cloud-maintenance.sh', import.meta.url),
   'utf8',
@@ -10,9 +14,30 @@ const packageJson = JSON.parse(
   await readFile(new URL('../package.json', import.meta.url), 'utf8'),
 );
 
-test('keeps browser installation out of the standard Codex environment', () => {
+test('keeps browser and PostgreSQL execution out of the standard Codex profile', () => {
   assert.doesNotMatch(maintenanceScript, /playwright install|chromium/i);
-  assert.match(maintenanceScript, /agent-doctor\.mjs --profile postgres/);
+  assert.match(maintenanceScript, /profile="base"/);
+  assert.equal(
+    maintenanceScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
+    true,
+  );
+  assert.equal(
+    maintenanceScript.includes('agent-doctor.mjs --profile "${profile}"'),
+    true,
+  );
+});
+
+test('installs PostgreSQL only for the explicit setup profile', () => {
+  assert.equal(
+    setupScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
+    true,
+  );
+  assert.equal(
+    setupScript.includes(
+      'maintenance_arguments+=(--profile postgres --install-system-dependencies)',
+    ),
+    true,
+  );
 });
 
 test('reuses dependencies when their complete manifest fingerprint is unchanged', () => {
