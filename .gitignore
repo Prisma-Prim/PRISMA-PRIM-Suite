@@ -15,3 +15,6 @@ test-results/
 .DS_Store
 .idea/
 .vscode/
+
+# Codex Cloud writes the selected UI runtime here; .node-version is canonical.
+.nvmrc
