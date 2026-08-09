@@ -40,6 +40,19 @@ test('installs PostgreSQL only for the explicit setup profile', () => {
   );
 });
 
+test('activates and persists the repository Node runtime before pnpm', () => {
+  assert.match(maintenanceScript, /expected_node=.*\.node-version/);
+  assert.match(maintenanceScript, /nvm version "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /nvm install "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /nvm alias default "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /node-runtime\.sh/);
+  assert.match(maintenanceScript, /\.bashrc/);
+  assert.ok(
+    maintenanceScript.indexOf('Activate Node ${expected_node}') <
+      maintenanceScript.indexOf('Activate pnpm ${expected_pnpm}'),
+  );
+});
+
 test('reuses dependencies when their complete manifest fingerprint is unchanged', () => {
   assert.match(maintenanceScript, /\.codex-dependency-fingerprint/);
   assert.match(maintenanceScript, /git ls-files/);
