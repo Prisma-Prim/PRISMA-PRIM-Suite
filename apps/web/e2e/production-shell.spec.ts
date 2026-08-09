@@ -110,3 +110,34 @@ test('keeps representative UI baseline routes isolated from production', async (
     fullPage: true,
   });
 });
+
+test('fails closed for a signed-out deterministic session and recovers the protected route', async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    sessionStorage.setItem('deterministic-auth-state', 'signed-out'),
+  );
+  await page.goto('/protected-return-target?source=invitation');
+  await expect(page.getByRole('alert')).toHaveText(
+    'Sign in is required to access this workspace.',
+  );
+  await expect(page.getByRole('banner')).toHaveCount(0);
+
+  await page.evaluate(() =>
+    sessionStorage.setItem('deterministic-auth-state', 'signed-in'),
+  );
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({
+      json: {
+        displayName: 'Ada Ionescu',
+        email: 'ada@example.test',
+        workspaceName: 'PRISMA Workspace',
+      },
+    }),
+  );
+  await page.reload();
+  await expect(page).toHaveURL(/\/protected-return-target\?source=invitation$/);
+  await expect(
+    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+  ).toBeVisible();
+});

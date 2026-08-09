@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { deterministicBrowserIdentity } from './access-composition';
 
 describe('App', () => {
   beforeEach(() => {
@@ -24,7 +25,7 @@ describe('App', () => {
   });
 
   it('renders the production application shell', async () => {
-    render(<App />);
+    render(<App identity={deterministicBrowserIdentity()} />);
 
     expect(
       await screen.findByRole('heading', {
@@ -37,7 +38,7 @@ describe('App', () => {
   });
 
   it('does not attach deterministic identity headers in a normal build mode', async () => {
-    render(<App />);
+    render(<App identity={deterministicBrowserIdentity()} />);
 
     await screen.findByRole('banner');
     expect(fetch).toHaveBeenCalledWith(
@@ -45,20 +46,25 @@ describe('App', () => {
       expect.objectContaining({ headers: undefined }),
     );
   });
-
-  it('fails closed before requesting access when local-demo identity is incomplete', async () => {
-    vi.stubEnv('MODE', 'local-demo');
-    vi.stubEnv('VITE_ACCESS_IDENTITY_MODE', 'local-demo');
-    vi.stubEnv('VITE_DEMO_EXTERNAL_PROVIDER', 'local-demo');
-    vi.stubEnv('VITE_DEMO_EXTERNAL_SUBJECT', '');
-    vi.stubEnv('VITE_DEMO_DISPLAY_NAME', 'Local demonstration user');
-    vi.stubEnv('VITE_DEMO_EMAIL', 'local-demo@example.test');
-
-    render(<App />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'We could not verify your access. Please try again.',
+  it('sends the Clerk session token through the identity composition boundary', async () => {
+    const identity = {
+      ...deterministicBrowserIdentity(),
+      getToken: async () => 'verified-session-token',
+    };
+    render(<App identity={identity} />);
+    await screen.findByRole('banner');
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/access/current-actor',
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer verified-session-token' },
+      }),
     );
-    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('renders no protected content while the identity composition is signed out', () => {
+    const identity = { ...deterministicBrowserIdentity(), signedIn: false };
+    render(<App identity={identity} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Sign in is required');
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
   });
 });
