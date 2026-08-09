@@ -2,7 +2,7 @@
 
 This document is the canonical repository environment contract. Product-specific services, variables, and secrets still belong to their owning issue and must not be guessed or committed.
 
-Last validated: 2026-08-08.
+Last validated: 2026-08-09.
 
 ## Canonical baseline
 
