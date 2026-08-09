@@ -18,24 +18,18 @@ test('keeps browser and PostgreSQL execution out of the standard Codex profile',
   assert.doesNotMatch(maintenanceScript, /playwright install|chromium/i);
   assert.match(maintenanceScript, /profile="base"/);
   assert.equal(
-    maintenanceScript.includes(
-      'if [[ "${profile}" == "postgres" ]]; then',
-    ),
+    maintenanceScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
     true,
   );
   assert.equal(
-    maintenanceScript.includes(
-      'agent-doctor.mjs --profile "${profile}"',
-    ),
+    maintenanceScript.includes('agent-doctor.mjs --profile "${profile}"'),
     true,
   );
 });
 
 test('installs PostgreSQL only for the explicit setup profile', () => {
   assert.equal(
-    setupScript.includes(
-      'if [[ "${profile}" == "postgres" ]]; then',
-    ),
+    setupScript.includes('if [[ "${profile}" == "postgres" ]]; then'),
     true,
   );
   assert.equal(
