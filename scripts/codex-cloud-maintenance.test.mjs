@@ -13,6 +13,10 @@ const maintenanceScript = await readFile(
 const packageJson = JSON.parse(
   await readFile(new URL('../package.json', import.meta.url), 'utf8'),
 );
+const gitignore = await readFile(
+  new URL('../.gitignore', import.meta.url),
+  'utf8',
+);
 
 test('keeps browser and PostgreSQL execution out of the standard Codex profile', () => {
   assert.doesNotMatch(maintenanceScript, /playwright install|chromium/i);
@@ -38,6 +42,20 @@ test('installs PostgreSQL only for the explicit setup profile', () => {
     ),
     true,
   );
+});
+
+test('activates and persists the repository Node runtime before pnpm', () => {
+  assert.match(maintenanceScript, /expected_node=.*\.node-version/);
+  assert.match(maintenanceScript, /nvm version "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /nvm install "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /nvm alias default "\$\{expected_node\}"/);
+  assert.match(maintenanceScript, /node-runtime\.sh/);
+  assert.match(maintenanceScript, /\.bashrc/);
+  assert.ok(
+    maintenanceScript.indexOf('Activate Node ${expected_node}') <
+      maintenanceScript.indexOf('Activate pnpm ${expected_pnpm}'),
+  );
+  assert.match(gitignore, /^\.nvmrc$/m);
 });
 
 test('reuses dependencies when their complete manifest fingerprint is unchanged', () => {
