@@ -23,9 +23,11 @@ test('keeps browser and PostgreSQL execution out of the standard Codex profile',
     ),
     true,
   );
-  assert.match(
-    maintenanceScript,
-    /agent-doctor\.mjs --profile "${profile}"/,
+  assert.equal(
+    maintenanceScript.includes(
+      'agent-doctor.mjs --profile "${profile}"',
+    ),
+    true,
   );
 });
 
