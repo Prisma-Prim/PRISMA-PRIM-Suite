@@ -1,9 +1,9 @@
 # Consolidated Product Reconciliation and Decision Record
 
 **Product:** PRISMA-PRIM Suite  
-**Status:** Active working record — decisions `DEC-001` through `DEC-045` approved  
-**Record version:** 0.1  
-**Last updated:** 2026-08-14  
+**Status:** Active working record — decisions `DEC-001` through `DEC-060` approved  
+**Record version:** 0.2  
+**Last updated:** 2026-08-15  
 **Source discussion language:** French  
 **Repository language:** English
 
@@ -489,7 +489,181 @@ If the NAS is offline, the core application continues working. Archive work rema
 
 Before any integration, obtain the device model and configuration, assess connectivity and security, identify on-site operational ownership, and validate snapshots, independent off-site backup and restore tests. RAID or snapshots alone are not treated as a complete backup strategy.
 
-## 11. Release roadmap
+## 11. Google integration architecture
+
+Google Drive, Calendar and Gmail are three separate integrations with different authorization, security and productization costs. They must not be treated as one generic “Google integration” ticket.
+
+PostgreSQL remains the system of record for Clients, Projects, Tasks, Documents, permissions, deadlines, statuses and business history. Google services expose replaceable external capabilities:
+
+- Drive stores or exposes file bytes;
+- Calendar mirrors selected operational events;
+- Gmail may later expose selected messages and user-approved drafts.
+
+```mermaid
+flowchart TD
+    A["PRISMA-PRIM Suite · business authority"] --> D["Drive adapter"]
+    A --> C["Calendar adapter"]
+    A --> G["Gmail adapter"]
+    D --> Q["Persistent asynchronous jobs"]
+    C --> Q
+    G --> Q
+```
+
+An external outage never rolls back an already committed business operation. The application records pending or failed synchronization visibly and retries it according to policy.
+
+### 11.1 Connection ownership
+
+Use three explicit levels rather than one shared token:
+
+#### Workspace Integration Connection
+
+An administrative provider connection owned by one tenant. It records provider, authentication mode, status, granted scopes, configuring actor, health, revocation state and a secure credential reference.
+
+#### Company Integration Configuration
+
+Configuration that maps one Company to its Shared Drive, root folder, shared calendar, permitted sender identity, folder conventions and enabled integration capabilities.
+
+#### User Integration Connection
+
+A user's explicit OAuth grant for capabilities that act on that user's mailbox or calendars. It records the Google account, scopes, status, revocation state and last synchronization without exposing token material.
+
+This division prevents a token intended for one user or Company from becoming an implicit tenant-wide credential.
+
+### 11.2 Drive topology
+
+The preferred first-tenant topology is:
+
+```text
+Workspace: first tenant
+├── Shared Drive PRISMA-PRIM
+├── Shared Drive BIC
+├── Shared Drive ECG
+└── Shared Drive Group — optional and restricted to genuinely shared material
+```
+
+Separate Shared Drives provide a clear permission and operational boundary. The shared Client dossier remains primarily a PostgreSQL concept. A Document may have Company-scoped locations or an explicitly Workspace-shared location according to its confidentiality classification.
+
+Google documents that service accounts do not have Drive storage quota and cannot own normal files. They should upload into Shared Drives or act through delegated OAuth. The initial design therefore uses a service identity only as an explicitly authorized member of configured Shared Drives. It does not receive domain-wide impersonation authority.
+
+For user-selected files, prefer the narrow `drive.file` scope and a picker or explicit sharing flow. Broad Drive scopes are restricted scopes and require stronger verification. Application code stores Drive and file identifiers, not a display path as the durable identity.
+
+```text
+DocumentLocation
+├── provider = GOOGLE_DRIVE
+├── externalDriveId
+├── externalFileId
+├── parentFolderId
+├── checksum
+├── syncStatus
+└── lastVerifiedAt
+```
+
+### 11.3 Calendar model
+
+Calendar reflects business scheduling but never owns it. The preferred model is one secondary shared calendar per Company or operational team, for example:
+
+```text
+PRISMA-PRIM — Audits
+BIC — Projects
+ECG — Training
+```
+
+After a Project milestone, Audit, appointment or scheduled Task is committed:
+
+1. the business transaction completes in PostgreSQL;
+2. an idempotent synchronization job is persisted;
+3. Calendar is called asynchronously;
+4. the external event identifier and synchronization version are stored;
+5. a failure becomes visible and retryable without deleting the business record.
+
+Use the narrowest suitable scope. Google provides scopes for event-only access and for secondary calendars created by the application, including `calendar.app.created`. The exact scope follows the final user journey rather than being selected pre-emptively.
+
+### 11.4 Gmail risk boundary
+
+Gmail is materially more expensive to productize than Drive or Calendar. In a normal web application, scopes that read messages or manage drafts, including `gmail.readonly`, `gmail.compose`, `gmail.modify` and `gmail.metadata`, are restricted scopes. An external application that stores or transmits restricted-scope data can require Google's restricted-scope verification and a recurring security assessment.
+
+The first email capability therefore remains provider-neutral and does not require mailbox access:
+
+- prepare recipient, subject, body and intended attachments inside the application;
+- show source data and the responsible actor;
+- require human review;
+- allow copy/open-in-client behaviour;
+- do not send automatically;
+- do not read or synchronize an entire mailbox.
+
+A later Gmail OAuth capability may add:
+
+- an individual user connection;
+- explicit import of a selected message or thread;
+- optional monitoring of a dedicated label;
+- creation of a draft in that user's mailbox;
+- human-triggered sending;
+- revocation and deletion controls.
+
+Do not use a shared password, silently read every mailbox, delete mail, train a model on Google user data, or transmit mailbox data to an AI provider without an explicitly approved user-facing purpose and compliant data handling.
+
+Gmail push notifications require Cloud Pub/Sub, subscription handling and periodic watch renewal. They can be delayed or dropped, so a future synchronization design must retain recovery through history-based or periodic reconciliation.
+
+### 11.5 No shared human credentials
+
+Do not implement a common password or human account reused by several collaborators. A common address such as `office@...` should be a real managed Workspace mailbox or another officially supported shared-address pattern. Human users retain individual accounts and accountability.
+
+Gmail delegation can support collaborators in the same Google Workspace organization. Programmatically administering delegation requires domain-wide authority and is not an initial application responsibility.
+
+### 11.6 No initial Domain-Wide Delegation
+
+Google Workspace Domain-Wide Delegation allows a service account to impersonate domain users. This is powerful and creates a large blast radius. Initial integrations instead use:
+
+- explicit Shared Drive membership for the service identity;
+- explicit per-user OAuth where a user capability is necessary;
+- minimum scopes;
+- no automatic access to every mailbox, Drive or calendar in the domain.
+
+Domain-Wide Delegation requires a future, explicit security decision supported by a concrete administrative use case that cannot be met safely through narrower authorization.
+
+### 11.7 Credential protection
+
+Google access and refresh tokens:
+
+- are never committed;
+- are never stored in Clerk;
+- are never written to Activity Log or application logs;
+- are encrypted at rest;
+- are isolated by Workspace and user or service identity;
+- can be revoked;
+- expose connection health without exposing secret material.
+
+Refresh tokens may be stored as application-encrypted database values, with the encryption key held outside the database in the deployment secret manager. The integration boundary must permit a stronger secret-storage strategy later.
+
+### 11.8 Asynchronous synchronization contract
+
+Provider operations use persistent jobs with states such as:
+
+```text
+PENDING
+RUNNING
+SUCCEEDED
+RETRYABLE_FAILURE
+PERMANENT_FAILURE
+CANCELLED
+```
+
+Every operation records an idempotency key, attempt count, next attempt, sanitized error, affected business resource, integration connection and external result identifier. Critical administrative or user-visible transitions also produce canonical Activity Log events.
+
+Google API calls do not occur inside a PostgreSQL transaction that remains open while waiting for an external network response.
+
+### 11.9 Official constraints used for this decision
+
+- [Google Drive Shared Drives overview](https://developers.google.com/workspace/drive/api/guides/about-shareddrives)
+- [Google Drive OAuth scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
+- [Google Calendar OAuth scopes](https://developers.google.com/workspace/calendar/api/auth)
+- [Gmail OAuth scope classifications](https://developers.google.com/workspace/gmail/api/auth/scopes)
+- [Gmail push notifications](https://developers.google.com/workspace/gmail/api/guides/push)
+- [Gmail delegation](https://developers.google.com/workspace/gmail/api/guides/delegate_settings)
+- [Google service accounts and Domain-Wide Delegation](https://developers.google.com/identity/protocols/oauth2/service-account)
+- [Google OAuth verification FAQ](https://support.google.com/cloud/answer/13463817)
+
+## 12. Release roadmap
 
 ### Release 0 — Technical foundation
 
@@ -518,11 +692,10 @@ Acceptance journey:
 
 ### Release 2 — Google and document integrations
 
-- Google Drive;
-- controlled folder creation and synchronization;
-- Calendar;
-- Gmail reading and draft generation;
-- retryable asynchronous work;
+- **R2A — Drive:** connection inventory, Shared Drives by Company, controlled folder creation, Document upload/linking, retryable synchronization and permission audit;
+- **R2B — Calendar:** Company calendars, selected operational events, conflict visibility, retries and reminders;
+- **R2C — provider-neutral assisted email:** templates, recipients, content, attachments, human review and copy/open-in-client behaviour without broad mailbox access;
+- **R2D — Gmail OAuth, conditional:** selected message import, dedicated-label synchronization and mailbox drafts only after the scope, verification, security and ROI decision;
 - Document versions;
 - DOCX/XLSX/PDF templates and generation.
 
@@ -579,7 +752,7 @@ Whether the platform merely tracks invoices or legally generates accounting docu
 - ISO Project Copilot;
 - advanced agents only after measurable evaluation.
 
-## 12. Approved decision register
+## 13. Approved decision register
 
 ### Product scope, preservation and documentation
 
@@ -773,7 +946,69 @@ Drive, Gmail, Calendar, version synchronization and document generation follow t
 
 A governed Document and Document Version are business records; Google Drive, Synology or future copies are replaceable Document Locations.
 
-## 13. Known effects on existing authorities
+### Google integrations
+
+#### DEC-046 — PostgreSQL remains the business authority
+
+Google services are external adapters. Clients, Projects, Tasks, Documents, permissions, deadlines and lifecycle state remain authoritative in PostgreSQL.
+
+#### DEC-047 — Connections have explicit ownership levels
+
+Separate Workspace administrative connections, Company configurations and user OAuth connections. Do not reuse one undifferentiated token across scopes and Companies.
+
+#### DEC-048 — No shared human Google credentials
+
+Do not design around a common password or a human Google account reused by the team. Use individual accounts, managed shared addresses and official delegation patterns.
+
+#### DEC-049 — Prefer Google Workspace without coupling the core
+
+Google Workspace is the preferred operational environment for the first tenant because it supports managed identities, Shared Drives and administration. The application's core business model remains deployable without Google.
+
+#### DEC-050 — One Shared Drive per Company by default
+
+Use separate Shared Drives for PRISMA-PRIM, BIC and ECG. Add a group-wide Shared Drive only for information deliberately shared across Companies.
+
+#### DEC-051 — Narrow service-account access and no initial domain impersonation
+
+A service identity may access explicitly configured Shared Drives. It receives no initial Domain-Wide Delegation and cannot silently impersonate all users.
+
+#### DEC-052 — Minimum OAuth scopes
+
+Choose the narrowest scope that completes an approved journey. Prefer per-file Drive authorization and restricted operational scopes over entire-account access.
+
+#### DEC-053 — Protect and revoke token material
+
+Tokens are encrypted, revocable, isolated, absent from logs and Clerk, and referenced through the integration boundary rather than exposed to business modules.
+
+#### DEC-054 — External synchronization is asynchronous and idempotent
+
+Persist jobs, retries, failures and external identifiers. Never keep a business transaction open while waiting for a Google API response.
+
+#### DEC-055 — Calendar mirrors, but does not own, business schedules
+
+The database owns deadlines and events. Calendar receives synchronized representations whose failures remain visible and recoverable.
+
+#### DEC-056 — No initial global mailbox ingestion
+
+The first Gmail-related capability does not read or synchronize every user's mailbox. Broad mail access is neither an implicit requirement nor a shortcut for intake.
+
+#### DEC-057 — Human-reviewed provider-neutral email first
+
+Prepare email content and attachments in the application and require a human action before sending. Deliver useful assisted drafting before requesting restricted Gmail scopes.
+
+#### DEC-058 — Full Gmail OAuth is conditional
+
+Selected message import, label synchronization and mailbox draft creation require a separate decision on scopes, Google verification, security assessment, data handling and expected business value.
+
+#### DEC-059 — Split Release 2 into four Google capabilities
+
+Drive, Calendar, provider-neutral assisted email and conditional Gmail OAuth are separately scoped sub-capabilities with independent acceptance criteria and dependencies.
+
+#### DEC-060 — Inventory before Google implementation tickets
+
+No Google integration ticket becomes `ready-for-agent` until the first tenant's real accounts, domains, administrator, Shared Drives, folders, mailboxes, calendars and required actions have been inventoried.
+
+## 14. Known effects on existing authorities
 
 These changes are intentionally not applied by this record alone:
 
@@ -784,24 +1019,83 @@ These changes are intentionally not applied by this record alone:
 - Product vision and capability PRDs must be created before implementation issues for the new modules.
 - Existing Access work should be extended rather than rewritten.
 
-## 14. Open product questions
+## 15. Open product questions
 
 These are not implementation-ready decisions:
 
 1. What exact meanings distinguish `Stage 1`, `Stage 2`, `S1` and `S2` in Iurie's terminology?
 2. What exact permission matrix should the first tenant assign to named real users?
-3. Which Google identity model will be used: individual accounts, shared accounts or Google Workspace?
-4. Which data fields require stronger separation between PRISMA-PRIM, BIC and ECG beyond the general Company-scope rule?
-5. Does Finance only track externally produced invoices, or must it legally generate accounting invoices?
-6. Which Company legally issues each type of Certificate?
-7. Which Certificate types, numbering rules, QR verification rules and revocation rules are authoritative?
-8. What Synology model, DSM version, network path, backup configuration and on-site support are actually available?
-9. Which current real Projects and Clients should become acceptance examples for the operational core?
-10. Which project categories and workflow templates are genuinely needed for the first release?
-11. What data-retention and deletion obligations apply in Moldova and future target markets?
-12. When, if ever, should an external Client portal enter the roadmap?
+3. Which data fields require stronger separation between PRISMA-PRIM, BIC and ECG beyond the general Company-scope rule?
+4. Does Finance only track externally produced invoices, or must it legally generate accounting invoices?
+5. Which Company legally issues each type of Certificate?
+6. Which Certificate types, numbering rules, QR verification rules and revocation rules are authoritative?
+7. What Synology model, DSM version, network path, backup configuration and on-site support are actually available?
+8. Which current real Projects and Clients should become acceptance examples for the operational core?
+9. Which project categories and workflow templates are genuinely needed for the first release?
+10. What data-retention and deletion obligations apply in Moldova and future target markets?
+11. When, if ever, should an external Client portal enter the roadmap?
 
-## 15. Immediate next work after this checkpoint
+## 16. Questions to ask Iurie about Google
+
+These questions must be preserved for the first-tenant configuration audit. They are intentionally more concrete than the general open-question register so the answers can be converted into implementation prerequisites.
+
+### 16.1 Accounts, domains and administration
+
+1. **Which Google email addresses are currently used by every collaborator involved in PRISMA-PRIM, BIC and ECG?** Record the address, person, Company and whether it is an individual or shared identity.
+2. **Does the group currently pay for Google Workspace?** If yes, identify the Workspace edition and the organization name visible in the Admin console.
+3. **Which internet domains are attached to Google Workspace?** Identify the primary domain, aliases and which Company uses each domain.
+4. **Who has the Google Workspace super-administrator role?** The integration cannot assume that Dan or Iurie can authorize domain-level settings.
+5. **Are any accounts personal `@gmail.com` accounts?** Personal accounts change Shared Drive availability, internal OAuth configuration and administrative control.
+
+Why these answers matter: they determine whether managed Shared Drives, internal-only OAuth, centralized administration and official delegation are available. They also identify the person who can approve integration changes.
+
+### 16.2 Drive and document ownership
+
+6. **Do Shared Drives already exist, or is all content stored in individual My Drives?** List every relevant Drive and its current owner.
+7. **What is the current top-level folder structure for PRISMA-PRIM, BIC and ECG?** Do not reorganize it yet; capture it as evidence.
+8. **Are Company documents already separated, or are they mixed in shared folders?** Identify deliberately shared folders and accidental mixtures.
+9. **Who currently owns the approximately 300 historical Client folders and documents?** Note inaccessible, duplicated or orphaned material.
+10. **Which files must remain editable directly in Google formats, and which may remain DOCX/XLSX/PDF?**
+11. **Which documents are genuinely shared across the three Companies?** Distinguish group master data from Company-confidential Projects, Contracts, finance and certificates.
+12. **What naming and numbering conventions are currently used for Client and Project folders?** Capture real examples, including exceptions.
+
+Why these answers matter: they decide the Shared Drive topology, migration strategy, Document Location model, permission mapping and first pilot sample. They prevent the application from automating an unknown or already inconsistent folder structure.
+
+### 16.3 Gmail and email workflow
+
+13. **What does “Gmail integration” mean operationally to Iurie?** Ask him to rank these separately: attach selected email to a Client, import attachments, read a full thread, monitor a label, create a draft, send, detect replies, or search old email.
+14. **Which mailboxes are individual and which addresses are used communally?** Record whether communal access uses a shared password, delegation, forwarding, Google Group or another mechanism.
+15. **Must the application ever send automatically, or is human-reviewed draft creation sufficient?** Identify any legally or commercially sensitive email classes that always require manual approval.
+16. **Should the application access every email or only messages explicitly selected or labelled by a user?** The recommended answer is explicit selection or a dedicated label.
+17. **Which messages or attachments may be retained in the application, and for how long?** Clarify whether the authoritative copy remains in Gmail, Drive or the application.
+18. **May email content be sent to an external AI provider for a user-requested analysis or draft?** This requires an explicit data-protection decision and must never imply model training.
+
+Why these answers matter: Gmail read and compose scopes are restricted. The requested behaviour determines whether Google verification and an external security assessment become necessary. “Integrate Gmail” is not sufficiently precise for a ticket.
+
+### 16.4 Calendar workflow
+
+19. **Which calendars currently exist and who owns them?** Capture shared calendars, individual calendars and Company-specific calendars.
+20. **Which business objects should create events?** Examples include Audits, Project stages, Training sessions, Contract deadlines, certificate expiry and Tasks.
+21. **Should users be allowed to modify synchronized events directly in Google Calendar?** If yes, define whether Google changes update the business record, create a proposed change or are overwritten.
+22. **Who should receive invitations, reminders and notifications?** Separate internal users, Client Contacts and external auditors.
+23. **Are there confidentiality cases where an event title or Client name must not appear in a shared calendar?**
+
+Why these answers matter: they determine scope, conflict policy, calendar topology, privacy of event content and whether synchronization is one-way or partially bidirectional.
+
+### 16.5 Required evidence from Iurie
+
+When practical, ask for screenshots or exports rather than relying only on memory:
+
+- Google Admin organization and domains, without secrets;
+- list of users and roles, with unnecessary personal data removed;
+- Shared Drives and folder roots;
+- example Client and Project folder trees;
+- list of shared/individual mailboxes and current delegation pattern;
+- list of calendars and sharing model.
+
+Never request passwords, recovery codes, private keys, OAuth tokens or unrestricted document archives by email or chat.
+
+## 17. Immediate next work after this checkpoint
 
 1. Continue product reconciliation and append approved decisions to this record.
 2. Complete issue #22 because its Activity Log foundation remains compatible with the new direction.
