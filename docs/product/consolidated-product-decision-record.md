@@ -21,15 +21,15 @@ This is a **living decision and rationale record**, not an implementation ticket
 
 ### 1.1 Sources of authority
 
-| Information | Authoritative location |
-| --- | --- |
-| Canonical domain vocabulary | `CONTEXT.md` |
-| Durable, costly-to-reverse architecture | `docs/adr/` |
-| Approved observable product behaviour | Product PRDs and GitHub specification issues |
-| Work to execute, acceptance criteria, blockers and progress | GitHub Issues |
-| Engineering and delivery rules | `AGENTS.md` and `docs/agents/` |
-| Reconciliation reasoning and approved direction before normalization | This record |
-| Original DOCX and the final report for Iurie | Outside the repository |
+| Information                                                          | Authoritative location                       |
+| -------------------------------------------------------------------- | -------------------------------------------- |
+| Canonical domain vocabulary                                          | `CONTEXT.md`                                 |
+| Durable, costly-to-reverse architecture                              | `docs/adr/`                                  |
+| Approved observable product behaviour                                | Product PRDs and GitHub specification issues |
+| Work to execute, acceptance criteria, blockers and progress          | GitHub Issues                                |
+| Engineering and delivery rules                                       | `AGENTS.md` and `docs/agents/`               |
+| Reconciliation reasoning and approved direction before normalization | This record                                  |
+| Original DOCX and the final report for Iurie                         | Outside the repository                       |
 
 When reconciliation is complete, approved normative statements must be incorporated into their owning PRD, ADR, `CONTEXT.md`, or issue. This record should link to those authorities and preserve the reasoning, rather than silently becoming a second contradictory specification.
 
@@ -192,7 +192,7 @@ PRISMA-PRIM, BIC and ECG are initial configuration data. Code must use generic c
 Do not write business behaviour such as:
 
 ```ts
-if (company.name === 'BIC') {
+if (company.name === "BIC") {
   // special behaviour
 }
 ```
@@ -314,15 +314,15 @@ flowchart TD
 
 ### 8.1 Initial role templates
 
-| Role template | Scope | Main purpose |
-| --- | --- | --- |
-| Workspace Owner | Workspace | Functional ownership and full administration |
-| Workspace Admin | Workspace | Members, Companies, settings and integrations |
-| Workspace Manager | Workspace | Consolidated operational management |
-| Company Manager | Company | Clients, Projects and team activity for one Company |
-| Project Professional | Company | Authorized Project, Task and Document work |
-| Finance | Workspace or Company | Contract, schedule, payment and finance visibility |
-| Read-only | Workspace or Company | Consultation without mutation |
+| Role template        | Scope                | Main purpose                                        |
+| -------------------- | -------------------- | --------------------------------------------------- |
+| Workspace Owner      | Workspace            | Functional ownership and full administration        |
+| Workspace Admin      | Workspace            | Members, Companies, settings and integrations       |
+| Workspace Manager    | Workspace            | Consolidated operational management                 |
+| Company Manager      | Company              | Clients, Projects and team activity for one Company |
+| Project Professional | Company              | Authorized Project, Task and Document work          |
+| Finance              | Workspace or Company | Contract, schedule, payment and finance visibility  |
+| Read-only            | Workspace or Company | Consultation without mutation                       |
 
 Roles are named permission bundles, not authorization conditions. Initial permissions include capabilities such as:
 
@@ -362,14 +362,14 @@ A BIC-scoped user may see the shared identity of a Client related to BIC and all
 
 Store information at the narrowest correct boundary:
 
-| Information | Owner |
-| --- | --- |
+| Information                                    | Owner                               |
+| ---------------------------------------------- | ----------------------------------- |
 | Official name, tax identifier, primary address | Shared Client / Client Legal Entity |
-| BIC account manager | BIC Client–Company Relationship |
-| PRISMA-PRIM confidential note | PRISMA-PRIM relationship or Project |
-| ECG Contract | ECG + Client Legal Entity |
-| General Contact | Client Account |
-| Mission-specific Contact | Project or relevant relationship |
+| BIC account manager                            | BIC Client–Company Relationship     |
+| PRISMA-PRIM confidential note                  | PRISMA-PRIM relationship or Project |
+| ECG Contract                                   | ECG + Client Legal Entity           |
+| General Contact                                | Client Account                      |
+| Mission-specific Contact                       | Project or relevant relationship    |
 
 Workspace managers and authorized Company managers may update shared identity fields. Such mutations are logged. Merge and archive require elevated permissions.
 
@@ -810,4 +810,3 @@ These are not implementation-ready decisions:
 5. Mark obsolete assumptions explicitly rather than deleting historical specifications.
 6. Create Release 1 issues as narrow vertical slices only after their decisions and dependencies are testable.
 7. Prepare a separate Romanian report and email for Iurie after GitHub specifications and issues match the final reconciliation.
-
