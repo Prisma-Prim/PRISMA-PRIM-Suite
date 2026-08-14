@@ -1,16 +1,22 @@
 import {
+  Inject,
   Injectable,
   type CanActivate,
   type ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { ExternalPrincipal } from './access.types.js';
+import {
+  EXTERNAL_IDENTITY_VERIFIER,
+  type ExternalIdentityVerifier,
+  type IdentityRequest,
+} from './external-identity-verifier.js';
 
 interface HeaderRequest {
   header(name: string): string | undefined;
 }
 
-export interface PrincipalRequest extends HeaderRequest {
+export interface PrincipalRequest extends HeaderRequest, IdentityRequest {
   externalPrincipal?: ExternalPrincipal;
 }
 
@@ -22,7 +28,12 @@ function requiredHeader(request: HeaderRequest, name: string): string {
 
 @Injectable()
 export class ExternalPrincipalAdapter implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(
+    @Inject(EXTERNAL_IDENTITY_VERIFIER)
+    private readonly externalIdentity: ExternalIdentityVerifier,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<PrincipalRequest>();
     const mode = process.env.ACCESS_IDENTITY_MODE;
     const deterministicModeAllowed =
@@ -31,7 +42,8 @@ export class ExternalPrincipalAdapter implements CanActivate {
       mode === 'local-demo' && process.env.NODE_ENV === 'development';
 
     if (!deterministicModeAllowed && !localDemoModeAllowed) {
-      throw new UnauthorizedException();
+      request.externalPrincipal = await this.externalIdentity.verify(request);
+      return true;
     }
 
     request.externalPrincipal = {

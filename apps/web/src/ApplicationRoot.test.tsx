@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deterministicBrowserIdentity } from './access-composition';
 import { ApplicationRoot } from './ApplicationRoot';
 
 describe('ApplicationRoot', () => {
@@ -20,7 +21,12 @@ describe('ApplicationRoot', () => {
   });
 
   it('renders the protected production shell with local identity', async () => {
-    render(<ApplicationRoot pathname="/" />);
+    render(
+      <ApplicationRoot
+        pathname="/"
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
 
     expect(
       await screen.findByRole('heading', {

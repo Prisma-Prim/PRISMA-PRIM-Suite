@@ -3,6 +3,7 @@ import {
   ApplicationShell,
 } from './production-shell/ApplicationShell';
 import { useEffect, useState } from 'react';
+import type { BrowserIdentity } from './access-composition';
 
 interface CurrentActor {
   displayName: string;
@@ -17,50 +18,31 @@ type AccessState =
   | { status: 'forbidden' }
   | { status: 'error' };
 
-export function App() {
+export function App({ identity }: { identity: BrowserIdentity }) {
   const [access, setAccess] = useState<AccessState>({ status: 'checking' });
 
   useEffect(() => {
+    if (!identity.loaded || !identity.signedIn) return;
     const controller = new AbortController();
-    const localDemoRequested =
-      import.meta.env.MODE === 'local-demo' &&
-      import.meta.env.VITE_ACCESS_IDENTITY_MODE === 'local-demo';
-    const localDemoIdentity = {
-      provider: import.meta.env.VITE_DEMO_EXTERNAL_PROVIDER,
-      subject: import.meta.env.VITE_DEMO_EXTERNAL_SUBJECT,
-      displayName: import.meta.env.VITE_DEMO_DISPLAY_NAME,
-      email: import.meta.env.VITE_DEMO_EMAIL,
-    };
-
-    if (
-      localDemoRequested &&
-      Object.values(localDemoIdentity).some(
-        (value) => typeof value !== 'string' || value.trim() === '',
+    void identity
+      .getToken()
+      .then((token) =>
+        fetch(
+          `${import.meta.env.VITE_API_URL ?? '/api'}/access/current-actor`,
+          {
+            credentials: 'include',
+            headers:
+              identity.requestHeaders ??
+              (token ? { Authorization: `Bearer ${token}` } : undefined),
+            signal: controller.signal,
+          },
+        ),
       )
-    ) {
-      setAccess({ status: 'error' });
-      return () => controller.abort();
-    }
-
-    const localDemoHeaders = localDemoRequested
-      ? {
-          'x-test-external-provider': localDemoIdentity.provider,
-          'x-test-external-subject': localDemoIdentity.subject,
-          'x-test-display-name': localDemoIdentity.displayName,
-          'x-test-email': localDemoIdentity.email,
-        }
-      : undefined;
-
-    void fetch(
-      `${import.meta.env.VITE_API_URL ?? '/api'}/access/current-actor`,
-      {
-        credentials: 'include',
-        headers: localDemoHeaders,
-        signal: controller.signal,
-      },
-    )
       .then(async (response) => {
-        if (response.status === 401) return setAccess({ status: 'signed-out' });
+        if (response.status === 401) {
+          await identity.rejectSession();
+          return setAccess({ status: 'signed-out' });
+        }
         if (response.status === 403) return setAccess({ status: 'forbidden' });
         if (!response.ok) return setAccess({ status: 'error' });
         const actor = (await response.json()) as CurrentActor;
@@ -73,12 +55,20 @@ export function App() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [identity]);
+
+  if (!identity.loaded)
+    return (
+      <main className="production-access-state">
+        <p role="status">Verifying your access…</p>
+      </main>
+    );
+  if (!identity.signedIn) return <>{identity.signedOutView}</>;
+  if (access.status === 'signed-out') return <>{identity.signedOutView}</>;
 
   if (access.status !== 'active') {
-    const messages: Record<Exclude<AccessState['status'], 'active'>, string> = {
+    const messages: Record<'checking' | 'forbidden' | 'error', string> = {
       checking: 'Verifying your access…',
-      'signed-out': 'Sign in is required to access this workspace.',
       forbidden: 'Your access to this workspace is inactive.',
       error: 'We could not verify your access. Please try again.',
     };
@@ -99,6 +89,9 @@ export function App() {
         <span>
           <strong>{access.actor.displayName}</strong>
           <small>{access.actor.email}</small>
+          <button type="button" onClick={() => void identity.signOut()}>
+            Sign out
+          </button>
         </span>
       }
     >
