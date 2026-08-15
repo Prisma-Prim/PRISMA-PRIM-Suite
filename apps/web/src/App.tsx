@@ -17,6 +17,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     shellContext: access,
     selectCompany,
     rejectCompanyContext,
+    includeCompany,
   } = useProductionShellContext(identity);
 
   if (!identity.loaded)
@@ -74,6 +75,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         actor={access.actor}
         identity={identity}
         onCompanyContextRejected={rejectCompanyContext}
+        onCompanyRegistered={includeCompany}
       />
       <ActivityLog state={access.activityLog} />
     </ApplicationShell>

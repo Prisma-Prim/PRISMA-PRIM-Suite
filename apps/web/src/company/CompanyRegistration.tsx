@@ -29,10 +29,12 @@ export function CompanyRegistration({
   actor,
   identity,
   onCompanyContextRejected,
+  onCompanyRegistered,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
-  onCompanyContextRejected?: () => void;
+  onCompanyContextRejected: (companyContextId: string) => void;
+  onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
@@ -54,6 +56,7 @@ export function CompanyRegistration({
 
   async function handleAccessRejection(
     result: ApiResult<unknown>,
+    requestCompanyContextId: string | undefined,
   ): Promise<boolean> {
     if (result.status === 'unauthorized') {
       await identity.rejectSession();
@@ -61,7 +64,8 @@ export function CompanyRegistration({
       return true;
     }
     if (result.status === 'forbidden') {
-      if (actor.activeCompany) onCompanyContextRejected?.();
+      if (requestCompanyContextId)
+        onCompanyContextRejected(requestCompanyContextId);
       setState({ status: 'forbidden' });
       return true;
     }
@@ -88,6 +92,7 @@ export function CompanyRegistration({
           };
     retryCommand.current = command;
     setState({ status: 'submitting' });
+    const requestCompanyContextId = actor.activeCompany?.id;
 
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -97,10 +102,11 @@ export function CompanyRegistration({
           'content-type': 'application/json',
           'idempotency-key': command.idempotencyKey,
         },
-        companyContextId: actor.activeCompany?.id,
+        companyContextId: requestCompanyContextId,
         body: JSON.stringify({ displayName: command.displayName }),
       });
-      if (await handleAccessRejection(createResult)) return;
+      if (await handleAccessRejection(createResult, requestCompanyContextId))
+        return;
       if (createResult.status === 'validation') {
         return setState({
           status: 'validation',
@@ -111,11 +117,13 @@ export function CompanyRegistration({
 
       const readResult = await api.request<CompanyRecord>(
         `/companies/${createResult.value.id}`,
-        { companyContextId: actor.activeCompany?.id },
+        { companyContextId: requestCompanyContextId },
       );
-      if (await handleAccessRejection(readResult)) return;
+      if (await handleAccessRejection(readResult, requestCompanyContextId))
+        return;
       if (readResult.status !== 'ok') return setState({ status: 'error' });
       retryCommand.current = undefined;
+      onCompanyRegistered(readResult.value);
       setState({ status: 'ready', company: readResult.value });
     } catch {
       setState({ status: 'error' });
