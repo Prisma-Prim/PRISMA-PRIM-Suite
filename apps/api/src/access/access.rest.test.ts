@@ -264,6 +264,63 @@ describeWithPostgres('Access REST API', () => {
     expect(JSON.stringify(activity)).not.toContain('hidden-subject');
   });
 
+  it('rejects Activity Log associations whose actor or target belongs to another Workspace', async () => {
+    const visibleActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders(),
+    }).then((response) => response.json());
+    const hidden = await pool.query<{ workspace_id: string; user_id: string }>(`
+      WITH hidden_workspace AS (
+        INSERT INTO workspaces (singleton_key, name)
+        VALUES ('cross-workspace', 'Cross Workspace')
+        RETURNING id
+      )
+      INSERT INTO internal_users (
+        workspace_id, external_provider, external_subject, display_name, email
+      )
+      SELECT id, 'deterministic-test', 'cross-subject', 'Cross User', 'cross@example.test'
+      FROM hidden_workspace
+      RETURNING workspace_id, id AS user_id
+    `);
+    const hiddenUser = hidden.rows[0]!;
+
+    await expect(
+      pool.query(
+        `INSERT INTO activity_log_events (
+          workspace_id, actor_internal_user_id, action, target_type,
+          target_internal_user_id, metadata, idempotency_key
+        ) VALUES ($1, $2, 'internal_user.provisioned', 'internal_user', $3,
+          '{"identityProvider":"deterministic-test"}'::jsonb, 'cross-actor')`,
+        [
+          visibleActor.workspaceId,
+          hiddenUser.user_id,
+          visibleActor.internalUserId,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    await expect(
+      pool.query(
+        `INSERT INTO activity_log_events (
+          workspace_id, actor_internal_user_id, action, target_type,
+          target_internal_user_id, metadata, idempotency_key
+        ) VALUES ($1, $2, 'internal_user.provisioned', 'internal_user', $3,
+          '{"identityProvider":"deterministic-test"}'::jsonb, 'cross-target')`,
+        [
+          visibleActor.workspaceId,
+          visibleActor.internalUserId,
+          hiddenUser.user_id,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    const response = await fetch(`${origin}/api/activity-log`, {
+      headers: identityHeaders(),
+    });
+    const activity = await response.json();
+    expect(activity.events).toHaveLength(1);
+    expect(JSON.stringify(activity)).not.toContain(hiddenUser.user_id);
+  });
+
   it('protects Activity Log reads and exposes no mutation endpoint', async () => {
     const unauthorized = await fetch(`${origin}/api/activity-log`);
     const headers = identityHeaders();

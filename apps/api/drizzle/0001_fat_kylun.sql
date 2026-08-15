@@ -12,7 +12,8 @@ CREATE TABLE "activity_log_events" (
 	"idempotency_key" text NOT NULL
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX "internal_users_workspace_id_id_unique" ON "internal_users" USING btree ("workspace_id","id");--> statement-breakpoint
 ALTER TABLE "activity_log_events" ADD CONSTRAINT "activity_log_events_workspace_id_workspaces_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "activity_log_events" ADD CONSTRAINT "activity_log_events_actor_internal_user_id_internal_users_id_fk" FOREIGN KEY ("actor_internal_user_id") REFERENCES "public"."internal_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "activity_log_events" ADD CONSTRAINT "activity_log_events_target_internal_user_id_internal_users_id_fk" FOREIGN KEY ("target_internal_user_id") REFERENCES "public"."internal_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_log_events" ADD CONSTRAINT "activity_log_events_actor_workspace_fk" FOREIGN KEY ("workspace_id","actor_internal_user_id") REFERENCES "public"."internal_users"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_log_events" ADD CONSTRAINT "activity_log_events_target_workspace_fk" FOREIGN KEY ("workspace_id","target_internal_user_id") REFERENCES "public"."internal_users"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "activity_log_events_idempotency_key_unique" ON "activity_log_events" USING btree ("idempotency_key");

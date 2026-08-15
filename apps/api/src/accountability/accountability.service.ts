@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import { activityLogEvents, internalUsers } from '../database/schema/index.js';
@@ -54,11 +54,17 @@ export class AccountabilityService {
       .from(activityLogEvents)
       .innerJoin(
         eventActor,
-        eq(activityLogEvents.actorInternalUserId, eventActor.id),
+        and(
+          eq(activityLogEvents.actorInternalUserId, eventActor.id),
+          eq(activityLogEvents.workspaceId, eventActor.workspaceId),
+        ),
       )
       .innerJoin(
         eventTarget,
-        eq(activityLogEvents.targetInternalUserId, eventTarget.id),
+        and(
+          eq(activityLogEvents.targetInternalUserId, eventTarget.id),
+          eq(activityLogEvents.workspaceId, eventTarget.workspaceId),
+        ),
       )
       .where(eq(activityLogEvents.workspaceId, actor.workspaceId))
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))

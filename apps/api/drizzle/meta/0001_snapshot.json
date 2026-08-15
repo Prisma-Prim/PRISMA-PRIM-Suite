@@ -1,5 +1,5 @@
 {
-  "id": "903929e6-5167-420f-ac21-f0b168855cd7",
+  "id": "307f6aa1-28b2-4c5e-8cd6-aedec8498e8e",
   "prevId": "54212c3c-05c2-4eb7-ad0e-b9190ed0751e",
   "version": "7",
   "dialect": "postgresql",
@@ -98,27 +98,31 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_log_events_actor_internal_user_id_internal_users_id_fk": {
-          "name": "activity_log_events_actor_internal_user_id_internal_users_id_fk",
+        "activity_log_events_actor_workspace_fk": {
+          "name": "activity_log_events_actor_workspace_fk",
           "tableFrom": "activity_log_events",
           "tableTo": "internal_users",
           "columnsFrom": [
+            "workspace_id",
             "actor_internal_user_id"
           ],
           "columnsTo": [
+            "workspace_id",
             "id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_log_events_target_internal_user_id_internal_users_id_fk": {
-          "name": "activity_log_events_target_internal_user_id_internal_users_id_fk",
+        "activity_log_events_target_workspace_fk": {
+          "name": "activity_log_events_target_workspace_fk",
           "tableFrom": "activity_log_events",
           "tableTo": "internal_users",
           "columnsFrom": [
+            "workspace_id",
             "target_internal_user_id"
           ],
           "columnsTo": [
+            "workspace_id",
             "id"
           ],
           "onDelete": "no action",
@@ -207,6 +211,27 @@
             },
             {
               "expression": "external_subject",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "internal_users_workspace_id_id_unique": {
+          "name": "internal_users_workspace_id_id_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

@@ -1,4 +1,5 @@
 import {
+  foreignKey,
   jsonb,
   pgEnum,
   pgTable,
@@ -52,6 +53,10 @@ export const internalUsers = pgTable(
       table.externalProvider,
       table.externalSubject,
     ),
+    uniqueIndex('internal_users_workspace_id_id_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
   ],
 );
 
@@ -70,14 +75,10 @@ export const activityLogEvents = pgTable(
     workspaceId: uuid('workspace_id')
       .notNull()
       .references(() => workspaces.id),
-    actorInternalUserId: uuid('actor_internal_user_id')
-      .notNull()
-      .references(() => internalUsers.id),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     action: activityLogAction('action').notNull(),
     targetType: activityLogTargetType('target_type').notNull(),
-    targetInternalUserId: uuid('target_internal_user_id')
-      .notNull()
-      .references(() => internalUsers.id),
+    targetInternalUserId: uuid('target_internal_user_id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -88,5 +89,15 @@ export const activityLogEvents = pgTable(
     uniqueIndex('activity_log_events_idempotency_key_unique').on(
       table.idempotencyKey,
     ),
+    foreignKey({
+      name: 'activity_log_events_actor_workspace_fk',
+      columns: [table.workspaceId, table.actorInternalUserId],
+      foreignColumns: [internalUsers.workspaceId, internalUsers.id],
+    }),
+    foreignKey({
+      name: 'activity_log_events_target_workspace_fk',
+      columns: [table.workspaceId, table.targetInternalUserId],
+      foreignColumns: [internalUsers.workspaceId, internalUsers.id],
+    }),
   ],
 );
