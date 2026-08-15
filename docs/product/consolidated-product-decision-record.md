@@ -2832,7 +2832,6 @@ These changes are intentionally not applied by this record alone:
 - The Atlas Blue baseline remains a design reference, but final UX specifications must include role, language, mobile, accessibility, error and permission states.
 - Every future PRD must identify its business interview dependencies and separate technical discovery dependencies.
 
-
 ## 22. Open product questions
 
 These are not implementation-ready decisions:
@@ -2854,7 +2853,6 @@ These are not implementation-ready decisions:
 15. Which operating periods are business-critical, and what recovery delay and acceptable data loss can the first tenant tolerate?
 16. Which personal, confidential, accreditation and Client data categories require stronger handling or restricted AI use?
 17. Which AI providers and deployment regions may be used after contractual, security and data-protection review?
-
 
 ## 23. Internal discovery register for Google
 
