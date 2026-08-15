@@ -1,8 +1,8 @@
 # Consolidated Product Reconciliation and Decision Record
 
 **Product:** PRISMA-PRIM Suite  
-**Status:** Active working record — decisions `DEC-001` through `DEC-124` approved  
-**Record version:** 0.5  
+**Status:** Reconciliation complete — decisions `DEC-001` through `DEC-211` approved  
+**Record version:** 1.0  
 **Last updated:** 2026-08-15  
 **Source discussion language:** French  
 **Repository language:** English
@@ -513,6 +513,61 @@ The application runs independently in infrastructure Dan can operate remotely. G
 If the NAS is offline, the core application continues working. Archive work remains pending and resumes later.
 
 Before any integration, obtain the device model and configuration, assess connectivity and security, identify on-site operational ownership, and validate snapshots, independent off-site backup and restore tests. RAID or snapshots alone are not treated as a complete backup strategy.
+
+### 10.2 Governed identity, versions, representations and locations
+
+Document governance uses four distinct layers:
+
+```mermaid
+flowchart TD
+    D["Document · durable business identity"] --> V["Document Version · exact governed content"]
+    V --> R1["Representation · editable DOCX"]
+    V --> R2["Representation · issued PDF"]
+    V --> R3["Representation · signed scan"]
+    R1 --> L1["Location · configured provider"]
+    R2 --> L2["Location · configured provider"]
+    R3 --> L3["Location · configured provider"]
+```
+
+A file rename, folder move, provider change or lost synchronized copy does not change or erase the business identity, version history or evidentiary use of a Document. A representation records the concrete byte form of one version; a location records where a copy can be found.
+
+Every Document belongs to one Workspace and has an explicit confidentiality and ownership scope. It may be Company-owned, deliberately Workspace-shared, linked to shared Client identity, supplied by an external party or approved for narrowly defined public publication. Access is never inferred only from a Drive folder or URL.
+
+### 10.3 Formal versions and immutable use
+
+Routine draft saves do not need to create formal business versions. A version is frozen when it enters review, approval, transmission, signature, official issuance, evidentiary use or replacement.
+
+A version that has been approved, transmitted, signed, issued or used as evidence is immutable. A material correction creates a new version or linked corrective instrument and preserves the preceding version, reason, actor, time, approval and supersession relationship.
+
+Content preparation, internal approval, transmission, receipt, signature, effective status, supersession, archival and storage synchronization are separate dimensions. One overloaded status must not claim all of them.
+
+### 10.4 Template and generation governance
+
+A `DocumentTemplate` is a durable identity. Every approved `DocumentTemplateVersion` is immutable, effective-dated and scoped to the Workspace or a Company. Controlled variants may cover language, branding, legal identity, Scheme, service, document type, signatory or approved clauses.
+
+Shared templates and Company variants use explicit relationships and overrides rather than uncontrolled copies. Changing a template never rewrites a historical generated Document.
+
+Every generated version preserves the exact template version, relevant source-data snapshot, responsible Company, locale, generating actor and time, generator version when material and checksums for material representations. Editable, rendered, signed and scanned representations remain related where factually correct, but are not treated as byte-identical.
+
+### 10.5 Evidence and provenance
+
+Evidentiary use points to an exact Document Version or representation, not a loose mutable URL. An evidence link records what it supports, source, acquisition channel and time, supplying party, verifier, verification state, confidentiality, permitted use and business context.
+
+One governed Document may support several authorized contexts without duplicating its bytes. Its own access classification continues to apply; linking it to a less restricted resource never broadens access implicitly.
+
+An externally received original is preserved unchanged. OCR, extraction, translation, summary, conversion and AI analysis are derived artefacts with explicit provenance.
+
+Transmission, receipt and signature evidence are distinct facts. The platform records the exact version sent, recipient, channel, actor and time, then links receipt or signature evidence. Technical delivery or a visible signature image does not automatically establish sufficient legal acceptance without an approved business rule and human confirmation.
+
+### 10.6 Retention, deletion and legal hold
+
+Governed contractual, financial, Audit, certification, Training and evidentiary Documents are archived rather than deleted like ordinary files. Retention is configurable by Document type, Company and jurisdiction and remains subject to verified contractual, accreditation, privacy and legal obligations.
+
+A legal, dispute, investigation, Audit or preservation hold prevents purge. Removing one physical location is separate from deleting the governed business record. Destructive purge requires explicit authority, traceability and verification that no active hold or dependency remains.
+
+### 10.7 Numbering
+
+Official numbering is configured by Company and Document type and is independent from the filename. Allocation is atomic and traceable. Year resets, series, reservation timing, abandoned numbers and reuse policy require real-practice validation.
 
 ## 11. Google integration architecture
 
@@ -1616,7 +1671,186 @@ Release 3 is split into independently testable capabilities:
 
 No detailed commercial implementation ticket becomes `ready-for-agent` until real services, tariffs, calculation examples, templates, approval thresholds, numbering rules and representative negotiations and Contracts have been inventoried. Mass marketing automation, a universal CRM or CPQ engine, AI-determined pricing, an internally implemented qualified-signature service and a Client portal remain outside this release.
 
-## 15. Release roadmap
+## 15. Historical migration and global search architecture
+
+### 15.1 Migration is a governed business process
+
+Historical data does not become canonical merely because a spreadsheet, folder or legacy export was imported. Every migration runs through a persistent `ImportBatch` with source, owner, checksum, mapping version, actor, dates, counts and status.
+
+```text
+source inventory
+  → immutable source capture
+  → staging and mapping
+  → validation and duplicate proposals
+  → dry-run report
+  → authorized approval
+  → idempotent commit
+  → reconciliation report
+```
+
+Rows with errors remain visible and correctable without forcing the batch into an unknown partial state. Re-running a batch does not duplicate committed records. Imported records retain source identifiers, batch provenance and uncertainty caused by missing or contradictory history.
+
+Duplicate detection proposes candidates using identifiers, normalized names, contacts and contextual evidence. It never automatically merges Clients, legal entities, Contracts, Documents or Credentials. A merge is permissioned and preserves aliases, source records, links and Activity Log history.
+
+Start with approximately ten representative Clients covering multiple Companies, languages, historical depths and exceptions. Expand toward the estimated 300 historical Clients only after reconciliation proves the model answers agreed completeness questions.
+
+### 15.2 Search authority and derived indexes
+
+PostgreSQL remains authoritative. Search indexes, normalized terms, extracted text and vector representations are derived, rebuildable projections.
+
+Authorization is applied before returning results, counts, snippets, facets or suggestions. Search must not reveal unauthorized Company activity.
+
+Global search distinguishes exact and normalized entity search; structured filters; authorized full-text search; and later semantic retrieval for approved Knowledge and dossier use cases.
+
+Romanian, Russian and English require Unicode-safe, diacritic-aware and language-aware normalization. Transliteration or fuzzy matching may propose candidates but never changes identity or merges records.
+
+### 15.3 Current, historical and completeness views
+
+Current operational results are the default. Archived, superseded, expired or historical versions require explicit filters and visible labels.
+
+A Client dossier completeness view distinguishes confirmed present, expected but missing, not applicable, not checked, inaccessible in another scope, and unresolved duplicate or contradiction.
+
+“Everything held for SICOM” means a categorized, scoped account of governed records and known gaps, not an assertion that unindexed folders or unauthorized data do not exist.
+
+### 15.4 Governed export and archive
+
+Authorized exports preserve scope, filters, generation time, actor, format and source-version context. Large exports are asynchronous, time-limited, audited and protected like source data.
+
+Standard formats and documented identifiers support portability. Synology may receive an optional archival copy after migration and search are proven; it is not the migration authority or only searchable source.
+
+## 16. Knowledge Base, RAG and AI governance architecture
+
+### 16.1 Approved Knowledge Sources
+
+A `KnowledgeSource` references an exact governed Document Version and records owner, provenance, language, rights, confidentiality, permitted AI use, effective period, approval and supersession state.
+
+```mermaid
+flowchart TD
+    D["Approved Document Version"] --> S["Knowledge Source"]
+    S --> C["Derived chunks and embeddings"]
+    C --> R["Authorized retrieval"]
+    R --> A["Cited answer or abstention"]
+```
+
+Chunks, embeddings, summaries and extracted metadata are derived projections that can be rebuilt. They never replace the governed source.
+
+Sources whose rights do not permit reproduction, indexing, external model processing or machine-learning use remain excluded. Paid ISO publications and confidential Client Documents are not admitted by convenience or mere possession.
+
+### 16.2 Version-aware and authorization-aware retrieval
+
+Retrieval enforces Workspace, Company, Document, purpose and user permissions before content reaches a model. Post-generation filtering is not adequate access control.
+
+Current answers exclude obsolete and superseded sources by default. Historical mode is deliberate and visibly identifies dates and status. The system preserves exact source version, fragment or locator, retrieval time and relevance evidence used for material claims.
+
+A response distinguishes supported statements, uncertain inferences, contradictions and missing evidence. When authorized evidence is insufficient, it abstains or requests information rather than completing facts from model intuition.
+
+### 16.3 AI Registry and interaction traceability
+
+Every AI capability has an `AIRegistryEntry` describing purpose, owner, affected actors, provider, model family, configuration, allowed data classes, tools, risk level, evaluation set, approval state, effective period and shutdown control.
+
+Material `AIInteraction` records preserve capability, actor, business context, model/configuration version, source references, output, validation, human disposition and resulting action. Logging is sanitized: secrets, tokens and unnecessary confidential prompt content are not copied into ordinary logs.
+
+External provider use requires documented retention, training, region, subprocessor, deletion and security terms. Tenant data is not made available for provider training by default.
+
+### 16.4 Untrusted inputs, outputs and tools
+
+Documents, retrieved text, emails and user content are untrusted data, not instructions. Prompt injection and malicious embedded content cannot grant permissions, select hidden tools or override server policy.
+
+Model output remains untrusted until schema, type, permission and business validation succeeds. An LLM does not directly write critical records, execute arbitrary code or call a provider with broad credentials.
+
+Tool execution re-establishes actor, Workspace, Company, permission, object state and idempotency on the server. Sensitive actions remain proposals requiring the same human approval and deterministic controls as non-AI workflows.
+
+### 16.5 Evaluation before autonomy
+
+Each capability has a versioned representative evaluation set and task-specific metrics, including retrieval coverage, citation correctness, supported-claim rate, extraction accuracy, contradiction and missing-data detection, abstention, human correction, latency, cost and unsafe-action rate.
+
+Romanian, Russian and English cases, access boundaries, outdated sources, adversarial instructions and known failures are tested. Material provider, model, prompt, embedding, chunking or tool-policy changes require regression evaluation before promotion.
+
+The first production AI is the assistive ISO Project Copilot. It summarizes permitted dossier state, identifies missing or contradictory information and proposes three to five next actions or drafts. General autonomous multi-agent operation waits for measured value and safety.
+
+The governance approach is informed by the [NIST AI RMF Generative AI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence), [OWASP guidance for LLM applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) and the official [EU Artificial Intelligence Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng). Product configuration is not a legal classification; applicability requires current review before release.
+
+## 17. Platform, security and reliability architecture
+
+### 17.1 Secure-by-design operating boundary
+
+Development, test or preview, and production are separate environments with separate credentials, data stores and provider configurations. Production data is not copied into lower environments unless a specifically approved, minimized and sanitized dataset is required.
+
+Identity uses the established Clerk boundary, strong session controls and MFA where required. Authorization remains server-side, default-deny and scoped to Workspace, Company and resource. Database constraints and automated cross-tenant tests provide defense in depth; PostgreSQL Row-Level Security may be added where its operational implications are verified, but no single mechanism is the only isolation boundary.
+
+Secrets use a deployment secret manager, least privilege, rotation and revocation. They never enter source control, client bundles, Activity Log, ordinary logs or AI prompts.
+
+### 17.2 Data and file protection
+
+Transport uses current TLS. Managed infrastructure encrypts persistent data and backups at rest; application-level encryption protects provider tokens and other narrowly identified sensitive values.
+
+Uploads are quarantined until type, size, checksum and malware controls complete. File names, MIME declarations, archives, previews, OCR and generated documents are untrusted input. Download and preview authorization is checked at access time.
+
+Privacy follows data minimization, purpose limitation, accuracy, retention, controlled deletion and demonstrable accountability. The product supports inventories, exports, correction, holds and governed deletion without claiming configuration alone guarantees legal compliance.
+
+### 17.3 Secure development and supply chain
+
+Every material capability includes threat modeling, authorization tests, validation, dependency and secret scanning, code review and security acceptance criteria. Releases use reproducible CI evidence and controlled migrations. High-impact dependencies and providers are inventoried; vulnerabilities receive owned remediation and exception records.
+
+The verification baseline follows the [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/), [NIST Secure Software Development Framework](https://csrc.nist.gov/pubs/sp/800/218/final) and [CISA Secure by Design guidance](https://www.cisa.gov/securebydesign). The official [GDPR text](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng) informs privacy-by-design review where EU personal data is processed.
+
+### 17.4 Observability, incidents and recoverability
+
+Structured logs, metrics, traces and correlation identifiers expose service health, security events, job failures, provider degradation and tenant-impacting errors without recording secrets or unrestricted business content.
+
+Activity Log is business evidence; operational logs are diagnostic evidence. Security-relevant logs have protected retention and access. Alerts have an owner, severity, escalation route and documented response.
+
+Backups are automated, encrypted, monitored and independently restorable. Before production acceptance, define and test recovery-point and recovery-time objectives for the database, governed documents, configuration and integration credentials.
+
+External outages do not corrupt committed state. Persistent jobs, idempotency and reconciliation support recovery. Schema and deployment changes have forward and rollback or corrective migration plans appropriate to risk.
+
+Platform support receives no standing tenant access. Future support access is explicit, time-limited, purpose-bound, revocable and fully logged. Tenant data and governed Documents remain exportable through standard formats.
+
+## 18. UX, localization and configuration architecture
+
+### 18.1 Client-centered and context-safe navigation
+
+The shared Client dossier is the central operational view, but uses progressive disclosure instead of placing every module in one permanently expanded screen. Users reach the relevant overview, Projects, Tasks, Documents, commercial work, Audits, finance, communications, Credentials and AI according to permission and task.
+
+Workspace and Company context remain visible. “All Companies” is a consolidated viewing and filtering context; a user cannot create a Company-owned Project, Contract, Offer, Payment or Document until one responsible Company is explicit.
+
+Role-oriented home views prioritize overdue Tasks, approvals, missing evidence, failed synchronization, expiring Documents or Credentials, unanswered commercial work and financial follow-up. Dashboards are not substitutes for actionable queues.
+
+### 18.2 Responsive, accessible and complete states
+
+Critical journeys work on desktop and responsive mobile web. A native mobile application is deferred until evidence shows responsive web is insufficient.
+
+The product targets [WCAG 2.2 AA](https://www.w3.org/TR/WCAG22/) for new user-facing experiences. Keyboard use, visible focus, contrast, labels, error association, target size, zoom, responsive reflow and non-colour status cues are acceptance concerns.
+
+Every screen specifies loading, empty, success, validation, permission-denied, unavailable-provider, retryable-failure, archived/read-only, conflict and partial-data states. Errors explain what happened, what remains saved and the next safe action.
+
+### 18.3 Localization and business vocabulary
+
+The localization foundation exists from Release 1. Initial product content supports Romanian, Russian and English; French remains an extension. User locale, Document language, Client communication language and Company default language are separate settings.
+
+Stable semantic identifiers drive logic. Display labels, stage names, notifications, document templates and help are localized resources. Changing a translation or tenant label never changes stored business meaning.
+
+Dates, numbers, currencies, names and search normalization respect locale while canonical values remain unambiguous. The repository, code, API and technical specifications remain English.
+
+### 18.4 Bounded configuration
+
+Configuration covers Company identity, capabilities, roles, project stages and templates, Document templates, numbering, Scheme definitions, notification policies, calendars, integrations, locale and terminology. It does not become arbitrary executable code or a universal BPM engine.
+
+Workspace defaults and Company overrides are explicit. A missing override inherits intentionally rather than copying values invisibly.
+
+Configuration that changes historical interpretation, authorization, numbering, calculation, generated content or regulated workflow is versioned or effective-dated. High-impact changes expose a preview or diff, validation, approval where required and Activity Log evidence.
+
+### 18.5 Notifications, dashboards and bulk work
+
+Business events create durable application state first. Notifications are derived deliveries with deduplication, recipient rules, severity, escalation, quiet hours and user preferences. Email or Calendar delivery failure does not erase the underlying Task or deadline.
+
+Every dashboard measure has an owner, definition, scope, date basis, currency rule and drill-down. Consolidated views do not mix currencies, Companies or confidential activity without explicit meaning and authorization.
+
+Bulk import and bulk actions provide preview, selection, validation, permission checks, partial-failure reporting and Activity Log evidence. Destructive or high-impact operations require explicit confirmation and cannot hide their target scope.
+
+First-tenant acceptance uses real roles, Romanian and Russian terminology, Company switching, representative desktop and mobile sizes and recovery from errors—not only static happy-path mockups.
+
+## 19. Release roadmap
 
 ### Release 0 — Technical foundation
 
@@ -1703,7 +1937,7 @@ Authoritative fiscal invoice generation, general-ledger accounting and e-Factura
 - ISO Project Copilot;
 - advanced agents only after measurable evaluation.
 
-## 16. Approved decision register
+## 20. Approved decision register
 
 ### Product scope, preservation and documentation
 
@@ -2223,7 +2457,365 @@ No detailed Release 3 ticket becomes `ready-for-agent` until real services, tari
 
 Iurie provides first-tenant workflow facts, desired behaviour, roles, exceptions and evidence in understandable business language. Dan and the implementation agents translate those answers into product and architecture decisions and independently research technical systems. A technical-looking question reaches Iurie only when it asks for an inaccessible operational fact or a business choice that materially changes implementation; internal model terms must first be explained through a recognizable business situation.
 
-## 17. Known effects on existing authorities
+### Document governance, templates, versions and evidence
+
+#### DEC-125 — Separate Document, Version, Representation and Location
+
+A governed Document is a durable business identity, a Document Version is exact governed content, a representation is one concrete file form and a Document Location is a replaceable physical copy or provider reference.
+
+#### DEC-126 — Define ownership, sharing and confidentiality explicitly
+
+Every Document belongs to one Workspace and declares its Company, deliberately shared, Client-supplied, external or narrowly public scope. Access is never inferred only from a storage folder, path or URL.
+
+#### DEC-127 — Do not treat every draft save as a formal version
+
+Create and preserve a formal version when content enters review, approval, transmission, signature, official issuance, evidentiary use or governed replacement.
+
+#### DEC-128 — Freeze every officially used version
+
+Approved, transmitted, signed, issued or evidentiary versions are immutable. Corrections use a new linked version or corrective instrument with reason, actor, time, approval and supersession history.
+
+#### DEC-129 — Keep document workflow dimensions separate
+
+Content preparation, review, approval, transmission, receipt, signature, effectiveness, supersession, archival and storage synchronization are distinct facts.
+
+#### DEC-130 — Give templates durable identity and immutable versions
+
+Templates have durable identities and approved, effective versions. Changing a template never rewrites a previously generated Document.
+
+#### DEC-131 — Govern shared templates and Company variants explicitly
+
+Templates may be Workspace-shared or Company-owned and may have controlled language, branding, legal, Scheme, service and signatory variants.
+
+#### DEC-132 — Preserve reproducible generation context
+
+Every generated Document Version records the exact template version, relevant source-data snapshot, Company, language, actor, time and generator version when material.
+
+#### DEC-133 — Relate editable, rendered and signed representations
+
+DOCX, PDF, scan and signed forms may represent one governed version while remaining distinct byte artefacts with preserved relationships and checksums.
+
+#### DEC-134 — Link evidence to an exact version with provenance
+
+Evidence records what an exact version supports, its source, acquisition time, supplying party, verifier, verification state, confidentiality and business context.
+
+#### DEC-135 — Preserve externally received originals
+
+Keep the received original unchanged. OCR, extraction, translation, conversion, summary and AI analysis are derived artefacts with provenance.
+
+#### DEC-136 — Separate Document content, transmission and signature evidence
+
+Record the exact version sent, recipient, channel, actor and time separately from receipt and signature evidence.
+
+#### DEC-137 — Govern retention, archival, purge and legal hold
+
+Governed historical Documents are archived rather than casually deleted. Retention and preservation holds protect contractual, financial, accreditation, privacy, dispute and evidentiary obligations.
+
+#### DEC-138 — Govern official numbering independently from filenames
+
+Numbering is Company- and Document-type-scoped, atomic and traceable. Reset, series, reservation and reuse behaviour require real-policy validation.
+
+#### DEC-139 — Inventory real document practice before detailed tickets
+
+No detailed document ticket becomes `ready-for-agent` until real document families, templates, variants, actors, numbering, correction paths, evidence and exceptions have been inventoried.
+
+### Historical migration and global search
+
+#### DEC-140 — Treat historical import as governed migration
+
+An uploaded spreadsheet, export or folder is a source to reconcile, not canonical truth. Migration uses persistent batches, mapping, validation, review and reconciliation.
+
+#### DEC-141 — Preserve source and batch provenance
+
+Every imported record retains source identity, batch, mapping version, actor, time and available external identifiers.
+
+#### DEC-142 — Make imports idempotent, previewable and recoverable
+
+Imports provide dry-run results, row-level errors, authorized commit and safe reprocessing without uncontrolled duplication or ambiguous partial state.
+
+#### DEC-143 — Preserve unknown and uncertain historical facts explicitly
+
+Missing, inferred, contradictory and unverified values remain distinguishable from confirmed facts. Migration does not fill history through silent assumptions.
+
+#### DEC-144 — Propose duplicates but never merge automatically
+
+Matching identifies candidates. An authorized human confirms merge, and the system preserves aliases, source records, relationships and Activity Log history.
+
+#### DEC-145 — Prove migration on ten representative Clients first
+
+Use approximately ten varied Clients to validate mapping, duplicate handling, Company scope, documents and completeness before expanding toward the estimated 300 Clients.
+
+#### DEC-146 — Keep search indexes derived and rebuildable
+
+PostgreSQL remains authoritative. Full-text, normalized and vector indexes are projections that can be rebuilt from governed records.
+
+#### DEC-147 — Apply authorization before search results
+
+Permissions filter results, snippets, facets, suggestions and counts before they reach the user or AI. Post-search hiding is insufficient.
+
+#### DEC-148 — Prevent search metadata leakage
+
+Search does not reveal the existence of unauthorized Company Projects, Contracts, Findings, finance, Documents or correspondence.
+
+#### DEC-149 — Distinguish entity search, content search and semantic retrieval
+
+Exact and structured operational search, permitted full-text search and later semantic retrieval have different behaviour, evidence and acceptance criteria.
+
+#### DEC-150 — Support multilingual and normalized matching without changing identity
+
+Romanian, Russian and English normalization, fuzzy matching and optional transliteration may propose results but never merge or rewrite canonical identity.
+
+#### DEC-151 — Default to current records and expose history deliberately
+
+Current operational records are the default. Archived, superseded, expired and historical results require visible filters and labels.
+
+#### DEC-152 — Represent dossier completeness as governed state
+
+Distinguish present, missing, not applicable, unchecked, inaccessible and contradictory information. Search absence alone never proves business absence.
+
+#### DEC-153 — Govern export and portability
+
+Exports are authorized, scoped, time-stamped, auditable and protected like source data. Standard formats and documented identifiers support tenant portability.
+
+#### DEC-154 — Inventory historical sources and search questions before tickets
+
+No Release 6 ticket becomes `ready-for-agent` until sources, volumes, languages, identifiers, duplicates, access rules and representative retrieval questions are inventoried.
+
+### Knowledge Base, RAG and AI governance
+
+#### DEC-155 — Build Knowledge Sources from exact governed versions
+
+Every Knowledge Source references an approved Document Version with provenance, language, rights, confidentiality, purpose and effective status.
+
+#### DEC-156 — Admit content according to rights and classification
+
+Possession is not permission for indexing or model use. Confidential, licensed, copyrighted or restricted sources enter only approved operations.
+
+#### DEC-157 — Enforce authorization before retrieval and generation
+
+Workspace, Company, Document, purpose and user permissions are checked before source content reaches a model.
+
+#### DEC-158 — Make retrieval version-aware and current by default
+
+Superseded sources are excluded from current answers. Historical retrieval is explicit and visibly identifies date and status.
+
+#### DEC-159 — Cite exact source versions and locators
+
+Material answers preserve the exact source, version and fragment or locator used rather than showing a generic document title.
+
+#### DEC-160 — Distinguish support, uncertainty, contradiction and absence
+
+AI must abstain or request information when evidence is insufficient and expose contradictions rather than resolve them silently.
+
+#### DEC-161 — Keep chunks, embeddings and summaries derived
+
+Knowledge projections are rebuildable and never become the authority over their governed source.
+
+#### DEC-162 — Register every AI capability
+
+Each AI capability records purpose, owner, provider, model, allowed data, tools, risk, evaluation, approval, effective period and shutdown control.
+
+#### DEC-163 — Trace material AI interactions without logging secrets
+
+Preserve model/configuration, source references, validation, human disposition and resulting action while excluding secrets and unnecessary confidential prompt content from ordinary logs.
+
+#### DEC-164 — Minimize data sent to AI providers
+
+Send only data required for an approved purpose and enforce tenant, Company and confidentiality controls before transmission.
+
+#### DEC-165 — Do not permit provider training on tenant data by default
+
+External-provider retention, training, region, subprocessor, security and deletion terms require documented review before use.
+
+#### DEC-166 — Treat retrieved content as untrusted data
+
+Documents, emails and retrieved text cannot grant permissions, override policies or instruct tools. Prompt injection is an explicit threat.
+
+#### DEC-167 — Treat model output as untrusted
+
+Validate schemas, types, citations, permissions and business constraints before any output affects canonical state.
+
+#### DEC-168 — Re-authorize every AI tool action on the server
+
+Tool execution re-establishes actor, tenant, Company, permission, object state and idempotency. The model never carries authority by itself.
+
+#### DEC-169 — Preserve human approval for sensitive actions
+
+AI may propose but cannot autonomously approve, send, sign, delete, price, pay, classify Findings, approve Reports, decide certification or change Credential lifecycle.
+
+#### DEC-170 — Evaluate each capability with representative cases
+
+Use versioned datasets and task-specific metrics for retrieval, citations, extraction, contradictions, abstention, human correction, cost, latency and unsafe actions.
+
+#### DEC-171 — Evaluate Romanian, Russian and English behaviour
+
+Language quality, retrieval, citations and safety boundaries are tested in the languages used by the first tenant.
+
+#### DEC-172 — Requalify material model or pipeline changes
+
+Provider, model, prompt, embedding, chunking, retrieval or tool-policy changes require regression evaluation before promotion.
+
+#### DEC-173 — Start with an assistive ISO Project Copilot
+
+The first Copilot summarizes permitted dossier state, detects missing or contradictory information and proposes three to five next actions or drafts.
+
+#### DEC-174 — Review AI regulatory and risk obligations per use case
+
+The AI Registry supports current legal and risk review. Product labels or feature flags do not establish legal classification or compliance.
+
+### Platform, security and reliability
+
+#### DEC-175 — Separate development, test and production environments
+
+Credentials, data stores and provider configurations are separated. Production operations do not depend on a development or preview environment.
+
+#### DEC-176 — Do not copy production data into lower environments by default
+
+Test data is synthetic or sanitized. Any exceptional production-data use is minimized, authorized, time-limited and recorded.
+
+#### DEC-177 — Enforce strong identity and least privilege
+
+Use secure sessions, MFA where required, server-side default-deny authorization and the narrowest Workspace, Company and resource scope.
+
+#### DEC-178 — Use defense in depth for tenant isolation
+
+Application authorization, database constraints, query patterns and automated cross-tenant tests jointly enforce isolation. Evaluate PostgreSQL Row-Level Security as an additional control, not an unquestioned sole boundary.
+
+#### DEC-179 — Manage secrets outside code and business records
+
+Secrets use a deployment secret manager, least privilege, rotation and revocation and never enter source control, client bundles, logs, Activity Log or prompts.
+
+#### DEC-180 — Encrypt transport, storage and selected sensitive fields
+
+Use current TLS, managed encryption at rest and application-level encryption where database compromise must not expose provider credentials or equivalent secrets.
+
+#### DEC-181 — Quarantine and validate uploaded files
+
+Treat file names, declared types, archives, previews, OCR and generated files as untrusted. Enforce type, size, checksum, malware and access controls.
+
+#### DEC-182 — Adopt a secure software-development baseline
+
+Threat modeling, review, dependency and secret scanning, authorization tests, security acceptance and owned vulnerability remediation are part of delivery.
+
+#### DEC-183 — Separate business audit evidence from diagnostic logs
+
+Activity Log preserves canonical business events. Operational and security logs support diagnosis and detection, exclude secrets and have protected access and retention.
+
+#### DEC-184 — Make observability tenant-safe and actionable
+
+Metrics, traces, correlation identifiers and alerts expose health and failures without leaking unrestricted tenant content. Alerts have severity, owner and escalation.
+
+#### DEC-185 — Prepare an incident-response process before production
+
+Define detection, containment, evidence preservation, communication, credential revocation, recovery and post-incident improvement responsibilities.
+
+#### DEC-186 — Define and test backup recovery objectives
+
+Backups are automated, encrypted, monitored and restorable. Production acceptance requires tested recovery-point and recovery-time objectives for critical assets.
+
+#### DEC-187 — Keep the core operable through provider outages
+
+Drive, Calendar, Gmail, Synology, AI and other providers degrade visibly without corrupting committed business state.
+
+#### DEC-188 — Make external and long-running work durable
+
+Persistent jobs use idempotency, retries, reconciliation, sanitized failure detail and operator-visible recovery.
+
+#### DEC-189 — Govern schema and deployment change
+
+Migrations, compatibility, rollback or corrective-forward plans and data validation match the risk of each release.
+
+#### DEC-190 — Support privacy and data lifecycle without claiming automatic compliance
+
+Data inventories, minimization, correction, export, retention, holds and governed deletion support tenant obligations that still require jurisdiction-specific review.
+
+#### DEC-191 — Give platform support no standing tenant access
+
+Future support access is explicit, time-limited, purpose-bound, revocable and fully logged.
+
+#### DEC-192 — Preserve data portability and provider exit
+
+Tenant records, governed documents and configuration can be exported through standard formats and documented identifiers.
+
+### UX, localization and configuration
+
+#### DEC-193 — Use the Client dossier as the central operational view
+
+Organize authorized Projects, Tasks, Documents, commercial work, Audits, finance, communications, Credentials and AI around the shared Client without one overloaded screen.
+
+#### DEC-194 — Keep Workspace and Company context visible
+
+Users always understand the tenant and Company scope of the information and action in front of them.
+
+#### DEC-195 — Make “All Companies” a consolidated view, not ambiguous ownership
+
+A Company-owned record cannot be created until one responsible Company is explicit, even from a consolidated dashboard.
+
+#### DEC-196 — Prioritize role-based action queues
+
+Home views emphasize overdue work, approvals, missing evidence, failed synchronization and other actionable responsibilities rather than vanity metrics.
+
+#### DEC-197 — Use progressive disclosure
+
+Keep frequent journeys simple while exposing complex legal, audit, financial and historical detail when needed and authorized.
+
+#### DEC-198 — Deliver responsive web before a native application
+
+Critical workflows work on desktop and mobile web. A dedicated mobile app requires later evidence that responsive web is insufficient.
+
+#### DEC-199 — Target WCAG 2.2 AA
+
+Accessibility is part of acceptance for new user-facing work, including keyboard, focus, contrast, labels, errors, zoom, target size and responsive reflow.
+
+#### DEC-200 — Establish localization from Release 1
+
+Initial product content supports Romanian, Russian and English; French is deferred. User locale, Document language, Client communication language and Company default are distinct.
+
+#### DEC-201 — Separate stable semantics from labels and translations
+
+Logic uses stable identifiers. Tenant vocabulary, status labels, stages, notifications, help and templates are localized display resources.
+
+#### DEC-202 — Keep configuration bounded and typed
+
+Configure Companies, capabilities, roles, stages, templates, numbering, Schemes, notifications, integrations and terminology without arbitrary executable code or a universal BPM engine.
+
+#### DEC-203 — Make Workspace defaults and Company overrides explicit
+
+Inheritance is visible and inspectable. A Company override does not create an unexplained independent copy.
+
+#### DEC-204 — Version configuration that affects historical meaning
+
+Authorization, numbering, calculation, generated content and regulated workflow configuration uses versions or effective dates when history must remain reproducible.
+
+#### DEC-205 — Preview, validate and audit high-impact configuration changes
+
+Expose a diff and consequences, require approval where appropriate and create Activity Log evidence.
+
+#### DEC-206 — Use a readiness checklist for tenant and Company setup
+
+A Company is not operationally ready until required identity, roles, numbering, templates, integrations, locale and capabilities are complete.
+
+#### DEC-207 — Specify non-happy-path UI states
+
+Every critical screen covers loading, empty, permission denial, provider outage, retryable failure, partial data, conflict, archived and read-only behaviour.
+
+#### DEC-208 — Derive notifications from durable business events
+
+Notifications use recipient rules, deduplication, escalation, quiet hours and preferences. Delivery failure never removes the underlying Task or deadline.
+
+#### DEC-209 — Give dashboards governed metric definitions
+
+Every measure declares scope, date basis, currency rule, confidentiality and drill-down. Consolidation never silently mixes incompatible values.
+
+#### DEC-210 — Make bulk actions previewable and traceable
+
+Bulk import and mutation show targets, validation and partial failures, recheck permissions and log material outcomes.
+
+#### DEC-211 — Test UX with real roles, languages, sizes and failures
+
+First-tenant acceptance includes Romanian and Russian vocabulary, Company switching, representative mobile and desktop sizes, role restrictions and recovery from realistic errors.
+
+## 21. Known effects on existing authorities
 
 These changes are intentionally not applied by this record alone:
 
@@ -2234,8 +2826,14 @@ These changes are intentionally not applied by this record alone:
 - Product vision and capability PRDs must be created before implementation issues for the new modules.
 - Existing Access work should be extended rather than rewritten.
 - The final Romanian interview for Iurie must be generated from the internal discovery registers using section 1.3; technical inventories and architecture choices remain separate agent work.
+- Cross-cutting PRDs are required for governed Documents, historical migration and search, AI governance, platform security/reliability and UX/localization/configuration.
+- Search, AI and reporting PRDs must inherit Workspace/Company authorization and must not define independent access rules.
+- Infrastructure decisions affecting topology, tenancy, encryption, recovery or provider lock-in require ADR ownership before implementation issues.
+- The Atlas Blue baseline remains a design reference, but final UX specifications must include role, language, mobile, accessibility, error and permission states.
+- Every future PRD must identify its business interview dependencies and separate technical discovery dependencies.
 
-## 18. Open product questions
+
+## 22. Open product questions
 
 These are not implementation-ready decisions:
 
@@ -2250,8 +2848,15 @@ These are not implementation-ready decisions:
 9. Which project categories and workflow templates are genuinely needed for the first release?
 10. What data-retention and deletion obligations apply in Moldova and future target markets?
 11. When, if ever, should an external Client portal enter the roadmap?
+12. Which historical systems, folders, spreadsheets and identifiers are authoritative enough to migrate?
+13. Which Romanian, Russian and English terminology must be tenant-configurable rather than globally translated?
+14. Which dashboard questions and notification thresholds matter for each real role?
+15. Which operating periods are business-critical, and what recovery delay and acceptable data loss can the first tenant tolerate?
+16. Which personal, confidential, accreditation and Client data categories require stronger handling or restricted AI use?
+17. Which AI providers and deployment regions may be used after contractual, security and data-protection review?
 
-## 19. Internal discovery register for Google
+
+## 23. Internal discovery register for Google
 
 These questions must be preserved for the first-tenant configuration audit. This is not a questionnaire to send verbatim. Apply section 1.3: ask Iurie only for current practices, desired behaviour, account ownership and evidence in ordinary language; Dan, an agent or the Google administrator verifies editions, OAuth scopes, APIs, security and integration design.
 
@@ -2311,7 +2916,7 @@ When practical, ask for screenshots or exports rather than relying only on memor
 
 Never request passwords, recovery codes, private keys, OAuth tokens or unrestricted document archives by email or chat.
 
-## 20. Internal discovery register for Finance
+## 24. Internal discovery register for Finance
 
 These questions must be answered before creating authoritative fiscal, accounting, bank or automated-payment integration tickets. This is not a questionnaire to send verbatim. Iurie and the responsible accountant describe the real workflow, responsibilities, exceptions, expected outputs and available evidence. Dan and the agents verify APIs, data formats, security and adapter design after the actual tools have been identified. Answers should distinguish PRISMA-PRIM, BIC and ECG rather than assuming that all three Companies use the same process.
 
@@ -2383,7 +2988,7 @@ For each example, preserve the sequence of events, actors, dates, expected amoun
 
 Never request passwords, bank-login credentials, unrestricted bank statements, private signing keys, OAuth tokens or fiscal certificates through chat or email.
 
-## 21. Internal discovery register for Audit, certification and Training
+## 25. Internal discovery register for Audit, certification and Training
 
 These questions must distinguish PRISMA-PRIM, BIC and ECG. This is not a questionnaire to send verbatim. Iurie describes services, responsibilities, real cases, exceptions, desired results and supporting evidence; Dan and the agents decide the internal model, authorization design and technical implementation. Do not infer legal roles, accreditation or impartiality arrangements from Company names or the source document's simplified end-to-end journey.
 
@@ -2529,7 +3134,7 @@ Request representative material with unnecessary personal, confidential and lice
 
 Never request private signing keys, passwords, unrestricted personnel files, complete licensed Standards, accreditation-portal credentials or bulk confidential Client archives through chat or email.
 
-## 22. Business interview source for the commercial workflow
+## 26. Business interview source for the commercial workflow
 
 This section deliberately uses ordinary operational language. It can be translated and edited into the Romanian interview for Iurie. Parenthetical explanations clarify the situation; internal entity names are not required from him. The interviewer should ask for concrete recent examples rather than abstract definitions.
 
@@ -2640,13 +3245,212 @@ The following are not questions for Iurie to decide. After he identifies the rea
 
 If this verification exposes a business choice—for example whether users want one-way synchronization or whether a failed external signature should block operational work—the choice returns to Iurie in plain language with concrete consequences. The technical mechanism does not.
 
-## 23. Immediate next work after this checkpoint
+## 27. Business interview source for Document governance
 
-1. Continue product reconciliation and append approved decisions to this record.
-2. Complete issue #22 because its Activity Log foundation remains compatible with the new direction.
-3. Define the complete product/PRD/epic/issue hierarchy before creating many implementation tickets.
-4. Normalize approved product language and architecture into `CONTEXT.md`, PRDs and ADRs.
-5. Mark obsolete assumptions explicitly rather than deleting historical specifications.
-6. Create Release 1 issues as narrow vertical slices only after their decisions and dependencies are testable.
-7. Convert internal discovery registers into a separate Romanian business interview, technical inventory checklist and answer-to-decision mapping before sending questions to Iurie.
-8. Prepare the final Romanian report and email for Iurie after GitHub specifications and issues match the final reconciliation.
+This is source material for the Romanian interview, not a technical questionnaire. Iurie describes recognizable Documents, responsibilities, corrections, sharing, evidence and desired outcomes.
+
+### 27.1 Documents, templates and responsibility
+
+1. **Which main Documents are used today by PRISMA-PRIM, BIC and ECG?**
+2. **For each family, which Company prepares, reviews, signs, sends and preserves it?**
+3. **Which Documents may be shared across Companies and which must remain separated?**
+4. **Which are working drafts and at what moment do they become official or locked?**
+5. **Who may authorize a template change?**
+6. **Which common and Company-specific variants, languages, logos, signatories or marks exist?**
+7. **Which Documents require official numbers, and when are numbers assigned?**
+8. **What happens to unused or abandoned numbers?**
+
+### 27.2 Corrections, evidence and retention
+
+9. **What happens when an error is found before approval, after sending or after signature?**
+10. **How does the team identify a replacement and make clear which version is current?**
+11. **Which proof shows that one exact Document was sent, received, accepted or signed?**
+12. **Which externally received originals must be preserved unchanged?**
+13. **May one received Document support several Projects or Companies?** Request permitted and prohibited examples.
+14. **Which Documents are confidential even from collaborators in another group Company?**
+15. **Which Documents must not be deleted, and how long are they currently kept?**
+16. **What happens when a dispute, complaint or inspection requires older material?**
+
+Request anonymized examples of templates, approved variants, draft-to-approved history, correction or reissue, transmission evidence, signed evidence, numbering and current archive practice. Never request passwords, signing secrets, private keys, unrestricted Drive exports, bulk Client archives or licensed Standard contents.
+
+Technical follow-up by Dan and agents covers formats, volumes, generation tools, provider identifiers, malware scanning, checksums, OCR, signature validation, encryption, backup, retention law and provider APIs.
+
+## 28. Business interview source for historical migration and search
+
+### 28.1 Historical sources and trust
+
+1. **Where is historical Client and Project information currently kept?** List spreadsheets, applications, email, Drive folders, paper archives and personal files.
+2. **Which source is normally trusted when two sources disagree?**
+3. **Which identifiers help recognize the same Client, legal entity, Contract, Project or Certificate?**
+4. **Which information is known to be incomplete or outdated?**
+5. **Who may decide that two old records describe the same Client?**
+6. **Which old records must remain as originally written even after a correction?**
+7. **Which ten Clients best represent simple, multi-Company, long-history and problematic cases for a pilot?**
+
+### 28.2 Search questions and completeness
+
+8. **What do users normally remember when searching: name, IDNO, person, number, Standard, filename or another clue?**
+9. **Do Romanian, Russian, Cyrillic, Latin or spelling variants occur for the same Client or person?**
+10. **Which historical or archived results should appear by default and which only on request?**
+11. **What must be visible when asking for “everything we have for this Client”?**
+12. **How should the screen distinguish missing information from information not yet checked?**
+13. **Which search information must remain hidden between Companies?**
+14. **Which exports are needed in practice, by whom and for what purpose?**
+
+Request source inventories, representative exports, duplicate examples, naming variants and ten concrete search questions. Dan and agents own mapping, encoding, staging, indexes, authorization tests, performance and rollback.
+
+## 29. Business interview source for Knowledge Base, RAG and AI
+
+### 29.1 Knowledge and permitted use
+
+1. **Which sources should the team trust for current answers?**
+2. **Who approves a procedure, interpretation, checklist, form or training material for use?**
+3. **How does the team know that a source is obsolete or replaced?**
+4. **Which materials are Company-owned, licensed, confidential, Client-specific or forbidden for AI use?**
+5. **May information from one Company or Client ever support work for another?** Ask for concrete boundaries.
+6. **Which languages must be understood and answered for each use case?**
+7. **What should the assistant do when two approved sources disagree or no source answers the question?**
+
+### 29.2 Useful assistance and human control
+
+8. **Which three to five dossier questions would save the most time today?**
+9. **Which missing Documents, contradictions or deadlines should the ISO Project Copilot identify?**
+10. **Which drafts would be useful, and who must review each type?**
+11. **Which suggestions would be helpful but must never be applied automatically?**
+12. **Which AI mistakes would be merely inconvenient and which could create serious business, legal or accreditation harm?**
+13. **What explanation or source must users see before trusting a recommendation?**
+14. **How should users correct, reject or report a poor answer?**
+15. **Which measurable improvement would justify keeping each AI capability?**
+
+Request approved and obsolete source pairs, known-answer questions, contradictions, missing-data cases, Romanian/Russian/English examples and unacceptable answers. Dan and agents own provider choice, retrieval architecture, tool permissions, evaluation, security and legal assessment.
+
+## 30. Business interview source for infrastructure, security and continuity
+
+These questions concern business impact and operational reality, not technical architecture.
+
+1. **Who currently administers the domains, Google Workspace, Drive, Synology and other important accounts?**
+2. **Who must be contacted when the application or an integration stops working?**
+3. **Which periods or activities cannot tolerate a long interruption?**
+4. **If the system stopped, what work could continue manually and what would be blocked?**
+5. **How much recently entered work could the business tolerate re-entering after a serious incident?**
+6. **How quickly must Clients, Projects, audits, Certificates and financial follow-up be restored?**
+7. **Which information would cause the most harm if seen by the wrong collaborator, Company or outsider?**
+8. **Which users work from personal devices, shared computers, remote locations or mobile phones?**
+9. **What should happen immediately when a collaborator leaves or loses a device?**
+10. **Which external professionals or temporary collaborators require limited access?**
+11. **Which existing backups have actually been restored and checked?**
+12. **Who may authorize exceptional support access to business data?**
+13. **Which records must remain available if Google, Synology or an AI provider is unavailable?**
+14. **Which standard exports would be required if the group changed software provider?**
+
+Request organizational ownership and recovery evidence, not passwords, secrets, full account exports or sensitive incident details through chat. Dan and agents own security controls, threat models, encryption, environment design, backup technology, monitoring and incident procedures.
+
+## 31. Business interview source for UX, localization and configuration
+
+### 31.1 Roles, navigation and daily work
+
+1. **Which people use the platform and what are the first three things each must accomplish on a normal day?**
+2. **Which questions should the Client overview answer immediately?**
+3. **When is a consolidated group view useful, and when must one Company remain the only visible context?**
+4. **Which actions are commonly performed from a phone during visits, audits or travel?**
+5. **Which approvals or exceptions need a dedicated queue?**
+6. **Which complex details should remain hidden until needed?**
+7. **Which mistakes are currently caused by confusing screens, folders or terminology?**
+
+### 31.2 Language, terminology and notifications
+
+8. **Who requires Romanian, Russian or English, and for which screens and Documents?**
+9. **Which words does the team actually use for stages, audits, certificates, Offers and Contracts?**
+10. **Which Company-specific terms must differ without changing the underlying business meaning?**
+11. **Which reminders must be visible inside the application?**
+12. **Which reminders also require email or Calendar delivery?**
+13. **When should reminders repeat or escalate, and when would they become noise?**
+14. **Which dashboard numbers are genuinely used to make decisions?**
+15. **How should each number be interpreted by Company, date and currency?**
+
+Request real role examples, daily journeys, mobile situations, terminology lists, dashboard questions, alert rules and errors users must recover from. Dan and agents own component architecture, responsive breakpoints, accessibility, localization implementation and configuration storage.
+
+## 32. Consolidation and PRD preparation
+
+### 32.1 Reconciliation completion
+
+Decisions `DEC-001` through `DEC-211` complete the conceptual reconciliation requested after the 2026-08-14 source. Remaining open questions are evidence dependencies, first-tenant configuration or later-scope choices; they do not justify returning to rejected architecture assumptions.
+
+The next documentation hierarchy is:
+
+```mermaid
+flowchart TD
+    V["Product Vision PRD"] --> X["Cross-cutting PRDs"]
+    V --> C["Capability PRDs by release"]
+    X --> E["Epics"]
+    C --> E
+    E --> I["Narrow GitHub Issues"]
+```
+
+### 32.2 Required cross-cutting PRDs
+
+1. Tenant, Company, shared Client and authorization.
+2. Activity Log and accountability.
+3. Governed Documents, templates, versions, evidence and integrations.
+4. Historical migration, global search and export.
+5. AI, Knowledge Base, RAG, evaluation and tool governance.
+6. Platform security, privacy, reliability and operations.
+7. UX architecture, accessibility, localization and bounded configuration.
+
+### 32.3 Capability PRDs
+
+Capability PRDs follow the approved roadmap boundaries:
+
+- Release 1: Company/RBAC; shared Client; Project/Task; Document registry; operational dashboard and acceptance journey.
+- Release 2: Drive; Calendar; assisted email; conditional Gmail; document generation.
+- Release 3: intake/Opportunity; catalogue/pricing; Offers; Contracts.
+- Release 4: Scheme/Audit foundation; execution/Findings; certification; Training; conditional advanced assurance.
+- Release 5: operational finance.
+- Release 6: historical migration and search.
+- Release 7: Knowledge Base, RAG and measured copilots.
+
+### 32.4 Mandatory PRD content
+
+Every PRD identifies:
+
+- business problem, outcome and measurable value;
+- actors, Workspace/Company scope and permission matrix;
+- in-scope, out-of-scope and deferred behaviour;
+- entities, lifecycle, invariants and historical rules;
+- Documents, evidence, approvals and Activity Log events;
+- configuration and localization;
+- integrations, source of truth and failure recovery;
+- migration and compatibility;
+- security, privacy, accessibility, performance and observability;
+- happy path, exceptions, empty/error/permission states;
+- acceptance journey and testable criteria;
+- business evidence still required from Iurie;
+- technical research and ADR dependencies owned by Dan and agents.
+
+### 32.5 Readiness gates
+
+A PRD may be drafted with open questions, but an epic or issue is not `ready-for-agent` until:
+
+1. the observable business outcome is unambiguous;
+2. Company and tenant scope are explicit;
+3. required actors, permissions and approvals are known;
+4. lifecycle, versions, corrections and deletion behaviour are testable;
+5. source-of-truth and provider boundaries are explicit;
+6. representative real examples exist;
+7. security, audit, observability and failure behaviour are included;
+8. dependencies and migration consequences are identified;
+9. acceptance criteria cover success and important exceptions;
+10. unresolved business dependencies are blockers rather than hidden assumptions.
+
+This record now preserves the complete reasoning needed for a context-free future agent to verify the analysis, make evidence-based adjustments and begin the PRD hierarchy without reconstructing the reconciliation conversation.
+
+## 33. Immediate next work after reconciliation
+
+1. Complete issue #22 because its Activity Log foundation remains compatible with the consolidated direction.
+2. Create the Product Vision PRD and the seven cross-cutting PRDs defined in section 32.
+3. Normalize canonical vocabulary into `CONTEXT.md` and durable architectural boundaries into ADRs.
+4. Mark original pilot assumptions as superseded while preserving historical and commercial traceability.
+5. Convert the discovery registers into one Romanian business interview, one technical inventory checklist and one answer-to-decision mapping.
+6. Draft Release 1 capability PRDs before creating implementation epics or issues.
+7. Apply the readiness gates in section 32.5 and create only narrow, independently testable issues.
+8. Prepare the final Romanian report and email for Iurie after normalized specifications and issue hierarchy match this reconciliation.
