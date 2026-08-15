@@ -11,9 +11,27 @@ interface CurrentActor {
   workspaceName: string;
 }
 
+interface ActivityLogEvent {
+  id: string;
+  action: 'internal_user.provisioned';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'internal_user';
+    internalUserId: string;
+    displayName: string;
+  };
+  metadata: { identityProvider: string };
+}
+
+type ActivityLogState =
+  | { status: 'loading' }
+  | { status: 'ready'; events: ActivityLogEvent[] }
+  | { status: 'error' };
+
 type AccessState =
   | { status: 'checking' }
-  | { status: 'active'; actor: CurrentActor }
+  | { status: 'active'; actor: CurrentActor; activityLog: ActivityLogState }
   | { status: 'signed-out' }
   | { status: 'forbidden' }
   | { status: 'error' };
@@ -26,19 +44,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     const controller = new AbortController();
     void identity
       .getToken()
-      .then((token) =>
-        fetch(
+      .then(async (token) => {
+        const headers =
+          identity.requestHeaders ??
+          (token ? { Authorization: `Bearer ${token}` } : undefined);
+        const response = await fetch(
           `${import.meta.env.VITE_API_URL ?? '/api'}/access/current-actor`,
           {
             credentials: 'include',
-            headers:
-              identity.requestHeaders ??
-              (token ? { Authorization: `Bearer ${token}` } : undefined),
+            headers,
             signal: controller.signal,
           },
-        ),
-      )
-      .then(async (response) => {
+        );
         if (response.status === 401) {
           await identity.rejectSession();
           return setAccess({ status: 'signed-out' });
@@ -46,7 +63,51 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         if (response.status === 403) return setAccess({ status: 'forbidden' });
         if (!response.ok) return setAccess({ status: 'error' });
         const actor = (await response.json()) as CurrentActor;
-        setAccess({ status: 'active', actor });
+        setAccess({
+          status: 'active',
+          actor,
+          activityLog: { status: 'loading' },
+        });
+
+        try {
+          const activityResponse = await fetch(
+            `${import.meta.env.VITE_API_URL ?? '/api'}/activity-log`,
+            {
+              credentials: 'include',
+              headers,
+              signal: controller.signal,
+            },
+          );
+          if (activityResponse.status === 401) {
+            await identity.rejectSession();
+            return setAccess({ status: 'signed-out' });
+          }
+          if (activityResponse.status === 403)
+            return setAccess({ status: 'forbidden' });
+          if (!activityResponse.ok) {
+            return setAccess({
+              status: 'active',
+              actor,
+              activityLog: { status: 'error' },
+            });
+          }
+          const activityLog = (await activityResponse.json()) as {
+            events: ActivityLogEvent[];
+          };
+          return setAccess({
+            status: 'active',
+            actor,
+            activityLog: { status: 'ready', events: activityLog.events },
+          });
+        } catch (error: unknown) {
+          if (error instanceof DOMException && error.name === 'AbortError')
+            throw error;
+          return setAccess({
+            status: 'active',
+            actor,
+            activityLog: { status: 'error' },
+          });
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError')
@@ -103,6 +164,56 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           they become available.
         </p>
       </ApplicationContentSurface>
+      <ActivityLog state={access.activityLog} />
     </ApplicationShell>
   );
+}
+
+function ActivityLog({ state }: { state: ActivityLogState }) {
+  return (
+    <section className="activity-log" aria-labelledby="activity-log-title">
+      <div className="activity-log-heading">
+        <p className="eyebrow">Accountability</p>
+        <h2 id="activity-log-title">Activity Log</h2>
+      </div>
+      {state.status === 'loading' && <p role="status">Loading activity…</p>}
+      {state.status === 'error' && (
+        <p role="alert">
+          We could not load the Activity Log. Please try again.
+        </p>
+      )}
+      {state.status === 'ready' && state.events.length === 0 && (
+        <p>No activity has been recorded in this workspace yet.</p>
+      )}
+      {state.status === 'ready' && state.events.length > 0 && (
+        <ol className="activity-log-list">
+          {state.events.map((event) => (
+            <li key={event.id}>
+              <div>
+                <strong>{activityDescription(event)}</strong>
+                <span>Target: {event.target.displayName}</span>
+              </div>
+              <time dateTime={event.occurredAt}>
+                {formatActivityTime(event.occurredAt)}
+              </time>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function activityDescription(event: ActivityLogEvent): string {
+  const actionLabels: Record<ActivityLogEvent['action'], string> = {
+    'internal_user.provisioned': 'was provisioned',
+  };
+  return `${event.actor.displayName} ${actionLabels[event.action]}`;
+}
+
+function formatActivityTime(occurredAt: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(occurredAt));
 }

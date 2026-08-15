@@ -1,4 +1,5 @@
 import {
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -50,6 +51,42 @@ export const internalUsers = pgTable(
     uniqueIndex('internal_users_external_identity_unique').on(
       table.externalProvider,
       table.externalSubject,
+    ),
+  ],
+);
+
+export const activityLogAction = pgEnum('activity_log_action', [
+  'internal_user.provisioned',
+]);
+
+export const activityLogTargetType = pgEnum('activity_log_target_type', [
+  'internal_user',
+]);
+
+export const activityLogEvents = pgTable(
+  'activity_log_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    actorInternalUserId: uuid('actor_internal_user_id')
+      .notNull()
+      .references(() => internalUsers.id),
+    action: activityLogAction('action').notNull(),
+    targetType: activityLogTargetType('target_type').notNull(),
+    targetInternalUserId: uuid('target_internal_user_id')
+      .notNull()
+      .references(() => internalUsers.id),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    metadata: jsonb('metadata').$type<{ identityProvider: string }>().notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+  },
+  (table) => [
+    uniqueIndex('activity_log_events_idempotency_key_unique').on(
+      table.idempotencyKey,
     ),
   ],
 );

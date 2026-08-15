@@ -159,9 +159,68 @@
 }
 
 .production-content {
+  display: grid;
   width: 100%;
   max-width: 76rem;
+  gap: 1.5rem;
   padding: clamp(2rem, 6vw, 5rem);
+}
+
+.activity-log {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--shell-line);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+}
+
+.activity-log-heading .eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--shell-blue);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.activity-log-heading h2 {
+  margin: 0;
+  color: var(--shell-navy-deep);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+}
+
+.activity-log-list {
+  display: grid;
+  gap: 0;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-log-list li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--shell-line);
+}
+
+.activity-log-list strong,
+.activity-log-list span {
+  display: block;
+}
+
+.activity-log-list span,
+.activity-log-list time,
+.activity-log > p {
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+}
+
+.activity-log-list span {
+  margin-top: 0.25rem;
 }
 
 .production-content-surface {
@@ -237,6 +296,11 @@
 
   .production-content {
     padding: 1.25rem 1rem 2rem;
+  }
+
+  .activity-log-list li {
+    display: grid;
+    gap: 0.5rem;
   }
 }
 
