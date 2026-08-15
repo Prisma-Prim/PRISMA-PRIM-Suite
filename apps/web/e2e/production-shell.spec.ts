@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { actorContextFixture } from './actor-context.fixture';
 
 test('renders the production shell at the normal application entry point', async ({
   page,
@@ -9,11 +10,7 @@ test('renders the production shell at the normal application entry point', async
       'x-test-external-subject': 'local-demonstration-user',
     });
     return route.fulfill({
-      json: {
-        displayName: 'Ada Ionescu',
-        email: 'ada@example.test',
-        workspaceName: 'PRISMA Workspace',
-      },
+      json: actorContextFixture,
     });
   });
   await page.route('**/api/activity-log', (route) => {
@@ -84,11 +81,7 @@ test('makes primary navigation available on a narrow viewport', async ({
   test.skip(testInfo.project.name !== 'narrow');
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({
-      json: {
-        displayName: 'Ada Ionescu',
-        email: 'ada@example.test',
-        workspaceName: 'PRISMA Workspace',
-      },
+      json: actorContextFixture,
     }),
   );
   await page.route('**/api/activity-log', (route) =>
@@ -164,11 +157,7 @@ test('fails closed for a signed-out deterministic session and recovers the prote
   );
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({
-      json: {
-        displayName: 'Ada Ionescu',
-        email: 'ada@example.test',
-        workspaceName: 'PRISMA Workspace',
-      },
+      json: actorContextFixture,
     }),
   );
   await page.route('**/api/activity-log', (route) =>
@@ -179,4 +168,22 @@ test('fails closed for a signed-out deterministic session and recovers the prote
   await expect(
     page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
   ).toBeVisible();
+});
+
+test('shows a safe denial when the verified user has no active Workspace Membership', async ({
+  page,
+}) => {
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({
+      status: 403,
+      json: { message: 'Forbidden', statusCode: 403 },
+    }),
+  );
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'Your access to this workspace is inactive.',
+  );
+  await expect(page.getByRole('banner')).toHaveCount(0);
+  await expect(page.getByText('PRISMA Workspace')).toHaveCount(0);
 });

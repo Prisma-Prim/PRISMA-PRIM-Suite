@@ -19,7 +19,7 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The resolved Internal User is inactive.
+          description: The principal has no active Internal User and Workspace Membership authority.
   /api/activity-log:
     get:
       operationId: listCurrentWorkspaceActivity
@@ -45,7 +45,7 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The resolved Internal User is inactive.
+          description: The principal has no active Internal User and Workspace Membership authority.
 components:
   schemas:
     ActivityLogEvent:
@@ -114,6 +114,7 @@ components:
       additionalProperties: false
       required:
         - internalUserId
+        - workspaceMembershipId
         - workspaceId
         - workspaceName
         - displayName
@@ -121,6 +122,9 @@ components:
         - active
       properties:
         internalUserId:
+          type: string
+          format: uuid
+        workspaceMembershipId:
           type: string
           format: uuid
         workspaceId:

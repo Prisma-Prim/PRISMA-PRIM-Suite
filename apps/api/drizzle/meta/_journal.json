@@ -15,6 +15,13 @@
       "when": 1786793268825,
       "tag": "0001_fat_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786796409131,
+      "tag": "0002_workspace-membership-authority",
+      "breakpoints": true
     }
   ]
 }
