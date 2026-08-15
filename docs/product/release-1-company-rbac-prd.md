@@ -82,11 +82,10 @@ Preserve existing Workspace/Internal User identities and Clerk subject mappings.
 
 ## 11. Testing decisions
 
-- PostgreSQL REST tests for membership, permissions, revocation and isolation;
-- browser tests for single/multi-Company context and denial;
-- migration test from the current access state;
-- public-interface tests rather than direct authorization-table tests;
-- negative identifiers, lists and counts.
+- [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) uses the PostgreSQL migration and Access REST seams to prove explicit membership resolution, bootstrap migration, safe missing-membership denial, and preservation of #22 behaviour.
+- [Issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) uses the public Company REST and authorization interfaces to prove that only the bootstrap Workspace Owner can register and view a provider Company in the current Workspace and that registration records one Activity Log event.
+- [Issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) uses REST and browser seams to prove visible selection among authorized active Companies, server revalidation on every protected request, and non-leaking invalid or stale selection recovery.
+- Cross-cutting migration, isolation, denial, metadata-leakage, and database-constraint cases remain owned by the Tenant, Company, Shared Client and Authorization PRD.
 
 ## 12. Acceptance journey
 
@@ -112,4 +111,4 @@ Question source: S00 and S01.
 
 ## 15. Readiness
 
-The PRD is structurally complete. Its approved business-independent foundation tickets may proceed sequentially after issue #22 and the tenancy ADR. Tickets that assign real users, finalize role templates or permission bundles, define consolidated oversight, or decide deactivation and exceptional-access behaviour remain blocked on first-tenant evidence.
+The PRD is structurally complete. Its approved business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). It does not authorize Company assignments, a role matrix, detailed permission bundles, “All Companies,” or later domain modules. Real assignments, finalized templates and bundles, consolidated oversight, broader deactivation rules, and exceptional access remain blocked on first-tenant evidence.
