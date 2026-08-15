@@ -11,14 +11,16 @@ describe('ApplicationRoot', () => {
         Promise.resolve(
           new Response(
             JSON.stringify(
-              input.toString().endsWith('/activity-log')
-                ? { events: [] }
-                : {
-                    displayName: 'Ada Ionescu',
-                    email: 'ada@example.test',
-                    workspaceName: 'PRISMA Workspace',
-                    workspacePermissions: ['company.manage'],
-                  },
+              input.toString().endsWith('/companies')
+                ? []
+                : input.toString().endsWith('/activity-log')
+                  ? { events: [] }
+                  : {
+                      displayName: 'Ada Ionescu',
+                      email: 'ada@example.test',
+                      workspaceName: 'PRISMA Workspace',
+                      workspacePermissions: ['company.manage'],
+                    },
             ),
             { status: 200 },
           ),
@@ -43,6 +45,6 @@ describe('ApplicationRoot', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByText('Ada Ionescu')).toBeInTheDocument();
     expect(screen.getByText('ada@example.test')).toBeInTheDocument();
-    expect(screen.getByText('PRISMA Workspace')).toBeInTheDocument();
+    expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(2);
   });
 });

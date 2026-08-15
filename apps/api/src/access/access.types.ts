@@ -7,6 +7,11 @@ export interface ExternalPrincipal {
 
 export type WorkspacePermission = 'company.manage';
 
+export interface ActiveCompanyContext {
+  id: string;
+  displayName: string;
+}
+
 export interface ActorContext {
   internalUserId: string;
   workspaceMembershipId: string;
@@ -16,4 +21,5 @@ export interface ActorContext {
   email: string;
   active: boolean;
   workspacePermissions: WorkspacePermission[];
+  activeCompany?: ActiveCompanyContext;
 }

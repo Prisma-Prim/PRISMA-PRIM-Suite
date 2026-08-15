@@ -5,7 +5,8 @@ import {
   type ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { ExternalPrincipal } from './access.types.js';
+import { AccessService } from './access.service.js';
+import type { ActorContext, ExternalPrincipal } from './access.types.js';
 import {
   EXTERNAL_IDENTITY_VERIFIER,
   type ExternalIdentityVerifier,
@@ -16,8 +17,8 @@ interface HeaderRequest {
   header(name: string): string | undefined;
 }
 
-export interface PrincipalRequest extends HeaderRequest, IdentityRequest {
-  externalPrincipal?: ExternalPrincipal;
+export interface ActorContextRequest extends HeaderRequest, IdentityRequest {
+  actorContext?: ActorContext;
 }
 
 function requiredHeader(request: HeaderRequest, name: string): string {
@@ -27,14 +28,26 @@ function requiredHeader(request: HeaderRequest, name: string): string {
 }
 
 @Injectable()
-export class ExternalPrincipalAdapter implements CanActivate {
+export class ActorContextAdapter implements CanActivate {
   constructor(
     @Inject(EXTERNAL_IDENTITY_VERIFIER)
     private readonly externalIdentity: ExternalIdentityVerifier,
+    private readonly access: AccessService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<PrincipalRequest>();
+    const request = context.switchToHttp().getRequest<ActorContextRequest>();
+    const principal = await this.resolvePrincipal(request);
+    request.actorContext = await this.access.resolveActor(
+      principal,
+      request.header('x-company-context-id'),
+    );
+    return true;
+  }
+
+  private async resolvePrincipal(
+    request: ActorContextRequest,
+  ): Promise<ExternalPrincipal> {
     const mode = process.env.ACCESS_IDENTITY_MODE;
     const deterministicModeAllowed =
       mode === 'test' && process.env.NODE_ENV === 'test';
@@ -42,16 +55,14 @@ export class ExternalPrincipalAdapter implements CanActivate {
       mode === 'local-demo' && process.env.NODE_ENV === 'development';
 
     if (!deterministicModeAllowed && !localDemoModeAllowed) {
-      request.externalPrincipal = await this.externalIdentity.verify(request);
-      return true;
+      return this.externalIdentity.verify(request);
     }
 
-    request.externalPrincipal = {
+    return {
       provider: requiredHeader(request, 'x-test-external-provider'),
       subject: requiredHeader(request, 'x-test-external-subject'),
       displayName: requiredHeader(request, 'x-test-display-name'),
       email: requiredHeader(request, 'x-test-email'),
     };
-    return true;
   }
 }

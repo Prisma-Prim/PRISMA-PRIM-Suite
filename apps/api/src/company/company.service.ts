@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
-import { AccessService } from '../access/access.service.js';
+import { and, asc, eq } from 'drizzle-orm';
+import { requireWorkspacePermission } from '../access/access-policy.js';
 import type { ActorContext } from '../access/access.types.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { COMPANY_REGISTERED_ACTION } from '../accountability/accountability.types.js';
@@ -16,7 +16,6 @@ import type { CompanyRecord, RegisterCompanyCommand } from './company.types.js';
 export class CompanyService {
   constructor(
     private readonly databaseContext: DatabaseContext,
-    private readonly access: AccessService,
     private readonly accountability: AccountabilityService,
   ) {}
 
@@ -24,7 +23,7 @@ export class CompanyService {
     actor: ActorContext,
     command: RegisterCompanyCommand,
   ): Promise<CompanyRecord> {
-    this.access.requireWorkspacePermission(actor, 'company.manage');
+    requireWorkspacePermission(actor, 'company.manage');
     const displayName = requireDisplayName(command.displayName);
     const idempotencyKey = requireIdempotencyKey(command.idempotencyKey);
 
@@ -68,8 +67,23 @@ export class CompanyService {
     });
   }
 
+  async listVisible(actor: ActorContext): Promise<CompanyRecord[]> {
+    requireWorkspacePermission(actor, 'company.manage');
+    const visibleCompanies = await this.databaseContext.connection
+      .select()
+      .from(companies)
+      .where(
+        and(
+          eq(companies.workspaceId, actor.workspaceId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .orderBy(asc(companies.displayName), asc(companies.id));
+    return visibleCompanies.map(toCompanyRecord);
+  }
+
   async get(actor: ActorContext, companyId: string): Promise<CompanyRecord> {
-    this.access.requireWorkspacePermission(actor, 'company.manage');
+    requireWorkspacePermission(actor, 'company.manage');
     const [company] = await this.databaseContext.connection
       .select()
       .from(companies)
@@ -77,6 +91,7 @@ export class CompanyService {
         and(
           eq(companies.workspaceId, actor.workspaceId),
           eq(companies.id, companyId),
+          eq(companies.status, 'active'),
         ),
       )
       .limit(1);

@@ -12,34 +12,36 @@ describe('App', () => {
         return Promise.resolve(
           new Response(
             JSON.stringify(
-              url.endsWith('/activity-log')
-                ? {
-                    events: [
-                      {
-                        id: 'event-1',
-                        action: 'internal_user.provisioned',
-                        occurredAt: '2026-08-15T09:00:00.000Z',
-                        actor: {
-                          internalUserId: 'user-1',
-                          displayName: 'Ada Ionescu',
+              url.endsWith('/companies')
+                ? []
+                : url.endsWith('/activity-log')
+                  ? {
+                      events: [
+                        {
+                          id: 'event-1',
+                          action: 'internal_user.provisioned',
+                          occurredAt: '2026-08-15T09:00:00.000Z',
+                          actor: {
+                            internalUserId: 'user-1',
+                            displayName: 'Ada Ionescu',
+                          },
+                          target: {
+                            type: 'internal_user',
+                            internalUserId: 'user-1',
+                            displayName: 'Ada Ionescu',
+                          },
+                          metadata: {
+                            identityProvider: 'deterministic-test',
+                          },
                         },
-                        target: {
-                          type: 'internal_user',
-                          internalUserId: 'user-1',
-                          displayName: 'Ada Ionescu',
-                        },
-                        metadata: {
-                          identityProvider: 'deterministic-test',
-                        },
-                      },
-                    ],
-                  }
-                : {
-                    displayName: 'Ada Ionescu',
-                    email: 'ada@example.test',
-                    workspaceName: 'PRISMA Workspace',
-                    workspacePermissions: ['company.manage'],
-                  },
+                      ],
+                    }
+                  : {
+                      displayName: 'Ada Ionescu',
+                      email: 'ada@example.test',
+                      workspaceName: 'PRISMA Workspace',
+                      workspacePermissions: ['company.manage'],
+                    },
             ),
             { status: 200 },
           ),
@@ -49,6 +51,7 @@ describe('App', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
 
@@ -62,6 +65,23 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the shell when Company preference storage is unavailable', async () => {
+    const identity = deterministicBrowserIdentity();
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+
+    render(<App identity={identity} />);
+
+    expect(await screen.findByRole('banner')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Company context' }),
     ).toBeInTheDocument();
   });
 
@@ -84,33 +104,35 @@ describe('App', () => {
       Promise.resolve(
         new Response(
           JSON.stringify(
-            input.toString().endsWith('/activity-log')
-              ? {
-                  events: [
-                    {
-                      id: 'event-company',
-                      action: 'company.registered',
-                      occurredAt: '2026-08-15T10:30:00.000Z',
-                      actor: {
-                        internalUserId: 'user-1',
-                        displayName: 'Ada Ionescu',
+            input.toString().endsWith('/companies')
+              ? []
+              : input.toString().endsWith('/activity-log')
+                ? {
+                    events: [
+                      {
+                        id: 'event-company',
+                        action: 'company.registered',
+                        occurredAt: '2026-08-15T10:30:00.000Z',
+                        actor: {
+                          internalUserId: 'user-1',
+                          displayName: 'Ada Ionescu',
+                        },
+                        target: {
+                          type: 'company',
+                          companyId: 'company-1',
+                          displayName: 'North Star Consulting',
+                        },
+                        metadata: {},
                       },
-                      target: {
-                        type: 'company',
-                        companyId: 'company-1',
-                        displayName: 'North Star Consulting',
-                      },
-                      metadata: {},
-                    },
-                  ],
-                }
-              : {
-                  internalUserId: 'user-1',
-                  displayName: 'Ada Ionescu',
-                  email: 'ada@example.test',
-                  workspaceName: 'PRISMA Workspace',
-                  workspacePermissions: ['company.manage'],
-                },
+                    ],
+                  }
+                : {
+                    internalUserId: 'user-1',
+                    displayName: 'Ada Ionescu',
+                    email: 'ada@example.test',
+                    workspaceName: 'PRISMA Workspace',
+                    workspacePermissions: ['company.manage'],
+                  },
           ),
           { status: 200 },
         ),
@@ -132,14 +154,16 @@ describe('App', () => {
       Promise.resolve(
         new Response(
           JSON.stringify(
-            input.toString().endsWith('/activity-log')
-              ? { events: [] }
-              : {
-                  displayName: 'Ada Ionescu',
-                  email: 'ada@example.test',
-                  workspaceName: 'PRISMA Workspace',
-                  workspacePermissions: ['company.manage'],
-                },
+            input.toString().endsWith('/companies')
+              ? []
+              : input.toString().endsWith('/activity-log')
+                ? { events: [] }
+                : {
+                    displayName: 'Ada Ionescu',
+                    email: 'ada@example.test',
+                    workspaceName: 'PRISMA Workspace',
+                    workspacePermissions: ['company.manage'],
+                  },
           ),
           { status: 200 },
         ),
@@ -157,19 +181,25 @@ describe('App', () => {
 
   it('keeps the protected shell visible when Activity Log loading fails', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
-      input.toString().endsWith('/activity-log')
-        ? Promise.reject(new TypeError('network unavailable'))
-        : Promise.resolve(
-            new Response(
-              JSON.stringify({
-                displayName: 'Ada Ionescu',
-                email: 'ada@example.test',
-                workspaceName: 'PRISMA Workspace',
-                workspacePermissions: ['company.manage'],
-              }),
-              { status: 200 },
+      input.toString().endsWith('/companies')
+        ? Promise.resolve(
+            new Response(JSON.stringify([]), {
+              status: 200,
+            }),
+          )
+        : input.toString().endsWith('/activity-log')
+          ? Promise.reject(new TypeError('network unavailable'))
+          : Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  displayName: 'Ada Ionescu',
+                  email: 'ada@example.test',
+                  workspaceName: 'PRISMA Workspace',
+                  workspacePermissions: ['company.manage'],
+                }),
+                { status: 200 },
+              ),
             ),
-          ),
     );
 
     render(<App identity={deterministicBrowserIdentity()} />);

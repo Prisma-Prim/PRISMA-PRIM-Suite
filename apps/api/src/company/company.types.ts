@@ -2,7 +2,7 @@ export interface CompanyRecord {
   id: string;
   workspaceId: string;
   displayName: string;
-  status: 'active';
+  status: 'active' | 'inactive';
   createdAt: string;
   createdByInternalUserId: string;
 }

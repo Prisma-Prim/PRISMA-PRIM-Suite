@@ -2,6 +2,10 @@ import { type FormEvent, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import {
+  createAuthenticatedApiClient,
+  type ApiResult,
+} from '../api/authenticated-api-client';
 import { companyRegistrationCopy as copy } from './company-registration.copy';
 
 interface CompanyRecord {
@@ -24,9 +28,11 @@ type RegistrationState =
 export function CompanyRegistration({
   actor,
   identity,
+  onCompanyContextRejected,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
+  onCompanyContextRejected?: () => void;
 }) {
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
@@ -44,6 +50,22 @@ export function CompanyRegistration({
         <p role="alert">{copy.permissionDenied}</p>
       </section>
     );
+  }
+
+  async function handleAccessRejection(
+    result: ApiResult<unknown>,
+  ): Promise<boolean> {
+    if (result.status === 'unauthorized') {
+      await identity.rejectSession();
+      setState({ status: 'error' });
+      return true;
+    }
+    if (result.status === 'forbidden') {
+      if (actor.activeCompany) onCompanyContextRejected?.();
+      setState({ status: 'forbidden' });
+      return true;
+    }
+    return false;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -68,51 +90,33 @@ export function CompanyRegistration({
     setState({ status: 'submitting' });
 
     try {
-      const headers = await authenticatedHeaders(identity);
-      const createResponse = await fetch(
-        `${import.meta.env.VITE_API_URL ?? '/api'}/companies`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            ...headers,
-            'content-type': 'application/json',
-            'idempotency-key': command.idempotencyKey,
-          },
-          body: JSON.stringify({ displayName: command.displayName }),
+      const api = await createAuthenticatedApiClient(identity);
+      const createResult = await api.request<CompanyRecord>('/companies', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': command.idempotencyKey,
         },
-      );
-      if (createResponse.status === 401) {
-        await identity.rejectSession();
-        return setState({ status: 'error' });
-      }
-      if (createResponse.status === 403) {
-        return setState({ status: 'forbidden' });
-      }
-      if (createResponse.status === 400) {
-        const body = (await createResponse.json()) as { message?: unknown };
+        companyContextId: actor.activeCompany?.id,
+        body: JSON.stringify({ displayName: command.displayName }),
+      });
+      if (await handleAccessRejection(createResult)) return;
+      if (createResult.status === 'validation') {
         return setState({
           status: 'validation',
-          message:
-            typeof body.message === 'string'
-              ? body.message
-              : copy.displayNameRequired,
+          message: createResult.message ?? copy.displayNameRequired,
         });
       }
-      if (!createResponse.ok) return setState({ status: 'error' });
-      const created = (await createResponse.json()) as CompanyRecord;
+      if (createResult.status !== 'ok') return setState({ status: 'error' });
 
-      const readResponse = await fetch(
-        `${import.meta.env.VITE_API_URL ?? '/api'}/companies/${created.id}`,
-        { credentials: 'include', headers },
+      const readResult = await api.request<CompanyRecord>(
+        `/companies/${createResult.value.id}`,
+        { companyContextId: actor.activeCompany?.id },
       );
-      if (readResponse.status === 403) {
-        return setState({ status: 'forbidden' });
-      }
-      if (!readResponse.ok) return setState({ status: 'error' });
-      const company = (await readResponse.json()) as CompanyRecord;
+      if (await handleAccessRejection(readResult)) return;
+      if (readResult.status !== 'ok') return setState({ status: 'error' });
       retryCommand.current = undefined;
-      setState({ status: 'ready', company });
+      setState({ status: 'ready', company: readResult.value });
     } catch {
       setState({ status: 'error' });
     }
@@ -183,12 +187,4 @@ export function CompanyRegistration({
       )}
     </section>
   );
-}
-
-async function authenticatedHeaders(
-  identity: BrowserIdentity,
-): Promise<Record<string, string>> {
-  if (identity.requestHeaders) return identity.requestHeaders;
-  const token = await identity.getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }

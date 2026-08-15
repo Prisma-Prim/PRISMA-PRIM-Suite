@@ -36,6 +36,13 @@
       "when": 1786800099114,
       "tag": "0004_daily_dazzler",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786803675445,
+      "tag": "0005_modern_hammerhead",
+      "breakpoints": true
     }
   ]
 }
