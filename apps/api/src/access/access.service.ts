@@ -5,10 +5,15 @@ import { INTERNAL_USER_PROVISIONED_ACTION } from '../accountability/accountabili
 import { DatabaseContext } from '../database/database-context.js';
 import {
   internalUsers,
+  workspacePermissionGrants,
   workspaceMemberships,
   workspaces,
 } from '../database/schema/index.js';
-import type { ActorContext, ExternalPrincipal } from './access.types.js';
+import type {
+  ActorContext,
+  ExternalPrincipal,
+  WorkspacePermission,
+} from './access.types.js';
 import {
   ACCESS_ADMISSION,
   type AccessAdmission,
@@ -100,6 +105,17 @@ export class AccessService {
       );
       if (!authority) throw new ForbiddenException();
 
+      if (admissionDecision?.kind === 'bootstrap') {
+        await database
+          .insert(workspacePermissionGrants)
+          .values({
+            workspaceId: authority.workspace.id,
+            workspaceMembershipId: authority.membership.id,
+            permission: 'company.manage',
+          })
+          .onConflictDoNothing();
+      }
+
       if (!createdInternalUser) {
         const [updatedInternalUser] = await database
           .update(internalUsers)
@@ -121,6 +137,10 @@ export class AccessService {
         displayName: internalUser.displayName,
         email: internalUser.email,
         active: true,
+        workspacePermissions: await this.findWorkspacePermissions(
+          authority.workspace.id,
+          authority.membership.id,
+        ),
       };
 
       if (createdInternalUser) {
@@ -137,6 +157,15 @@ export class AccessService {
 
       return actor;
     });
+  }
+
+  requireWorkspacePermission(
+    actor: ActorContext,
+    permission: WorkspacePermission,
+  ): void {
+    if (!actor.workspacePermissions.includes(permission)) {
+      throw new ForbiddenException();
+    }
   }
 
   private async resolveAdmissionWorkspace(
@@ -190,5 +219,24 @@ export class AccessService {
       )
       .limit(1);
     return authority;
+  }
+
+  private async findWorkspacePermissions(
+    workspaceId: string,
+    workspaceMembershipId: string,
+  ): Promise<WorkspacePermission[]> {
+    const grants = await this.databaseContext.connection
+      .select({ permission: workspacePermissionGrants.permission })
+      .from(workspacePermissionGrants)
+      .where(
+        and(
+          eq(workspacePermissionGrants.workspaceId, workspaceId),
+          eq(
+            workspacePermissionGrants.workspaceMembershipId,
+            workspaceMembershipId,
+          ),
+        ),
+      );
+    return grants.map((grant) => grant.permission);
   }
 }

@@ -8,4 +8,5 @@ export const actorContextFixture = {
   displayName: 'Ada Ionescu',
   email: 'ada@example.test',
   active: true,
+  workspacePermissions: ['company.manage'],
 } satisfies ActorContext;

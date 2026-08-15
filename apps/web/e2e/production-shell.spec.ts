@@ -187,3 +187,79 @@ test('shows a safe denial when the verified user has no active Workspace Members
   await expect(page.getByRole('banner')).toHaveCount(0);
   await expect(page.getByText('PRISMA Workspace')).toHaveCount(0);
 });
+
+test('lets an authorized Workspace owner register and immediately view a Company', async ({
+  page,
+}, testInfo) => {
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({ json: actorContextFixture }),
+  );
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  const company = {
+    id: '00000000-0000-4000-8000-000000000010',
+    workspaceId: actorContextFixture.workspaceId,
+    displayName: 'North Star Consulting',
+    status: 'active',
+    createdAt: '2026-08-15T10:30:00.000Z',
+    createdByInternalUserId: actorContextFixture.internalUserId,
+  };
+  let publicReadObserved = false;
+  await page.route('**/api/companies', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().headers()['idempotency-key']).toBeTruthy();
+    expect(route.request().postDataJSON()).toEqual({
+      displayName: 'North Star Consulting',
+    });
+    await route.fulfill({ status: 201, json: company });
+  });
+  await page.route(`**/api/companies/${company.id}`, async (route) => {
+    publicReadObserved = true;
+    await route.fulfill({ json: company });
+  });
+  await page.goto('/');
+
+  await page.getByLabel('Company display name').fill('North Star Consulting');
+  await page.getByRole('button', { name: 'Register Company' }).click();
+
+  await expect(
+    page.getByRole('heading', { name: 'North Star Consulting' }),
+  ).toBeVisible();
+  await expect(page.getByText('Active', { exact: true })).toBeVisible();
+  await expect(page.getByText('Registered by Ada Ionescu')).toBeVisible();
+  expect(publicReadObserved).toBe(true);
+  const geometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `company-registration-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+});
+
+test('shows a safe Company-administration denial without exposing a registration form', async ({
+  page,
+}) => {
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({
+      json: { ...actorContextFixture, workspacePermissions: [] },
+    }),
+  );
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toHaveText(
+    'You do not have permission to register or view Companies in this Workspace.',
+  );
+  await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Register Company' }),
+  ).toHaveCount(0);
+});

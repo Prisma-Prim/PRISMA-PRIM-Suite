@@ -173,6 +173,115 @@
   background: var(--shell-surface);
 }
 
+.company-registration {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--shell-line);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+}
+
+.company-registration-heading h2,
+.company-record h2 {
+  margin: 0;
+  color: var(--shell-navy-deep);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+}
+
+.company-registration-heading > p:last-child,
+.company-record > p,
+.company-record dd {
+  color: var(--shell-muted);
+}
+
+.company-registration form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.company-registration label {
+  font-weight: 650;
+}
+
+.company-registration-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.company-registration input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #9eb0bd;
+  border-radius: 0.35rem;
+  color: var(--shell-ink);
+  background: white;
+  font: inherit;
+}
+
+.company-registration button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 0.35rem;
+  color: white;
+  background: var(--shell-blue);
+  font: inherit;
+  font-weight: 700;
+}
+
+.company-registration button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.company-registration-denied {
+  border-color: #cad7df;
+  background: #edf3f6;
+}
+
+.company-registration-denied p {
+  margin: 0;
+}
+
+.company-record {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-left: 0.25rem solid var(--shell-blue);
+  background: var(--shell-canvas);
+}
+
+.company-status {
+  margin: 0 0 0.25rem;
+  color: #247044;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.company-record dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+  margin: 0;
+}
+
+.company-record dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.company-record dd,
+.company-record > p {
+  margin: 0.2rem 0 0;
+}
+
 .activity-log-heading .eyebrow {
   margin: 0 0 0.35rem;
   color: var(--shell-blue);
@@ -301,6 +410,10 @@
   .activity-log-list li {
     display: grid;
     gap: 0.5rem;
+  }
+
+  .company-registration-controls {
+    display: grid;
   }
 }
 

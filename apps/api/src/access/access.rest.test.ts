@@ -602,6 +602,10 @@ describeWithPostgres('Access REST API', () => {
       'DELETE FROM activity_log_events WHERE actor_internal_user_id = $1',
       [actor.internalUserId],
     );
+    await pool.query(
+      'DELETE FROM workspace_permission_grants WHERE workspace_membership_id = $1',
+      [actor.workspaceMembershipId],
+    );
     await pool.query('DELETE FROM workspace_memberships WHERE id = $1', [
       actor.workspaceMembershipId,
     ]);

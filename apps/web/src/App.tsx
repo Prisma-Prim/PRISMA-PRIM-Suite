@@ -5,18 +5,22 @@ import {
 import { useEffect, useState } from 'react';
 import type { BrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import { CompanyRegistration } from './company/CompanyRegistration';
+import { formatApplicationDateTime } from './presentation/date-time';
 
 interface ActivityLogEvent {
   id: string;
-  action: 'internal_user.provisioned';
+  action: 'internal_user.provisioned' | 'company.registered';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: {
-    type: 'internal_user';
-    internalUserId: string;
-    displayName: string;
-  };
-  metadata: { identityProvider: string };
+  target:
+    | {
+        type: 'internal_user';
+        internalUserId: string;
+        displayName: string;
+      }
+    | { type: 'company'; companyId: string; displayName: string };
+  metadata: { identityProvider: string } | Record<string, never>;
 }
 
 type ActivityLogState =
@@ -159,6 +163,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           they become available.
         </p>
       </ApplicationContentSurface>
+      <CompanyRegistration actor={access.actor} identity={identity} />
       <ActivityLog state={access.activityLog} />
     </ApplicationShell>
   );
@@ -189,7 +194,7 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
                 <span>Target: {event.target.displayName}</span>
               </div>
               <time dateTime={event.occurredAt}>
-                {formatActivityTime(event.occurredAt)}
+                {formatApplicationDateTime(event.occurredAt)}
               </time>
             </li>
           ))}
@@ -202,13 +207,7 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
 function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
     'internal_user.provisioned': 'was provisioned',
+    'company.registered': 'registered a Company',
   };
   return `${event.actor.displayName} ${actionLabels[event.action]}`;
-}
-
-function formatActivityTime(occurredAt: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(occurredAt));
 }

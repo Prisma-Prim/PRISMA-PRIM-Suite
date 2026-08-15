@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  check,
   foreignKey,
   jsonb,
   pgEnum,
@@ -18,6 +20,12 @@ export const workspaceMembershipStatus = pgEnum('workspace_membership_status', [
   'active',
   'inactive',
 ]);
+
+export const workspacePermission = pgEnum('workspace_permission', [
+  'company.manage',
+]);
+
+export const companyStatus = pgEnum('company_status', ['active']);
 
 export const workspaces = pgTable(
   'workspaces',
@@ -89,6 +97,10 @@ export const workspaceMemberships = pgTable(
       table.workspaceId,
       table.internalUserId,
     ),
+    uniqueIndex('workspace_memberships_workspace_id_id_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
     uniqueIndex('workspace_memberships_workspace_id_user_unique').on(
       table.workspaceId,
       table.id,
@@ -97,12 +109,87 @@ export const workspaceMemberships = pgTable(
   ],
 );
 
+export const workspacePermissionGrants = pgTable(
+  'workspace_permission_grants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    workspaceMembershipId: uuid('workspace_membership_id').notNull(),
+    permission: workspacePermission('permission').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_permission_grants_scope_unique').on(
+      table.workspaceId,
+      table.workspaceMembershipId,
+      table.permission,
+    ),
+    foreignKey({
+      name: 'workspace_permission_grants_membership_fk',
+      columns: [table.workspaceId, table.workspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+  ],
+);
+
+export const companies = pgTable(
+  'companies',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    displayName: text('display_name').notNull(),
+    status: companyStatus('status').default('active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
+    createdByWorkspaceMembershipId: uuid(
+      'created_by_workspace_membership_id',
+    ).notNull(),
+    registrationIdempotencyKey: text('registration_idempotency_key').notNull(),
+  },
+  (table) => [
+    uniqueIndex('companies_workspace_id_id_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex('companies_workspace_registration_key_unique').on(
+      table.workspaceId,
+      table.registrationIdempotencyKey,
+    ),
+    foreignKey({
+      name: 'companies_creator_membership_fk',
+      columns: [
+        table.workspaceId,
+        table.createdByWorkspaceMembershipId,
+        table.createdByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+  ],
+);
+
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
+  'company.registered',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
   'internal_user',
+  'company',
 ]);
 
 export const activityLogEvents = pgTable(
@@ -116,14 +203,15 @@ export const activityLogEvents = pgTable(
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     action: activityLogAction('action').notNull(),
     targetType: activityLogTargetType('target_type').notNull(),
-    targetInternalUserId: uuid('target_internal_user_id').notNull(),
-    targetWorkspaceMembershipId: uuid(
-      'target_workspace_membership_id',
-    ).notNull(),
+    targetInternalUserId: uuid('target_internal_user_id'),
+    targetWorkspaceMembershipId: uuid('target_workspace_membership_id'),
+    targetCompanyId: uuid('target_company_id'),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
-    metadata: jsonb('metadata').$type<{ identityProvider: string }>().notNull(),
+    metadata: jsonb('metadata')
+      .$type<{ identityProvider: string } | Record<string, never>>()
+      .notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
   },
   (table) => [
@@ -156,5 +244,24 @@ export const activityLogEvents = pgTable(
         workspaceMemberships.internalUserId,
       ],
     }),
+    foreignKey({
+      name: 'activity_log_events_target_company_fk',
+      columns: [table.workspaceId, table.targetCompanyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    check(
+      'activity_log_events_target_shape_check',
+      sql`(
+        (${table.targetType}::text = 'internal_user'
+          AND ${table.targetInternalUserId} IS NOT NULL
+          AND ${table.targetWorkspaceMembershipId} IS NOT NULL
+          AND ${table.targetCompanyId} IS NULL)
+        OR
+        (${table.targetType}::text = 'company'
+          AND ${table.targetInternalUserId} IS NULL
+          AND ${table.targetWorkspaceMembershipId} IS NULL
+          AND ${table.targetCompanyId} IS NOT NULL)
+      )`,
+    ),
   ],
 );

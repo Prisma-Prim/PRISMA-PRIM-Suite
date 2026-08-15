@@ -38,6 +38,7 @@ describe('App', () => {
                     displayName: 'Ada Ionescu',
                     email: 'ada@example.test',
                     workspaceName: 'PRISMA Workspace',
+                    workspacePermissions: ['company.manage'],
                   },
             ),
             { status: 200 },
@@ -72,10 +73,58 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Ada Ionescu was provisioned')).toBeInTheDocument();
     expect(screen.getByText('Target: Ada Ionescu')).toBeInTheDocument();
-    expect(screen.getByText(/15 Aug 2026/)).toHaveAttribute(
+    expect(document.querySelector('time')).toHaveAttribute(
       'datetime',
       '2026-08-15T09:00:00.000Z',
     );
+  });
+
+  it('renders a canonical Company registration Activity Log event', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            input.toString().endsWith('/activity-log')
+              ? {
+                  events: [
+                    {
+                      id: 'event-company',
+                      action: 'company.registered',
+                      occurredAt: '2026-08-15T10:30:00.000Z',
+                      actor: {
+                        internalUserId: 'user-1',
+                        displayName: 'Ada Ionescu',
+                      },
+                      target: {
+                        type: 'company',
+                        companyId: 'company-1',
+                        displayName: 'North Star Consulting',
+                      },
+                      metadata: {},
+                    },
+                  ],
+                }
+              : {
+                  internalUserId: 'user-1',
+                  displayName: 'Ada Ionescu',
+                  email: 'ada@example.test',
+                  workspaceName: 'PRISMA Workspace',
+                  workspacePermissions: ['company.manage'],
+                },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByText('Ada Ionescu registered a Company'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Target: North Star Consulting'),
+    ).toBeInTheDocument();
   });
 
   it('shows the Activity Log empty state', async () => {
@@ -89,6 +138,7 @@ describe('App', () => {
                   displayName: 'Ada Ionescu',
                   email: 'ada@example.test',
                   workspaceName: 'PRISMA Workspace',
+                  workspacePermissions: ['company.manage'],
                 },
           ),
           { status: 200 },
@@ -115,6 +165,7 @@ describe('App', () => {
                 displayName: 'Ada Ionescu',
                 email: 'ada@example.test',
                 workspaceName: 'PRISMA Workspace',
+                workspacePermissions: ['company.manage'],
               }),
               { status: 200 },
             ),

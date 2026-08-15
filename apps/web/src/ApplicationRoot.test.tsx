@@ -17,6 +17,7 @@ describe('ApplicationRoot', () => {
                     displayName: 'Ada Ionescu',
                     email: 'ada@example.test',
                     workspaceName: 'PRISMA Workspace',
+                    workspacePermissions: ['company.manage'],
                   },
             ),
             { status: 200 },
