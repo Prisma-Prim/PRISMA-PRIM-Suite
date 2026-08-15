@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { DATABASE } from './database.constants.js';
+import { DatabaseContext } from './database-context.js';
 
 @Module({
   providers: [
@@ -20,7 +21,8 @@ import { DATABASE } from './database.constants.js';
         return drizzle({ client: pool });
       },
     },
+    DatabaseContext,
   ],
-  exports: [DATABASE],
+  exports: [DATABASE, DatabaseContext],
 })
 export class DatabaseModule {}

@@ -16,6 +16,33 @@ test('renders the production shell at the normal application entry point', async
       },
     });
   });
+  await page.route('**/api/activity-log', (route) => {
+    expect(route.request().headers()).toMatchObject({
+      'x-test-external-provider': 'local-demo',
+      'x-test-external-subject': 'local-demonstration-user',
+    });
+    return route.fulfill({
+      json: {
+        events: [
+          {
+            id: 'event-1',
+            action: 'internal_user.provisioned',
+            occurredAt: '2026-08-15T09:00:00.000Z',
+            actor: {
+              internalUserId: 'user-1',
+              displayName: 'Ada Ionescu',
+            },
+            target: {
+              type: 'internal_user',
+              internalUserId: 'user-1',
+              displayName: 'Ada Ionescu',
+            },
+            metadata: { identityProvider: 'local-demo' },
+          },
+        ],
+      },
+    });
+  });
   await page.goto('/');
 
   await expect(page.getByRole('banner')).toBeVisible();
@@ -31,9 +58,14 @@ test('renders the production shell at the normal application entry point', async
   await expect(
     page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
   ).toBeVisible();
-  await expect(page.getByText('Ada Ionescu')).toBeVisible();
+  await expect(page.getByText('Ada Ionescu', { exact: true })).toBeVisible();
   await expect(page.getByText('ada@example.test')).toBeVisible();
   await expect(page.getByText('PRISMA Workspace')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Activity Log' }),
+  ).toBeVisible();
+  await expect(page.getByText('Ada Ionescu was provisioned')).toBeVisible();
+  await expect(page.getByText('Target: Ada Ionescu')).toBeVisible();
 
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -58,6 +90,9 @@ test('makes primary navigation available on a narrow viewport', async ({
         workspaceName: 'PRISMA Workspace',
       },
     }),
+  );
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
   );
   await page.goto('/');
 
@@ -135,6 +170,9 @@ test('fails closed for a signed-out deterministic session and recovers the prote
         workspaceName: 'PRISMA Workspace',
       },
     }),
+  );
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
   );
   await page.reload();
   await expect(page).toHaveURL(/\/protected-return-target\?source=invitation$/);

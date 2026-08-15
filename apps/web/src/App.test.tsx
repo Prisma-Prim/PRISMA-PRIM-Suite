@@ -7,16 +7,43 @@ describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            displayName: 'Ada Ionescu',
-            email: 'ada@example.test',
-            workspaceName: 'PRISMA Workspace',
-          }),
-          { status: 200 },
-        ),
-      ),
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = input.toString();
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.endsWith('/activity-log')
+                ? {
+                    events: [
+                      {
+                        id: 'event-1',
+                        action: 'internal_user.provisioned',
+                        occurredAt: '2026-08-15T09:00:00.000Z',
+                        actor: {
+                          internalUserId: 'user-1',
+                          displayName: 'Ada Ionescu',
+                        },
+                        target: {
+                          type: 'internal_user',
+                          internalUserId: 'user-1',
+                          displayName: 'Ada Ionescu',
+                        },
+                        metadata: {
+                          identityProvider: 'deterministic-test',
+                        },
+                      },
+                    ],
+                  }
+                : {
+                    displayName: 'Ada Ionescu',
+                    email: 'ada@example.test',
+                    workspaceName: 'PRISMA Workspace',
+                  },
+            ),
+            { status: 200 },
+          ),
+        );
+      }),
     );
   });
 
@@ -35,6 +62,73 @@ describe('App', () => {
     expect(
       screen.getByRole('navigation', { name: 'Primary navigation' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows the current Workspace Activity Log in canonical language', async () => {
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Activity Log' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Ada Ionescu was provisioned')).toBeInTheDocument();
+    expect(screen.getByText('Target: Ada Ionescu')).toBeInTheDocument();
+    expect(screen.getByText(/15 Aug 2026/)).toHaveAttribute(
+      'datetime',
+      '2026-08-15T09:00:00.000Z',
+    );
+  });
+
+  it('shows the Activity Log empty state', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            input.toString().endsWith('/activity-log')
+              ? { events: [] }
+              : {
+                  displayName: 'Ada Ionescu',
+                  email: 'ada@example.test',
+                  workspaceName: 'PRISMA Workspace',
+                },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByText(
+        'No activity has been recorded in this workspace yet.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the protected shell visible when Activity Log loading fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+      input.toString().endsWith('/activity-log')
+        ? Promise.reject(new TypeError('network unavailable'))
+        : Promise.resolve(
+            new Response(
+              JSON.stringify({
+                displayName: 'Ada Ionescu',
+                email: 'ada@example.test',
+                workspaceName: 'PRISMA Workspace',
+              }),
+              { status: 200 },
+            ),
+          ),
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByText(
+        'We could not load the Activity Log. Please try again.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
   it('does not attach deterministic identity headers in a normal build mode', async () => {

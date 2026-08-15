@@ -7,14 +7,20 @@ describe('ApplicationRoot', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            displayName: 'Ada Ionescu',
-            email: 'ada@example.test',
-            workspaceName: 'PRISMA Workspace',
-          }),
-          { status: 200 },
+      vi.fn().mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.toString().endsWith('/activity-log')
+                ? { events: [] }
+                : {
+                    displayName: 'Ada Ionescu',
+                    email: 'ada@example.test',
+                    workspaceName: 'PRISMA Workspace',
+                  },
+            ),
+            { status: 200 },
+          ),
         ),
       ),
     );
