@@ -14,6 +14,11 @@ export const internalUserStatus = pgEnum('internal_user_status', [
   'inactive',
 ]);
 
+export const workspaceMembershipStatus = pgEnum('workspace_membership_status', [
+  'active',
+  'inactive',
+]);
+
 export const workspaces = pgTable(
   'workspaces',
   {
@@ -33,6 +38,7 @@ export const internalUsers = pgTable(
   'internal_users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    // Expand/backfill compatibility only. Access authority comes from Workspace Membership.
     workspaceId: uuid('workspace_id')
       .notNull()
       .references(() => workspaces.id),
@@ -60,6 +66,37 @@ export const internalUsers = pgTable(
   ],
 );
 
+export const workspaceMemberships = pgTable(
+  'workspace_memberships',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    internalUserId: uuid('internal_user_id')
+      .notNull()
+      .references(() => internalUsers.id),
+    status: workspaceMembershipStatus('status').default('active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_memberships_workspace_user_unique').on(
+      table.workspaceId,
+      table.internalUserId,
+    ),
+    uniqueIndex('workspace_memberships_workspace_id_user_unique').on(
+      table.workspaceId,
+      table.id,
+      table.internalUserId,
+    ),
+  ],
+);
+
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
 ]);
@@ -76,9 +113,13 @@ export const activityLogEvents = pgTable(
       .notNull()
       .references(() => workspaces.id),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     action: activityLogAction('action').notNull(),
     targetType: activityLogTargetType('target_type').notNull(),
     targetInternalUserId: uuid('target_internal_user_id').notNull(),
+    targetWorkspaceMembershipId: uuid(
+      'target_workspace_membership_id',
+    ).notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -90,14 +131,30 @@ export const activityLogEvents = pgTable(
       table.idempotencyKey,
     ),
     foreignKey({
-      name: 'activity_log_events_actor_workspace_fk',
-      columns: [table.workspaceId, table.actorInternalUserId],
-      foreignColumns: [internalUsers.workspaceId, internalUsers.id],
+      name: 'activity_log_events_actor_membership_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
     }),
     foreignKey({
-      name: 'activity_log_events_target_workspace_fk',
-      columns: [table.workspaceId, table.targetInternalUserId],
-      foreignColumns: [internalUsers.workspaceId, internalUsers.id],
+      name: 'activity_log_events_target_membership_fk',
+      columns: [
+        table.workspaceId,
+        table.targetWorkspaceMembershipId,
+        table.targetInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
     }),
   ],
 );

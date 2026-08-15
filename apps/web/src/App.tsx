@@ -4,12 +4,7 @@ import {
 } from './production-shell/ApplicationShell';
 import { useEffect, useState } from 'react';
 import type { BrowserIdentity } from './access-composition';
-
-interface CurrentActor {
-  displayName: string;
-  email: string;
-  workspaceName: string;
-}
+import type { ActorContext } from './access-types';
 
 interface ActivityLogEvent {
   id: string;
@@ -31,7 +26,7 @@ type ActivityLogState =
 
 type AccessState =
   | { status: 'checking' }
-  | { status: 'active'; actor: CurrentActor; activityLog: ActivityLogState }
+  | { status: 'active'; actor: ActorContext; activityLog: ActivityLogState }
   | { status: 'signed-out' }
   | { status: 'forbidden' }
   | { status: 'error' };
@@ -62,7 +57,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         }
         if (response.status === 403) return setAccess({ status: 'forbidden' });
         if (!response.ok) return setAccess({ status: 'error' });
-        const actor = (await response.json()) as CurrentActor;
+        const actor = (await response.json()) as ActorContext;
         setAccess({
           status: 'active',
           actor,

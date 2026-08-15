@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
-import { activityLogEvents, internalUsers } from '../database/schema/index.js';
+import {
+  activityLogEvents,
+  internalUsers,
+  workspaceMemberships,
+} from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import type {
   ActivityLogPage,
@@ -27,9 +31,11 @@ export class AccountabilityService {
       .values({
         workspaceId: event.actor.workspaceId,
         actorInternalUserId: event.actor.internalUserId,
+        actorWorkspaceMembershipId: event.actor.workspaceMembershipId,
         action: event.action,
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
+        targetWorkspaceMembershipId: event.actor.workspaceMembershipId,
         metadata: event.metadata,
         idempotencyKey: `${event.action}:${event.target.internalUserId}`,
       })
@@ -39,6 +45,14 @@ export class AccountabilityService {
   async listForActor(actor: ActorContext): Promise<ActivityLogPage> {
     const eventActor = alias(internalUsers, 'activity_log_actor');
     const eventTarget = alias(internalUsers, 'activity_log_target');
+    const actorMembership = alias(
+      workspaceMemberships,
+      'activity_log_actor_membership',
+    );
+    const targetMembership = alias(
+      workspaceMemberships,
+      'activity_log_target_membership',
+    );
     const rows = await this.databaseContext.connection
       .select({
         id: activityLogEvents.id,
@@ -53,18 +67,34 @@ export class AccountabilityService {
       })
       .from(activityLogEvents)
       .innerJoin(
-        eventActor,
+        actorMembership,
         and(
-          eq(activityLogEvents.actorInternalUserId, eventActor.id),
-          eq(activityLogEvents.workspaceId, eventActor.workspaceId),
+          eq(activityLogEvents.workspaceId, actorMembership.workspaceId),
+          eq(activityLogEvents.actorWorkspaceMembershipId, actorMembership.id),
+          eq(
+            activityLogEvents.actorInternalUserId,
+            actorMembership.internalUserId,
+          ),
+        ),
+      )
+      .innerJoin(eventActor, eq(actorMembership.internalUserId, eventActor.id))
+      .innerJoin(
+        targetMembership,
+        and(
+          eq(activityLogEvents.workspaceId, targetMembership.workspaceId),
+          eq(
+            activityLogEvents.targetWorkspaceMembershipId,
+            targetMembership.id,
+          ),
+          eq(
+            activityLogEvents.targetInternalUserId,
+            targetMembership.internalUserId,
+          ),
         ),
       )
       .innerJoin(
         eventTarget,
-        and(
-          eq(activityLogEvents.targetInternalUserId, eventTarget.id),
-          eq(activityLogEvents.workspaceId, eventTarget.workspaceId),
-        ),
+        eq(targetMembership.internalUserId, eventTarget.id),
       )
       .where(eq(activityLogEvents.workspaceId, actor.workspaceId))
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
