@@ -35,13 +35,13 @@ Dan and his Codex agent own PRDs, product modelling, architecture, technical res
 
 ## 2. People and decision authority
 
-| Person | Role in this interview | What the person decides |
-| --- | --- | --- |
-| Iurie Popescu | Founder, Product Owner and domain expert | Current practice, desired user-visible behaviour, real roles, exceptions, priorities and available evidence |
-| Dan Popescu | Product and engineering lead | Product synthesis, PRDs, scope, technical design, delivery order and acceptance criteria |
-| Dan's Codex agent | Product/engineering collaborator | Reconciliation, technical research, PRD drafting, implementation and verification with Dan |
-| Iurie's Codex agent | Interview interpreter and recorder | How to explain the questions, what follow-up is needed and how to structure Iurie's answers |
-| Valentin / administrators / accountant / specialists | Evidence owners when relevant | Facts about systems or regulated practice that Iurie cannot reliably confirm |
+| Person                                               | Role in this interview                   | What the person decides                                                                                     |
+| ---------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Iurie Popescu                                        | Founder, Product Owner and domain expert | Current practice, desired user-visible behaviour, real roles, exceptions, priorities and available evidence |
+| Dan Popescu                                          | Product and engineering lead             | Product synthesis, PRDs, scope, technical design, delivery order and acceptance criteria                    |
+| Dan's Codex agent                                    | Product/engineering collaborator         | Reconciliation, technical research, PRD drafting, implementation and verification with Dan                  |
+| Iurie's Codex agent                                  | Interview interpreter and recorder       | How to explain the questions, what follow-up is needed and how to structure Iurie's answers                 |
+| Valentin / administrators / accountant / specialists | Evidence owners when relevant            | Facts about systems or regulated practice that Iurie cannot reliably confirm                                |
 
 `Nu știu` is a valid answer. Record who probably knows or what evidence could resolve it. Do not pressure Iurie into making a technical or regulated guess.
 
@@ -49,17 +49,17 @@ Dan and his Codex agent own PRDs, product modelling, architecture, technical res
 
 Read them in this order. Do not rely on the repository name, README or existing code alone.
 
-| Order | Source | How to use it |
-| --- | --- | --- |
-| 1 | `AGENTS.md` | Understand repository boundaries, decision authority and the distinction between product authorities and implemented code. Ignore its delivery workflow because this interview mandate is read-only. |
-| 2 | `docs/product/consolidated-product-decision-record.md` | Primary product-reconciliation authority. Read sections 1.3, 2, 5–22 and 32–33 completely. Sections 23–31 are internal discovery source material; use the companion Romanian questionnaire instead of copying them verbatim. |
-| 3 | `docs/product/iurie-business-question-bank-ro.md` | Master interview bank. Select questions by session and priority; never ask the whole bank at once. |
-| 4 | `CONTEXT.md` | Current canonical vocabulary for the original commercial pilot. It is incomplete for the reconciled multi-Company product, so do not use it to contradict the consolidated record. |
-| 5 | `docs/product/mvp-prd.md` | Historical commercial-pilot specification. Use it to understand intake, pricing, Offers and Contracts, not as the complete product roadmap. |
-| 6 | `docs/product/access-and-accountability-prd.md` | Existing identity and accountability foundation. Its initial single-Workspace/equal-permission assumptions do not decide the future multi-Company operating model. |
-| 7 | `README.md` and `docs/adr/` | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie. |
-| 8 | `apps/api/`, `apps/web/` and `/ui-baseline` | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved. |
-| 9 | GitHub issue `#22` | Current compatible implementation slice: the first append-only Activity Log event. It does not define later business modules. |
+| Order | Source                                                 | How to use it                                                                                                                                                                                                                |
+| ----- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `AGENTS.md`                                            | Understand repository boundaries, decision authority and the distinction between product authorities and implemented code. Ignore its delivery workflow because this interview mandate is read-only.                         |
+| 2     | `docs/product/consolidated-product-decision-record.md` | Primary product-reconciliation authority. Read sections 1.3, 2, 5–22 and 32–33 completely. Sections 23–31 are internal discovery source material; use the companion Romanian questionnaire instead of copying them verbatim. |
+| 3     | `docs/product/iurie-business-question-bank-ro.md`      | Master interview bank. Select questions by session and priority; never ask the whole bank at once.                                                                                                                           |
+| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the original commercial pilot. It is incomplete for the reconciled multi-Company product, so do not use it to contradict the consolidated record.                                           |
+| 5     | `docs/product/mvp-prd.md`                              | Historical commercial-pilot specification. Use it to understand intake, pricing, Offers and Contracts, not as the complete product roadmap.                                                                                  |
+| 6     | `docs/product/access-and-accountability-prd.md`        | Existing identity and accountability foundation. Its initial single-Workspace/equal-permission assumptions do not decide the future multi-Company operating model.                                                           |
+| 7     | `README.md` and `docs/adr/`                            | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie.                                                                                                      |
+| 8     | `apps/api/`, `apps/web/` and `/ui-baseline`            | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved.                                    |
+| 9     | GitHub issue `#22`                                     | Current compatible implementation slice: the first append-only Activity Log event. It does not define later business modules.                                                                                                |
 
 Important reconciliation facts:
 
@@ -148,25 +148,25 @@ Never resolve a contradiction by choosing the answer you find more convenient. P
 
 These internal terms may help you read the product record. Do not present them unexplained to Iurie.
 
-| Internal term | Explain it to Iurie as |
-| --- | --- |
-| Workspace | the complete protected space of one customer organization using the platform |
-| Company | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work |
-| Client Account | the shared operational dossier used to recognize the same Client across the group |
-| Client Legal Entity | the exact organization, branch or person that receives an Offer or signs a Contract |
-| Client–Company Relationship | information about the work relationship that only the responsible group Company should see |
-| Opportunity | a potential job considered serious enough to have a responsible person and next action |
-| Sales Stage | the team's current named step between first contact and accepted or lost work |
-| Pricing Snapshot | the exact inputs, rules and result used for a price at that moment, preserved for later explanation |
-| Standard Edition | the exact dated edition of a Standard applicable to the work |
-| Scheme | the approved set of rules governing a type of audit, certification or credential |
-| Document Version | one dated/approved/sent/signed state of a document that must remain identifiable |
-| Document Representation | editable file, PDF, scan or signed copy that expresses the same formal version |
-| Payment Allocation | the recorded explanation of which invoice or instalment a payment covers |
-| Activity Log | business history showing who performed an important action, on what, and when |
-| RAG / Knowledge Source | answers based only on approved documents, with the exact source shown |
-| RPO / acceptable data loss | how much recently entered work the business could tolerate entering again after a serious incident |
-| RTO / recovery time | how quickly essential work and records must become available again |
+| Internal term               | Explain it to Iurie as                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------- |
+| Workspace                   | the complete protected space of one customer organization using the platform                        |
+| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                           |
+| Client Account              | the shared operational dossier used to recognize the same Client across the group                   |
+| Client Legal Entity         | the exact organization, branch or person that receives an Offer or signs a Contract                 |
+| Client–Company Relationship | information about the work relationship that only the responsible group Company should see          |
+| Opportunity                 | a potential job considered serious enough to have a responsible person and next action              |
+| Sales Stage                 | the team's current named step between first contact and accepted or lost work                       |
+| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation |
+| Standard Edition            | the exact dated edition of a Standard applicable to the work                                        |
+| Scheme                      | the approved set of rules governing a type of audit, certification or credential                    |
+| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                    |
+| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                      |
+| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                            |
+| Activity Log                | business history showing who performed an important action, on what, and when                       |
+| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                               |
+| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident  |
+| RTO / recovery time         | how quickly essential work and records must become available again                                  |
 
 If Iurie starts using a different term, preserve his wording and explain the situation. Dan and his agent will later normalize terminology in the PRDs.
 
@@ -174,12 +174,12 @@ If Iurie starts using a different term, preserve his wording and explain the sit
 
 Do not follow repository section order mechanically. Use this route unless Iurie has a more urgent operational need.
 
-| Phase | Sessions from the companion bank | Purpose |
-| --- | --- | --- |
-| Foundation | S00, S01, S02, S03, S10, S11 | Establish Companies, roles, visibility, Clients, Projects, Tasks, Documents, continuity needs and daily user experience for the Product Vision and cross-cutting/Release 1 PRDs |
-| Core capabilities | S04, S05, S06, S07 | Capture commercial, Google, assurance/Training and finance practice before their capability PRDs |
-| History and intelligence | S08, S09 | Capture migration, search, approved knowledge and useful AI assistance |
-| Continuity review | S10 | Confirm business impact, recovery needs, sensitive information and operational ownership |
+| Phase                    | Sessions from the companion bank | Purpose                                                                                                                                                                         |
+| ------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation               | S00, S01, S02, S03, S10, S11     | Establish Companies, roles, visibility, Clients, Projects, Tasks, Documents, continuity needs and daily user experience for the Product Vision and cross-cutting/Release 1 PRDs |
+| Core capabilities        | S04, S05, S06, S07               | Capture commercial, Google, assurance/Training and finance practice before their capability PRDs                                                                                |
+| History and intelligence | S08, S09                         | Capture migration, search, approved knowledge and useful AI assistance                                                                                                          |
+| Continuity review        | S10                              | Confirm business impact, recovery needs, sensitive information and operational ownership                                                                                        |
 
 Within a session, ask `P0` questions first. Ask `P1` questions before the corresponding capability PRD. Ask `P2` questions only when useful detail remains unresolved.
 
@@ -252,20 +252,20 @@ Do not write a PRD. Do not select an architecture. Do not convert the answer int
 
 This table helps you label the session package. It does not authorize you to change decisions.
 
-| Session | Consolidated record | Existing decisions likely informed | Receiving PRD area |
-| --- | --- | --- | --- |
-| S00 — organization and sources | §§6–8, 22 | DEC-014–036, DEC-124 | Product Vision; tenant/Company/authorization |
-| S01 — users and access | §§7–8, 17 | DEC-018, DEC-027, DEC-029–036, DEC-175–191 | tenant/Company/authorization; security |
-| S02 — Clients, Projects and Tasks | §§7, 9, 22 | DEC-022–028, DEC-037–045 | Release 1 Client, Project and Task PRDs |
-| S03 — Documents | §10, §27 | DEC-043–045, DEC-125–139 | governed Documents cross-cutting PRD |
-| S04 — commercial work | §14, §26 | DEC-100–123 | Release 3 commercial capability PRDs |
-| S05 — Google | §11, §23 | DEC-046–060 | Release 2 integration PRDs |
-| S06 — audits, certification and Training | §13, §25 | DEC-076–099 | Release 4 capability PRDs |
-| S07 — finance | §12, §24 | DEC-061–075 | Release 5 operational-finance PRD |
-| S08 — history and search | §15, §28 | DEC-140–154 | migration/search cross-cutting PRD; Release 6 |
-| S09 — approved knowledge and AI | §16, §29 | DEC-155–174 | AI/Knowledge Base cross-cutting PRD; Release 7 |
-| S10 — continuity and sensitive information | §17, §30 | DEC-175–192 | security/reliability cross-cutting PRD |
-| S11 — daily use, language and notifications | §18, §31 | DEC-193–211 | UX/localization/configuration cross-cutting PRD |
+| Session                                     | Consolidated record | Existing decisions likely informed         | Receiving PRD area                              |
+| ------------------------------------------- | ------------------- | ------------------------------------------ | ----------------------------------------------- |
+| S00 — organization and sources              | §§6–8, 22           | DEC-014–036, DEC-124                       | Product Vision; tenant/Company/authorization    |
+| S01 — users and access                      | §§7–8, 17           | DEC-018, DEC-027, DEC-029–036, DEC-175–191 | tenant/Company/authorization; security          |
+| S02 — Clients, Projects and Tasks           | §§7, 9, 22          | DEC-022–028, DEC-037–045                   | Release 1 Client, Project and Task PRDs         |
+| S03 — Documents                             | §10, §27            | DEC-043–045, DEC-125–139                   | governed Documents cross-cutting PRD            |
+| S04 — commercial work                       | §14, §26            | DEC-100–123                                | Release 3 commercial capability PRDs            |
+| S05 — Google                                | §11, §23            | DEC-046–060                                | Release 2 integration PRDs                      |
+| S06 — audits, certification and Training    | §13, §25            | DEC-076–099                                | Release 4 capability PRDs                       |
+| S07 — finance                               | §12, §24            | DEC-061–075                                | Release 5 operational-finance PRD               |
+| S08 — history and search                    | §15, §28            | DEC-140–154                                | migration/search cross-cutting PRD; Release 6   |
+| S09 — approved knowledge and AI             | §16, §29            | DEC-155–174                                | AI/Knowledge Base cross-cutting PRD; Release 7  |
+| S10 — continuity and sensitive information  | §17, §30            | DEC-175–192                                | security/reliability cross-cutting PRD          |
+| S11 — daily use, language and notifications | §18, §31            | DEC-193–211                                | UX/localization/configuration cross-cutting PRD |
 
 Use labels such as `CONFIRMS`, `CONFIGURES`, `REFINES`, `POSSIBLE_CONTRADICTION` or `NEW_BUSINESS_NEED`. Only Dan and his agent decide whether a repository decision or PRD changes.
 
