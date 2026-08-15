@@ -1,0 +1,1 @@
+ALTER TYPE "public"."company_status" ADD VALUE 'inactive';

@@ -9,6 +9,11 @@ import {
   workspaceMemberships,
   workspaces,
 } from '../database/schema/index.js';
+import {
+  ACTIVE_COMPANY_CONTEXT_LOOKUP,
+  type ActiveCompanyContextLookup,
+} from './active-company-context.port.js';
+import { requireWorkspacePermission } from './access-policy.js';
 import type {
   ActorContext,
   ExternalPrincipal,
@@ -27,9 +32,14 @@ export class AccessService {
     private readonly accountability: AccountabilityService,
     @Inject(ACCESS_ADMISSION)
     private readonly admission: AccessAdmission,
+    @Inject(ACTIVE_COMPANY_CONTEXT_LOOKUP)
+    private readonly activeCompanyContexts: ActiveCompanyContextLookup,
   ) {}
 
-  async resolveActor(principal: ExternalPrincipal): Promise<ActorContext> {
+  async resolveActor(
+    principal: ExternalPrincipal,
+    requestedCompanyId?: string,
+  ): Promise<ActorContext> {
     return this.databaseContext.transaction(async () => {
       const database = this.databaseContext.connection;
       const admissionDecision = this.admission.resolve(principal);
@@ -143,6 +153,16 @@ export class AccessService {
         ),
       };
 
+      if (requestedCompanyId !== undefined) {
+        requireWorkspacePermission(actor, 'company.manage');
+        const activeCompany = await this.activeCompanyContexts.findActive(
+          actor.workspaceId,
+          requestedCompanyId,
+        );
+        if (!activeCompany) throw new ForbiddenException();
+        actor.activeCompany = activeCompany;
+      }
+
       if (createdInternalUser) {
         await this.accountability.record({
           actor,
@@ -157,15 +177,6 @@ export class AccessService {
 
       return actor;
     });
-  }
-
-  requireWorkspacePermission(
-    actor: ActorContext,
-    permission: WorkspacePermission,
-  ): void {
-    if (!actor.workspacePermissions.includes(permission)) {
-      throw new ForbiddenException();
-    }
   }
 
   private async resolveAdmissionWorkspace(

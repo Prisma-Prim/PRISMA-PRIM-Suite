@@ -9,6 +9,8 @@ paths:
       summary: Resolve the verified external identity to the current Internal User
       tags:
         - Access
+      parameters:
+        - $ref: '#/components/parameters/CompanyContextId'
       responses:
         '200':
           description: The active local actor and persistent Workspace context.
@@ -19,13 +21,15 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The principal has no active Internal User and Workspace Membership authority.
+          description: The principal has no active authority or the requested Company context is invalid.
   /api/activity-log:
     get:
       operationId: listCurrentWorkspaceActivity
       summary: List visible Activity Log events for the current Workspace
       tags:
         - Accountability
+      parameters:
+        - $ref: '#/components/parameters/CompanyContextId'
       responses:
         '200':
           description: A bounded reverse-chronological Activity Log page.
@@ -45,14 +49,35 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The principal has no active Internal User and Workspace Membership authority.
+          description: The principal has no active authority or the requested Company context is invalid.
   /api/companies:
+    get:
+      operationId: listVisibleCompanies
+      summary: List active Companies visible to the actor in the current Workspace
+      tags:
+        - Company
+      parameters:
+        - $ref: '#/components/parameters/CompanyContextId'
+      responses:
+        '200':
+          description: Active visible Companies ordered by display name and identifier.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompanyRecord'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Company visibility or the requested Company context is invalid.
     post:
       operationId: registerCompany
       summary: Register one provider Company in the actor's Workspace
       tags:
         - Company
       parameters:
+        - $ref: '#/components/parameters/CompanyContextId'
         - in: header
           name: Idempotency-Key
           required: true
@@ -77,7 +102,7 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The actor lacks Workspace-scoped Company administration permission.
+          description: The actor lacks Company administration or the requested Company context is invalid.
   /api/companies/{companyId}:
     get:
       operationId: getCompany
@@ -85,6 +110,7 @@ paths:
       tags:
         - Company
       parameters:
+        - $ref: '#/components/parameters/CompanyContextId'
         - in: path
           name: companyId
           required: true
@@ -101,10 +127,18 @@ paths:
         '401':
           description: No verified External Principal is available.
         '403':
-          description: The actor lacks Workspace-scoped Company administration permission.
+          description: The actor lacks Company visibility or the requested Company context is invalid.
         '404':
           description: No visible Company matches the identifier in the actor's Workspace.
 components:
+  parameters:
+    CompanyContextId:
+      in: header
+      name: X-Company-Context-Id
+      required: false
+      description: A Company selection hint revalidated by Access on this protected request.
+      schema:
+        type: string
   schemas:
     ActivityLogEvent:
       type: object
@@ -269,3 +303,17 @@ components:
             type: string
             enum:
               - company.manage
+        activeCompany:
+          $ref: '#/components/schemas/ActiveCompanyContext'
+    ActiveCompanyContext:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string

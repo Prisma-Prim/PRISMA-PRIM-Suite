@@ -9,30 +9,30 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AccessService } from '../access/access.service.js';
 import {
-  ExternalPrincipalAdapter,
-  type PrincipalRequest,
-} from '../access/external-principal.adapter.js';
+  ActorContextAdapter,
+  type ActorContextRequest,
+} from '../access/actor-context.adapter.js';
 import { CompanyService } from './company.service.js';
 import type { CompanyRecord } from './company.types.js';
 
 @Controller('companies')
-@UseGuards(ExternalPrincipalAdapter)
+@UseGuards(ActorContextAdapter)
 export class CompanyController {
-  constructor(
-    private readonly access: AccessService,
-    private readonly companies: CompanyService,
-  ) {}
+  constructor(private readonly companies: CompanyService) {}
+
+  @Get()
+  list(@Req() request: ActorContextRequest): Promise<CompanyRecord[]> {
+    return this.companies.listVisible(request.actorContext!);
+  }
 
   @Post()
   async register(
-    @Req() request: PrincipalRequest,
+    @Req() request: ActorContextRequest,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: { displayName?: unknown },
   ): Promise<CompanyRecord> {
-    const actor = await this.access.resolveActor(request.externalPrincipal!);
-    return this.companies.register(actor, {
+    return this.companies.register(request.actorContext!, {
       displayName: body?.displayName,
       idempotencyKey,
     });
@@ -40,10 +40,9 @@ export class CompanyController {
 
   @Get(':companyId')
   async get(
-    @Req() request: PrincipalRequest,
+    @Req() request: ActorContextRequest,
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<CompanyRecord> {
-    const actor = await this.access.resolveActor(request.externalPrincipal!);
-    return this.companies.get(actor, companyId);
+    return this.companies.get(request.actorContext!, companyId);
   }
 }

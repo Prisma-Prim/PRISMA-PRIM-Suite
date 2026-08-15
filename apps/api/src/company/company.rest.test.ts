@@ -94,6 +94,194 @@ describeWithPostgres('Company REST API', () => {
     await expect(readResponse.json()).resolves.toEqual(created);
   });
 
+  it('lets the Workspace owner select one active Company from the visible Company query', async () => {
+    const northStar = await registerCompany({
+      subject: 'workspace-owner',
+      displayName: 'North Star Consulting',
+      idempotencyKey: 'register-visible-north-star',
+    });
+    const atlas = await registerCompany({
+      subject: 'workspace-owner',
+      displayName: 'Atlas Assurance',
+      idempotencyKey: 'register-visible-atlas',
+    });
+
+    const visibleResponse = await fetch(`${origin}/api/companies`, {
+      headers: identityHeaders('workspace-owner', 'Ada Ionescu'),
+    });
+
+    expect(visibleResponse.status).toBe(200);
+    await expect(visibleResponse.json()).resolves.toEqual([atlas, northStar]);
+
+    const contextResponse = await fetch(`${origin}/api/access/current-actor`, {
+      headers: {
+        ...identityHeaders('workspace-owner', 'Ada Ionescu'),
+        'x-company-context-id': northStar.id,
+      },
+    });
+
+    expect(contextResponse.status).toBe(200);
+    await expect(contextResponse.json()).resolves.toMatchObject({
+      workspaceName: 'Company Workspace',
+      activeCompany: {
+        id: northStar.id,
+        displayName: 'North Star Consulting',
+      },
+    });
+
+    const otherCompanyResponse = await fetch(
+      `${origin}/api/companies/${atlas.id}`,
+      {
+        headers: {
+          ...identityHeaders('workspace-owner', 'Ada Ionescu'),
+          'x-company-context-id': northStar.id,
+        },
+      },
+    );
+
+    expect(otherCompanyResponse.status).toBe(200);
+    await expect(otherCompanyResponse.json()).resolves.toEqual(atlas);
+  });
+
+  it('uses one metadata-safe denial for invalid, inactive, foreign, and unauthorized Company selections', async () => {
+    const activeCompany = await registerCompany({
+      subject: 'workspace-owner',
+      displayName: 'Visible Provider',
+      idempotencyKey: 'register-visible-provider-for-denials',
+    });
+    const inactiveCompany = await registerCompany({
+      subject: 'workspace-owner',
+      displayName: 'Inactive Provider',
+      idempotencyKey: 'register-inactive-provider-for-denials',
+    });
+    await pool.query(`UPDATE companies SET status = 'inactive' WHERE id = $1`, [
+      inactiveCompany.id,
+    ]);
+
+    const foreignCompanyId = '00000000-0000-4000-8000-000000000067';
+    await pool.query(`
+      INSERT INTO workspaces (id, singleton_key, name)
+      VALUES ('00000000-0000-4000-8000-000000000061', 'foreign-context-workspace', 'Foreign Context Workspace');
+      INSERT INTO internal_users (
+        id, workspace_id, external_provider, external_subject, display_name, email
+      ) VALUES (
+        '00000000-0000-4000-8000-000000000062',
+        '00000000-0000-4000-8000-000000000061',
+        'deterministic-test', 'foreign-context-owner', 'Foreign Owner',
+        'foreign-context-owner@example.test'
+      );
+      INSERT INTO companies (
+        id, workspace_id, display_name, created_by_internal_user_id,
+        created_by_workspace_membership_id, registration_idempotency_key
+      ) VALUES (
+        '${foreignCompanyId}',
+        '00000000-0000-4000-8000-000000000061',
+        'Foreign Provider',
+        '00000000-0000-4000-8000-000000000062',
+        (SELECT id FROM workspace_memberships
+          WHERE workspace_id = '00000000-0000-4000-8000-000000000061'
+            AND internal_user_id = '00000000-0000-4000-8000-000000000062'),
+        'register-foreign-context-provider'
+      )
+    `);
+
+    const ownerHeaders = identityHeaders('workspace-owner', 'Ada Ionescu');
+    const attempts = [
+      { selection: '', headers: ownerHeaders },
+      { selection: 'not-a-company-id', headers: ownerHeaders },
+      {
+        selection: '00000000-0000-4000-8000-000000000099',
+        headers: ownerHeaders,
+      },
+      { selection: inactiveCompany.id, headers: ownerHeaders },
+      { selection: foreignCompanyId, headers: ownerHeaders },
+      {
+        selection: activeCompany.id,
+        headers: identityHeaders('workspace-member', 'Mara Ionescu'),
+      },
+    ];
+
+    for (const attempt of attempts) {
+      const response = await fetch(`${origin}/api/access/current-actor`, {
+        headers: {
+          ...attempt.headers,
+          'x-company-context-id': attempt.selection,
+        },
+      });
+
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toEqual({
+        message: 'Forbidden',
+        statusCode: 403,
+      });
+    }
+
+    const visibleResponse = await fetch(`${origin}/api/companies`, {
+      headers: ownerHeaders,
+    });
+    expect(visibleResponse.status).toBe(200);
+    await expect(visibleResponse.json()).resolves.toEqual([activeCompany]);
+  });
+
+  it('revalidates a stale Company context on the next protected request without recording navigation activity', async () => {
+    const selectedCompany = await registerCompany({
+      subject: 'workspace-owner',
+      displayName: 'Selected Provider',
+      idempotencyKey: 'register-selected-provider-for-stale-context',
+    });
+    const contextHeaders = {
+      ...identityHeaders('workspace-owner', 'Ada Ionescu'),
+      'x-company-context-id': selectedCompany.id,
+    };
+
+    const selectedResponse = await fetch(`${origin}/api/access/current-actor`, {
+      headers: contextHeaders,
+    });
+    expect(selectedResponse.status).toBe(200);
+
+    const activityBefore = await pool.query<{ count: string }>(
+      'SELECT count(*) FROM activity_log_events',
+    );
+    await pool.query(`UPDATE companies SET status = 'inactive' WHERE id = $1`, [
+      selectedCompany.id,
+    ]);
+
+    const staleProtectedResponses = await Promise.all([
+      fetch(`${origin}/api/access/current-actor`, { headers: contextHeaders }),
+      fetch(`${origin}/api/activity-log`, { headers: contextHeaders }),
+      fetch(`${origin}/api/companies`, { headers: contextHeaders }),
+      fetch(`${origin}/api/companies`, {
+        method: 'POST',
+        headers: {
+          ...contextHeaders,
+          'content-type': 'application/json',
+          'idempotency-key': 'stale-context-registration-attempt',
+        },
+        body: JSON.stringify({ displayName: 'Must Not Persist' }),
+      }),
+      fetch(`${origin}/api/companies/${selectedCompany.id}`, {
+        headers: contextHeaders,
+      }),
+    ]);
+    const visibleResponse = await fetch(`${origin}/api/companies`, {
+      headers: identityHeaders('workspace-owner', 'Ada Ionescu'),
+    });
+    const activityAfter = await pool.query<{ count: string }>(
+      'SELECT count(*) FROM activity_log_events',
+    );
+
+    for (const response of staleProtectedResponses) {
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toEqual({
+        message: 'Forbidden',
+        statusCode: 403,
+      });
+    }
+    expect(visibleResponse.status).toBe(200);
+    await expect(visibleResponse.json()).resolves.toEqual([]);
+    expect(activityAfter.rows[0]).toEqual(activityBefore.rows[0]);
+  });
+
   it('rejects a malformed Company identifier at the HTTP boundary', async () => {
     const response = await fetch(`${origin}/api/companies/not-a-uuid`, {
       headers: identityHeaders('workspace-owner', 'Ada Ionescu'),
@@ -119,14 +307,20 @@ describeWithPostgres('Company REST API', () => {
     const readResponse = await fetch(
       `${origin}/api/companies/00000000-0000-4000-8000-000000000010`,
     );
+    const listResponse = await fetch(`${origin}/api/companies`);
 
     expect(createResponse.status).toBe(401);
     expect(readResponse.status).toBe(401);
+    expect(listResponse.status).toBe(401);
     await expect(createResponse.json()).resolves.toEqual({
       message: 'Unauthorized',
       statusCode: 401,
     });
     await expect(readResponse.json()).resolves.toEqual({
+      message: 'Unauthorized',
+      statusCode: 401,
+    });
+    await expect(listResponse.json()).resolves.toEqual({
       message: 'Unauthorized',
       statusCode: 401,
     });
@@ -221,14 +415,22 @@ describeWithPostgres('Company REST API', () => {
     const readResponse = await fetch(`${origin}/api/companies/${created.id}`, {
       headers: deniedHeaders,
     });
+    const listResponse = await fetch(`${origin}/api/companies`, {
+      headers: deniedHeaders,
+    });
 
     expect(createResponse.status).toBe(403);
     expect(readResponse.status).toBe(403);
+    expect(listResponse.status).toBe(403);
     await expect(createResponse.json()).resolves.toEqual({
       message: 'Forbidden',
       statusCode: 403,
     });
     await expect(readResponse.json()).resolves.toEqual({
+      message: 'Forbidden',
+      statusCode: 403,
+    });
+    await expect(listResponse.json()).resolves.toEqual({
       message: 'Forbidden',
       statusCode: 403,
     });

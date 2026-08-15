@@ -7,4 +7,8 @@ export interface ActorContext {
   email: string;
   active: true;
   workspacePermissions: Array<'company.manage'>;
+  activeCompany?: {
+    id: string;
+    displayName: string;
+  };
 }

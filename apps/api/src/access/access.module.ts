@@ -1,21 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseModule } from '../database/database.module.js';
-import { AccountabilityModule } from '../accountability/accountability.module.js';
-import { AccessController } from './access.controller.js';
-import { AccessService } from './access.service.js';
-import { ExternalPrincipalAdapter } from './external-principal.adapter.js';
 import {
   ACCESS_ADMISSION,
   configuredAccessAdmission,
 } from './access-admission.js';
 
 @Module({
-  imports: [DatabaseModule, AccountabilityModule],
-  controllers: [AccessController],
   providers: [
-    AccessService,
-    ExternalPrincipalAdapter,
     {
       provide: ACCESS_ADMISSION,
       inject: [ConfigService],
@@ -39,6 +30,6 @@ import {
         }),
     },
   ],
-  exports: [AccessService],
+  exports: [ACCESS_ADMISSION],
 })
 export class AccessModule {}

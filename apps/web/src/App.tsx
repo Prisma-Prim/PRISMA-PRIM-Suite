@@ -2,120 +2,22 @@ import {
   ApplicationContentSurface,
   ApplicationShell,
 } from './production-shell/ApplicationShell';
-import { useEffect, useState } from 'react';
 import type { BrowserIdentity } from './access-composition';
-import type { ActorContext } from './access-types';
+import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { formatApplicationDateTime } from './presentation/date-time';
-
-interface ActivityLogEvent {
-  id: string;
-  action: 'internal_user.provisioned' | 'company.registered';
-  occurredAt: string;
-  actor: { internalUserId: string; displayName: string };
-  target:
-    | {
-        type: 'internal_user';
-        internalUserId: string;
-        displayName: string;
-      }
-    | { type: 'company'; companyId: string; displayName: string };
-  metadata: { identityProvider: string } | Record<string, never>;
-}
-
-type ActivityLogState =
-  | { status: 'loading' }
-  | { status: 'ready'; events: ActivityLogEvent[] }
-  | { status: 'error' };
-
-type AccessState =
-  | { status: 'checking' }
-  | { status: 'active'; actor: ActorContext; activityLog: ActivityLogState }
-  | { status: 'signed-out' }
-  | { status: 'forbidden' }
-  | { status: 'error' };
+import {
+  useProductionShellContext,
+  type ActivityLogEvent,
+  type ActivityLogState,
+} from './production-shell/useProductionShellContext';
 
 export function App({ identity }: { identity: BrowserIdentity }) {
-  const [access, setAccess] = useState<AccessState>({ status: 'checking' });
-
-  useEffect(() => {
-    if (!identity.loaded || !identity.signedIn) return;
-    const controller = new AbortController();
-    void identity
-      .getToken()
-      .then(async (token) => {
-        const headers =
-          identity.requestHeaders ??
-          (token ? { Authorization: `Bearer ${token}` } : undefined);
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL ?? '/api'}/access/current-actor`,
-          {
-            credentials: 'include',
-            headers,
-            signal: controller.signal,
-          },
-        );
-        if (response.status === 401) {
-          await identity.rejectSession();
-          return setAccess({ status: 'signed-out' });
-        }
-        if (response.status === 403) return setAccess({ status: 'forbidden' });
-        if (!response.ok) return setAccess({ status: 'error' });
-        const actor = (await response.json()) as ActorContext;
-        setAccess({
-          status: 'active',
-          actor,
-          activityLog: { status: 'loading' },
-        });
-
-        try {
-          const activityResponse = await fetch(
-            `${import.meta.env.VITE_API_URL ?? '/api'}/activity-log`,
-            {
-              credentials: 'include',
-              headers,
-              signal: controller.signal,
-            },
-          );
-          if (activityResponse.status === 401) {
-            await identity.rejectSession();
-            return setAccess({ status: 'signed-out' });
-          }
-          if (activityResponse.status === 403)
-            return setAccess({ status: 'forbidden' });
-          if (!activityResponse.ok) {
-            return setAccess({
-              status: 'active',
-              actor,
-              activityLog: { status: 'error' },
-            });
-          }
-          const activityLog = (await activityResponse.json()) as {
-            events: ActivityLogEvent[];
-          };
-          return setAccess({
-            status: 'active',
-            actor,
-            activityLog: { status: 'ready', events: activityLog.events },
-          });
-        } catch (error: unknown) {
-          if (error instanceof DOMException && error.name === 'AbortError')
-            throw error;
-          return setAccess({
-            status: 'active',
-            actor,
-            activityLog: { status: 'error' },
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError')
-          return;
-        setAccess({ status: 'error' });
-      });
-
-    return () => controller.abort();
-  }, [identity]);
+  const {
+    shellContext: access,
+    selectCompany,
+    rejectCompanyContext,
+  } = useProductionShellContext(identity);
 
   if (!identity.loaded)
     return (
@@ -163,7 +65,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           they become available.
         </p>
       </ApplicationContentSurface>
-      <CompanyRegistration actor={access.actor} identity={identity} />
+      <CompanyContextSelector
+        actor={access.actor}
+        state={access.companyContext}
+        onSelect={selectCompany}
+      />
+      <CompanyRegistration
+        actor={access.actor}
+        identity={identity}
+        onCompanyContextRejected={rejectCompanyContext}
+      />
       <ActivityLog state={access.activityLog} />
     </ApplicationShell>
   );

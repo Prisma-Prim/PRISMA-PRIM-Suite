@@ -25,7 +25,7 @@ export const workspacePermission = pgEnum('workspace_permission', [
   'company.manage',
 ]);
 
-export const companyStatus = pgEnum('company_status', ['active']);
+export const companyStatus = pgEnum('company_status', ['active', 'inactive']);
 
 export const workspaces = pgTable(
   'workspaces',
