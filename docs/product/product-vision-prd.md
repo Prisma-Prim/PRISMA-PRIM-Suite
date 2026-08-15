@@ -206,7 +206,7 @@ Capability PRDs may specialize these rules but may not create independent tenanc
 - Select provider adapters only when a capability requires them.
 - Use reviewed migrations; never use schema push against production.
 
-Costly schema-level tenancy and Company isolation decisions require an ADR after current implementation implications are verified.
+The accepted [Workspace tenancy and Company-scoped authorization ADR](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) governs costly schema-level tenancy, identity, membership, Company isolation, and migration decisions.
 
 ## 14. Testing decisions
 
@@ -249,7 +249,7 @@ The complete question bank is docs/product/iurie-business-question-bank-ro.md.
 Dan and agents own:
 
 - current schema and module-impact analysis;
-- tenancy and Company-isolation ADR;
+- the accepted tenancy and Company-isolation ADR;
 - provider inventories and official API/security research;
 - threat model, recovery design and operational topology;
 - performance budgets;

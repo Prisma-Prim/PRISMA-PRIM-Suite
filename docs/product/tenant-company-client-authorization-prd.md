@@ -110,7 +110,7 @@ Corrections preserve prior governed identity when it has been used in Documents,
 
 Extend the existing Workspace and Internal User foundation. Replace singleton assumptions through reviewed migrations without invalidating the Access and Accountability work already delivered.
 
-Existing records receive explicit first-tenant Workspace and Company ownership through a migration plan. No Company is inferred from free text when evidence is ambiguous.
+Existing Internal Users receive explicit Workspace Memberships, and existing Activity Log events retain their Workspace and identifiers. Current Access and Activity Log records have no Company ownership to backfill. Any later migration of Company-scoped business records requires explicit evidence; no Company is inferred from names, email domains, or free text.
 
 ## 12. Testing decisions
 
@@ -118,7 +118,10 @@ Existing records receive explicit first-tenant Workspace and Company ownership t
 - Browser journeys prove context visibility and safe permission states.
 - Negative tests cover direct identifiers, lists, counts, search metadata and error differences.
 - Permission tests use the public authorization interface, not private role implementation.
-- Migration tests prove current access data remains usable.
+- Migration tests exercise expand–backfill–contract from the current Access/#22 schema. They preserve Workspace, Internal User and Activity Log IDs and events, keep `/access/current-actor` and `/activity-log` usable throughout, prove non-destructive inactive membership backfill, and move Activity Log actor/target constraints to membership-aware relationships before contracting the old required `internal_users.workspace_id` and singleton paths.
+- Access REST tests prove that missing verified identity returns `401`, while an uninvited principal, inactive Internal User, missing or inactive membership, and every unauthorized or invalid Company selection return non-leaking `403` responses. Uninvited resolution creates no Internal User, membership, or provisioning event.
+- Bootstrap and accepted-invitation tests prove atomic creation or resolution, membership establishment, configured-owner assignment only on bootstrap, and exactly-once Internal User provisioning-event semantics under failure, retry, and concurrency.
+- Database constraint tests reject cross-Workspace Company, membership, assignment, Activity Log actor, and Activity Log target relationships.
 
 ## 13. Acceptance journey
 
@@ -137,11 +140,11 @@ Question sources: S00, S01 and S02 in the Romanian question bank.
 
 ## 15. Technical dependencies
 
-- schema-impact analysis and tenancy/Company ADR;
+- schema-impact analysis and the accepted [Workspace tenancy and Company-scoped authorization ADR](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md);
 - database isolation strategy and defense-in-depth threat model;
 - permission evaluation interface and caching consequences;
 - safe support-access design.
 
 ## 16. Readiness
 
-The cross-cutting model is ready to govern Release 1 PRDs. First implementation tickets beyond the existing access foundation remain blocked on the named first-tenant role and visibility evidence plus the tenancy ADR.
+The cross-cutting model is ready to govern Release 1 PRDs. After issue #22 and the tenancy ADR, the approved business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), then [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). Those slices may implement only their stated membership, bootstrap, Company registration/view, narrow owner permission, Activity Log, and active-context boundaries. Real user assignments, a role matrix, detailed permission bundles, consolidated oversight, Client visibility, deactivation policy beyond preserved active state, and exceptional access remain blocked on first-tenant evidence.

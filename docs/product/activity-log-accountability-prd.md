@@ -105,6 +105,8 @@ Retention and authorized export require a later policy based on business and leg
 - Browser tests prove human-readable history through the real access journey.
 - Each capability tests its critical event through the capability's highest public seam.
 - Tests do not import Accountability persistence internals.
+- The #65 migration seam preserves existing event IDs, actor and target attribution, append-only history, `/activity-log` visibility, and exactly-once provisioning semantics while references become membership-aware.
+- The #66 public Company seam proves that one successful provider-Company registration creates one attributable event and failed, retried, or unauthorized attempts do not create false or duplicate success history.
 
 ## 12. Acceptance journey
 
@@ -120,10 +122,10 @@ Business evidence:
 
 Technical dependencies:
 
-- completion of issue #22;
-- final tenancy and permission model;
+- issue #22 is complete;
+- the accepted [Workspace tenancy and Company-scoped authorization architecture](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md);
 - transaction/outbox decisions for work that cannot share one transaction.
 
 ## 14. Readiness
 
-Issue #22 remains ready and is the only current implementation frontier for this PRD. Additional event families become ready only with their owning capability PRD and permissions.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family. All other event families remain blocked until their owning capability PRD and permissions are ready.
