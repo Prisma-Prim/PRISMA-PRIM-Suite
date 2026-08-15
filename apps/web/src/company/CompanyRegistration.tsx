@@ -1,4 +1,4 @@
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -45,6 +45,17 @@ export function CompanyRegistration({
       }
     | undefined
   >(undefined);
+  const pendingRequest = useRef<AbortController | undefined>(undefined);
+  useEffect(
+    () => () => pendingRequest.current?.abort(),
+    [
+      actor.activeCompany?.id,
+      actor.internalUserId,
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      identity,
+    ],
+  );
 
   if (!actor.workspacePermissions.includes('company.manage')) {
     return (
@@ -93,9 +104,13 @@ export function CompanyRegistration({
     retryCommand.current = command;
     setState({ status: 'submitting' });
     const requestCompanyContextId = actor.activeCompany?.id;
+    pendingRequest.current?.abort();
+    const request = new AbortController();
+    pendingRequest.current = request;
 
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const createResult = await api.request<CompanyRecord>('/companies', {
         method: 'POST',
         headers: {
@@ -104,7 +119,9 @@ export function CompanyRegistration({
         },
         companyContextId: requestCompanyContextId,
         body: JSON.stringify({ displayName: command.displayName }),
+        signal: request.signal,
       });
+      if (request.signal.aborted) return;
       if (await handleAccessRejection(createResult, requestCompanyContextId))
         return;
       if (createResult.status === 'validation') {
@@ -117,8 +134,12 @@ export function CompanyRegistration({
 
       const readResult = await api.request<CompanyRecord>(
         `/companies/${createResult.value.id}`,
-        { companyContextId: requestCompanyContextId },
+        {
+          companyContextId: requestCompanyContextId,
+          signal: request.signal,
+        },
       );
+      if (request.signal.aborted) return;
       if (await handleAccessRejection(readResult, requestCompanyContextId))
         return;
       if (readResult.status !== 'ok') return setState({ status: 'error' });
@@ -126,7 +147,11 @@ export function CompanyRegistration({
       onCompanyRegistered(readResult.value);
       setState({ status: 'ready', company: readResult.value });
     } catch {
+      if (request.signal.aborted) return;
       setState({ status: 'error' });
+    } finally {
+      if (pendingRequest.current === request)
+        pendingRequest.current = undefined;
     }
   }
 

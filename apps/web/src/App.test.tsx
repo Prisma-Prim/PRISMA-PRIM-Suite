@@ -1,4 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -266,4 +272,120 @@ describe('App', () => {
       'signed-out',
     );
   });
+
+  it('does not expose a late Company registration from a previous Workspace', async () => {
+    sessionStorage.clear();
+    const oldRegistration = deferred<Response>();
+    const newActorResponse = deferred<Response>();
+    const oldActor = {
+      internalUserId: 'old-user',
+      workspaceMembershipId: 'old-membership',
+      workspaceId: 'old-workspace',
+      workspaceName: 'Old Workspace',
+      displayName: 'Old Owner',
+      email: 'old@example.test',
+      active: true,
+      workspacePermissions: ['company.manage'],
+    };
+    const newActor = {
+      internalUserId: 'new-user',
+      workspaceMembershipId: 'new-membership',
+      workspaceId: 'new-workspace',
+      workspaceName: 'New Workspace',
+      displayName: 'New Owner',
+      email: 'new@example.test',
+      active: true,
+      workspacePermissions: ['company.manage'],
+    };
+    const oldCompany = {
+      id: 'old-company',
+      workspaceId: oldActor.workspaceId,
+      displayName: 'Confidential Old Company',
+      status: 'active',
+      createdAt: '2026-08-15T12:00:00.000Z',
+      createdByInternalUserId: oldActor.internalUserId,
+    };
+    vi.mocked(fetch).mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const workspace = new Headers(init?.headers).get('x-test-workspace');
+        if (url.endsWith('/companies') && init?.method === 'POST')
+          return oldRegistration.promise;
+        if (url.endsWith(`/companies/${oldCompany.id}`))
+          return Promise.resolve(jsonResponse(oldCompany));
+        if (url.endsWith('/companies'))
+          return Promise.resolve(jsonResponse([]));
+        if (url.endsWith('/activity-log'))
+          return Promise.resolve(jsonResponse({ events: [] }));
+        return workspace === 'old'
+          ? Promise.resolve(jsonResponse(oldActor))
+          : newActorResponse.promise;
+      },
+    );
+    const oldIdentity = deterministicBrowserIdentity({
+      'x-test-workspace': 'old',
+    });
+    const newIdentity = deterministicBrowserIdentity({
+      'x-test-workspace': 'new',
+    });
+    const { rerender } = render(<App identity={oldIdentity} />);
+    await screen.findAllByText('Old Workspace');
+    fireEvent.change(screen.getByLabelText('Company display name'), {
+      target: { value: oldCompany.displayName },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Register Company' }));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/companies',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+
+    rerender(<App identity={newIdentity} />);
+    expect(screen.queryByText('Old Workspace')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Company context' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Company display name'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Activity Log' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Verifying your access',
+    );
+    newActorResponse.resolve(jsonResponse(newActor));
+    await screen.findAllByText('New Workspace');
+    expect(screen.getByLabelText('Company display name')).toHaveValue('');
+    expect(
+      screen.getByRole('button', { name: 'Register Company' }),
+    ).toBeEnabled();
+    await act(async () => {
+      oldRegistration.resolve(jsonResponse(oldCompany));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(oldCompany.displayName)).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith(
+      `/api/companies/${oldCompany.id}`,
+      expect.anything(),
+    );
+  });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+function jsonResponse(value: unknown): Response {
+  return new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+}
