@@ -22,6 +22,20 @@
       "when": 1786796409131,
       "tag": "0002_workspace-membership-authority",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786799934926,
+      "tag": "0003_true_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786800099114,
+      "tag": "0004_daily_dazzler",
+      "breakpoints": true
     }
   ]
 }

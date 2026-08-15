@@ -143,12 +143,60 @@ describeWithPostgres('Workspace Membership migration', () => {
       legacyAfter.origin,
       headers(),
     );
+
+    await applyMigration('0003_true_frank_castle.sql');
+    await applyMigration('0004_daily_dazzler.sql');
+
+    const legacyAfterCompanyMigrationsActor = await fetchActor(
+      legacyAfter.origin,
+      headers(),
+    );
+    const legacyAfterCompanyMigrationsActivity = await fetchActivity(
+      legacyAfter.origin,
+      headers(),
+    );
+    const legacyCreatedAfterCompanyMigrations = await fetchActor(
+      legacyAfter.origin,
+      headers({
+        'x-test-external-subject': 'legacy-created-after-company-migrations',
+        'x-test-display-name': 'Legacy Created After Company Migrations',
+        'x-test-email': 'legacy-created-after-company-migrations@example.test',
+      }),
+    );
+    const legacyAfterCompanyMigrationsWriteActivity = await fetchActivity(
+      legacyAfter.origin,
+      headers(),
+    );
     await legacyAfter.close();
 
     expect(afterActor).toEqual(beforeActor);
     expect(afterActivity).toEqual(beforeActivity);
     expect(afterActor).toMatchObject({ internalUserId, workspaceId });
     expect(afterActivity.events[0]).toMatchObject({ id: eventId });
+    expect(legacyAfterCompanyMigrationsActor).toEqual(afterActor);
+    expect(legacyAfterCompanyMigrationsActivity).toEqual(
+      legacyAfterWriteActivity,
+    );
+    expect(legacyCreatedAfterCompanyMigrations).toMatchObject({
+      internalUserId: expect.any(String),
+      workspaceId,
+    });
+    expect(legacyAfterCompanyMigrationsWriteActivity.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'internal_user.provisioned',
+          actor: {
+            internalUserId: legacyCreatedAfterCompanyMigrations.internalUserId,
+            displayName: 'Legacy Created After Company Migrations',
+          },
+          target: {
+            type: 'internal_user',
+            internalUserId: legacyCreatedAfterCompanyMigrations.internalUserId,
+            displayName: 'Legacy Created After Company Migrations',
+          },
+        }),
+      ]),
+    );
 
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());
@@ -165,7 +213,7 @@ describeWithPostgres('Workspace Membership migration', () => {
 
     expect(currentActor).toMatchObject(beforeActor);
     expect(currentActor.workspaceMembershipId).toEqual(expect.any(String));
-    expect(currentActivity).toEqual(legacyAfterWriteActivity);
+    expect(currentActivity).toEqual(legacyAfterCompanyMigrationsWriteActivity);
     expect(currentLegacyCreated).toMatchObject({
       internalUserId: legacyCreated.internalUserId,
       workspaceId: legacyCreated.workspaceId,
@@ -214,7 +262,7 @@ describeWithPostgres('Workspace Membership migration', () => {
         (SELECT count(*) FROM internal_users) AS users,
         (SELECT count(*) FROM activity_log_events) AS events`,
     );
-    expect(counts.rows[0]).toEqual({ users: '3', events: '2' });
+    expect(counts.rows[0]).toEqual({ users: '4', events: '3' });
   });
 
   async function startLegacyApp() {

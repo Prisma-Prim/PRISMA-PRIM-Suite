@@ -46,6 +46,64 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The principal has no active Internal User and Workspace Membership authority.
+  /api/companies:
+    post:
+      operationId: registerCompany
+      summary: Register one provider Company in the actor's Workspace
+      tags:
+        - Company
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterCompanyInput'
+      responses:
+        '201':
+          description: The registered active provider Company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyRecord'
+        '400':
+          description: The Company display name or idempotency key is blank or missing.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Workspace-scoped Company administration permission.
+  /api/companies/{companyId}:
+    get:
+      operationId: getCompany
+      summary: Read one provider Company in the actor's Workspace
+      tags:
+        - Company
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The Workspace-owned provider Company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyRecord'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Workspace-scoped Company administration permission.
+        '404':
+          description: No visible Company matches the identifier in the actor's Workspace.
 components:
   schemas:
     ActivityLogEvent:
@@ -66,21 +124,20 @@ components:
           type: string
           enum:
             - internal_user.provisioned
+            - company.registered
         occurredAt:
           type: string
           format: date-time
         actor:
           $ref: '#/components/schemas/ActivityLogInternalUserReference'
         target:
-          $ref: '#/components/schemas/ActivityLogInternalUserTargetReference'
+          oneOf:
+            - $ref: '#/components/schemas/ActivityLogInternalUserTargetReference'
+            - $ref: '#/components/schemas/ActivityLogCompanyTargetReference'
         metadata:
-          type: object
-          additionalProperties: false
-          required:
-            - identityProvider
-          properties:
-            identityProvider:
-              type: string
+          oneOf:
+            - $ref: '#/components/schemas/IdentityProvisionedMetadata'
+            - $ref: '#/components/schemas/CompanyRegisteredMetadata'
     ActivityLogInternalUserReference:
       type: object
       additionalProperties: false
@@ -109,6 +166,70 @@ components:
           format: uuid
         displayName:
           type: string
+    ActivityLogCompanyTargetReference:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - companyId
+        - displayName
+      properties:
+        type:
+          type: string
+          const: company
+        companyId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    IdentityProvisionedMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - identityProvider
+      properties:
+        identityProvider:
+          type: string
+    CompanyRegisteredMetadata:
+      type: object
+      additionalProperties: false
+    RegisterCompanyInput:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+    CompanyRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceId
+        - displayName
+        - status
+        - createdAt
+        - createdByInternalUserId
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        status:
+          type: string
+          const: active
+        createdAt:
+          type: string
+          format: date-time
+        createdByInternalUserId:
+          type: string
+          format: uuid
     ActorContext:
       type: object
       additionalProperties: false
@@ -120,6 +241,7 @@ components:
         - displayName
         - email
         - active
+        - workspacePermissions
       properties:
         internalUserId:
           type: string
@@ -140,3 +262,10 @@ components:
         active:
           type: boolean
           const: true
+        workspacePermissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - company.manage

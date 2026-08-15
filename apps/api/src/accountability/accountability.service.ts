@@ -4,6 +4,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   activityLogEvents,
+  companies,
   internalUsers,
   workspaceMemberships,
 } from '../database/schema/index.js';
@@ -20,7 +21,10 @@ export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
   async record(event: CanonicalActivityEvent): Promise<void> {
-    if (event.actor.internalUserId !== event.target.internalUserId) {
+    if (
+      event.target.type === 'internal_user' &&
+      event.actor.internalUserId !== event.target.internalUserId
+    ) {
       throw new Error(
         'An Internal User provisioning event must target its actor.',
       );
@@ -34,10 +38,21 @@ export class AccountabilityService {
         actorWorkspaceMembershipId: event.actor.workspaceMembershipId,
         action: event.action,
         targetType: event.target.type,
-        targetInternalUserId: event.target.internalUserId,
-        targetWorkspaceMembershipId: event.actor.workspaceMembershipId,
+        targetInternalUserId:
+          event.target.type === 'internal_user'
+            ? event.target.internalUserId
+            : null,
+        targetWorkspaceMembershipId:
+          event.target.type === 'internal_user'
+            ? event.actor.workspaceMembershipId
+            : null,
+        targetCompanyId:
+          event.target.type === 'company' ? event.target.companyId : null,
         metadata: event.metadata,
-        idempotencyKey: `${event.action}:${event.target.internalUserId}`,
+        idempotencyKey:
+          event.target.type === 'internal_user'
+            ? `${event.action}:${event.target.internalUserId}`
+            : `${event.action}:${event.target.companyId}`,
       })
       .onConflictDoNothing({ target: activityLogEvents.idempotencyKey });
   }
@@ -45,6 +60,7 @@ export class AccountabilityService {
   async listForActor(actor: ActorContext): Promise<ActivityLogPage> {
     const eventActor = alias(internalUsers, 'activity_log_actor');
     const eventTarget = alias(internalUsers, 'activity_log_target');
+    const eventTargetCompany = alias(companies, 'activity_log_target_company');
     const actorMembership = alias(
       workspaceMemberships,
       'activity_log_actor_membership',
@@ -53,6 +69,12 @@ export class AccountabilityService {
       workspaceMemberships,
       'activity_log_target_membership',
     );
+    const visibleEvents = actor.workspacePermissions.includes('company.manage')
+      ? eq(activityLogEvents.workspaceId, actor.workspaceId)
+      : and(
+          eq(activityLogEvents.workspaceId, actor.workspaceId),
+          eq(activityLogEvents.targetType, 'internal_user'),
+        );
     const rows = await this.databaseContext.connection
       .select({
         id: activityLogEvents.id,
@@ -62,7 +84,9 @@ export class AccountabilityService {
         actorDisplayName: eventActor.displayName,
         targetType: activityLogEvents.targetType,
         targetInternalUserId: eventTarget.id,
-        targetDisplayName: eventTarget.displayName,
+        targetInternalUserDisplayName: eventTarget.displayName,
+        targetCompanyId: eventTargetCompany.id,
+        targetCompanyDisplayName: eventTargetCompany.displayName,
         metadata: activityLogEvents.metadata,
       })
       .from(activityLogEvents)
@@ -78,7 +102,7 @@ export class AccountabilityService {
         ),
       )
       .innerJoin(eventActor, eq(actorMembership.internalUserId, eventActor.id))
-      .innerJoin(
+      .leftJoin(
         targetMembership,
         and(
           eq(activityLogEvents.workspaceId, targetMembership.workspaceId),
@@ -92,11 +116,18 @@ export class AccountabilityService {
           ),
         ),
       )
-      .innerJoin(
+      .leftJoin(
         eventTarget,
         eq(targetMembership.internalUserId, eventTarget.id),
       )
-      .where(eq(activityLogEvents.workspaceId, actor.workspaceId))
+      .leftJoin(
+        eventTargetCompany,
+        and(
+          eq(activityLogEvents.workspaceId, eventTargetCompany.workspaceId),
+          eq(activityLogEvents.targetCompanyId, eventTargetCompany.id),
+        ),
+      )
+      .where(visibleEvents)
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
       .limit(INITIAL_PAGE_SIZE);
 
@@ -109,11 +140,18 @@ export class AccountabilityService {
           internalUserId: event.actorInternalUserId,
           displayName: event.actorDisplayName,
         },
-        target: {
-          type: event.targetType,
-          internalUserId: event.targetInternalUserId,
-          displayName: event.targetDisplayName,
-        },
+        target:
+          event.targetType === 'internal_user'
+            ? {
+                type: 'internal_user' as const,
+                internalUserId: event.targetInternalUserId!,
+                displayName: event.targetInternalUserDisplayName!,
+              }
+            : {
+                type: 'company' as const,
+                companyId: event.targetCompanyId!,
+                displayName: event.targetCompanyDisplayName!,
+              },
         metadata: event.metadata,
       })),
     };
