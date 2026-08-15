@@ -1,8 +1,8 @@
 # Consolidated Product Reconciliation and Decision Record
 
 **Product:** PRISMA-PRIM Suite  
-**Status:** Active working record — decisions `DEC-001` through `DEC-099` approved  
-**Record version:** 0.4  
+**Status:** Active working record — decisions `DEC-001` through `DEC-124` approved  
+**Record version:** 0.5  
 **Last updated:** 2026-08-15  
 **Source discussion language:** French  
 **Repository language:** English
@@ -43,6 +43,31 @@ For every further material product decision:
 4. Update affected diagrams, release boundaries and reconciliation sections.
 5. Later normalize the approved result into the correct PRD, ADR, glossary or GitHub issue.
 6. Never create a new meeting-notes file for the same reconciliation unless this document becomes technically unmanageable.
+
+### 1.3 Business interview and technical discovery protocol
+
+Iurie is the authority for first-tenant business reality and desired behaviour. He is not expected to choose the application's domain model, database structures, API design, provider permissions or software architecture. Dan and the implementation agents own those technical and product-design decisions, using the repository, official documentation and the business evidence collected from Iurie.
+
+Questions presented to Iurie must therefore ask, in ordinary business language:
+
+- what happens today and what result is wanted;
+- who performs, reviews, approves or receives each action;
+- which real cases, exceptions and documents exist;
+- which Company is responsible and which exact legal entity is involved;
+- what evidence is available and who controls an existing account or system;
+- which business outcome should occur when a choice is genuinely required.
+
+Internal names such as `Opportunity`, `Client Legal Entity`, `Scheme`, `Payment Allocation`, `OAuth scope`, `Pricing Snapshot` or `Contract Instrument` may remain in this record because they give agents a precise shared model. They must not be sent to Iurie as unexplained questions. When one of these distinctions matters, the interviewer must first describe it through a recognizable situation. For example, instead of asking whether an `Opportunity` may change `Company`, ask whether responsibility for a potential job can move from PRISMA-PRIM to BIC or ECG after the request has been reviewed.
+
+Discovery material must be separated into three deliverables:
+
+1. a Romanian business interview for Iurie, written in plain language and organized around his work;
+2. a technical inventory checklist for Dan, an implementation agent or the relevant administrator;
+3. an answer-to-decision mapping showing which product or technical consequence depends on each business answer.
+
+Technical research is performed by Dan and the agents. Iurie is asked about a technical system only when he uniquely knows an otherwise inaccessible operational fact, such as which tool is actually used, who administers it, what export is available in practice, or what user-visible behaviour he wants. Once the system is identified, its API, security model, limits and integration design are researched without delegating those decisions back to him.
+
+`I do not know` is an acceptable business-interview answer. It becomes an evidence request or a task for the responsible accountant, administrator or technical agent; it must not force Iurie to make up a technical answer. Sections containing detailed discovery questions in this record are internal registers. They are source material for the final interview and must not be copied verbatim to Iurie without applying this protocol.
 
 ## 2. Executive outcome
 
@@ -1434,7 +1459,164 @@ Canonical Activity Log events include material scope changes, team assignments, 
 
 Automations may instantiate checklists, create preparation Tasks, prepare Calendar events, calculate reminders, identify missing inputs and draft Documents. They cannot make or approve the sensitive judgments listed in section 13.12.
 
-## 14. Release roadmap
+## 14. Commercial workflow architecture
+
+### 14.1 Position of the original MVP
+
+`docs/product/mvp-prd.md` contains a strong specification for assisted commercial work. Its human review, deterministic pricing, immutable versions, quality checks and evidence principles are preserved. It no longer defines the whole product or the next implementation release. It becomes the source specification for the commercial capability within the broader operational platform.
+
+The canonical commercial journey is:
+
+```text
+Client Request
+    │
+    ├─ resolve or create shared Client dossier
+    ├─ identify the exact Client legal entity when known
+    └─ qualify separately for each responsible group Company
+             │
+             ▼
+        Opportunity
+             │
+             ├─ structured assessment and confirmed facts
+             ├─ selected Company service offerings
+             ├─ deterministic pricing calculation
+             └─ immutable pricing snapshot
+                         │
+                         ▼
+                 Offer + Offer Versions
+                         │
+                         ├─ deterministic quality checks
+                         ├─ internal approval
+                         ├─ controlled transmission
+                         └─ recorded Client response
+                                      │
+                                      ▼
+                     Contract + governed instruments
+                                      │
+                                      └─ create or link Project
+```
+
+This sequence is a normal path, not a rigid requirement that every record be created only by its predecessor. Governed import, migration and direct Contract creation remain possible where the real business requires them.
+
+### 14.2 Client Request before confirmed Client identity
+
+A `ClientRequest` represents the original inbound demand and may exist before the requester has been matched to a shared `Client` dossier. It may begin in a restricted Workspace triage queue with no responsible Company. The original source, received time, sender, subject, body or file reference and source-provider identifiers are immutable evidence; corrections or interpretation are stored separately.
+
+No separate `Prospect` master entity is required. A shared Client dossier may have a `PROSPECT` relationship with one or more Companies before becoming active. Duplicate resolution remains explicit and human-controlled.
+
+### 14.3 Request and Opportunity are different facts
+
+One request can produce no Opportunity, one Opportunity or several Opportunities. Each `Opportunity` belongs to exactly one provider `Company`, because ownership, confidentiality, service authorization, pricing, approvals, numbering and eventual contracting differ by Company. If one request could produce work for PRISMA-PRIM and BIC, it creates two Company-owned Opportunities linked to the same request rather than one ambiguously shared commercial record.
+
+An Opportunity records the qualified commercial case, its owner, expected Client legal entity when known, scope, next action and outcome. Its durable lifecycle status is separate from the tenant-configurable sales stage:
+
+- stable status: open, won, lost, disqualified, on hold or archived;
+- configurable stage: the practical steps used by the tenant, such as qualification, technical review, pricing, offer preparation or negotiation.
+
+This avoids making dashboards and automation depend on tenant-specific labels.
+
+### 14.4 Structured assessment with optional AI assistance
+
+The complete workflow must work through structured human input when AI is disabled or unavailable. Provider-neutral request evidence may optionally be processed by an `AnalysisRun`, which creates proposed facts, missing-information flags, contradictions or draft classifications. Those outputs are proposals, not canonical Client data or approved commercial facts.
+
+A human reviews proposals into a structured `RequestAssessment`. Applying a confirmed fact to the shared Client dossier, a Client legal entity or an Opportunity is an explicit action with provenance. No analysis result may silently merge Clients, overwrite shared identity, select the responsible Company, set a final price or approve an Offer.
+
+### 14.5 Shared service definition and Company offering
+
+A reusable `ServiceDefinition` describes a business service at Workspace level. A `CompanyServiceOffering` states that a particular Company may sell or perform that service, with its own availability, authorization, commercial text, templates and pricing configuration. This preserves a common catalogue without falsely implying that every Company can provide every service under identical conditions.
+
+### 14.6 Versioned tariffs and pricing rules
+
+Tariffs and Pricing Rules are Company-scoped, versioned and effective-dated. A calculation uses only confirmed typed inputs and deterministic rules. The first implementation should support the recurring rule shapes observed in real services rather than inventing a universal pricing language.
+
+Every calculation produces an immutable `PricingSnapshot` containing at least:
+
+- the Company, service scope and Client context used;
+- tariff and rule versions;
+- confirmed input values;
+- calculation lines, quantities, unit prices, adjustments and totals;
+- currency, rounding and tax assumptions;
+- calculation time and responsible actor.
+
+Money follows the fixed-precision and currency rules in section 12. Discounts, overrides and exceptional adjustments are explicit lines with a reason, actor and any required approval. They never mutate the historical tariff or hide inside a manually replaced total.
+
+### 14.7 Offer identity and immutable versions
+
+`Offer` is the durable commercial identity. Each revision is a complete `OfferVersion` snapshot containing recipient legal identity, service scope, pricing snapshot, commercial conditions, validity, referenced documents, template version and generated artefact. An approved or transmitted version is immutable. Negotiation creates a new version and preserves the prior one.
+
+Three dimensions are recorded separately:
+
+1. internal preparation and approval state;
+2. transmission state and evidence of what was sent, when, how and by whom;
+3. Client outcome such as pending, accepted, rejected, expired or withdrawn.
+
+This prevents a single overloaded `status` from claiming that internal approval means the Client received or accepted the Offer.
+
+### 14.8 Deterministic quality checks and approval
+
+Quality Checks are versioned deterministic rules. Their results are stored against the exact Offer Version and use `PASS`, `WARNING` or `ERROR` semantics. Errors block approval or transmission. Warnings require an acknowledgement or approved exception. AI may explain a failed check or draft missing text, but it does not decide whether a commercial control passed.
+
+Internal approval is distinct from sending. Approval thresholds may depend on Company, service type, value, margin, discount or exception. Approval, rejection, return for changes and override are attributed Activity Log events.
+
+### 14.9 Client response and acceptance evidence
+
+Client acceptance requires evidence interpreted or confirmed by an authorized human. Evidence may include a signed copy, qualified electronic signature, explicit email, Client order or another approved form. Receipt of a message or a provider callback does not by itself establish legal acceptance unless the configured business rule and responsible reviewer confirm it.
+
+The accepted Offer Version remains immutable and is linked to the resulting Contract. If terms change during negotiation, a new Offer Version is prepared; historical versions are never rewritten to resemble the final agreement.
+
+### 14.10 Contract origins and relationship to Projects
+
+A Contract may originate from an accepted Offer, a governed direct-creation flow, an imported historical agreement or a renewal. Direct creation is allowed because migration and exceptional work exist, but it requires explicit scope, parties, commercial terms, provenance and any additional review demanded by policy.
+
+A Project may already exist before signature. Contract activation therefore either creates a Project or links an existing authorized Project. The system must search and present possible matches rather than blindly creating a duplicate. A Contract and Project remain distinct: the Contract governs legal/commercial obligations, while the Project governs operational delivery.
+
+The exact cardinality for framework agreements, amendments and Projects remains subject to real-case validation; the model must not assume that one Contract always equals one Project.
+
+### 14.11 Contract versions and post-signature instruments
+
+Pre-signature drafts are `ContractVersion` records under one durable Contract identity. Once executed, the signed agreement is immutable evidence. Later legal changes are separate governed instruments—such as amendment, addendum, renewal, termination or suspension—not silent edits of the signed version.
+
+The application records document workflow, execution/signature state and legal/operational lifecycle as separate dimensions. For example, a document may be approved internally but not signed, or signed but not yet effective.
+
+### 14.12 Governed legal content
+
+Legal clauses and Contract templates are approved, versioned and Company-scoped where necessary. Generated Documents record the exact template and clause versions used. AI may propose wording only as an identified draft for human and, when required, legal review. It may not invent an authoritative clause or silently alter approved legal text.
+
+### 14.13 Signature evidence and conditional MSign integration
+
+The initial product records external signature evidence rather than implementing an electronic-signature authority. Supported evidence categories can include paper signed scan, qualified electronic signature, external signature provider, Client order and other approved evidence.
+
+Moldova's electronic-identification and trust-services framework includes Law no. 124/2022, and the governmental MSign service can be relevant to future integration. An MSign adapter is conditional on the real signing workflow, account ownership, supported integration interface, security obligations and desired user experience being verified. The first release does not claim to create qualified signatures itself.
+
+References:
+
+- [STISC — electronic identification and trust-services legal framework](https://stisc.gov.md/ro/cadrul-legislativ)
+- [Moldova e-Government Agency — MSign governmental electronic-signature service](https://www.egov.md/ro/content/serviciul-guvernamental-de-semnatura-electronica)
+
+### 14.14 Numbering and concurrency
+
+Offer and Contract numbers are assigned per Company and document type using configurable schemes. Whether numbers reset by year and whether they are reserved at draft, approval or transmission time must be determined from real practice. Allocation must be atomic and concurrency-safe; cancelled or abandoned reservations remain traceable rather than being silently reused when legal or operational policy forbids reuse.
+
+### 14.15 Permissions, auditability and dashboard semantics
+
+Commercial permissions distinguish intake, assignment, assessment, pricing, discount, approval, transmission, Client-response confirmation, Contract preparation, signature confirmation and configuration. They are Company-scoped unless a clearly approved Workspace-level responsibility applies.
+
+Critical changes—including Company assignment, confirmed Client identity, pricing override, approval, transmission, accepted evidence, Contract execution and post-signature instrument—produce attributed Activity Log events. Approved or signed records are never hard-deleted.
+
+Dashboards derive stable business meaning from durable status and dates rather than configurable stage labels alone. At minimum they can distinguish unassigned requests, requests awaiting information, open Opportunities without next action, Offers awaiting approval, sent Offers awaiting response, expiring Offers, Contracts awaiting signature and accepted work not yet linked to a Project.
+
+### 14.16 Commercial implementation boundary
+
+Release 3 is split into independently testable capabilities:
+
+- **R3A — Intake and Opportunity:** immutable request evidence, Client resolution, Company assignment, structured assessment, ownership and next actions;
+- **R3B — Catalogue and deterministic pricing:** service definitions, Company offerings, versioned tariffs and rules, calculations, adjustments and immutable snapshots;
+- **R3C — Offers:** complete versions, generated documents, quality checks, approval, transmission, response evidence and negotiation history;
+- **R3D — Contracts:** controlled origins, versions, legal content, signature evidence, post-signature instruments and Project creation or linking.
+
+No detailed commercial implementation ticket becomes `ready-for-agent` until real services, tariffs, calculation examples, templates, approval thresholds, numbering rules and representative negotiations and Contracts have been inventoried. Mass marketing automation, a universal CRM or CPQ engine, AI-determined pricing, an internally implemented qualified-signature service and a Client portal remain outside this release.
+
+## 15. Release roadmap
 
 ### Release 0 — Technical foundation
 
@@ -1472,14 +1654,10 @@ Acceptance journey:
 
 ### Release 3 — Commercial workflow
 
-- Opportunity or Client Request;
-- missing and contradictory information;
-- Service catalog;
-- deterministic Tariffs and Pricing Rules;
-- Offers and immutable versions;
-- Quality Checks and human Approval;
-- Contracts and versions;
-- Project creation/linking after signature.
+- **R3A — Intake and Opportunity:** immutable Client Request evidence, shared Client resolution, Company-owned Opportunity, structured assessment, responsibility and next actions;
+- **R3B — Catalogue and pricing:** shared Service Definitions, Company Service Offerings, versioned Tariffs and Pricing Rules, explicit adjustments and immutable Pricing Snapshots;
+- **R3C — Offers:** complete Offer Versions, deterministic Quality Checks, human Approval, transmission evidence, Client response and negotiation history;
+- **R3D — Contracts:** controlled creation or import, versioned legal content, external signature evidence, post-signature instruments and Project creation or linking.
 
 The workflow must function with structured human input even when AI Analysis is disabled.
 
@@ -1525,7 +1703,7 @@ Authoritative fiscal invoice generation, general-ledger accounting and e-Factura
 - ISO Project Copilot;
 - advanced agents only after measurable evaluation.
 
-## 15. Approved decision register
+## 16. Approved decision register
 
 ### Product scope, preservation and documentation
 
@@ -1941,18 +2119,123 @@ Do not couple the domain to MOLDAC, IAF, Global ACI or another registry name or 
 
 No detailed Audit, certification, Certificate or Training ticket becomes `ready-for-agent` until the first tenant's Companies, accreditations, Schemes, terminology, role separation, templates, numbering, cycles, Findings and representative cases have been inventoried.
 
-## 16. Known effects on existing authorities
+### Commercial workflow
+
+#### DEC-100 — Reposition the original MVP as the commercial capability source
+
+The existing MVP PRD remains valuable but no longer defines the entire product or immediate delivery order. Its approved principles and requirements are inputs to a dedicated commercial capability PRD within the operational platform.
+
+#### DEC-101 — A Client Request may precede confirmed Client identity
+
+An inbound request may be preserved and triaged before a shared Client dossier or exact legal entity is identified. No separate Prospect master entity is required.
+
+#### DEC-102 — Preserve original Request evidence immutably and provider-neutrally
+
+The original received content and source metadata are immutable evidence independent of Gmail or another provider. Interpretation, correction and enrichment are separate attributed facts.
+
+#### DEC-103 — Client Request and Opportunity are distinct
+
+One request may create zero, one or several Opportunities. Every Opportunity belongs to exactly one responsible Company, including when several Company-owned Opportunities originate from the same request.
+
+#### DEC-104 — Stable Opportunity status differs from configurable Sales Stage
+
+Durable outcome and lifecycle semantics remain stable for authorization, reporting and automation. Tenant-specific commercial steps remain configurable stage definitions.
+
+#### DEC-105 — The full commercial workflow works without AI
+
+Structured human entry, validation, pricing, approval, Offer and Contract processing remain complete when AI is disabled, unavailable or not permitted.
+
+#### DEC-106 — Analysis proposals do not become canonical facts automatically
+
+AI or rule-based analysis outputs are proposals. A human must resolve and explicitly apply them before they change a shared Client dossier, legal entity, Opportunity, price, Offer or Contract.
+
+#### DEC-107 — Shared Service Definition differs from Company Service Offering
+
+The Workspace may share service vocabulary while each Company separately declares what it can provide and under which authorization, text, template and commercial configuration.
+
+#### DEC-108 — Tariffs and Pricing Rules are versioned, effective and Company-scoped
+
+Historical pricing must reproduce the exact configuration applicable at calculation time. Rules are scoped to the selling Company and use effective dates rather than mutable global values.
+
+#### DEC-109 — Pricing uses confirmed typed inputs and deterministic rules
+
+AI does not calculate or choose the authoritative price. The initial rules support verified recurring business cases rather than attempting a universal pricing language.
+
+#### DEC-110 — Every Pricing Snapshot is immutable
+
+The snapshot preserves inputs, tariff and rule versions, calculation lines, adjustments, currency, rounding, tax assumptions, actor and time. Approved monetary precision rules apply.
+
+#### DEC-111 — Discounts and adjustments are explicit and governed
+
+Every commercial exception has a visible line, reason and actor, with approval when a configured threshold requires it. It does not overwrite a tariff or hide inside a final total.
+
+#### DEC-112 — Offer has durable identity and complete versions
+
+Each Offer Version snapshots the recipient, scope, price, conditions, validity, template, clauses and generated artefact. Approved or transmitted versions are immutable.
+
+#### DEC-113 — Offer Quality Checks are deterministic and versioned
+
+Quality results use pass, warning and error semantics. Errors block progression and warnings require acknowledgement or an approved exception. AI may assist but does not decide the result.
+
+#### DEC-114 — Internal approval, transmission and Client response are distinct
+
+The product separately records whether an Offer was approved internally, actually sent and accepted or rejected by the Client. One overloaded status cannot represent these facts safely.
+
+#### DEC-115 — Negotiation creates a new Offer Version
+
+An approved or sent version is never rewritten to match later negotiations. Each revision preserves the prior commercial proposition and its evidence.
+
+#### DEC-116 — Client acceptance requires governed evidence and human confirmation
+
+A signed copy, electronic signature, explicit email, Client order or other approved evidence is recorded against the exact Offer Version. Technical receipt alone does not establish acceptance without the configured business interpretation and responsible human confirmation.
+
+#### DEC-117 — Contract supports controlled origins and existing Projects
+
+A Contract may originate from an accepted Offer, governed direct creation, import or renewal. It may create a Project or link an authorized existing Project, with duplicate detection and explicit confirmation.
+
+#### DEC-118 — Pre-signature versions differ from post-signature instruments
+
+Contract drafts are versions. Once executed, the signed agreement is immutable evidence; amendments, addenda, renewals, terminations and similar later changes are separate governed instruments.
+
+#### DEC-119 — Legal clauses and templates are approved and versioned
+
+Generated Contracts retain the exact approved legal-content versions used. AI may only propose identified drafts for appropriate review and cannot invent authoritative legal language.
+
+#### DEC-120 — Record external signature evidence before integrating signature providers
+
+The initial product records paper, qualified electronic, external-provider, Client-order or other approved evidence. MSign or another signing integration is conditional on verified business need, authority, interface and security obligations.
+
+#### DEC-121 — Commercial numbering is Company-scoped and concurrency-safe
+
+Offer and Contract numbering is configurable by Company and document type. Allocation is atomic, traceable and subject to real-policy validation for resets, reservation timing and reuse.
+
+#### DEC-122 — Separate sensitive commercial permissions and audit critical actions
+
+Intake, pricing, discount, approval, transmission, acceptance confirmation, Contract execution and configuration are distinct Company-scoped capabilities. Critical actions produce attributed Activity Log events and governed records are not hard-deleted.
+
+#### DEC-123 — Inventory real commercial workflows before implementation tickets
+
+No detailed Release 3 ticket becomes `ready-for-agent` until real services, tariffs, calculation examples, templates, approvals, numbering, negotiations, Contracts and exceptions have been inventoried.
+
+### Evidence and interview protocol
+
+#### DEC-124 — Iurie answers business questions; Dan and agents own technical decisions
+
+Iurie provides first-tenant workflow facts, desired behaviour, roles, exceptions and evidence in understandable business language. Dan and the implementation agents translate those answers into product and architecture decisions and independently research technical systems. A technical-looking question reaches Iurie only when it asks for an inaccessible operational fact or a business choice that materially changes implementation; internal model terms must first be explained through a recognizable business situation.
+
+## 17. Known effects on existing authorities
 
 These changes are intentionally not applied by this record alone:
 
-- `docs/product/mvp-prd.md` must be marked as an original/superseded pilot specification and its valid requirements redistributed.
+- `docs/product/mvp-prd.md` must be marked as an original/superseded pilot specification and its valid requirements redistributed into the commercial capability PRD.
 - `docs/product/access-and-accountability-prd.md` delivered the initial identity foundation, but its singleton/equal-permission assumptions must not govern the new operational core.
 - `CONTEXT.md` must later add Workspace-as-tenant, Company, Client Account, Client Legal Entity, Client–Company Relationship, Project Template, Project Stage and Task terminology.
 - A durable ADR should capture Workspace tenancy, Company hierarchy and isolation strategy after schema-level implications are verified.
 - Product vision and capability PRDs must be created before implementation issues for the new modules.
 - Existing Access work should be extended rather than rewritten.
+- The final Romanian interview for Iurie must be generated from the internal discovery registers using section 1.3; technical inventories and architecture choices remain separate agent work.
 
-## 17. Open product questions
+## 18. Open product questions
 
 These are not implementation-ready decisions:
 
@@ -1968,11 +2251,11 @@ These are not implementation-ready decisions:
 10. What data-retention and deletion obligations apply in Moldova and future target markets?
 11. When, if ever, should an external Client portal enter the roadmap?
 
-## 18. Questions to ask Iurie about Google
+## 19. Internal discovery register for Google
 
-These questions must be preserved for the first-tenant configuration audit. They are intentionally more concrete than the general open-question register so the answers can be converted into implementation prerequisites.
+These questions must be preserved for the first-tenant configuration audit. This is not a questionnaire to send verbatim. Apply section 1.3: ask Iurie only for current practices, desired behaviour, account ownership and evidence in ordinary language; Dan, an agent or the Google administrator verifies editions, OAuth scopes, APIs, security and integration design.
 
-### 18.1 Accounts, domains and administration
+### 19.1 Accounts, domains and administration
 
 1. **Which Google email addresses are currently used by every collaborator involved in PRISMA-PRIM, BIC and ECG?** Record the address, person, Company and whether it is an individual or shared identity.
 2. **Does the group currently pay for Google Workspace?** If yes, identify the Workspace edition and the organization name visible in the Admin console.
@@ -1982,7 +2265,7 @@ These questions must be preserved for the first-tenant configuration audit. They
 
 Why these answers matter: they determine whether managed Shared Drives, internal-only OAuth, centralized administration and official delegation are available. They also identify the person who can approve integration changes.
 
-### 18.2 Drive and document ownership
+### 19.2 Drive and document ownership
 
 6. **Do Shared Drives already exist, or is all content stored in individual My Drives?** List every relevant Drive and its current owner.
 7. **What is the current top-level folder structure for PRISMA-PRIM, BIC and ECG?** Do not reorganize it yet; capture it as evidence.
@@ -1994,7 +2277,7 @@ Why these answers matter: they determine whether managed Shared Drives, internal
 
 Why these answers matter: they decide the Shared Drive topology, migration strategy, Document Location model, permission mapping and first pilot sample. They prevent the application from automating an unknown or already inconsistent folder structure.
 
-### 18.3 Gmail and email workflow
+### 19.3 Gmail and email workflow
 
 13. **What does “Gmail integration” mean operationally to Iurie?** Ask him to rank these separately: attach selected email to a Client, import attachments, read a full thread, monitor a label, create a draft, send, detect replies, or search old email.
 14. **Which mailboxes are individual and which addresses are used communally?** Record whether communal access uses a shared password, delegation, forwarding, Google Group or another mechanism.
@@ -2005,7 +2288,7 @@ Why these answers matter: they decide the Shared Drive topology, migration strat
 
 Why these answers matter: Gmail read and compose scopes are restricted. The requested behaviour determines whether Google verification and an external security assessment become necessary. “Integrate Gmail” is not sufficiently precise for a ticket.
 
-### 18.4 Calendar workflow
+### 19.4 Calendar workflow
 
 19. **Which calendars currently exist and who owns them?** Capture shared calendars, individual calendars and Company-specific calendars.
 20. **Which business objects should create events?** Examples include Audits, Project stages, Training sessions, Contract deadlines, certificate expiry and Tasks.
@@ -2015,7 +2298,7 @@ Why these answers matter: Gmail read and compose scopes are restricted. The requ
 
 Why these answers matter: they determine scope, conflict policy, calendar topology, privacy of event content and whether synchronization is one-way or partially bidirectional.
 
-### 18.5 Required evidence from Iurie
+### 19.5 Required evidence from Iurie
 
 When practical, ask for screenshots or exports rather than relying only on memory:
 
@@ -2028,11 +2311,11 @@ When practical, ask for screenshots or exports rather than relying only on memor
 
 Never request passwords, recovery codes, private keys, OAuth tokens or unrestricted document archives by email or chat.
 
-## 19. Questions to ask Iurie and the responsible accountant about Finance
+## 20. Internal discovery register for Finance
 
-These questions must be answered before creating authoritative fiscal, accounting, bank or automated-payment integration tickets. Answers should distinguish PRISMA-PRIM, BIC and ECG rather than assuming that all three Companies use the same process.
+These questions must be answered before creating authoritative fiscal, accounting, bank or automated-payment integration tickets. This is not a questionnaire to send verbatim. Iurie and the responsible accountant describe the real workflow, responsibilities, exceptions, expected outputs and available evidence. Dan and the agents verify APIs, data formats, security and adapter design after the actual tools have been identified. Answers should distinguish PRISMA-PRIM, BIC and ECG rather than assuming that all three Companies use the same process.
 
-### 19.1 Current systems and responsibility
+### 20.1 Current systems and responsibility
 
 1. **Which accounting software, spreadsheet or manual process does each Company use today?** Record the product, edition, hosting model and responsible person without collecting credentials.
 2. **Who legally issues fiscal invoices for each Company?** Distinguish the person preparing data, the person authorized to issue or sign, and the accountant verifying it.
@@ -2044,7 +2327,7 @@ These questions must be answered before creating authoritative fiscal, accountin
 
 Why these answers matter: they establish where legal authority resides, which system remains the source of record and whether any future adapter is read-only, export-oriented or capable of submission.
 
-### 19.2 Numbering, tax and legal context
+### 20.2 Numbering, tax and legal context
 
 8. **What numbering conventions are currently used per Company, document type and year?** Capture real anonymized examples, prefixes, sequences, resets and correction documents.
 9. **What is the current VAT or other relevant tax status of each Company?** Confirm this with the responsible accountant.
@@ -2054,7 +2337,7 @@ Why these answers matter: they establish where legal authority resides, which sy
 
 Why these answers matter: numbering and tax assumptions are dangerous to hard-code, and historical documents must retain the context applicable at their issue date.
 
-### 19.3 Currencies and payment terms
+### 20.3 Currencies and payment terms
 
 13. **Which currencies are actually used by each Company?** Confirm the frequency of MDL, EUR, RON, USD and any other currency.
 14. **Which exchange-rate source and date convention does the accountant use?** Examples include invoice date, payment date, central-bank rate or an accounting-system rate.
@@ -2064,7 +2347,7 @@ Why these answers matter: numbering and tax assumptions are dangerous to hard-co
 
 Why these answers matter: they validate the Payment Schedule, multi-currency and many-to-many allocation model against real work rather than an idealized happy path.
 
-### 19.4 Payment evidence and exceptions
+### 20.4 Payment evidence and exceptions
 
 18. **How are Payments received?** Distinguish bank transfer, cash, card, payment provider and any other method.
 19. **How are bank statements or payment notifications obtained and reviewed?** Record available file formats and normal delay.
@@ -2075,7 +2358,7 @@ Why these answers matter: they validate the Payment Schedule, multi-currency and
 
 Why these answers matter: exception handling determines whether the financial history remains auditable and whether confirmation requires separation of duties.
 
-### 19.5 Access, reports and integrations
+### 20.5 Access, reports and integrations
 
 24. **Who may see Contract values, invoices, Payments, overdue balances and consolidated Company totals?** Define access for named real roles before assigning templates.
 25. **Who may record, confirm, reverse, export or configure financial information?**
@@ -2086,7 +2369,7 @@ Why these answers matter: exception handling determines whether the financial hi
 
 Why these answers matter: they determine the permission matrix, Release 5 acceptance criteria, first reports and the ROI order of later integrations.
 
-### 19.6 Required anonymized examples
+### 20.6 Required anonymized examples
 
 Ask for at least five representative examples with unnecessary personal and banking data removed:
 
@@ -2100,11 +2383,11 @@ For each example, preserve the sequence of events, actors, dates, expected amoun
 
 Never request passwords, bank-login credentials, unrestricted bank statements, private signing keys, OAuth tokens or fiscal certificates through chat or email.
 
-## 20. Questions to ask Iurie about Audit, certification and Training
+## 21. Internal discovery register for Audit, certification and Training
 
-These questions must distinguish PRISMA-PRIM, BIC and ECG. Do not infer legal roles, accreditation or impartiality arrangements from Company names or the source document's simplified end-to-end journey.
+These questions must distinguish PRISMA-PRIM, BIC and ECG. This is not a questionnaire to send verbatim. Iurie describes services, responsibilities, real cases, exceptions, desired results and supporting evidence; Dan and the agents decide the internal model, authorization design and technical implementation. Do not infer legal roles, accreditation or impartiality arrangements from Company names or the source document's simplified end-to-end journey.
 
-### 20.1 Company roles, authorization and accreditation
+### 21.1 Company roles, authorization and accreditation
 
 1. **Which Company provides consulting or implementation support?** List the actual service categories rather than using one general “ISO” label.
 2. **Which Company performs internal, supplier, readiness or other non-certification Audits?**
@@ -2121,7 +2404,7 @@ These questions must distinguish PRISMA-PRIM, BIC and ECG. Do not infer legal ro
 
 Why these answers matter: product features and role permissions cannot establish accreditation. They determine Company capabilities, Scheme authorization, templates, marks, separation-of-duty rules and truthful public wording.
 
-### 20.2 Audit terminology, cycle and scope
+### 21.2 Audit terminology, cycle and scope
 
 13. **What do `Stage 1`, `Stage 2`, `S1` and `S2` mean in Iurie's current terminology?** Provide real examples and their position in the cycle.
 14. **Which Audit types are actually performed?** Include internal, initial, surveillance, recertification, extraordinary, transfer, supplier or readiness cases where applicable.
@@ -2134,7 +2417,7 @@ Why these answers matter: product features and role permissions cannot establish
 
 Why these answers matter: they validate Audit Program, Certification Cycle, multi-site, integrated-Audit and scope snapshots without hard-coding one Scheme's sequence.
 
-### 20.3 Duration, planning and team competence
+### 21.3 Duration, planning and team competence
 
 21. **How is Audit duration currently calculated?** Request the spreadsheet, form, rules or external documents actually used.
 22. **Which inputs and adjustment factors are retained?** Include personnel, complexity, sector, risk, sites, integration, remote work and history where relevant.
@@ -2148,7 +2431,7 @@ Why these answers matter: they validate Audit Program, Certification Cycle, mult
 
 Why these answers matter: they define Duration Assessment, professional profiles, team assignments and separation-of-duty enforcement. A generic `Auditor` role alone is insufficient.
 
-### 20.4 Checklists, evidence and Findings
+### 21.4 Checklists, evidence and Findings
 
 30. **Where do the current checklists come from and who owns their content?**
 31. **Do they reproduce ISO or other copyrighted text, and under which license?**
@@ -2162,7 +2445,7 @@ Why these answers matter: they define Duration Assessment, professional profiles
 
 Why these answers matter: they prevent `N/A` from becoming a Finding, preserve licensed content boundaries and establish the historical checklist and evidence model.
 
-### 20.5 Corrective actions and Report approval
+### 21.5 Corrective actions and Report approval
 
 39. **Which Findings require correction, cause analysis and corrective action?**
 40. **Which deadlines apply and who may extend them?**
@@ -2176,7 +2459,7 @@ Why these answers matter: they prevent `N/A` from becoming a Finding, preserve l
 
 Why these answers matter: they establish separate Finding, Corrective Action and Report lifecycles and prevent silent historical changes.
 
-### 20.6 Certification review and Decision
+### 21.6 Certification review and Decision
 
 48. **Who prepares the Decision dossier?**
 49. **Who performs technical review and who takes the final Decision?**
@@ -2190,7 +2473,7 @@ Why these answers matter: they establish separate Finding, Corrective Action and
 
 Why these answers matter: Certification Decision is a legally and operationally sensitive act that cannot remain a status field on an Audit.
 
-### 20.7 Management-system Certificates and public verification
+### 21.7 Management-system Certificates and public verification
 
 57. **Which exact fields appear on every Certificate type?**
 58. **How are series and numbers assigned per Company, Scheme, year or language?**
@@ -2207,7 +2490,7 @@ Why these answers matter: Certification Decision is a legally and operationally 
 
 Why these answers matter: they define immutable Credential identity, versions, effective state, QR privacy and any conditional external adapter.
 
-### 20.8 Training and possible person certification
+### 21.8 Training and possible person certification
 
 69. **What is the current course catalogue and which Company owns each course?**
 70. **Who versions and approves course objectives, content and materials?**
@@ -2224,7 +2507,7 @@ Why these answers matter: they define immutable Credential identity, versions, e
 
 Why these answers matter: a Training Session, completion Certificate and certification of a person's competence require different assertions, evidence and privacy controls.
 
-### 20.9 Required anonymized examples and evidence
+### 21.9 Required anonymized examples and evidence
 
 Request representative material with unnecessary personal, confidential and licensed Standard text removed where appropriate:
 
@@ -2246,7 +2529,118 @@ Request representative material with unnecessary personal, confidential and lice
 
 Never request private signing keys, passwords, unrestricted personnel files, complete licensed Standards, accreditation-portal credentials or bulk confidential Client archives through chat or email.
 
-## 21. Immediate next work after this checkpoint
+## 22. Business interview source for the commercial workflow
+
+This section deliberately uses ordinary operational language. It can be translated and edited into the Romanian interview for Iurie. Parenthetical explanations clarify the situation; internal entity names are not required from him. The interviewer should ask for concrete recent examples rather than abstract definitions.
+
+### 22.1 Incoming requests and responsibility
+
+1. **How can a new request for work arrive today?** For example by phone, email, recommendation, website, messaging application or an existing Client conversation.
+2. **What information do you preserve when the request first arrives?** Identify what is essential even when the person or organization is not yet fully known.
+3. **Who initially reads and sorts new requests?** Explain whether this changes depending on PRISMA-PRIM, BIC or ECG.
+4. **At what point do you consider an incoming request serious enough to track as a commercial case with an owner and a next action?** Describe what must be known or confirmed at that moment.
+5. **Can one incoming request lead to separate work for more than one group company?** Give a real example if possible.
+6. **Can responsibility for a potential job move from PRISMA-PRIM to BIC or ECG after review?** Explain who decides and what history must remain visible.
+7. **Which requests should be rejected or left without follow-up, and which reasons do you want to record?**
+8. **Which steps do you currently use from first contact to accepted work?** Use the words used by the team today and explain what must happen before moving to the next step.
+9. **Which pending requests require reminders, and after how much time?** Distinguish reminders for the team from messages to the potential Client.
+
+Internal consequence for agents: the answers configure intake channels, triage visibility, Company assignment, stable outcome mapping, tenant-specific commercial stages, next-action rules and reminders. Iurie is not being asked to design `ClientRequest`, `Opportunity` or status tables.
+
+### 22.2 Client dossier and exact contracting party
+
+10. **When a request arrives, how do you recognize that this organization or person is already known?** Describe the identifiers and search habits that work in practice.
+11. **What information should be shared across PRISMA-PRIM, BIC and ECG about the same Client?** Examples may include general identity and Contacts.
+12. **What commercial or confidential information must remain visible only to the group company handling the work?**
+13. **Can one Client group contain several companies, branches or other legal entities that receive different Offers or sign different Contracts?** Provide an example and explain how the team chooses the correct recipient.
+14. **What should happen when two records appear to describe the same Client?** Who is allowed to confirm that they are the same and which information must be preserved?
+15. **May work begin before the exact legal name or signing entity is confirmed?** If yes, at which later step must it become mandatory?
+
+Internal consequence for agents: the answers refine shared Client matching, duplicate review, Client legal-entity selection, field visibility and blocking validation. Iurie is not being asked to validate the internal names `Client Account` or `Client Legal Entity`.
+
+### 22.3 Services and real pricing practice
+
+16. **Which services does each of PRISMA-PRIM, BIC and ECG actually sell today?** Identify services shared in name but different in responsibility, authorization, deliverables or price.
+17. **For each frequent service, what information is needed before a reliable price can be calculated?** Use real examples such as number of employees, sites, Standards, audit days, language, travel or urgency where they actually apply.
+18. **Which parts of a price are fixed and which are calculated?** Describe the current rule or spreadsheet in plain language.
+19. **Which taxes, currencies, rounding conventions, travel costs or other additions appear in commercial quotations?**
+20. **Which discounts or exceptional prices occur in practice?** Who may propose them, who must approve them and above which practical threshold?
+21. **Can the same service have different prices by Company, Client category, country, year or other condition?** Give representative cases.
+22. **When a tariff or calculation method changes, must an earlier Offer keep the old calculation?** Describe how the team handles this today.
+23. **Which missing or contradictory information must block calculation, and which may remain an explicit assumption?**
+
+Internal consequence for agents: real examples determine service offerings, typed pricing inputs, effective tariff versions, deterministic rule shapes, adjustment approvals and quality checks. The agent designs the calculation model; Iurie explains how the business reaches a price.
+
+### 22.4 Offer preparation, review and negotiation
+
+24. **What exact documents do you currently call an Offer, quotation or commercial proposal?** Identify differences by Company or service.
+25. **Which information and attachments must appear before an Offer may be sent?**
+26. **Who prepares, checks and approves an Offer?** Explain when a second approval is required because of value, discount, legal wording or another exception.
+27. **Which mistakes must always prevent sending?** Which less serious warnings may be accepted, by whom and with what explanation?
+28. **How are Offers numbered, and when is the number assigned?** Explain whether sequences restart and what happens to an abandoned draft number.
+29. **How may an Offer be sent today, and what proof do you keep that the Client received the exact document?**
+30. **How long is an Offer valid and who may extend or withdraw it?**
+31. **When the Client asks for changes, do you create a new dated document or modify the previous file?** Describe how the team later knows exactly which proposal was accepted.
+32. **What counts as acceptance in practice?** For example a signed copy, clear email, purchase order or another act. Who confirms that the evidence is sufficient?
+33. **How are rejection, no response, expiry and a decision not to pursue recorded?**
+
+Internal consequence for agents: the answers configure complete Offer revisions, deterministic checks, approval thresholds, numbering, transmission evidence and Client-outcome rules. In the interview, “new dated version of the Offer” is preferable to the unexplained term `OfferVersion`.
+
+### 22.5 Contract, signature and start of work
+
+34. **Does every accepted Offer produce a Contract, or are there cases where work starts from another document or agreement?** List the common path and the legitimate exceptions.
+35. **Can a Contract be entered when there was no Offer in the application?** Examples may include old Contracts, framework agreements, renewals or migrated records.
+36. **Which Client organization or legal entity signs, and which group company signs?** At what point must both be confirmed?
+37. **Who prepares, reviews and authorizes the Contract?** Identify any legal review or second-person approval.
+38. **Which clauses or templates are approved today, who owns them and how are changes authorized?**
+39. **How are Contracts numbered, and when is the number assigned?** Explain resets, unused numbers and Company differences.
+40. **How are Contracts signed today?** Distinguish paper, scanned copies, electronic-signature services, purchase orders or other accepted evidence.
+41. **If an electronic-signature service is used, what is its name, who controls the organizational account and what would you like the application to make easier?** Iurie is not asked to evaluate its API; the agent researches integration after the service is identified.
+42. **How do you decide that a Contract is fully signed and may take effect?** Who confirms this and what evidence must be retained?
+43. **What later changes occur after signature?** Give examples of addenda, scope changes, renewals, suspensions, termination or corrections and explain which need a newly signed document.
+44. **May the operational Project already exist before the Contract is signed?** If yes, how should the team recognize and link it instead of creating a duplicate?
+45. **Can one Contract cover several Projects, or can one Project be governed by several contractual documents?** Provide representative real cases rather than an abstract rule.
+
+Internal consequence for agents: the answers refine Contract origins, parties, reviews, numbering, signature evidence, post-signature instruments and Contract–Project cardinality. Dan and the agents decide the storage, state model and integration architecture.
+
+### 22.6 Access, oversight and representative evidence
+
+46. **Who may see new requests before they are assigned to a group company?**
+47. **Who may see prices, discounts, Offers and Contracts for each Company?** Identify real responsibilities, including people with oversight across the group.
+48. **Who may change a price, approve an exception, confirm Client acceptance or confirm signature?**
+49. **Which commercial numbers does Iurie want on the daily dashboard?** Ask how each number should be interpreted—for example open potential work, value awaiting approval, sent Offers awaiting response or accepted work not yet started.
+50. **Which actions must always show who did what and when?** Request examples of disputes or corrections where this history matters.
+
+Request anonymized examples, with unnecessary personal and confidential content removed where practical:
+
+- three incoming requests: one converted, one rejected and one involving more than one group Company;
+- the current service list for each Company;
+- five representative price calculations, including a discount or exception;
+- one current tariff or calculation spreadsheet with its explanation;
+- two Offers showing a negotiation or revision;
+- one rejected, expired or withdrawn Offer;
+- one Contract created from an accepted Offer and one exceptional or historical Contract;
+- one signed Contract and one later addendum or renewal;
+- current Offer and Contract templates and numbering examples;
+- the practical approval matrix, even if it is currently informal.
+
+Never request passwords, electronic-signature secrets, private keys, full unrestricted mailbox exports or bulk confidential Client archives through chat or email.
+
+### 22.7 Technical follow-up owned by Dan and agents
+
+The following are not questions for Iurie to decide. After he identifies the real tools, administrators and desired behaviour, Dan or an agent must verify:
+
+- provider APIs, authentication methods, permission scopes, quotas and security review requirements;
+- supported file formats, imports, exports, webhooks and idempotency behaviour;
+- electronic-signature legal and technical integration boundaries;
+- database entities, identifiers, relationships, state machines and concurrency control;
+- encryption, secrets, retention, tenancy isolation and audit-event implementation;
+- calculation-engine representation, numerical precision and test strategy;
+- synchronization, retry, error-recovery and observability architecture.
+
+If this verification exposes a business choice—for example whether users want one-way synchronization or whether a failed external signature should block operational work—the choice returns to Iurie in plain language with concrete consequences. The technical mechanism does not.
+
+## 23. Immediate next work after this checkpoint
 
 1. Continue product reconciliation and append approved decisions to this record.
 2. Complete issue #22 because its Activity Log foundation remains compatible with the new direction.
@@ -2254,4 +2648,5 @@ Never request private signing keys, passwords, unrestricted personnel files, com
 4. Normalize approved product language and architecture into `CONTEXT.md`, PRDs and ADRs.
 5. Mark obsolete assumptions explicitly rather than deleting historical specifications.
 6. Create Release 1 issues as narrow vertical slices only after their decisions and dependencies are testable.
-7. Prepare a separate Romanian report and email for Iurie after GitHub specifications and issues match the final reconciliation.
+7. Convert internal discovery registers into a separate Romanian business interview, technical inventory checklist and answer-to-decision mapping before sending questions to Iurie.
+8. Prepare the final Romanian report and email for Iurie after GitHub specifications and issues match the final reconciliation.
