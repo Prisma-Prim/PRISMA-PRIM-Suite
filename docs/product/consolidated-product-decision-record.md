@@ -2821,8 +2821,8 @@ These changes are intentionally not applied by this record alone:
 
 - `docs/product/mvp-prd.md` must be marked as an original/superseded pilot specification and its valid requirements redistributed into the commercial capability PRD.
 - `docs/product/access-and-accountability-prd.md` delivered the initial identity foundation, but its singleton/equal-permission assumptions must not govern the new operational core.
-- `CONTEXT.md` must later add Workspace-as-tenant, Company, Client Account, Client Legal Entity, Client–Company Relationship, Project Template, Project Stage and Task terminology.
-- A durable ADR should capture Workspace tenancy, Company hierarchy and isolation strategy after schema-level implications are verified.
+- `CONTEXT.md` now defines the Workspace, Company, Internal User, Workspace Membership and Role Assignment foundation. Client Account, Client Legal Entity, Client–Company Relationship, Project Template, Project Stage and Task terminology remains for its owning decisions.
+- [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) captures Workspace tenancy, Company hierarchy, identity and membership scope, isolation strategy and migration constraints.
 - Product vision and capability PRDs must be created before implementation issues for the new modules.
 - Existing Access work should be extended rather than rewritten.
 - The final Romanian interview for Iurie must be generated from the internal discovery registers using section 1.3; technical inventories and architecture choices remain separate agent work.

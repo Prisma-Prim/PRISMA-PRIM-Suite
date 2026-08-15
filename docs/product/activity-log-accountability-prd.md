@@ -120,10 +120,10 @@ Business evidence:
 
 Technical dependencies:
 
-- completion of issue #22;
-- final tenancy and permission model;
+- issue #22 is complete;
+- the accepted [Workspace tenancy and Company-scoped authorization architecture](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md);
 - transaction/outbox decisions for work that cannot share one transaction.
 
 ## 14. Readiness
 
-Issue #22 remains ready and is the only current implementation frontier for this PRD. Additional event families become ready only with their owning capability PRD and permissions.
+Issue #22 delivered the initial provisioning event and visible history. Business-independent tenancy foundation tickets may now preserve and extend that seam in their approved sequence. Additional event families become ready only with their owning capability PRD and permissions.

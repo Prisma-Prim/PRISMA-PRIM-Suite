@@ -5,12 +5,24 @@ PRISMA-PRIM Suite supports the internal path from an incoming consulting request
 ## Parties and intake
 
 **Internal User**:
-A PRISMA-PRIM or BIC collaborator invited to use the application.
-_Avoid_: Admin, employee, operator
+A stable local business identity for a person who may belong to one or more Workspaces after external identity verification.
+_Avoid_: Admin, employee, operator, external principal
 
 **Workspace**:
-The single organizational data boundary used by the MVP.
+A customer organization and the hard data-isolation boundary of the product.
 _Avoid_: Tenant, organization account
+
+**Company**:
+A provider legal or operational entity inside one Workspace.
+_Avoid_: Tenant, Client company, organization account
+
+**Workspace Membership**:
+An Internal User's explicit relationship to one Workspace; membership alone grants no business permission.
+_Avoid_: User account, implicit access
+
+**Role Assignment**:
+An additive permission bundle assigned to a Workspace Membership at Workspace or Company scope.
+_Avoid_: Job title, authentication role
 
 **Client**:
 The legal organization receiving consulting or related services.

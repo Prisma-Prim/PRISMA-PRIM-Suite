@@ -1,6 +1,6 @@
 # PRD — Release 1 Company and RBAC
 
-**Status:** Draft — evidence and ADR pending  
+**Status:** Draft — first-tenant evidence pending
 **Version:** 0.1  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD
@@ -105,11 +105,11 @@ Question source: S00 and S01.
 
 ## 14. Technical dependencies
 
-- tenancy/Company schema ADR;
+- accepted [Workspace tenancy and Company-scoped authorization ADR](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md);
 - analysis of current Access public interface and migrations;
 - Clerk session/revocation behaviour;
 - permission evaluation and test seam.
 
 ## 15. Readiness
 
-The PRD is structurally complete but not ready for implementation-ticket decomposition. Role evidence and the tenancy ADR are blockers. Issue #22 may proceed independently against the existing Workspace foundation.
+The PRD is structurally complete. Its approved business-independent foundation tickets may proceed sequentially after issue #22 and the tenancy ADR. Tickets that assign real users, finalize role templates or permission bundles, define consolidated oversight, or decide deactivation and exceptional-access behaviour remain blocked on first-tenant evidence.

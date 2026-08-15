@@ -137,11 +137,11 @@ Question sources: S00, S01 and S02 in the Romanian question bank.
 
 ## 15. Technical dependencies
 
-- schema-impact analysis and tenancy/Company ADR;
+- schema-impact analysis and the accepted [Workspace tenancy and Company-scoped authorization ADR](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md);
 - database isolation strategy and defense-in-depth threat model;
 - permission evaluation interface and caching consequences;
 - safe support-access design.
 
 ## 16. Readiness
 
-The cross-cutting model is ready to govern Release 1 PRDs. First implementation tickets beyond the existing access foundation remain blocked on the named first-tenant role and visibility evidence plus the tenancy ADR.
+The cross-cutting model is ready to govern Release 1 PRDs. The business-independent Company, membership, permission-evaluation, and active-context foundation may proceed through its approved sequential tickets now that issue #22 and the tenancy ADR are complete. Tickets that configure real role assignments, permission bundles, consolidated oversight, or Client visibility remain blocked on the named first-tenant evidence.
