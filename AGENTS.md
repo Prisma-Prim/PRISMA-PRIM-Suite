@@ -86,7 +86,7 @@ The standard Codex environment uses `pnpm test:unit`; GitHub Actions remains res
 
 ### Issue tracker
 
-Product specs and implementation tickets live in GitHub Issues for `Dan-Popescu/PRISMA-PRIM-Suite`. See `docs/agents/issue-tracker.md`.
+For issue or pull-request work, read `docs/agents/issue-tracker.md` for the canonical repository and publication interface.
 
 ### Domain docs
 

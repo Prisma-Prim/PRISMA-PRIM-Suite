@@ -31,6 +31,7 @@
     "@eslint/js": "10.0.1",
     "eslint": "10.8.0",
     "globals": "17.9.0",
+    "mdast-util-from-markdown": "^2.0.3",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.66.0"
