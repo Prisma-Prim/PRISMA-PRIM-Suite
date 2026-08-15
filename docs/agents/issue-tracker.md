@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Product specifications and implementation tickets live in GitHub Issues in `Dan-Popescu/PRISMA-PRIM-Suite`. Local Codex sessions use the authenticated `gh` CLI from the repository clone.
+Product specifications and implementation tickets live in GitHub Issues in `Prisma-Prim/PRISMA-PRIM-Suite`. Use an authenticated GitHub connector when the harness exposes one, falling back to authenticated `gh` from the repository clone when the connector is absent or cannot complete a required action. Follow the [capability-aware publication rules](issue-execution.md#capability-aware-publication), and report a capability or permission blocker only when neither available interface can complete the required action.
 
 ## Working conventions
 
@@ -23,14 +23,5 @@ Every implementation issue contains:
 5. Explicit exclusions.
 6. Required test seams and verification commands.
 7. Relevant context or ADR pointers.
-
-## Common commands
-
-```bash
-gh issue view <number> --comments
-gh issue create --title "..." --body-file <file>
-gh issue edit <number> --add-label "ready-for-agent"
-gh issue close <number> --comment "Implemented by <pull-request>"
-```
 
 GitHub Issues and pull requests share one number space. Resolve an ambiguous reference before acting.

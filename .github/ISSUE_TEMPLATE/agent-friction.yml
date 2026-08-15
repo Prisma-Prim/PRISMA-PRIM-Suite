@@ -13,7 +13,7 @@ body:
     attributes:
       label: Originating pull request
       description: Link the PR or task where the friction was observed.
-      placeholder: https://github.com/Dan-Popescu/PRISMA-PRIM-Suite/pull/123
+      placeholder: https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/123
     validations:
       required: true
   - type: dropdown
