@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
 test('renders the production shell at the normal application entry point', async ({
@@ -198,9 +198,10 @@ test('lets an authorized Workspace owner register and immediately view a Company
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({ json: actorContextFixture }),
   );
-  await page.route('**/api/activity-log', (route) =>
-    route.fulfill({ json: { events: [] } }),
-  );
+  let pendingActivity: Route | undefined;
+  await page.route('**/api/activity-log', (route) => {
+    pendingActivity = route;
+  });
   const company = {
     id: '00000000-0000-4000-8000-000000000010',
     workspaceId: actorContextFixture.workspaceId,
@@ -235,6 +236,15 @@ test('lets an authorized Workspace owner register and immediately view a Company
   ).toBeVisible();
   await expect(page.getByText('Active', { exact: true })).toBeVisible();
   await expect(page.getByText('Registered by Ada Ionescu')).toBeVisible();
+  await expect(page.getByLabel('Active Company')).toBeVisible();
+  await expect(
+    page.getByRole('option', { name: 'North Star Consulting' }),
+  ).toHaveCount(1);
+  await expect.poll(() => pendingActivity !== undefined).toBe(true);
+  await pendingActivity!.fulfill({ json: { events: [] } });
+  await expect(
+    page.getByRole('option', { name: 'North Star Consulting' }),
+  ).toHaveCount(1);
   expect(publicReadObserved).toBe(true);
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -378,6 +388,63 @@ test('selects and restores one server-validated Company context', async ({
     path: testInfo.outputPath(`company-context-${testInfo.project.name}.png`),
     fullPage: true,
   });
+});
+
+test('does not clear a newer Company when an older registration is rejected', async ({
+  page,
+}) => {
+  const companies = [
+    {
+      id: '00000000-0000-4000-8000-000000000030',
+      displayName: 'Company A',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000031',
+      displayName: 'Company B',
+    },
+  ];
+  let pendingRegistration: Route | undefined;
+  await page.route('**/api/access/current-actor', (route) => {
+    const selectedId = route.request().headers()['x-company-context-id'];
+    const selectedCompany = companies.find(({ id }) => id === selectedId);
+    return route.fulfill({
+      json: selectedCompany
+        ? { ...actorContextFixture, activeCompany: selectedCompany }
+        : actorContextFixture,
+    });
+  });
+  await page.route('**/api/companies', (route) => {
+    if (route.request().method() === 'POST') {
+      pendingRegistration = route;
+      return;
+    }
+    return route.fulfill({ json: companies });
+  });
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+
+  await page.goto('/');
+  await page.getByLabel('Active Company').selectOption(companies[0]!.id);
+  await expect(page.getByLabel('Active Company')).toHaveValue(companies[0]!.id);
+  await page.getByLabel('Company display name').fill('Delayed registration');
+  await page.getByRole('button', { name: 'Register Company' }).click();
+  await expect.poll(() => pendingRegistration !== undefined).toBe(true);
+
+  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
+  await expect(page.getByLabel('Active Company')).toHaveValue(companies[1]!.id);
+  await pendingRegistration!.fulfill({
+    status: 403,
+    json: { message: 'Forbidden', statusCode: 403 },
+  });
+
+  await expect(page.getByLabel('Active Company')).toHaveValue(companies[1]!.id);
+  await expect(
+    page
+      .getByRole('region', { name: 'Company context' })
+      .locator('dd')
+      .filter({ hasText: 'Company B' }),
+  ).toBeVisible();
 });
 
 test('shows clear zero and one active Company states', async ({ page }) => {
