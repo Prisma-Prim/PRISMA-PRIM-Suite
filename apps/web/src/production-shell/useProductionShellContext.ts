@@ -13,7 +13,6 @@ import {
 import { createCompanyContextPreferenceStore } from './company-context-preference';
 import {
   loadInitialCompanyContext,
-  recoverRejectedCompanyContext,
   withoutActiveCompany,
   withoutCompany,
 } from './company-context-session';
@@ -45,6 +44,7 @@ export type ProductionShellContext =
       actor: ActorContext;
       activityLog: ActivityLogState;
       companyContext: CompanyContextState;
+      sessionGeneration: number;
     }
   | { status: 'signed-out' }
   | { status: 'forbidden' }
@@ -68,10 +68,6 @@ export function useProductionShellContext(identity: BrowserIdentity): {
   });
   const operationRef = useRef<RequestOperation | undefined>(undefined);
   const generationRef = useRef(0);
-  const shellContextRef = useRef(shellContext);
-  useLayoutEffect(() => {
-    shellContextRef.current = shellContext;
-  }, [shellContext]);
 
   function beginOperation(): RequestOperation {
     operationRef.current?.controller.abort();
@@ -83,7 +79,7 @@ export function useProductionShellContext(identity: BrowserIdentity): {
     return operation;
   }
 
-  function cancelCurrentOperation(): void {
+  function invalidateCurrentGeneration(): void {
     operationRef.current?.controller.abort();
     operationRef.current = undefined;
     generationRef.current += 1;
@@ -92,6 +88,12 @@ export function useProductionShellContext(identity: BrowserIdentity): {
   function isCurrent(operation: RequestOperation): boolean {
     return operation.generation === generationRef.current;
   }
+
+  useLayoutEffect(() => {
+    invalidateCurrentGeneration();
+    setShellContext({ status: 'checking' });
+    return invalidateCurrentGeneration;
+  }, [identity]);
 
   async function rejectUnauthorized(
     result: ApiResult<unknown>,
@@ -121,6 +123,7 @@ export function useProductionShellContext(identity: BrowserIdentity): {
       );
       if (!isCurrent(operation)) return;
       if (await rejectUnauthorized(actorResult, operation)) return;
+      if (!isCurrent(operation)) return;
       if (actorResult.status === 'forbidden') {
         setShellContext({ status: 'forbidden' });
         return;
@@ -154,10 +157,34 @@ export function useProductionShellContext(identity: BrowserIdentity): {
         actor: loaded.actor,
         companyContext: loaded.companyContext,
         activityLog: { status: 'loading' },
+        sessionGeneration: operation.generation,
       });
       await loadActivityLog(api, loaded.actor, operation);
     }
   }, [identity]);
+
+  useEffect(() => {
+    if (
+      shellContext.status !== 'active' ||
+      shellContext.companyContext.status !== 'ready'
+    )
+      return;
+    if (
+      shellContext.companyContext.recoveryMessage === 'stale' &&
+      !shellContext.actor.activeCompany
+    ) {
+      companyContextPreference.clear(shellContext.actor);
+      return;
+    }
+    const activeCompanyId = shellContext.actor.activeCompany?.id;
+    if (
+      activeCompanyId &&
+      shellContext.companyContext.companies.some(
+        ({ id }) => id === activeCompanyId,
+      )
+    )
+      companyContextPreference.write(shellContext.actor, activeCompanyId);
+  }, [shellContext]);
 
   async function loadActivityLog(
     api: AuthenticatedApiClient,
@@ -173,6 +200,7 @@ export function useProductionShellContext(identity: BrowserIdentity): {
     );
     if (!isCurrent(operation)) return;
     if (await rejectUnauthorized(result, operation)) return;
+    if (!isCurrent(operation)) return;
     if (result.status === 'forbidden' && actor.activeCompany) {
       const rejectedCompanyId = actor.activeCompany.id;
       companyContextPreference.clear(actor);
@@ -209,7 +237,10 @@ export function useProductionShellContext(identity: BrowserIdentity): {
         ? { status: 'ready', events: result.value.events }
         : { status: 'error' };
     setShellContext((current) =>
-      current.status === 'active' ? { ...current, activityLog } : current,
+      current.status === 'active' &&
+      matchesActivityActorContext(current.actor, actor)
+        ? { ...current, activityLog }
+        : current,
     );
   }
 
@@ -224,6 +255,7 @@ export function useProductionShellContext(identity: BrowserIdentity): {
       actor: shellContext.actor,
       activityLog: shellContext.activityLog,
       companyContext: shellContext.companyContext,
+      sessionGeneration: shellContext.sessionGeneration,
     };
     const operation = beginOperation();
     setShellContext({
@@ -243,27 +275,27 @@ export function useProductionShellContext(identity: BrowserIdentity): {
       );
       if (!isCurrent(operation)) return;
       if (await rejectUnauthorized(selectedResult, operation)) return;
+      if (!isCurrent(operation)) return;
       if (selectedResult.status === 'forbidden') {
         companyContextPreference.clear(snapshot.actor);
         setShellContext((current) => {
-          let latestActor = snapshot.actor;
-          let latestActivityLog = snapshot.activityLog;
-          let latestCompanies = snapshot.companyContext.companies;
           if (
-            current.status === 'active' &&
-            current.companyContext.status === 'ready'
-          ) {
-            latestActor = current.actor;
-            latestActivityLog = current.activityLog;
-            latestCompanies = current.companyContext.companies;
-          }
+            current.status !== 'active' ||
+            current.companyContext.status !== 'ready' ||
+            current.sessionGeneration !== snapshot.sessionGeneration
+          )
+            return current;
           return {
             status: 'active',
-            actor: withoutActiveCompany(latestActor),
-            activityLog: latestActivityLog,
+            actor: withoutActiveCompany(current.actor),
+            activityLog: current.activityLog,
+            sessionGeneration: current.sessionGeneration,
             companyContext: {
               status: 'ready',
-              companies: withoutCompany(latestCompanies, companyId),
+              companies: withoutCompany(
+                current.companyContext.companies,
+                companyId,
+              ),
               selecting: false,
               recoveryMessage: 'selection-failed',
             },
@@ -272,10 +304,13 @@ export function useProductionShellContext(identity: BrowserIdentity): {
         return;
       }
       if (selectedResult.status !== 'ok') {
-        setShellContext({
-          ...snapshot,
-          companyContext: { status: 'error' },
-        });
+        setShellContext((current) =>
+          failCurrentCompanySelection(
+            current,
+            snapshot.sessionGeneration,
+            companyId,
+          ),
+        );
         return;
       }
 
@@ -285,51 +320,69 @@ export function useProductionShellContext(identity: BrowserIdentity): {
         companies: snapshot.companyContext.companies,
         selecting: false,
       };
-      companyContextPreference.write(actor, companyId);
-      setShellContext((current) => ({
-        status: 'active',
-        actor,
-        companyContext: {
-          ...companyContext,
-          companies:
-            current.status === 'active' &&
-            current.companyContext.status === 'ready'
-              ? current.companyContext.companies
-              : companyContext.companies,
-        },
-        activityLog: { status: 'loading' },
-      }));
+      setShellContext((current) => {
+        if (
+          current.status !== 'active' ||
+          current.companyContext.status !== 'ready' ||
+          current.sessionGeneration !== snapshot.sessionGeneration ||
+          !current.companyContext.companies.some(({ id }) => id === companyId)
+        )
+          return current;
+        return {
+          status: 'active',
+          actor,
+          sessionGeneration: snapshot.sessionGeneration,
+          companyContext: {
+            ...companyContext,
+            companies: current.companyContext.companies,
+          },
+          activityLog: { status: 'loading' },
+        };
+      });
       await loadActivityLog(api, actor, operation);
     } catch (error: unknown) {
       if (!isCurrent(operation) || isAbortError(error)) return;
-      setShellContext({ ...snapshot, companyContext: { status: 'error' } });
+      setShellContext((current) =>
+        failCurrentCompanySelection(
+          current,
+          snapshot.sessionGeneration,
+          companyId,
+        ),
+      );
     }
   }
 
   function rejectCompanyContext(rejectedCompanyId: string): void {
-    const current = shellContextRef.current;
-    if (
-      current.status !== 'active' ||
-      current.companyContext.status !== 'ready' ||
-      current.actor.activeCompany?.id !== rejectedCompanyId
-    )
-      return;
-    cancelCurrentOperation();
-    const recovery = recoverRejectedCompanyContext(
-      companyContextPreference,
-      current.actor,
-      current.companyContext,
-    );
-    setShellContext({
-      status: 'active',
-      ...recovery,
-      activityLog: current.activityLog,
+    const origin = registrationCallbackOrigin(shellContext);
+    setShellContext((current) => {
+      if (
+        !matchesRegistrationCallbackOrigin(current, origin) ||
+        current.status !== 'active' ||
+        current.companyContext.status !== 'ready' ||
+        current.actor.activeCompany?.id !== rejectedCompanyId
+      )
+        return current;
+      return {
+        ...current,
+        actor: withoutActiveCompany(current.actor),
+        companyContext: {
+          ...current.companyContext,
+          companies: withoutCompany(
+            current.companyContext.companies,
+            rejectedCompanyId,
+          ),
+          selecting: false,
+          recoveryMessage: 'stale',
+        },
+      };
     });
   }
 
   function includeCompany(company: VisibleCompany): void {
+    const origin = registrationCallbackOrigin(shellContext);
     setShellContext((current) => {
       if (
+        !matchesRegistrationCallbackOrigin(current, origin) ||
         current.status !== 'active' ||
         current.companyContext.status !== 'ready'
       )
@@ -359,4 +412,70 @@ export function useProductionShellContext(identity: BrowserIdentity): {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+interface RegistrationCallbackOrigin {
+  activeCompanyId: string | undefined;
+  internalUserId: string;
+  workspaceId: string;
+  workspaceMembershipId: string;
+  sessionGeneration: number;
+}
+
+function registrationCallbackOrigin(
+  context: ProductionShellContext,
+): RegistrationCallbackOrigin | undefined {
+  if (context.status !== 'active') return undefined;
+  return {
+    activeCompanyId: context.actor.activeCompany?.id,
+    internalUserId: context.actor.internalUserId,
+    workspaceId: context.actor.workspaceId,
+    workspaceMembershipId: context.actor.workspaceMembershipId,
+    sessionGeneration: context.sessionGeneration,
+  };
+}
+
+function matchesRegistrationCallbackOrigin(
+  context: ProductionShellContext,
+  origin: RegistrationCallbackOrigin | undefined,
+): context is Extract<ProductionShellContext, { status: 'active' }> {
+  return (
+    origin !== undefined &&
+    context.status === 'active' &&
+    context.actor.activeCompany?.id === origin.activeCompanyId &&
+    context.actor.internalUserId === origin.internalUserId &&
+    context.actor.workspaceId === origin.workspaceId &&
+    context.actor.workspaceMembershipId === origin.workspaceMembershipId &&
+    context.sessionGeneration === origin.sessionGeneration
+  );
+}
+
+function matchesActivityActorContext(
+  current: ActorContext,
+  requested: ActorContext,
+): boolean {
+  return (
+    current.internalUserId === requested.internalUserId &&
+    current.workspaceId === requested.workspaceId &&
+    current.workspaceMembershipId === requested.workspaceMembershipId &&
+    current.activeCompany?.id === requested.activeCompany?.id
+  );
+}
+
+function failCurrentCompanySelection(
+  current: ProductionShellContext,
+  sessionGeneration: number,
+  requestedCompanyId: string,
+): ProductionShellContext {
+  if (
+    current.status !== 'active' ||
+    current.companyContext.status !== 'ready' ||
+    current.sessionGeneration !== sessionGeneration ||
+    !current.companyContext.selecting ||
+    !current.companyContext.companies.some(
+      ({ id }) => id === requestedCompanyId,
+    )
+  )
+    return current;
+  return { ...current, companyContext: { status: 'error' } };
 }

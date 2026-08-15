@@ -72,6 +72,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onSelect={selectCompany}
       />
       <CompanyRegistration
+        key={`${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
         actor={access.actor}
         identity={identity}
         onCompanyContextRejected={rejectCompanyContext}

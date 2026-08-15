@@ -102,29 +102,6 @@ export async function loadInitialCompanyContext(
   };
 }
 
-export function recoverRejectedCompanyContext(
-  preference: CompanyContextPreferenceStore,
-  actor: ActorContext,
-  companyContext: CompanyContextState,
-): { actor: ActorContext; companyContext: CompanyContextState } {
-  preference.clear(actor);
-  return {
-    actor: withoutActiveCompany(actor),
-    companyContext:
-      companyContext.status === 'ready'
-        ? {
-            ...companyContext,
-            companies: withoutCompany(
-              companyContext.companies,
-              actor.activeCompany?.id,
-            ),
-            selecting: false,
-            recoveryMessage: 'stale',
-          }
-        : companyContext,
-  };
-}
-
 export function withoutCompany(
   companies: VisibleCompany[],
   rejectedCompanyId: string | undefined,

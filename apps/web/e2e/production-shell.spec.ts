@@ -445,6 +445,15 @@ test('does not clear a newer Company when an older registration is rejected', as
       .locator('dd')
       .filter({ hasText: 'Company B' }),
   ).toBeVisible();
+  await expect(page.getByLabel('Company display name')).toHaveValue('');
+  await expect(
+    page.getByRole('button', { name: 'Register Company' }),
+  ).toBeEnabled();
+  await expect(
+    page.getByText(
+      'You do not have permission to register or view Companies in this Workspace.',
+    ),
+  ).toHaveCount(0);
 });
 
 test('shows clear zero and one active Company states', async ({ page }) => {
