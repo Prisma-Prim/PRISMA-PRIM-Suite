@@ -118,7 +118,7 @@ Ticket decomposition is blocked on representative Client examples, field visibil
 
 ## 16. Interview evidence reconciliation (2026-08-16)
 
-**Confirmed evidence**
+**Supported direction (field boundary still partial)**
 
 - Iurie wants one general Client dossier shared across the group.
 - Operational activity remains separated by responsible Company.
