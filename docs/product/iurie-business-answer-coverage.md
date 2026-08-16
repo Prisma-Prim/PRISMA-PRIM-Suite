@@ -396,7 +396,6 @@ The following statements are explicit enough to inform the named PRDs while rema
 - Future Company users must be restricted to their Company's activity.
 - One shared Client dossier is desired, while operational activity remains separated by Company.
 - Projects may exist before a signed Contract; exact permitted pre-contract actions remain contextual.
-- Project lifecycle status and workflow/audit stage are distinct; C, S1, S2 and R have audit-specific meanings rather than defining one universal workflow.
 - Official Documents and received external originals preserve history; an official version is not silently overwritten.
 - The daily dashboard should prioritize attributable, actionable work and distinguish Company-specific from consolidated views.
 - The personnel domain must cover employees and service-contract collaborators. Session 60 refines session 59 by confirming contract period, remuneration, payment dates, allocation eligibility, termination, expiry blocking, confidentiality documents and full contract history.
@@ -427,6 +426,20 @@ These matters remain unsuitable for autonomous implementation:
 9. Decide whether to remap the independent interview sequence to official IDs or formally version the question bank with a second namespace.
 10. Re-interview compound “yes” answers when they would create blocking permissions, automatic enforcement, legal/financial consequences or irreversible workflow rules.
 
-## 8. Update protocol
+## 8. Decision sufficiency and follow-up protocol
 
-Future interview comments should use official IDs whenever possible. A new source may move a row from unmapped or partial only when its provenance and status are explicit. Corrections must retain links to superseded evidence. Implementation issues must cite the updated canonical PRD, not this matrix or a raw interview comment as their sole behavioural authority.
+Formal bank completeness and the amount of evidence actually needed for a product decision are different measures. Do not mechanically re-ask every partial question.
+
+Classify each gap as one of:
+
+- **Sufficient** — the available answer supports the intended decision without a material missing component.
+- **Sufficient with reversible assumption** — a low-risk, reversible product choice may proceed with the assumption and confidence recorded explicitly.
+- **Interviewer clarification** — Iurie's agent should clarify wording, distinguish components or request an example, ideally immediately in the same interview.
+- **Iurie follow-up required** — ask a short targeted question when the gap affects a business rule, exception, authorization, legal or financial effect, blocking automation or a decision difficult to reverse.
+- **Dan/technical decision** — do not ask Iurie to choose architecture, data structures, provider mechanics or another technical/product-design mechanism.
+
+When a material gap is discovered only during consolidation, prepare a short prioritized follow-up list for Iurie's agent. State exactly what is missing, why it matters and which prior evidence must not be repeated. Avoid redundant or purely technical questions.
+
+## 9. Update protocol
+
+Future interview comments should use official IDs whenever possible. A new source may move a row from unmapped or partial only when its provenance and semantic coverage are explicit. Corrections must retain links to superseded evidence. Implementation issues must cite the updated canonical PRD, not this matrix or a raw interview comment as their sole behavioural authority.
