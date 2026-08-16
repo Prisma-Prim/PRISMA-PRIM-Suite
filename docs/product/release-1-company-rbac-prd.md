@@ -121,12 +121,12 @@ The PRD is structurally complete. Its approved business-independent sequence is 
 - The initial named actors are Iurie, Dan and Valentin.
 - Valentin's ordinary scope is technical maintenance; Iurie accepted Dan's access to real data when development or intervention requires it.
 - Future Company users must be restricted to the activity of their Company.
-- Important actions require attributable history, and Iurie is the principal business approver identified so far.
+- Iurie is the principal approver for the important-action examples asked in session 1; the complete approval set remains partial.
 
 **Still blocking**
 
 - The exact Company-selector and “All Companies” interaction was delegated to the interviewer and remains partial.
-- Exact first-tenant role bundles, approval delegation, deactivation behaviour and exceptional-access rules are not complete.
+- Exact first-tenant role bundles, the complete approval and audit-trail sets, approval delegation, deactivation behaviour and exceptional-access rules are not complete.
 - Compound confirmations do not yet constitute a testable permission matrix.
 
 Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1–2; [coverage matrix](iurie-business-answer-coverage.md). These statements narrow the evidence blockers but do not authorize the deferred assignment, role-matrix or consolidated-view implementation children.
