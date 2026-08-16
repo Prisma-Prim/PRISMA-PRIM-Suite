@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  classifyPnpmCommand,
+  classifyPostgresCommand,
   compareVersions,
   databaseTargetsAreSafe,
   evaluateEnvironment,
@@ -16,7 +18,7 @@ const healthyEnvironment = {
   nodeRange: '>=24.0.0 <25.0.0',
   nodeVersion: 'v24.14.0',
   packageManager: 'pnpm@11.20.0',
-  pnpmVersion: '11.20.0',
+  pnpmProbe: { state: 'available', version: '11.20.0' },
   workspaceManifestExists: true,
   lockfileExists: true,
   dependenciesInstalled: true,
@@ -25,7 +27,7 @@ const healthyEnvironment = {
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev',
   testDatabaseUrl:
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test',
-  postgresAvailable: true,
+  postgresProbe: { state: 'available' },
 };
 
 test('parses and compares semantic runtime versions', () => {
@@ -176,7 +178,10 @@ test('rejects missing, remote, shared, and non-test database targets', () => {
 
 test('reports PostgreSQL connectivity independently from URL safety', () => {
   const results = evaluateEnvironment(
-    { ...healthyEnvironment, postgresAvailable: false },
+    {
+      ...healthyEnvironment,
+      postgresProbe: { state: 'service-unavailable', detail: 'ECONNREFUSED' },
+    },
     'web-postgres',
   );
 
@@ -186,8 +191,133 @@ test('reports PostgreSQL connectivity independently from URL safety', () => {
   );
   assert.equal(results.find((check) => check.id === 'postgres').status, 'FAIL');
   assert.match(
+    results.find((check) => check.id === 'postgres').summary,
+    /No PostgreSQL service is listening/,
+  );
+  assert.match(
     results.find((check) => check.id === 'postgres').remediation,
-    /--profile postgres/,
+    /node scripts\/managed-postgres\.mjs -- node scripts\/agent-doctor\.mjs --profile postgres/,
+  );
+  assert.doesNotMatch(
+    results.find((check) => check.id === 'postgres').remediation,
+    /use node scripts\/managed-postgres\.mjs, then retry/,
+  );
+});
+
+test('distinguishes missing pnpm from a sandbox-denied pnpm subprocess', () => {
+  const missing = evaluateEnvironment({
+    ...healthyEnvironment,
+    pnpmProbe: { state: 'missing' },
+  });
+  const denied = evaluateEnvironment({
+    ...healthyEnvironment,
+    pnpmProbe: { state: 'sandbox-denied', detail: 'EPERM' },
+  });
+
+  assert.match(
+    missing.find((check) => check.id === 'pnpm').summary,
+    /is not installed or not on PATH/,
+  );
+  assert.match(
+    denied.find((check) => check.id === 'pnpm').summary,
+    /sandbox denied the pnpm subprocess/,
+  );
+  assert.match(
+    denied.find((check) => check.id === 'pnpm').remediation,
+    /corepack pnpm --version/,
+  );
+});
+
+test('classifies subprocess errors before a misleading zero exit status', () => {
+  assert.deepEqual(
+    classifyPnpmCommand({
+      status: 0,
+      stdout: '',
+      error: { code: 'EPERM' },
+    }),
+    { state: 'sandbox-denied', detail: 'EPERM' },
+  );
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 0,
+      stdout: '',
+      error: { code: 'EPERM' },
+    }),
+    { state: 'sandbox-denied', detail: 'EPERM' },
+  );
+});
+
+test('classifies structured PostgreSQL probe phases without blaming PostgreSQL for tooling failures', () => {
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 1,
+      stdout: JSON.stringify({
+        phase: 'bootstrap',
+        state: 'tooling-missing',
+        code: 'ERR_MODULE_NOT_FOUND',
+      }),
+    }),
+    { state: 'tooling-missing', detail: 'ERR_MODULE_NOT_FOUND' },
+  );
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 1,
+      stdout: JSON.stringify({
+        phase: 'connect',
+        state: 'sandbox-denied',
+        code: 'EACCES',
+      }),
+    }),
+    { state: 'sandbox-denied', detail: 'EACCES' },
+  );
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 1,
+      stdout: '',
+      stderr: 'pnpm bootstrap failed',
+    }),
+    { state: 'tooling-missing', detail: 'probe-bootstrap' },
+  );
+});
+
+test('distinguishes an unavailable PostgreSQL service from a connection failure', () => {
+  const absent = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      postgresProbe: { state: 'service-unavailable', detail: 'ECONNREFUSED' },
+    },
+    'postgres',
+  );
+  const rejected = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      postgresProbe: { state: 'connection-failed', detail: '28P01' },
+    },
+    'postgres',
+  );
+
+  assert.match(
+    absent.find((check) => check.id === 'postgres').summary,
+    /No PostgreSQL service is listening/,
+  );
+  assert.match(
+    rejected.find((check) => check.id === 'postgres').summary,
+    /PostgreSQL rejected the connection/,
+  );
+});
+
+test('reports an unreachable PostgreSQL target separately from an absent service', () => {
+  const results = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      postgresProbe: { state: 'unreachable', detail: 'ETIMEDOUT' },
+    },
+    'postgres',
+  );
+
+  assert.match(
+    results.find((check) => check.id === 'postgres').summary,
+    /target is unreachable \(ETIMEDOUT\)/,
   );
 });
 
@@ -213,7 +343,7 @@ test('rejects a future Node major that CI does not target', () => {
 test('reports pnpm and dependency setup drift independently in the base profile', () => {
   const results = evaluateEnvironment({
     ...healthyEnvironment,
-    pnpmVersion: '11.16.0',
+    pnpmProbe: { state: 'available', version: '11.16.0' },
     dependenciesInstalled: false,
     chromiumAvailable: false,
   });
