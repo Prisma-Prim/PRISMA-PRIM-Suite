@@ -53,15 +53,34 @@ describe('CompanyContextAccess', () => {
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
         '/api/company-context-assignments',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'idempotency-key': expect.any(String),
+          }),
+        }),
       ),
     );
+    const grantKey = new Headers(
+      vi.mocked(fetch).mock.calls[0]?.[1]?.headers,
+    ).get('idempotency-key');
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
         '/api/company-context-assignments/member-1/company-1',
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'idempotency-key': expect.any(String),
+          }),
+        }),
       ),
     );
+    const revokeKey = new Headers(
+      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
+    ).get('idempotency-key');
+    expect(grantKey).toBeTruthy();
+    expect(revokeKey).toBeTruthy();
+    expect(revokeKey).not.toBe(grantKey);
   });
 });

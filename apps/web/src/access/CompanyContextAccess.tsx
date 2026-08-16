@@ -30,6 +30,7 @@ export function CompanyContextAccess({
     const company = companyId.trim();
     if (!member || !company) return setState({ status: 'error' });
     setState({ status: 'submitting', submission });
+    const idempotencyKey = crypto.randomUUID();
     const api = await createAuthenticatedApiClient(identity);
     const result = await api.request<void>(
       submission === 'grant'
@@ -38,13 +39,19 @@ export function CompanyContextAccess({
       submission === 'grant'
         ? {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': idempotencyKey,
+            },
             body: JSON.stringify({
               workspaceMembershipId: member,
               companyId: company,
             }),
           }
-        : { method: 'DELETE' },
+        : {
+            method: 'DELETE',
+            headers: { 'idempotency-key': idempotencyKey },
+          },
     );
     if (result.status === 'unauthorized') await identity.rejectSession();
     setState(

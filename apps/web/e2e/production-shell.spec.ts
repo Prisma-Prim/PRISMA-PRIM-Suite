@@ -674,6 +674,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/company-context-assignments')) {
+      expect(route.request().headers()['idempotency-key']).toBeTruthy();
       assigned = true;
       return route.fulfill({
         status: 201,
@@ -687,6 +688,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
       });
     }
     if (url.pathname.includes('/company-context-assignments/')) {
+      expect(route.request().headers()['idempotency-key']).toBeTruthy();
       assigned = false;
       return route.fulfill({
         json: {
