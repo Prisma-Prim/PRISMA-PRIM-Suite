@@ -47,7 +47,7 @@ const groupPrerequisites = {
     'postgres',
     'migration-manifest',
   ],
-  browser: ['chromium', 'playwright-web-server'],
+  browser: ['chromium'],
 };
 
 export function collectPreflightChecks() {
@@ -69,17 +69,6 @@ export function collectPreflightChecks() {
     migrationManifestAvailable = false;
   }
 
-  const playwrightConfigPath = resolve(
-    repositoryRoot,
-    'apps/web/playwright.config.ts',
-  );
-  const playwrightConfig = existsSync(playwrightConfigPath)
-    ? readFileSync(playwrightConfigPath, 'utf8')
-    : '';
-  const webServerConfigured =
-    /webServer\s*:/.test(playwrightConfig) &&
-    /command\s*:\s*['"`]/.test(playwrightConfig);
-
   return [
     {
       id: 'migration-manifest',
@@ -91,23 +80,26 @@ export function collectPreflightChecks() {
         ? null
         : 'Restore the Drizzle journal and every referenced migration SQL file.',
     },
-    {
-      id: 'playwright-web-server',
-      status: webServerConfigured ? 'PASS' : 'FAIL',
-      summary: webServerConfigured
-        ? 'Playwright has an explicit local web-server startup command.'
-        : 'Playwright does not declare an explicit web-server startup command.',
-      remediation: webServerConfigured
-        ? null
-        : 'Restore the bounded Playwright webServer configuration before browser verification.',
-    },
   ];
 }
 
 function failedChecks(checks, ids) {
-  return ids
-    .map((id) => checks.find((check) => check.id === id))
-    .filter((check) => check && check.status === 'FAIL');
+  return ids.flatMap((id) => {
+    const check = checks.find((candidate) => candidate.id === id);
+    return check
+      ? check.status === 'FAIL'
+        ? [check]
+        : []
+      : [
+          {
+            id,
+            status: 'FAIL',
+            summary: `Required ${id} check is missing from the preflight.`,
+            remediation:
+              'Restore the prerequisite check before trusting local execution.',
+          },
+        ];
+  });
 }
 
 function checkReason(check) {
@@ -203,10 +195,14 @@ export function main() {
   }
   if (checkOnly) return;
 
-  for (const script of [
-    'test:preflight:postgres',
-    'test:preflight:playwright',
-  ]) {
+  const scripts = [
+    ...new Set(
+      plan.seams
+        .filter((seam) => seam.localStatus === 'runnable-locally')
+        .map((seam) => seam.command),
+    ),
+  ];
+  for (const script of scripts) {
     process.stdout.write(`RUNNABLE LOCALLY ${script}: starting\n`);
     const result = runPackageScript(script);
     if (result.error) {

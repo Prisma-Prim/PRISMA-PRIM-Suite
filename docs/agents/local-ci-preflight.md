@@ -9,9 +9,9 @@ pnpm preflight:local
 
 The command checks the repository runtime, package manager, installed
 dependencies, safe local PostgreSQL targets and connectivity, the immediately
-previous migration state, Playwright Chromium availability, and the configured
-Playwright web-server command. It never installs Docker, PostgreSQL, WSL, or a
-browser.
+previous migration state, and Playwright Chromium availability. When browser
+execution is runnable, the smoke journey also proves that the configured web
+server starts successfully. It never installs Docker, PostgreSQL, WSL, or a browser.
 
 Each seam reports two independent facts:
 
