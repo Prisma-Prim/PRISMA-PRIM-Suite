@@ -224,7 +224,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
        WHERE workspace_id = $1`,
       [(await currentActor('workspace-owner', 'Owner')).workspaceId],
     );
-    expect(transitions.rows).toHaveLength(10);
+    expect(transitions.rows).toHaveLength(9);
   });
 
   it('uses one metadata-safe denial for unauthorized actors and invalid grant targets', async () => {
