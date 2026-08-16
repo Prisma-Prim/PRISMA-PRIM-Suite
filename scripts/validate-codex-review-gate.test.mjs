@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { evaluateCodexReviewGate } from './validate-codex-review-gate.mjs';
@@ -58,16 +59,38 @@ test('invalidates a terminal signal after the PR head changes', () => {
 
 test('accepts a Codex review submitted against the exact head as terminal', () => {
   const result = evaluateCodexReviewGate(
-    snapshot({ codexReviews: [{ commitId: headSha }] }),
+    snapshot({ codexReviews: [{ commitId: headSha, state: 'COMMENTED' }] }),
   );
 
   assert.equal(result.state, 'ready');
 });
 
+test('does not accept a dismissed current-head review as terminal', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({ codexReviews: [{ commitId: headSha, state: 'DISMISSED' }] }),
+  );
+
+  assert.equal(result.state, 'pending');
+});
+
+test('does not accept a nonterminal current-head Codex comment', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexComments: [
+        {
+          body: `Codex review is still running.\n\n**Reviewed commit:** \`${headSha}\``,
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.state, 'pending');
+});
+
 test('blocks unresolved non-outdated Codex review threads', () => {
   const result = evaluateCodexReviewGate(
     snapshot({
-      codexReviews: [{ commitId: headSha }],
+      codexReviews: [{ commitId: headSha, state: 'COMMENTED' }],
       codexThreads: [{ isResolved: false, isOutdated: false }],
     }),
   );
@@ -81,7 +104,7 @@ test('blocks unresolved non-outdated Codex review threads', () => {
 test('ignores resolved and outdated review threads', () => {
   const result = evaluateCodexReviewGate(
     snapshot({
-      codexReviews: [{ commitId: headSha }],
+      codexReviews: [{ commitId: headSha, state: 'COMMENTED' }],
       codexThreads: [
         { isResolved: true, isOutdated: false },
         { isResolved: false, isOutdated: true },
@@ -90,4 +113,15 @@ test('ignores resolved and outdated review threads', () => {
   );
 
   assert.equal(result.state, 'ready');
+});
+
+test('serializes per-PR workflow runs and cancels stale evaluations', async () => {
+  const workflow = await readFile(
+    new URL('../.github/workflows/codex-terminal-review.yml', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(workflow, /codex-terminal-review-\$\{\{/);
+  assert.match(workflow, /cancel-in-progress: true/);
+  assert.match(workflow, /state: 'pending'/);
 });

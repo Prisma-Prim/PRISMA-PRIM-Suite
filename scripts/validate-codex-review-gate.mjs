@@ -1,4 +1,5 @@
 const reviewedCommitPattern = /\*\*Reviewed commit:\*\*\s*`([0-9a-f]{7,40})`/iu;
+const noFindingsPattern = /Codex Review:\s*Didn't find any major issues\./iu;
 
 function identifiesHead(candidate, headSha) {
   return (
@@ -10,13 +11,18 @@ function identifiesHead(candidate, headSha) {
 
 function commentTargetsHead(comment, headSha) {
   const reviewedCommit = comment.body?.match(reviewedCommitPattern)?.[1];
-  return identifiesHead(reviewedCommit, headSha);
+  return (
+    noFindingsPattern.test(comment.body ?? '') &&
+    identifiesHead(reviewedCommit, headSha)
+  );
 }
 
 export function evaluateCodexReviewGate(snapshot) {
   const headSha = snapshot.headSha.toLowerCase();
-  const hasCurrentHeadReview = snapshot.codexReviews.some((review) =>
-    identifiesHead(review.commitId, headSha),
+  const hasCurrentHeadReview = snapshot.codexReviews.some(
+    (review) =>
+      ['APPROVED', 'COMMENTED'].includes(review.state) &&
+      identifiesHead(review.commitId, headSha),
   );
   const hasCurrentHeadComment = snapshot.codexComments.some((comment) =>
     commentTargetsHead(comment, headSha),

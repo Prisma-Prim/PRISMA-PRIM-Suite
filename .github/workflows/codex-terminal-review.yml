@@ -22,6 +22,15 @@ permissions:
   pull-requests: read
   statuses: write
 
+concurrency:
+  group: >-
+    codex-terminal-review-${{
+      github.event.pull_request.number ||
+      github.event.issue.number ||
+      inputs.pull_request_number
+    }}
+  cancel-in-progress: true
+
 jobs:
   codex-terminal-review:
     if: github.event_name != 'issue_comment' || github.event.issue.pull_request
@@ -62,6 +71,18 @@ jobs:
               repo,
               pull_number: pullRequestNumber,
             });
+            const statusContext = 'Codex terminal review';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: pullRequest.head.sha,
+              state: 'pending',
+              context: statusContext,
+              description: 'Re-evaluating the current-head Codex review state.',
+              target_url: runUrl,
+            });
 
             const [reviews, comments] = await Promise.all([
               github.paginate(github.rest.pulls.listReviews, {
@@ -89,7 +110,7 @@ jobs:
                         nodes {
                           isResolved
                           isOutdated
-                          comments(first: 100) {
+                          comments(first: 1) {
                             nodes { author { login } }
                           }
                         }
@@ -110,15 +131,17 @@ jobs:
               headSha: pullRequest.head.sha,
               codexReviews: reviews
                 .filter((review) => review.user?.login === codexLogin)
-                .map((review) => ({ commitId: review.commit_id })),
+                .map((review) => ({
+                  commitId: review.commit_id,
+                  state: review.state,
+                })),
               codexComments: comments
                 .filter((comment) => comment.user?.login === codexLogin)
                 .map((comment) => ({ body: comment.body })),
               codexThreads: reviewThreads
-                .filter((thread) =>
-                  thread.comments.nodes.some(
-                    (comment) => comment.author?.login === codexLogin,
-                  ),
+                .filter(
+                  (thread) =>
+                    thread.comments.nodes[0]?.author?.login === codexLogin,
                 )
                 .map((thread) => ({
                   isResolved: thread.isResolved,
@@ -138,14 +161,12 @@ jobs:
               blocked: 'failure',
               ready: 'success',
             }[result.state];
-            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-
             await github.rest.repos.createCommitStatus({
               owner,
               repo,
               sha: pullRequest.head.sha,
               state: statusState,
-              context: 'Codex terminal review',
+              context: statusContext,
               description: result.summary,
               target_url: runUrl,
             });
