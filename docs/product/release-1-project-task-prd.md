@@ -129,13 +129,12 @@ Ticket decomposition is blocked on real Project categories, stage meanings, requ
 **Confirmed evidence**
 
 - A Project may exist before a signed Contract.
-- Project lifecycle status and current workflow stage are distinct.
-- C, S1, S2 and R describe audit-specific stages and must not become one universal workflow.
+- Iurie identified C as certification, S1/S2 as surveillance audits and R as recertification; this does not by itself define the general Project lifecycle/stage model.
 - Required Tasks, responsibility, dates, reminders, completion evidence and attributable changes are desired operational capabilities.
 
 **Still blocking**
 
-- The first Release 1 Project categories and representative templates are not approved.
+- The first Release 1 Project categories, representative templates and the observable distinction between lifecycle status and current workflow stage are not approved.
 - Permitted pre-contract actions, lifecycle exceptions, exact required Tasks and evidence gates remain incomplete.
 - Later agent-authored automation proposals do not independently approve every transition or escalation rule.
 
