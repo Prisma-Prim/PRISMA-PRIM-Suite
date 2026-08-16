@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { databaseTargetsAreSafe } from './agent-doctor.mjs';
+import { createProcessGroupController } from './process-group.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -20,46 +21,6 @@ function commandTimeoutError(command, timeoutMilliseconds) {
   );
   error.name = 'CommandTimeoutError';
   return error;
-}
-
-function processGroupExists(pid) {
-  try {
-    process.kill(-pid, 0);
-    return true;
-  } catch (error) {
-    return error.code !== 'ESRCH';
-  }
-}
-
-function signalProcessGroup(child, signal) {
-  try {
-    process.kill(-child.pid, signal);
-  } catch (error) {
-    if (error.code !== 'ESRCH') {
-      throw error;
-    }
-  }
-}
-
-async function waitForProcessGroupExit(pid, timeoutMilliseconds) {
-  const deadline = Date.now() + timeoutMilliseconds;
-  while (processGroupExists(pid) && Date.now() < deadline) {
-    await new Promise((resolveWait) => setTimeout(resolveWait, 10));
-  }
-  return !processGroupExists(pid);
-}
-
-async function terminateProcessTree(child, closePromise, graceMilliseconds) {
-  signalProcessGroup(child, 'SIGTERM');
-  if (!(await waitForProcessGroupExit(child.pid, graceMilliseconds))) {
-    signalProcessGroup(child, 'SIGKILL');
-    if (!(await waitForProcessGroupExit(child.pid, graceMilliseconds))) {
-      throw new Error(
-        `Process group ${child.pid} survived bounded TERM to KILL escalation.`,
-      );
-    }
-  }
-  await closePromise;
 }
 
 function pathIsInside(parent, candidate) {
@@ -80,14 +41,21 @@ function unsafeTemporaryRootError(path) {
 
 export function createSystemAdapter({
   canonicalizePath = realpath,
+  groupExists,
   makeTemporaryDirectory = mkdtemp,
   platform = process.platform,
+  readProcessGroupStates,
   temporaryRoot = tmpdir(),
   terminationGraceMilliseconds = 1_000,
 } = {}) {
   if (platform === 'win32') {
     throw unsupportedPlatformError();
   }
+  const processGroupController = createProcessGroupController({
+    groupExists,
+    platform,
+    readProcessGroupStates,
+  });
 
   return {
     createRunId: () => randomUUID(),
@@ -209,8 +177,8 @@ export function createSystemAdapter({
           interruptionPromise,
         ]);
         if (event.type === 'closed') {
-          if (processGroupExists(child.pid)) {
-            await terminateProcessTree(
+          if (await processGroupController.isLive(child.pid)) {
+            await processGroupController.terminate(
               child,
               closePromise,
               terminationGraceMilliseconds,
@@ -219,7 +187,7 @@ export function createSystemAdapter({
           return event.result;
         }
 
-        await terminateProcessTree(
+        await processGroupController.terminate(
           child,
           closePromise,
           terminationGraceMilliseconds,
@@ -852,6 +820,13 @@ export function createManagedPostgresRunner(
             status: 'failed',
             error,
           });
+        }
+      }
+      if (!operationError && signal?.aborted) {
+        try {
+          throwIfAborted(signal);
+        } catch (error) {
+          operationError = error;
         }
       }
       if (

@@ -395,6 +395,68 @@ test('bounds a never-completing process and awaits its terminated process group'
   assert.ok(Date.now() - startedAt < 2_000);
 });
 
+test('ignores zombie-only Linux process groups but retains live members', async (context) => {
+  await context.test(
+    'absent group skips process-state inspection',
+    async () => {
+      let groupChecks = 0;
+      const adapter = createSystemAdapter({
+        groupExists: () => {
+          groupChecks += 1;
+          return false;
+        },
+        platform: 'linux',
+        readProcessGroupStates: async () => {
+          throw new Error('process state should not be inspected');
+        },
+      });
+
+      const result = await adapter.run(process.execPath, ['--eval', '']);
+
+      assert.equal(result.status, 0);
+      assert.equal(groupChecks, 1);
+    },
+  );
+
+  await context.test('zombie-only', async () => {
+    let livenessChecks = 0;
+    const adapter = createSystemAdapter({
+      groupExists: () => true,
+      platform: 'linux',
+      readProcessGroupStates: async () => {
+        livenessChecks += 1;
+        return ['Z', 'X'];
+      },
+      terminationGraceMilliseconds: 25,
+    });
+
+    const result = await adapter.run(process.execPath, ['--eval', '']);
+
+    assert.equal(result.status, 0);
+    assert.equal(livenessChecks, 1);
+  });
+
+  await context.test('sleeping member', async () => {
+    const observedStates = [['S'], [], []];
+    let livenessChecks = 0;
+    const adapter = createSystemAdapter({
+      groupExists: () => true,
+      platform: 'linux',
+      readProcessGroupStates: async () => {
+        const states = observedStates[livenessChecks] ?? [];
+        livenessChecks += 1;
+        return states;
+      },
+      terminationGraceMilliseconds: 25,
+    });
+
+    const result = await adapter.run(process.execPath, ['--eval', '']);
+
+    assert.equal(result.status, 0);
+    assert.equal(livenessChecks, 2);
+  });
+});
+
 test('reaps resistant descendants after a successful process-group leader exits', async () => {
   const fixtureDirectory = await mkdtemp(
     join(tmpdir(), 'prisma-prim-orphan-process-test-'),
@@ -429,7 +491,7 @@ test('reaps resistant descendants after a successful process-group leader exits'
     descendantPid = Number(await readFile(pidFile, 'utf8'));
 
     assert.equal(result.status, 0);
-    assert.equal(processExists(descendantPid), false);
+    assert.equal(await processIsAbsentOrZombie(descendantPid), true);
   } finally {
     if (descendantPid && processExists(descendantPid)) {
       process.kill(descendantPid, 'SIGKILL');
@@ -654,6 +716,48 @@ test('returns a failed verification status only after cleanup completes', async 
   ]);
 });
 
+test('finishes unsignalled cleanup then preserves an interruption received during cleanup', async () => {
+  const controller = new AbortController();
+  const interruption = new Error('Interrupted by SIGINT');
+  interruption.name = 'AbortError';
+  let interruptedDuringCleanup = false;
+  const adapter = createFakeAdapter((call) => {
+    if (
+      call.command === 'docker' &&
+      call.args[0] === 'rm' &&
+      call.args[1] === '--force'
+    ) {
+      assert.equal(call.options.signal, undefined);
+      if (!interruptedDuringCleanup) {
+        interruptedDuringCleanup = true;
+        controller.abort(interruption);
+      }
+    }
+    return undefined;
+  });
+  const runner = createManagedPostgresRunner(adapter);
+
+  await assert.rejects(
+    runner.run({
+      environment: { PATH: '/usr/bin' },
+      signal: controller.signal,
+    }),
+    (error) => {
+      assert.equal(error.name, 'AbortError');
+      assert.match(error.message, /Interrupted by SIGINT/);
+      return true;
+    },
+  );
+  assert.deepEqual(resourceRemovals(adapter), [
+    'prisma-prim-postgres-test-run-42',
+    'prisma-prim-postgres-test-run-42-data',
+    'prisma-prim-postgres-test-run-42-network',
+  ]);
+  assert.deepEqual(adapter.removedTemporaryDirectories, [
+    '/tmp/prisma-prim-managed-postgres-test-run-42',
+  ]);
+});
+
 test('fails bounded readiness checks and cleans before running migrations', async () => {
   let readinessChecks = 0;
   const adapter = createFakeAdapter(({ command, args }) => {
@@ -774,6 +878,23 @@ function processExists(pid) {
     return true;
   } catch (error) {
     return error.code !== 'ESRCH';
+  }
+}
+
+async function processIsAbsentOrZombie(pid) {
+  if (process.platform !== 'linux') {
+    return !processExists(pid);
+  }
+  try {
+    const stat = await readFile(`/proc/${pid}/stat`, 'utf8');
+    const commandEnd = stat.lastIndexOf(') ');
+    const state = commandEnd >= 0 ? stat.slice(commandEnd + 2)[0] : undefined;
+    return new Set(['X', 'x', 'Z']).has(state);
+  } catch (error) {
+    if (new Set(['ENOENT', 'ESRCH']).has(error.code)) {
+      return true;
+    }
+    throw error;
   }
 }
 
