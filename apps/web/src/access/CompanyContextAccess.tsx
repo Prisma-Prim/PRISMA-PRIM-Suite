@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -21,9 +21,24 @@ export function CompanyContextAccess({
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [state, setState] = useState<State>({ status: 'idle' });
+  const pendingRequest = useRef<AbortController | undefined>(undefined);
+  const canManageAssignments = actor.workspacePermissions.includes(
+    'company.assignment.manage',
+  );
+  useEffect(() => {
+    pendingRequest.current?.abort();
+    setState({ status: 'idle' });
+    return () => pendingRequest.current?.abort();
+  }, [
+    actor.activeCompany?.id,
+    actor.internalUserId,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    canManageAssignments,
+    identity,
+  ]);
 
-  if (!actor.workspacePermissions.includes('company.assignment.manage'))
-    return null;
+  if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
     event.preventDefault();
@@ -32,8 +47,12 @@ export function CompanyContextAccess({
     if (!member || !company) return setState({ status: 'error' });
     setState({ status: 'submitting', submission });
     const idempotencyKey = crypto.randomUUID();
+    pendingRequest.current?.abort();
+    const request = new AbortController();
+    pendingRequest.current = request;
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const result = await api.request<void>(
         submission === 'grant'
           ? '/company-context-assignments'
@@ -49,20 +68,28 @@ export function CompanyContextAccess({
                 workspaceMembershipId: member,
                 companyId: company,
               }),
+              signal: request.signal,
             }
           : {
               method: 'DELETE',
               headers: { 'idempotency-key': idempotencyKey },
+              signal: request.signal,
             },
       );
+      if (request.signal.aborted) return;
       if (result.status === 'unauthorized') await identity.rejectSession();
+      if (request.signal.aborted) return;
       setState(
         result.status === 'ok'
           ? { status: 'ready', submission }
           : { status: 'error' },
       );
     } catch {
+      if (request.signal.aborted) return;
       setState({ status: 'error' });
+    } finally {
+      if (pendingRequest.current === request)
+        pendingRequest.current = undefined;
     }
   }
 

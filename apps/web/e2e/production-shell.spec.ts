@@ -765,7 +765,12 @@ test('grants, selects, and revokes narrow Company context access', async ({
   identity = 'member';
   await page.reload();
   await expect(page.getByLabel('Active Company')).toHaveCount(0);
-  await expect(page.getByRole('alert')).toContainText('permission');
+  await expect(
+    page.getByText(
+      'No active Companies are available. Register a Company before choosing a context.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);
 });
 
 function companyContextStorageKey(): string {

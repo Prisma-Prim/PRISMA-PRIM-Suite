@@ -4,6 +4,34 @@ import type { AuthenticatedApiClient } from '../api/authenticated-api-client';
 import { loadInitialCompanyContext } from './company-context-session';
 
 describe('loadInitialCompanyContext', () => {
+  it('shows an empty ready state for an active member without Company access', async () => {
+    const actor: ActorContext = {
+      internalUserId: 'member',
+      workspaceMembershipId: 'membership',
+      workspaceId: 'workspace',
+      workspaceName: 'Workspace',
+      displayName: 'Member',
+      email: 'member@example.test',
+      active: true,
+      workspacePermissions: [],
+      companyContextAvailable: false,
+    };
+    const request = vi.fn();
+
+    const result = await loadInitialCompanyContext(
+      { request } as AuthenticatedApiClient,
+      actor,
+      new AbortController().signal,
+    );
+
+    expect(request).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      status: 'ok',
+      actor,
+      companyContext: { status: 'ready', companies: [] },
+    });
+  });
+
   it('loads assigned Companies without granting Company administration', async () => {
     const actor: ActorContext = {
       internalUserId: 'member',

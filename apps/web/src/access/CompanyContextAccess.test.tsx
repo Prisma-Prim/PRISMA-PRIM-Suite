@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -113,7 +113,120 @@ describe('CompanyContextAccess', () => {
     expect(getToken).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledOnce();
   });
+
+  it('does not send a grant after the identity changes while authentication is pending', async () => {
+    const token = deferred<string | null>();
+    const oldIdentity = {
+      ...deterministicBrowserIdentity(),
+      getToken: vi.fn(() => token.promise),
+    };
+    const newIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'new',
+    });
+    vi.stubGlobal('fetch', vi.fn());
+
+    const { rerender } = render(
+      <CompanyContextAccess actor={ownerActor} identity={oldIdentity} />,
+    );
+    fillAssignment();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeDisabled();
+
+    rerender(
+      <CompanyContextAccess actor={ownerActor} identity={newIdentity} />,
+    );
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+    await act(async () => {
+      token.resolve('old-session-token');
+      await token.promise;
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByText('Access granted.')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['grant', 'Grant access'],
+    ['revoke', 'Revoke access'],
+  ] as const)(
+    'aborts an in-flight %s when the actor changes',
+    async (_, buttonName) => {
+      let requestSignal: AbortSignal | undefined;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+          requestSignal = init?.signal ?? undefined;
+          return new Promise<Response>((_resolve, reject) => {
+            requestSignal?.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError')),
+            );
+          });
+        }),
+      );
+      const { rerender } = render(
+        <CompanyContextAccess
+          actor={ownerActor}
+          identity={deterministicBrowserIdentity()}
+        />,
+      );
+      fillAssignment();
+      fireEvent.click(screen.getByRole('button', { name: buttonName }));
+      await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+      rerender(
+        <CompanyContextAccess
+          actor={{ ...ownerActor, internalUserId: 'replacement-owner' }}
+          identity={deterministicBrowserIdentity()}
+        />,
+      );
+
+      expect(requestSignal?.aborted).toBe(true);
+      expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    },
+  );
+
+  it('aborts an in-flight mutation when unmounted', async () => {
+    let requestSignal: AbortSignal | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+        requestSignal = init?.signal ?? undefined;
+        return new Promise<Response>(() => undefined);
+      }),
+    );
+    const { unmount } = render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    fillAssignment();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+    unmount();
+
+    expect(requestSignal?.aborted).toBe(true);
+  });
 });
+
+function fillAssignment() {
+  fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
+    target: { value: 'member-1' },
+  });
+  fireEvent.change(screen.getByLabelText('Company ID'), {
+    target: { value: 'company-1' },
+  });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 const ownerActor: ActorContext = {
   internalUserId: 'owner',

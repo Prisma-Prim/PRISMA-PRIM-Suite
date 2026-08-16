@@ -29,7 +29,7 @@ export async function loadInitialCompanyContext(
     return {
       status: 'ok',
       actor: baseActor,
-      companyContext: { status: 'forbidden' },
+      companyContext: { status: 'ready', companies: [] },
     };
   }
   const companiesResult = await api.request<VisibleCompany[]>('/companies', {
