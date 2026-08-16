@@ -217,7 +217,7 @@ PRISMA-PRIM, BIC and ECG are initial configuration data. Code must use generic c
 Do not write business behaviour such as:
 
 ```ts
-if (company.name === "BIC") {
+if (company.name === 'BIC') {
   // special behaviour
 }
 ```
