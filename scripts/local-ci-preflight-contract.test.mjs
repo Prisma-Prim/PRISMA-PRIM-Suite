@@ -3,8 +3,24 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 test('local and early CI preflight share the canonical PostgreSQL and Playwright scripts', async () => {
-  const [packageJsonText, earlyCi, fullCi] = await Promise.all([
+  const [
+    packageJsonText,
+    apiPackageText,
+    webPackageText,
+    setup,
+    earlyCi,
+    fullCi,
+  ] = await Promise.all([
     readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    readFile(new URL('../apps/api/package.json', import.meta.url), 'utf8'),
+    readFile(new URL('../apps/web/package.json', import.meta.url), 'utf8'),
+    readFile(
+      new URL(
+        '../.github/actions/setup-verification/action.yml',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
     readFile(
       new URL('../.github/workflows/early-ci.yml', import.meta.url),
       'utf8',
@@ -12,6 +28,8 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
   ]);
   const packageJson = JSON.parse(packageJsonText);
+  const apiPackage = JSON.parse(apiPackageText);
+  const webPackage = JSON.parse(webPackageText);
 
   assert.equal(
     packageJson.scripts['preflight:local'],
@@ -24,10 +42,19 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     assert.equal(typeof packageJson.scripts[script], 'string');
     assert.match(earlyCi, new RegExp(`pnpm ${script.replaceAll(':', '\\:')}`));
   }
-  assert.match(
-    fullCi,
-    /pnpm test:preflight:postgres[\s\S]*pnpm test:preflight:playwright/,
+  assert.match(fullCi, /run: pnpm test/);
+  assert.match(apiPackage.scripts.test, /test:postgres:serial/);
+  assert.match(webPackage.scripts.test, /playwright test/);
+  assert.equal(
+    earlyCi.match(/uses: \.\/\.github\/actions\/setup-verification/g)?.length,
+    1,
   );
+  assert.equal(
+    fullCi.match(/uses: \.\/\.github\/actions\/setup-verification/g)?.length,
+    1,
+  );
+  assert.match(setup, /pnpm install --frozen-lockfile/);
+  assert.match(setup, /playwright install --with-deps chromium/);
 });
 
 test('the destructive migration preflight is serial and excluded from the parallel API phase', async () => {

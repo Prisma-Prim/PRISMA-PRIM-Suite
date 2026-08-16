@@ -122,7 +122,7 @@ test('blocks every seam when the shared runtime cannot execute repository script
   assert.match(plan.seams[3].reason, /Node is outside the supported range/);
 });
 
-test('keeps a migration-manifest blocker scoped to the migration seam', () => {
+test('keeps migration and PostgreSQL evidence in one executable verification', () => {
   const plan = createPreflightPlan({
     doctorChecks: healthyChecks.map((check) =>
       check.id === 'migration-manifest'
@@ -131,7 +131,7 @@ test('keeps a migration-manifest blocker scoped to the migration seam', () => {
     ),
   });
 
-  assert.equal(plan.seams[0].localStatus, 'runnable-locally');
+  assert.match(plan.seams[0].reason, /migration-manifest is incomplete/);
   assert.match(plan.seams[1].reason, /migration-manifest is incomplete/);
   assert.equal(plan.seams[2].localStatus, 'runnable-locally');
   assert.equal(plan.seams[3].localStatus, 'runnable-locally');
@@ -146,5 +146,6 @@ test('fails closed when an expected doctor prerequisite disappears', () => {
 
   assert.match(plan.seams[0].reason, /database-safety check is missing/);
   assert.equal(plan.seams[0].localStatus, 'blocked-locally-with-reason');
+  assert.equal(plan.seams[1].localStatus, 'blocked-locally-with-reason');
   assert.equal(plan.seams[2].localStatus, 'runnable-locally');
 });

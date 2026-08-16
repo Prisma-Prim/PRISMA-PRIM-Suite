@@ -9,29 +9,6 @@ const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const earlyCiCommand = 'gh workflow run early-ci.yml --ref <branch>';
 
-const seamDefinitions = [
-  {
-    id: 'postgres-smoke',
-    group: 'postgres',
-    command: 'test:preflight:postgres',
-  },
-  {
-    id: 'previous-schema-migration',
-    group: 'migration',
-    command: 'test:preflight:postgres',
-  },
-  {
-    id: 'playwright-desktop',
-    group: 'browser',
-    command: 'test:preflight:playwright',
-  },
-  {
-    id: 'playwright-narrow',
-    group: 'browser',
-    command: 'test:preflight:playwright',
-  },
-];
-
 const sharedPrerequisites = [
   'node',
   'pnpm',
@@ -39,16 +16,27 @@ const sharedPrerequisites = [
   'lockfile',
   'dependencies',
 ];
-const groupPrerequisites = {
-  postgres: ['database-variables', 'database-safety', 'postgres'],
-  migration: [
-    'database-variables',
-    'database-safety',
-    'postgres',
-    'migration-manifest',
-  ],
-  browser: ['chromium'],
-};
+
+const verificationDefinitions = [
+  {
+    id: 'postgres-and-migration',
+    command: 'test:preflight:postgres',
+    covers: ['postgres-smoke', 'previous-schema-migration'],
+    prerequisites: [
+      ...sharedPrerequisites,
+      'database-variables',
+      'database-safety',
+      'postgres',
+      'migration-manifest',
+    ],
+  },
+  {
+    id: 'desktop-and-narrow-browser',
+    command: 'test:preflight:playwright',
+    covers: ['playwright-desktop', 'playwright-narrow'],
+    prerequisites: [...sharedPrerequisites, 'chromium'],
+  },
+];
 
 export function collectPreflightChecks() {
   const journalPath = resolve(
@@ -111,12 +99,8 @@ function checkReason(check) {
 }
 
 export function createPreflightPlan({ doctorChecks }) {
-  const sharedFailures = failedChecks(doctorChecks, sharedPrerequisites);
-  const seams = seamDefinitions.map((definition) => {
-    const failures = [
-      ...sharedFailures,
-      ...failedChecks(doctorChecks, groupPrerequisites[definition.group]),
-    ];
+  const verifications = verificationDefinitions.map((definition) => {
+    const failures = failedChecks(doctorChecks, definition.prerequisites);
     const runnable = failures.length === 0;
     return {
       ...definition,
@@ -129,8 +113,17 @@ export function createPreflightPlan({ doctorChecks }) {
         : [...new Set(failures.map(checkReason))].join(' '),
     };
   });
+  const seams = verifications.flatMap((verification) =>
+    verification.covers.map((id) => ({
+      id,
+      command: verification.command,
+      localStatus: verification.localStatus,
+      authority: verification.authority,
+      reason: verification.reason,
+    })),
+  );
 
-  return { earlyCiCommand, seams };
+  return { earlyCiCommand, verifications, seams };
 }
 
 function label(value) {
@@ -195,13 +188,9 @@ export function main() {
   }
   if (checkOnly) return;
 
-  const scripts = [
-    ...new Set(
-      plan.seams
-        .filter((seam) => seam.localStatus === 'runnable-locally')
-        .map((seam) => seam.command),
-    ),
-  ];
+  const scripts = plan.verifications
+    .filter((verification) => verification.localStatus === 'runnable-locally')
+    .map((verification) => verification.command);
   for (const script of scripts) {
     process.stdout.write(`RUNNABLE LOCALLY ${script}: starting\n`);
     const result = runPackageScript(script);

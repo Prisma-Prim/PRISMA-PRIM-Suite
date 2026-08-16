@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
+import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (process.env.REQUIRE_COMPANY_POSTGRES === 'true' && !databaseUrl) {
@@ -12,7 +13,7 @@ if (process.env.REQUIRE_COMPANY_POSTGRES === 'true' && !databaseUrl) {
     'TEST_DATABASE_URL is required for the destructive PostgreSQL Company REST suite.',
   );
 }
-if (databaseUrl) assertSafeTestDatabase(databaseUrl);
+if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 describeWithPostgres('Company REST API', () => {
@@ -761,20 +762,3 @@ describeWithPostgres('Company REST API', () => {
     };
   }
 });
-
-function assertSafeTestDatabase(connectionString: string): void {
-  const target = new URL(connectionString);
-  const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
-  const databaseName = decodeURIComponent(target.pathname.slice(1));
-  if (
-    !new Set(['postgres:', 'postgresql:']).has(target.protocol) ||
-    target.search ||
-    target.hash ||
-    !localHosts.has(target.hostname) ||
-    !databaseName.endsWith('_test')
-  ) {
-    throw new Error(
-      'TEST_DATABASE_URL must identify a local database whose name ends with "_test", without connection-target overrides.',
-    );
-  }
-}

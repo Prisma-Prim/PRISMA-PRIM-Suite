@@ -9,9 +9,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
+import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-if (databaseUrl) assertSafeTestDatabase(databaseUrl);
+if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 describeWithPostgres('previous schema migration preflight', () => {
@@ -96,16 +97,3 @@ describeWithPostgres('previous schema migration preflight', () => {
     }
   });
 });
-
-function assertSafeTestDatabase(value: string): void {
-  const target = new URL(value);
-  const database = target.pathname.replace(/^\//, '');
-  if (
-    !new Set(['127.0.0.1', 'localhost', '[::1]']).has(target.hostname) ||
-    !database.endsWith('_test')
-  ) {
-    throw new Error(
-      'TEST_DATABASE_URL must target a local database whose name ends in _test.',
-    );
-  }
-}
