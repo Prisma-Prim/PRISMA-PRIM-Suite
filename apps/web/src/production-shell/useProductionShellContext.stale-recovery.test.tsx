@@ -11,67 +11,17 @@ import {
   readyCompanies,
   selectedActor,
 } from './production-shell-context.test-fixtures';
-import { useProductionShellContext } from './useProductionShellContext';
+import {
+  type ProductionShellContext,
+  useProductionShellContext,
+} from './useProductionShellContext';
 
 describe('useProductionShellContext stale recovery', () => {
   beforeEach(() => localStorage.clear());
 
-  it('does not restore a rejected Company when its pending selection succeeds', async () => {
-    const repeatedCompanyASelection = deferred<Response>();
-    let companyASelections = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-        const url = input.toString();
-        const selectedId = new Headers(init?.headers).get(
-          'x-company-context-id',
-        );
-        if (
-          url.endsWith('/access/current-actor') &&
-          selectedId === 'company-a'
-        ) {
-          companyASelections += 1;
-          return companyASelections === 1
-            ? Promise.resolve(
-                jsonResponse(selectedActor('company-a', 'Company A')),
-              )
-            : repeatedCompanyASelection.promise;
-        }
-        if (url.endsWith('/access/current-actor'))
-          return Promise.resolve(jsonResponse(baseActor));
-        if (url.endsWith('/companies'))
-          return Promise.resolve(jsonResponse(companies));
-        return Promise.resolve(jsonResponse({ events: [] }));
-      }),
-    );
-    const identity = browserIdentity();
-    const { result } = renderHook(() => useProductionShellContext(identity));
-    await waitFor(() =>
-      expect(result.current.shellContext.status).toBe('active'),
-    );
-    await act(() => result.current.selectCompany('company-a'));
-
-    let pendingSelection!: Promise<void>;
-    act(() => {
-      pendingSelection = result.current.selectCompany('company-a');
-    });
-    await waitFor(() => expect(companyASelections).toBe(2));
-    act(() => result.current.rejectCompanyContext('company-a'));
-    repeatedCompanyASelection.resolve(
-      jsonResponse(selectedActor('company-a', 'Company A')),
-    );
-    await act(() => pendingSelection);
-
-    expect(activeCompanyId(result.current.shellContext)).toBeUndefined();
-    expect(readyCompanies(result.current.shellContext)).toEqual([
-      { id: 'company-b', displayName: 'Company B' },
-    ]);
-    expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
-  });
-
-  it.each(['HTTP error', 'network error'] as const)(
-    'does not restore a rejected Company when its pending selection ends in an %s',
-    async (failure) => {
+  it.each(['success', 'denial', 'HTTP error', 'network error'] as const)(
+    'settles a rejected Company selection before its later %s',
+    async (outcome) => {
       const repeatedCompanyASelection = deferred<Response>();
       let companyASelections = 0;
       vi.stubGlobal(
@@ -112,16 +62,18 @@ describe('useProductionShellContext stale recovery', () => {
       });
       await waitFor(() => expect(companyASelections).toBe(2));
       act(() => result.current.rejectCompanyContext('company-a'));
-      if (failure === 'HTTP error')
+      if (outcome === 'success')
+        repeatedCompanyASelection.resolve(
+          jsonResponse(selectedActor('company-a', 'Company A')),
+        );
+      else if (outcome === 'denial')
+        repeatedCompanyASelection.resolve(new Response(null, { status: 403 }));
+      else if (outcome === 'HTTP error')
         repeatedCompanyASelection.resolve(new Response(null, { status: 500 }));
       else repeatedCompanyASelection.reject(new TypeError('network failed'));
       await act(() => pendingSelection);
 
-      expect(activeCompanyId(result.current.shellContext)).toBeUndefined();
-      expect(readyCompanies(result.current.shellContext)).toEqual([
-        { id: 'company-b', displayName: 'Company B' },
-      ]);
-      expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
+      expectRejectedCompanyARecovery(result.current.shellContext);
     },
   );
 
@@ -176,20 +128,26 @@ describe('useProductionShellContext stale recovery', () => {
       else companyBSelection.reject(new TypeError('network failed'));
       await act(() => pendingSelection);
 
-      expect(activeCompanyId(result.current.shellContext)).toBeUndefined();
-      expect(readyCompanies(result.current.shellContext)).toEqual([
-        { id: 'company-b', displayName: 'Company B' },
-      ]);
-      if (
-        result.current.shellContext.status !== 'active' ||
-        result.current.shellContext.companyContext.status !== 'ready'
-      )
-        throw new Error('Expected ready stale-recovery context');
-      expect(result.current.shellContext.companyContext).toMatchObject({
-        selection: { status: 'idle' },
-        recoveryMessage: 'stale',
-      });
-      expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
+      expectRejectedCompanyARecovery(result.current.shellContext);
     },
   );
 });
+
+function expectRejectedCompanyARecovery(
+  shellContext: ProductionShellContext,
+): void {
+  expect(activeCompanyId(shellContext)).toBeUndefined();
+  expect(readyCompanies(shellContext)).toEqual([
+    { id: 'company-b', displayName: 'Company B' },
+  ]);
+  if (
+    shellContext.status !== 'active' ||
+    shellContext.companyContext.status !== 'ready'
+  )
+    throw new Error('Expected ready stale-recovery context');
+  expect(shellContext.companyContext).toMatchObject({
+    selection: { status: 'idle' },
+    recoveryMessage: 'stale',
+  });
+  expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
+}

@@ -237,6 +237,11 @@ export function transitionCompanyContext(
         current.actor.activeCompany?.id !== transition.companyId
       )
         return current;
+      const selection =
+        current.companyContext.selection.status === 'pending' &&
+        current.companyContext.selection.companyId === transition.companyId
+          ? { status: 'idle' as const }
+          : current.companyContext.selection;
       return {
         ...current,
         actor: withoutActiveCompany(current.actor),
@@ -246,7 +251,7 @@ export function transitionCompanyContext(
             transition.companyId,
           ),
           'stale',
-          current.companyContext.selection,
+          selection,
         ),
         activityLog:
           transition.activityLog === 'error'

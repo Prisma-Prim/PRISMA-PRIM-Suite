@@ -142,6 +142,43 @@ describe('Company context transitions', () => {
     expect(next.actor.activeCompany).toBeUndefined();
   });
 
+  it.each(['success', 'denial', 'failure'] as const)(
+    'settles a rejected active Company selection before its later %s',
+    (outcome) => {
+      const active = activate(
+        [
+          { id: 'company-a', displayName: 'Company A' },
+          { id: 'company-b', displayName: 'Company B' },
+        ],
+        selectedActor('company-a', 'Company A'),
+      );
+      const origin = requiredOrigin(active);
+      const selecting = transitionCompanyContext(active, {
+        type: 'selection-started',
+        origin,
+        companyId: 'company-a',
+      });
+      const rejected = transitionCompanyContext(selecting, {
+        type: 'company-rejected',
+        origin,
+        companyId: 'company-a',
+        activityLog: 'preserve',
+      });
+
+      expect(rejected).toMatchObject({
+        status: 'active',
+        companyContext: {
+          companies: [{ id: 'company-b' }],
+          selection: { status: 'idle' },
+          recoveryMessage: 'stale',
+        },
+      });
+
+      const settled = settleSelection(rejected, origin, outcome);
+      expect(settled).toBe(rejected);
+    },
+  );
+
   it('keeps a pending newer Company selection after the active Company is rejected', () => {
     const { origin, rejected } = rejectCompanyAWhileSelectingCompanyB();
 
@@ -297,4 +334,23 @@ function rejectCompanyAWhileSelectingCompanyB() {
     activityLog: 'preserve',
   });
   return { origin, rejected };
+}
+
+function settleSelection(
+  context: ProductionShellContext,
+  origin: ReturnType<typeof requiredOrigin>,
+  outcome: 'success' | 'denial' | 'failure',
+): ProductionShellContext {
+  if (outcome === 'success')
+    return transitionCompanyContext(context, {
+      type: 'selection-confirmed',
+      origin,
+      companyId: 'company-a',
+      actor: selectedActor('company-a', 'Company A'),
+    });
+  return transitionCompanyContext(context, {
+    type: outcome === 'denial' ? 'selection-denied' : 'selection-failed',
+    origin,
+    companyId: 'company-a',
+  });
 }
