@@ -47,6 +47,7 @@ For product UI work, ground visual decisions in `/ui-baseline` and the assigned 
 - Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
 - Review the actual finished diff twice: first against repository Standards, then against the originating issue or Spec. Fix every material finding before publication.
 - Keep scope explicit. Record valuable follow-up work for a separate issue rather than implementing it silently.
+
 ### Deep-review trigger matrix
 
 Standards and Spec reviews remain mandatory for every implementation issue. Add heavier review only under these explicit conditions:
