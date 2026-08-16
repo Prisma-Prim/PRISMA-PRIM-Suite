@@ -135,7 +135,7 @@ Ticket decomposition is blocked on representative Document practice, confidentia
 - Received external originals must remain preserved.
 - Official Documents require visible version history and may not be silently overwritten.
 - Corrections after officialization require a new governed state/version and attributable history.
-- The system must preserve evidence of approval, sending or signature when available.
+- The system must preserve attributable evidence of approval or signature for the exact Version; sending and receipt evidence remain partially defined.
 
 **Still blocking**
 
@@ -144,3 +144,4 @@ Ticket decomposition is blocked on representative Document practice, confidentia
 - A general “yes” to automation does not authorize automatic legal, signature or deletion behaviour.
 
 Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 6–7 and 35–36; [coverage matrix](iurie-business-answer-coverage.md). The provider-independent Document/Version/Representation model remains the canonical boundary.
+
