@@ -164,6 +164,180 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     ]);
   });
 
+  it('uses one metadata-safe denial for unauthorized actors and invalid grant targets', async () => {
+    const owner = await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Protected Company');
+    const unknownId = '00000000-0000-4000-8000-000000000099';
+
+    const deniedActor = await grantAs(
+      'workspace-member',
+      member.workspaceMembershipId,
+      company.id,
+    );
+    await expectForbidden(deniedActor);
+
+    await pool.query(
+      `UPDATE internal_users SET status = 'inactive'
+       WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+      [member.workspaceMembershipId],
+    );
+    await expectForbidden(
+      await grantAs(
+        'workspace-owner',
+        member.workspaceMembershipId,
+        company.id,
+      ),
+    );
+    await pool.query(
+      `UPDATE internal_users SET status = 'active'
+       WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+      [member.workspaceMembershipId],
+    );
+
+    await pool.query(
+      "UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1",
+      [member.workspaceMembershipId],
+    );
+    await expectForbidden(
+      await grantAs(
+        'workspace-owner',
+        member.workspaceMembershipId,
+        company.id,
+      ),
+    );
+    await pool.query(
+      "UPDATE workspace_memberships SET status = 'active' WHERE id = $1",
+      [member.workspaceMembershipId],
+    );
+
+    await pool.query("UPDATE companies SET status = 'inactive' WHERE id = $1", [
+      company.id,
+    ]);
+    await expectForbidden(
+      await grantAs(
+        'workspace-owner',
+        member.workspaceMembershipId,
+        company.id,
+      ),
+    );
+    await pool.query("UPDATE companies SET status = 'active' WHERE id = $1", [
+      company.id,
+    ]);
+
+    await expectForbidden(
+      await grantAs('workspace-owner', unknownId, company.id),
+    );
+    await expectForbidden(
+      await grantAs('workspace-owner', member.workspaceMembershipId, unknownId),
+    );
+
+    const foreign = await pool.query<{
+      membership_id: string;
+      company_id: string;
+    }>(`
+      WITH foreign_workspace AS (
+        INSERT INTO workspaces (singleton_key, name)
+        VALUES ('foreign-assignment-workspace', 'Foreign Assignment Workspace')
+        RETURNING id
+      ), foreign_user AS (
+        INSERT INTO internal_users (
+          workspace_id, external_provider, external_subject, display_name, email
+        ) SELECT id, 'deterministic-test', 'foreign-member', 'Foreign Member',
+          'foreign-member@example.test' FROM foreign_workspace
+        RETURNING id, workspace_id
+      ), foreign_membership AS (
+        SELECT membership.id, membership.workspace_id, membership.internal_user_id
+        FROM workspace_memberships AS membership
+        INNER JOIN foreign_user ON foreign_user.id = membership.internal_user_id
+      ), foreign_company AS (
+        INSERT INTO companies (
+          workspace_id, display_name, created_by_internal_user_id,
+          created_by_workspace_membership_id, registration_idempotency_key
+        ) SELECT workspace_id, 'Foreign Company', internal_user_id, id,
+          'foreign-assignment-company' FROM foreign_membership
+        RETURNING id
+      )
+      SELECT foreign_membership.id AS membership_id,
+        foreign_company.id AS company_id
+      FROM foreign_membership CROSS JOIN foreign_company
+    `);
+    await expectForbidden(
+      await grantAs(
+        'workspace-owner',
+        foreign.rows[0]!.membership_id,
+        company.id,
+      ),
+    );
+    await expectForbidden(
+      await grantAs(
+        'workspace-owner',
+        member.workspaceMembershipId,
+        foreign.rows[0]!.company_id,
+      ),
+    );
+
+    const recipientCompanyMutation = await fetch(`${origin}/api/companies`, {
+      method: 'POST',
+      headers: {
+        ...identityHeaders('workspace-member', 'Member'),
+        'content-type': 'application/json',
+        'idempotency-key': 'recipient-must-not-register',
+      },
+      body: JSON.stringify({ displayName: 'Forbidden Company' }),
+    });
+    await expectForbidden(recipientCompanyMutation);
+    await expectForbidden(
+      await grantAs(
+        'workspace-member',
+        owner.workspaceMembershipId,
+        company.id,
+      ),
+    );
+  });
+
+  it('rolls back grant and revoke when their Activity Log event cannot be recorded', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Atomic Company');
+    await installAssignmentEventFailureTrigger();
+
+    const failedGrant = await grantAs(
+      'workspace-owner',
+      member.workspaceMembershipId,
+      company.id,
+    );
+    expect(failedGrant.status).toBe(500);
+    await expect(
+      activeAssignmentCount(member.workspaceMembershipId, company.id),
+    ).resolves.toBe('0');
+
+    await removeAssignmentEventFailureTrigger();
+    expect(
+      (
+        await grantAs(
+          'workspace-owner',
+          member.workspaceMembershipId,
+          company.id,
+        )
+      ).status,
+    ).toBe(201);
+    await installAssignmentEventFailureTrigger();
+
+    const failedRevoke = await fetch(
+      `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: identityHeaders('workspace-owner', 'Owner'),
+      },
+    );
+    expect(failedRevoke.status).toBe(500);
+    await expect(
+      activeAssignmentCount(member.workspaceMembershipId, company.id),
+    ).resolves.toBe('1');
+    await removeAssignmentEventFailureTrigger();
+  });
+
   async function currentActor(subject: string, displayName: string) {
     return fetch(`${origin}/api/access/current-actor`, {
       headers: identityHeaders(subject, displayName),
@@ -180,6 +354,65 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       },
       body: JSON.stringify({ displayName }),
     }).then((response) => response.json());
+  }
+
+  function grantAs(
+    subject: string,
+    workspaceMembershipId: string,
+    companyId: string,
+  ) {
+    return fetch(`${origin}/api/company-context-assignments`, {
+      method: 'POST',
+      headers: {
+        ...identityHeaders(subject, subject),
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ workspaceMembershipId, companyId }),
+    });
+  }
+
+  async function expectForbidden(response: Response) {
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      message: 'Forbidden',
+      statusCode: 403,
+    });
+  }
+
+  async function activeAssignmentCount(
+    workspaceMembershipId: string,
+    companyId: string,
+  ) {
+    const result = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM company_role_assignments
+       WHERE workspace_membership_id = $1 AND company_id = $2 AND revoked_at IS NULL`,
+      [workspaceMembershipId, companyId],
+    );
+    return result.rows[0]!.count;
+  }
+
+  async function installAssignmentEventFailureTrigger() {
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION reject_assignment_activity_log_insert()
+      RETURNS trigger AS $$
+      BEGIN
+        IF NEW.action::text LIKE 'company_context_assignment.%' THEN
+          RAISE EXCEPTION 'forced assignment Activity Log failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER reject_assignment_activity_log_insert
+      BEFORE INSERT ON activity_log_events
+      FOR EACH ROW EXECUTE FUNCTION reject_assignment_activity_log_insert();
+    `);
+  }
+
+  async function removeAssignmentEventFailureTrigger() {
+    await pool.query(`
+      DROP TRIGGER IF EXISTS reject_assignment_activity_log_insert ON activity_log_events;
+      DROP FUNCTION IF EXISTS reject_assignment_activity_log_insert();
+    `);
   }
 });
 

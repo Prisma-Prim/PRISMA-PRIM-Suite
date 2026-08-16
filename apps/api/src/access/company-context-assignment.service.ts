@@ -13,6 +13,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   companies,
   companyRoleAssignments,
+  internalUsers,
   workspaceMemberships,
 } from '../database/schema/index.js';
 import { requireWorkspacePermission } from './access-policy.js';
@@ -156,6 +157,10 @@ export class CompanyContextAssignmentService {
       .select({ internalUserId: workspaceMemberships.internalUserId })
       .from(workspaceMemberships)
       .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .innerJoin(
         companies,
         eq(companies.workspaceId, workspaceMemberships.workspaceId),
       )
@@ -164,6 +169,7 @@ export class CompanyContextAssignmentService {
           eq(workspaceMemberships.workspaceId, workspaceId),
           eq(workspaceMemberships.id, workspaceMembershipId),
           eq(workspaceMemberships.status, 'active'),
+          eq(internalUsers.status, 'active'),
           eq(companies.id, companyId),
           eq(companies.status, 'active'),
         ),
