@@ -22,7 +22,10 @@ export async function loadInitialCompanyContext(
   baseActor: ActorContext,
   signal: AbortSignal,
 ): Promise<InitialCompanyContextResult> {
-  if (!baseActor.workspacePermissions.includes('company.manage')) {
+  if (
+    !baseActor.workspacePermissions.includes('company.manage') &&
+    !baseActor.companyContextAvailable
+  ) {
     return {
       status: 'ok',
       actor: baseActor,

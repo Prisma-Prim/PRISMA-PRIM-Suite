@@ -665,6 +665,104 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     .toBeNull();
 });
 
+test('grants, selects, and revokes narrow Company context access', async ({
+  page,
+}) => {
+  const company = { id: 'company-assigned', displayName: 'Assigned Company' };
+  let identity: 'owner' | 'member' = 'owner';
+  let assigned = false;
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/company-context-assignments')) {
+      assigned = true;
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: 'assignment',
+          workspaceMembershipId: 'member',
+          companyId: company.id,
+          bundle: 'Company Context Access',
+          active: true,
+        },
+      });
+    }
+    if (url.pathname.includes('/company-context-assignments/')) {
+      assigned = false;
+      return route.fulfill({
+        json: {
+          id: 'assignment',
+          workspaceMembershipId: 'member',
+          companyId: company.id,
+          bundle: 'Company Context Access',
+          active: false,
+        },
+      });
+    }
+    if (url.pathname.endsWith('/companies'))
+      return route.fulfill({
+        json: identity === 'member' && assigned ? [company] : [],
+      });
+    if (url.pathname.endsWith('/activity-log'))
+      return route.fulfill({ json: { events: [] } });
+    if (url.pathname.endsWith('/access/current-actor')) {
+      const selected = route.request().headers()['x-company-context-id'];
+      if (identity === 'member' && selected && !assigned)
+        return route.fulfill({ status: 403 });
+      return route.fulfill({
+        json:
+          identity === 'owner'
+            ? {
+                ...actorContextFixture,
+                workspacePermissions: [
+                  'company.manage',
+                  'company.assignment.manage',
+                ],
+              }
+            : {
+                ...actorContextFixture,
+                internalUserId: 'member-user',
+                workspaceMembershipId: 'member',
+                displayName: 'Assigned Member',
+                email: 'member@example.test',
+                workspacePermissions: [],
+                companyContextAvailable: assigned,
+                ...(selected && assigned ? { activeCompany: company } : {}),
+              },
+      });
+    }
+    return route.fallback();
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Workspace membership ID').fill('member');
+  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByRole('button', { name: 'Grant access' }).click();
+  await expect(page.getByRole('status')).toHaveText('Access granted.');
+
+  identity = 'member';
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Company Context Access' }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  await page.getByLabel('Active Company').selectOption(company.id);
+  await expect(
+    page.getByText(company.displayName, { exact: true }),
+  ).toBeVisible();
+
+  identity = 'owner';
+  await page.reload();
+  await page.getByLabel('Workspace membership ID').fill('member');
+  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByRole('button', { name: 'Revoke access' }).click();
+  await expect(page.getByRole('status')).toHaveText('Access revoked.');
+
+  identity = 'member';
+  await page.reload();
+  await expect(page.getByLabel('Active Company')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('permission');
+});
+
 function companyContextStorageKey(): string {
   return `prisma-prim.company-context:${actorContextFixture.workspaceId}:${actorContextFixture.workspaceMembershipId}`;
 }

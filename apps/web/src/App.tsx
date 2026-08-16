@@ -3,6 +3,7 @@ import {
   ApplicationShell,
 } from './production-shell/ApplicationShell';
 import type { BrowserIdentity } from './access-composition';
+import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { formatApplicationDateTime } from './presentation/date-time';
@@ -71,13 +72,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         state={access.companyContext}
         onSelect={selectCompany}
       />
-      <CompanyRegistration
-        key={`${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
-        actor={access.actor}
-        identity={identity}
-        onCompanyContextRejected={rejectCompanyContext}
-        onCompanyRegistered={includeCompany}
-      />
+      {access.actor.workspacePermissions.includes(
+        'company.assignment.manage',
+      ) && <CompanyContextAccess actor={access.actor} identity={identity} />}
+      {access.actor.workspacePermissions.includes('company.manage') && (
+        <CompanyRegistration
+          key={`${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onCompanyRegistered={includeCompany}
+        />
+      )}
       <ActivityLog state={access.activityLog} />
     </ApplicationShell>
   );
@@ -105,7 +111,7 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
             <li key={event.id}>
               <div>
                 <strong>{activityDescription(event)}</strong>
-                <span>Target: {event.target.displayName}</span>
+                <span>Target: {activityTargetDescription(event)}</span>
               </div>
               <time dateTime={event.occurredAt}>
                 {formatApplicationDateTime(event.occurredAt)}
@@ -122,6 +128,14 @@ function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
     'internal_user.provisioned': 'was provisioned',
     'company.registered': 'registered a Company',
+    'company_context_assignment.granted': 'granted Company Context Access',
+    'company_context_assignment.revoked': 'revoked Company Context Access',
   };
   return `${event.actor.displayName} ${actionLabels[event.action]}`;
+}
+
+function activityTargetDescription(event: ActivityLogEvent): string {
+  return event.target.type === 'company_role_assignment'
+    ? `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`
+    : event.target.displayName;
 }
