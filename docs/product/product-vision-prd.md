@@ -4,7 +4,7 @@
 **Version:** 0.1  
 **Owner:** Dan Popescu  
 **Business authority:** Iurie Popescu for first-tenant reality and desired outcomes  
-**Decision authority:** docs/product/consolidated-product-decision-record.md (DEC-001–DEC-211)
+**Decision authority:** docs/product/consolidated-product-decision-record.md (DEC-001–DEC-212)
 
 ## 1. Purpose and authority
 

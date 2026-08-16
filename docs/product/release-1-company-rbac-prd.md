@@ -94,7 +94,7 @@ A current owner configures PRISMA-PRIM, BIC and ECG, assigns one Workspace manag
 
 ## 13. Business evidence
 
-Required before ticketing:
+Required before ticketing first-tenant-dependent assignments and permission bundles beyond the approved Company Context Access slice:
 
 - named users and responsibilities;
 - who needs group-wide oversight;

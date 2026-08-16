@@ -3,7 +3,7 @@
 **Status:** Draft — first-tenant evidence pending  
 **Version:** 0.2  
 **Owner:** Dan Popescu  
-**Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195
+**Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212
 
 ## 1. Problem statement
 

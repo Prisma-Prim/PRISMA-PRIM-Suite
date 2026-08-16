@@ -14,7 +14,7 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 | Authority                                                                                | Purpose                                                                        |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-211 and interview evidence map  |
+| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-212 and interview evidence map  |
 | [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                             |
 | [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets |
 | [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                          |
