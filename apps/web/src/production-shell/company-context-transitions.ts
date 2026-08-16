@@ -217,6 +217,18 @@ export function transitionCompanyContext(
         )
       )
         return current;
+      if (
+        transition.origin.activeCompanyId !== undefined &&
+        current.actor.activeCompany === undefined &&
+        current.companyContext.recoveryMessage === 'stale'
+      )
+        return {
+          ...current,
+          companyContext: readyCompanyContext(
+            current.companyContext.companies,
+            'stale',
+          ),
+        };
       return { ...current, companyContext: { status: 'error' } };
     }
     case 'company-rejected': {

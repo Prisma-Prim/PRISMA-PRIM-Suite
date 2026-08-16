@@ -182,7 +182,12 @@ describe('Company context transitions', () => {
 
     expect(failed).toMatchObject({
       status: 'active',
-      companyContext: { status: 'error' },
+      companyContext: {
+        status: 'ready',
+        companies: [{ id: 'company-b' }],
+        selection: { status: 'idle' },
+        recoveryMessage: 'stale',
+      },
     });
     if (failed.status !== 'active') throw new Error('Expected active context');
     expect(failed.actor.activeCompany).toBeUndefined();
