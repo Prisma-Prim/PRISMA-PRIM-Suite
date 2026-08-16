@@ -328,4 +328,3 @@ Use or adapt this message:
 > Bună ziua, Iurie. Voi parcurge împreună cu dumneavoastră întrebările despre cum trebuie să ajute aplicația activitatea PRISMA-PRIM, BIC și ECG. Nu trebuie să decideți baze de date, integrări, securitate sau alte soluții tehnice. Vă voi întreba ce se întâmplă în lucru, ce rezultat doriți, cine răspunde, ce excepții există și ce exemple sau documente pot confirma situația. Dacă nu știți un răspuns, îl notăm pentru persoana care îl poate verifica. Nu vă voi cere parole, chei, acces la conturi sau arhive confidențiale.
 
 Then ask Iurie whether Romanian is comfortable or whether Russian would be clearer. Start with `S00-Q01` unless an earlier answer or urgent topic gives a better entry point.
-
