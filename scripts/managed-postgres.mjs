@@ -404,20 +404,21 @@ async function cleanupResource(
     timeoutMilliseconds,
   },
 ) {
+  let lastError = null;
   if (!uncertain) {
-    return {
+    const initialRemoval = await removeResourceOnce(
+      adapter,
       resource,
-      ...(await removeResourceOnce(
-        adapter,
-        resource,
-        name,
-        timeoutMilliseconds,
-      )),
-    };
+      name,
+      timeoutMilliseconds,
+    );
+    if (initialRemoval.status === 'removed') {
+      return { resource, status: 'removed' };
+    }
+    lastError = initialRemoval.error;
   }
 
   let consecutiveAbsence = 0;
-  let lastError = null;
   for (let attempt = 0; attempt < reconciliationAttempts; attempt += 1) {
     try {
       const observation = await inspectResource(

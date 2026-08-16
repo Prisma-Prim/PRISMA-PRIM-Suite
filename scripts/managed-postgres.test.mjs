@@ -820,9 +820,83 @@ test('reports a sanitized Docker startup stderr excerpt for an unrecognized nonz
   );
 });
 
-test('attempts every exact cleanup target and reports cleanup failures', async () => {
+test('recovers a confirmed resource after transient removal failure', async () => {
+  let networkPresent = true;
+  let networkInspections = 0;
+  let networkRemovals = 0;
   const adapter = createFakeAdapter(({ command, args }) => {
     if (command === 'docker' && args[0] === 'network' && args[1] === 'rm') {
+      networkRemovals += 1;
+      if (networkRemovals === 1) {
+        return {
+          status: 1,
+          stdout: '',
+          stderr: 'network has active endpoints',
+        };
+      }
+      networkPresent = false;
+      return { status: 0, stdout: '', stderr: '' };
+    }
+    if (
+      command === 'docker' &&
+      args[0] === 'network' &&
+      args[1] === 'inspect'
+    ) {
+      networkInspections += 1;
+      return networkPresent
+        ? { status: 0, stdout: 'test-run-42\n', stderr: '' }
+        : { status: 1, stdout: '', stderr: 'No such network' };
+    }
+    return undefined;
+  });
+  const runner = createManagedPostgresRunner(adapter, {
+    reconciliationIntervalMilliseconds: 0,
+  });
+
+  const result = await runner.run({ environment: { PATH: '/usr/bin' } });
+
+  assert.equal(result.status, 0);
+  assert.equal(networkRemovals, 2);
+  assert.equal(networkInspections, 4);
+});
+
+test('accepts stable absence after a confirmed removal command times out', async () => {
+  const timeout = new Error('network removal timed out');
+  timeout.name = 'CommandTimeoutError';
+  let networkInspections = 0;
+  let networkRemovals = 0;
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'network' && args[1] === 'rm') {
+      networkRemovals += 1;
+      throw timeout;
+    }
+    if (
+      command === 'docker' &&
+      args[0] === 'network' &&
+      args[1] === 'inspect'
+    ) {
+      networkInspections += 1;
+      return { status: 1, stdout: '', stderr: 'No such network' };
+    }
+    return undefined;
+  });
+  const runner = createManagedPostgresRunner(adapter, {
+    reconciliationIntervalMilliseconds: 0,
+  });
+
+  const result = await runner.run({ environment: { PATH: '/usr/bin' } });
+
+  assert.equal(result.status, 0);
+  assert.equal(networkRemovals, 1);
+  assert.equal(networkInspections, 3);
+});
+
+test('attempts every exact cleanup target and reports cleanup failures', async () => {
+  let networkInspections = 0;
+  let networkRemovals = 0;
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'network' && args[1] === 'rm') {
+      networkRemovals += 1;
       return {
         status: 1,
         stdout: '',
@@ -830,16 +904,27 @@ test('attempts every exact cleanup target and reports cleanup failures', async (
           'network has active endpoints at postgresql://local-user:local-password@127.0.0.1:5432/prisma_prim_test token=cleanup-secret',
       };
     }
+    if (
+      command === 'docker' &&
+      args[0] === 'network' &&
+      args[1] === 'inspect'
+    ) {
+      networkInspections += 1;
+      return { status: 0, stdout: 'test-run-42\n', stderr: '' };
+    }
     return undefined;
   });
-  const runner = createManagedPostgresRunner(adapter);
+  const runner = createManagedPostgresRunner(adapter, {
+    reconciliationAttempts: 3,
+    reconciliationIntervalMilliseconds: 0,
+  });
 
   await assert.rejects(
     runner.run({ environment: { PATH: '/usr/bin' } }),
     (error) => {
       assert.match(
         error.message,
-        /network cleanup failed: exit status 1.*network has active endpoints/,
+        /network cleanup failed: absence was not established.*last error: exit status 1.*network has active endpoints/,
       );
       assert.match(error.message, /\[redacted PostgreSQL URL\]/);
       assert.match(error.message, /token=\[redacted\]/);
@@ -851,7 +936,12 @@ test('attempts every exact cleanup target and reports cleanup failures', async (
     'prisma-prim-postgres-test-run-42',
     'prisma-prim-postgres-test-run-42-data',
     'prisma-prim-postgres-test-run-42-network',
+    'prisma-prim-postgres-test-run-42-network',
+    'prisma-prim-postgres-test-run-42-network',
+    'prisma-prim-postgres-test-run-42-network',
   ]);
+  assert.equal(networkInspections, 3);
+  assert.equal(networkRemovals, 4);
   assert.deepEqual(adapter.removedTemporaryDirectories, [
     '/tmp/prisma-prim-managed-postgres-test-run-42',
   ]);
