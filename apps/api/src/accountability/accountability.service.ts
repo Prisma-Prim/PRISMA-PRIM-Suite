@@ -30,6 +30,7 @@ export class AccountabilityService {
       );
     }
 
+    const target = persistenceFor(event);
     await this.databaseContext.connection
       .insert(activityLogEvents)
       .values({
@@ -37,37 +38,8 @@ export class AccountabilityService {
         actorInternalUserId: event.actor.internalUserId,
         actorWorkspaceMembershipId: event.actor.workspaceMembershipId,
         action: event.action,
-        targetType: event.target.type,
-        targetInternalUserId:
-          event.target.type === 'internal_user'
-            ? event.target.internalUserId
-            : event.target.type === 'company_role_assignment'
-              ? event.target.internalUserId
-              : null,
-        targetWorkspaceMembershipId:
-          event.target.type === 'internal_user'
-            ? event.actor.workspaceMembershipId
-            : event.target.type === 'company_role_assignment'
-              ? event.target.workspaceMembershipId
-              : null,
-        targetCompanyId:
-          event.target.type === 'company' ||
-          event.target.type === 'company_role_assignment'
-            ? event.target.companyId
-            : null,
-        targetCompanyRoleAssignmentId:
-          event.target.type === 'company_role_assignment'
-            ? event.target.assignmentId
-            : null,
+        ...target,
         metadata: event.metadata,
-        idempotencyKey:
-          event.target.type === 'internal_user'
-            ? `${event.action}:${event.target.internalUserId}`
-            : event.target.type === 'company'
-              ? `${event.action}:${event.target.companyId}`
-              : `${event.action}:${event.target.assignmentId}:${
-                  'transitionId' in event ? event.transitionId : ''
-                }`,
       })
       .onConflictDoNothing({ target: activityLogEvents.idempotencyKey });
   }
@@ -159,30 +131,114 @@ export class AccountabilityService {
           internalUserId: event.actorInternalUserId,
           displayName: event.actorDisplayName,
         },
-        target:
-          event.targetType === 'internal_user'
-            ? {
-                type: 'internal_user' as const,
-                internalUserId: event.targetInternalUserId!,
-                displayName: event.targetInternalUserDisplayName!,
-              }
-            : event.targetType === 'company'
-              ? {
-                  type: 'company' as const,
-                  companyId: event.targetCompanyId!,
-                  displayName: event.targetCompanyDisplayName!,
-                }
-              : {
-                  type: 'company_role_assignment' as const,
-                  assignmentId: event.targetCompanyRoleAssignmentId!,
-                  companyId: event.targetCompanyId!,
-                  companyDisplayName: event.targetCompanyDisplayName!,
-                  workspaceMembershipId: event.targetWorkspaceMembershipId!,
-                  internalUserId: event.targetInternalUserId!,
-                  internalUserDisplayName: event.targetInternalUserDisplayName!,
-                },
+        target: canonicalTarget(event),
         metadata: event.metadata,
       })),
     };
   }
+}
+
+function persistenceFor(event: CanonicalActivityEvent) {
+  switch (event.action) {
+    case 'internal_user.provisioned':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: event.target.internalUserId,
+        targetWorkspaceMembershipId: event.actor.workspaceMembershipId,
+        targetCompanyId: null,
+        targetCompanyRoleAssignmentId: null,
+        idempotencyKey: `${event.action}:${event.target.internalUserId}`,
+      };
+    case 'company.registered':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: null,
+        targetWorkspaceMembershipId: null,
+        targetCompanyId: event.target.companyId,
+        targetCompanyRoleAssignmentId: null,
+        idempotencyKey: `${event.action}:${event.target.companyId}`,
+      };
+    case 'company_context_assignment.granted':
+    case 'company_context_assignment.revoked':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: event.target.internalUserId,
+        targetWorkspaceMembershipId: event.target.workspaceMembershipId,
+        targetCompanyId: event.target.companyId,
+        targetCompanyRoleAssignmentId: event.target.assignmentId,
+        idempotencyKey: `${event.action}:${event.target.assignmentId}:${event.transitionId}`,
+      };
+    default:
+      return assertNever(event);
+  }
+}
+
+interface PersistedActivityTarget {
+  targetType: 'internal_user' | 'company' | 'company_role_assignment';
+  targetCompanyRoleAssignmentId: string | null;
+  targetWorkspaceMembershipId: string | null;
+  targetInternalUserId: string | null;
+  targetInternalUserDisplayName: string | null;
+  targetCompanyId: string | null;
+  targetCompanyDisplayName: string | null;
+}
+
+function canonicalTarget(event: PersistedActivityTarget) {
+  switch (event.targetType) {
+    case 'internal_user':
+      return {
+        type: event.targetType,
+        internalUserId: required(
+          event.targetInternalUserId,
+          'Internal User id',
+        ),
+        displayName: required(
+          event.targetInternalUserDisplayName,
+          'Internal User display name',
+        ),
+      };
+    case 'company':
+      return {
+        type: event.targetType,
+        companyId: required(event.targetCompanyId, 'Company id'),
+        displayName: required(event.targetCompanyDisplayName, 'Company name'),
+      };
+    case 'company_role_assignment':
+      return {
+        type: event.targetType,
+        assignmentId: required(
+          event.targetCompanyRoleAssignmentId,
+          'Company Role Assignment id',
+        ),
+        companyId: required(event.targetCompanyId, 'Company id'),
+        companyDisplayName: required(
+          event.targetCompanyDisplayName,
+          'Company name',
+        ),
+        workspaceMembershipId: required(
+          event.targetWorkspaceMembershipId,
+          'Workspace Membership id',
+        ),
+        internalUserId: required(
+          event.targetInternalUserId,
+          'Internal User id',
+        ),
+        internalUserDisplayName: required(
+          event.targetInternalUserDisplayName,
+          'Internal User display name',
+        ),
+      };
+    default:
+      return assertNever(event.targetType);
+  }
+}
+
+function required(value: string | null, field: string): string {
+  if (value === null)
+    throw new Error(`Activity Log event is missing ${field}.`);
+  return value;
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected Activity Log variant: ${JSON.stringify(value)}`);
 }

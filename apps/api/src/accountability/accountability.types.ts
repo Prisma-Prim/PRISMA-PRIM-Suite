@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access/access.types.js';
+import type { COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL } from '../access/company-permissions.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -41,7 +42,7 @@ export type CanonicalActivityEvent =
         workspaceMembershipId: string;
         internalUserId: string;
       };
-      metadata: { bundle: 'Company Context Access' };
+      metadata: { bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL };
       transitionId: string;
     };
 
@@ -79,7 +80,7 @@ export interface ActivityLogEvent {
       };
   metadata:
     | { identityProvider: string }
-    | { bundle: 'Company Context Access' }
+    | { bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL }
     | Record<string, never>;
 }
 

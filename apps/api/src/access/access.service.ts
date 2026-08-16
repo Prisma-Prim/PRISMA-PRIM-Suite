@@ -24,6 +24,7 @@ import {
   type AccessAdmissionDecision,
 } from './access-admission.js';
 import { CompanyPermissionResolver } from './company-permission-resolver.js';
+import { COMPANY_CONTEXT_USE_PERMISSION } from './company-permissions.js';
 
 @Injectable()
 export class AccessService {
@@ -165,7 +166,7 @@ export class AccessService {
           await this.companyPermissions.listCompanyIds(
             actor.workspaceId,
             actor.workspaceMembershipId,
-            'company.context.use',
+            COMPANY_CONTEXT_USE_PERMISSION,
           )
         ).length > 0;
 
@@ -176,7 +177,7 @@ export class AccessService {
             actor.workspaceId,
             actor.workspaceMembershipId,
             requestedCompanyId,
-            'company.context.use',
+            COMPANY_CONTEXT_USE_PERMISSION,
           ));
         if (!canUseCompany) throw new ForbiddenException();
         const activeCompany = await this.activeCompanyContexts.findActive(

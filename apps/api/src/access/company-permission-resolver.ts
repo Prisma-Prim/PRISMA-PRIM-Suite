@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { companies, companyRoleAssignments } from '../database/schema/index.js';
-
-export type CompanyPermission = 'company.context.use';
+import {
+  COMPANY_PERMISSION_BUNDLES,
+  type CompanyPermission,
+} from './company-permissions.js';
 
 @Injectable()
 export class CompanyPermissionResolver {
@@ -27,13 +29,16 @@ export class CompanyPermissionResolver {
   async listCompanyIds(
     workspaceId: string,
     workspaceMembershipId: string,
-    _permission: CompanyPermission,
+    permission: CompanyPermission,
     companyId?: string,
   ): Promise<string[]> {
     const conditions = [
       eq(companyRoleAssignments.workspaceId, workspaceId),
       eq(companyRoleAssignments.workspaceMembershipId, workspaceMembershipId),
-      eq(companyRoleAssignments.bundle, 'company_context_access' as const),
+      inArray(
+        companyRoleAssignments.bundle,
+        COMPANY_PERMISSION_BUNDLES[permission],
+      ),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
     ];

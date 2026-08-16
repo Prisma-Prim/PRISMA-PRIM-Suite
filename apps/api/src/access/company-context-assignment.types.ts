@@ -1,8 +1,10 @@
+import type { COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL } from './company-permissions.js';
+
 export interface CompanyContextAssignmentRecord {
   id: string;
   workspaceMembershipId: string;
   companyId: string;
-  bundle: 'Company Context Access';
+  bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL;
   active: boolean;
 }
 

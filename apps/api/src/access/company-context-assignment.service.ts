@@ -20,6 +20,10 @@ import {
 } from '../database/schema/index.js';
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
+import {
+  COMPANY_CONTEXT_ACCESS_BUNDLE,
+  COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+} from './company-permissions.js';
 import type {
   CompanyContextAssignmentRecord,
   GrantCompanyContextAssignmentCommand,
@@ -139,7 +143,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
             internalUserId: target.internalUserId,
           },
-          metadata: { bundle: 'Company Context Access' },
+          metadata: { bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL },
           transitionId,
         });
       }
@@ -147,7 +151,7 @@ export class CompanyContextAssignmentService {
         id: assignment.id,
         workspaceMembershipId,
         companyId,
-        bundle: 'Company Context Access',
+        bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
         active: operation === 'grant',
       };
     });
@@ -196,7 +200,7 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
-        bundle: 'company_context_access',
+        bundle: COMPANY_CONTEXT_ACCESS_BUNDLE,
         transitionId,
       })
       .onConflictDoUpdate({
@@ -239,7 +243,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, 'company_context_access'),
+          eq(companyRoleAssignments.bundle, COMPANY_CONTEXT_ACCESS_BUNDLE),
           isNull(companyRoleAssignments.revokedAt),
         ),
       )
@@ -289,7 +293,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, 'company_context_access'),
+          eq(companyRoleAssignments.bundle, COMPANY_CONTEXT_ACCESS_BUNDLE),
         ),
       )
       .limit(1);
@@ -341,7 +345,7 @@ function commandResult(command: CommandRow): CompanyContextAssignmentRecord {
     id: command.resultAssignmentId,
     workspaceMembershipId: command.targetWorkspaceMembershipId,
     companyId: command.companyId,
-    bundle: 'Company Context Access',
+    bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
     active: command.resultActive,
   };
 }

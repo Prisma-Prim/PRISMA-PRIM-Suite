@@ -7,6 +7,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyPermissionResolver } from '../access/company-permission-resolver.js';
+import { COMPANY_CONTEXT_USE_PERMISSION } from '../access/company-permissions.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { COMPANY_REGISTERED_ACTION } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
@@ -76,7 +77,7 @@ export class CompanyService {
       : await this.companyPermissions.listCompanyIds(
           actor.workspaceId,
           actor.workspaceMembershipId,
-          'company.context.use',
+          COMPANY_CONTEXT_USE_PERMISSION,
         );
     if (!canManageAll && assignedCompanyIds.length === 0) return [];
     const visibility = canManageAll
