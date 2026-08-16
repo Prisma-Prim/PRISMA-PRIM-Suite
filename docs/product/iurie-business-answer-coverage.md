@@ -494,4 +494,3 @@ When a material gap is discovered only during consolidation, prepare a short pri
 ## 10. Update protocol
 
 Future interview comments should use official IDs whenever possible. When the interviewer narrows or splits an official question, the record must identify the material components, components asked, components deferred, the answer to each asked sub-part and the resulting official-ID coverage. The complete ID is not `Resolved` until every material component is answered or explicitly declared out of scope. A new source may move a row from unmapped or partial only when its provenance and semantic coverage are explicit. Corrections must retain links to superseded evidence. Implementation issues must cite the updated canonical PRD, not this matrix or a raw interview comment as their sole behavioural authority.
-
