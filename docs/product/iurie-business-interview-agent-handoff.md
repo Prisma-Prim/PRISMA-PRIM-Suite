@@ -208,7 +208,11 @@ question_id: S00-Q01
 question_ro: 'The exact Romanian question asked'
 answer_ro: "Iurie's answer, faithfully summarized"
 answer_ru: null
-status: CONFIRMED
+evidence_authority: DIRECT_IURIE
+source_declared_status: CONFIRMED
+semantic_coverage: FULL
+decision_sufficiency: SUFFICIENT
+confidence: HIGH
 current_practice: 'What happens today'
 desired_behaviour: 'What Iurie wants the application to enable'
 actors_and_approvals:
@@ -269,7 +273,36 @@ This table helps you label the session package. It does not authorize you to cha
 
 Use labels such as `CONFIRMS`, `CONFIGURES`, `REFINES`, `POSSIBLE_CONTRADICTION` or `NEW_BUSINESS_NEED`. Only Dan and his agent decide whether a repository decision or PRD changes.
 
-## 12. Opening message to Iurie
+## 12. Decide whether a follow-up is actually needed
+
+Question-bank completeness is an audit measure, not a requirement to ask every question mechanically. A partial answer may already be sufficient for a reversible, low-risk product decision.
+
+For each missing component, choose exactly one disposition:
+
+- `SUFFICIENT` — the available business evidence is enough;
+- `SUFFICIENT_REVERSIBLE_ASSUMPTION` — proceed only with the assumption and confidence recorded, because the choice is reversible and low risk;
+- `INTERVIEWER_CLARIFICATION` — clarify the formulation, separate a compound question or request an example during the current interview when possible;
+- `IURIE_FOLLOW_UP_REQUIRED` — ask Iurie a targeted question because the gap affects a business rule, exception, authorization, legal or financial effect, blocking automation or a decision difficult to reverse;
+- `DAN_TECHNICAL_DECISION` — route product-design or technical mechanism decisions to Dan and the technical agents.
+
+Do not ask Iurie the same broad question again. When consolidation discovers a material gap later, give Iurie's agent a short prioritized follow-up list containing:
+
+1. the prior question and evidence link;
+2. the exact missing component;
+3. why the missing answer changes observable behaviour or risk;
+4. one short Romanian follow-up question;
+5. what must not be re-asked.
+
+Distinguish evidence authority in every record:
+
+- `DIRECT_IURIE` — direct or faithfully paraphrased answer;
+- `AGENT_PROPOSAL_ACCEPTED` — the agent proposed a concrete formulation and Iurie explicitly accepted it;
+- `AGENT_INTERPRETATION` — analysis by the interviewer without Iurie's explicit acceptance; never a business requirement;
+- `DELEGATED_TO_DAN_AGENT` — Iurie delegated a product or technical decision; it remains undecided business behaviour until the responsible decision is documented.
+
+The interviewer may explain concepts, reformulate and ask for examples. Iurie remains the authority on business reality and desired application needs. Avoid redundant questions and do not ask Iurie to decide purely technical matters.
+
+## 13. Opening message to Iurie
 
 Use or adapt this message:
 
