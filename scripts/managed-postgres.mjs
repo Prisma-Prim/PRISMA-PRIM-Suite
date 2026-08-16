@@ -14,6 +14,7 @@ const databaseUser = 'prisma_prim';
 const databasePassword = 'prisma_prim';
 const developmentDatabase = 'prisma_prim_dev';
 const testDatabase = 'prisma_prim_test';
+const stableAbsenceChecksRequired = 3;
 
 function commandTimeoutError(command, timeoutMilliseconds) {
   const error = new Error(
@@ -419,7 +420,9 @@ async function cleanupResource(
   }
 
   let consecutiveAbsence = 0;
-  for (let attempt = 0; attempt < reconciliationAttempts; attempt += 1) {
+  let maximumStateProbes = reconciliationAttempts;
+  let confirmationTailAdded = false;
+  for (let attempt = 0; attempt < maximumStateProbes; attempt += 1) {
     try {
       const observation = await inspectResource(
         adapter,
@@ -430,25 +433,35 @@ async function cleanupResource(
       );
       if (observation.state === 'absent') {
         consecutiveAbsence += 1;
-        if (consecutiveAbsence >= 3) {
+        if (consecutiveAbsence >= stableAbsenceChecksRequired) {
           return { resource, status: 'removed' };
         }
       } else {
         consecutiveAbsence = 0;
-        const removal = await removeResourceOnce(
-          adapter,
-          resource,
-          name,
-          timeoutMilliseconds,
-        );
-        lastError = removal.status === 'failed' ? removal.error : null;
+        if (attempt >= reconciliationAttempts) {
+          lastError = new Error(
+            `exact resource remained present after ${reconciliationAttempts} removal reconciliation attempts`,
+          );
+        } else {
+          const removal = await removeResourceOnce(
+            adapter,
+            resource,
+            name,
+            timeoutMilliseconds,
+          );
+          lastError = removal.status === 'failed' ? removal.error : null;
+          if (removal.status === 'removed' && !confirmationTailAdded) {
+            maximumStateProbes += stableAbsenceChecksRequired;
+            confirmationTailAdded = true;
+          }
+        }
       }
     } catch (error) {
       consecutiveAbsence = 0;
       lastError = error;
     }
 
-    if (attempt + 1 < reconciliationAttempts) {
+    if (attempt + 1 < maximumStateProbes) {
       await adapter.delay(reconciliationIntervalMilliseconds);
     }
   }
@@ -457,7 +470,7 @@ async function cleanupResource(
     resource,
     status: 'failed',
     error: new Error(
-      `absence was not established after ${reconciliationAttempts} exact-name state probes${lastError ? `; last error: ${sanitizeError(lastError)}` : ''}`,
+      `absence was not established after ${maximumStateProbes} exact-name state probes${lastError ? `; last error: ${sanitizeError(lastError)}` : ''}`,
     ),
   };
 }

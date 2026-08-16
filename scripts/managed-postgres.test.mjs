@@ -737,6 +737,46 @@ test('recovers a confirmed resource after transient removal failure', async () =
   assert.equal(networkInspections, 4);
 });
 
+test('confirms stable absence after the final allowed removal retry succeeds', async () => {
+  let networkPresent = true;
+  let networkInspections = 0;
+  let networkRemovals = 0;
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'network' && args[1] === 'rm') {
+      networkRemovals += 1;
+      if (networkRemovals <= 8) {
+        return {
+          status: 1,
+          stdout: '',
+          stderr: 'network has active endpoints',
+        };
+      }
+      networkPresent = false;
+      return { status: 0, stdout: '', stderr: '' };
+    }
+    if (
+      command === 'docker' &&
+      args[0] === 'network' &&
+      args[1] === 'inspect'
+    ) {
+      networkInspections += 1;
+      return networkPresent
+        ? { status: 0, stdout: 'test-run-42\n', stderr: '' }
+        : { status: 1, stdout: '', stderr: 'No such network' };
+    }
+    return undefined;
+  });
+  const runner = createManagedPostgresRunner(adapter, {
+    reconciliationIntervalMilliseconds: 0,
+  });
+
+  const result = await runner.run({ environment: { PATH: '/usr/bin' } });
+
+  assert.equal(result.status, 0);
+  assert.equal(networkRemovals, 9);
+  assert.equal(networkInspections, 11);
+});
+
 test('accepts stable absence after a confirmed removal command times out', async () => {
   const timeout = new Error('network removal timed out');
   timeout.name = 'CommandTimeoutError';
