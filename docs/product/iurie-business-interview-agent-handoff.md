@@ -68,7 +68,7 @@ Important reconciliation facts:
 - one Workspace is the tenant boundary; Companies operate inside it;
 - a shared Client dossier does not make Company-confidential activity visible to everyone;
 - structured, auditable operations come before AI automation;
-- the approved decision register is `DEC-001` through `DEC-211`;
+- the approved decision register is `DEC-001` through `DEC-212`;
 - unresolved business evidence may configure or refine a decision, but must not be used to silently redesign it.
 
 ## 4. How to use the code without confusing Iurie
