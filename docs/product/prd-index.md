@@ -72,4 +72,3 @@ After these documents merge:
 - represent hierarchy with parent and dependency links;
 - keep all Draft trackers free of the `ready-for-agent` label;
 - create vertical implementation children only after the applicable PRD passes every readiness gate.
-
