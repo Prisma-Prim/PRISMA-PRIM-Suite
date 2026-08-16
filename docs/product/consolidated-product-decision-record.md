@@ -3499,4 +3499,6 @@ The following remain decisions or evidence requests, not inferred rules:
 7. mapping or versioning strategy for the independent interview sequence;
 8. revalidation of compound “yes” answers before they create permissions, financial/legal enforcement or irreversible workflow behaviour.
 
-Implementation issues must continue to derive from the owning canonical PRD after these blockers are closed, never directly from the raw interview.
+Formal question-bank completeness is not the same as evidence sufficiency. A partial answer must not be re-asked mechanically. The receiving agent classifies it as sufficient, sufficient with a documented reversible assumption, interviewer clarification, targeted Iurie follow-up, or Dan/technical decision. Only gaps affecting a business rule, exception, authorization, legal/financial effect, blocking automation or a difficult-to-reverse choice require targeted Iurie follow-up. Low-risk reversible gaps may proceed with an explicit assumption and confidence. Technical mechanisms remain with Dan and the agents.
+
+Implementation issues must continue to derive from the owning canonical PRD after material blockers are closed, never directly from the raw interview.
