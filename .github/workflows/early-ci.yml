@@ -1,0 +1,71 @@
+name: Early CI preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database-and-browser-seams:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: prisma_prim_dev
+          POSTGRES_USER: prisma_prim
+          POSTGRES_PASSWORD: prisma_prim
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prisma_prim -d prisma_prim_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision isolated test database
+        env:
+          POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
+        run: >-
+          pnpm --filter @prisma-prim/api exec node --input-type=module --eval
+          'import pg from "pg"; const client = new pg.Client({ connectionString:
+          process.env.POSTGRES_ADMIN_URL }); await client.connect(); const existing =
+          await client.query("SELECT 1 FROM pg_database WHERE datname = $1",
+          ["prisma_prim_test"]); if (existing.rowCount === 0) await
+          client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
+          client.end();'
+
+      - name: Install Chromium explicitly
+        run: pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
+
+      - name: Verify preflight prerequisites
+        run: pnpm preflight:local --check-only
+
+      - name: Run canonical PostgreSQL and migration preflight
+        run: pnpm test:preflight:postgres
+
+      - name: Run canonical desktop and narrow Playwright preflight
+        run: pnpm test:preflight:playwright

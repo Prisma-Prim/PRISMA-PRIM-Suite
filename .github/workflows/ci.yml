@@ -67,6 +67,12 @@ jobs:
       - name: Verify agent environment
         run: pnpm agent:doctor:web-postgres
 
+      - name: Verify PostgreSQL and migration seams early
+        run: pnpm test:preflight:postgres
+
+      - name: Verify desktop and narrow browser seams early
+        run: pnpm test:preflight:playwright
+
       - name: Lint
         run: pnpm lint
 

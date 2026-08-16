@@ -1,0 +1,136 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  createPreflightPlan,
+  formatPreflightReport,
+} from './local-ci-preflight.mjs';
+
+const healthyChecks = [
+  { id: 'node', status: 'PASS', summary: 'Node is supported.' },
+  { id: 'pnpm', status: 'PASS', summary: 'pnpm is supported.' },
+  { id: 'dependencies', status: 'PASS', summary: 'Dependencies exist.' },
+  { id: 'chromium', status: 'PASS', summary: 'Chromium is available.' },
+  {
+    id: 'database-safety',
+    status: 'PASS',
+    summary: 'Database targets are safe.',
+  },
+  { id: 'postgres', status: 'PASS', summary: 'PostgreSQL is available.' },
+  {
+    id: 'migration-manifest',
+    status: 'PASS',
+    summary: 'Migration states are reproducible.',
+  },
+  {
+    id: 'playwright-web-server',
+    status: 'PASS',
+    summary: 'The Playwright web server is configured.',
+  },
+];
+
+test('marks PostgreSQL, migration, desktop, and narrow seams runnable when prerequisites pass', () => {
+  const plan = createPreflightPlan({ doctorChecks: healthyChecks });
+
+  assert.deepEqual(
+    plan.seams.map(({ id, localStatus, authority }) => ({
+      id,
+      localStatus,
+      authority,
+    })),
+    [
+      {
+        id: 'postgres-smoke',
+        localStatus: 'runnable-locally',
+        authority: 'local-and-full-ci',
+      },
+      {
+        id: 'previous-schema-migration',
+        localStatus: 'runnable-locally',
+        authority: 'local-and-full-ci',
+      },
+      {
+        id: 'playwright-desktop',
+        localStatus: 'runnable-locally',
+        authority: 'local-and-full-ci',
+      },
+      {
+        id: 'playwright-narrow',
+        localStatus: 'runnable-locally',
+        authority: 'local-and-full-ci',
+      },
+    ],
+  );
+});
+
+test('reports actionable local blockers and delegates the same seams to early CI', () => {
+  const plan = createPreflightPlan({
+    doctorChecks: healthyChecks.map((check) =>
+      check.id === 'chromium'
+        ? {
+            ...check,
+            status: 'FAIL',
+            summary: 'Chromium is missing.',
+            remediation: 'Install Chromium explicitly.',
+          }
+        : check.id === 'postgres'
+          ? {
+              ...check,
+              status: 'FAIL',
+              summary: 'PostgreSQL is unavailable.',
+              remediation: 'Configure an isolated local test database.',
+            }
+          : check,
+    ),
+  });
+
+  for (const seam of plan.seams) {
+    assert.equal(seam.localStatus, 'blocked-locally-with-reason');
+    assert.equal(seam.authority, 'delegated-to-early-ci');
+  }
+  assert.match(plan.seams[0].reason, /PostgreSQL is unavailable/);
+  assert.match(plan.seams[2].reason, /Chromium is missing/);
+
+  const report = formatPreflightReport(plan);
+  assert.match(report, /BLOCKED LOCALLY WITH REASON postgres-smoke/);
+  assert.match(report, /DELEGATED TO EARLY CI playwright-narrow/);
+  assert.match(report, /gh workflow run early-ci\.yml --ref <branch>/);
+});
+
+test('blocks every seam when the shared runtime cannot execute repository scripts', () => {
+  const plan = createPreflightPlan({
+    doctorChecks: healthyChecks.map((check) =>
+      check.id === 'node'
+        ? {
+            ...check,
+            status: 'FAIL',
+            summary: 'Node is outside the supported range.',
+            remediation: 'Use Node 24.',
+          }
+        : check,
+    ),
+  });
+
+  assert.equal(
+    plan.seams.every(
+      (seam) => seam.localStatus === 'blocked-locally-with-reason',
+    ),
+    true,
+  );
+  assert.match(plan.seams[3].reason, /Node is outside the supported range/);
+});
+
+test('keeps independent seam blockers scoped to migration or browser startup', () => {
+  const plan = createPreflightPlan({
+    doctorChecks: healthyChecks.map((check) =>
+      new Set(['migration-manifest', 'playwright-web-server']).has(check.id)
+        ? { ...check, status: 'FAIL', summary: `${check.id} is incomplete.` }
+        : check,
+    ),
+  });
+
+  assert.equal(plan.seams[0].localStatus, 'runnable-locally');
+  assert.match(plan.seams[1].reason, /migration-manifest is incomplete/);
+  assert.match(plan.seams[2].reason, /playwright-web-server is incomplete/);
+  assert.match(plan.seams[3].reason, /playwright-web-server is incomplete/);
+});
