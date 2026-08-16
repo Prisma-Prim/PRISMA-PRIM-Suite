@@ -222,7 +222,7 @@ describe('useProductionShellContext request coordination', () => {
       if (result.current.shellContext.status !== 'active')
         throw new Error('Expected active shell context');
       expect(result.current.shellContext.companyContext).toMatchObject({
-        selecting: true,
+        selection: { status: 'pending', companyId: 'company-b' },
       });
     });
     await act(async () => {
@@ -439,7 +439,7 @@ describe('useProductionShellContext request coordination', () => {
       if (result.current.shellContext.status !== 'active')
         throw new Error('Expected active shell context');
       expect(result.current.shellContext.companyContext).toMatchObject({
-        selecting: true,
+        selection: { status: 'pending', companyId: 'company-a' },
       });
     });
 
@@ -706,7 +706,7 @@ describe('useProductionShellContext request coordination', () => {
       if (result.current.shellContext.status !== 'active')
         throw new Error('Expected active shell context');
       expect(result.current.shellContext.companyContext).toMatchObject({
-        selecting: true,
+        selection: { status: 'pending', companyId: 'company-a' },
       });
     });
     act(() =>
@@ -763,7 +763,7 @@ describe('useProductionShellContext request coordination', () => {
       if (result.current.shellContext.status !== 'active')
         throw new Error('Expected active shell context');
       expect(result.current.shellContext.companyContext).toMatchObject({
-        selecting: true,
+        selection: { status: 'pending', companyId: 'company-a' },
       });
     });
     act(() =>
