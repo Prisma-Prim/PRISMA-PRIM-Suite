@@ -55,7 +55,6 @@ describe('useProductionShellContext stale recovery', () => {
         expect(result.current.shellContext.status).toBe('active'),
       );
       await act(() => result.current.selectCompany('company-a'));
-
       let pendingSelection!: Promise<void>;
       act(() => {
         pendingSelection = result.current.selectCompany('company-a');
@@ -78,13 +77,15 @@ describe('useProductionShellContext stale recovery', () => {
   );
 
   it.each([
-    { failure: 'HTTP error', rejection: 'before' },
-    { failure: 'network error', rejection: 'before' },
-    { failure: 'HTTP error', rejection: 'after' },
-    { failure: 'network error', rejection: 'after' },
+    { outcome: 'HTTP error', rejection: 'before' },
+    { outcome: 'network error', rejection: 'before' },
+    { outcome: 'denial', rejection: 'before' },
+    { outcome: 'HTTP error', rejection: 'after' },
+    { outcome: 'network error', rejection: 'after' },
+    { outcome: 'denial', rejection: 'after' },
   ] as const)(
-    'keeps stale recovery when active Company rejection settles $rejection newer-Company $failure',
-    async ({ failure, rejection }) => {
+    'keeps recovery when active Company rejection settles $rejection newer-Company $outcome',
+    async ({ outcome, rejection }) => {
       const companyBSelection = deferred<Response>();
       let companyBRequests = 0;
       vi.stubGlobal(
@@ -121,27 +122,41 @@ describe('useProductionShellContext stale recovery', () => {
         expect(result.current.shellContext.status).toBe('active'),
       );
       await act(() => result.current.selectCompany('company-a'));
+      const rejectCompanyA = result.current.rejectCompanyContext;
 
       let pendingSelection!: Promise<void>;
       act(() => {
         pendingSelection = result.current.selectCompany('company-b');
       });
       await waitFor(() => expect(companyBRequests).toBe(1));
-      if (rejection === 'before')
-        act(() => result.current.rejectCompanyContext('company-a'));
-      if (failure === 'HTTP error')
+      if (rejection === 'before') act(() => rejectCompanyA('company-a'));
+      if (outcome === 'HTTP error')
         companyBSelection.resolve(new Response(null, { status: 500 }));
+      else if (outcome === 'denial')
+        companyBSelection.resolve(new Response(null, { status: 403 }));
       else companyBSelection.reject(new TypeError('network failed'));
       await act(() => pendingSelection);
       if (rejection === 'after') {
         expect(result.current.shellContext).toMatchObject({
           status: 'active',
-          companyContext: { status: 'error' },
+          companyContext:
+            outcome === 'denial'
+              ? {
+                  status: 'ready',
+                  companies: [{ id: 'company-a' }],
+                  recoveryMessage: 'selection-failed',
+                }
+              : { status: 'error' },
         });
-        act(() => result.current.rejectCompanyContext('company-a'));
+        act(() => rejectCompanyA('company-a'));
       }
 
-      expectRejectedCompanyARecovery(result.current.shellContext);
+      if (outcome === 'denial')
+        expectZeroCompanyRecovery(
+          result.current.shellContext,
+          rejection === 'before' ? 'selection-failed' : 'stale',
+        );
+      else expectRejectedCompanyARecovery(result.current.shellContext);
     },
   );
 });
@@ -161,6 +176,25 @@ function expectRejectedCompanyARecovery(
   expect(shellContext.companyContext).toMatchObject({
     selection: { status: 'idle' },
     recoveryMessage: 'stale',
+  });
+  expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
+}
+
+function expectZeroCompanyRecovery(
+  shellContext: ProductionShellContext,
+  recoveryMessage: 'stale' | 'selection-failed',
+): void {
+  expect(activeCompanyId(shellContext)).toBeUndefined();
+  expect(readyCompanies(shellContext)).toEqual([]);
+  if (
+    shellContext.status !== 'active' ||
+    shellContext.companyContext.status !== 'ready'
+  )
+    throw new Error('Expected ready zero-Company recovery context');
+  expect(shellContext.companyContext).toMatchObject({
+    cardinality: 'zero',
+    selection: { status: 'idle' },
+    recoveryMessage,
   });
   expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
 }

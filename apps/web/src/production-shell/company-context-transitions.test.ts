@@ -334,6 +334,98 @@ describe('Company context transitions', () => {
     expect(denied.actor.activeCompany).toBeUndefined();
   });
 
+  it('recovers a rejected active Company after a newer selection is denied', () => {
+    const active = activate(
+      [
+        { id: 'company-a', displayName: 'Company A' },
+        { id: 'company-b', displayName: 'Company B' },
+      ],
+      selectedActor('company-a', 'Company A'),
+    );
+    const selectionOrigin = requiredOrigin(active);
+    const selecting = transitionCompanyContext(active, {
+      type: 'selection-started',
+      origin: selectionOrigin,
+      companyId: 'company-b',
+    });
+    const denied = transitionCompanyContext(selecting, {
+      type: 'selection-denied',
+      origin: selectionOrigin,
+      companyId: 'company-b',
+    });
+
+    expect(denied).toMatchObject({
+      status: 'active',
+      companyContext: {
+        status: 'ready',
+        companies: [{ id: 'company-a' }],
+        rejectionCandidate: { companyId: 'company-a' },
+        recoveryMessage: 'selection-failed',
+      },
+    });
+    if (denied.status !== 'active') throw new Error('Expected active context');
+    expect(denied.actor.activeCompany).toBeUndefined();
+    for (const staleOrigin of [
+      { ...selectionOrigin, internalUserId: 'user-2' },
+      { ...selectionOrigin, workspaceId: 'workspace-2' },
+      { ...selectionOrigin, workspaceMembershipId: 'membership-2' },
+      {
+        ...selectionOrigin,
+        sessionGeneration: selectionOrigin.sessionGeneration - 1,
+      },
+    ]) {
+      expect(
+        transitionCompanyContext(denied, {
+          type: 'company-rejected',
+          origin: staleOrigin,
+          companyId: 'company-a',
+          activityLog: 'preserve',
+        }),
+      ).toBe(denied);
+    }
+    const withAnotherCompany = transitionCompanyContext(denied, {
+      type: 'company-included',
+      origin: requiredOrigin(denied),
+      company: { id: 'company-c', displayName: 'Company C' },
+    });
+    expect(
+      transitionCompanyContext(withAnotherCompany, {
+        type: 'company-rejected',
+        origin: selectionOrigin,
+        companyId: 'company-c',
+        activityLog: 'preserve',
+      }),
+    ).toBe(withAnotherCompany);
+
+    const rejected = transitionCompanyContext(denied, {
+      type: 'company-rejected',
+      origin: selectionOrigin,
+      companyId: 'company-a',
+      activityLog: 'preserve',
+    });
+    expect(rejected).toMatchObject({
+      status: 'active',
+      companyContext: {
+        status: 'ready',
+        cardinality: 'zero',
+        companies: [],
+        selection: { status: 'idle' },
+        recoveryMessage: 'stale',
+      },
+    });
+    if (rejected.status !== 'active')
+      throw new Error('Expected active context');
+    expect(rejected.actor.activeCompany).toBeUndefined();
+    expect(
+      transitionCompanyContext(rejected, {
+        type: 'company-rejected',
+        origin: requiredOrigin(rejected),
+        companyId: 'company-a',
+        activityLog: 'preserve',
+      }),
+    ).toBe(rejected);
+  });
+
   it('does not settle a pending selection for an older session generation', () => {
     const { origin, rejected } = rejectCompanyAWhileSelectingCompanyB();
 

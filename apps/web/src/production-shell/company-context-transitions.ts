@@ -9,6 +9,7 @@ interface ReadyCompanyContextState {
   status: 'ready';
   selection: { status: 'idle' } | { status: 'pending'; companyId: string };
   recoveryMessage?: 'stale' | 'selection-failed';
+  rejectionCandidate?: { companyId: string };
 }
 
 export type CompanyContextState =
@@ -197,15 +198,23 @@ export function transitionCompanyContext(
         )
       )
         return current;
+      const companies = withoutCompany(
+        current.companyContext.companies,
+        transition.companyId,
+      );
+      const rejectionCandidate =
+        transition.origin.activeCompanyId !== undefined &&
+        companies.some(({ id }) => id === transition.origin.activeCompanyId)
+          ? { companyId: transition.origin.activeCompanyId }
+          : undefined;
       return {
         ...current,
         actor: withoutActiveCompany(current.actor),
         companyContext: readyCompanyContext(
-          withoutCompany(
-            current.companyContext.companies,
-            transition.companyId,
-          ),
+          companies,
           'selection-failed',
+          { status: 'idle' },
+          rejectionCandidate,
         ),
       };
     }
@@ -242,11 +251,7 @@ export function transitionCompanyContext(
       };
     }
     case 'company-rejected': {
-      if (
-        !matchesOrigin(current, transition.origin) ||
-        current.actor.activeCompany?.id !== transition.companyId
-      )
-        return current;
+      if (!matchesCompanyRejectionOrigin(current, transition)) return current;
       const recoverableCompanies = recoveryCompanies(current.companyContext);
       if (recoverableCompanies === undefined) return current;
       return {
@@ -279,6 +284,7 @@ export function transitionCompanyContext(
           companies,
           current.companyContext.recoveryMessage,
           current.companyContext.selection,
+          current.companyContext.rejectionCandidate,
         ),
       };
     }
@@ -348,6 +354,32 @@ function matchesOrigin(
   );
 }
 
+function matchesCompanyRejectionOrigin(
+  context: ProductionShellContext,
+  transition: Extract<CompanyContextTransition, { type: 'company-rejected' }>,
+): context is Extract<ProductionShellContext, { status: 'active' }> {
+  if (
+    context.status !== 'active' ||
+    !matchesSessionOrigin(context, transition.origin)
+  )
+    return false;
+  const activeCompanyId = context.actor.activeCompany?.id;
+  if (activeCompanyId !== undefined)
+    return (
+      activeCompanyId === transition.companyId &&
+      transition.origin.activeCompanyId === activeCompanyId
+    );
+  return (
+    context.companyContext.status === 'ready' &&
+    context.companyContext.rejectionCandidate?.companyId ===
+      transition.companyId &&
+    transition.origin.activeCompanyId === transition.companyId &&
+    context.companyContext.companies.some(
+      ({ id }) => id === transition.companyId,
+    )
+  );
+}
+
 function matchesSessionOrigin(
   context: Extract<ProductionShellContext, { status: 'active' }>,
   origin: CompanyContextOrigin,
@@ -374,8 +406,14 @@ function readyCompanyContext(
   selection: Extract<CompanyContextState, { status: 'ready' }>['selection'] = {
     status: 'idle',
   },
+  rejectionCandidate?: { companyId: string },
 ): Extract<CompanyContextState, { status: 'ready' }> {
-  const shared = { status: 'ready' as const, selection, recoveryMessage };
+  const shared = {
+    status: 'ready' as const,
+    selection,
+    recoveryMessage,
+    ...(rejectionCandidate ? { rejectionCandidate } : {}),
+  };
   if (companies.length === 0)
     return { ...shared, cardinality: 'zero', companies: [] };
   if (companies.length === 1)
