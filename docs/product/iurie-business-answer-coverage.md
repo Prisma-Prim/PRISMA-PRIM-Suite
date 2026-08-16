@@ -426,7 +426,55 @@ These matters remain unsuitable for autonomous implementation:
 9. Decide whether to remap the independent interview sequence to official IDs or formally version the question bank with a second namespace.
 10. Re-interview compound “yes” answers when they would create blocking permissions, automatic enforcement, legal/financial consequences or irreversible workflow rules.
 
-## 8. Decision sufficiency and follow-up protocol
+## 8. Prioritized targeted follow-up packages
+
+These are completion packages for existing answers, not a restart of the questionnaire.
+
+### P0 — Cross-Company confidentiality boundary
+
+1. **Initial evidence:** [S01-Q06, session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831). Iurie answered `Da` to future PRISMA-PRIM employees seeing only PRISMA-PRIM activity rather than BIC Contracts and money.
+2. **Already understood:** Company users must not automatically see another Company's operational activity.
+3. **Exact insufficiency:** the answer confirms one example but not the complete categories, metadata visibility or exceptions.
+4. **Business reason:** the boundary controls confidentiality and prevents cross-Company information leakage.
+5. **Blocked authority/risk:** Company/RBAC and Shared Client PRDs; a wrong assumption could expose Contracts, prices, finance, audit or Certificate data.
+6. **Minimal Romanian follow-up:** „Pentru un utilizator care lucrează numai la PRISMA-PRIM, ce categorii concrete de informații despre activitatea BIC trebuie să fie complet invizibile și există vreo excepție?”
+7. **Neutral examples if needed:** Contract, preț, factură/plată, audit, certificat, numele Proiectului; ask Iurie to correct the list rather than accept it wholesale.
+8. **Closure condition:** identifies the hidden categories, whether harmless shared metadata remains visible, and who may authorize an exception.
+
+### P0 — Business actions requiring attributable history
+
+1. **Initial evidence:** [S01-Q09, session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831). Iurie confirmed traceability for Dan or Valentin's technical interventions.
+2. **Already understood:** technical access and changes must retain actor and time.
+3. **Exact insufficiency:** the official question asks which important business actions need actor, dossier and time; only technical intervention was covered.
+4. **Business reason:** Activity Log scope must reflect accountability for consequential business changes without logging everything indiscriminately.
+5. **Blocked authority/risk:** Activity Log coverage in Company/RBAC and later capability PRDs; under-logging loses accountability, over-logging creates noise and privacy cost.
+6. **Minimal Romanian follow-up:** „În afară de intervențiile tehnice, care acțiuni de business trebuie să păstreze obligatoriu cine le-a făcut, în ce dosar și când?”
+7. **Neutral examples if needed:** approval of an Offer/Contract, price change, official Document correction, Project closure, access change.
+8. **Closure condition:** names the material action families and any actions that explicitly do not need business audit history.
+
+### P0 — Initial Project categories
+
+1. **Initial evidence:** [S02-Q07, session 3](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307050946). Iurie confirmed that simultaneous Projects need separate responsibility, status, deadlines and Documents.
+2. **Already understood:** each real job is tracked as its own Project record.
+3. **Exact insufficiency:** the response does not enumerate the real Project types required for PRISMA-PRIM, BIC and ECG.
+4. **Business reason:** categories determine which workflow examples and Task templates must be specified first.
+5. **Blocked authority/risk:** Release 1 Project/Task PRD; invented categories could encode the wrong workflow.
+6. **Minimal Romanian follow-up:** „Care sunt tipurile de proiect pe care trebuie să le poată crea prima versiune pentru PRISMA-PRIM, BIC și ECG?”
+7. **Neutral examples if needed:** ask for current team terminology and one representative case per type; do not propose a final taxonomy.
+8. **Closure condition:** provides a bounded first-release list, responsible Company and one representative example per category.
+
+### P1 — Official numbering lifecycle
+
+1. **Initial evidence:** [S03-Q11/Q12, session 6](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307131730). Iurie confirmed tracked official numbers with no duplicates or unexplained gaps.
+2. **Already understood:** Contracts, reports, Certificates and minutes may require governed unique numbering.
+3. **Exact insufficiency:** the answer does not say when each number is assigned or what happens to a reserved, unused or abandoned number.
+4. **Business reason:** assignment and cancellation rules affect official registers and correction history.
+5. **Blocked authority/risk:** Document Registry/governance PRDs; reuse or silent deletion could make official records ambiguous.
+6. **Minimal Romanian follow-up:** „Pentru fiecare document numerotat, în ce moment se atribuie numărul și cum se marchează un număr rezervat care nu mai este folosit?”
+7. **Neutral examples if needed:** reserved, cancelled, issued in error; do not suggest reuse or non-reuse as the answer.
+8. **Closure condition:** establishes assignment moment, disposition, reuse policy and required reason/history.
+
+## 9. Decision sufficiency and follow-up protocol
 
 Formal bank completeness and the amount of evidence actually needed for a product decision are different measures. Do not mechanically re-ask every partial question.
 
@@ -438,8 +486,8 @@ Classify each gap as one of:
 - **Iurie follow-up required** — ask a short targeted question when the gap affects a business rule, exception, authorization, legal or financial effect, blocking automation or a decision difficult to reverse.
 - **Dan/technical decision** — do not ask Iurie to choose architecture, data structures, provider mechanics or another technical/product-design mechanism.
 
-When a material gap is discovered only during consolidation, prepare a short prioritized follow-up list for Iurie's agent. State exactly what is missing, why it matters and which prior evidence must not be repeated. Avoid redundant or purely technical questions.
+When a material gap is discovered only during consolidation, prepare a short prioritized completion package for Iurie's agent. It must include the initial question/answer and provenance; what is already understood; the exact insufficiency; the concrete business reason; the blocked decision/PRD/issue or risk; one minimal natural Romanian follow-up; neutral examples only if useful; and the closure condition. Avoid redundant or purely technical questions. Make clear that the agent is completing an insufficient prior answer, not restarting the questionnaire.
 
-## 9. Update protocol
+## 10. Update protocol
 
 Future interview comments should use official IDs whenever possible. A new source may move a row from unmapped or partial only when its provenance and semantic coverage are explicit. Corrections must retain links to superseded evidence. Implementation issues must cite the updated canonical PRD, not this matrix or a raw interview comment as their sole behavioural authority.
