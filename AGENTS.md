@@ -47,8 +47,16 @@ For product UI work, ground visual decisions in `/ui-baseline` and the assigned 
 - Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
 - Review the actual finished diff twice: first against repository Standards, then against the originating issue or Spec. Fix every material finding before publication.
 - Keep scope explicit. Record valuable follow-up work for a separate issue rather than implementing it silently.
-- Run `thermo-nuclear-code-quality-review` after structurally significant slices and at milestone boundaries when that repository skill is available, not as a reason to expand every small issue.
-- Run `improve-codebase-architecture` periodically after several business slices exist when that repository skill is available. Treat its output as candidate work requiring a separate decision or issue.
+### Deep-review trigger matrix
+
+Standards and Spec reviews remain mandatory for every implementation issue. Add heavier review only under these explicit conditions:
+
+- Run `thermos`—both the correctness/security review and the code-quality review—when a pull request changes authorization or permission enforcement, a database migration/backfill/contract path, concurrency or transaction semantics, secrets or trust boundaries, feature-gate behavior, deployment/CI/runtime behavior, or a public interface used by more than one owning module.
+- Also run `thermos` when a pull request is explicitly classified as foundational or structurally significant in its issue, or when Standards/Spec review finds a plausible cross-module regression or security risk.
+- Do not run `thermos` merely for documentation-only, formatting-only, dependency-free test-only, or narrow local changes unless they touch one of the risks above.
+- Run `thermo-nuclear-code-quality-review` alone only when maintainability is the named concern and correctness/security is already covered; otherwise prefer the combined `thermos` pass.
+- Run `improve-codebase-architecture` at a milestone boundary after at least three related business slices have merged, or earlier when repeated edits cross the same module seams, authorization logic is duplicated, an interface becomes nearly as complex as its implementation, or a changed file is being pushed beyond 1,000 lines.
+- Never run `improve-codebase-architecture` as a per-PR merge gate. Publish its findings as candidate work requiring a separate product/architecture decision and issue; do not broaden the active feature PR with opportunistic refactoring.
 
 ## Agent environment retrospective
 
