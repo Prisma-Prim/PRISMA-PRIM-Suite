@@ -85,7 +85,7 @@ Preserve existing Workspace/Internal User identities and Clerk subject mappings.
 - [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) uses the PostgreSQL migration and Access REST seams to prove explicit membership resolution, bootstrap migration, safe missing-membership denial, and preservation of #22 behaviour.
 - [Issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) uses the public Company REST and authorization interfaces to prove that only the bootstrap Workspace Owner can register and view a provider Company in the current Workspace and that registration records one Activity Log event.
 - [Issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) uses REST and browser seams to prove visible selection among authorized active Companies, server revalidation on every protected request, and non-leaking invalid or stale selection recovery.
-- The next business-independent slice uses REST and browser seams to prove that a Workspace Owner can grant or revoke one narrow Company-context assignment for an existing active Workspace Membership. The assignment permits only listing and selecting that active Company; it grants no Client, Project, Document, finance or other domain capability.
+- The next business-independent slice uses REST and browser seams to prove that a Workspace Owner can grant or revoke one narrow Company Context Access Role Assignment for an existing active Workspace Membership. The assignment permits only listing and selecting that active Company; it grants no Client, Project, Document, finance or other domain capability.
 - Cross-cutting migration, isolation, denial, metadata-leakage, and database-constraint cases remain owned by the Tenant, Company, Shared Client and Authorization PRD.
 
 ## 12. Acceptance journey
@@ -112,14 +112,14 @@ Question source: S00 and S01.
 
 ## 15. Readiness
 
-The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). One further business-independent slice is approved: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That assignment permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability. Real role assignments, finalized templates and permission bundles, “All Companies,” consolidated oversight, broader deactivation rules, and exceptional access remain blocked on first-tenant evidence.
+The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). One further business-independent slice is approved: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That named Company-scoped permission bundle permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability. Every role assignment and permission bundle beyond Company Context Access, finalized templates, “All Companies,” consolidated oversight, broader deactivation rules, and exceptional access remain blocked on first-tenant evidence.
 
 ## 16. Interview evidence reconciliation (2026-08-16)
 
 **Approved product decision (2026-08-16)**
 
-- A Workspace Owner may grant or revoke one narrow Company-context assignment for an existing active Workspace Membership.
-- The assignment allows the member to list and select that active Company after server revalidation; it grants no business-domain permission.
+- A Workspace Owner may grant or revoke one narrow Company Context Access Role Assignment for an existing active Workspace Membership.
+- The canonical Role Assignment mechanism grants the named `Company Context Access` bundle at Company scope. It allows the member to list and select only that active Company after server revalidation; it grants no business-domain permission.
 - Grant and revocation are attributable Activity Log events. Default denial, Workspace isolation and metadata-safe failures remain mandatory.
 
 **Confirmed evidence**
