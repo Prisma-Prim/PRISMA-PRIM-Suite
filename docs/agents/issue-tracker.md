@@ -24,4 +24,6 @@ Every implementation issue contains:
 6. Required test seams and verification commands.
 7. Relevant context or ADR pointers.
 
+For issues that cross a high-risk technical boundary, also use the compact [complex-feature execution-note template](complex-feature-preflight-template.md). It may live in the issue, an agent brief, or a linked authoritative document; simple low-risk tickets declare the documented exemption instead of copying the matrix.
+
 GitHub Issues and pull requests share one number space. Resolve an ambiguous reference before acting.
