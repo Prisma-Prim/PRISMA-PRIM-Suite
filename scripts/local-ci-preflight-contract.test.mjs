@@ -40,19 +40,23 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     'test:preflight:playwright',
   ]) {
     assert.equal(typeof packageJson.scripts[script], 'string');
-    assert.match(earlyCi, new RegExp(`pnpm ${script.replaceAll(':', '\\:')}`));
+    assert.match(fullCi, new RegExp(`pnpm ${script.replaceAll(':', '\\:')}`));
   }
+  assert.match(fullCi, /workflow_call:/);
   assert.match(fullCi, /run: pnpm test/);
   assert.match(apiPackage.scripts.test, /test:postgres:serial/);
   assert.match(webPackage.scripts.test, /playwright test/);
   assert.equal(
-    earlyCi.match(/uses: \.\/\.github\/actions\/setup-verification/g)?.length,
+    earlyCi.match(/uses: \.\/\.github\/workflows\/ci\.yml/g)?.length,
     1,
   );
+  assert.match(earlyCi, /mode: preflight/);
   assert.equal(
     fullCi.match(/uses: \.\/\.github\/actions\/setup-verification/g)?.length,
     1,
   );
+  assert.match(fullCi, /image: postgres:17-alpine/);
+  assert.doesNotMatch(earlyCi, /postgres:17|DATABASE_URL/);
   assert.match(setup, /pnpm install --frozen-lockfile/);
   assert.match(setup, /playwright install --with-deps chromium/);
 });

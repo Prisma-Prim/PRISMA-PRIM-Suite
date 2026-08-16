@@ -8,39 +8,6 @@ permissions:
 
 jobs:
   database-and-browser-seams:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: prisma_prim_dev
-          POSTGRES_USER: prisma_prim
-          POSTGRES_PASSWORD: prisma_prim
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U prisma_prim -d prisma_prim_dev"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
-      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
-      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
-
-    steps:
-      - name: Check out exact requested head
-        uses: actions/checkout@v4
-
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
-
-      - name: Verify preflight prerequisites
-        run: pnpm preflight:local --check-only
-
-      - name: Run canonical PostgreSQL and migration preflight
-        run: pnpm test:preflight:postgres
-
-      - name: Run canonical desktop and narrow Playwright preflight
-        run: pnpm test:preflight:playwright
+    uses: ./.github/workflows/ci.yml
+    with:
+      mode: preflight
