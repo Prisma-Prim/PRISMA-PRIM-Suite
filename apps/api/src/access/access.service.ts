@@ -23,6 +23,7 @@ import {
   type AccessAdmission,
   type AccessAdmissionDecision,
 } from './access-admission.js';
+import { CompanyPermissionResolver } from './company-permission-resolver.js';
 
 @Injectable()
 export class AccessService {
@@ -33,6 +34,7 @@ export class AccessService {
     private readonly admission: AccessAdmission,
     @Inject(ACTIVE_COMPANY_CONTEXT_LOOKUP)
     private readonly activeCompanyContexts: ActiveCompanyContextLookup,
+    private readonly companyPermissions: CompanyPermissionResolver,
   ) {}
 
   async resolveActor(
@@ -158,18 +160,28 @@ export class AccessService {
       };
 
       actor.companyContextAvailable =
-        await this.activeCompanyContexts.hasAnyActive(
-          actor.workspaceId,
-          actor.workspaceMembershipId,
-          actor.workspacePermissions.includes('company.manage'),
-        );
+        actor.workspacePermissions.includes('company.manage') ||
+        (
+          await this.companyPermissions.listCompanyIds(
+            actor.workspaceId,
+            actor.workspaceMembershipId,
+            'company.context.use',
+          )
+        ).length > 0;
 
       if (requestedCompanyId !== undefined) {
+        const canUseCompany =
+          actor.workspacePermissions.includes('company.manage') ||
+          (await this.companyPermissions.has(
+            actor.workspaceId,
+            actor.workspaceMembershipId,
+            requestedCompanyId,
+            'company.context.use',
+          ));
+        if (!canUseCompany) throw new ForbiddenException();
         const activeCompany = await this.activeCompanyContexts.findActive(
           actor.workspaceId,
-          actor.workspaceMembershipId,
           requestedCompanyId,
-          actor.workspacePermissions.includes('company.manage'),
         );
         if (!activeCompany) throw new ForbiddenException();
         actor.activeCompany = activeCompany;

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Headers,
   Param,
   Post,
   Req,
@@ -22,17 +23,20 @@ export class CompanyContextAssignmentController {
   @Post()
   grant(
     @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: { workspaceMembershipId?: unknown; companyId?: unknown },
   ): Promise<CompanyContextAssignmentRecord> {
     return this.assignments.grant(request.actorContext!, {
       workspaceMembershipId: body?.workspaceMembershipId,
       companyId: body?.companyId,
+      idempotencyKey,
     });
   }
 
   @Delete(':workspaceMembershipId/:companyId')
   revoke(
     @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('workspaceMembershipId') workspaceMembershipId: string,
     @Param('companyId') companyId: string,
   ): Promise<CompanyContextAssignmentRecord> {
@@ -40,6 +44,7 @@ export class CompanyContextAssignmentController {
       request.actorContext!,
       workspaceMembershipId,
       companyId,
+      idempotencyKey,
     );
   }
 }

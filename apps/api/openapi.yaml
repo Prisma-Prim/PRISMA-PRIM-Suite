@@ -136,6 +136,8 @@ paths:
       summary: Grant the fixed Company Context Access bundle to an active Workspace Membership
       tags:
         - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -162,6 +164,7 @@ paths:
       tags:
         - Access
       parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
         - in: path
           name: workspaceMembershipId
           required: true
@@ -189,6 +192,14 @@ paths:
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
 components:
   parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      description: A caller-scoped command key whose replay returns the original assignment result.
+      schema:
+        type: string
+        minLength: 1
     CompanyContextId:
       in: header
       name: X-Company-Context-Id

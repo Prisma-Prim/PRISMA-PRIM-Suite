@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:parallel && pnpm test:postgres:serial",
-    "test:parallel": "vitest run --exclude src/access/access.rest.test.ts --exclude src/access/workspace-membership.migration.test.ts --exclude src/company/company.rest.test.ts",
+    "test:parallel": "vitest run --exclude src/access/access.rest.test.ts --exclude src/access/company-context-assignment.rest.test.ts --exclude src/access/workspace-membership.migration.test.ts --exclude src/company/company.rest.test.ts",
     "test:postgres:serial": "vitest run --no-file-parallelism src/access/access.rest.test.ts src/access/company-context-assignment.rest.test.ts src/access/workspace-membership.migration.test.ts src/company/company.rest.test.ts",
     "test:access:postgres": "REQUIRE_ACCESS_POSTGRES=true vitest run src/access/access.rest.test.ts src/access/workspace-membership.migration.test.ts",
     "test:company:postgres": "REQUIRE_COMPANY_POSTGRES=true vitest run src/company/company.rest.test.ts",

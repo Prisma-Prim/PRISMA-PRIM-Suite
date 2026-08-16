@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   foreignKey,
   jsonb,
@@ -29,6 +30,10 @@ export const workspacePermission = pgEnum('workspace_permission', [
 export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_context_access',
 ]);
+export const companyContextAssignmentOperation = pgEnum(
+  'company_context_assignment_operation',
+  ['grant', 'revoke'],
+);
 
 export const companyStatus = pgEnum('company_status', ['active', 'inactive']);
 
@@ -202,6 +207,7 @@ export const companyRoleAssignments = pgTable(
       .defaultNow()
       .notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    transitionId: uuid('transition_id').defaultRandom().notNull(),
   },
   (table) => [
     uniqueIndex('company_role_assignments_scope_unique').on(
@@ -228,6 +234,60 @@ export const companyRoleAssignments = pgTable(
         workspaceMemberships.workspaceId,
         workspaceMemberships.id,
       ],
+    }),
+  ],
+);
+
+export const companyContextAssignmentCommands = pgTable(
+  'company_context_assignment_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    operation: companyContextAssignmentOperation('operation').notNull(),
+    targetWorkspaceMembershipId: uuid(
+      'target_workspace_membership_id',
+    ).notNull(),
+    companyId: uuid('company_id').notNull(),
+    resultAssignmentId: uuid('result_assignment_id'),
+    resultActive: boolean('result_active').notNull(),
+    transitionId: uuid('transition_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('company_context_assignment_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'company_context_assignment_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_target_membership_fk',
+      columns: [table.workspaceId, table.targetWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_result_fk',
+      columns: [table.resultAssignmentId],
+      foreignColumns: [companyRoleAssignments.id],
     }),
   ],
 );

@@ -9,4 +9,5 @@ export interface CompanyContextAssignmentRecord {
 export interface GrantCompanyContextAssignmentCommand {
   workspaceMembershipId: unknown;
   companyId: unknown;
+  idempotencyKey: string | undefined;
 }

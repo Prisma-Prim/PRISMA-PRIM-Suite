@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DatabaseModule } from '../database/database.module.js';
 import {
   ACCESS_ADMISSION,
   configuredAccessAdmission,
 } from './access-admission.js';
+import { CompanyPermissionResolver } from './company-permission-resolver.js';
 
 @Module({
+  imports: [DatabaseModule],
   providers: [
+    CompanyPermissionResolver,
     {
       provide: ACCESS_ADMISSION,
       inject: [ConfigService],
@@ -30,6 +34,6 @@ import {
         }),
     },
   ],
-  exports: [ACCESS_ADMISSION],
+  exports: [ACCESS_ADMISSION, CompanyPermissionResolver],
 })
 export class AccessModule {}

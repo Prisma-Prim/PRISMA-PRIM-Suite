@@ -14,6 +14,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
   let origin: string;
   let pool: Pool;
   let applicationPool: Pool;
+  let commandSequence = 0;
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
@@ -67,6 +68,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       headers: {
         ...identityHeaders('workspace-owner', 'Owner'),
         'content-type': 'application/json',
+        'idempotency-key': 'grant-assigned-company',
       },
       body: JSON.stringify({
         workspaceMembershipId: member.workspaceMembershipId,
@@ -102,7 +104,10 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
       {
         method: 'DELETE',
-        headers: identityHeaders('workspace-owner', 'Owner'),
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'idempotency-key': 'revoke-assigned-company',
+        },
       },
     );
     expect(revoke.status).toBe(200);
@@ -135,6 +140,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
         headers: {
           ...identityHeaders('workspace-owner', 'Owner'),
           'content-type': 'application/json',
+          'idempotency-key': 'concurrent-grant',
         },
         body: JSON.stringify({
           workspaceMembershipId: member.workspaceMembershipId,
@@ -149,7 +155,10 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
         `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
         {
           method: 'DELETE',
-          headers: identityHeaders('workspace-owner', 'Owner'),
+          headers: {
+            ...identityHeaders('workspace-owner', 'Owner'),
+            'idempotency-key': 'concurrent-revoke',
+          },
         },
       );
     const revokes = await Promise.all([revokeRequest(), revokeRequest()]);
@@ -162,6 +171,60 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       { action: 'company_context_assignment.granted', count: '1' },
       { action: 'company_context_assignment.revoked', count: '1' },
     ]);
+  });
+
+  it('replays delayed commands without changing a newer assignment generation', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Replay Company');
+    const post = (key: string) =>
+      fetch(`${origin}/api/company-context-assignments`, {
+        method: 'POST',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify({
+          workspaceMembershipId: member.workspaceMembershipId,
+          companyId: company.id,
+        }),
+      });
+    const remove = (key: string) =>
+      fetch(
+        `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            ...identityHeaders('workspace-owner', 'Owner'),
+            'idempotency-key': key,
+          },
+        },
+      );
+
+    await post('grant-generation-one');
+    await remove('revoke-generation-one');
+    expect((await post('grant-generation-one')).status).toBe(201);
+    await expect(
+      activeAssignmentCount(member.workspaceMembershipId, company.id),
+    ).resolves.toBe('0');
+
+    await post('grant-generation-two');
+    expect((await remove('revoke-generation-one')).status).toBe(200);
+    await expect(
+      activeAssignmentCount(member.workspaceMembershipId, company.id),
+    ).resolves.toBe('1');
+
+    for (let generation = 3; generation <= 5; generation += 1) {
+      await remove(`revoke-generation-${generation}`);
+      await post(`grant-generation-${generation}`);
+    }
+    const transitions = await pool.query<{ transition_id: string }>(
+      `SELECT DISTINCT transition_id FROM company_context_assignment_commands
+       WHERE workspace_id = $1`,
+      [(await currentActor('workspace-owner', 'Owner')).workspaceId],
+    );
+    expect(transitions.rows).toHaveLength(10);
   });
 
   it('uses one metadata-safe denial for unauthorized actors and invalid grant targets', async () => {
@@ -294,6 +357,74 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
         company.id,
       ),
     );
+    await expectForbidden(
+      await fetch(
+        `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            ...identityHeaders('workspace-member', 'Member'),
+            'idempotency-key': 'recipient-must-not-revoke',
+          },
+        },
+      ),
+    );
+  });
+
+  it('requires active same-Workspace targets when revoking', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Revocation Boundary Company');
+    await grantAs('workspace-owner', member.workspaceMembershipId, company.id);
+    const revoke = (
+      key: string,
+      membershipId = member.workspaceMembershipId,
+      companyId = company.id,
+    ) =>
+      fetch(
+        `${origin}/api/company-context-assignments/${membershipId}/${companyId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            ...identityHeaders('workspace-owner', 'Owner'),
+            'idempotency-key': key,
+          },
+        },
+      );
+
+    await pool.query(
+      `UPDATE internal_users SET status = 'inactive'
+       WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+      [member.workspaceMembershipId],
+    );
+    await expectForbidden(await revoke('inactive-user-revoke'));
+    await pool.query(
+      `UPDATE internal_users SET status = 'active'
+       WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+      [member.workspaceMembershipId],
+    );
+    await pool.query(
+      "UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1",
+      [member.workspaceMembershipId],
+    );
+    await expectForbidden(await revoke('inactive-membership-revoke'));
+    await pool.query(
+      "UPDATE workspace_memberships SET status = 'active' WHERE id = $1",
+      [member.workspaceMembershipId],
+    );
+    await pool.query("UPDATE companies SET status = 'inactive' WHERE id = $1", [
+      company.id,
+    ]);
+    await expectForbidden(await revoke('inactive-company-revoke'));
+    await pool.query("UPDATE companies SET status = 'active' WHERE id = $1", [
+      company.id,
+    ]);
+    await expectForbidden(
+      await revoke(
+        'unknown-target-revoke',
+        '00000000-0000-4000-8000-000000000099',
+      ),
+    );
   });
 
   it('rolls back grant and revoke when their Activity Log event cannot be recorded', async () => {
@@ -328,7 +459,10 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
       {
         method: 'DELETE',
-        headers: identityHeaders('workspace-owner', 'Owner'),
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'idempotency-key': 'rollback-revoke',
+        },
       },
     );
     expect(failedRevoke.status).toBe(500);
@@ -366,6 +500,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       headers: {
         ...identityHeaders(subject, subject),
         'content-type': 'application/json',
+        'idempotency-key': `test-command-${++commandSequence}`,
       },
       body: JSON.stringify({ workspaceMembershipId, companyId }),
     });
