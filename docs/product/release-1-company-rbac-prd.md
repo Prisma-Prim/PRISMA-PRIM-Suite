@@ -119,7 +119,7 @@ The PRD is structurally complete. Its delivered business-independent sequence is
 **Approved product decision (2026-08-16)**
 
 - A Workspace Owner may grant or revoke one narrow Company Context Access Role Assignment for an existing active Workspace Membership.
-- The canonical Role Assignment mechanism grants the named `Company Context Access` bundle at Company scope. It allows the member to list and select only that active Company after server revalidation; it grants no business-domain permission.
+- The canonical Role Assignment mechanism grants the named `Company Context Access` bundle at Company scope. That bundle contains only `company.context.use`, allowing the member to list and select only that active Company after server revalidation; it grants no business-domain permission.
 - Grant and revocation are attributable Activity Log events. Default denial, Workspace isolation and metadata-safe failures remain mandatory.
 
 **Confirmed evidence**
@@ -136,4 +136,4 @@ The PRD is structurally complete. Its delivered business-independent sequence is
 - Exact first-tenant role bundles, the complete approval and audit-trail sets, approval delegation, deactivation behaviour and exceptional-access rules are not complete.
 - Compound confirmations do not yet constitute a testable permission matrix.
 
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1–2; [coverage matrix](iurie-business-answer-coverage.md). These statements narrow the evidence blockers but do not authorize the deferred assignment, role-matrix or consolidated-view implementation children.
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1–2; [coverage matrix](iurie-business-answer-coverage.md). These statements narrow the evidence blockers but do not authorize any assignment beyond the approved `Company Context Access` slice, any broader role matrix, or any consolidated-view implementation child.
