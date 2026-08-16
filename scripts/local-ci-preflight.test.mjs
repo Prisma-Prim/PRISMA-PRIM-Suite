@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  commandsForRunnableVerifications,
   createPreflightPlan,
   formatPreflightReport,
 } from './local-ci-preflight.mjs';
@@ -63,6 +64,7 @@ test('marks PostgreSQL, migration, desktop, and narrow seams runnable when prere
       },
     ],
   );
+  assert.match(formatPreflightReport(plan), /LOCAL AND FULL CI postgres-smoke/);
 });
 
 test('reports actionable local blockers and delegates the same seams to early CI', () => {
@@ -97,6 +99,24 @@ test('reports actionable local blockers and delegates the same seams to early CI
   assert.match(report, /BLOCKED LOCALLY WITH REASON postgres-smoke/);
   assert.match(report, /DELEGATED TO EARLY CI playwright-narrow/);
   assert.match(report, /gh workflow run early-ci\.yml --ref <branch>/);
+});
+
+test('keeps runnable browser verification scheduled when PostgreSQL is delegated', () => {
+  const plan = createPreflightPlan({
+    doctorChecks: healthyChecks.map((check) =>
+      check.id === 'postgres'
+        ? {
+            ...check,
+            status: 'FAIL',
+            summary: 'PostgreSQL is unavailable.',
+          }
+        : check,
+    ),
+  });
+
+  assert.deepEqual(commandsForRunnableVerifications(plan), [
+    'test:preflight:playwright',
+  ]);
 });
 
 test('blocks every seam when the shared runtime cannot execute repository scripts', () => {

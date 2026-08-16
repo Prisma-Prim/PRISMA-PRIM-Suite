@@ -134,13 +134,19 @@ export function formatPreflightReport(plan) {
   const lines = ['Local CI preflight'];
   for (const seam of plan.seams) {
     lines.push(`${label(seam.localStatus)} ${seam.id}: ${seam.reason}`);
-    if (seam.authority === 'delegated-to-early-ci') {
-      lines.push(
-        `${label(seam.authority)} ${seam.id}: run ${plan.earlyCiCommand}`,
-      );
-    }
+    lines.push(
+      seam.authority === 'delegated-to-early-ci'
+        ? `${label(seam.authority)} ${seam.id}: run ${plan.earlyCiCommand}`
+        : `${label(seam.authority)} ${seam.id}: local evidence is repeated by normal CI`,
+    );
   }
   return lines.join('\n');
+}
+
+export function commandsForRunnableVerifications(plan) {
+  return plan.verifications
+    .filter((verification) => verification.localStatus === 'runnable-locally')
+    .map((verification) => verification.command);
 }
 
 function packageScriptInvocation(script) {
@@ -182,15 +188,12 @@ export function main() {
   const blocked = plan.seams.some(
     (seam) => seam.localStatus === 'blocked-locally-with-reason',
   );
-  if (blocked) {
-    process.exitCode = 2;
+  if (checkOnly) {
+    if (blocked) process.exitCode = 2;
     return;
   }
-  if (checkOnly) return;
 
-  const scripts = plan.verifications
-    .filter((verification) => verification.localStatus === 'runnable-locally')
-    .map((verification) => verification.command);
+  const scripts = commandsForRunnableVerifications(plan);
   for (const script of scripts) {
     process.stdout.write(`RUNNABLE LOCALLY ${script}: starting\n`);
     const result = runPackageScript(script);
@@ -205,6 +208,10 @@ export function main() {
       process.exitCode = result.status ?? 1;
       return;
     }
+  }
+
+  if (blocked) {
+    process.exitCode = 2;
   }
 }
 
