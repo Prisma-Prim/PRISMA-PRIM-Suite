@@ -3,13 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
 import type { ActorContext } from '../access/access.types.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { COMPANY_REGISTERED_ACTION } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { companies } from '../database/schema/index.js';
+import { companies, companyRoleAssignments } from '../database/schema/index.js';
 import type { CompanyRecord, RegisterCompanyCommand } from './company.types.js';
 
 @Injectable()
@@ -68,10 +68,23 @@ export class CompanyService {
   }
 
   async listVisible(actor: ActorContext): Promise<CompanyRecord[]> {
-    requireWorkspacePermission(actor, 'company.manage');
-    const visibleCompanies = await this.databaseContext.connection
-      .select()
-      .from(companies)
+    const base = this.databaseContext.connection.select().from(companies);
+    const source = actor.workspacePermissions.includes('company.manage')
+      ? base
+      : base.innerJoin(
+          companyRoleAssignments,
+          and(
+            eq(companyRoleAssignments.workspaceId, companies.workspaceId),
+            eq(companyRoleAssignments.companyId, companies.id),
+            eq(
+              companyRoleAssignments.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(companyRoleAssignments.bundle, 'company_context_access'),
+            isNull(companyRoleAssignments.revokedAt),
+          ),
+        );
+    const visibleCompanies = await source
       .where(
         and(
           eq(companies.workspaceId, actor.workspaceId),
@@ -79,7 +92,9 @@ export class CompanyService {
         ),
       )
       .orderBy(asc(companies.displayName), asc(companies.id));
-    return visibleCompanies.map(toCompanyRecord);
+    return visibleCompanies.map((row) =>
+      toCompanyRecord('companies' in row ? row.companies : row),
+    );
   }
 
   async get(actor: ActorContext, companyId: string): Promise<CompanyRecord> {

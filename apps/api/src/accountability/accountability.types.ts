@@ -3,6 +3,10 @@ import type { ActorContext } from '../access/access.types.js';
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
 export const COMPANY_REGISTERED_ACTION = 'company.registered' as const;
+export const COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION =
+  'company_context_assignment.granted' as const;
+export const COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION =
+  'company_context_assignment.revoked' as const;
 
 export type CanonicalActivityEvent =
   | {
@@ -24,12 +28,30 @@ export type CanonicalActivityEvent =
         companyId: string;
       };
       metadata: Record<string, never>;
+    }
+  | {
+      actor: ActorContext;
+      action:
+        | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+        | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
+      target: {
+        type: 'company_role_assignment';
+        assignmentId: string;
+        companyId: string;
+        workspaceMembershipId: string;
+        internalUserId: string;
+      };
+      metadata: { bundle: 'Company Context Access' };
+      transitionId: string;
     };
 
 export interface ActivityLogEvent {
   id: string;
   action:
-    typeof INTERNAL_USER_PROVISIONED_ACTION | typeof COMPANY_REGISTERED_ACTION;
+    | typeof INTERNAL_USER_PROVISIONED_ACTION
+    | typeof COMPANY_REGISTERED_ACTION
+    | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+    | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
   occurredAt: string;
   actor: {
     internalUserId: string;
@@ -45,8 +67,20 @@ export interface ActivityLogEvent {
         type: 'company';
         companyId: string;
         displayName: string;
+      }
+    | {
+        type: 'company_role_assignment';
+        assignmentId: string;
+        companyId: string;
+        companyDisplayName: string;
+        workspaceMembershipId: string;
+        internalUserId: string;
+        internalUserDisplayName: string;
       };
-  metadata: { identityProvider: string } | Record<string, never>;
+  metadata:
+    | { identityProvider: string }
+    | { bundle: 'Company Context Access' }
+    | Record<string, never>;
 }
 
 export interface ActivityLogPage {

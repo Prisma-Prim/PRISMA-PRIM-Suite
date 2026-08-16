@@ -41,18 +41,33 @@ export class AccountabilityService {
         targetInternalUserId:
           event.target.type === 'internal_user'
             ? event.target.internalUserId
-            : null,
+            : event.target.type === 'company_role_assignment'
+              ? event.target.internalUserId
+              : null,
         targetWorkspaceMembershipId:
           event.target.type === 'internal_user'
             ? event.actor.workspaceMembershipId
-            : null,
+            : event.target.type === 'company_role_assignment'
+              ? event.target.workspaceMembershipId
+              : null,
         targetCompanyId:
-          event.target.type === 'company' ? event.target.companyId : null,
+          event.target.type === 'company' ||
+          event.target.type === 'company_role_assignment'
+            ? event.target.companyId
+            : null,
+        targetCompanyRoleAssignmentId:
+          event.target.type === 'company_role_assignment'
+            ? event.target.assignmentId
+            : null,
         metadata: event.metadata,
         idempotencyKey:
           event.target.type === 'internal_user'
             ? `${event.action}:${event.target.internalUserId}`
-            : `${event.action}:${event.target.companyId}`,
+            : event.target.type === 'company'
+              ? `${event.action}:${event.target.companyId}`
+              : `${event.action}:${event.target.assignmentId}:${
+                  'transitionId' in event ? event.transitionId : ''
+                }`,
       })
       .onConflictDoNothing({ target: activityLogEvents.idempotencyKey });
   }
@@ -83,6 +98,10 @@ export class AccountabilityService {
         actorInternalUserId: eventActor.id,
         actorDisplayName: eventActor.displayName,
         targetType: activityLogEvents.targetType,
+        targetCompanyRoleAssignmentId:
+          activityLogEvents.targetCompanyRoleAssignmentId,
+        targetWorkspaceMembershipId:
+          activityLogEvents.targetWorkspaceMembershipId,
         targetInternalUserId: eventTarget.id,
         targetInternalUserDisplayName: eventTarget.displayName,
         targetCompanyId: eventTargetCompany.id,
@@ -147,11 +166,21 @@ export class AccountabilityService {
                 internalUserId: event.targetInternalUserId!,
                 displayName: event.targetInternalUserDisplayName!,
               }
-            : {
-                type: 'company' as const,
-                companyId: event.targetCompanyId!,
-                displayName: event.targetCompanyDisplayName!,
-              },
+            : event.targetType === 'company'
+              ? {
+                  type: 'company' as const,
+                  companyId: event.targetCompanyId!,
+                  displayName: event.targetCompanyDisplayName!,
+                }
+              : {
+                  type: 'company_role_assignment' as const,
+                  assignmentId: event.targetCompanyRoleAssignmentId!,
+                  companyId: event.targetCompanyId!,
+                  companyDisplayName: event.targetCompanyDisplayName!,
+                  workspaceMembershipId: event.targetWorkspaceMembershipId!,
+                  internalUserId: event.targetInternalUserId!,
+                  internalUserDisplayName: event.targetInternalUserDisplayName!,
+                },
         metadata: event.metadata,
       })),
     };

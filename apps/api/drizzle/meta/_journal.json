@@ -43,6 +43,13 @@
       "when": 1786803675445,
       "tag": "0005_modern_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786904432497,
+      "tag": "0006_sudden_dark_phoenix",
+      "breakpoints": true
     }
   ]
 }
