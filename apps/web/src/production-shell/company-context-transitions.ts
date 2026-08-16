@@ -14,7 +14,11 @@ interface ReadyCompanyContextState {
 export type CompanyContextState =
   | { status: 'loading' }
   | { status: 'forbidden' }
-  | { status: 'error' }
+  | { status: 'error'; recovery?: undefined }
+  | {
+      status: 'error';
+      recovery: { companies: VisibleCompany[] };
+    }
   | (ReadyCompanyContextState & { cardinality: 'zero'; companies: [] })
   | (ReadyCompanyContextState & {
       cardinality: 'one';
@@ -229,29 +233,29 @@ export function transitionCompanyContext(
             'stale',
           ),
         };
-      return { ...current, companyContext: { status: 'error' } };
+      return {
+        ...current,
+        companyContext: {
+          status: 'error',
+          recovery: { companies: current.companyContext.companies },
+        },
+      };
     }
     case 'company-rejected': {
       if (
-        !matchesReadyOrigin(current, transition.origin) ||
+        !matchesOrigin(current, transition.origin) ||
         current.actor.activeCompany?.id !== transition.companyId
       )
         return current;
-      const selection =
-        current.companyContext.selection.status === 'pending' &&
-        current.companyContext.selection.companyId === transition.companyId
-          ? { status: 'idle' as const }
-          : current.companyContext.selection;
+      const recoverableCompanies = recoveryCompanies(current.companyContext);
+      if (recoverableCompanies === undefined) return current;
       return {
         ...current,
         actor: withoutActiveCompany(current.actor),
         companyContext: readyCompanyContext(
-          withoutCompany(
-            current.companyContext.companies,
-            transition.companyId,
-          ),
+          withoutCompany(recoverableCompanies, transition.companyId),
           'stale',
-          selection,
+          selectionAfterRejection(current.companyContext, transition.companyId),
         ),
         activityLog:
           transition.activityLog === 'error'
@@ -388,6 +392,27 @@ function withoutCompany(
   rejectedCompanyId: string,
 ): VisibleCompany[] {
   return companies.filter((company) => company.id !== rejectedCompanyId);
+}
+
+function recoveryCompanies(
+  state: CompanyContextState,
+): VisibleCompany[] | undefined {
+  if (state.status === 'ready') return state.companies;
+  if (state.status === 'error') return state.recovery?.companies;
+  return undefined;
+}
+
+function selectionAfterRejection(
+  state: CompanyContextState,
+  rejectedCompanyId: string,
+): Extract<CompanyContextState, { status: 'ready' }>['selection'] {
+  if (
+    state.status === 'ready' &&
+    (state.selection.status !== 'pending' ||
+      state.selection.companyId !== rejectedCompanyId)
+  )
+    return state.selection;
+  return { status: 'idle' };
 }
 
 function withoutActiveCompany(actor: ActorContext): ActorContext {

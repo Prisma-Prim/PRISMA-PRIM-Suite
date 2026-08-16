@@ -77,9 +77,14 @@ describe('useProductionShellContext stale recovery', () => {
     },
   );
 
-  it.each(['HTTP error', 'network error'] as const)(
-    'keeps stale recovery after rejection when a newer pending Company ends with %s',
-    async (failure) => {
+  it.each([
+    { failure: 'HTTP error', rejection: 'before' },
+    { failure: 'network error', rejection: 'before' },
+    { failure: 'HTTP error', rejection: 'after' },
+    { failure: 'network error', rejection: 'after' },
+  ] as const)(
+    'keeps stale recovery when active Company rejection settles $rejection newer-Company $failure',
+    async ({ failure, rejection }) => {
       const companyBSelection = deferred<Response>();
       let companyBRequests = 0;
       vi.stubGlobal(
@@ -122,11 +127,19 @@ describe('useProductionShellContext stale recovery', () => {
         pendingSelection = result.current.selectCompany('company-b');
       });
       await waitFor(() => expect(companyBRequests).toBe(1));
-      act(() => result.current.rejectCompanyContext('company-a'));
+      if (rejection === 'before')
+        act(() => result.current.rejectCompanyContext('company-a'));
       if (failure === 'HTTP error')
         companyBSelection.resolve(new Response(null, { status: 500 }));
       else companyBSelection.reject(new TypeError('network failed'));
       await act(() => pendingSelection);
+      if (rejection === 'after') {
+        expect(result.current.shellContext).toMatchObject({
+          status: 'active',
+          companyContext: { status: 'error' },
+        });
+        act(() => result.current.rejectCompanyContext('company-a'));
+      }
 
       expectRejectedCompanyARecovery(result.current.shellContext);
     },
