@@ -12,13 +12,18 @@ interface ReadyCompanyContextState {
   rejectionCandidate?: { companyId: string };
 }
 
+interface CompanyContextRecovery {
+  companies: VisibleCompany[];
+  rejectionCandidate?: { companyId: string };
+}
+
 export type CompanyContextState =
   | { status: 'loading' }
   | { status: 'forbidden' }
   | { status: 'error'; recovery?: undefined }
   | {
       status: 'error';
-      recovery: { companies: VisibleCompany[] };
+      recovery: CompanyContextRecovery;
     }
   | (ReadyCompanyContextState & { cardinality: 'zero'; companies: [] })
   | (ReadyCompanyContextState & {
@@ -202,11 +207,11 @@ export function transitionCompanyContext(
         current.companyContext.companies,
         transition.companyId,
       );
-      const rejectionCandidate =
-        transition.origin.activeCompanyId !== undefined &&
-        companies.some(({ id }) => id === transition.origin.activeCompanyId)
-          ? { companyId: transition.origin.activeCompanyId }
-          : undefined;
+      const recovery = companyContextRecovery(
+        current.companyContext,
+        companies,
+        transition.origin.activeCompanyId,
+      );
       return {
         ...current,
         actor: withoutActiveCompany(current.actor),
@@ -214,7 +219,7 @@ export function transitionCompanyContext(
           companies,
           'selection-failed',
           { status: 'idle' },
-          rejectionCandidate,
+          recovery.rejectionCandidate,
         ),
       };
     }
@@ -246,7 +251,10 @@ export function transitionCompanyContext(
         ...current,
         companyContext: {
           status: 'error',
-          recovery: { companies: current.companyContext.companies },
+          recovery: companyContextRecovery(
+            current.companyContext,
+            current.companyContext.companies,
+          ),
         },
       };
     }
@@ -278,13 +286,17 @@ export function transitionCompanyContext(
       ].sort((left, right) =>
         left.displayName.localeCompare(right.displayName),
       );
+      const recovery = companyContextRecovery(
+        current.companyContext,
+        companies,
+      );
       return {
         ...current,
         companyContext: readyCompanyContext(
           companies,
           current.companyContext.recoveryMessage,
           current.companyContext.selection,
-          current.companyContext.rejectionCandidate,
+          recovery.rejectionCandidate,
         ),
       };
     }
@@ -369,14 +381,12 @@ function matchesCompanyRejectionOrigin(
       activeCompanyId === transition.companyId &&
       transition.origin.activeCompanyId === activeCompanyId
     );
+  const recoverableCompanies = recoveryCompanies(context.companyContext);
+  const rejectionCandidate = rejectionCandidateFor(context.companyContext);
   return (
-    context.companyContext.status === 'ready' &&
-    context.companyContext.rejectionCandidate?.companyId ===
-      transition.companyId &&
+    rejectionCandidate?.companyId === transition.companyId &&
     transition.origin.activeCompanyId === transition.companyId &&
-    context.companyContext.companies.some(
-      ({ id }) => id === transition.companyId,
-    )
+    recoverableCompanies?.some(({ id }) => id === transition.companyId) === true
   );
 }
 
@@ -438,6 +448,31 @@ function recoveryCompanies(
   if (state.status === 'ready') return state.companies;
   if (state.status === 'error') return state.recovery?.companies;
   return undefined;
+}
+
+function rejectionCandidateFor(
+  state: CompanyContextState,
+): { companyId: string } | undefined {
+  if (state.status === 'ready') return state.rejectionCandidate;
+  if (state.status === 'error') return state.recovery?.rejectionCandidate;
+  return undefined;
+}
+
+function companyContextRecovery(
+  state: CompanyContextState,
+  companies: VisibleCompany[],
+  fallbackCompanyId?: string,
+): CompanyContextRecovery {
+  const candidate =
+    rejectionCandidateFor(state) ??
+    (fallbackCompanyId ? { companyId: fallbackCompanyId } : undefined);
+  const candidateRemainsVisible =
+    candidate !== undefined &&
+    companies.some(({ id }) => id === candidate.companyId);
+  return {
+    companies,
+    ...(candidateRemainsVisible ? { rejectionCandidate: candidate } : {}),
+  };
 }
 
 function selectionAfterRejection(

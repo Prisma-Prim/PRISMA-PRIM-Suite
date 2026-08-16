@@ -159,6 +159,71 @@ describe('useProductionShellContext stale recovery', () => {
       else expectRejectedCompanyARecovery(result.current.shellContext);
     },
   );
+
+  it.each(['denial', 'HTTP error', 'network error'] as const)(
+    'preserves delayed Company rejection through an intervening selection %s',
+    async (outcome) => {
+      const visibleCompanies = [
+        ...companies,
+        { id: 'company-c', displayName: 'Company C' },
+      ];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = input.toString();
+          const selectedId = new Headers(init?.headers).get(
+            'x-company-context-id',
+          );
+          if (
+            url.endsWith('/access/current-actor') &&
+            selectedId === 'company-a'
+          )
+            return Promise.resolve(
+              jsonResponse(selectedActor('company-a', 'Company A')),
+            );
+          if (
+            url.endsWith('/access/current-actor') &&
+            selectedId === 'company-b'
+          )
+            return Promise.resolve(new Response(null, { status: 403 }));
+          if (
+            url.endsWith('/access/current-actor') &&
+            selectedId === 'company-c'
+          ) {
+            if (outcome === 'denial')
+              return Promise.resolve(new Response(null, { status: 403 }));
+            if (outcome === 'HTTP error')
+              return Promise.resolve(new Response(null, { status: 500 }));
+            return Promise.reject(new TypeError('network failed'));
+          }
+          if (url.endsWith('/access/current-actor'))
+            return Promise.resolve(jsonResponse(baseActor));
+          if (url.endsWith('/companies'))
+            return Promise.resolve(jsonResponse(visibleCompanies));
+          return Promise.resolve(jsonResponse({ events: [] }));
+        }),
+      );
+      const identity = browserIdentity();
+      const { result } = renderHook(() => useProductionShellContext(identity));
+      await waitFor(() =>
+        expect(result.current.shellContext.status).toBe('active'),
+      );
+      await act(() => result.current.selectCompany('company-a'));
+      const rejectCompanyA = result.current.rejectCompanyContext;
+
+      await act(() => result.current.selectCompany('company-b'));
+      await act(() => result.current.selectCompany('company-c'));
+      act(() => rejectCompanyA('company-a'));
+
+      expectCompanyRecovery(
+        result.current.shellContext,
+        outcome === 'denial'
+          ? []
+          : [{ id: 'company-c', displayName: 'Company C' }],
+        'stale',
+      );
+    },
+  );
 });
 
 function expectRejectedCompanyARecovery(
@@ -193,6 +258,25 @@ function expectZeroCompanyRecovery(
     throw new Error('Expected ready zero-Company recovery context');
   expect(shellContext.companyContext).toMatchObject({
     cardinality: 'zero',
+    selection: { status: 'idle' },
+    recoveryMessage,
+  });
+  expect(localStorage.getItem(preferenceKey(baseActor))).toBeNull();
+}
+
+function expectCompanyRecovery(
+  shellContext: ProductionShellContext,
+  expectedCompanies: { id: string; displayName: string }[],
+  recoveryMessage: 'stale' | 'selection-failed',
+): void {
+  expect(activeCompanyId(shellContext)).toBeUndefined();
+  expect(readyCompanies(shellContext)).toEqual(expectedCompanies);
+  if (
+    shellContext.status !== 'active' ||
+    shellContext.companyContext.status !== 'ready'
+  )
+    throw new Error('Expected ready Company recovery context');
+  expect(shellContext.companyContext).toMatchObject({
     selection: { status: 'idle' },
     recoveryMessage,
   });

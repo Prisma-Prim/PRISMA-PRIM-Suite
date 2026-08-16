@@ -426,6 +426,128 @@ describe('Company context transitions', () => {
     ).toBe(rejected);
   });
 
+  it.each(['denial', 'failure'] as const)(
+    'preserves a Company rejection candidate through an intervening selection %s',
+    (outcome) => {
+      const { candidate, rejectionOrigin } = companyARejectionCandidate();
+      const selectionOrigin = requiredOrigin(candidate);
+      const selecting = transitionCompanyContext(candidate, {
+        type: 'selection-started',
+        origin: selectionOrigin,
+        companyId: 'company-c',
+      });
+      const unsuccessful = transitionCompanyContext(selecting, {
+        type: outcome === 'denial' ? 'selection-denied' : 'selection-failed',
+        origin: selectionOrigin,
+        companyId: 'company-c',
+      });
+
+      expect(unsuccessful).toMatchObject({
+        status: 'active',
+        companyContext:
+          outcome === 'denial'
+            ? {
+                status: 'ready',
+                companies: [{ id: 'company-a' }],
+                rejectionCandidate: { companyId: 'company-a' },
+              }
+            : {
+                status: 'error',
+                recovery: {
+                  companies: [{ id: 'company-a' }, { id: 'company-c' }],
+                  rejectionCandidate: { companyId: 'company-a' },
+                },
+              },
+      });
+
+      const rejected = transitionCompanyContext(unsuccessful, {
+        type: 'company-rejected',
+        origin: rejectionOrigin,
+        companyId: 'company-a',
+        activityLog: 'preserve',
+      });
+      expect(rejected).toMatchObject({
+        status: 'active',
+        companyContext: {
+          status: 'ready',
+          companies: outcome === 'denial' ? [] : [{ id: 'company-c' }],
+          selection: { status: 'idle' },
+          recoveryMessage: 'stale',
+        },
+      });
+    },
+  );
+
+  it('consumes a Company rejection candidate when that Company is denied', () => {
+    const { candidate, rejectionOrigin } = companyARejectionCandidate();
+    const selectionOrigin = requiredOrigin(candidate);
+    const selecting = transitionCompanyContext(candidate, {
+      type: 'selection-started',
+      origin: selectionOrigin,
+      companyId: 'company-a',
+    });
+    const denied = transitionCompanyContext(selecting, {
+      type: 'selection-denied',
+      origin: selectionOrigin,
+      companyId: 'company-a',
+    });
+
+    expect(denied).toMatchObject({
+      status: 'active',
+      companyContext: {
+        status: 'ready',
+        companies: [{ id: 'company-c' }],
+      },
+    });
+    if (denied.status !== 'active' || denied.companyContext.status !== 'ready')
+      throw new Error('Expected ready Company context');
+    expect(denied.companyContext.rejectionCandidate).toBeUndefined();
+    expect(
+      transitionCompanyContext(denied, {
+        type: 'company-rejected',
+        origin: rejectionOrigin,
+        companyId: 'company-a',
+        activityLog: 'preserve',
+      }),
+    ).toBe(denied);
+  });
+
+  it('consumes a Company rejection candidate when a newer selection succeeds', () => {
+    const { candidate, rejectionOrigin } = companyARejectionCandidate();
+    const selectionOrigin = requiredOrigin(candidate);
+    const selecting = transitionCompanyContext(candidate, {
+      type: 'selection-started',
+      origin: selectionOrigin,
+      companyId: 'company-c',
+    });
+    const selected = transitionCompanyContext(selecting, {
+      type: 'selection-confirmed',
+      origin: selectionOrigin,
+      companyId: 'company-c',
+      actor: selectedActor('company-c', 'Company C'),
+    });
+
+    expect(selected).toMatchObject({
+      status: 'active',
+      actor: { activeCompany: { id: 'company-c' } },
+      companyContext: { status: 'ready', selection: { status: 'idle' } },
+    });
+    if (
+      selected.status !== 'active' ||
+      selected.companyContext.status !== 'ready'
+    )
+      throw new Error('Expected ready Company context');
+    expect(selected.companyContext.rejectionCandidate).toBeUndefined();
+    expect(
+      transitionCompanyContext(selected, {
+        type: 'company-rejected',
+        origin: rejectionOrigin,
+        companyId: 'company-a',
+        activityLog: 'preserve',
+      }),
+    ).toBe(selected);
+  });
+
   it('does not settle a pending selection for an older session generation', () => {
     const { origin, rejected } = rejectCompanyAWhileSelectingCompanyB();
 
@@ -507,6 +629,29 @@ function rejectCompanyAWhileSelectingCompanyB() {
     activityLog: 'preserve',
   });
   return { origin, rejected };
+}
+
+function companyARejectionCandidate() {
+  const active = activate(
+    [
+      { id: 'company-a', displayName: 'Company A' },
+      { id: 'company-b', displayName: 'Company B' },
+      { id: 'company-c', displayName: 'Company C' },
+    ],
+    selectedActor('company-a', 'Company A'),
+  );
+  const rejectionOrigin = requiredOrigin(active);
+  const selecting = transitionCompanyContext(active, {
+    type: 'selection-started',
+    origin: rejectionOrigin,
+    companyId: 'company-b',
+  });
+  const candidate = transitionCompanyContext(selecting, {
+    type: 'selection-denied',
+    origin: rejectionOrigin,
+    companyId: 'company-b',
+  });
+  return { candidate, rejectionOrigin };
 }
 
 function settleSelection(
