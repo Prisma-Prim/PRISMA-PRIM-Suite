@@ -3459,7 +3459,9 @@ This record now preserves the complete reasoning needed for a context-free futur
 
 The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) compares its 61 source comments with the 278 official questions in the Romanian bank.
 
-Only answers attached to an official question ID and an explicit source status count as formal bank coverage. On the 2026-08-16 snapshot, 43 official questions are explicitly resolved, 6 are partial and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
+The coverage matrix now separates the source-declared status from semantic coverage of the official wording. The source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 20 are fully covered, 27 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
+
+Iurie's interview agent is an intermediary. It may explain concepts, reformulate questions and ask for examples. Iurie remains the authority on business reality and desired application needs. Evidence must distinguish: a direct or faithfully paraphrased Iurie answer; an agent-framed proposition explicitly accepted by Iurie; an agent interpretation without acceptance; and a point delegated to Dan or the agents for product or technical decision. An agent formulation or interpretation alone is never a business requirement. Explicit acceptance applies only to the scope actually asked.
 
 This corrects the tempting but unsupported conclusion that reaching item 307 proves completion of all 278 official questions.
 
@@ -3472,7 +3474,6 @@ The following evidence is explicit and is reflected in the owning Draft PRDs:
 - Future Company users are restricted to their Company's activity.
 - The Client uses one shared general dossier while Company activity remains separated.
 - Projects may begin before Contract signature.
-- Project lifecycle and workflow/audit stages are separate; C, S1, S2 and R are audit-specific.
 - Official Documents and received originals preserve version/evidence history and are not silently overwritten.
 - Operational dashboards prioritize attributable next actions and may have Company-specific and authorized consolidated scopes.
 - Personnel records must cover both employees and service-contract collaborators.
@@ -3493,8 +3494,9 @@ The following remain decisions or evidence requests, not inferred rules:
 2. shared-versus-Company-confidential Client fields and duplicate authority;
 3. first Release 1 Project categories, Tasks, evidence gates and lifecycle exceptions;
 4. representative Document families, confidentiality, officialization authority and Representation mechanism;
-5. dashboard action/metric definitions;
-6. mapping or versioning strategy for the independent interview sequence;
-7. revalidation of compound “yes” answers before they create permissions, financial/legal enforcement or irreversible workflow behaviour.
+5. the difference between general Project lifecycle and current workflow stage, plus complete Stage 1/Stage 2/S1/S2 examples;
+6. dashboard action/metric definitions;
+7. mapping or versioning strategy for the independent interview sequence;
+8. revalidation of compound “yes” answers before they create permissions, financial/legal enforcement or irreversible workflow behaviour.
 
 Implementation issues must continue to derive from the owning canonical PRD after these blockers are closed, never directly from the raw interview.
