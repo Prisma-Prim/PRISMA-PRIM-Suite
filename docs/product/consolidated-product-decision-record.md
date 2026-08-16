@@ -1,8 +1,8 @@
 # Consolidated Product Reconciliation and Decision Record
 
 **Product:** PRISMA-PRIM Suite  
-**Status:** Reconciliation complete — decisions `DEC-001` through `DEC-211` approved  
-**Record version:** 1.1  
+**Status:** Reconciliation complete — decisions `DEC-001` through `DEC-212` approved  
+**Record version:** 1.2  
 **Last updated:** 2026-08-16  
 **Source discussion language:** French  
 **Repository language:** English
@@ -2815,6 +2815,12 @@ Bulk import and mutation show targets, validation and partial failures, recheck 
 
 First-tenant acceptance includes Romanian and Russian vocabulary, Company switching, representative mobile and desktop sizes, role restrictions and recovery from realistic errors.
 
+#### DEC-212 — Use a minimal Role Assignment for Company context access
+
+A Workspace Owner may grant or revoke the named `Company Context Access` permission bundle as a Company-scoped Role Assignment for an existing active Workspace Membership and an active Company in the same Workspace. The bundle permits only listing and selecting that Company through server-authoritative context resolution. It grants no Client, Project, Document, finance, administration or other business-domain capability. Grant and revocation are attributable Activity Log events, and absence of the assignment remains denial.
+
+This reuses the canonical Role Assignment authorization path rather than introducing a parallel Company-membership relationship. It unlocks the generic assignment and revocation seam without inventing first-tenant roles or business permissions. The alternatives were to wait for the complete first-tenant permission matrix, which would unnecessarily block this reversible foundation, or to create a separate context-access relationship, which would contradict ADR 0006 and fragment authorization. Every broader role bundle, real assignment, consolidated view, deactivation policy and exceptional-access rule remains evidence-dependent.
+
 ## 21. Known effects on existing authorities
 
 These changes are intentionally not applied by this record alone:
@@ -3372,7 +3378,7 @@ Request real role examples, daily journeys, mobile situations, terminology lists
 
 ### 32.1 Reconciliation completion
 
-Decisions `DEC-001` through `DEC-211` complete the conceptual reconciliation requested after the 2026-08-14 source. Remaining open questions are evidence dependencies, first-tenant configuration or later-scope choices; they do not justify returning to rejected architecture assumptions.
+Decisions `DEC-001` through `DEC-212` complete the conceptual reconciliation requested after the 2026-08-14 source. Remaining open questions are evidence dependencies, first-tenant configuration or later-scope choices; they do not justify returning to rejected architecture assumptions.
 
 The next documentation hierarchy is:
 
