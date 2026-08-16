@@ -1,7 +1,7 @@
 # PRD — Release 1 Company and RBAC
 
-**Status:** Draft — first-tenant evidence pending
-**Version:** 0.1  
+**Status:** Draft — interview evidence received; permission matrix pending
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD
 
@@ -112,3 +112,21 @@ Question source: S00 and S01.
 ## 15. Readiness
 
 The PRD is structurally complete. Its approved business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). It does not authorize Company assignments, a role matrix, detailed permission bundles, “All Companies,” or later domain modules. Real assignments, finalized templates and bundles, consolidated oversight, broader deactivation rules, and exceptional access remain blocked on first-tenant evidence.
+
+## 16. Interview evidence reconciliation (2026-08-16)
+
+**Confirmed evidence**
+
+- Iurie requires group-wide oversight across PRISMA-PRIM, BIC and ECG.
+- The initial named actors are Iurie, Dan and Valentin.
+- Valentin's ordinary scope is technical maintenance; Iurie accepted Dan's access to real data when development or intervention requires it.
+- Future Company users must be restricted to the activity of their Company.
+- Iurie is the principal approver for the important-action examples asked in session 1; the complete approval set remains partial.
+
+**Still blocking**
+
+- The exact Company-selector and “All Companies” interaction was delegated to the interviewer and remains partial.
+- Exact first-tenant role bundles, the complete approval and audit-trail sets, approval delegation, deactivation behaviour and exceptional-access rules are not complete.
+- Compound confirmations do not yet constitute a testable permission matrix.
+
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1–2; [coverage matrix](iurie-business-answer-coverage.md). These statements narrow the evidence blockers but do not authorize the deferred assignment, role-matrix or consolidated-view implementation children.

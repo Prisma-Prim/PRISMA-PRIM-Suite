@@ -19,6 +19,7 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets |
 | [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                          |
 | [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                     |
+| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Question-to-answer provenance, coverage states and unresolved arbitrations     |
 
 ## 3. Cross-cutting PRDs
 
