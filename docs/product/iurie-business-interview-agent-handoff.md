@@ -287,11 +287,16 @@ For each missing component, choose exactly one disposition:
 
 Do not ask Iurie the same broad question again. When consolidation discovers a material gap later, give Iurie's agent a short prioritized follow-up list containing:
 
-1. the prior question and evidence link;
-2. the exact missing component;
-3. why the missing answer changes observable behaviour or risk;
-4. one short Romanian follow-up question;
-5. what must not be re-asked.
+1. the initial question and answer with its provenance link;
+2. what is already understood and must not be asked again;
+3. the exact insufficiency: unanswered component, example treated as rule, missing exception, overly general answer, contradiction or another named gap;
+4. the concrete business reason the precision is needed;
+5. the decision, PRD or issue currently blocked, or the risk created by a wrong assumption;
+6. one minimal, natural Romanian follow-up question;
+7. optional neutral examples only when they help understanding without steering the answer;
+8. a closure condition stating what a sufficient answer must establish.
+
+The package must make clear that the interviewer is completing one insufficient prior answer to move the project forward, not restarting the questionnaire.
 
 Distinguish evidence authority in every record:
 
