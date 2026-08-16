@@ -88,6 +88,16 @@ bash scripts/codex-cloud-maintenance.sh --profile postgres
 
 The PostgreSQL setup installs the system packages, creates both databases idempotently, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages.
 
+### Managed-harness PostgreSQL fallback
+
+Native PostgreSQL remains the supported path when the harness can install and start it. When native service setup is unavailable but a POSIX/Linux harness permits Docker, run the repository verification inside one disposable PostgreSQL lifecycle:
+
+```bash
+node scripts/managed-postgres.mjs -- corepack pnpm test:unit
+```
+
+The runner creates uniquely named, labelled Docker network and volume resources outside the checkout, waits on container health, creates both local databases, applies the reviewed Drizzle migrations to a pristine development database, and injects safe temporary `DATABASE_URL` and `TEST_DATABASE_URL` values into the requested command. It keeps cache and temporary state outside the checkout, and removes the exact container, network, volume, and temporary directory on success, failure, or interruption. Safe descendant termination relies on POSIX process groups, so Windows users must use native PostgreSQL or a POSIX/Linux Docker harness. A Docker socket denied by the harness sandbox is a permission-policy failure; use the native path or a harness with Docker permission rather than weakening database verification.
+
 ### Browser tests
 
 The standard Codex Cloud environment does not install Chromium. Its repository-wide verification uses `pnpm test:unit`, while GitHub Actions runs the complete `pnpm test` command including Playwright.

@@ -114,7 +114,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   const maximumNode = maximumExclusiveVersion(snapshot.nodeRange);
   const actualNode = parseVersion(snapshot.nodeVersion);
   const requiredPnpm = packageManagerVersion(snapshot.packageManager);
-  const actualPnpm = parseVersion(snapshot.pnpmVersion);
+  const pnpmProbe = snapshot.pnpmProbe ?? { state: 'missing' };
+  const actualPnpm = parseVersion(pnpmProbe.version);
   const parsedRequiredPnpm = parseVersion(requiredPnpm);
   const needsChromium = requiresChromium(profile);
   const needsPostgres = requiresPostgres(profile);
@@ -143,21 +144,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
         ? `Install a Node version satisfying ${snapshot.nodeRange}, then restart the harness session.`
         : 'Declare the Node engine as a simple minimum range such as >=24.0.0.',
     ),
-    result(
-      'pnpm',
-      requiredPnpm &&
-        actualPnpm &&
-        parsedRequiredPnpm &&
-        compareVersions(actualPnpm, parsedRequiredPnpm) === 0
-        ? 'PASS'
-        : 'FAIL',
-      requiredPnpm
-        ? `pnpm ${snapshot.pnpmVersion || 'is unavailable'}; repository expects ${requiredPnpm}.`
-        : `Unsupported packageManager declaration: ${snapshot.packageManager}.`,
-      requiredPnpm
-        ? `Activate pnpm ${requiredPnpm} from package.json before installing dependencies.`
-        : 'Declare packageManager as pnpm@X.Y.Z.',
-    ),
+    evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, pnpmProbe),
     result(
       'workspace',
       snapshot.workspaceManifestExists ? 'PASS' : 'FAIL',
@@ -204,25 +191,145 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     ),
     result(
       'database-safety',
-      needsPostgres ? (databaseTargetsSafe ? 'PASS' : 'FAIL') : 'SKIP',
-      needsPostgres
+      needsPostgres && databaseVariablesValid
         ? databaseTargetsSafe
-          ? 'Development and test databases are distinct local targets; the test name ends in _test.'
-          : 'Database targets must be local, distinct, and the test database name must end in _test.'
+          ? 'PASS'
+          : 'FAIL'
+        : 'SKIP',
+      needsPostgres
+        ? !databaseVariablesValid
+          ? 'Database target safety was not checked until both PostgreSQL URLs are valid.'
+          : databaseTargetsSafe
+            ? 'Development and test databases are distinct local targets; the test name ends in _test.'
+            : 'Database targets must be local, distinct, and the test database name must end in _test.'
         : 'Database target safety is not required by the selected profile.',
       'Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud.',
     ),
-    result(
-      'postgres',
-      needsPostgres ? (snapshot.postgresAvailable ? 'PASS' : 'FAIL') : 'SKIP',
-      needsPostgres
-        ? snapshot.postgresAvailable
-          ? 'The isolated PostgreSQL test database accepts a read-only connectivity probe.'
-          : 'The isolated PostgreSQL test database is unavailable.'
-        : 'PostgreSQL connectivity is not required by the selected profile.',
-      'Run bash scripts/codex-cloud-maintenance.sh --profile postgres, then retry the doctor.',
+    evaluatePostgres(
+      needsPostgres,
+      databaseVariablesValid,
+      databaseTargetsSafe,
+      snapshot.postgresProbe ?? { state: 'not-run' },
     ),
   ];
+}
+
+function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
+  if (!requiredPnpm) {
+    return result(
+      'pnpm',
+      'FAIL',
+      'The packageManager declaration is not a supported pnpm version.',
+      'Declare packageManager as pnpm@X.Y.Z.',
+    );
+  }
+
+  if (probe.state === 'missing') {
+    return result(
+      'pnpm',
+      'FAIL',
+      `pnpm is not installed or not on PATH; repository expects ${requiredPnpm}.`,
+      `Activate pnpm ${requiredPnpm} from package.json, then run pnpm --version.`,
+    );
+  }
+
+  if (probe.state === 'sandbox-denied') {
+    return result(
+      'pnpm',
+      'FAIL',
+      `The harness sandbox denied the pnpm subprocess (${probe.detail ?? 'permission denied'}).`,
+      `Verify the harness subprocess policy with corepack pnpm --version; use a permitted shell or update the sandbox policy before relying on pnpm checks.`,
+    );
+  }
+
+  const versionMatches =
+    probe.state === 'available' &&
+    actualPnpm &&
+    parsedRequiredPnpm &&
+    compareVersions(actualPnpm, parsedRequiredPnpm) === 0;
+
+  return result(
+    'pnpm',
+    versionMatches ? 'PASS' : 'FAIL',
+    probe.state === 'available'
+      ? `pnpm ${probe.version}; repository expects ${requiredPnpm}.`
+      : `pnpm could not report its version (${probe.detail ?? 'unknown subprocess failure'}).`,
+    `Activate pnpm ${requiredPnpm} from package.json before installing dependencies.`,
+  );
+}
+
+function evaluatePostgres(
+  required,
+  databaseVariablesValid,
+  databaseTargetsSafe,
+  probe,
+) {
+  if (!required) {
+    return result(
+      'postgres',
+      'SKIP',
+      'PostgreSQL connectivity is not required by the selected profile.',
+    );
+  }
+
+  if (!databaseVariablesValid || !databaseTargetsSafe) {
+    return result(
+      'postgres',
+      'SKIP',
+      'PostgreSQL connectivity was not attempted until database configuration is valid and safe.',
+    );
+  }
+
+  switch (probe.state) {
+    case 'available':
+      return result(
+        'postgres',
+        'PASS',
+        'The isolated PostgreSQL test database accepts a read-only connectivity probe.',
+      );
+    case 'tooling-missing':
+      return result(
+        'postgres',
+        'FAIL',
+        'The PostgreSQL connectivity probe tooling or bootstrap is missing or broken.',
+        'Restore repository dependencies and the expected pnpm version, then retry the doctor.',
+      );
+    case 'sandbox-denied':
+      return result(
+        'postgres',
+        'FAIL',
+        `The harness sandbox denied the PostgreSQL probe subprocess (${probe.detail ?? 'permission denied'}).`,
+        'Run the doctor in a harness that permits repository subprocesses or update the sandbox policy.',
+      );
+    case 'service-unavailable':
+      return result(
+        'postgres',
+        'FAIL',
+        `No PostgreSQL service is listening at the configured local target (${probe.detail ?? 'connection refused'}).`,
+        'Start native PostgreSQL and retry the doctor, or run node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile postgres.',
+      );
+    case 'unreachable':
+      return result(
+        'postgres',
+        'FAIL',
+        `The configured PostgreSQL target is unreachable (${probe.detail ?? 'network failure'}).`,
+        'Check the local PostgreSQL host and port, then retry the doctor.',
+      );
+    case 'connection-failed':
+      return result(
+        'postgres',
+        'FAIL',
+        `PostgreSQL rejected the connection (${probe.detail ?? 'connection failure'}).`,
+        'Check that the local role, password, and database exist, then retry the doctor.',
+      );
+    default:
+      return result(
+        'postgres',
+        'FAIL',
+        'The PostgreSQL connectivity probe did not produce a result.',
+        'Run the doctor again after pnpm and the local database configuration pass.',
+      );
+  }
 }
 
 function run(command, args, options = {}) {
@@ -235,10 +342,29 @@ function run(command, args, options = {}) {
   });
 }
 
-function installedPnpmVersion() {
+function probePnpm() {
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const command = run(executable, ['--version']);
-  return command.status === 0 ? command.stdout.trim() : '';
+  return classifyPnpmCommand(command);
+}
+
+export function classifyPnpmCommand(command) {
+  if (command.error?.code === 'ENOENT') {
+    return { state: 'missing' };
+  }
+
+  if (new Set(['EACCES', 'EPERM']).has(command.error?.code)) {
+    return { state: 'sandbox-denied', detail: command.error.code };
+  }
+
+  if (command.status === 0 && command.stdout.trim()) {
+    return { state: 'available', version: command.stdout.trim() };
+  }
+
+  return {
+    state: 'failed',
+    detail: command.error?.code ?? `exit ${command.status ?? 'unknown'}`,
+  };
 }
 
 function playwrightChromiumIsAvailable() {
@@ -261,20 +387,31 @@ function playwrightChromiumIsAvailable() {
   return command.status === 0;
 }
 
-function postgresIsAvailable(testDatabaseUrl) {
+function probePostgres(testDatabaseUrl) {
   if (!testDatabaseUrl) {
-    return false;
+    return { state: 'not-run' };
   }
 
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const probe = [
-    'import pg from "pg";',
+    'const emit = (value) => process.stdout.write(JSON.stringify(value));',
+    'let pg;',
+    'try { pg = (await import("pg")).default; }',
+    'catch (error) {',
+    'emit({ phase: "bootstrap", state: ["EACCES", "EPERM"].includes(error?.code) ? "sandbox-denied" : "tooling-missing", code: error?.code ?? null });',
+    'process.exit(1);',
+    '}',
     'const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 3000 });',
     'try {',
     'await client.connect();',
     'const response = await client.query("SELECT 1 AS ok");',
-    'process.exitCode = response.rows[0]?.ok === 1 ? 0 : 1;',
-    '} catch { process.exitCode = 1; }',
+    'const available = response.rows[0]?.ok === 1;',
+    'emit({ phase: "query", state: available ? "available" : "connection-failed", code: available ? null : "unexpected-query-result" });',
+    'process.exitCode = available ? 0 : 1;',
+    '} catch (error) {',
+    'emit({ phase: "connect", state: ["EACCES", "EPERM"].includes(error?.code) ? "sandbox-denied" : "connection-failed", code: error?.code ?? null });',
+    'process.exitCode = 1;',
+    '}',
     'finally { await client.end().catch(() => undefined); }',
   ].join(' ');
   const command = run(
@@ -293,7 +430,63 @@ function postgresIsAvailable(testDatabaseUrl) {
     },
   );
 
-  return command.status === 0;
+  return classifyPostgresCommand(command);
+}
+
+export function classifyPostgresCommand(command) {
+  if (command.error?.code === 'ENOENT') {
+    return { state: 'tooling-missing' };
+  }
+
+  if (new Set(['EACCES', 'EPERM']).has(command.error?.code)) {
+    return { state: 'sandbox-denied', detail: command.error.code };
+  }
+
+  let payload;
+  try {
+    const serialized = command.stdout.match(/\{[^\n]*\}\s*$/)?.[0];
+    payload = serialized ? JSON.parse(serialized) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (payload?.state === 'sandbox-denied') {
+    return { state: 'sandbox-denied', detail: payload.code ?? payload.phase };
+  }
+
+  if (payload?.state === 'tooling-missing' || !payload) {
+    return {
+      state: 'tooling-missing',
+      detail: payload?.code ?? 'probe-bootstrap',
+    };
+  }
+
+  if (command.status === 0 && payload.state === 'available') {
+    return { state: 'available' };
+  }
+
+  const detail = payload.code;
+
+  if (detail === 'ECONNREFUSED') {
+    return { state: 'service-unavailable', detail };
+  }
+
+  if (
+    new Set([
+      'EAI_AGAIN',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+      'ENOTFOUND',
+      'ETIMEDOUT',
+    ]).has(detail)
+  ) {
+    return { state: 'unreachable', detail };
+  }
+
+  return {
+    state: 'connection-failed',
+    detail: detail ?? `probe exit ${command.status ?? 'unknown'}`,
+  };
 }
 
 export function collectEnvironment(profile = 'base') {
@@ -308,24 +501,37 @@ export function collectEnvironment(profile = 'base') {
     databaseUrl,
     testDatabaseUrl,
   );
+  const pnpmProbe = probePnpm();
+  const dependenciesInstalled = existsSync(
+    resolve(repositoryRoot, 'node_modules'),
+  );
+  let postgresProbe = { state: 'not-run' };
+  if (needsPostgres && databaseTargetsSafe) {
+    if (pnpmProbe.state === 'missing') {
+      postgresProbe = { state: 'tooling-missing', detail: 'pnpm' };
+    } else if (pnpmProbe.state === 'sandbox-denied') {
+      postgresProbe = { state: 'sandbox-denied', detail: pnpmProbe.detail };
+    } else if (!dependenciesInstalled) {
+      postgresProbe = { state: 'tooling-missing', detail: 'dependencies' };
+    } else {
+      postgresProbe = probePostgres(testDatabaseUrl);
+    }
+  }
 
   return {
     nodeRange: packageJson.engines?.node ?? '',
     nodeVersion: process.version,
     packageManager: packageJson.packageManager ?? '',
-    pnpmVersion: installedPnpmVersion(),
+    pnpmProbe,
     workspaceManifestExists: existsSync(
       resolve(repositoryRoot, 'pnpm-workspace.yaml'),
     ),
     lockfileExists: existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
-    dependenciesInstalled: existsSync(resolve(repositoryRoot, 'node_modules')),
+    dependenciesInstalled,
     chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
     databaseUrl,
     testDatabaseUrl,
-    postgresAvailable:
-      needsPostgres && databaseTargetsSafe
-        ? postgresIsAvailable(testDatabaseUrl)
-        : false,
+    postgresProbe,
   };
 }
 
