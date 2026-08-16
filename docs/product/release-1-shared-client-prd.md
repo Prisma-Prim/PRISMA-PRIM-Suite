@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — representative cases pending  
-**Version:** 0.1  
+**Status:** Draft — interview evidence received; representative cases pending
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -115,3 +115,19 @@ Question sources: S00 and S02.
 ## 15. Readiness
 
 Ticket decomposition is blocked on representative Client examples, field visibility and duplicate authority. The capability must follow Company/RBAC.
+
+## 16. Interview evidence reconciliation (2026-08-16)
+
+**Confirmed evidence**
+
+- Iurie wants one general Client dossier shared across the group.
+- Operational activity remains separated by responsible Company.
+- Authorized consolidated users need a group view without converting Company-owned work into shared ownership.
+
+**Still blocking**
+
+- The exact shared fields and Company-confidential fields remain partially resolved.
+- Representative multi-legal-entity Clients, matching identifiers and duplicate-resolution authority remain absent.
+- No answer authorizes automatic duplicate merge or broad cross-Company activity disclosure.
+
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1, 3 and 12; [coverage matrix](iurie-business-answer-coverage.md). The existing archive, provenance, human duplicate-review and non-leakage rules remain unchanged.
