@@ -205,7 +205,7 @@ For each primary question, use this structure:
 
 ```yaml
 question_id: S00-Q01
-question_ro: 'The exact Romanian question asked'
+question_ro: "The exact Romanian question asked"
 answer_ro: "Iurie's answer, faithfully summarized"
 answer_ru: null
 evidence_authority: DIRECT_IURIE
@@ -213,24 +213,24 @@ source_declared_status: CONFIRMED
 semantic_coverage: FULL
 decision_sufficiency: SUFFICIENT
 confidence: HIGH
-current_practice: 'What happens today'
-desired_behaviour: 'What Iurie wants the application to enable'
+current_practice: "What happens today"
+desired_behaviour: "What Iurie wants the application to enable"
 actors_and_approvals:
-  - 'Business roles or named evidence owners'
+  - "Business roles or named evidence owners"
 company_scope:
-  - 'PRISMA-PRIM'
-client_or_legal_entity_scope: 'If relevant'
-normal_case: 'Representative path'
+  - "PRISMA-PRIM"
+client_or_legal_entity_scope: "If relevant"
+normal_case: "Representative path"
 exceptions:
-  - 'Important exception'
-example: 'Anonymized situation or reference'
+  - "Important exception"
+example: "Anonymized situation or reference"
 evidence:
   available: true
-  owner: 'Who controls it'
+  owner: "Who controls it"
   safe_extract_possible: true
 open_points:
-  - 'What remains unanswered'
-follow_up_owner: 'Iurie, accountant, administrator, specialist, Dan or agent'
+  - "What remains unanswered"
+follow_up_owner: "Iurie, accountant, administrator, specialist, Dan or agent"
 ```
 
 Use `null` or an empty list when a field does not apply. Do not invent content to fill the template.
@@ -275,7 +275,7 @@ Use labels such as `CONFIRMS`, `CONFIGURES`, `REFINES`, `POSSIBLE_CONTRADICTION`
 
 ## 12. Decide whether a follow-up is actually needed
 
-Question-bank completeness is an audit measure, not a requirement to ask every question mechanically. A partial answer may already be sufficient for a reversible, low-risk product decision.
+Question-bank completeness is an audit measure, not a requirement to ask every question mechanically. A question may be only partially covered while Iurie's answer completely answers the narrower question actually asked. Preserve that answer; label the remaining official components `not asked / deferred remainder` rather than calling Iurie's answer insufficient. A deferred remainder may already be unnecessary for a reversible, low-risk product decision.
 
 For each missing component, choose exactly one disposition:
 
@@ -289,14 +289,14 @@ Do not ask Iurie the same broad question again. When consolidation discovers a m
 
 1. the initial question and answer with its provenance link;
 2. what is already understood and must not be asked again;
-3. the exact insufficiency: unanswered component, example treated as rule, missing exception, overly general answer, contradiction or another named gap;
+3. the exact not-asked/deferred remainder: unanswered component, example treated as rule, missing exception, overly general answer, contradiction or another named gap;
 4. the concrete business reason the precision is needed;
 5. the decision, PRD or issue currently blocked, or the risk created by a wrong assumption;
 6. one minimal, natural Romanian follow-up question;
 7. optional neutral examples only when they help understanding without steering the answer;
 8. a closure condition stating what a sufficient answer must establish.
 
-The package must make clear that the interviewer is completing one insufficient prior answer to move the project forward, not restarting the questionnaire.
+The package must make clear that the interviewer is completing only a material deferred remainder to move the project forward, not judging Iurie's existing answer or restarting the questionnaire.
 
 Distinguish evidence authority in every record:
 
@@ -307,6 +307,20 @@ Distinguish evidence authority in every record:
 
 The interviewer may explain concepts, reformulate and ask for examples. Iurie remains the authority on business reality and desired application needs. Avoid redundant questions and do not ask Iurie to decide purely technical matters.
 
+### Lightweight coverage check
+
+When preparing each new question batch, start from the decision the batch must inform and the answers already acquired. Check only the material ambiguities needed for that decision; do not search for every theoretically possible ambiguity.
+
+If an official question is narrowed or split, record only:
+
+1. what was asked;
+2. what remains not asked or deferred;
+3. whether a follow-up is genuinely needed now.
+
+After a short answer or `Da` to a compound formulation, silently check the material components and ask at most one neutral follow-up when a currently necessary component is missing. At session end, briefly mark the relevant sub-parts `answered`, `deferred`, `not_applicable`, `delegated` or `unclear`. Do not mark the full ID resolved unless all material parts are answered or explicitly out of scope.
+
+This is a lightweight writing and review habit, not a new workflow, database or metric. Optimize for decision usefulness and minimal burden on Iurie.
+
 ## 13. Opening message to Iurie
 
 Use or adapt this message:
@@ -314,3 +328,4 @@ Use or adapt this message:
 > Bună ziua, Iurie. Voi parcurge împreună cu dumneavoastră întrebările despre cum trebuie să ajute aplicația activitatea PRISMA-PRIM, BIC și ECG. Nu trebuie să decideți baze de date, integrări, securitate sau alte soluții tehnice. Vă voi întreba ce se întâmplă în lucru, ce rezultat doriți, cine răspunde, ce excepții există și ce exemple sau documente pot confirma situația. Dacă nu știți un răspuns, îl notăm pentru persoana care îl poate verifica. Nu vă voi cere parole, chei, acces la conturi sau arhive confidențiale.
 
 Then ask Iurie whether Romanian is comfortable or whether Russian would be clearer. Start with `S00-Q01` unless an earlier answer or urgent topic gives a better entry point.
+
