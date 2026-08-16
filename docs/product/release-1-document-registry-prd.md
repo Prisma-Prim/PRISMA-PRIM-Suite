@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Draft — representative Document practice pending  
-**Version:** 0.1  
+**Status:** Draft — interview evidence received; representative practice pending
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -127,3 +127,20 @@ Question source: S03.
 ## 15. Readiness
 
 Ticket decomposition is blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. It follows Company/RBAC, Shared Client and the minimum Project relationship.
+
+## 16. Interview evidence reconciliation (2026-08-16)
+
+**Confirmed evidence**
+
+- Received external originals must remain preserved.
+- Official Documents require visible version history and may not be silently overwritten.
+- Corrections after officialization require a new governed state/version and attributable history.
+- The system must preserve evidence of approval, sending or signature when available.
+
+**Still blocking**
+
+- Representative Release 1 Document families and confidentiality classes are not selected.
+- Exact draft-to-official authority, retention/archive rules and initial upload-versus-link mechanism remain incomplete.
+- A general “yes” to automation does not authorize automatic legal, signature or deletion behaviour.
+
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 6–7 and 35–36; [coverage matrix](iurie-business-answer-coverage.md). The provider-independent Document/Version/Representation model remains the canonical boundary.
