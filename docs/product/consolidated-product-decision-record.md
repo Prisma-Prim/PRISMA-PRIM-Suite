@@ -217,7 +217,7 @@ PRISMA-PRIM, BIC and ECG are initial configuration data. Code must use generic c
 Do not write business behaviour such as:
 
 ```ts
-if (company.name === 'BIC') {
+if (company.name === "BIC") {
   // special behaviour
 }
 ```
@@ -3459,7 +3459,7 @@ This record now preserves the complete reasoning needed for a context-free futur
 
 The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) compares its 61 source comments with the 278 official questions in the Romanian bank.
 
-The coverage matrix now separates the source-declared status from semantic coverage of the official wording. The source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 20 are fully covered, 27 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
+The coverage matrix now separates the source-declared status from semantic coverage of the official wording. The source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 18 are fully covered, 29 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
 
 Iurie's interview agent is an intermediary. It may explain concepts, reformulate questions and ask for examples. Iurie remains the authority on business reality and desired application needs. Evidence must distinguish: a direct or faithfully paraphrased Iurie answer; an agent-framed proposition explicitly accepted by Iurie; an agent interpretation without acceptance; and a point delegated to Dan or the agents for product or technical decision. An agent formulation or interpretation alone is never a business requirement. Explicit acceptance applies only to the scope actually asked.
 
@@ -3499,6 +3499,7 @@ The following remain decisions or evidence requests, not inferred rules:
 7. mapping or versioning strategy for the independent interview sequence;
 8. revalidation of compound “yes” answers before they create permissions, financial/legal enforcement or irreversible workflow behaviour.
 
-Formal question-bank completeness is not the same as evidence sufficiency. A partial answer must not be re-asked mechanically. The receiving agent classifies it as sufficient, sufficient with a documented reversible assumption, interviewer clarification, targeted Iurie follow-up, or Dan/technical decision. Only gaps affecting a business rule, exception, authorization, legal/financial effect, blocking automation or a difficult-to-reverse choice require targeted Iurie follow-up. Low-risk reversible gaps may proceed with an explicit assumption and confidence. Technical mechanisms remain with Dan and the agents.
+Formal question-bank completeness is not the same as evidence sufficiency. A partial official ID does not make an answer to a narrower question insufficient. The answered sub-part is preserved; the other components are recorded as `not asked / deferred remainder` and must not cause the full question to be repeated. The receiving agent classifies it as sufficient, sufficient with a documented reversible assumption, interviewer clarification, targeted Iurie follow-up, or Dan/technical decision. Only gaps affecting a business rule, exception, authorization, legal/financial effect, blocking automation or a difficult-to-reverse choice require targeted Iurie follow-up. Low-risk reversible gaps may proceed with an explicit assumption and confidence. Technical mechanisms remain with Dan and the agents.
 
 Implementation issues must continue to derive from the owning canonical PRD after material blockers are closed, never directly from the raw interview.
+
