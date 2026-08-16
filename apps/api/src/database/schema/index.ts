@@ -286,8 +286,18 @@ export const companyContextAssignmentCommands = pgTable(
     }),
     foreignKey({
       name: 'company_context_assignment_commands_result_fk',
-      columns: [table.resultAssignmentId],
-      foreignColumns: [companyRoleAssignments.id],
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.targetWorkspaceMembershipId,
+        table.resultAssignmentId,
+      ],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.workspaceMembershipId,
+        companyRoleAssignments.id,
+      ],
     }),
   ],
 );

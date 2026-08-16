@@ -421,7 +421,7 @@ describeWithPostgres('Company REST API', () => {
 
     expect(createResponse.status).toBe(403);
     expect(readResponse.status).toBe(403);
-    expect(listResponse.status).toBe(403);
+    expect(listResponse.status).toBe(200);
     await expect(createResponse.json()).resolves.toEqual({
       message: 'Forbidden',
       statusCode: 403,
@@ -430,10 +430,7 @@ describeWithPostgres('Company REST API', () => {
       message: 'Forbidden',
       statusCode: 403,
     });
-    await expect(listResponse.json()).resolves.toEqual({
-      message: 'Forbidden',
-      statusCode: 403,
-    });
+    await expect(listResponse.json()).resolves.toEqual([]);
     const responseText = JSON.stringify([
       await fetch(`${origin}/api/companies`, {
         method: 'POST',

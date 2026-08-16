@@ -121,13 +121,44 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     expect(denied.status).toBe(403);
 
     const actions = await pool.query<{ action: string }>(
-      "SELECT action FROM activity_log_events WHERE action LIKE 'company_context_assignment.%' ORDER BY occurred_at, id",
+      "SELECT action FROM activity_log_events WHERE action::text LIKE 'company_context_assignment.%' ORDER BY occurred_at, id",
     );
     expect(actions.rows).toEqual([
       { action: 'company_context_assignment.granted' },
       { action: 'company_context_assignment.revoked' },
     ]);
     expect(owner.workspacePermissions).toContain('company.assignment.manage');
+  });
+
+  it('rejects replay results that reference a different assignment target', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const firstCompany = await registerCompany('First Replay Company');
+    const secondCompany = await registerCompany('Second Replay Company');
+
+    const firstGrant = await grantAs(
+      'workspace-owner',
+      member.workspaceMembershipId,
+      firstCompany.id,
+    );
+    expect(firstGrant.status).toBe(201);
+    const firstAssignment = await firstGrant.json();
+    const secondGrant = await grantAs(
+      'workspace-owner',
+      member.workspaceMembershipId,
+      secondCompany.id,
+    );
+    expect(secondGrant.status).toBe(201);
+    const secondAssignment = await secondGrant.json();
+
+    await expect(
+      pool.query(
+        `UPDATE company_context_assignment_commands
+         SET result_assignment_id = $1
+         WHERE result_assignment_id = $2`,
+        [secondAssignment.id, firstAssignment.id],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('collapses concurrent grant and revoke retries into one event per transition', async () => {
@@ -165,7 +196,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     expect(revokes.map((response) => response.status)).toEqual([200, 200]);
 
     const counts = await pool.query<{ action: string; count: string }>(
-      "SELECT action, count(*) FROM activity_log_events WHERE action LIKE 'company_context_assignment.%' GROUP BY action ORDER BY action",
+      "SELECT action, count(*) FROM activity_log_events WHERE action::text LIKE 'company_context_assignment.%' GROUP BY action ORDER BY action",
     );
     expect(counts.rows).toEqual([
       { action: 'company_context_assignment.granted', count: '1' },
@@ -295,40 +326,39 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       await grantAs('workspace-owner', member.workspaceMembershipId, unknownId),
     );
 
-    const foreign = await pool.query<{
-      membership_id: string;
-      company_id: string;
-    }>(`
-      WITH foreign_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('foreign-assignment-workspace', 'Foreign Assignment Workspace')
-        RETURNING id
-      ), foreign_user AS (
-        INSERT INTO internal_users (
-          workspace_id, external_provider, external_subject, display_name, email
-        ) SELECT id, 'deterministic-test', 'foreign-member', 'Foreign Member',
-          'foreign-member@example.test' FROM foreign_workspace
-        RETURNING id, workspace_id
-      ), foreign_membership AS (
-        SELECT membership.id, membership.workspace_id, membership.internal_user_id
-        FROM workspace_memberships AS membership
-        INNER JOIN foreign_user ON foreign_user.id = membership.internal_user_id
-      ), foreign_company AS (
-        INSERT INTO companies (
-          workspace_id, display_name, created_by_internal_user_id,
-          created_by_workspace_membership_id, registration_idempotency_key
-        ) SELECT workspace_id, 'Foreign Company', internal_user_id, id,
-          'foreign-assignment-company' FROM foreign_membership
-        RETURNING id
-      )
-      SELECT foreign_membership.id AS membership_id,
-        foreign_company.id AS company_id
-      FROM foreign_membership CROSS JOIN foreign_company
+    const foreignWorkspace = await pool.query<{ id: string }>(`
+      INSERT INTO workspaces (singleton_key, name)
+      VALUES ('foreign-assignment-workspace', 'Foreign Assignment Workspace')
+      RETURNING id
     `);
+    const foreignUser = await pool.query<{ id: string }>(
+      `INSERT INTO internal_users (
+         workspace_id, external_provider, external_subject, display_name, email
+       ) VALUES ($1, 'deterministic-test', 'foreign-member', 'Foreign Member',
+         'foreign-member@example.test')
+       RETURNING id`,
+      [foreignWorkspace.rows[0]!.id],
+    );
+    const foreignMembership = await pool.query<{ id: string }>(
+      'SELECT id FROM workspace_memberships WHERE internal_user_id = $1',
+      [foreignUser.rows[0]!.id],
+    );
+    const foreignCompany = await pool.query<{ id: string }>(
+      `INSERT INTO companies (
+         workspace_id, display_name, created_by_internal_user_id,
+         created_by_workspace_membership_id, registration_idempotency_key
+       ) VALUES ($1, 'Foreign Company', $2, $3, 'foreign-assignment-company')
+       RETURNING id`,
+      [
+        foreignWorkspace.rows[0]!.id,
+        foreignUser.rows[0]!.id,
+        foreignMembership.rows[0]!.id,
+      ],
+    );
     await expectForbidden(
       await grantAs(
         'workspace-owner',
-        foreign.rows[0]!.membership_id,
+        foreignMembership.rows[0]!.id,
         company.id,
       ),
     );
@@ -336,7 +366,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       await grantAs(
         'workspace-owner',
         member.workspaceMembershipId,
-        foreign.rows[0]!.company_id,
+        foreignCompany.rows[0]!.id,
       ),
     );
 
