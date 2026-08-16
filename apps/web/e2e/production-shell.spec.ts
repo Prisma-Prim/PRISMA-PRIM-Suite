@@ -274,7 +274,7 @@ test('shows a safe Company-administration denial without exposing a registration
 
   await expect(
     page.getByText(
-      'You do not have permission to register or view Companies in this Workspace.',
+      'You do not have permission to view Companies in this Workspace.',
       { exact: true },
     ),
   ).toBeVisible();
@@ -749,7 +749,10 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
   await page.getByLabel('Active Company').selectOption(company.id);
   await expect(
-    page.getByText(company.displayName, { exact: true }),
+    page
+      .getByRole('region', { name: 'Company context' })
+      .locator('dd')
+      .filter({ hasText: company.displayName }),
   ).toBeVisible();
 
   identity = 'owner';
