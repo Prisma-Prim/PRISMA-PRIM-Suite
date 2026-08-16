@@ -26,20 +26,9 @@ describe('CompanyContextAccess', () => {
         ),
       ),
     );
-    const actor: ActorContext = {
-      internalUserId: 'owner',
-      workspaceMembershipId: 'owner-membership',
-      workspaceId: 'workspace',
-      workspaceName: 'Workspace',
-      displayName: 'Owner',
-      email: 'owner@example.test',
-      active: true as const,
-      workspacePermissions: ['company.manage', 'company.assignment.manage'],
-    };
-
     render(
       <CompanyContextAccess
-        actor={actor}
+        actor={ownerActor}
         identity={deterministicBrowserIdentity()}
       />,
     );
@@ -83,4 +72,56 @@ describe('CompanyContextAccess', () => {
     expect(revokeKey).toBeTruthy();
     expect(revokeKey).not.toBe(grantKey);
   });
+
+  it('recovers when authentication fails before the request is created', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'assignment-1',
+            workspaceMembershipId: 'member-1',
+            companyId: 'company-1',
+            bundle: 'Company Context Access',
+            active: true,
+          }),
+          { status: 201 },
+        ),
+      ),
+    );
+    const getToken = vi
+      .fn<() => Promise<string | null>>()
+      .mockRejectedValueOnce(new Error('token unavailable'))
+      .mockResolvedValue('verified-session-token');
+    const identity = { ...deterministicBrowserIdentity(), getToken };
+
+    render(<CompanyContextAccess actor={ownerActor} identity={identity} />);
+    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
+      target: { value: 'member-1' },
+    });
+    fireEvent.change(screen.getByLabelText('Company ID'), {
+      target: { value: 'company-1' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+    expect(fetch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted.');
+    expect(getToken).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
 });
+
+const ownerActor: ActorContext = {
+  internalUserId: 'owner',
+  workspaceMembershipId: 'owner-membership',
+  workspaceId: 'workspace',
+  workspaceName: 'Workspace',
+  displayName: 'Owner',
+  email: 'owner@example.test',
+  active: true,
+  workspacePermissions: ['company.manage', 'company.assignment.manage'],
+};
