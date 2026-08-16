@@ -124,4 +124,8 @@ test('serializes per-PR workflow runs and cancels stale evaluations', async () =
   assert.match(workflow, /codex-terminal-review-\$\{\{/);
   assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /state: 'pending'/);
+  assert.match(
+    workflow,
+    /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+  );
 });
