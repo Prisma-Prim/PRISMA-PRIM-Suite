@@ -1,25 +1,24 @@
 import type { ActorContext } from '../access-types';
-import type {
-  CompanyContextState,
-  VisibleCompany,
-} from '../company/CompanyContextSelector';
 import type { AuthenticatedApiClient } from '../api/authenticated-api-client';
-import type { CompanyContextPreferenceStore } from './company-context-preference';
+import { createCompanyContextPreferenceStore } from './company-context-preference';
+import type {
+  LoadedCompanyContext,
+  ProductionShellContext,
+  VisibleCompany,
+} from './company-context-transitions';
+
+const preference = createCompanyContextPreferenceStore();
 
 export type InitialCompanyContextResult =
   | {
       status: 'ok';
       actor: ActorContext;
-      companyContext: CompanyContextState;
-      preferenceAction?:
-        | { type: 'write'; actor: ActorContext; companyId: string }
-        | { type: 'clear'; actor: ActorContext };
+      companyContext: LoadedCompanyContext;
     }
   | { status: 'unauthorized' };
 
 export async function loadInitialCompanyContext(
   api: AuthenticatedApiClient,
-  preference: CompanyContextPreferenceStore,
   baseActor: ActorContext,
   signal: AbortSignal,
 ): Promise<InitialCompanyContextResult> {
@@ -59,7 +58,7 @@ export async function loadInitialCompanyContext(
     return {
       status: 'ok',
       actor: baseActor,
-      companyContext: { status: 'ready', companies, selecting: false },
+      companyContext: { status: 'ready', companies },
     };
   }
 
@@ -70,15 +69,13 @@ export async function loadInitialCompanyContext(
   if (selectedResult.status === 'unauthorized')
     return { status: 'unauthorized' };
   if (selectedResult.status === 'forbidden') {
-    companies = withoutCompany(companies, requestedCompanyId);
+    companies = companies.filter(({ id }) => id !== requestedCompanyId);
     return {
       status: 'ok',
       actor: baseActor,
-      preferenceAction: { type: 'clear', actor: baseActor },
       companyContext: {
         status: 'ready',
         companies,
-        selecting: false,
         recoveryMessage: persistedCompanyId ? 'stale' : 'selection-failed',
       },
     };
@@ -93,26 +90,23 @@ export async function loadInitialCompanyContext(
   return {
     status: 'ok',
     actor: selectedResult.value,
-    preferenceAction: {
-      type: 'write',
-      actor: selectedResult.value,
-      companyId: requestedCompanyId,
-    },
-    companyContext: { status: 'ready', companies, selecting: false },
+    companyContext: { status: 'ready', companies },
   };
 }
 
-export function withoutCompany(
-  companies: VisibleCompany[],
-  rejectedCompanyId: string | undefined,
-): VisibleCompany[] {
-  return rejectedCompanyId
-    ? companies.filter((company) => company.id !== rejectedCompanyId)
-    : companies;
-}
-
-export function withoutActiveCompany(actor: ActorContext): ActorContext {
-  const workspaceActor = { ...actor };
-  delete workspaceActor.activeCompany;
-  return workspaceActor;
+export function synchronizeCompanyContextPreference(
+  context: ProductionShellContext,
+): void {
+  if (context.status !== 'active' || context.companyContext.status !== 'ready')
+    return;
+  const activeCompanyId = context.actor.activeCompany?.id;
+  if (!activeCompanyId && context.companyContext.recoveryMessage) {
+    preference.clear(context.actor);
+    return;
+  }
+  if (
+    activeCompanyId &&
+    context.companyContext.companies.some(({ id }) => id === activeCompanyId)
+  )
+    preference.write(context.actor, activeCompanyId);
 }

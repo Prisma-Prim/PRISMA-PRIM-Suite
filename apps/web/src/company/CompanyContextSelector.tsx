@@ -1,21 +1,6 @@
 import type { ActorContext } from '../access-types';
+import type { CompanyContextState } from '../production-shell/company-context-transitions';
 import { companyContextCopy as copy } from './company-context.copy';
-
-export interface VisibleCompany {
-  id: string;
-  displayName: string;
-}
-
-export type CompanyContextState =
-  | { status: 'loading' }
-  | { status: 'forbidden' }
-  | { status: 'error' }
-  | {
-      status: 'ready';
-      companies: VisibleCompany[];
-      selecting: boolean;
-      recoveryMessage?: 'stale' | 'selection-failed';
-    };
 
 export function CompanyContextSelector({
   actor,
@@ -64,7 +49,7 @@ export function CompanyContextSelector({
           <select
             id="active-company-context"
             value={actor.activeCompany?.id ?? ''}
-            disabled={state.selecting}
+            disabled={state.selection.status === 'pending'}
             onChange={(event) => {
               if (event.target.value) void onSelect(event.target.value);
             }}
