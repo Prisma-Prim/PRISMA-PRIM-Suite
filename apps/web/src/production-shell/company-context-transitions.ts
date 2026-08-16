@@ -164,9 +164,11 @@ export function transitionCompanyContext(
     }
     case 'selection-confirmed': {
       if (
-        !matchesReadyOrigin(current, transition.origin) ||
-        current.companyContext.selection.status !== 'pending' ||
-        current.companyContext.selection.companyId !== transition.companyId ||
+        !matchesPendingSelection(
+          current,
+          transition.origin,
+          transition.companyId,
+        ) ||
         !current.companyContext.companies.some(
           ({ id }) => id === transition.companyId,
         )
@@ -181,9 +183,14 @@ export function transitionCompanyContext(
     }
     case 'selection-denied': {
       if (
-        !matchesReadyOrigin(current, transition.origin) ||
-        current.companyContext.selection.status !== 'pending' ||
-        current.companyContext.selection.companyId !== transition.companyId
+        !matchesPendingSelection(
+          current,
+          transition.origin,
+          transition.companyId,
+        ) ||
+        !current.companyContext.companies.some(
+          ({ id }) => id === transition.companyId,
+        )
       )
         return current;
       return {
@@ -200,9 +207,11 @@ export function transitionCompanyContext(
     }
     case 'selection-failed': {
       if (
-        !matchesReadyOrigin(current, transition.origin) ||
-        current.companyContext.selection.status !== 'pending' ||
-        current.companyContext.selection.companyId !== transition.companyId ||
+        !matchesPendingSelection(
+          current,
+          transition.origin,
+          transition.companyId,
+        ) ||
         !current.companyContext.companies.some(
           ({ id }) => id === transition.companyId,
         )
@@ -213,9 +222,7 @@ export function transitionCompanyContext(
     case 'company-rejected': {
       if (
         !matchesReadyOrigin(current, transition.origin) ||
-        current.actor.activeCompany?.id !== transition.companyId ||
-        (current.companyContext.selection.status === 'pending' &&
-          current.companyContext.selection.companyId !== transition.companyId)
+        current.actor.activeCompany?.id !== transition.companyId
       )
         return current;
       return {
@@ -227,6 +234,7 @@ export function transitionCompanyContext(
             transition.companyId,
           ),
           'stale',
+          current.companyContext.selection,
         ),
         activityLog:
           transition.activityLog === 'error'
@@ -285,6 +293,29 @@ function matchesReadyOrigin(
   );
 }
 
+function matchesPendingSelection(
+  context: ProductionShellContext,
+  origin: CompanyContextOrigin,
+  companyId: string,
+): context is Extract<ProductionShellContext, { status: 'active' }> & {
+  companyContext: Extract<CompanyContextState, { status: 'ready' }>;
+} {
+  if (
+    context.status !== 'active' ||
+    context.companyContext.status !== 'ready' ||
+    context.companyContext.selection.status !== 'pending' ||
+    context.companyContext.selection.companyId !== companyId ||
+    !matchesSessionOrigin(context, origin)
+  )
+    return false;
+  return (
+    context.actor.activeCompany?.id === origin.activeCompanyId ||
+    (origin.activeCompanyId !== undefined &&
+      context.actor.activeCompany === undefined &&
+      context.companyContext.recoveryMessage === 'stale')
+  );
+}
+
 function matchesOrigin(
   context: ProductionShellContext,
   origin: CompanyContextOrigin,
@@ -292,6 +323,15 @@ function matchesOrigin(
   return (
     context.status === 'active' &&
     context.actor.activeCompany?.id === origin.activeCompanyId &&
+    matchesSessionOrigin(context, origin)
+  );
+}
+
+function matchesSessionOrigin(
+  context: Extract<ProductionShellContext, { status: 'active' }>,
+  origin: CompanyContextOrigin,
+): boolean {
+  return (
     context.actor.internalUserId === origin.internalUserId &&
     context.actor.workspaceId === origin.workspaceId &&
     context.actor.workspaceMembershipId === origin.workspaceMembershipId &&
