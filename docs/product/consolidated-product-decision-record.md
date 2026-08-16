@@ -2,8 +2,8 @@
 
 **Product:** PRISMA-PRIM Suite  
 **Status:** Reconciliation complete — decisions `DEC-001` through `DEC-211` approved  
-**Record version:** 1.0  
-**Last updated:** 2026-08-15  
+**Record version:** 1.1  
+**Last updated:** 2026-08-16  
 **Source discussion language:** French  
 **Repository language:** English
 
@@ -3452,3 +3452,49 @@ This record now preserves the complete reasoning needed for a context-free futur
 6. Draft Release 1 capability PRDs before creating implementation epics or issues.
 7. Apply the readiness gates in section 32.5 and create only narrow, independently testable issues.
 8. Prepare the final Romanian report and email for Iurie after normalized specifications and issue hierarchy match this reconciliation.
+
+## 34. Iurie business interview evidence reconciliation
+
+### 34.1 Provenance and completion status
+
+The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) compares its 61 source comments with the 278 official questions in the Romanian bank.
+
+Only answers attached to an official question ID and an explicit source status count as formal bank coverage. On the 2026-08-16 snapshot, 43 official questions are explicitly resolved, 6 are partial and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
+
+This corrects the tempting but unsupported conclusion that reaching item 307 proves completion of all 278 official questions.
+
+### 34.2 Normalized confirmed business evidence
+
+The following evidence is explicit and is reflected in the owning Draft PRDs:
+
+- Iurie requires authorized consolidated oversight across PRISMA-PRIM, BIC and ECG.
+- Initial named actors are Iurie, Dan and Valentin; Valentin's ordinary access is technical, and Dan may access real data when required for development or intervention.
+- Future Company users are restricted to their Company's activity.
+- The Client uses one shared general dossier while Company activity remains separated.
+- Projects may begin before Contract signature.
+- Project lifecycle and workflow/audit stages are separate; C, S1, S2 and R are audit-specific.
+- Official Documents and received originals preserve version/evidence history and are not silently overwritten.
+- Operational dashboards prioritize attributable next actions and may have Company-specific and authorized consolidated scopes.
+- Personnel records must cover both employees and service-contract collaborators.
+
+These are business evidence statements, not new `DEC-...` entries. The update protocol still requires Dan's explicit product approval before creating a new numbered decision when alternatives or observable consequences remain material.
+
+### 34.3 Refinement and overlap in sessions 59–60
+
+Session 59 establishes that the personnel concept cannot be limited to employees and leaves service-contract fields open. Session 60 answers that clarification by confirming contract period, remuneration, payment dates, allocation eligibility, termination, expiry blocking, confidentiality records and contract history.
+
+The sessions overlap but do not contradict each other. Session 60 refines session 59. The personnel/collaborator capability remains outside the current Release 1 PRDs and requires its own approved capability boundary before ticketing.
+
+### 34.4 Unresolved arbitrations
+
+The following remain decisions or evidence requests, not inferred rules:
+
+1. exact initial permission bundles and “All Companies” interaction;
+2. shared-versus-Company-confidential Client fields and duplicate authority;
+3. first Release 1 Project categories, Tasks, evidence gates and lifecycle exceptions;
+4. representative Document families, confidentiality, officialization authority and Representation mechanism;
+5. dashboard action/metric definitions;
+6. mapping or versioning strategy for the independent interview sequence;
+7. revalidation of compound “yes” answers before they create permissions, financial/legal enforcement or irreversible workflow behaviour.
+
+Implementation issues must continue to derive from the owning canonical PRD after these blockers are closed, never directly from the raw interview.
