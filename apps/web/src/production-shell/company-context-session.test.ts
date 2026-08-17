@@ -14,9 +14,8 @@ describe('loadInitialCompanyContext', () => {
       email: 'member@example.test',
       active: true,
       workspacePermissions: [],
-      companyContextAvailable: false,
     };
-    const request = vi.fn();
+    const request = vi.fn().mockResolvedValue({ status: 'ok', value: [] });
 
     const result = await loadInitialCompanyContext(
       { request } as AuthenticatedApiClient,
@@ -24,7 +23,7 @@ describe('loadInitialCompanyContext', () => {
       new AbortController().signal,
     );
 
-    expect(request).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledWith('/companies', expect.anything());
     expect(result).toEqual({
       status: 'ok',
       actor,
@@ -42,7 +41,6 @@ describe('loadInitialCompanyContext', () => {
       email: 'member@example.test',
       active: true,
       workspacePermissions: [],
-      companyContextAvailable: true,
     };
     const request = vi.fn().mockResolvedValue({
       status: 'ok',

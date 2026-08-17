@@ -1,5 +1,5 @@
 {
-  "id": "48101727-1bb4-4a78-8e00-07262430bedd",
+  "id": "5c7c2c27-2f26-4fb8-8f64-45df20d5f12c",
   "prevId": "00daac09-d065-44f9-a450-8eca4e5eb2d8",
   "version": "7",
   "dialect": "postgresql",
@@ -495,9 +495,15 @@
           "tableFrom": "company_context_assignment_commands",
           "tableTo": "company_role_assignments",
           "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "target_workspace_membership_id",
             "result_assignment_id"
           ],
           "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "workspace_membership_id",
             "id"
           ],
           "onDelete": "no action",

@@ -728,7 +728,6 @@ test('grants, selects, and revokes narrow Company context access', async ({
                 displayName: 'Assigned Member',
                 email: 'member@example.test',
                 workspacePermissions: [],
-                companyContextAvailable: assigned,
                 ...(selected && assigned ? { activeCompany: company } : {}),
               },
       });

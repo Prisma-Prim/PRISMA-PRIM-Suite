@@ -1,3 +1,0 @@
-ALTER TABLE "company_context_assignment_commands" DROP CONSTRAINT "company_context_assignment_commands_result_fk";
---> statement-breakpoint
-ALTER TABLE "company_context_assignment_commands" ADD CONSTRAINT "company_context_assignment_commands_result_fk" FOREIGN KEY ("workspace_id","company_id","target_workspace_membership_id","result_assignment_id") REFERENCES "public"."company_role_assignments"("workspace_id","company_id","workspace_membership_id","id") ON DELETE no action ON UPDATE no action;

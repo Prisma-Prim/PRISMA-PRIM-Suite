@@ -157,18 +157,7 @@ export class AccessService {
           authority.workspace.id,
           authority.membership.id,
         ),
-        companyContextAvailable: false,
       };
-
-      actor.companyContextAvailable =
-        actor.workspacePermissions.includes('company.manage') ||
-        (
-          await this.companyPermissions.listCompanyIds(
-            actor.workspaceId,
-            actor.workspaceMembershipId,
-            COMPANY_CONTEXT_USE_PERMISSION,
-          )
-        ).length > 0;
 
       if (requestedCompanyId !== undefined) {
         const canUseCompany =

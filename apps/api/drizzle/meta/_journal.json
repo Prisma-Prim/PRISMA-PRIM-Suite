@@ -54,15 +54,8 @@
     {
       "idx": 7,
       "version": "7",
-      "when": 1786905678181,
+      "when": 1786986823899,
       "tag": "0007_wakeful_moonstone",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1786906134328,
-      "tag": "0008_first_venus",
       "breakpoints": true
     }
   ]

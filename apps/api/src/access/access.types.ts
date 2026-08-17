@@ -22,6 +22,5 @@ export interface ActorContext {
   email: string;
   active: boolean;
   workspacePermissions: WorkspacePermission[];
-  companyContextAvailable: boolean;
   activeCompany?: ActiveCompanyContext;
 }

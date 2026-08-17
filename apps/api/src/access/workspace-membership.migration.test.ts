@@ -201,7 +201,6 @@ describeWithPostgres('Workspace Membership migration', () => {
     await applyMigration('0005_modern_hammerhead.sql');
     await applyMigration('0006_sudden_dark_phoenix.sql');
     await applyMigration('0007_wakeful_moonstone.sql');
-    await applyMigration('0008_first_venus.sql');
 
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());

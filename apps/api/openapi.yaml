@@ -425,7 +425,6 @@ components:
         - email
         - active
         - workspacePermissions
-        - companyContextAvailable
       properties:
         internalUserId:
           type: string
@@ -454,8 +453,6 @@ components:
             enum:
               - company.manage
               - company.assignment.manage
-        companyContextAvailable:
-          type: boolean
         activeCompany:
           $ref: '#/components/schemas/ActiveCompanyContext'
     ActiveCompanyContext:
