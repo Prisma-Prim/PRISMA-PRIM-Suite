@@ -6,21 +6,21 @@ status: proposed
 
 ## Purpose
 
-This proposal records an architectural review prompted by Iurie Popescu's guidance about future agent integration for PRISMA-PRIM Suite. It is intentionally documentation-only and does **not** authorize MCP implementation, new dependencies, new services, or a change to the current roadmap.
+This proposal records an architectural review prompted by an email sent by Iurie Popescu's agent about future agent integration for PRISMA-PRIM Suite. The email is treated as an agent-generated architectural recommendation for review, **not as a direct instruction, approval, or business decision from Iurie himself**. It is intentionally documentation-only and does **not** authorize MCP implementation, new dependencies, new services, or a change to the current roadmap.
 
 The goal is narrower: preserve the current architecture so future ChatGPT, Cursor, Codex, or other agent integrations can expose governed business capabilities without moving business authority into an AI-specific layer or creating direct AI access to storage and databases.
 
 This ADR remains **proposed** until reviewed and accepted, revised, or rejected by the repository owner.
 
-## Source guidance from Iurie
+## Source email from Iurie's agent
 
-Iurie's message asked that ongoing work continue without rework while preserving a clear separation where possible:
+Iurie's agent sent an email recommending that ongoing work continue without rework while preserving a clear separation where possible:
 
 ```text
 BUSINESS LOGIC -> INTERNAL API -> MCP / AGENT LAYER -> ChatGPT / Cursor / other agents
 ```
 
-The message highlighted reusable capabilities such as:
+The email highlighted reusable capabilities such as:
 
 - `get_client`
 - `search_documents`
@@ -33,7 +33,7 @@ The message highlighted reusable capabilities such as:
 - `generate_audit_plan`
 - `register_certificate`
 
-It also requested the following security properties:
+The agent also recommended the following security properties:
 
 1. separate read-only capabilities from write capabilities;
 2. require human approval for write/modification actions;
@@ -42,7 +42,9 @@ It also requested the following security properties:
 5. log AI actions;
 6. keep DEV / TEST / PROD separate.
 
-The message explicitly did **not** request immediate MCP implementation. It asked only whether the current architecture permits this separation or contains a major conflict.
+The email explicitly did **not** request immediate MCP implementation. It asked only whether the current architecture permits this separation or contains a major conflict.
+
+Because the source is an agent-generated email rather than a direct product-owner decision, this ADR evaluates the recommendations independently against the repository's existing architecture and keeps every new conclusion in `proposed` status until Dan reviews it.
 
 ## Current architecture assessment
 
@@ -66,7 +68,7 @@ Therefore this proposal recommends **preserving and clarifying** existing seams,
 
 ## Recommended conceptual model
 
-The source message expresses the right intent, but the architecture should not require every future MCP tool to perform a mandatory internal HTTP round trip when the same deployment can safely reuse application services.
+The source email expresses the right architectural intent, but the architecture should not require every future MCP tool to perform a mandatory internal HTTP round trip when the same deployment can safely reuse application services.
 
 Prefer the following conceptual model:
 
@@ -360,9 +362,11 @@ These are future product/security/technical decisions, not reasons to redesign t
 
 ## Recommended review outcome
 
-The recommended conclusion to Iurie's question is:
+The recommended response to the architectural question raised in Iurie's agent email is:
 
 > The architecture already permits the requested separation and there is no major conflict. The current NestJS business-authority boundary, reusable API contract, authorization model, accountability work, replaceable AI/provider approach, and security PRDs are aligned with the proposal. No current implementation should be stopped or rebuilt for MCP. We should formalize MCP/agent integrations as adapters over server-authorized business capabilities, prevent direct AI access to storage/database authority, explicitly classify query vs command tools, preserve human versus agent execution attribution, and enforce sensitive-action approval on the server when concrete agent features are implemented.
+
+This is the technical reviewer's proposed response to the agent-generated recommendation; it should not be represented as Iurie's own architectural decision unless he separately confirms it.
 
 ## Review checklist for Dan + local Codex discussion
 
