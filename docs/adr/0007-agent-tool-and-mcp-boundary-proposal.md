@@ -188,7 +188,7 @@ Implementation should begin only when one bounded use case identifies:
 - failure, timeout, revocation, and provider-outage behavior;
 - representative authorization and adversarial tests.
 
-That implementation should receive its own issue or PRD and architectural/security preflight. It should not reopen the boundaries already accepted here unless the concrete evidence demonstrates a conflict.
+That implementation should receive its own implementation issue, linked to the applicable PRD, together with an architectural/security preflight. It should not reopen the boundaries already accepted here unless the concrete evidence demonstrates a conflict.
 
 ## Relationship to current repository decisions
 
