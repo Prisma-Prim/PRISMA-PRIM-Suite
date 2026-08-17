@@ -270,6 +270,7 @@ test('shows an empty Company context without exposing administration controls', 
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({ json: { events: [] } }),
   );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
   await page.goto('/');
 
   await expect(
