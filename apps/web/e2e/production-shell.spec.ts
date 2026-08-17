@@ -671,6 +671,10 @@ test('grants, selects, and revokes narrow Company context access', async ({
   page,
 }) => {
   const company = { id: 'company-assigned', displayName: 'Assigned Company' };
+  const unassignedCompany = {
+    id: 'company-unassigned',
+    displayName: 'Unassigned Company',
+  };
   let identity: 'owner' | 'member' = 'owner';
   let assigned = false;
   await page.route('**/api/**', async (route) => {
@@ -748,6 +752,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
     page.getByRole('heading', { name: 'Company Context Access' }),
   ).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  await expect(
+    page.getByRole('option', { name: unassignedCompany.displayName }),
+  ).toHaveCount(0);
   await page.getByLabel('Active Company').selectOption(company.id);
   await expect(
     page

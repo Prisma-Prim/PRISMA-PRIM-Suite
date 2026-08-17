@@ -62,6 +62,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     const owner = await currentActor('workspace-owner', 'Owner');
     const member = await currentActor('workspace-member', 'Member');
     const company = await registerCompany('Assigned Company');
+    const unassignedCompany = await registerCompany('Unassigned Company');
 
     const grant = await fetch(`${origin}/api/company-context-assignments`, {
       method: 'POST',
@@ -76,7 +77,8 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       }),
     });
     expect(grant.status).toBe(201);
-    await expect(grant.json()).resolves.toMatchObject({
+    const grantedAssignment = await grant.json();
+    expect(grantedAssignment).toMatchObject({
       workspaceMembershipId: member.workspaceMembershipId,
       companyId: company.id,
       bundle: 'Company Context Access',
@@ -99,6 +101,16 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     await expect(selected.json()).resolves.toMatchObject({
       activeCompany: { id: company.id },
     });
+    const unassignedSelection = await fetch(
+      `${origin}/api/access/current-actor`,
+      {
+        headers: {
+          ...identityHeaders('workspace-member', 'Member'),
+          'x-company-context-id': unassignedCompany.id,
+        },
+      },
+    );
+    expect(unassignedSelection.status).toBe(403);
 
     const revoke = await fetch(
       `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
@@ -120,12 +132,45 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     });
     expect(denied.status).toBe(403);
 
-    const actions = await pool.query<{ action: string }>(
-      "SELECT action FROM activity_log_events WHERE action::text LIKE 'company_context_assignment.%' ORDER BY occurred_at, id",
+    const actions = await pool.query<{
+      action: string;
+      actor_internal_user_id: string;
+      actor_workspace_membership_id: string;
+      target_internal_user_id: string;
+      target_workspace_membership_id: string;
+      target_company_id: string;
+      target_company_role_assignment_id: string;
+      bundle: string;
+    }>(
+      `SELECT action, actor_internal_user_id, actor_workspace_membership_id,
+         target_internal_user_id, target_workspace_membership_id,
+         target_company_id, target_company_role_assignment_id,
+         metadata->>'bundle' AS bundle
+       FROM activity_log_events
+       WHERE action::text LIKE 'company_context_assignment.%'
+       ORDER BY occurred_at, id`,
     );
     expect(actions.rows).toEqual([
-      { action: 'company_context_assignment.granted' },
-      { action: 'company_context_assignment.revoked' },
+      {
+        action: 'company_context_assignment.granted',
+        actor_internal_user_id: owner.internalUserId,
+        actor_workspace_membership_id: owner.workspaceMembershipId,
+        target_internal_user_id: member.internalUserId,
+        target_workspace_membership_id: member.workspaceMembershipId,
+        target_company_id: company.id,
+        target_company_role_assignment_id: grantedAssignment.id,
+        bundle: 'Company Context Access',
+      },
+      {
+        action: 'company_context_assignment.revoked',
+        actor_internal_user_id: owner.internalUserId,
+        actor_workspace_membership_id: owner.workspaceMembershipId,
+        target_internal_user_id: member.internalUserId,
+        target_workspace_membership_id: member.workspaceMembershipId,
+        target_company_id: company.id,
+        target_company_role_assignment_id: grantedAssignment.id,
+        bundle: 'Company Context Access',
+      },
     ]);
     expect(owner.workspacePermissions).toContain('company.assignment.manage');
   });
