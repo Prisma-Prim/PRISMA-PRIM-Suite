@@ -21,12 +21,22 @@ export function CompanyContextAccess({
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [state, setState] = useState<State>({ status: 'idle' });
+  const retryCommand = useRef<
+    | {
+        submission: Submission;
+        workspaceMembershipId: string;
+        companyId: string;
+        idempotencyKey: string;
+      }
+    | undefined
+  >(undefined);
   const pendingRequest = useRef<AbortController | undefined>(undefined);
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
   useEffect(() => {
     pendingRequest.current?.abort();
+    retryCommand.current = undefined;
     setState({ status: 'idle' });
     return () => pendingRequest.current?.abort();
   }, [
@@ -46,7 +56,18 @@ export function CompanyContextAccess({
     const company = companyId.trim();
     if (!member || !company) return setState({ status: 'error' });
     setState({ status: 'submitting', submission });
-    const idempotencyKey = crypto.randomUUID();
+    const command =
+      retryCommand.current?.submission === submission &&
+      retryCommand.current.workspaceMembershipId === member &&
+      retryCommand.current.companyId === company
+        ? retryCommand.current
+        : {
+            submission,
+            workspaceMembershipId: member,
+            companyId: company,
+            idempotencyKey: crypto.randomUUID(),
+          };
+    retryCommand.current = command;
     pendingRequest.current?.abort();
     const request = new AbortController();
     pendingRequest.current = request;
@@ -62,7 +83,7 @@ export function CompanyContextAccess({
               method: 'POST',
               headers: {
                 'content-type': 'application/json',
-                'idempotency-key': idempotencyKey,
+                'idempotency-key': command.idempotencyKey,
               },
               body: JSON.stringify({
                 workspaceMembershipId: member,
@@ -72,13 +93,14 @@ export function CompanyContextAccess({
             }
           : {
               method: 'DELETE',
-              headers: { 'idempotency-key': idempotencyKey },
+              headers: { 'idempotency-key': command.idempotencyKey },
               signal: request.signal,
             },
       );
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized') await identity.rejectSession();
       if (request.signal.aborted) return;
+      if (result.status === 'ok') retryCommand.current = undefined;
       setState(
         result.status === 'ok'
           ? { status: 'ready', submission }

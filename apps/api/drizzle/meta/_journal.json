@@ -57,6 +57,13 @@
       "when": 1786986823899,
       "tag": "0007_wakeful_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786995940000,
+      "tag": "0008_backfill_company_assignment_authority",
+      "breakpoints": true
     }
   ]
 }

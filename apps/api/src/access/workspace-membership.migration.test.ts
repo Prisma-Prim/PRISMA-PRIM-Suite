@@ -199,8 +199,34 @@ describeWithPostgres('Workspace Membership migration', () => {
     );
 
     await applyMigration('0005_modern_hammerhead.sql');
+    const bootstrapOwnerMembership = await migrationPool.query<{ id: string }>(
+      `SELECT id FROM workspace_memberships WHERE internal_user_id = $1`,
+      [internalUserId],
+    );
+    await migrationPool.query(
+      `INSERT INTO workspace_permission_grants (
+         workspace_id, workspace_membership_id, permission
+       ) VALUES ($1, $2, 'company.manage')`,
+      [workspaceId, bootstrapOwnerMembership.rows[0]!.id],
+    );
     await applyMigration('0006_sudden_dark_phoenix.sql');
     await applyMigration('0007_wakeful_moonstone.sql');
+    await applyMigration('0008_backfill_company_assignment_authority.sql');
+    await applyMigration('0008_backfill_company_assignment_authority.sql');
+
+    const upgradedOwnerPermissions = await migrationPool.query<{
+      permission: string;
+    }>(
+      `SELECT permission::text AS permission
+       FROM workspace_permission_grants
+       WHERE workspace_membership_id = $1
+       ORDER BY permission::text`,
+      [bootstrapOwnerMembership.rows[0]!.id],
+    );
+    expect(upgradedOwnerPermissions.rows).toEqual([
+      { permission: 'company.assignment.manage' },
+      { permission: 'company.manage' },
+    ]);
 
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());
