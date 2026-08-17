@@ -22,6 +22,8 @@ This ADR remains `proposed` until its technical boundaries are reviewed. Product
 
 ## Source recommendation
 
+The source email was received on 2026-08-17 with the subject `URGENT – PRISMA-PRIM-Suite trebuie păstrat MCP-ready`.
+
 Iurie's agent recommended preserving a separation similar to:
 
 ```text
@@ -86,94 +88,51 @@ Installing or consuming an external MCP server must never automatically expose t
 
 ## Current architecture assessment
 
-The current architecture already provides the important seams:
+The current architecture already provides the required seams. The authoritative decisions remain in their owning documents:
 
-- React/Vite is a presentation client, not the owner of business decisions;
-- NestJS owns business state, workflows, validation, authorization, transactions, idempotency, and final decisions;
-- PostgreSQL/Drizzle remains behind the business backend;
-- external providers are adapters rather than core authorities;
-- AI outputs are proposals subject to deterministic server validation;
-- OpenAPI already exposes reusable, typed operations through one transport;
-- actor context, Workspace/Company isolation, permissions, and accountability are server-owned;
-- existing PRDs already require authorization before retrieval and tool execution, registered typed tools, server re-authorization, approval for sensitive actions, provider replaceability, safe traces, least privilege, and DEV/TEST/PROD isolation.
+- `0003-nestjs-owns-business-decisions.md` assigns business decisions and deterministic validation to NestJS;
+- `0006-workspace-tenancy-and-company-scoped-authorization.md` assigns actor context, permissions, Workspace/Company isolation, and target visibility to the server;
+- `ai-knowledge-governance-prd.md` governs retrieval, tool execution, approval, provider use, evaluation, and safe interaction traces;
+- `platform-security-reliability-operations-prd.md` governs least privilege, environment isolation, provider failure, secure integrations, and Synology's bounded role;
+- `openapi.yaml` demonstrates that typed application operations can already be exposed through an adapter without moving their business ownership.
 
 Therefore MCP can later become another adapter over narrow application capabilities. The transport may call an authenticated API or safely compose with the same application services, depending on the future deployment. The transport choice is deferred; the authority boundary is not.
 
-## Technical boundaries that can be accepted independently of future product policy
+## MCP-specific consequences of existing technical decisions
 
-These are durable technical constraints. They do not select a provider, tool, deployment topology, or automation level.
+These consequences keep both MCP directions open without duplicating the general controls owned by the ADRs and PRDs above. They do not select a provider, capability, deployment topology, or automation level.
 
-### 1. NestJS remains the business authority
+### 1. MCP remains an adapter in both directions
 
-MCP adapters, external MCP servers, prompts, model SDKs, frontend components, and storage adapters must not become the canonical place for business rules, workflow transitions, permissions, financial or certification decisions, or final validation.
+Inbound MCP requests translate into governed NestJS application capabilities. Outbound MCP calls remain behind an owning application workflow and integration port. Neither direction may bypass owning services or invent parallel business rules.
 
-### 2. MCP remains an adapter in both directions
+### 2. MCP authority is never implicit or transitive
 
-Inbound MCP requests translate into governed application capabilities. Outbound MCP calls remain behind an owning application workflow and integration port. Neither direction may bypass owning services or invent parallel business rules.
+An inbound agent's decision to invoke a tool grants no authority; the existing server-authoritative actor and target rules apply at execution time. Discovering or installing an outbound MCP server grants no authority to invoke all advertised tools, and consuming one external capability does not expose it onward to users or other agents.
 
-### 3. No unrestricted model or MCP access to storage or persistence
+### 3. MCP exposes capabilities, not infrastructure
 
 Agents and external MCP runtimes do not receive broad PostgreSQL credentials, filesystem mounts, NAS credentials, Drive scopes, or equivalent storage authority. Prefer narrow business capabilities such as `search_documents` or `get_document_version` over general storage access.
 
-### 4. Every inbound tool execution is server-authorized
-
-The server establishes the human principal or approved service identity, Workspace and Company scope, effective permissions, target visibility, and current business constraints at execution time. A model's tool choice and client-supplied identifiers are requests, not authority.
-
-This applies to reads as well as writes.
-
-### 5. Every outbound MCP integration is constrained
+### 4. Every outbound MCP integration is explicitly bounded
 
 Each external MCP integration requires an explicit owner, business purpose, allowed capabilities, credential scope, environment, data classification, timeout/retry policy, and disable/revocation path. Tool discovery is not blanket authorization to invoke every advertised tool.
 
-### 6. Inputs and outputs are untrusted at every adapter boundary
+### 5. MCP inputs and outputs remain untrusted adapter data
 
 Inbound tool arguments and outbound MCP results require schema validation, size limits, safe error handling, tenant-aware data minimization, and protection against instructions embedded in retrieved content. External descriptions and results are data, not executable policy.
 
-### 7. Reads, proposals, and commands are explicitly classified
+### 6. Each concrete capability declares its controls
 
-Capabilities should carry an explicit action and risk class. Names such as `get_` or `update_` are not sufficient security controls.
+Each future capability must declare whether it reads, proposes, or changes state, together with its risk, permission, approval, idempotency, evaluation, and logging requirements. The exact taxonomy and persistence model are deferred to concrete use cases rather than standardized speculatively here. When approval is required, existing server authority remains decisive; a provider confirmation dialog is not sufficient.
 
-```text
-QUERY / READ
-PROPOSE / DRAFT
-REVERSIBLE COMMAND
-SENSITIVE COMMAND
-IRREVERSIBLE / LEGAL / FINANCIAL / CERTIFICATION AUTHORITY
-```
+### 7. Automation execution remains attributable
 
-The classification drives permissions, approval, credentials, idempotency, evaluation, and logging. It does not require separate read and write backends.
+Future evidence must distinguish the human or service authority from the agent, channel, or integration that executed a material action. The exact Activity Log, AI Interaction, or Tool Action representation remains deferred.
 
-### 8. Approval is enforced by server state
+### 8. Each MCP direction has an independent failure and credential boundary
 
-When approval is required, PRISMA-PRIM owns the pending state, validates the proposed action, verifies the approving actor, re-authorizes against current state, executes through the owning service, and records the outcome. A confirmation dialog in ChatGPT, Cursor, or another provider is not the authoritative control.
-
-### 9. Human authority and automation execution remain distinguishable
-
-Material actions must preserve who had authority, which agent/channel or integration initiated execution, which capability was invoked, the resolved scope and target, any approval, and the final outcome. AI-mediated work must not be silently attributed as a direct manual action by the human.
-
-### 10. Providers and optional integrations remain replaceable and non-blocking
-
-OpenAI, ChatGPT, Cursor, GitHub/Codex, Anthropic, Google, an MCP server, or another provider must not become the sole authority for a core business capability. Failure of optional AI or MCP integrations must not make ordinary Client, Project, Document, Audit, Certificate, financial, or authorization records inaccessible through the product.
-
-### 11. Environments and credentials remain isolated
-
-Production data, credentials, tool allowlists, callbacks, and approval policies are not implicitly available to development or test agents. External MCP connections use environment-specific, least-privilege credentials and synthetic or purpose-limited test data.
-
-## Guidance for future capability contracts
-
-When a concrete feature needs to be shared through REST, MCP, or another integration, prefer:
-
-- one owning application capability with stable business semantics;
-- explicit typed inputs, outputs, and structured errors;
-- server-established actor and Workspace/Company context;
-- deterministic validation around AI-produced or external data;
-- narrow data disclosure and no hidden-record leakage;
-- idempotency and correlation for retryable commands;
-- explicit risk, permission, approval, and environment metadata;
-- observable success, rejection, timeout, retry, and failure outcomes;
-- adapter-specific mapping outside the owning business rules.
-
-This guidance does not require extracting generic interfaces before a real second consumer exists. The narrowest stable interface remains preferable.
+Inbound and outbound MCP use separate least-privilege credentials, allowlists, observability, revocation, and outage handling. Production configuration and data are not implicitly available in development or test. Failure of optional MCP or AI integrations must not become failure of ordinary core product operation.
 
 ## Decisions deliberately deferred
 
@@ -242,29 +201,6 @@ This proposal reinforces rather than replaces:
 - `openapi.yaml` — a reusable typed transport over existing application capabilities.
 
 If a future accepted decision conflicts with this proposal, the newer explicit decision supersedes the relevant section rather than leaving two ambiguous authorities.
-
-## Recommended response to the source email
-
-> The current architecture already permits the separation recommended by your agent and presents no major conflict. NestJS remains the business authority, while REST/OpenAPI and a future MCP layer can act as adapters over governed application capabilities. PRISMA-PRIM can also consume selected external MCP capabilities later through constrained integration adapters. No current work should stop or be rebuilt for MCP. We will preserve server authorization, least privilege, explicit risk classification, auditable human-versus-agent attribution, server-enforced approval for sensitive actions, environment isolation, and no unrestricted AI or MCP access to PostgreSQL, Synology, Drive, or equivalent storage. Concrete MCP implementation will wait for a bounded business use case and its security and product decisions.
-
-This is Dan's technical response to an agent-generated recommendation. It must not be represented as Iurie's own decision unless he confirms the relevant business-policy choices.
-
-## Review checklist
-
-- [ ] Confirm both directions are covered: exposing PRISMA-PRIM capabilities and consuming external MCP capabilities.
-- [ ] Confirm MCP remains an adapter and never a business-rule owner.
-- [ ] Confirm existing feature work continues without MCP-driven refactoring.
-- [ ] Confirm every inbound tool execution is server-authorized.
-- [ ] Confirm outbound MCP discovery does not grant blanket tool authority.
-- [ ] Confirm no unrestricted AI or MCP access to database or storage.
-- [ ] Confirm inputs and outputs at both MCP boundaries are treated as untrusted.
-- [ ] Confirm capability risk classification is explicit.
-- [ ] Confirm approval, when required, is enforced by PRISMA-PRIM server state.
-- [ ] Confirm human authority and automated execution remain distinguishable.
-- [ ] Confirm provider outage cannot block ordinary core operations.
-- [ ] Confirm environment-specific credentials and data separation.
-- [ ] Keep the technical boundaries separate from the deferred product policies.
-- [ ] Create no MCP implementation work until a concrete use case satisfies the trigger above.
 
 ## Consequences if the technical boundary is accepted
 
