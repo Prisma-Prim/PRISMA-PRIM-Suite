@@ -275,7 +275,7 @@ test('shows an empty Company context without exposing administration controls', 
 
   await expect(
     page.getByText(
-      'No active Companies are available. Register a Company before choosing a context.',
+      'No Company is assigned to you. Ask a Workspace Owner to grant Company Context Access.',
       { exact: true },
     ),
   ).toBeVisible();
@@ -775,7 +775,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await expect(page.getByLabel('Active Company')).toHaveCount(0);
   await expect(
     page.getByText(
-      'No active Companies are available. Register a Company before choosing a context.',
+      'No Company is assigned to you. Ask a Workspace Owner to grant Company Context Access.',
     ),
   ).toBeVisible();
   await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);

@@ -91,6 +91,21 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     expect(visible.status).toBe(200);
     await expect(visible.json()).resolves.toEqual([company]);
 
+    const malformedSelection = await fetch(
+      `${origin}/api/access/current-actor`,
+      {
+        headers: {
+          ...identityHeaders('workspace-member', 'Member'),
+          'x-company-context-id': 'not-a-company-id',
+        },
+      },
+    );
+    expect(malformedSelection.status).toBe(403);
+    await expect(malformedSelection.json()).resolves.toEqual({
+      message: 'Forbidden',
+      statusCode: 403,
+    });
+
     const selected = await fetch(`${origin}/api/access/current-actor`, {
       headers: {
         ...identityHeaders('workspace-member', 'Member'),

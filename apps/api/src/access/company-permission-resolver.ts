@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { companies, companyRoleAssignments } from '../database/schema/index.js';
 import {
@@ -42,7 +42,8 @@ export class CompanyPermissionResolver {
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
     ];
-    if (companyId) conditions.push(eq(companies.id, companyId));
+    if (companyId)
+      conditions.push(eq(sql<string>`${companies.id}::text`, companyId));
     const rows = await this.databaseContext.connection
       .select({ companyId: companies.id })
       .from(companyRoleAssignments)
