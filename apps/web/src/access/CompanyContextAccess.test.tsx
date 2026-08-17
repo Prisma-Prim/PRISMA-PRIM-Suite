@@ -79,6 +79,43 @@ describe('CompanyContextAccess', () => {
     expect(revokeKey).not.toBe(grantKey);
   });
 
+  it('grants access through native keyboard form submission', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'assignment-1',
+            workspaceMembershipId: 'member-1',
+            companyId: 'company-1',
+            bundle: 'Company Context Access',
+            active: true,
+          }),
+          { status: 201 },
+        ),
+      ),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    fillAssignment();
+
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Grant access' }).closest('form')!,
+    );
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/company-context-assignments',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+    expect(await screen.findByText('Access granted.')).toBeInTheDocument();
+  });
+
   it('recovers when authentication fails before the request is created', async () => {
     vi.stubGlobal(
       'fetch',

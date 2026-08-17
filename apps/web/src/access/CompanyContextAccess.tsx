@@ -53,7 +53,7 @@ export function CompanyContextAccess({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const result = await api.request<void>(
+      const result = await api.request<unknown>(
         submission === 'grant'
           ? '/company-context-assignments'
           : `/company-context-assignments/${encodeURIComponent(member)}/${encodeURIComponent(company)}`,
@@ -99,7 +99,7 @@ export function CompanyContextAccess({
       <p className="eyebrow">{copy.eyebrow}</p>
       <h2 id="company-context-access-title">{copy.title}</h2>
       <p>{copy.description}</p>
-      <form noValidate>
+      <form noValidate onSubmit={(event) => void submit(event, 'grant')}>
         <label htmlFor="context-access-membership">
           {copy.workspaceMembershipLabel}
         </label>
@@ -114,11 +114,7 @@ export function CompanyContextAccess({
           value={companyId}
           onChange={(event) => setCompanyId(event.target.value)}
         />
-        <button
-          type="submit"
-          disabled={pending}
-          onClick={(event) => void submit(event, 'grant')}
-        >
+        <button type="submit" disabled={pending}>
           {copy.grant}
         </button>
         <button

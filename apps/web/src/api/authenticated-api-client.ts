@@ -59,9 +59,7 @@ export async function createAuthenticatedApiClient(
         if (!response.ok) return { status: 'error' };
         return {
           status: 'ok',
-          value: (response.status === 204
-            ? undefined
-            : await response.json()) as T,
+          value: (await response.json()) as T,
         };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
