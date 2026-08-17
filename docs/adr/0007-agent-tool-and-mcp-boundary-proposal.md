@@ -124,7 +124,7 @@ Inbound tool arguments and outbound MCP results require schema validation, size 
 
 ### 6. Each concrete capability declares its controls
 
-Each future capability must declare whether it reads, proposes, or changes state, together with its risk, permission, approval, idempotency, evaluation, and logging requirements. The exact taxonomy and persistence model are deferred to concrete use cases rather than standardized speculatively here. When approval is required, existing server authority remains decisive; a provider confirmation dialog is not sufficient.
+Each future capability must declare whether it reads, proposes, or changes state, together with its risk, permission, approval, idempotency, evaluation, and logging requirements. Sensitive actions remain subject to the existing non-negotiable floor of deterministic validation and human approval; a future MCP capability may not weaken that requirement. The concrete slice must identify which of its actions are sensitive. The exact taxonomy, persistence model, and any bounded delegation policy for lower-risk actions are deferred to concrete use cases rather than standardized speculatively here. A provider confirmation dialog is not sufficient approval.
 
 ### 7. Automation execution remains attributable
 
@@ -155,7 +155,7 @@ The following choices require a concrete use case, technical design, security re
 1. The first useful inbound MCP capability to expose.
 2. The first external MCP capability worth consuming.
 3. Which roles may use each capability and for which Companies or records.
-4. Which commands remain proposal-only, which always require human approval, and whether bounded low-risk delegated authority is ever allowed.
+4. Which non-sensitive commands remain proposal-only, which require additional human approval, and whether bounded low-risk delegated authority is ever allowed. Mandatory human approval for sensitive actions is already established and is not deferred.
 5. Which legal, financial, certification, or Client commitments require stronger control.
 6. Which Synology, Drive, or other source workflows are actually needed and who owns them.
 
