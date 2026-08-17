@@ -221,6 +221,76 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     ).rejects.toMatchObject({ code: '23503' });
   });
 
+  it('canonicalizes UUID casing for idempotent grant and revoke replays', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Canonical UUID Company');
+    const upperMembershipId = member.workspaceMembershipId.toUpperCase();
+    const upperCompanyId = company.id.toUpperCase();
+
+    const firstGrant = await fetch(
+      `${origin}/api/company-context-assignments`,
+      {
+        method: 'POST',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'content-type': 'application/json',
+          'idempotency-key': 'canonical-uuid-grant',
+        },
+        body: JSON.stringify({
+          workspaceMembershipId: upperMembershipId,
+          companyId: upperCompanyId,
+        }),
+      },
+    );
+    expect(firstGrant.status).toBe(201);
+    const granted = await firstGrant.json();
+
+    const replayGrant = await fetch(
+      `${origin}/api/company-context-assignments`,
+      {
+        method: 'POST',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'content-type': 'application/json',
+          'idempotency-key': 'canonical-uuid-grant',
+        },
+        body: JSON.stringify({
+          workspaceMembershipId: member.workspaceMembershipId,
+          companyId: company.id,
+        }),
+      },
+    );
+    expect(replayGrant.status).toBe(201);
+    await expect(replayGrant.json()).resolves.toEqual(granted);
+
+    const firstRevoke = await fetch(
+      `${origin}/api/company-context-assignments/${upperMembershipId}/${upperCompanyId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'idempotency-key': 'canonical-uuid-revoke',
+        },
+      },
+    );
+    expect(firstRevoke.status).toBe(200);
+    const revoked = await firstRevoke.json();
+
+    const replayRevoke = await fetch(
+      `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'idempotency-key': 'canonical-uuid-revoke',
+        },
+      },
+    );
+    expect(replayRevoke.status).toBe(200);
+    await expect(replayRevoke.json()).resolves.toEqual(revoked);
+  });
+
   it('collapses concurrent grant and revoke retries into one event per transition', async () => {
     await currentActor('workspace-owner', 'Owner');
     const member = await currentActor('workspace-member', 'Member');

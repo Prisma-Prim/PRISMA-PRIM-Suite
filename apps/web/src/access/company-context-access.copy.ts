@@ -10,4 +10,8 @@ export const companyContextAccessCopy = {
   granted: 'Access granted.',
   revoked: 'Access revoked.',
   error: 'The access change could not be completed.',
+  activityActionLabels: {
+    'company_context_assignment.granted': 'granted Company Context Access',
+    'company_context_assignment.revoked': 'revoked Company Context Access',
+  },
 } as const;

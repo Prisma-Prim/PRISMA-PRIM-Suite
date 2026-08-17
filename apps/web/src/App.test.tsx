@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
+import { companyContextAccessCopy } from './access/company-context-access.copy';
 
 describe('App', () => {
   beforeEach(() => {
@@ -153,6 +154,70 @@ describe('App', () => {
     expect(
       screen.getByText('Target: North Star Consulting'),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['company_context_assignment.granted', 'granted Company Context Access'],
+    ['company_context_assignment.revoked', 'revoked Company Context Access'],
+  ] as const)(
+    'renders the localized %s Activity Log label',
+    async (action, label) => {
+      vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.toString().endsWith('/companies')
+                ? []
+                : input.toString().endsWith('/activity-log')
+                  ? {
+                      events: [
+                        {
+                          id: `event-${action}`,
+                          action,
+                          occurredAt: '2026-08-15T10:30:00.000Z',
+                          actor: {
+                            internalUserId: 'owner-1',
+                            displayName: 'Workspace Owner',
+                          },
+                          target: {
+                            type: 'company_role_assignment',
+                            assignmentId: 'assignment-1',
+                            internalUserId: 'member-1',
+                            internalUserDisplayName: 'Workspace Member',
+                            workspaceMembershipId: 'membership-1',
+                            companyId: 'company-1',
+                            companyDisplayName: 'North Star Consulting',
+                          },
+                          metadata: { bundle: 'Company Context Access' },
+                        },
+                      ],
+                    }
+                  : {
+                      internalUserId: 'owner-1',
+                      displayName: 'Workspace Owner',
+                      email: 'owner@example.test',
+                      workspaceName: 'PRISMA Workspace',
+                      workspacePermissions: ['company.manage'],
+                    },
+            ),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      render(<App identity={deterministicBrowserIdentity()} />);
+
+      expect(
+        await screen.findByText(`Workspace Owner ${label}`),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('keeps Company Context assignment Activity Log labels in the copy resource', () => {
+    expect(companyContextAccessCopy.activityActionLabels).toEqual({
+      'company_context_assignment.granted': 'granted Company Context Access',
+      'company_context_assignment.revoked': 'revoked Company Context Access',
+    });
   });
 
   it('shows the Activity Log empty state', async () => {

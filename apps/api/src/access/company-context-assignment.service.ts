@@ -311,7 +311,7 @@ function requireUuid(value: unknown): string {
   ) {
     throw new BadRequestException('A valid UUID is required.');
   }
-  return value;
+  return value.toLowerCase();
 }
 
 function requireIdempotencyKey(value: string | undefined): string {

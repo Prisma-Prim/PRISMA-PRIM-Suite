@@ -4,6 +4,7 @@ import {
 } from './production-shell/ApplicationShell';
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
+import { companyContextAccessCopy } from './access/company-context-access.copy';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { formatApplicationDateTime } from './presentation/date-time';
@@ -128,8 +129,7 @@ function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
     'internal_user.provisioned': 'was provisioned',
     'company.registered': 'registered a Company',
-    'company_context_assignment.granted': 'granted Company Context Access',
-    'company_context_assignment.revoked': 'revoked Company Context Access',
+    ...companyContextAccessCopy.activityActionLabels,
   };
   return `${event.actor.displayName} ${actionLabels[event.action]}`;
 }
