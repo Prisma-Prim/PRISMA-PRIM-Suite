@@ -128,7 +128,7 @@ Each future capability must declare whether it reads, proposes, or changes state
 
 ### 7. Automation execution remains attributable
 
-Future evidence must distinguish the human or service authority from the agent, channel, or integration that executed a material action. The exact Activity Log, AI Interaction, or Tool Action representation remains deferred.
+Future evidence must distinguish the human or service authority from the agent, channel, or integration that executed a material action. When the owning capability classifies an MCP execution as a critical business action, it must create the canonical Activity Log event required by the Accountability module. The exact supplemental AI Interaction or Tool Action representation and linkage remain deferred.
 
 ### 8. Each MCP direction has an independent failure and credential boundary
 
