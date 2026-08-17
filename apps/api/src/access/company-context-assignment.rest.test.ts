@@ -204,6 +204,94 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     ]);
   });
 
+  it('holds active target rows stable until a grant commits', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Locked Target Company');
+    const blocker = await pool.connect();
+    const advisoryLock = 90_867_530;
+
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION pause_company_context_assignment_command()
+      RETURNS trigger AS $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock(${advisoryLock});
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER pause_company_context_assignment_command
+      BEFORE INSERT ON company_context_assignment_commands
+      FOR EACH ROW EXECUTE FUNCTION pause_company_context_assignment_command();
+    `);
+
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query('SELECT pg_advisory_xact_lock($1)', [advisoryLock]);
+      const grant = grantAs(
+        'workspace-owner',
+        member.workspaceMembershipId,
+        company.id,
+      );
+      await waitForBlockedAssignmentInsert();
+
+      await expectTargetUpdateLocked(
+        `UPDATE internal_users SET status = 'inactive'
+         WHERE id = (SELECT internal_user_id FROM workspace_memberships WHERE id = $1)`,
+        member.workspaceMembershipId,
+      );
+      await expectTargetUpdateLocked(
+        "UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1",
+        member.workspaceMembershipId,
+      );
+      await expectTargetUpdateLocked(
+        "UPDATE companies SET status = 'inactive' WHERE id = $1",
+        company.id,
+      );
+
+      await blocker.query('COMMIT');
+      expect((await grant).status).toBe(201);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await pool.query(
+        'DROP TRIGGER IF EXISTS pause_company_context_assignment_command ON company_context_assignment_commands',
+      );
+      await pool.query(
+        'DROP FUNCTION IF EXISTS pause_company_context_assignment_command()',
+      );
+    }
+  });
+
+  async function waitForBlockedAssignmentInsert() {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ blocked: boolean }>(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND wait_event = 'advisory'
+            AND query ILIKE '%company_context_assignment_commands%'
+        ) AS blocked
+      `);
+      if (blocked.rows[0]?.blocked) return;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error('The assignment command did not reach the lock barrier.');
+  }
+
+  async function expectTargetUpdateLocked(query: string, id: string) {
+    const updater = await pool.connect();
+    try {
+      await updater.query('BEGIN');
+      await updater.query("SET LOCAL lock_timeout = '100ms'");
+      await expect(updater.query(query, [id])).rejects.toMatchObject({
+        code: '55P03',
+      });
+    } finally {
+      await updater.query('ROLLBACK');
+      updater.release();
+    }
+  }
+
   it('replays delayed commands without changing a newer assignment generation', async () => {
     await currentActor('workspace-owner', 'Owner');
     const member = await currentActor('workspace-member', 'Member');

@@ -183,6 +183,7 @@ export class CompanyContextAssignmentService {
           eq(companies.status, 'active'),
         ),
       )
+      .for('update')
       .limit(1);
     if (!target) throw new ForbiddenException();
     return target;
