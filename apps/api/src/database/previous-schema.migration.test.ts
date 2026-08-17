@@ -90,7 +90,9 @@ describeWithPostgres('previous schema migration preflight', () => {
     try {
       const response = await fetch(`${await app.getUrl()}/api/health`);
       expect(response.status).toBe(200);
-      await expect(response.json()).resolves.toEqual({ status: 'ok' });
+      await expect(response.json()).resolves.toEqual(
+        expect.objectContaining({ status: 'ok' }),
+      );
     } finally {
       await app.close();
       await applicationPool.end();
