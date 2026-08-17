@@ -259,7 +259,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
   });
 });
 
-test('shows a safe Company-administration denial without exposing a registration form', async ({
+test('shows an empty Company context without exposing administration controls', async ({
   page,
 }) => {
   await page.route('**/api/access/current-actor', (route) =>
@@ -274,10 +274,11 @@ test('shows a safe Company-administration denial without exposing a registration
 
   await expect(
     page.getByText(
-      'You do not have permission to view Companies in this Workspace.',
+      'No active Companies are available. Register a Company before choosing a context.',
       { exact: true },
     ),
   ).toBeVisible();
+  await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
