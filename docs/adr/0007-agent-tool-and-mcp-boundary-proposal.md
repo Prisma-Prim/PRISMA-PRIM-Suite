@@ -2,408 +2,285 @@
 status: proposed
 ---
 
-# Proposed agent tool and MCP boundary
+# Preserve governed boundaries for future MCP integrations
 
-## Purpose
+## Status and purpose
 
-This proposal records an architectural review prompted by an email sent by Iurie Popescu's agent about future agent integration for PRISMA-PRIM Suite. The email is treated as an agent-generated architectural recommendation for review, **not as a direct instruction, approval, or business decision from Iurie himself**. It is intentionally documentation-only and does **not** authorize MCP implementation, new dependencies, new services, or a change to the current roadmap.
+This ADR is a **proposed architectural boundary**, not an implementation plan.
 
-The goal is narrower: preserve the current architecture so future ChatGPT, Cursor, Codex, or other agent integrations can expose governed business capabilities without moving business authority into an AI-specific layer or creating direct AI access to storage and databases.
+It was prompted by an email sent by Iurie Popescu's agent. That email is useful source context, but it is **not** a direct instruction, approval, or business decision from Iurie. Dan requested this review so the recommendation could be compared with the repository and discussed without losing its reasoning.
 
-This ADR remains **proposed** until reviewed and accepted, revised, or rejected by the repository owner.
+The review answers three questions:
 
-## Source email from Iurie's agent
+1. Can PRISMA-PRIM expose selected business capabilities to external agents through MCP later?
+2. Can PRISMA-PRIM consume MCP capabilities exposed by external systems later?
+3. Must current implementation work stop or be redesigned now to preserve either option?
 
-Iurie's agent sent an email recommending that ongoing work continue without rework while preserving a clear separation where possible:
+The answer is: **the current foundation is compatible with both directions, there is no major architectural conflict, and no MCP implementation or MCP-driven refactor is justified now**.
+
+This ADR remains `proposed` until its technical boundaries are reviewed. Product-policy choices identified below remain undecided even if the technical boundaries are later accepted.
+
+## Source recommendation
+
+Iurie's agent recommended preserving a separation similar to:
 
 ```text
 BUSINESS LOGIC -> INTERNAL API -> MCP / AGENT LAYER -> ChatGPT / Cursor / other agents
 ```
 
-The email highlighted reusable capabilities such as:
+It mentioned future capabilities such as `get_client`, `search_documents`, `get_projects`, `get_audits`, `create_task`, `update_project`, and `register_certificate`. It also recommended separating reads from writes, human control over changes, least privilege, logging, environment isolation, and no unrestricted AI access to Synology or Drive.
 
-- `get_client`
-- `search_documents`
-- `get_projects`
-- `get_audits`
-- `get_certificates`
-- `get_financial_status`
-- `create_task`
-- `update_project`
-- `generate_audit_plan`
-- `register_certificate`
+The email did not require immediate MCP implementation. It asked whether the current architecture preserves a safe path to add MCP later.
 
-The agent also recommended the following security properties:
+## What MCP means in this product
 
-1. separate read-only capabilities from write capabilities;
-2. require human approval for write/modification actions;
-3. do not give AI unrestricted Synology/Drive access;
-4. use least privilege;
-5. log AI actions;
-6. keep DEV / TEST / PROD separate.
+MCP is a standardized adapter protocol through which an agent can discover and invoke typed capabilities. It does not replace the business application, define permissions, or make model output authoritative.
 
-The email explicitly did **not** request immediate MCP implementation. It asked only whether the current architecture permits this separation or contains a major conflict.
+PRISMA-PRIM may participate in MCP in two independent directions.
 
-Because the source is an agent-generated email rather than a direct product-owner decision, this ADR evaluates the recommendations independently against the repository's existing architecture and keeps every new conclusion in `proposed` status until Dan reviews it.
+### Direction A — PRISMA-PRIM exposes governed capabilities
+
+PRISMA-PRIM may later act as an MCP server, or place an MCP adapter in front of its application capabilities, so external agent clients can request operations such as searching permitted Documents or proposing a Project update.
+
+```text
+ChatGPT / Cursor / Codex / another agent client
+                      |
+                      v
+             PRISMA-PRIM MCP adapter
+                      |
+                      v
+        NestJS application capabilities
+ authorization / validation / approval / audit
+                      |
+                      v
+        domain + persistence + integrations
+```
+
+The agent selects and requests a capability. NestJS remains responsible for deciding whether and how it may execute.
+
+### Direction B — PRISMA-PRIM consumes external MCP capabilities
+
+PRISMA-PRIM may also act as an MCP client when a concrete product workflow needs a capability exposed by another system.
+
+```text
+PRISMA-PRIM owning application workflow
+                      |
+ policy + authorization + data minimization
+                      |
+                      v
+          outbound MCP client adapter
+                      |
+                      v
+     approved external MCP server/service
+```
+
+Examples might eventually include a bounded messaging, calendar, document-provider, or specialist processing integration. These are examples only; this ADR approves no provider or use case.
+
+An external MCP server is untrusted integration input. Its tool descriptions, outputs, errors, and resource identifiers do not grant business authority. PRISMA-PRIM must validate returned data, minimize transmitted data, constrain credentials and scopes, handle timeouts and revocation, and keep the owning workflow recoverable when the external service fails.
+
+### The two directions may coexist, but must not be collapsed
+
+Exposing a PRISMA-PRIM capability and consuming an external capability are different trust boundaries. They may use the same protocol, but they require different credentials, permissions, threat models, logs, and failure handling.
+
+Installing or consuming an external MCP server must never automatically expose that server's capabilities to PRISMA-PRIM users or to other agents. Likewise, exposing one PRISMA-PRIM capability must not grant general access to internal integrations.
 
 ## Current architecture assessment
 
-There is no major architectural conflict with this direction.
+The current architecture already provides the important seams:
 
-The repository already establishes the most important boundary:
-
-- React/Vite is the presentation client;
-- NestJS is the business backend;
-- PostgreSQL/Drizzle is persistence behind the business backend;
-- the future Python AI worker is a specialized workload boundary, not a business authority;
-- NestJS owns business state, workflow transitions, validation, permissions, and final decisions;
+- React/Vite is a presentation client, not the owner of business decisions;
+- NestJS owns business state, workflows, validation, authorization, transactions, idempotency, and final decisions;
+- PostgreSQL/Drizzle remains behind the business backend;
+- external providers are adapters rather than core authorities;
 - AI outputs are proposals subject to deterministic server validation;
-- the API already has an explicit OpenAPI contract;
-- access control and accountability are server-owned concerns;
-- product PRDs already require authorization before retrieval/tool execution, server-side re-authorization, human confirmation for sensitive actions, provider replaceability, least privilege, safe logging, and DEV/TEST/PROD separation.
+- OpenAPI already exposes reusable, typed operations through one transport;
+- actor context, Workspace/Company isolation, permissions, and accountability are server-owned;
+- existing PRDs already require authorization before retrieval and tool execution, registered typed tools, server re-authorization, approval for sensitive actions, provider replaceability, safe traces, least privilege, and DEV/TEST/PROD isolation.
 
-The current implementation reinforces this separation rather than merely documenting it. Controllers delegate to owning services, while owning services enforce authorization, validation, transactions, persistence, idempotency, and activity logging.
+Therefore MCP can later become another adapter over narrow application capabilities. The transport may call an authenticated API or safely compose with the same application services, depending on the future deployment. The transport choice is deferred; the authority boundary is not.
 
-Therefore this proposal recommends **preserving and clarifying** existing seams, not refactoring the current foundation around MCP.
+## Technical boundaries that can be accepted independently of future product policy
 
-## Recommended conceptual model
+These are durable technical constraints. They do not select a provider, tool, deployment topology, or automation level.
 
-The source email expresses the right architectural intent, but the architecture should not require every future MCP tool to perform a mandatory internal HTTP round trip when the same deployment can safely reuse application services.
+### 1. NestJS remains the business authority
 
-Prefer the following conceptual model:
+MCP adapters, external MCP servers, prompts, model SDKs, frontend components, and storage adapters must not become the canonical place for business rules, workflow transitions, permissions, financial or certification decisions, or final validation.
 
-```text
-                        +----------------------+
-Web / external clients ->| REST / OpenAPI       |
-                        +----------+-----------+
-                                   |
-                                   v
-                        +----------------------+
-                        | Application          |
-ChatGPT / Cursor / ---> | capabilities        |
-other agents via MCP    | / owning services   |
-                        +----------+-----------+
-                                   |
-                      authorization / approval
-                      validation / idempotency
-                      accountability / policy
-                                   |
-                                   v
-                        +----------------------+
-                        | Domain + persistence |
-                        | + integrations       |
-                        +----------------------+
-```
+### 2. MCP remains an adapter in both directions
 
-REST/OpenAPI and MCP are adapters over the same governed application capabilities. Either adapter may be separately deployed later, but neither should own the canonical business rules.
+Inbound MCP requests translate into governed application capabilities. Outbound MCP calls remain behind an owning application workflow and integration port. Neither direction may bypass owning services or invent parallel business rules.
 
-An acceptable alternative when deployment topology requires it is:
+### 3. No unrestricted model or MCP access to storage or persistence
 
-```text
-MCP server -> authenticated internal API -> application capabilities
-```
+Agents and external MCP runtimes do not receive broad PostgreSQL credentials, filesystem mounts, NAS credentials, Drive scopes, or equivalent storage authority. Prefer narrow business capabilities such as `search_documents` or `get_document_version` over general storage access.
 
-The invariant is not the transport. The invariant is that MCP remains outside the business authority boundary.
+### 4. Every inbound tool execution is server-authorized
 
-## Proposed architectural invariants
+The server establishes the human principal or approved service identity, Workspace and Company scope, effective permissions, target visibility, and current business constraints at execution time. A model's tool choice and client-supplied identifiers are requests, not authority.
 
-If this ADR is accepted, future implementation work should preserve the following invariants.
+This applies to reads as well as writes.
 
-### 1. Business authority remains in NestJS application/domain ownership
+### 5. Every outbound MCP integration is constrained
 
-MCP tools, model prompts, provider SDKs, frontend components, and storage adapters must not become the canonical place for business rules, workflow transitions, permissions, certification decisions, financial decisions, or final validation.
+Each external MCP integration requires an explicit owner, business purpose, allowed capabilities, credential scope, environment, data classification, timeout/retry policy, and disable/revocation path. Tool discovery is not blanket authorization to invoke every advertised tool.
 
-### 2. MCP is an adapter, not an authority
+### 6. Inputs and outputs are untrusted at every adapter boundary
 
-A future MCP layer may translate tool schemas and agent requests into application capabilities. It must not bypass owning services, invent independent authorization rules, or write directly to business persistence.
+Inbound tool arguments and outbound MCP results require schema validation, size limits, safe error handling, tenant-aware data minimization, and protection against instructions embedded in retrieved content. External descriptions and results are data, not executable policy.
 
-### 3. No direct AI access to PostgreSQL, Synology, Drive, or equivalent storage
+### 7. Reads, proposals, and commands are explicitly classified
 
-Models and agent runtimes should not receive unrestricted database credentials, filesystem mounts, NAS credentials, Drive scopes, or broad storage APIs.
-
-Storage and provider integrations remain application-owned adapters. Agent-visible tools expose the minimum business capability needed, after authorization and data minimization.
-
-Examples:
-
-- prefer `search_documents(query, project_id)` over unrestricted Drive search;
-- prefer `get_document_version(document_id)` over exposing a storage path;
-- prefer `register_certificate(...)` through a governed command over database access.
-
-### 4. Server authorization is required on every tool execution
-
-An agent's decision to call a tool never grants authority.
-
-The server must establish the human principal, workspace/company scope, effective permissions, target visibility, and applicable business constraints at execution time. Client-supplied identifiers remain selection hints, not authority.
-
-This applies to both reads and writes.
-
-### 5. Query and command capabilities are explicitly classified
-
-Agent-visible capabilities should be registered with an explicit risk/action class rather than inferred from naming conventions.
-
-Initial conceptual categories:
+Capabilities should carry an explicit action and risk class. Names such as `get_` or `update_` are not sufficient security controls.
 
 ```text
 QUERY / READ
-- get_client
-- search_documents
-- get_projects
-- get_audits
-- get_certificates
-- get_financial_status
-
-COMMAND / WRITE
-- create_task
-- update_project
-- generate_audit_plan when it creates governed state
-- register_certificate
-```
-
-This classification should drive permission scopes, approval policy, credentials, observability, evaluation, and test coverage.
-
-It does **not** require separate business backends for reads and writes.
-
-### 6. Human approval is a server-enforced policy, not a chat UI convention
-
-For the first agentic releases, defaulting agent-initiated state changes to human approval is a sensible safety posture.
-
-However, the durable rule should not be hard-coded as `all writes always require human approval forever`. The platform's longer-term automation goals may justify bounded delegated authority for low-risk, reversible commands.
-
-Prefer a risk-based model such as:
-
-```text
-READ
--> no state change; ordinary authorization
-
 PROPOSE / DRAFT
--> agent may produce a non-authoritative proposal automatically
-
-LOW-RISK REVERSIBLE COMMAND
--> approval policy may later become configurable and explicitly delegated
-
+REVERSIBLE COMMAND
 SENSITIVE COMMAND
--> explicit human approval required
-
 IRREVERSIBLE / LEGAL / FINANCIAL / CERTIFICATION AUTHORITY
--> strong human control and any additional required review
 ```
 
-The approval state must be owned and checked by the server. A ChatGPT, Cursor, or other provider confirmation dialog is not sufficient as the authoritative control.
+The classification drives permissions, approval, credentials, idempotency, evaluation, and logging. It does not require separate read and write backends.
 
-Recommended sensitive-command flow:
+### 8. Approval is enforced by server state
 
-```text
-agent proposes command
-        |
-        v
-server validates proposal + authorization
-        |
-        v
-pending governed action / preview
-        |
-        v
-human approval by an authorized actor
-        |
-        v
-server re-authorizes actor + target + current state
-        |
-        v
-execute owning application command
-        |
-        v
-record outcome in accountability/audit evidence
-```
+When approval is required, PRISMA-PRIM owns the pending state, validates the proposed action, verifies the approving actor, re-authorizes against current state, executes through the owning service, and records the outcome. A confirmation dialog in ChatGPT, Cursor, or another provider is not the authoritative control.
 
-### 7. Distinguish human authority from agent execution identity
+### 9. Human authority and automation execution remain distinguishable
 
-The Activity Log currently establishes human actor attribution. Future agent execution should preserve that attribution while also recording the execution channel and automation identity.
+Material actions must preserve who had authority, which agent/channel or integration initiated execution, which capability was invoked, the resolved scope and target, any approval, and the final outcome. AI-mediated work must not be silently attributed as a direct manual action by the human.
 
-Do not silently attribute an AI-mediated execution as if the human directly performed the low-level action.
+### 10. Providers and optional integrations remain replaceable and non-blocking
 
-A future material tool execution should be able to answer questions such as:
+OpenAI, ChatGPT, Cursor, GitHub/Codex, Anthropic, Google, an MCP server, or another provider must not become the sole authority for a core business capability. Failure of optional AI or MCP integrations must not make ordinary Client, Project, Document, Audit, Certificate, financial, or authorization records inaccessible through the product.
 
-```text
-Human authority: Iurie
-Execution actor/channel: PRISMA Assistant via ChatGPT MCP
-Tool/capability: update_project
-Provider/model/pipeline: recorded when relevant
-Approval: approved by Iurie / delegated policy identifier
-Target: exact Project
-Outcome: proposed / rejected / executed / failed
-Correlation/idempotency identifier: available
-```
+### 11. Environments and credentials remain isolated
 
-The exact persistence model is deferred, but the distinction should be preserved when designing Activity Log / AI Interaction / Tool Action schemas.
+Production data, credentials, tool allowlists, callbacks, and approval policies are not implicitly available to development or test agents. External MCP connections use environment-specific, least-privilege credentials and synthetic or purpose-limited test data.
 
-### 8. Agent actions are observable and safely auditable
+## Guidance for future capability contracts
 
-Material tool interactions should preserve enough evidence to reconstruct:
+When a concrete feature needs to be shared through REST, MCP, or another integration, prefer:
 
-- who had authority;
-- which agent/channel initiated the request;
-- which registered capability was requested;
-- what target and scope were resolved by the server;
-- whether approval was required and who approved;
-- the deterministic validation result;
-- the final business outcome;
-- correlation, retry, and idempotency information where relevant.
+- one owning application capability with stable business semantics;
+- explicit typed inputs, outputs, and structured errors;
+- server-established actor and Workspace/Company context;
+- deterministic validation around AI-produced or external data;
+- narrow data disclosure and no hidden-record leakage;
+- idempotency and correlation for retryable commands;
+- explicit risk, permission, approval, and environment metadata;
+- observable success, rejection, timeout, retry, and failure outcomes;
+- adapter-specific mapping outside the owning business rules.
 
-Logs must avoid unnecessary secrets and sensitive source content. Business Activity Log evidence and diagnostic telemetry remain distinct concerns.
+This guidance does not require extracting generic interfaces before a real second consumer exists. The narrowest stable interface remains preferable.
 
-### 9. Providers remain replaceable
+## Decisions deliberately deferred
 
-OpenAI, ChatGPT, Cursor, GitHub/Codex, Anthropic, Google, or another provider must not become a business authority or the only implementation seam for a core capability.
+The following choices require a concrete use case, technical design, security review, or business decision. They are **not** approved by merging this proposal.
 
-Tool contracts should be defined around PRISMA-PRIM business capabilities and typed application inputs/outputs, not provider-specific prompt structures.
+### Technical and security decisions
 
-### 10. Core operations remain usable during AI/provider outage
+1. Whether inbound MCP is a NestJS module, separate `apps/mcp`, or external adapter calling the authenticated API.
+2. Which MCP client/server SDK and transport are appropriate at implementation time.
+3. The authentication and token-exchange model for inbound agent clients.
+4. The credential-vault, allowlist, egress, revocation, and trust model for outbound MCP servers.
+5. The exact agent/service identity and delegated-authority representation.
+6. Whether approval uses a shared durable action record or an owning-domain workflow.
+7. Tool contract naming, versioning, compatibility, discovery, and deprecation.
+8. Safe interaction retention, redaction, privacy, and export rules.
+9. Evaluation gates for authorization bypass, prompt injection, cross-tenant leakage, multilingual behavior, malicious MCP output, timeout, and provider outage.
 
-MCP and AI integrations are optional access/orchestration channels. Failure of an AI provider must not make core Client, Project, Task, Document, Audit, Certificate, financial, or authorization records inaccessible through the ordinary product.
+### Product and business-policy decisions
 
-### 11. DEV / TEST / PROD and credentials remain isolated
+1. The first useful inbound MCP capability to expose.
+2. The first external MCP capability worth consuming.
+3. Which roles may use each capability and for which Companies or records.
+4. Which commands remain proposal-only, which always require human approval, and whether bounded low-risk delegated authority is ever allowed.
+5. Which legal, financial, certification, or Client commitments require stronger control.
+6. Which Synology, Drive, or other source workflows are actually needed and who owns them.
 
-Agent tool access must follow the platform environment boundary. Production credentials and data are not implicitly available to development/test agents. Tool registries, provider credentials, callbacks, approval policies, and storage scopes should be environment-specific.
+Dan may accept the technical boundary without deciding these product policies. Iurie's confirmation is required where a choice changes business workflow, authority, responsibility, or acceptable operational risk.
 
-## Recommended capability contract characteristics
+## What this proposal does not authorize
 
-Future application capabilities intended for both UI/integrations and agent tools should favor:
+Merging this ADR does not authorize:
 
-- explicit typed inputs and outputs;
-- narrow owning-module interfaces;
-- deterministic validation around AI-produced data;
-- authorization-aware actor context;
-- explicit workspace/company/record scope;
-- idempotency for retryable commands;
-- structured errors that do not leak hidden record existence;
-- provenance when AI-derived information participates;
-- stable business semantics independent of the transport adapter.
+- adding an MCP SDK, server, client, dependency, service, or directory;
+- exposing every REST endpoint as an agent tool;
+- connecting to an external MCP server;
+- granting an agent access to PostgreSQL, Synology, Drive, or a shared filesystem;
+- creating a generic tool platform or approval framework without a concrete slice;
+- splitting business services into separate agent-specific implementations;
+- changing the current roadmap;
+- treating the source email as Iurie's product approval;
+- creating implementation issues before a concrete use case and owner exist.
 
-This does **not** mean designing speculative generic abstractions now. Existing repository guidance to prefer the narrowest stable public interface remains correct. A capability should be extracted or generalized only when a concrete slice needs it.
+## Trigger for the first MCP implementation
 
-## What should not be implemented now merely because this ADR exists
+Implementation should begin only when one bounded use case identifies:
 
-Acceptance of this proposal would **not** by itself justify:
+- the user and business outcome;
+- whether PRISMA-PRIM exposes or consumes the capability;
+- the owning application module and data scope;
+- the minimum tool contract;
+- identity, permission, approval, and audit requirements;
+- data sent to or returned by external systems;
+- failure, timeout, revocation, and provider-outage behavior;
+- representative authorization and adversarial tests.
 
-- adding an MCP SDK or MCP server;
-- creating `apps/mcp` before a concrete use case exists;
-- exposing every REST endpoint as a tool;
-- building a generic tool framework before real capabilities exist;
-- creating a second business service layer only for agents;
-- splitting query and command backends;
-- adding Python for orchestration that NestJS can own;
-- granting provider agents database, Synology, or Drive credentials;
-- refactoring existing feature code solely to anticipate MCP;
-- blocking operational-core roadmap work on agent integration.
-
-The current approach should remain incremental: implement business capabilities through their owning modules first, then expose selected capabilities through an agent adapter when a validated use case requires it.
-
-## Likely future implementation shape
-
-When a concrete agent feature becomes ready, a narrow implementation may look like:
-
-```text
-apps/
-  api/                 NestJS business application
-  web/                 React product client
-  ai-worker/           specialized ML/NLP jobs only when justified
-  mcp/                 OPTIONAL future adapter if separate deployment is useful
-```
-
-or the MCP adapter may live inside a dedicated NestJS module if that is simpler and preserves the same trust boundary.
-
-No directory choice is decided by this proposal.
-
-A future agent tool registry may conceptually contain metadata such as:
-
-```text
-capability name
-business purpose
-query / command class
-required application permission
-input/output schema
-risk classification
-approval policy
-idempotency requirement
-allowed environments
-logging/evaluation requirements
-owning application service
-```
-
-Again, this is a target governance concept, not a request to build a registry immediately.
+That implementation should receive its own issue or PRD and architectural/security preflight. It should not reopen the boundaries already accepted here unless the concrete evidence demonstrates a conflict.
 
 ## Relationship to current repository decisions
 
-This proposal is intended to reinforce, not replace, existing decisions:
+This proposal reinforces rather than replaces:
 
-- `0003-nestjs-owns-business-decisions.md`: NestJS owns business decisions and AI returns proposals;
-- `0006-workspace-tenancy-and-company-scoped-authorization.md`: server-authoritative actor context, permission-based interfaces, workspace/company isolation, no authority from client-supplied identifiers;
-- `ai-knowledge-governance-prd.md`: authorization before retrieval/tool execution, registered tools, typed arguments, server re-authorization, sensitive-action confirmation, provider replaceability, AI evaluation and safe interaction traces;
-- `platform-security-reliability-operations-prd.md`: least privilege, environment isolation, provider degradation, secure integrations, Synology as a bounded adapter rather than runtime/database authority;
-- `openapi.yaml`: reusable API contract already exists as one external adapter over business capabilities.
+- `0003-nestjs-owns-business-decisions.md` — NestJS owns business decisions and AI produces proposals;
+- `0006-workspace-tenancy-and-company-scoped-authorization.md` — server-authoritative context, permission-based interfaces, and Workspace/Company isolation;
+- `ai-knowledge-governance-prd.md` — governed retrieval and tools, server re-authorization, sensitive-action approval, replaceable providers, evaluation, and safe traces;
+- `platform-security-reliability-operations-prd.md` — least privilege, environment isolation, provider degradation, secure integrations, and bounded Synology scope;
+- `openapi.yaml` — a reusable typed transport over existing application capabilities.
 
-If any future accepted decision conflicts with this proposal, the newer explicit decision should supersede the relevant section rather than leaving two ambiguous authorities.
+If a future accepted decision conflicts with this proposal, the newer explicit decision supersedes the relevant section rather than leaving two ambiguous authorities.
 
-## Decisions that still require explicit review
+## Recommended response to the source email
 
-The following points are deliberately **not** decided by this proposal and should be reviewed before implementation:
+> The current architecture already permits the separation recommended by your agent and presents no major conflict. NestJS remains the business authority, while REST/OpenAPI and a future MCP layer can act as adapters over governed application capabilities. PRISMA-PRIM can also consume selected external MCP capabilities later through constrained integration adapters. No current work should stop or be rebuilt for MCP. We will preserve server authorization, least privilege, explicit risk classification, auditable human-versus-agent attribution, server-enforced approval for sensitive actions, environment isolation, and no unrestricted AI or MCP access to PostgreSQL, Synology, Drive, or equivalent storage. Concrete MCP implementation will wait for a bounded business use case and its security and product decisions.
 
-1. **MCP deployment topology** — separate `apps/mcp`, NestJS module, or external adapter calling the authenticated API.
-2. **Agent identity model** — exact representation of human authority, execution agent/channel, provider/model, service identities, and delegated authority.
-3. **Approval persistence model** — whether sensitive tool actions require a durable `PendingAction` entity or use an owning-domain approval workflow.
-4. **Command approval policy** — which Release capabilities are always human-approved, which are proposal-only, and whether any low-risk delegated actions are permitted later.
-5. **Tool registry persistence** — code-defined registry, configuration, or persisted governance records.
-6. **MCP authentication** — user-delegated identity, service identity plus user context, token exchange, and revocation model.
-7. **Synology/Drive adapter scope** — exact source inventory, permissions, read/write needs, archival/runtime role, and outage behavior.
-8. **AI interaction retention** — exact safe metadata, retention period, redaction, export, and privacy treatment.
-9. **Tool naming/versioning** — stable business capability names and compatibility policy once external agent clients depend on them.
-10. **Agent-specific evaluation gates** — which tool capabilities require adversarial, multilingual, authorization, approval-bypass, or cross-tenant evaluation before release.
+This is Dan's technical response to an agent-generated recommendation. It must not be represented as Iurie's own decision unless he confirms the relevant business-policy choices.
 
-These are future product/security/technical decisions, not reasons to redesign the current foundation prematurely.
+## Review checklist
 
-## Recommended review outcome
+- [ ] Confirm both directions are covered: exposing PRISMA-PRIM capabilities and consuming external MCP capabilities.
+- [ ] Confirm MCP remains an adapter and never a business-rule owner.
+- [ ] Confirm existing feature work continues without MCP-driven refactoring.
+- [ ] Confirm every inbound tool execution is server-authorized.
+- [ ] Confirm outbound MCP discovery does not grant blanket tool authority.
+- [ ] Confirm no unrestricted AI or MCP access to database or storage.
+- [ ] Confirm inputs and outputs at both MCP boundaries are treated as untrusted.
+- [ ] Confirm capability risk classification is explicit.
+- [ ] Confirm approval, when required, is enforced by PRISMA-PRIM server state.
+- [ ] Confirm human authority and automated execution remain distinguishable.
+- [ ] Confirm provider outage cannot block ordinary core operations.
+- [ ] Confirm environment-specific credentials and data separation.
+- [ ] Keep the technical boundaries separate from the deferred product policies.
+- [ ] Create no MCP implementation work until a concrete use case satisfies the trigger above.
 
-The recommended response to the architectural question raised in Iurie's agent email is:
+## Consequences if the technical boundary is accepted
 
-> The architecture already permits the requested separation and there is no major conflict. The current NestJS business-authority boundary, reusable API contract, authorization model, accountability work, replaceable AI/provider approach, and security PRDs are aligned with the proposal. No current implementation should be stopped or rebuilt for MCP. We should formalize MCP/agent integrations as adapters over server-authorized business capabilities, prevent direct AI access to storage/database authority, explicitly classify query vs command tools, preserve human versus agent execution attribution, and enforce sensitive-action approval on the server when concrete agent features are implemented.
+Benefits:
 
-This is the technical reviewer's proposed response to the agent-generated recommendation; it should not be represented as Iurie's own architectural decision unless he separately confirms it.
+- future MCP server and client integrations remain feasible without moving business rules;
+- several agent clients can reuse the same governed capabilities;
+- external MCP services remain replaceable, constrained integrations;
+- permissions, tenant isolation, approval, and accountability remain server-owned;
+- current roadmap work continues without speculative refactoring.
 
-## Review checklist for Dan + local Codex discussion
+Costs:
 
-Before changing this ADR from `proposed` to `accepted`, review the following:
+- MCP integrations cannot take shortcuts through databases or broad storage access;
+- each direction requires explicit identity, credential, data, failure, and audit design;
+- sensitive commands require additional control and evidence;
+- adapter contracts must remain aligned with their owning application capabilities.
 
-- [ ] Confirm MCP is an adapter and never a business-rule owner.
-- [ ] Confirm current business-feature work should continue without MCP-driven refactoring.
-- [ ] Confirm no AI/provider receives unrestricted DB/Synology/Drive access.
-- [ ] Confirm every tool call is re-authorized by the application server.
-- [ ] Confirm Query vs Command classification is explicit but does not require separate backends.
-- [ ] Decide whether initial agent Commands all require human approval or only named sensitive classes.
-- [ ] Confirm approval is enforced by PRISMA-PRIM server state, not merely provider UI confirmation.
-- [ ] Confirm future logs distinguish human authority from agent/channel execution.
-- [ ] Decide whether agent execution attribution belongs in Activity Log, AI Interaction, Tool Action, or a combination.
-- [ ] Confirm provider-neutral business capability contracts remain the target.
-- [ ] Confirm AI outage cannot block ordinary core product operation.
-- [ ] Confirm no MCP implementation issue is created until a concrete use case and owning business capability are ready.
-- [ ] Review the ten deferred decisions above and decide which need separate ADRs/PRDs before the first agentic implementation.
-
-## Consequences if accepted
-
-Positive consequences:
-
-- future MCP integration remains comparatively low-cost;
-- business rules remain testable independently of AI providers;
-- ChatGPT/Cursor/other agents can share the same application capabilities;
-- permissions and tenant isolation are harder to bypass;
-- agent writes can be reviewed, approved, attributed, and audited;
-- provider replacement and outage handling remain feasible;
-- current roadmap work does not need speculative rework.
-
-Costs and trade-offs:
-
-- agent integrations cannot take shortcuts through storage or database access;
-- sensitive write flows require additional approval and accountability state;
-- tool schemas must remain synchronized with owning application capability semantics;
-- execution identity and delegated authority add security-model complexity;
-- future MCP work may need a separate adapter deployment depending on authentication and network topology.
-
-These costs are intentional because they keep AI convenience outside the platform's authority boundary.
+These costs are intentional. They preserve business authority and security while keeping both MCP directions open.
