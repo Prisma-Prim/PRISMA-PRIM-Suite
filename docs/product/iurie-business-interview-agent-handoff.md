@@ -153,7 +153,7 @@ These internal terms may help you read the product record. Do not present them u
 | Workspace                   | the complete protected space of one customer organization using the platform                        |
 | Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                           |
 | Client Account              | the shared operational dossier used to recognize the same Client across the group                   |
-| Client Legal Entity         | the exact organization, branch or person that receives an Offer or signs a Contract                 |
+| Client Legal Entity         | the exact party that signs, is invoiced or is certified; for a branch or individual, record the real example without deciding its internal classification |
 | Client–Company Relationship | information about the work relationship that only the responsible group Company should see          |
 | Opportunity                 | a potential job considered serious enough to have a responsible person and next action              |
 | Sales Stage                 | the team's current named step between first contact and accepted or lost work                       |
