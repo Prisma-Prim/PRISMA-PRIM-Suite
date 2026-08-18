@@ -55,8 +55,8 @@ Role names are initial templates. Permissions, not role-name conditions, authori
 - **Internal User:** local business identity connected to a verified external subject.
 - **Workspace Membership:** the user's relationship to one Workspace.
 - **Role Assignment:** permission bundle at Workspace or Company scope.
-- **Client Account:** tenant-level shared dossier.
-- **Client Legal Entity:** exact organization, branch or person involved in a legal act.
+- **Client Account:** Workspace-level shared dossier.
+- **Client Legal Entity:** exact party identified for contracting, invoicing or certification, distinct from the shared Client Account.
 - **Client–Company Relationship:** Company-specific commercial and operational context.
 
 The canonical UI label may remain Client while the internal distinction stays precise.
@@ -132,6 +132,7 @@ An administrator configures two Companies and users with different scopes. One s
 - named first-tenant users and responsibilities;
 - who needs authorized consolidated oversight;
 - shared versus Company-confidential Client fields;
+- representative branch and natural-person cases before their treatment as Client Legal Entities is specified;
 - sensitive capability-specific visibility;
 - legitimate external-professional access cases;
 - future Client portal priority.
