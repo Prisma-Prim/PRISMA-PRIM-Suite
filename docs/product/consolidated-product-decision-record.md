@@ -2821,18 +2821,18 @@ The Workspace-scoped `company.assignment.manage` permission authorizes grant and
 
 This reuses the canonical Role Assignment authorization path rather than introducing a parallel Company-membership relationship. It unlocks the generic assignment and revocation seam without inventing first-tenant roles or business permissions. The alternatives were to wait for the complete first-tenant permission matrix, which would unnecessarily block this reversible foundation, or to create a separate context-access relationship, which would contradict ADR 0006 and fragment authorization. Every broader role bundle, every other real assignment, consolidated view, deactivation policy and exceptional-access rule remains evidence-dependent.
 
-## 21. Known effects on existing authorities
+## 21. Normalization effects and remaining consequences
 
-These changes are intentionally not applied by this record alone:
+These effects are applied through their owning authorities; this rationale records durable consequences and does not report current work status:
 
-- `docs/product/mvp-prd.md` must be marked as an original/superseded pilot specification and its valid requirements redistributed into the commercial capability PRD.
-- `docs/product/access-and-accountability-prd.md` delivered the initial identity foundation, but its singleton/equal-permission assumptions must not govern the new operational core.
-- `CONTEXT.md` now defines the Workspace, Company, Internal User, Workspace Membership and Role Assignment foundation. Client Account, Client Legal Entity, Client–Company Relationship, Project Template, Project Stage and Task terminology remains for its owning decisions.
+- [The original MVP PRD](mvp-prd.md) is retained as a superseded historical pilot specification; current navigation uses the [Product Requirements Index](prd-index.md) and owning PRDs.
+- [The Access and Accountability PRD](access-and-accountability-prd.md) records the delivered Release 0 identity and accountability foundation; [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) supersedes the initial singleton and equal-permission assumptions for the current operational core.
+- `CONTEXT.md` defines the Workspace, Company, Internal User, Workspace Membership and Role Assignment foundation; the canonical Client Account, Client Legal Entity and Client–Company Relationship boundaries; and the stable Project term. Representative branch and natural-person party kinds and their internal classification, shared-versus-Company-specific fields and duplicate authority remain evidence dependencies owned by the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) and [Shared Client PRD](release-1-shared-client-prd.md). Observable Project/Task behaviour, first-release categories, exact Stage meanings, representative template contents, required Task sets, start-evidence gates and lifecycle exceptions remain owned by the [Project and Task PRD](release-1-project-task-prd.md).
 - [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) captures Workspace tenancy, Company hierarchy, identity and membership scope, isolation strategy and migration constraints.
-- Product vision and capability PRDs must be created before implementation issues for the new modules.
+- The [Product Vision PRD](product-vision-prd.md) and capability PRDs own observable product behaviour; the [Product Requirements Index](prd-index.md) owns navigation, while live GitHub issues own current work status.
 - Existing Access work should be extended rather than rewritten.
-- The final Romanian interview for Iurie must be generated from the internal discovery registers using section 1.3; technical inventories and architecture choices remain separate agent work.
-- Cross-cutting PRDs are required for governed Documents, historical migration and search, AI governance, platform security/reliability and UX/localization/configuration.
+- The Romanian [question bank](iurie-business-question-bank-ro.md) and [interview handoff](iurie-business-interview-agent-handoff.md) translate the discovery registers; [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81) and the [coverage matrix](iurie-business-answer-coverage.md) own the received-evidence inventory and semantic mapping. Technical inventories and architecture choices remain separate agent work.
+- The cross-cutting PRDs own governed Documents, historical migration and search, AI governance, platform security/reliability and UX/localization/configuration.
 - Search, AI and reporting PRDs must inherit Workspace/Company authorization and must not define independent access rules.
 - Infrastructure decisions affecting topology, tenancy, encryption, recovery or provider lock-in require ADR ownership before implementation issues.
 - The Atlas Blue baseline remains a design reference, but final UX specifications must include role, language, mobile, accessibility, error and permission states.
