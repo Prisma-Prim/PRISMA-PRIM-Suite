@@ -98,6 +98,7 @@ A BIC user searches for an existing shared Client, adds a BIC relationship and s
 
 - shared versus Company-specific fields;
 - real multi-legal-entity examples;
+- representative branch and natural-person cases before their internal classification is specified;
 - identifiers used to recognize Clients;
 - duplicate-resolution authority;
 - permitted work before exact legal identity;
@@ -127,7 +128,7 @@ Ticket decomposition is blocked on representative Client examples, field visibil
 **Still blocking**
 
 - The exact shared fields and Company-confidential fields remain partially resolved.
-- Representative multi-legal-entity Clients, matching identifiers and duplicate-resolution authority remain absent.
+- Representative multi-legal-entity, branch and natural-person cases, matching identifiers and duplicate-resolution authority remain absent.
 - No answer authorizes automatic duplicate merge or broad cross-Company activity disclosure.
 
 Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1, 3 and 12; [coverage matrix](iurie-business-answer-coverage.md). The existing archive, provenance, human duplicate-review and non-leakage rules remain unchanged.

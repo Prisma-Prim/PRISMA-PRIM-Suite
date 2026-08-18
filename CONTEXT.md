@@ -24,16 +24,25 @@ _Avoid_: User account, implicit access
 An additive permission bundle assigned to a Workspace Membership at Workspace or Company scope.
 _Avoid_: Job title, authentication role
 
-**Client**:
-The legal organization receiving consulting or related services.
-_Avoid_: Customer, account, company record
+**Client Account**:
+The Workspace-level shared dossier used across provider Companies.
+The canonical UI label may remain Client.
+_Avoid_: Client Legal Entity, Company-owned activity, duplicated Company client
+
+**Client Legal Entity**:
+The exact party identified for contracting, invoicing, or certification, distinct from the shared Client Account.
+_Avoid_: Client Account, provider Company
+
+**Client–Company Relationship**:
+The Company-specific commercial and operational context for one Client Account.
+_Avoid_: Shared Client identity, cross-Company activity
 
 **Contact**:
-A person associated with a Client who participates in a Client Request, Offer, or Contract.
+A person associated with a Client Account who participates in a Client Request, Offer, or Contract.
 _Avoid_: Client user, lead
 
 **Client Request**:
-The original expression of a Client's need, preserved with its sources and analysis history.
+The original expression of a need, preserved with its sources and analysis history; it may precede association with a Client Account.
 _Avoid_: Lead, inquiry, intake case
 
 **Request Source**:
@@ -76,7 +85,7 @@ An ISO standard, food-safety scheme, or other named framework relevant to a Clie
 _Avoid_: Certification when the framework itself is meant
 
 **Service**:
-A deliverable that PRISMA-PRIM or BIC may provide to a Client, optionally related to one or more Standards.
+A deliverable that a provider Company may provide, optionally related to one or more Standards.
 _Avoid_: Product, package
 
 **Tariff**:
@@ -98,7 +107,7 @@ _Avoid_: Current price
 ## Commercial documents
 
 **Offer**:
-The commercial proposal made to a Client from a confirmed Client Request and a Pricing Snapshot.
+The commercial proposal made to a named Client Legal Entity, associated with a Client Account, from a confirmed Client Request and a Pricing Snapshot.
 _Avoid_: Quotation, quote, proposal
 
 **Offer Version**:
@@ -114,19 +123,22 @@ The recorded human decision to accept or reject a specific immutable document ve
 _Avoid_: Confirmation, acceptance
 
 **Accepted Offer**:
-An approved Offer that the Client has accepted and that may be converted into a Contract.
+An approved Offer whose acceptance for its named Client Legal Entity has been recorded and that may be converted into a Contract.
 _Avoid_: Approved offer when client acceptance has not occurred
 
 **Contract**:
-The agreement generated from an Accepted Offer without re-entering approved business data.
-_Avoid_: Agreement draft when no Contract entity exists
+A governed agreement between a provider Company and a named Client Legal Entity.
+Contract origins and Project-linking behavior are owned by DEC-117 and the applicable
+Contract and Project PRDs, not by this glossary.
+_Avoid_: Agreement draft when no Contract entity exists, Accepted Offer
 
 **Contract Version**:
 An immutable revision of a Contract with its own checks, approval state, and generated files.
 
 **Project**:
-The minimal operational record created from an Accepted Offer and linked Contract.
-_Avoid_: Client Request, engagement when no operational record exists
+A Company-owned operational record for a Client Account. Project–Contract linkage and
+pre-contract behavior are owned by the Project and Task PRD, not by this glossary.
+_Avoid_: Client Request, Contract, workflow stage
 
 ## Knowledge and traceability
 

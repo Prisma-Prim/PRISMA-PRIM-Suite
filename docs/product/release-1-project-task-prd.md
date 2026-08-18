@@ -131,11 +131,15 @@ Ticket decomposition is blocked on real Project categories, stage meanings, requ
 - A Project may exist before a signed Contract.
 - Iurie identified C as certification, S1/S2 as surveillance audits and R as recertification; this does not by itself define the general Project lifecycle/stage model.
 - Required Tasks, responsibility, dates, reminders, completion evidence and attributable changes are desired operational capabilities.
+- Project Template changes create new versions and do not rewrite existing Projects or copied Tasks.
+- Session 104 records Iurie's preference that activation without the configured start evidence require his approval; neither that authority nor the exact category-specific evidence set is normalized as a product rule yet.
+- A controlled kickoff is desired, and an initial Project summary should be generated after kickoff; the received evidence does not place kickoff before or after activation.
 
 **Still blocking**
 
 - The first Release 1 Project categories, representative templates and the observable distinction between lifecycle status and current workflow stage are not approved.
 - Permitted pre-contract actions, lifecycle exceptions, exact required Tasks and evidence gates remain incomplete.
 - Later agent-authored automation proposals do not independently approve every transition or escalation rule.
+- Sessions 103–104 do not select the first Release 1 categories, their exact start-evidence sets, or their required Task templates.
 
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 3–5, 13–14 and 20; [coverage matrix](iurie-business-answer-coverage.md). No new implementation child is ready solely from this evidence.
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 3–5, 13–14, 20, [103](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313726306) and [104](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313749302); [coverage matrix](iurie-business-answer-coverage.md). No new implementation child is ready solely from this evidence.

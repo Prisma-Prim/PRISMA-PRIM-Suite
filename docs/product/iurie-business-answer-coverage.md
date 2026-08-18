@@ -1,9 +1,11 @@
 # Iurie business interview coverage and provenance matrix
 
-**Status:** Semantically audited evidence reconciliation snapshot  
+**Status:** Partial semantically audited evidence reconciliation snapshot — 61 of 104 source comments inspected  
 **Generated from:** [business interview issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81) and [the Romanian question bank](iurie-business-question-bank-ro.md)  
 **Snapshot date:** 2026-08-16  
 **Authority boundary:** This file maps evidence. It does not turn agent interpretation, examples, narrow reformulations or weak confirmations into approved product behaviour.
+
+The source issue currently contains 104 comments: 102 numbered sessions, two non-session comments, and no sessions numbered 69 or 91. This snapshot audits only the first 61 comments. Later numbered material through item 525 remains evidence input until it is remapped semantically; no visible atomic source covers the claimed items 526–765. These scope limits do not invalidate the audited rows below, but the summary must not be read as complete interview coverage.
 
 ## 1. Reading rules
 
@@ -413,7 +415,7 @@ These matters remain unsuitable for autonomous implementation:
 - Shared-versus-Company-confidential Client fields remain incomplete.
 - Exact role bundles, approval delegation and exceptional support access remain incomplete even though general responsibility is clear.
 - Many later “DA” answers approve compound, agent-authored proposals. They support direction but do not prove every embedded field, transition or enforcement rule independently.
-- The independent 96–307 sequence is not formally mapped to the official 278-question bank.
+- Later independently numbered material through item 525 is not formally mapped to the official 278-question bank.
 - Representative anonymized cases, exact actors, exceptions and acceptance examples remain missing for several Release 1 readiness gates.
 
 ## 7. Arbitrations for Dan and Iurie

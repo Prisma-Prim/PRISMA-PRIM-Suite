@@ -54,16 +54,16 @@ Read them in this order. Do not rely on the repository name, README or existing 
 | 1     | `AGENTS.md`                                            | Understand repository boundaries, decision authority and the distinction between product authorities and implemented code. Ignore its delivery workflow because this interview mandate is read-only.                         |
 | 2     | `docs/product/consolidated-product-decision-record.md` | Primary product-reconciliation authority. Read sections 1.3, 2, 5–22 and 32–33 completely. Sections 23–31 are internal discovery source material; use the companion Romanian questionnaire instead of copying them verbatim. |
 | 3     | `docs/product/iurie-business-question-bank-ro.md`      | Master interview bank. Select questions by session and priority; never ask the whole bank at once.                                                                                                                           |
-| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the original commercial pilot. It is incomplete for the reconciled multi-Company product, so do not use it to contradict the consolidated record.                                           |
+| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the reconciled product. Use it to explain terms; observable behaviour remains in the owning PRDs, PRD navigation in the Product Requirements Index, and current readiness in live trackers. |
 | 5     | `docs/product/mvp-prd.md`                              | Historical commercial-pilot specification. Use it to understand intake, pricing, Offers and Contracts, not as the complete product roadmap.                                                                                  |
-| 6     | `docs/product/access-and-accountability-prd.md`        | Existing identity and accountability foundation. Its initial single-Workspace/equal-permission assumptions do not decide the future multi-Company operating model.                                                           |
+| 6     | `docs/product/access-and-accountability-prd.md`        | Approved and delivered Release 0 identity and accountability foundation. Use it for the delivered Access seam and its ADR-0006 boundary; do not infer later business permissions.                                            |
 | 7     | `README.md` and `docs/adr/`                            | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie.                                                                                                      |
 | 8     | `apps/api/`, `apps/web/` and `/ui-baseline`            | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved.                                    |
-| 9     | GitHub issue `#22`                                     | Current compatible implementation slice: the first append-only Activity Log event. It does not define later business modules.                                                                                                |
+| 9     | `docs/product/prd-index.md`                            | Current navigation authority for PRD state and delivered foundations. Follow its tracker routes for live readiness and work status; do not copy a delivery frontier into this handoff.                                       |
 
 Important reconciliation facts:
 
-- the present code is an early engineering and access foundation, not the finished product;
+- the present code is an early engineering, Access/Accountability and Company/RBAC foundation, not the finished product;
 - the target is a sellable multi-tenant vertical platform whose first tenant includes PRISMA-PRIM, BIC and ECG;
 - one Workspace is the tenant boundary; Companies operate inside it;
 - a shared Client dossier does not make Company-confidential activity visible to everyone;
@@ -148,25 +148,25 @@ Never resolve a contradiction by choosing the answer you find more convenient. P
 
 These internal terms may help you read the product record. Do not present them unexplained to Iurie.
 
-| Internal term               | Explain it to Iurie as                                                                              |
-| --------------------------- | --------------------------------------------------------------------------------------------------- |
-| Workspace                   | the complete protected space of one customer organization using the platform                        |
-| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                           |
-| Client Account              | the shared operational dossier used to recognize the same Client across the group                   |
-| Client Legal Entity         | the exact organization, branch or person that receives an Offer or signs a Contract                 |
-| Client–Company Relationship | information about the work relationship that only the responsible group Company should see          |
-| Opportunity                 | a potential job considered serious enough to have a responsible person and next action              |
-| Sales Stage                 | the team's current named step between first contact and accepted or lost work                       |
-| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation |
-| Standard Edition            | the exact dated edition of a Standard applicable to the work                                        |
-| Scheme                      | the approved set of rules governing a type of audit, certification or credential                    |
-| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                    |
-| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                      |
-| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                            |
-| Activity Log                | business history showing who performed an important action, on what, and when                       |
-| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                               |
-| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident  |
-| RTO / recovery time         | how quickly essential work and records must become available again                                  |
+| Internal term               | Explain it to Iurie as                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace                   | the complete protected space of one customer organization using the platform                                                                              |
+| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                                                                                 |
+| Client Account              | the shared operational dossier used to recognize the same Client across the group                                                                         |
+| Client Legal Entity         | the exact party that signs, is invoiced or is certified; for a branch or individual, record the real example without deciding its internal classification |
+| Client–Company Relationship | information about the work relationship that only the responsible group Company should see                                                                |
+| Opportunity                 | a potential job considered serious enough to have a responsible person and next action                                                                    |
+| Sales Stage                 | the team's current named step between first contact and accepted or lost work                                                                             |
+| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation                                                       |
+| Standard Edition            | the exact dated edition of a Standard applicable to the work                                                                                              |
+| Scheme                      | the approved set of rules governing a type of audit, certification or credential                                                                          |
+| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                                                                          |
+| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                                                                            |
+| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                                                                                  |
+| Activity Log                | business history showing who performed an important action, on what, and when                                                                             |
+| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                                                                                     |
+| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident                                                        |
+| RTO / recovery time         | how quickly essential work and records must become available again                                                                                        |
 
 If Iurie starts using a different term, preserve his wording and explain the situation. Dan and his agent will later normalize terminology in the PRDs.
 

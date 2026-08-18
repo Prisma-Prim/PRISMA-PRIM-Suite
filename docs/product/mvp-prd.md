@@ -1,6 +1,9 @@
 # PRISMA-PRIM Suite MVP Product Requirements
 
-**Status:** Ready for incremental vertical-slice implementation
+**Status:** Superseded — historical commercial-pilot specification  
+**Successor navigation:** [Product Requirements Index](./prd-index.md)
+
+This document remains a historical commercial capability source. It is not an implementation-ready roadmap. Current product scope and observable behaviour are owned by the [Product Vision PRD](./product-vision-prd.md) and applicable owning PRDs; the Product Requirements Index and ticketing standard route agents to the applicable gates, while current readiness and work status are owned by live GitHub trackers.
 
 **Version:** 0.2  
 **Date:** 2026-08-07  

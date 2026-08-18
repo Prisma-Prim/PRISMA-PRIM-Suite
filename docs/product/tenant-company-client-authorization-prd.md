@@ -7,7 +7,7 @@
 
 ## 1. Problem statement
 
-The first tenant operates through PRISMA-PRIM, BIC and ECG. Users need one shared Client identity without exposing Company-confidential Projects, Contracts, finance, assurance work or notes. The current implementation has one persistent singleton Workspace and effectively equal application permissions, which cannot govern the target product.
+The first tenant operates through PRISMA-PRIM, BIC and ECG. Users need one shared Client identity without exposing Company-confidential Projects, Contracts, finance, assurance work or notes. The delivered foundation now resolves explicit Workspace Membership, provider Companies, server-revalidated Company context and the narrow Company Context Access assignment. It does not yet define the target product's broader business permissions or Client visibility.
 
 ## 2. Solution
 
@@ -55,8 +55,8 @@ Role names are initial templates. Permissions, not role-name conditions, authori
 - **Internal User:** local business identity connected to a verified external subject.
 - **Workspace Membership:** the user's relationship to one Workspace.
 - **Role Assignment:** permission bundle at Workspace or Company scope.
-- **Client Account:** tenant-level shared dossier.
-- **Client Legal Entity:** exact organization, branch or person involved in a legal act.
+- **Client Account:** Workspace-level shared dossier.
+- **Client Legal Entity:** exact party identified for contracting, invoicing or certification, distinct from the shared Client Account.
 - **Client–Company Relationship:** Company-specific commercial and operational context.
 
 The canonical UI label may remain Client while the internal distinction stays precise.
@@ -132,6 +132,7 @@ An administrator configures two Companies and users with different scopes. One s
 - named first-tenant users and responsibilities;
 - who needs authorized consolidated oversight;
 - shared versus Company-confidential Client fields;
+- representative branch and natural-person cases before their treatment as Client Legal Entities is specified;
 - sensitive capability-specific visibility;
 - legitimate external-professional access cases;
 - future Client portal priority.
@@ -147,4 +148,4 @@ Question sources: S00, S01 and S02 in the Romanian question bank.
 
 ## 16. Readiness
 
-The cross-cutting model is ready to govern Release 1 PRDs. The delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), then [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). One further business-independent slice is approved by DEC-212: the Workspace-scoped `company.assignment.manage` permission, included in the bootstrap Workspace Owner bundle, authorizes grant and revocation of the named `Company Context Access` permission bundle as a canonical Company-scoped Role Assignment for an existing active Workspace Membership. The recipient bundle contains only `company.context.use`; it permits listing and selecting that active Company and grants no business-domain capability. Every other real user assignment, the broader role matrix, detailed business permission bundles, consolidated oversight, Client visibility, deactivation policy beyond preserved active state, and exceptional access remain blocked on first-tenant evidence.
+The cross-cutting model is ready to govern Release 1 PRDs. The delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), then [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). [#88 — narrow Company Context Access assignment](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) delivered the further business-independent slice approved by DEC-212: the Workspace-scoped `company.assignment.manage` permission, included in the bootstrap Workspace Owner bundle, authorizes grant and revocation of the named `Company Context Access` permission bundle as a canonical Company-scoped Role Assignment for an existing active Workspace Membership. The recipient bundle contains only `company.context.use`; it permits listing and selecting that active Company and grants no business-domain capability. Every other real user assignment, the broader role matrix, detailed business permission bundles, consolidated oversight, Client visibility, deactivation policy beyond preserved active state, and exceptional access remain blocked on first-tenant evidence.
