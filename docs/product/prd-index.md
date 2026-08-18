@@ -29,27 +29,27 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 ## 4. Cross-cutting PRDs
 
-| PRD                                                                                              | State                                                               | Primary authority                                                         |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Tenant, Company, Client and Authorization](tenant-company-client-authorization-prd.md)          | Draft — first-tenant evidence pending                               | Scope, ownership, membership, permissions and approvals                   |
-| [Activity Log and Accountability](activity-log-accountability-prd.md)                            | Draft — foundation delivered; later event families capability-owned | Attributable business events and durable audit history                    |
-| [Governed Documents](governed-documents-prd.md)                                                  | Draft — business inventory pending                                  | Document, Version, Representation, evidence and correction                |
-| [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft — source inventory pending                                    | Import provenance, findability, export and reconciliation                 |
-| [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft — use-case evidence pending                                   | AI authority, citations, privacy and human approval                       |
-| [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft — operational evidence pending                                | Security controls, recovery, observability and service posture            |
-| [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft — role and terminology evidence pending                       | Accessible workflows, terminology, localization and bounded configuration |
+| PRD                                                                                              | Document status | Primary authority                                                         |
+| ------------------------------------------------------------------------------------------------ | --------------- | ------------------------------------------------------------------------- |
+| [Tenant, Company, Client and Authorization](tenant-company-client-authorization-prd.md)          | Draft           | Scope, ownership, membership, permissions and approvals                   |
+| [Activity Log and Accountability](activity-log-accountability-prd.md)                            | Draft           | Attributable business events and durable audit history                    |
+| [Governed Documents](governed-documents-prd.md)                                                  | Draft           | Document, Version, Representation, evidence and correction                |
+| [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft           | Import provenance, findability, export and reconciliation                 |
+| [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft           | AI authority, citations, privacy and human approval                       |
+| [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft           | Security controls, recovery, observability and service posture            |
+| [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
 ## 5. Release 1 capability PRDs
 
 Release 1 is a sequence of integrated capability slices, not five parallel horizontal projects. Capability PRDs may remain Draft while named evidence is collected. Their implementation children are created only when the readiness gates pass.
 
-| Order | Capability PRD                                                                            | State                                            | Depends on                                                    |
-| ----- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
-| 1     | [Company and RBAC](release-1-company-rbac-prd.md)                                         | Draft — broader role-bundle evidence pending     | Tenant/Company/Authorization                                  |
-| 2     | [Shared Client](release-1-shared-client-prd.md)                                           | Draft — identity evidence pending                | Company/RBAC; Tenant/Company/Authorization                    |
-| 3     | [Project and Task](release-1-project-task-prd.md)                                         | Draft — workflow examples pending                | Company/RBAC; Shared Client; Activity Log                     |
-| 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft — representative Document practice pending | Company/RBAC; Shared Client; Project/Task; Governed Documents |
-| 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft — role and metric evidence pending         | All earlier Release 1 capabilities; UX                        |
+| Order | Capability PRD                                                                            | Document status | Depends on                                                    |
+| ----- | ----------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------- |
+| 1     | [Company and RBAC](release-1-company-rbac-prd.md)                                         | Draft           | Tenant/Company/Authorization                                  |
+| 2     | [Shared Client](release-1-shared-client-prd.md)                                           | Draft           | Company/RBAC; Tenant/Company/Authorization                    |
+| 3     | [Project and Task](release-1-project-task-prd.md)                                         | Draft           | Company/RBAC; Shared Client; Activity Log                     |
+| 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
+| 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
 
 ## 6. Later releases
 
