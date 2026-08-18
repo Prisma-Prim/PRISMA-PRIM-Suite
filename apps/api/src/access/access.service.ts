@@ -26,6 +26,11 @@ import {
 import { CompanyPermissionResolver } from './company-permission-resolver.js';
 import { COMPANY_CONTEXT_USE_PERMISSION } from './company-permissions.js';
 
+const bootstrapWorkspacePermissions = [
+  'company.manage',
+  'company.assignment.manage',
+] satisfies readonly WorkspacePermission[];
+
 @Injectable()
 export class AccessService {
   constructor(
@@ -121,13 +126,11 @@ export class AccessService {
         await database
           .insert(workspacePermissionGrants)
           .values(
-            ['company.manage', 'company.assignment.manage'].map(
-              (permission) => ({
-                workspaceId: authority.workspace.id,
-                workspaceMembershipId: authority.membership.id,
-                permission: permission as WorkspacePermission,
-              }),
-            ),
+            bootstrapWorkspacePermissions.map((permission) => ({
+              workspaceId: authority.workspace.id,
+              workspaceMembershipId: authority.membership.id,
+              permission,
+            })),
           )
           .onConflictDoNothing();
       }
