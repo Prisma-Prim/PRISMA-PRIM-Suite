@@ -3448,30 +3448,21 @@ A PRD may be drafted with open questions, but an epic or issue is not `ready-for
 
 This record now preserves the complete reasoning needed for a context-free future agent to verify the analysis, make evidence-based adjustments and begin the PRD hierarchy without reconstructing the reconciliation conversation.
 
-## 33. Historical next-work snapshot after reconciliation
+## 33. Current work-status authority
 
-This section preserves the handoff that followed the original reconciliation; it is historical evidence, not current execution guidance. Several items below are now delivered or superseded. Use the [Product Requirements Index](prd-index.md) for current navigation and readiness, live GitHub tracker issues for work status, and owning PRDs for observable behaviour.
+This rationale record does not own current backlog or delivery status. Use the [Product Requirements Index](prd-index.md) for current PRD navigation and readiness, live GitHub tracker issues for authoritative blockers, progress and delivery children, and owning PRDs for observable behaviour.
 
-1. Complete issue #22 because its Activity Log foundation remains compatible with the consolidated direction.
-2. Create the Product Vision PRD and the seven cross-cutting PRDs defined in section 32.
-3. Normalize canonical vocabulary into `CONTEXT.md` and durable architectural boundaries into ADRs.
-4. Mark original pilot assumptions as superseded while preserving historical and commercial traceability.
-5. Convert the discovery registers into one Romanian business interview, one technical inventory checklist and one answer-to-decision mapping.
-6. Draft Release 1 capability PRDs before creating implementation epics or issues.
-7. Apply the readiness gates in section 32.5 and create only narrow, independently testable issues.
-8. Prepare the final Romanian report and email for Iurie after normalized specifications and issue hierarchy match this reconciliation.
+Apply the readiness gates in section 32.5 before creating an implementation issue.
 
 ## 34. Iurie business interview evidence reconciliation
 
 ### 34.1 Provenance and completion status
 
-The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) owns the audited snapshot boundary and question coverage against the 278 official questions; issue #81 owns the live received-evidence inventory. Read those owners for current counts and the addressable range rather than this decision record.
+The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) owns the semantically audited scope, coverage metrics and provenance status against the 278 official questions. Read its scope banner together with live issue #81 for the current received-evidence inventory and addressable range; this rationale record does not assert live interview completion.
 
-The coverage matrix separates the source-declared status from semantic coverage of the official wording. For the 61-comment audited snapshot preserved by this decision record, the source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 18 are fully covered, 29 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later received evidence remains non-canonical until semantically mapped. Issue #81 and the coverage matrix own its current inventory and addressable range; independent sequence numbers are not interchangeable with official question-bank IDs.
+The audited snapshot separates source-declared status from semantic coverage of the official wording. Later comments and independently numbered items remain evidence inputs until they are semantically mapped; their numbers are not interchangeable with official question-bank IDs, and no numerical endpoint proves completion of the 278 official questions.
 
 Iurie's interview agent is an intermediary. It may explain concepts, reformulate questions and ask for examples. Iurie remains the authority on business reality and desired application needs. Evidence must distinguish: a direct or faithfully paraphrased Iurie answer; an agent-framed proposition explicitly accepted by Iurie; an agent interpretation without acceptance; and a point delegated to Dan or the agents for product or technical decision. An agent formulation or interpretation alone is never a business requirement. Explicit acceptance applies only to the scope actually asked.
-
-Raw sequence progress does not prove completion of all 278 official questions; only row-level mappings and derived totals in the coverage matrix measure coverage.
 
 ### 34.2 Normalized confirmed business evidence
 
