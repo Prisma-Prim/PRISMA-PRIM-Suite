@@ -6,7 +6,7 @@ export type ApiResult<T> =
   | { status: 'validation'; message?: string };
 
 export interface ApiRequest {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   headers?: Record<string, string>;
   body?: string;
   companyContextId?: string;
@@ -57,7 +57,10 @@ export async function createAuthenticatedApiClient(
           };
         }
         if (!response.ok) return { status: 'error' };
-        return { status: 'ok', value: (await response.json()) as T };
+        return {
+          status: 'ok',
+          value: (await response.json()) as T,
+        };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;

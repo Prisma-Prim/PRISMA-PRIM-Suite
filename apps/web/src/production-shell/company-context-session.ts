@@ -22,13 +22,6 @@ export async function loadInitialCompanyContext(
   baseActor: ActorContext,
   signal: AbortSignal,
 ): Promise<InitialCompanyContextResult> {
-  if (!baseActor.workspacePermissions.includes('company.manage')) {
-    return {
-      status: 'ok',
-      actor: baseActor,
-      companyContext: { status: 'forbidden' },
-    };
-  }
   const companiesResult = await api.request<VisibleCompany[]>('/companies', {
     signal,
   });

@@ -259,7 +259,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
   });
 });
 
-test('shows a safe Company-administration denial without exposing a registration form', async ({
+test('shows an empty Company context without exposing administration controls', async ({
   page,
 }) => {
   await page.route('**/api/access/current-actor', (route) =>
@@ -270,14 +270,16 @@ test('shows a safe Company-administration denial without exposing a registration
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({ json: { events: [] } }),
   );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
   await page.goto('/');
 
   await expect(
     page.getByText(
-      'You do not have permission to register or view Companies in this Workspace.',
+      'No Company is assigned to you. Ask a Workspace Owner to grant Company Context Access.',
       { exact: true },
     ),
   ).toBeVisible();
+  await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
@@ -663,6 +665,120 @@ test('clears a stale persisted Company and recovers through safe reselection', a
   await expect
     .poll(() => page.evaluate((key) => localStorage.getItem(key), storageKey))
     .toBeNull();
+});
+
+test('grants, selects, and revokes narrow Company context access', async ({
+  page,
+}) => {
+  const company = { id: 'company-assigned', displayName: 'Assigned Company' };
+  const unassignedCompany = {
+    id: 'company-unassigned',
+    displayName: 'Unassigned Company',
+  };
+  let identity: 'owner' | 'member' = 'owner';
+  let assigned = false;
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/company-context-assignments')) {
+      expect(route.request().headers()['idempotency-key']).toBeTruthy();
+      assigned = true;
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: 'assignment',
+          workspaceMembershipId: 'member',
+          companyId: company.id,
+          bundle: 'Company Context Access',
+          active: true,
+        },
+      });
+    }
+    if (url.pathname.includes('/company-context-assignments/')) {
+      expect(route.request().headers()['idempotency-key']).toBeTruthy();
+      assigned = false;
+      return route.fulfill({
+        json: {
+          id: 'assignment',
+          workspaceMembershipId: 'member',
+          companyId: company.id,
+          bundle: 'Company Context Access',
+          active: false,
+        },
+      });
+    }
+    if (url.pathname.endsWith('/companies'))
+      return route.fulfill({
+        json: identity === 'member' && assigned ? [company] : [],
+      });
+    if (url.pathname.endsWith('/activity-log'))
+      return route.fulfill({ json: { events: [] } });
+    if (url.pathname.endsWith('/access/current-actor')) {
+      const selected = route.request().headers()['x-company-context-id'];
+      if (identity === 'member' && selected && !assigned)
+        return route.fulfill({ status: 403 });
+      return route.fulfill({
+        json:
+          identity === 'owner'
+            ? {
+                ...actorContextFixture,
+                workspacePermissions: [
+                  'company.manage',
+                  'company.assignment.manage',
+                ],
+              }
+            : {
+                ...actorContextFixture,
+                internalUserId: 'member-user',
+                workspaceMembershipId: 'member',
+                displayName: 'Assigned Member',
+                email: 'member@example.test',
+                workspacePermissions: [],
+                ...(selected && assigned ? { activeCompany: company } : {}),
+              },
+      });
+    }
+    return route.fallback();
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Workspace membership ID').fill('member');
+  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByRole('button', { name: 'Grant access' }).click();
+  await expect(page.getByRole('status')).toHaveText('Access granted.');
+
+  identity = 'member';
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Company Context Access' }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  await expect(
+    page.getByRole('option', { name: unassignedCompany.displayName }),
+  ).toHaveCount(0);
+  await page.getByLabel('Active Company').selectOption(company.id);
+  await expect(
+    page
+      .getByRole('region', { name: 'Company context' })
+      .locator('dd')
+      .filter({ hasText: company.displayName }),
+  ).toBeVisible();
+
+  identity = 'owner';
+  await page.reload();
+  await page.getByLabel('Workspace membership ID').fill('member');
+  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByRole('button', { name: 'Revoke access' }).click();
+  await expect(page.getByRole('status')).toHaveText('Access revoked.');
+
+  identity = 'member';
+  await page.reload();
+  await expect(page.getByLabel('Active Company')).toHaveCount(0);
+  await expect(
+    page.getByText(
+      'No Company is assigned to you. Ask a Workspace Owner to grant Company Context Access.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);
 });
 
 function companyContextStorageKey(): string {

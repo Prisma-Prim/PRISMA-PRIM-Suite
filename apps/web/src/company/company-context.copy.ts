@@ -6,8 +6,10 @@ export const companyContextCopy = {
   selectCompany: 'Select a Company',
   chooseCompany: 'Choose an active Company',
   loading: 'Loading Company context…',
-  empty:
+  noCompanies:
     'No active Companies are available. Register a Company before choosing a context.',
+  noAssignment:
+    'No Company is assigned to you. Ask a Workspace Owner to grant Company Context Access.',
   unavailable: 'We could not load the Company context. Please try again.',
   forbidden: 'You do not have permission to view Companies in this Workspace.',
   stale:

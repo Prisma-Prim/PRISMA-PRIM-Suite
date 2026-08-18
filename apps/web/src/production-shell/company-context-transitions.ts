@@ -37,7 +37,11 @@ export type CompanyContextState =
 
 export interface ActivityLogEvent {
   id: string;
-  action: 'internal_user.provisioned' | 'company.registered';
+  action:
+    | 'internal_user.provisioned'
+    | 'company.registered'
+    | 'company_context_assignment.granted'
+    | 'company_context_assignment.revoked';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
@@ -46,8 +50,20 @@ export interface ActivityLogEvent {
         internalUserId: string;
         displayName: string;
       }
-    | { type: 'company'; companyId: string; displayName: string };
-  metadata: { identityProvider: string } | Record<string, never>;
+    | { type: 'company'; companyId: string; displayName: string }
+    | {
+        type: 'company_role_assignment';
+        assignmentId: string;
+        companyId: string;
+        companyDisplayName: string;
+        workspaceMembershipId: string;
+        internalUserId: string;
+        internalUserDisplayName: string;
+      };
+  metadata:
+    | { identityProvider: string }
+    | { bundle: 'Company Context Access' }
+    | Record<string, never>;
 }
 
 export type ActivityLogState =

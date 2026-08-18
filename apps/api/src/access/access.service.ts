@@ -13,7 +13,6 @@ import {
   ACTIVE_COMPANY_CONTEXT_LOOKUP,
   type ActiveCompanyContextLookup,
 } from './active-company-context.port.js';
-import { requireWorkspacePermission } from './access-policy.js';
 import type {
   ActorContext,
   ExternalPrincipal,
@@ -24,6 +23,13 @@ import {
   type AccessAdmission,
   type AccessAdmissionDecision,
 } from './access-admission.js';
+import { CompanyPermissionResolver } from './company-permission-resolver.js';
+import { COMPANY_CONTEXT_USE_PERMISSION } from './company-permissions.js';
+
+const bootstrapWorkspacePermissions = [
+  'company.manage',
+  'company.assignment.manage',
+] satisfies readonly WorkspacePermission[];
 
 @Injectable()
 export class AccessService {
@@ -34,6 +40,7 @@ export class AccessService {
     private readonly admission: AccessAdmission,
     @Inject(ACTIVE_COMPANY_CONTEXT_LOOKUP)
     private readonly activeCompanyContexts: ActiveCompanyContextLookup,
+    private readonly companyPermissions: CompanyPermissionResolver,
   ) {}
 
   async resolveActor(
@@ -118,11 +125,13 @@ export class AccessService {
       if (admissionDecision?.kind === 'bootstrap') {
         await database
           .insert(workspacePermissionGrants)
-          .values({
-            workspaceId: authority.workspace.id,
-            workspaceMembershipId: authority.membership.id,
-            permission: 'company.manage',
-          })
+          .values(
+            bootstrapWorkspacePermissions.map((permission) => ({
+              workspaceId: authority.workspace.id,
+              workspaceMembershipId: authority.membership.id,
+              permission,
+            })),
+          )
           .onConflictDoNothing();
       }
 
@@ -154,7 +163,15 @@ export class AccessService {
       };
 
       if (requestedCompanyId !== undefined) {
-        requireWorkspacePermission(actor, 'company.manage');
+        const canUseCompany =
+          actor.workspacePermissions.includes('company.manage') ||
+          (await this.companyPermissions.has(
+            actor.workspaceId,
+            actor.workspaceMembershipId,
+            requestedCompanyId,
+            COMPANY_CONTEXT_USE_PERMISSION,
+          ));
+        if (!canUseCompany) throw new ForbiddenException();
         const activeCompany = await this.activeCompanyContexts.findActive(
           actor.workspaceId,
           requestedCompanyId,
