@@ -8,6 +8,7 @@ import { collectEnvironment, evaluateEnvironment } from './agent-doctor.mjs';
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const earlyCiCommand = 'gh workflow run early-ci.yml --ref <branch>';
+const minimumMigrationPostgresVersion = 130000;
 
 const sharedPrerequisites = [
   'node',
@@ -27,6 +28,7 @@ const verificationDefinitions = [
       'database-variables',
       'database-safety',
       'postgres',
+      'database-administration',
       'migration-manifest',
     ],
   },
@@ -38,7 +40,39 @@ const verificationDefinitions = [
   },
 ];
 
-export function collectPreflightChecks() {
+export function evaluateMigrationDatabaseCapability(postgresProbe) {
+  const available = postgresProbe?.state === 'available';
+  const canCreateDatabase = postgresProbe?.canCreateDatabase === true;
+  const serverVersionSupported =
+    Number.isInteger(postgresProbe?.serverVersionNumber) &&
+    postgresProbe.serverVersionNumber >= minimumMigrationPostgresVersion;
+  const capable = available && canCreateDatabase && serverVersionSupported;
+
+  let summary;
+  if (!available) {
+    summary = 'Migration database capabilities could not be verified.';
+  } else if (!canCreateDatabase) {
+    summary =
+      'The PostgreSQL role cannot create isolated migration databases.';
+  } else if (!serverVersionSupported) {
+    summary =
+      'PostgreSQL 13 or newer is required for forced migration cleanup.';
+  } else {
+    summary =
+      'The PostgreSQL role can create isolated databases and clean them up safely.';
+  }
+
+  return {
+    id: 'database-administration',
+    status: capable ? 'PASS' : 'FAIL',
+    summary,
+    remediation: capable
+      ? null
+      : 'Use PostgreSQL 13 or newer with a local role granted CREATEDB, or delegate this seam to Early CI.',
+  };
+}
+
+export function collectPreflightChecks(environment = {}) {
   const journalPath = resolve(
     repositoryRoot,
     'apps/api/drizzle/meta/_journal.json',
@@ -58,6 +92,7 @@ export function collectPreflightChecks() {
   }
 
   return [
+    evaluateMigrationDatabaseCapability(environment.postgresProbe),
     {
       id: 'migration-manifest',
       status: migrationManifestAvailable ? 'PASS' : 'FAIL',
@@ -175,9 +210,10 @@ function runPackageScript(script) {
 export function main() {
   const json = process.argv.includes('--json');
   const checkOnly = process.argv.includes('--check-only');
+  const environment = collectEnvironment('web-postgres');
   const doctorChecks = [
-    ...evaluateEnvironment(collectEnvironment('web-postgres'), 'web-postgres'),
-    ...collectPreflightChecks(),
+    ...evaluateEnvironment(environment, 'web-postgres'),
+    ...collectPreflightChecks(environment),
   ];
   const plan = createPreflightPlan({ doctorChecks });
 
