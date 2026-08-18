@@ -30,17 +30,19 @@ path before deep review.
 When the required tools are already available, the command runs:
 
 ```bash
-pnpm test:preflight:postgres
+pnpm test:preflight:postgres-smoke
+pnpm test:preflight:migration
 pnpm test:preflight:playwright
 ```
 
-The PostgreSQL command is destructive only against the isolated local test
-database required by `agent-doctor`. The migration seam is runnable locally
-only when PostgreSQL is version 13 or newer and the local role has `CREATEDB`,
-because the previous-schema test creates and forcibly removes an isolated
-database. It runs serially and covers a real cross-Workspace REST setup plus
-migration from the immediately previous committed schema. The Playwright command starts the configured preview server
-and executes one production-shell journey in both desktop and narrow projects.
+The PostgreSQL smoke command is destructive only against the isolated local
+test database required by `agent-doctor` and covers a real cross-Workspace REST
+setup. The migration command is independently runnable only when PostgreSQL is
+version 13 or newer and the local role has `CREATEDB`, because its focused test
+creates and forcibly removes an isolated database before migrating from the
+immediately previous committed schema. The Playwright command starts the
+configured preview server and executes one production-shell journey in both
+desktop and narrow projects.
 
 The full local suite remains available separately; the preflight is intentionally
 small and does not duplicate lint, formatting, every unit test, every browser
