@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
   foreignKey,
   jsonb,
@@ -207,7 +206,6 @@ export const companyRoleAssignments = pgTable(
       .defaultNow()
       .notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    transitionId: uuid('transition_id').defaultRandom().notNull(),
   },
   (table) => [
     uniqueIndex('company_role_assignments_scope_unique').on(
@@ -251,8 +249,6 @@ export const companyContextAssignmentCommands = pgTable(
     ).notNull(),
     companyId: uuid('company_id').notNull(),
     resultAssignmentId: uuid('result_assignment_id'),
-    resultActive: boolean('result_active').notNull(),
-    transitionId: uuid('transition_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
