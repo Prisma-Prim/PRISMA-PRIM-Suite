@@ -67,7 +67,7 @@ Tipurile, tokenurile și claim-urile Clerk nu traversează frontiera modulului A
 
 ### 6.3 `Internal User`, `Workspace Membership` și `Workspace`
 
-Prima rezolvare a unui subiect extern creează un singur `Internal User` global. Pentru fiecare cerere protejată, serverul rezolvă un `Workspace Membership` activ în Workspace-ul curent; un Membership absent sau inactiv refuză accesul fail-closed. Rezolvările repetate sau concurente întorc același utilizator și același Membership aplicabil.
+Prima rezolvare admisă prin bootstrap-ul configurat sau o invitație acceptată creează un singur `Internal User` global. Un principal verificat fără admitere configurată este refuzat fără a crea stare. Pentru fiecare cerere protejată, serverul rezolvă un `Workspace Membership` activ în Workspace-ul curent; un Membership absent sau inactiv refuză accesul fail-closed. Rezolvările repetate sau concurente întorc același utilizator și același Membership aplicabil.
 
 Cheia de identitate este subiectul extern stabil împreună cu furnizorul, nu e-mailul. Numele și e-mailul pot fi sincronizate ca atribute de profil fără schimbarea identității locale.
 
