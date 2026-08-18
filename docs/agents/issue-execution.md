@@ -16,10 +16,10 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 
 1. Read the complete issue body and all available comments.
 2. Confirm every issue listed under **Blocked by** is closed. Stop if a blocker remains open.
-3. Read every applicable `AGENTS.md` in full, then `CONTEXT.md`, every document and ADR referenced by the issue, and the relevant repository skills.
+3. Follow the [repository knowledge reading route](repository-knowledge-system.md#4-fresh-context-reading-route): read every applicable `AGENTS.md`, then use the issue pointers to load only the owning product documents, applicable ADRs, evidence and skills. Read `CONTEXT.md` when domain language or business boundaries are involved.
 4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Use the base profile only when neither PostgreSQL nor browser coverage is required. Fix safe setup drift before implementation and record unresolved failures in the final retrospective.
 5. Inspect the current implementation and the highest stable public test seam.
-6. Restate the observable outcome, exclusions, public module boundary, and first failing test in a short execution note.
+6. Restate the observable outcome, exclusions, authority owners, decisions that require escalation, public module boundary, and first failing test in a short execution note.
 7. Classify the issue using the [complex-feature preflight](complex-feature-preflight.md). For a triggered issue, complete or link the matrix and obtain the pre-code Spec review result before the first implementation edit. For a narrow low-risk issue, record the compact exemption marker instead.
 
 ### Implementation

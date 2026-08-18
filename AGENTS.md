@@ -14,6 +14,12 @@ The complete current Atlas Blue frontend mockup is preserved at `/ui-baseline`. 
 
 For product UI work, ground visual decisions in `/ui-baseline` and the assigned issue. Do not revive rejected historical directions or invent an independent visual system. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
 
+## Repository knowledge system
+
+The repository must contain the durable context required for a fresh agent to execute one assigned issue without private conversation history. Each fact has one authoritative owner; issues and documents link to that owner instead of copying it. Keep the reading route targeted to the assigned issue and remove stale instructions when their replacement is delivered.
+
+Before creating or restructuring documentation, reconciliation artifacts, evidence matrices, external reports, or fresh-agent reading routes, read [Repository knowledge and deliverable system](docs/agents/repository-knowledge-system.md). It defines where information belongs, how non-canonical material becomes authoritative, and when DOCX may be generated from repository sources.
+
 ## Durable technical decisions
 
 - Frontend: React + Vite + TypeScript.
