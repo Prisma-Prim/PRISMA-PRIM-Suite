@@ -5,7 +5,7 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const MARKER =
-  /<!--\s*complex-feature-preflight:\s*(required|exempt-low-risk|linked(?:\s+([^\s]+))?)\s*-->/iu;
+  /<!--\s*complex-feature-preflight:\s*(required|exempt-low-risk|linked(?:\s+([^\s]+))?)\s*-->/giu;
 const REQUIRED_FIELDS = [
   'States and transitions',
   'Actors and identities',
