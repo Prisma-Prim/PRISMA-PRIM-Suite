@@ -44,8 +44,15 @@ export async function validateComplexFeaturePreflight(path, repositoryRoot) {
   const sourcePath = resolve(path);
   const source = sourceName(sourcePath, root);
   const contents = await readFile(sourcePath, 'utf8');
-  const marker = contents.match(MARKER);
+  const markers = [...contents.matchAll(MARKER)];
 
+  if (markers.length > 1) {
+    return [
+      `${source}: expected exactly one complex-feature preflight marker, found ${markers.length}`,
+    ];
+  }
+
+  const marker = markers[0];
   if (!marker || marker[1] === 'exempt-low-risk') return [];
 
   let preflightContents = contents;
