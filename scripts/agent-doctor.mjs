@@ -404,9 +404,10 @@ function probePostgres(testDatabaseUrl) {
     'const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 3000 });',
     'try {',
     'await client.connect();',
-    'const response = await client.query("SELECT 1 AS ok");',
-    'const available = response.rows[0]?.ok === 1;',
-    'emit({ phase: "query", state: available ? "available" : "connection-failed", code: available ? null : "unexpected-query-result" });',
+    'const response = await client.query("SELECT current_setting(\\'server_version_num\\')::integer AS server_version_number, COALESCE((SELECT rolsuper OR rolcreatedb FROM pg_roles WHERE rolname = current_user), false) AS can_create_database");',
+    'const capabilities = response.rows[0];',
+    'const available = Number.isInteger(capabilities?.server_version_number) && typeof capabilities?.can_create_database === "boolean";',
+    'emit({ phase: "query", state: available ? "available" : "connection-failed", code: available ? null : "unexpected-query-result", serverVersionNumber: capabilities?.server_version_number ?? null, canCreateDatabase: capabilities?.can_create_database ?? false });',
     'process.exitCode = available ? 0 : 1;',
     '} catch (error) {',
     'emit({ phase: "connect", state: ["EACCES", "EPERM"].includes(error?.code) ? "sandbox-denied" : "connection-failed", code: error?.code ?? null });',
@@ -462,7 +463,11 @@ export function classifyPostgresCommand(command) {
   }
 
   if (command.status === 0 && payload.state === 'available') {
-    return { state: 'available' };
+    return {
+      state: 'available',
+      serverVersionNumber: payload.serverVersionNumber,
+      canCreateDatabase: payload.canCreateDatabase,
+    };
   }
 
   const detail = payload.code;
