@@ -130,7 +130,7 @@ Accountability expune o interfață mică pentru înregistrarea evenimentelor ca
 Numele exacte pot fi adaptate la convențiile existente ale repository-ului, dar responsabilitățile rămân stabile:
 
 - adaptor extern: identitate verificată → `External Principal`;
-- Access: `External Principal` → `Actor Context` idempotent;
+- Access: `External Principal` + selecția Workspace cerută → `Actor Context` idempotent, numai printr-un `Workspace Membership` activ;
 - endpoint public current actor: returnează doar profilul local necesar shell-ului;
 - Accountability write: `Actor Context` + acțiune canonică + țintă + metadata constrânsă;
 - Accountability read: lista limitată a evenimentelor vizibile în Workspace.
