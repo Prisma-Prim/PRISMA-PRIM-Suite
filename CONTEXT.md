@@ -30,7 +30,7 @@ The canonical UI label may remain Client.
 _Avoid_: Client Legal Entity, Company-owned activity, duplicated Company client
 
 **Client Legal Entity**:
-The exact organization, branch, or person involved in a Contract or another legal act.
+The exact legal organization that contracts, is invoiced, or is certified.
 _Avoid_: Client Account, provider Company
 
 **Client–Company Relationship**:
