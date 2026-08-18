@@ -23,7 +23,16 @@ export const workspaceMembershipStatus = pgEnum('workspace_membership_status', [
 
 export const workspacePermission = pgEnum('workspace_permission', [
   'company.manage',
+  'company.assignment.manage',
 ]);
+
+export const companyRoleBundle = pgEnum('company_role_bundle', [
+  'company_context_access',
+]);
+export const companyContextAssignmentOperation = pgEnum(
+  'company_context_assignment_operation',
+  ['grant', 'revoke'],
+);
 
 export const companyStatus = pgEnum('company_status', ['active', 'inactive']);
 
@@ -182,14 +191,124 @@ export const companies = pgTable(
   ],
 );
 
+export const companyRoleAssignments = pgTable(
+  'company_role_assignments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    workspaceMembershipId: uuid('workspace_membership_id').notNull(),
+    bundle: companyRoleBundle('bundle').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('company_role_assignments_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.workspaceMembershipId,
+      table.bundle,
+    ),
+    uniqueIndex('company_role_assignments_target_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.workspaceMembershipId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'company_role_assignments_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'company_role_assignments_membership_fk',
+      columns: [table.workspaceId, table.workspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+  ],
+);
+
+export const companyContextAssignmentCommands = pgTable(
+  'company_context_assignment_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    operation: companyContextAssignmentOperation('operation').notNull(),
+    targetWorkspaceMembershipId: uuid(
+      'target_workspace_membership_id',
+    ).notNull(),
+    companyId: uuid('company_id').notNull(),
+    resultAssignmentId: uuid('result_assignment_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('company_context_assignment_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'company_context_assignment_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_target_membership_fk',
+      columns: [table.workspaceId, table.targetWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'company_context_assignment_commands_result_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.targetWorkspaceMembershipId,
+        table.resultAssignmentId,
+      ],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.workspaceMembershipId,
+        companyRoleAssignments.id,
+      ],
+    }),
+  ],
+);
+
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
   'company.registered',
+  'company_context_assignment.granted',
+  'company_context_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
   'internal_user',
   'company',
+  'company_role_assignment',
 ]);
 
 export const activityLogEvents = pgTable(
@@ -206,11 +325,16 @@ export const activityLogEvents = pgTable(
     targetInternalUserId: uuid('target_internal_user_id'),
     targetWorkspaceMembershipId: uuid('target_workspace_membership_id'),
     targetCompanyId: uuid('target_company_id'),
+    targetCompanyRoleAssignmentId: uuid('target_company_role_assignment_id'),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
     metadata: jsonb('metadata')
-      .$type<{ identityProvider: string } | Record<string, never>>()
+      .$type<
+        | { identityProvider: string }
+        | { bundle: 'Company Context Access' }
+        | Record<string, never>
+      >()
       .notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
   },
@@ -229,6 +353,21 @@ export const activityLogEvents = pgTable(
         workspaceMemberships.workspaceId,
         workspaceMemberships.id,
         workspaceMemberships.internalUserId,
+      ],
+    }),
+    foreignKey({
+      name: 'activity_log_events_target_company_assignment_fk',
+      columns: [
+        table.workspaceId,
+        table.targetCompanyId,
+        table.targetWorkspaceMembershipId,
+        table.targetCompanyRoleAssignmentId,
+      ],
+      foreignColumns: [
+        companyRoleAssignments.workspaceId,
+        companyRoleAssignments.companyId,
+        companyRoleAssignments.workspaceMembershipId,
+        companyRoleAssignments.id,
       ],
     }),
     foreignKey({
@@ -255,12 +394,20 @@ export const activityLogEvents = pgTable(
         (${table.targetType}::text = 'internal_user'
           AND ${table.targetInternalUserId} IS NOT NULL
           AND ${table.targetWorkspaceMembershipId} IS NOT NULL
-          AND ${table.targetCompanyId} IS NULL)
+          AND ${table.targetCompanyId} IS NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL)
         OR
         (${table.targetType}::text = 'company'
           AND ${table.targetInternalUserId} IS NULL
           AND ${table.targetWorkspaceMembershipId} IS NULL
-          AND ${table.targetCompanyId} IS NOT NULL)
+          AND ${table.targetCompanyId} IS NOT NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL)
+        OR
+        (${table.targetType}::text = 'company_role_assignment'
+          AND ${table.targetInternalUserId} IS NOT NULL
+          AND ${table.targetWorkspaceMembershipId} IS NOT NULL
+          AND ${table.targetCompanyId} IS NOT NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NOT NULL)
       )`,
     ),
   ],

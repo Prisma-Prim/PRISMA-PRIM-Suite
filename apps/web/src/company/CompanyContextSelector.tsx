@@ -41,7 +41,11 @@ export function CompanyContextSelector({
         </p>
       )}
       {state.status === 'ready' && state.companies.length === 0 && (
-        <p>{copy.empty}</p>
+        <p>
+          {actor.workspacePermissions.includes('company.manage')
+            ? copy.noCompanies
+            : copy.noAssignment}
+        </p>
       )}
       {state.status === 'ready' && state.companies.length > 0 && (
         <div className="company-context-control">
