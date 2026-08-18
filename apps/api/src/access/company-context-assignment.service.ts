@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
@@ -89,7 +88,6 @@ export class CompanyContextAssignmentService {
         workspaceMembershipId,
         companyId,
       );
-      const transitionId = randomUUID();
       const [reserved] = await this.databaseContext.connection
         .insert(companyContextAssignmentCommands)
         .values({
@@ -99,8 +97,6 @@ export class CompanyContextAssignmentService {
           operation,
           targetWorkspaceMembershipId: workspaceMembershipId,
           companyId,
-          resultActive: operation === 'grant',
-          transitionId,
         })
         .onConflictDoNothing()
         .returning();
@@ -117,13 +113,11 @@ export class CompanyContextAssignmentService {
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
-              transitionId,
             )
           : await this.applyRevoke(
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
-              transitionId,
             );
       await this.databaseContext.connection
         .update(companyContextAssignmentCommands)
@@ -144,7 +138,7 @@ export class CompanyContextAssignmentService {
             internalUserId: target.internalUserId,
           },
           metadata: { bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL },
-          transitionId,
+          transitionId: reserved.id,
         });
       }
       return {
@@ -193,7 +187,6 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
-    transitionId: string,
   ) {
     const [changed] = await this.databaseContext.connection
       .insert(companyRoleAssignments)
@@ -202,7 +195,6 @@ export class CompanyContextAssignmentService {
         workspaceMembershipId,
         companyId,
         bundle: COMPANY_CONTEXT_ACCESS_BUNDLE,
-        transitionId,
       })
       .onConflictDoUpdate({
         target: [
@@ -211,7 +203,7 @@ export class CompanyContextAssignmentService {
           companyRoleAssignments.workspaceMembershipId,
           companyRoleAssignments.bundle,
         ],
-        set: { revokedAt: null, updatedAt: sql`now()`, transitionId },
+        set: { revokedAt: null, updatedAt: sql`now()` },
         setWhere: isNotNull(companyRoleAssignments.revokedAt),
       })
       .returning();
@@ -235,7 +227,7 @@ export class CompanyContextAssignmentService {
   ) {
     const [changed] = await this.databaseContext.connection
       .update(companyRoleAssignments)
-      .set({ revokedAt: sql`now()`, updatedAt: sql`now()`, transitionId })
+      .set({ revokedAt: sql`now()`, updatedAt: sql`now()` })
       .where(
         and(
           eq(companyRoleAssignments.workspaceId, workspaceId),
@@ -347,6 +339,6 @@ function commandResult(command: CommandRow): CompanyContextAssignmentRecord {
     workspaceMembershipId: command.targetWorkspaceMembershipId,
     companyId: command.companyId,
     bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
-    active: command.resultActive,
+    active: command.operation === 'grant',
   };
 }
