@@ -72,6 +72,19 @@ test('accepts an explicitly exempt low-risk brief', async (t) => {
   );
 });
 
+test('rejects multiple or contradictory markers', async (t) => {
+  const root = await createFixture(t, {
+    'brief.md': `<!-- complex-feature-preflight: exempt-low-risk -->
+${completePreflight}`,
+  });
+  assert.deepEqual(
+    await validateComplexFeaturePreflight(join(root, 'brief.md'), root),
+    [
+      'brief.md: expected exactly one complex-feature preflight marker, found 2',
+    ],
+  );
+});
+
 test('accepts a linked authoritative preflight', async (t) => {
   const root = await createFixture(t, {
     'brief.md':
