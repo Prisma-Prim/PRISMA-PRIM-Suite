@@ -116,7 +116,7 @@ Accountability expune o interfață mică pentru înregistrarea evenimentelor ca
 
 ## 7. Invariante
 
-- O identitate externă stabilă corespunde unui singur `Internal User` în `Workspace`.
+- O identitate externă stabilă corespunde unui singur `Internal User` global; accesul într-un `Workspace` necesită un `Workspace Membership` explicit activ.
 - Idempotency este garantată de baza de date, nu numai de verificări în memorie.
 - Nicio rută protejată nu livrează date înainte de stabilirea unui `Actor Context` activ.
 - Niciun modul de business nu depinde de Clerk.
