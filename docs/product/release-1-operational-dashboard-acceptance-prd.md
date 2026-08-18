@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Draft — role and metric evidence pending  
-**Version:** 0.1  
+**Status:** Draft — interview evidence received; role and metric definitions pending
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -124,3 +124,19 @@ Question sources: S00, S02 and S11.
 ## 15. Readiness
 
 Ticket decomposition is blocked on initial roles, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. This PRD owns the final integrated acceptance slice; it does not make blocked upstream capabilities ready.
+
+## 16. Interview evidence reconciliation (2026-08-16)
+
+**Confirmed evidence**
+
+- Iurie wants a daily operational view with immediate attention, changes since the previous day and upcoming work.
+- Company-specific and authorized consolidated views are both useful.
+- Dashboard items should lead to underlying records and actionable work; mobile access and quick approvals are desired directions.
+
+**Still blocking**
+
+- Metric formulas, time bases, urgency thresholds and the first role-specific journeys are not approved.
+- Voice, offline behaviour, forecasting and AI prioritization remain later capabilities unless separately specified.
+- Compound confirmations do not justify hidden ranking or automatic business decisions.
+
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 19 and 28–31; [coverage matrix](iurie-business-answer-coverage.md). This PRD remains blocked on upstream Release 1 readiness and testable metric/action definitions.

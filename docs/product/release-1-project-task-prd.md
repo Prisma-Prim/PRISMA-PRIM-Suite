@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Draft — workflow examples pending  
-**Version:** 0.1  
+**Status:** Draft — interview evidence received; workflow examples pending
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -123,3 +123,19 @@ Question source: S02.
 ## 15. Readiness
 
 Ticket decomposition is blocked on real Project categories, stage meanings, required Tasks and acceptance examples. It follows Company/RBAC and Shared Client.
+
+## 16. Interview evidence reconciliation (2026-08-16)
+
+**Confirmed evidence**
+
+- A Project may exist before a signed Contract.
+- Iurie identified C as certification, S1/S2 as surveillance audits and R as recertification; this does not by itself define the general Project lifecycle/stage model.
+- Required Tasks, responsibility, dates, reminders, completion evidence and attributable changes are desired operational capabilities.
+
+**Still blocking**
+
+- The first Release 1 Project categories, representative templates and the observable distinction between lifecycle status and current workflow stage are not approved.
+- Permitted pre-contract actions, lifecycle exceptions, exact required Tasks and evidence gates remain incomplete.
+- Later agent-authored automation proposals do not independently approve every transition or escalation rule.
+
+Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 3–5, 13–14 and 20; [coverage matrix](iurie-business-answer-coverage.md). No new implementation child is ready solely from this evidence.

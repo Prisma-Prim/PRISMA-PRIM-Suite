@@ -68,7 +68,7 @@ Important reconciliation facts:
 - one Workspace is the tenant boundary; Companies operate inside it;
 - a shared Client dossier does not make Company-confidential activity visible to everyone;
 - structured, auditable operations come before AI automation;
-- the approved decision register is `DEC-001` through `DEC-211`;
+- the approved decision register is `DEC-001` through `DEC-212`;
 - unresolved business evidence may configure or refine a decision, but must not be used to silently redesign it.
 
 ## 4. How to use the code without confusing Iurie
@@ -208,7 +208,11 @@ question_id: S00-Q01
 question_ro: 'The exact Romanian question asked'
 answer_ro: "Iurie's answer, faithfully summarized"
 answer_ru: null
-status: CONFIRMED
+evidence_authority: DIRECT_IURIE
+source_declared_status: CONFIRMED
+semantic_coverage: FULL
+decision_sufficiency: SUFFICIENT
+confidence: HIGH
 current_practice: 'What happens today'
 desired_behaviour: 'What Iurie wants the application to enable'
 actors_and_approvals:
@@ -269,7 +273,55 @@ This table helps you label the session package. It does not authorize you to cha
 
 Use labels such as `CONFIRMS`, `CONFIGURES`, `REFINES`, `POSSIBLE_CONTRADICTION` or `NEW_BUSINESS_NEED`. Only Dan and his agent decide whether a repository decision or PRD changes.
 
-## 12. Opening message to Iurie
+## 12. Decide whether a follow-up is actually needed
+
+Question-bank completeness is an audit measure, not a requirement to ask every question mechanically. A question may be only partially covered while Iurie's answer completely answers the narrower question actually asked. Preserve that answer; label the remaining official components `not asked / deferred remainder` rather than calling Iurie's answer insufficient. A deferred remainder may already be unnecessary for a reversible, low-risk product decision.
+
+For each missing component, choose exactly one disposition:
+
+- `SUFFICIENT` — the available business evidence is enough;
+- `SUFFICIENT_REVERSIBLE_ASSUMPTION` — proceed only with the assumption and confidence recorded, because the choice is reversible and low risk;
+- `INTERVIEWER_CLARIFICATION` — clarify the formulation, separate a compound question or request an example during the current interview when possible;
+- `IURIE_FOLLOW_UP_REQUIRED` — ask Iurie a targeted question because the gap affects a business rule, exception, authorization, legal or financial effect, blocking automation or a decision difficult to reverse;
+- `DAN_TECHNICAL_DECISION` — route product-design or technical mechanism decisions to Dan and the technical agents.
+
+Do not ask Iurie the same broad question again. When consolidation discovers a material gap later, give Iurie's agent a short prioritized follow-up list containing:
+
+1. the initial question and answer with its provenance link;
+2. what is already understood and must not be asked again;
+3. the exact not-asked/deferred remainder: unanswered component, example treated as rule, missing exception, overly general answer, contradiction or another named gap;
+4. the concrete business reason the precision is needed;
+5. the decision, PRD or issue currently blocked, or the risk created by a wrong assumption;
+6. one minimal, natural Romanian follow-up question;
+7. optional neutral examples only when they help understanding without steering the answer;
+8. a closure condition stating what a sufficient answer must establish.
+
+The package must make clear that the interviewer is completing only a material deferred remainder to move the project forward, not judging Iurie's existing answer or restarting the questionnaire.
+
+Distinguish evidence authority in every record:
+
+- `DIRECT_IURIE` — direct or faithfully paraphrased answer;
+- `AGENT_PROPOSAL_ACCEPTED` — the agent proposed a concrete formulation and Iurie explicitly accepted it;
+- `AGENT_INTERPRETATION` — analysis by the interviewer without Iurie's explicit acceptance; never a business requirement;
+- `DELEGATED_TO_DAN_AGENT` — Iurie delegated a product or technical decision; it remains undecided business behaviour until the responsible decision is documented.
+
+The interviewer may explain concepts, reformulate and ask for examples. Iurie remains the authority on business reality and desired application needs. Avoid redundant questions and do not ask Iurie to decide purely technical matters.
+
+### Lightweight coverage check
+
+When preparing each new question batch, start from the decision the batch must inform and the answers already acquired. Check only the material ambiguities needed for that decision; do not search for every theoretically possible ambiguity.
+
+If an official question is narrowed or split, record only:
+
+1. what was asked;
+2. what remains not asked or deferred;
+3. whether a follow-up is genuinely needed now.
+
+After a short answer or `Da` to a compound formulation, silently check the material components and ask at most one neutral follow-up when a currently necessary component is missing. At session end, briefly mark the relevant sub-parts `answered`, `deferred`, `not_applicable`, `delegated` or `unclear`. Do not mark the full ID resolved unless all material parts are answered or explicitly out of scope.
+
+This is a lightweight writing and review habit, not a new workflow, database or metric. Optimize for decision usefulness and minimal burden on Iurie.
+
+## 13. Opening message to Iurie
 
 Use or adapt this message:
 
