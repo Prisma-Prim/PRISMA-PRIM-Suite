@@ -12,17 +12,22 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 ## 2. Source and process authorities
 
-| Authority                                                                                | Purpose                                                                           |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-212 and interview evidence map     |
-| [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                                |
-| [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets    |
-| [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                             |
-| [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                        |
-| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Question-to-answer provenance, coverage states and unresolved arbitrations        |
-| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                              | Non-canonical source comparison, implementation evidence and unresolved conflicts |
+| Authority                                                                                | Purpose                                                                        |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-212 and interview evidence map  |
+| [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                             |
+| [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets |
+| [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                          |
+| [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                     |
+| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Question-to-answer provenance, coverage states and unresolved arbitrations     |
 
-## 3. Cross-cutting PRDs
+## 3. Evidence and non-canonical reconciliation
+
+| Artifact                                                    | Purpose                                                                           |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md) | Non-canonical source comparison, implementation evidence and unresolved conflicts |
+
+## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | State                                                               | Primary authority                                                         |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -34,7 +39,7 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft — operational evidence pending                                | Security controls, recovery, observability and service posture            |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft — role and terminology evidence pending                       | Accessible workflows, terminology, localization and bounded configuration |
 
-## 4. Release 1 capability PRDs
+## 5. Release 1 capability PRDs
 
 Release 1 is a sequence of integrated capability slices, not five parallel horizontal projects. Capability PRDs may remain Draft while named evidence is collected. Their implementation children are created only when the readiness gates pass.
 
@@ -46,7 +51,7 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft — representative Document practice pending | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft — role and metric evidence pending         | All earlier Release 1 capabilities; UX                        |
 
-## 5. Later releases
+## 6. Later releases
 
 Release 2–7 capability PRDs remain intentionally skeletal in the Product Vision until priority business evidence arrives. Their current order is:
 
@@ -59,13 +64,13 @@ Release 2–7 capability PRDs remain intentionally skeletal in the Product Visio
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
-## 6. Existing delivery frontier
+## 7. Existing delivery frontier
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.
 
 No further product implementation issue is currently `ready-for-agent`. Broader role assignments and permission bundles, “All Companies”, consolidated oversight, deactivation and exceptional access remain blocked by the evidence named in the owning PRDs. The legacy Workspace-authority contract cleanup in #71 remains separately blocked by deployment evidence.
 
-## 7. Tracker policy
+## 8. Tracker policy
 
 The repository maintains one Product Vision tracker and one tracker for each cross-cutting and Release 1 capability PRD. Tracker issues:
 
