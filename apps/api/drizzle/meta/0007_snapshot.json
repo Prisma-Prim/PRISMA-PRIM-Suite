@@ -395,18 +395,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "result_active": {
-          "name": "result_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transition_id": {
-          "name": "transition_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -571,13 +559,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
-        },
-        "transition_id": {
-          "name": "transition_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
         }
       },
       "indexes": {
