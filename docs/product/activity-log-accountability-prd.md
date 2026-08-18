@@ -1,6 +1,6 @@
 # PRD — Activity Log and Accountability
 
-**Status:** Draft — foundation in progress  
+**Status:** Draft — foundation delivered; later event families capability-owned  
 **Version:** 0.1  
 **Owner:** Dan Popescu  
 **Decisions:** DEC-028, DEC-041–DEC-045, DEC-067, DEC-073, DEC-087–DEC-089, DEC-096–DEC-097, DEC-122, DEC-128, DEC-183
@@ -95,7 +95,7 @@ Retention and authorized export require a later policy based on business and leg
 
 - Accountability owns persistence, idempotency and serialization.
 - Owning business modules call its narrow public interface.
-- The initial deep slice is issue #22: first-user provisioning and visible history.
+- The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, and `company_context_assignment.revoked`.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
@@ -128,4 +128,4 @@ Technical dependencies:
 
 ## 14. Readiness
 
-Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family. All other event families remain blocked until their owning capability PRD and permissions are ready.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; and [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds only the approved Company-context assignment grant and revocation events. All other event families remain blocked until their owning capability PRD and permissions are ready.
