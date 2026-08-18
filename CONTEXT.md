@@ -136,8 +136,8 @@ _Avoid_: Agreement draft when no Contract entity exists, Accepted Offer
 An immutable revision of a Contract with its own checks, approval state, and generated files.
 
 **Project**:
-A Company-owned operational record for a Client Account. A Project may exist before a
-Contract; any Contract reference is optional and must use the same provider Company.
+A Company-owned operational record for a Client Account. Project–Contract linkage and
+pre-contract behavior are owned by the Project and Task PRD, not by this glossary.
 _Avoid_: Client Request, Contract, workflow stage
 
 ## Knowledge and traceability
