@@ -6,7 +6,7 @@
 
 ## 1. How to use this index
 
-This page locates the canonical product authorities. The linked PRD owns its complete observable behaviour. GitHub tracker issues record status, blockers and delivery children; they must not duplicate the PRD.
+This page locates the canonical product authorities. The linked PRD owns its complete observable behaviour. GitHub tracker issues record current readiness and status, blockers and delivery children; they must not duplicate the PRD.
 
 Before drafting an implementation issue, read the Product Vision, every applicable cross-cutting PRD, the capability PRD, the consolidated decision record, `CONTEXT.md` and relevant ADRs. An implementation issue is not `ready-for-agent` until every gate in the ticketing standard passes.
 
@@ -64,11 +64,11 @@ Release 2–7 capability PRDs remain intentionally skeletal in the Product Visio
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
-## 7. Existing delivery frontier
+## 7. Delivered foundation and live work routing
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.
 
-No further product implementation issue is currently `ready-for-agent`. Broader role assignments and permission bundles, “All Companies”, consolidated oversight, deactivation and exceptional access remain blocked by the evidence named in the owning PRDs. The legacy Workspace-authority contract cleanup in #71 remains separately blocked by deployment evidence.
+Current readiness—including whether an implementation issue is `ready-for-agent`—blockers, progress and delivery children are owned by the [Product Vision tracker #51](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51) and its linked tracker hierarchy. The Workspace-authority compatibility cleanup is tracked separately in [#71](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/71). Find candidate executable work through the [live open `ready-for-agent` query](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues?q=is%3Aissue%20is%3Aopen%20label%3Aready-for-agent), then open the selected issue and verify every readiness gate before starting. This index intentionally does not copy current issue state.
 
 ## 8. Tracker policy
 
