@@ -288,9 +288,11 @@ If SICOM works with PRISMA-PRIM and BIC, one SICOM dossier is related to both Co
 
 ### 7.4 Client Legal Entity
 
-The contracting, invoiced or certified legal organization is distinct from the shared commercial dossier. One Client Account may eventually contain a parent organization, subsidiaries, legal identifiers and sites.
+A Client Legal Entity is the exact party identified for contracting, invoicing or certification, distinct from the shared Client Account. One Client Account may contain one or more Client Legal Entities.
 
-For a simple client, the application creates one primary Client Legal Entity and keeps the initial user experience simple.
+Representative organization, branch and natural-person cases and their internal classification remain evidence dependencies owned by the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) and [Shared Client PRD](release-1-shared-client-prd.md); this record does not decide a party-kind model.
+
+For a simple Client Account, the application creates one primary Client Legal Entity and keeps the initial user experience simple.
 
 ### 7.5 Client–Company Relationship
 
