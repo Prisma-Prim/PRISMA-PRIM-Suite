@@ -3448,7 +3448,9 @@ A PRD may be drafted with open questions, but an epic or issue is not `ready-for
 
 This record now preserves the complete reasoning needed for a context-free future agent to verify the analysis, make evidence-based adjustments and begin the PRD hierarchy without reconstructing the reconciliation conversation.
 
-## 33. Immediate next work after reconciliation
+## 33. Historical next-work snapshot after reconciliation
+
+This section preserves the handoff that followed the original reconciliation; it is historical evidence, not current execution guidance. Several items below are now delivered or superseded. Use the [Product Requirements Index](prd-index.md) for current navigation and readiness, live GitHub tracker issues for work status, and owning PRDs for observable behaviour.
 
 1. Complete issue #22 because its Activity Log foundation remains compatible with the consolidated direction.
 2. Create the Product Vision PRD and the seven cross-cutting PRDs defined in section 32.
@@ -3463,13 +3465,13 @@ This record now preserves the complete reasoning needed for a context-free futur
 
 ### 34.1 Provenance and completion status
 
-The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) compares its 61 source comments with the 278 official questions in the Romanian bank.
+The structured interview evidence is preserved in [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81). The [coverage and provenance matrix](iurie-business-answer-coverage.md) owns the audited snapshot boundary and question coverage against the 278 official questions; issue #81 owns the live received-evidence inventory. Read those owners for current counts and the addressable range rather than this decision record.
 
-The coverage matrix now separates the source-declared status from semantic coverage of the official wording. The source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 18 are fully covered, 29 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later sessions contain substantial additional evidence in an independent sequence reaching 307, but those numbers are not interchangeable with official question-bank IDs.
+The coverage matrix separates the source-declared status from semantic coverage of the official wording. For the 61-comment audited snapshot preserved by this decision record, the source comments declare 43 mapped questions resolved and 6 partial. After auditing every mapped question against all components of its official wording, 18 are fully covered, 29 are partially covered, 2 have an official ID attached but answer a materially different question, and 229 have no atomic ID mapping. Later received evidence remains non-canonical until semantically mapped. Issue #81 and the coverage matrix own its current inventory and addressable range; independent sequence numbers are not interchangeable with official question-bank IDs.
 
 Iurie's interview agent is an intermediary. It may explain concepts, reformulate questions and ask for examples. Iurie remains the authority on business reality and desired application needs. Evidence must distinguish: a direct or faithfully paraphrased Iurie answer; an agent-framed proposition explicitly accepted by Iurie; an agent interpretation without acceptance; and a point delegated to Dan or the agents for product or technical decision. An agent formulation or interpretation alone is never a business requirement. Explicit acceptance applies only to the scope actually asked.
 
-This corrects the tempting but unsupported conclusion that reaching item 307 proves completion of all 278 official questions.
+Raw sequence progress does not prove completion of all 278 official questions; only row-level mappings and derived totals in the coverage matrix measure coverage.
 
 ### 34.2 Normalized confirmed business evidence
 
