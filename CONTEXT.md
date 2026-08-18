@@ -42,7 +42,7 @@ A person associated with a Client Account who participates in a Client Request, 
 _Avoid_: Client user, lead
 
 **Client Request**:
-The original expression of a need associated with a Client Account, preserved with its sources and analysis history.
+The original expression of a need, preserved with its sources and analysis history; it may precede association with a Client Account.
 _Avoid_: Lead, inquiry, intake case
 
 **Request Source**:
