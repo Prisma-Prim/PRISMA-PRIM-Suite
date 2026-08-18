@@ -25,7 +25,7 @@ An additive permission bundle assigned to a Workspace Membership at Workspace or
 _Avoid_: Job title, authentication role
 
 **Client Account**:
-The Workspace-level shared dossier used to recognize one Client across provider Companies.
+The Workspace-level shared dossier used across provider Companies.
 The canonical UI label may remain Client.
 _Avoid_: Client Legal Entity, Company-owned activity, duplicated Company client
 
@@ -42,7 +42,7 @@ A person associated with a Client Account who participates in a Client Request, 
 _Avoid_: Client user, lead
 
 **Client Request**:
-The original expression of a Client's need, preserved with its sources and analysis history.
+The original expression of a need associated with a Client Account, preserved with its sources and analysis history.
 _Avoid_: Lead, inquiry, intake case
 
 **Request Source**:
@@ -85,7 +85,7 @@ An ISO standard, food-safety scheme, or other named framework relevant to a Clie
 _Avoid_: Certification when the framework itself is meant
 
 **Service**:
-A deliverable that PRISMA-PRIM or BIC may provide to a Client, optionally related to one or more Standards.
+A deliverable that a provider Company may provide, optionally related to one or more Standards.
 _Avoid_: Product, package
 
 **Tariff**:
@@ -107,7 +107,7 @@ _Avoid_: Current price
 ## Commercial documents
 
 **Offer**:
-The commercial proposal made to a Client from a confirmed Client Request and a Pricing Snapshot.
+The commercial proposal made to a named Client Legal Entity, associated with a Client Account, from a confirmed Client Request and a Pricing Snapshot.
 _Avoid_: Quotation, quote, proposal
 
 **Offer Version**:
@@ -123,7 +123,7 @@ The recorded human decision to accept or reject a specific immutable document ve
 _Avoid_: Confirmation, acceptance
 
 **Accepted Offer**:
-An approved Offer that the Client has accepted and that may be converted into a Contract.
+An approved Offer whose acceptance for its named Client Legal Entity has been recorded and that may be converted into a Contract.
 _Avoid_: Approved offer when client acceptance has not occurred
 
 **Contract**:
