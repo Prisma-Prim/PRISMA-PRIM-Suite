@@ -5,8 +5,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
+import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
+if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 describeWithPostgres('Company Context Access assignments REST API', () => {
@@ -468,12 +470,22 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       await remove(`revoke-generation-${generation}`);
       await post(`grant-generation-${generation}`);
     }
-    const transitions = await pool.query<{ transition_id: string }>(
-      `SELECT DISTINCT transition_id FROM company_context_assignment_commands
+    const workspaceId = (await currentActor('workspace-owner', 'Owner'))
+      .workspaceId;
+    const commands = await pool.query<{ id: string }>(
+      `SELECT id FROM company_context_assignment_commands
        WHERE workspace_id = $1`,
-      [(await currentActor('workspace-owner', 'Owner')).workspaceId],
+      [workspaceId],
     );
-    expect(transitions.rows).toHaveLength(9);
+    expect(commands.rows).toHaveLength(9);
+    const auditedCommands = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM company_context_assignment_commands AS command
+       INNER JOIN activity_log_events AS event
+         ON split_part(event.idempotency_key, ':', 3) = command.id::text
+       WHERE command.workspace_id = $1`,
+      [workspaceId],
+    );
+    expect(auditedCommands.rows[0]!.count).toBe('9');
   });
 
   it('uses one metadata-safe denial for unauthorized actors and invalid grant targets', async () => {
