@@ -280,6 +280,26 @@ test('classifies structured PostgreSQL probe phases without blaming PostgreSQL f
   );
 });
 
+test('preserves migration capabilities from a successful PostgreSQL probe', () => {
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 0,
+      stdout: JSON.stringify({
+        phase: 'query',
+        state: 'available',
+        code: null,
+        serverVersionNumber: 170000,
+        canCreateDatabase: true,
+      }),
+    }),
+    {
+      state: 'available',
+      serverVersionNumber: 170000,
+      canCreateDatabase: true,
+    },
+  );
+});
+
 test('distinguishes an unavailable PostgreSQL service from a connection failure', () => {
   const absent = evaluateEnvironment(
     {
