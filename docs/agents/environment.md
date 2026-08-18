@@ -37,7 +37,7 @@ node scripts/agent-doctor.mjs --profile web
 node scripts/agent-doctor.mjs --profile web-postgres
 ```
 
-Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its connectivity probe runs only `SELECT 1`; it never migrates or truncates data.
+Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its read-only connectivity probe records the PostgreSQL server version and whether the current role is superuser or has `CREATEDB`; it never migrates, creates, drops, or truncates data.
 
 ## Codex Cloud environment
 

@@ -3,9 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
 import type { ActorContext } from '../access/access.types.js';
+import { CompanyPermissionResolver } from '../access/company-permission-resolver.js';
+import { COMPANY_CONTEXT_USE_PERMISSION } from '../access/company-permissions.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { COMPANY_REGISTERED_ACTION } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
@@ -17,6 +19,7 @@ export class CompanyService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
+    private readonly companyPermissions: CompanyPermissionResolver,
   ) {}
 
   async register(
@@ -68,16 +71,29 @@ export class CompanyService {
   }
 
   async listVisible(actor: ActorContext): Promise<CompanyRecord[]> {
-    requireWorkspacePermission(actor, 'company.manage');
+    const canManageAll = actor.workspacePermissions.includes('company.manage');
+    const assignedCompanyIds = canManageAll
+      ? []
+      : await this.companyPermissions.listCompanyIds(
+          actor.workspaceId,
+          actor.workspaceMembershipId,
+          COMPANY_CONTEXT_USE_PERMISSION,
+        );
+    if (!canManageAll && assignedCompanyIds.length === 0) return [];
+    const visibility = canManageAll
+      ? and(
+          eq(companies.workspaceId, actor.workspaceId),
+          eq(companies.status, 'active'),
+        )
+      : and(
+          eq(companies.workspaceId, actor.workspaceId),
+          eq(companies.status, 'active'),
+          inArray(companies.id, assignedCompanyIds),
+        );
     const visibleCompanies = await this.databaseContext.connection
       .select()
       .from(companies)
-      .where(
-        and(
-          eq(companies.workspaceId, actor.workspaceId),
-          eq(companies.status, 'active'),
-        ),
-      )
+      .where(visibility)
       .orderBy(asc(companies.displayName), asc(companies.id));
     return visibleCompanies.map(toCompanyRecord);
   }

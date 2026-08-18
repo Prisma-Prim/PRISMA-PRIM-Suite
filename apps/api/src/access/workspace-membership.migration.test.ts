@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
+import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
@@ -19,7 +20,7 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
     'TEST_DATABASE_URL is required for the destructive Workspace Membership migration suite.',
   );
 }
-if (databaseUrl) assertSafeTestDatabase(databaseUrl);
+if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 const LEGACY_POOL = Symbol('LEGACY_POOL');
@@ -197,6 +198,36 @@ describeWithPostgres('Workspace Membership migration', () => {
         }),
       ]),
     );
+
+    await applyMigration('0005_modern_hammerhead.sql');
+    const bootstrapOwnerMembership = await migrationPool.query<{ id: string }>(
+      `SELECT id FROM workspace_memberships WHERE internal_user_id = $1`,
+      [internalUserId],
+    );
+    await migrationPool.query(
+      `INSERT INTO workspace_permission_grants (
+         workspace_id, workspace_membership_id, permission
+       ) VALUES ($1, $2, 'company.manage')`,
+      [workspaceId, bootstrapOwnerMembership.rows[0]!.id],
+    );
+    await applyMigration('0006_sudden_dark_phoenix.sql');
+    await applyMigration('0007_wakeful_moonstone.sql');
+    await applyMigration('0008_backfill_company_assignment_authority.sql');
+    await applyMigration('0008_backfill_company_assignment_authority.sql');
+
+    const upgradedOwnerPermissions = await migrationPool.query<{
+      permission: string;
+    }>(
+      `SELECT permission::text AS permission
+       FROM workspace_permission_grants
+       WHERE workspace_membership_id = $1
+       ORDER BY permission::text`,
+      [bootstrapOwnerMembership.rows[0]!.id],
+    );
+    expect(upgradedOwnerPermissions.rows).toEqual([
+      { permission: 'company.assignment.manage' },
+      { permission: 'company.manage' },
+    ]);
 
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());
@@ -445,21 +476,4 @@ async function fetchActivity(
   });
   expect(response.status).toBe(200);
   return response.json();
-}
-
-function assertSafeTestDatabase(connectionString: string): void {
-  const target = new URL(connectionString);
-  const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
-  const databaseName = decodeURIComponent(target.pathname.slice(1));
-  if (
-    !new Set(['postgres:', 'postgresql:']).has(target.protocol) ||
-    target.search ||
-    target.hash ||
-    !localHosts.has(target.hostname) ||
-    !databaseName.endsWith('_test')
-  ) {
-    throw new Error(
-      'TEST_DATABASE_URL must identify a local database whose name ends with "_test", without connection-target overrides.',
-    );
-  }
 }

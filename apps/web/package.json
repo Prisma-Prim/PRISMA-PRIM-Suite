@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run && playwright test",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:preflight:playwright": "playwright test e2e/production-shell.spec.ts --grep \"renders the production shell\""
   },
   "dependencies": {
     "@clerk/react": "6.13.1",
