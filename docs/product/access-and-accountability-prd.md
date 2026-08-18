@@ -9,7 +9,7 @@
 
 ## 1. Scop
 
-Această capacitate oferă acces sigur, bazat pe invitație, la aplicația internă și leagă identitatea fiecărui utilizator de acțiunile sale de business. Ea stabilește fundația minimă pe care se vor baza toate fluxurile ulterioare pentru Client, Client Request, Analysis, Pricing, Offer, Contract și Approved Knowledge.
+Această capacitate oferă acces sigur, bazat pe invitație, la aplicația internă și leagă identitatea fiecărui utilizator de acțiunile sale de business. Ea stabilește fundația minimă pe care se vor baza toate fluxurile ulterioare pentru Client Account, Client Legal Entity, Client Request, Analysis, Pricing, Offer, Contract și Approved Knowledge.
 
 MVP-ul folosește Clerk ca furnizor extern de identitate, dar modelul de business nu depinde de tipurile Clerk. O identitate externă verificată este tradusă într-un `External Principal`, rezolvată idempotent către un `Internal User` local și către un `Workspace Membership` activ stabilit de server. Ipoteza inițială a unui singur Workspace a fost înlocuită de modelul de tenancy din [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md), fără a schimba rezultatul acestei capacități.
 
@@ -28,14 +28,14 @@ Datele comerciale și contractuale nu pot fi expuse public, iar identitatea tehn
 
 ## 3. Rezultatul așteptat
 
-Un colaborator invitat poate accepta invitația sau se poate autentifica prin Clerk, poate intra într-o rută protejată și este reprezentat în aplicație printr-un `Internal User` local unic. Shell-ul de producție afișează identitatea locală, API-ul refuză accesul neautentificat sau inactiv cu semantica potrivită, iar prima provisionare produce un singur eveniment vizibil în `Activity Log`.
+Un colaborator invitat poate accepta invitația sau se poate autentifica prin Clerk, poate intra într-o rută protejată și este reprezentat în aplicație printr-un `Internal User` local unic și un `Workspace Membership` activ stabilit de server. Shell-ul de producție afișează identitatea locală și Workspace-ul curent, API-ul refuză accesul neautentificat, inactiv sau fără Membership activ cu semantica potrivită, iar prima provisionare produce un singur eveniment vizibil în `Activity Log`.
 
 ## 4. Actori
 
-- **Internal User:** colaborator PRISMA-PRIM sau BIC invitat. Toți utilizatorii activi au aceleași permisiuni în MVP.
+- **Internal User:** identitate locală globală pentru un colaborator invitat. Această capacitate nu acordă permisiuni de business; acestea provin din Membership-uri și Role Assignments guvernate separat.
 - **Business Owner:** un `Internal User` care furnizează sau validează ulterior configurația reală de business. Nu primește un rol tehnic separat în această capacitate.
 - **External Identity Provider:** Clerk, responsabil de invitație, autentificare și verificarea sesiunii.
-- **Workspace:** proprietarul organizațional unic și persistent al datelor pilotului.
+- **Workspace:** organizație-client persistentă și limită strictă de izolare a datelor.
 
 ## 5. Povești de utilizator
 
@@ -65,13 +65,13 @@ Backend-ul acceptă numai o identitate externă deja verificată de adaptorul ru
 
 Tipurile, tokenurile și claim-urile Clerk nu traversează frontiera modulului Access.
 
-### 6.3 `Internal User` și `Workspace`
+### 6.3 `Internal User`, `Workspace Membership` și `Workspace`
 
-Prima rezolvare a unui subiect extern creează un singur `Internal User` activ în unicul `Workspace` persistent. Rezolvările repetate sau concurente întorc același utilizator.
+Prima rezolvare a unui subiect extern creează un singur `Internal User` global. Pentru fiecare cerere protejată, serverul rezolvă un `Workspace Membership` activ în Workspace-ul curent; un Membership absent sau inactiv refuză accesul fail-closed. Rezolvările repetate sau concurente întorc același utilizator și același Membership aplicabil.
 
 Cheia de identitate este subiectul extern stabil împreună cu furnizorul, nu e-mailul. Numele și e-mailul pot fi sincronizate ca atribute de profil fără schimbarea identității locale.
 
-`Workspace` are un identificator persistent și este creat sau inițializat printr-un mecanism unic, nu prin constante repetate în module.
+Fiecare `Workspace` are un identificator persistent și este creat sau inițializat printr-un mecanism explicit, nu prin constante repetate în module.
 
 ### 6.4 `Actor Context`
 
@@ -141,11 +141,12 @@ Persistența, tranzacțiile, Drizzle, unicitatea, serializarea și detaliile pro
 
 Sunt necesare în forma minimă:
 
-- un `Workspace` persistent;
-- un `Internal User` cu legătura externă stabilă, profil și stare activă;
+- `Workspace`-uri persistente cu limite explicite de izolare;
+- un `Internal User` global cu legătura externă stabilă, profil și stare activă;
+- un `Workspace Membership` explicit cu stare activă;
 - un model append-only pentru `Activity Log` cu idempotency.
 
-Fiecare schimbare Drizzle include o migrare revizuită. Constrângerile de unicitate și cheile străine trebuie să susțină invariantele inclusiv sub concurență. Nu se introduc tabele pentru roluri granulare, multi-tenancy comercial sau domenii viitoare.
+Fiecare schimbare Drizzle include o migrare revizuită. Constrângerile de unicitate și cheile străine trebuie să susțină invariantele inclusiv sub concurență. Această capacitate nu definește tabelele de business sau Role Assignments livrate ulterior și guvernate de ADR-0006 și PRD-urile Company/RBAC.
 
 ## 10. Stări UI necesare
 
@@ -196,12 +197,12 @@ Secvența Release 0 este completă. Extensiile ulterioare de Access și Accounta
 - înregistrare publică;
 - administrare de invitații în aplicație;
 - roluri și permisiuni granulare;
-- multiple Workspaces sau multi-tenancy comercial;
+- administrarea în produs a creării, alăturării sau schimbării între Workspaces;
 - SSO enterprise, politici MFA sau mai mulți identity providers;
 - profil de utilizator complex;
 - export, retenție, ștergere sau editare `Activity Log`;
 - înregistrarea tuturor acțiunilor viitoare;
-- Client, Request, Analysis, Pricing, Offer, Contract, Document sau AI;
+- Client Account, Client Legal Entity, Client Request, Analysis, Pricing, Offer, Contract, Document sau AI;
 - design system complet sau înghețarea direcției Atlas Blue.
 
 ## 14. Criterii de acceptare ale capacității
@@ -209,9 +210,10 @@ Secvența Release 0 este completă. Extensiile ulterioare de Access și Accounta
 Capacitatea este completă când:
 
 - un utilizator invitat se autentifică prin Clerk și ajunge în shell-ul protejat;
-- identitatea sa externă este rezolvată idempotent într-un `Internal User` local din Workspace;
-- shell-ul afișează identitatea locală;
+- identitatea sa externă este rezolvată idempotent într-un `Internal User` local global și într-un `Workspace Membership` activ pentru Workspace-ul curent;
+- shell-ul afișează identitatea locală și Workspace-ul curent;
 - lipsa sesiunii produce `401`, iar utilizatorul local inactiv produce `403`;
+- un `Workspace Membership` absent sau inactiv refuză accesul fail-closed;
 - prima provisionare produce exact un eveniment vizibil și atribuit în `Activity Log`;
 - retry-urile și concurența nu creează utilizatori sau evenimente duplicate;
 - testele automate sunt deterministe și independente de Clerk;
@@ -220,4 +222,4 @@ Capacitatea este completă când:
 
 ## 15. Decizii amânate
 
-Următoarele se decid numai când o capacitate reală le cere: administrarea utilizatorilor, roluri, mai multe Workspace-uri, SSO, retenția auditului și politici avansate de securitate. Aceste decizii nu trebuie anticipate în implementarea MVP.
+Următoarele se decid numai când o capacitate reală le cere: administrarea utilizatorilor, roluri, fluxurile de creare/alăturare/schimbare între Workspaces, SSO, retenția auditului și politici avansate de securitate. Aceste decizii nu trebuie anticipate în implementarea MVP.
