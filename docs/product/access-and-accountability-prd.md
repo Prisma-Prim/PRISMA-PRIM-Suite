@@ -130,10 +130,12 @@ Accountability expune o interfață mică pentru înregistrarea evenimentelor ca
 Numele exacte pot fi adaptate la convențiile existente ale repository-ului, dar responsabilitățile rămân stabile:
 
 - adaptor extern: identitate verificată → `External Principal`;
-- Access: `External Principal` + selecția Workspace cerută → `Actor Context` idempotent, numai printr-un `Workspace Membership` activ;
+- Access: `External Principal` → `Actor Context` idempotent; Workspace-ul este stabilit server-side din contextul de admitere și Membership livrat, fără un Workspace ales de caller;
 - endpoint public current actor: returnează doar profilul local necesar shell-ului;
 - Accountability write: `Actor Context` + acțiune canonică + țintă + metadata constrânsă;
 - Accountability read: lista limitată a evenimentelor vizibile în Workspace.
+
+Contractul ADR-0006 care primește un Workspace cerut explicit rămâne autoritatea țintă, dar nu este declarat livrat de această capacitate Release 0. Expunerea și verificarea acelui input necesită o issue verticală separată. Issue #71 elimină doar suprafețele legacy după dovada de deployment și păstrează comportamentul public curent neschimbat.
 
 Persistența, tranzacțiile, Drizzle, unicitatea, serializarea și detaliile providerului rămân private modulelor proprietare.
 
