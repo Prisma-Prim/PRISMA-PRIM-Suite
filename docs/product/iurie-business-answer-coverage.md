@@ -415,7 +415,7 @@ These matters remain unsuitable for autonomous implementation:
 - Shared-versus-Company-confidential Client fields remain incomplete.
 - Exact role bundles, approval delegation and exceptional support access remain incomplete even though general responsibility is clear.
 - Many later “DA” answers approve compound, agent-authored proposals. They support direction but do not prove every embedded field, transition or enforcement rule independently.
-- The independent 96–307 sequence is not formally mapped to the official 278-question bank.
+- Later independently numbered material through item 525 is not formally mapped to the official 278-question bank.
 - Representative anonymized cases, exact actors, exceptions and acceptance examples remain missing for several Release 1 readiness gates.
 
 ## 7. Arbitrations for Dan and Iurie
