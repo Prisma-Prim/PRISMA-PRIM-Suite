@@ -223,7 +223,6 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
-    transitionId: string,
   ) {
     const [changed] = await this.databaseContext.connection
       .update(companyRoleAssignments)
