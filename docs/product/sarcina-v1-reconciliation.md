@@ -139,9 +139,11 @@ The representative UI baseline is synthetic and backend-free. It is design evide
 | Acceptance authority    | Every card repeats an acceptance criterion in which Iurie accepts, corrects, rejects or postpones.                                              | Repository policy assigns Iurie business decisions and Dan/agents technical design, proof and merge governance within accepted authority.                                                                                                 | Replace the generic criterion with objective expected results and the correct owner per decision.                                       |
 | Global approval clause  | Page 7 says no modification, transmission or implementation starts without Iurie's explicit approval.                                           | Repository policy requires Iurie's approval for business-rule changes and important production changes, while Dan/agents may design, prove and merge work inside an accepted issue and authority boundary.                                | Do not treat the source clause as a universal technical or merge veto; escalate business changes and important production actions only. |
 
-## Repository facts that are stale
+## Repository facts observed at the fixed baseline
 
-These findings are factual maintenance work, not permission to rewrite product authorities inside this reconciliation PR:
+**Resolution history (2026-08-19):** issue #102 and PR #103 completed the applicable fixed-baseline hygiene for canonical Client/Project vocabulary, delivered Activity Log and tracker frontiers, #81 linkage and inventory, and the visible interview frontier through item 525. The findings below remain historical evidence for baseline `9399acf43ffe8c225b3e186fe5383c1a80bf72d2`; they are not current work instructions. Semantic remapping of comments 62–104 and acquisition of addressable items 526–765 were out of scope. Current navigation belongs to the [Product Requirements Index](prd-index.md), interview evidence status to [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81) and the [coverage matrix](iurie-business-answer-coverage.md), and current work status to live tracker issues.
+
+The bullets below preserve factual maintenance findings from the fixed baseline; they do not override the resolution history or current owners:
 
 - `docs/product/iurie-business-answer-coverage.md` is a 2026-08-16 snapshot over 61 comments. It records 18 fully mapped questions, 29 partial, 2 wrong associations and 229 not atomically mapped out of 278 official questions. It does not cover the current 104-comment issue state.
 - issue #81 still says several PRDs await answers even though later comments and the external consolidation now exist.
@@ -153,22 +155,22 @@ These findings are factual maintenance work, not permission to rewrite product a
 - no open issue currently carries the `ready-for-agent` state.
 - #71 remains legitimately blocked on deployment evidence, and #78 remains open because the terminal review gate is advisory without the required private ruleset capability.
 
-These should be corrected in a small follow-up hygiene issue after #98, with each fact changed only in its owning document or tracker.
+Issue #102 and PR #103 corrected the applicable hygiene findings in their owning documents and trackers. The semantic coverage and unavailable-source gaps remain evidence work rather than permission to promote a product rule.
 
-## Work that can proceed without asking Iurie again
+## Work identified at the fixed baseline without asking Iurie again
 
 The reconciliation does **not** require another large questionnaire. Existing authorities and direct evidence are sufficient for repository and evidence maintenance only. **No product feature is currently ready for implementation without closing its owning PRD readiness gate.**
 
-### 1. Finish repository normalization
+### 1. Repository normalization — completed by issue #102 and PR #103
 
-Merge this report and CSV, then open one small hygiene issue to:
+Issue #102 and PR #103 performed this fixed-baseline maintenance:
 
-- update the stale issue frontiers and delivered Activity Log facts;
-- correct `CONTEXT.md` against the Shared Client and pre-contract Project authorities;
-- refresh the #81 comment/session inventory and coverage snapshot;
-- link this reconciliation from #81 without copying its 855 rows into issue comments.
+- updated the stale issue frontiers and delivered Activity Log facts;
+- corrected `CONTEXT.md` against the Shared Client and pre-contract Project authorities;
+- recorded the #81 comment/session inventory and visible interview frontier through item 525 without recomputing the semantic rows for comments 62–104;
+- linked this reconciliation from #81 without copying its 855 rows into issue comments.
 
-This is maintenance, not a product decision.
+This completed work was maintenance, not a product decision. Semantic remapping of comments 62–104 and the later independently numbered material through item 525 remains separate evidence work.
 
 ### 2. Obtain addressable source evidence
 
