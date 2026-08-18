@@ -59,7 +59,7 @@ Read them in this order. Do not rely on the repository name, README or existing 
 | 6     | `docs/product/access-and-accountability-prd.md`        | Approved and delivered Release 0 identity and accountability foundation. Use it for the delivered Access seam and its ADR-0006 boundary; do not infer later business permissions.                                            |
 | 7     | `README.md` and `docs/adr/`                            | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie.                                                                                                      |
 | 8     | `apps/api/`, `apps/web/` and `/ui-baseline`            | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved.                                    |
-| 9     | `docs/product/prd-index.md`                             | Current navigation authority for PRD state, delivered foundations and readiness. Follow its linked trackers instead of copying a delivery frontier into this handoff.                                                        |
+| 9     | `docs/product/prd-index.md`                            | Current navigation authority for PRD state, delivered foundations and readiness. Use live GitHub tracker issues for authoritative work status; do not copy a delivery frontier into this handoff.                            |
 
 Important reconciliation facts:
 
