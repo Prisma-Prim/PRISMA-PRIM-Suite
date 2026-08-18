@@ -25,7 +25,7 @@ Put exactly one marker in the issue or execution-note Markdown:
 <!-- complex-feature-preflight: linked docs/path/to/authoritative-preflight.md -->
 ```
 
-Keep only the marker that applies. A linked path is repository-relative and must remain inside the repository. Check the note with:
+Keep only the marker that applies. The guard rejects notes containing multiple or contradictory markers. A linked path is repository-relative and must remain inside the repository. Check the note with:
 
 ```text
 node scripts/validate-complex-feature-preflight.mjs --advisory path/to/issue-or-brief.md
