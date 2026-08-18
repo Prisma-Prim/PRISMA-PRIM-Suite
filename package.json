@@ -28,6 +28,7 @@
     "test:preflight:playwright": "pnpm --filter @prisma-prim/web test:preflight:playwright",
     "test:agent-doctor": "node --test scripts/agent-doctor.test.mjs",
     "test:agent-governance": "node --test scripts/*.test.mjs",
+    "check:complex-preflight": "node scripts/validate-complex-feature-preflight.mjs",
     "typecheck": "pnpm --recursive typecheck",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",
     "db:migrate": "pnpm --filter @prisma-prim/api db:migrate"

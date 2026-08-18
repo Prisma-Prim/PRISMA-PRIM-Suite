@@ -20,6 +20,7 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Use the base profile only when neither PostgreSQL nor browser coverage is required. Fix safe setup drift before implementation and record unresolved failures in the final retrospective.
 5. Inspect the current implementation and the highest stable public test seam.
 6. Restate the observable outcome, exclusions, public module boundary, and first failing test in a short execution note.
+7. Classify the issue using the [complex-feature preflight](complex-feature-preflight.md). For a triggered issue, complete or link the matrix and obtain the pre-code Spec review result before the first implementation edit. For a narrow low-risk issue, record the compact exemption marker instead.
 
 ### Implementation
 
