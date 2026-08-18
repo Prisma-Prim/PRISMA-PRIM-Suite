@@ -1,0 +1,35 @@
+name: Set up repository verification
+description: Install the pinned toolchain, dependencies, isolated test database, and Chromium.
+
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11.20.0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: .node-version
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Provision isolated test database
+      shell: bash
+      run: >-
+        pnpm --filter @prisma-prim/api exec node --input-type=module --eval
+        'import pg from "pg"; const client = new pg.Client({ connectionString:
+        process.env.POSTGRES_ADMIN_URL }); await client.connect(); const existing =
+        await client.query("SELECT 1 FROM pg_database WHERE datname = $1",
+        ["prisma_prim_test"]); if (existing.rowCount === 0) await
+        client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
+        client.end();'
+
+    - name: Install Chromium explicitly
+      shell: bash
+      run: pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium

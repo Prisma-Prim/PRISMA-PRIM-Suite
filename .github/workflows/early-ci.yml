@@ -1,0 +1,13 @@
+name: Early CI preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database-and-browser-seams:
+    uses: ./.github/workflows/ci.yml
+    with:
+      mode: preflight

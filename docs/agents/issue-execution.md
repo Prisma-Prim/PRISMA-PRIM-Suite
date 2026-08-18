@@ -44,6 +44,12 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 6. Correct every material finding and rerun affected checks.
 7. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
 
+For a slice that crosses PostgreSQL, migrations, or browser behavior, run the
+[local PostgreSQL and browser preflight](local-ci-preflight.md) before deep
+review. If it reports a local blocker, trigger the documented early CI workflow
+on the pushed draft branch and use that exact-head result as the early seam
+evidence. Normal pull-request CI remains authoritative.
+
 For browser evidence:
 
 - write generated screenshots through Playwright's `testInfo.outputPath(...)` or another ignored test-output path;

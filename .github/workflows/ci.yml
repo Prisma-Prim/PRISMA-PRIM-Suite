@@ -5,6 +5,13 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      mode:
+        description: Run the narrow preflight or the full authoritative suite.
+        required: false
+        default: full
+        type: string
 
 permissions:
   contents: read
@@ -30,54 +37,48 @@ jobs:
     env:
       DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
       TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
 
     steps:
-      - name: Check out repository
+      - name: Validate requested verification mode
+        if: ${{ inputs.mode != '' && inputs.mode != 'full' && inputs.mode != 'preflight' }}
+        run: exit 2
+
+      - name: Check out exact requested head
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.20.0
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: pnpm
+      - name: Verify preflight prerequisites
+        run: pnpm preflight:local --check-only
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Run canonical PostgreSQL smoke preflight
+        if: ${{ inputs.mode == 'preflight' }}
+        run: pnpm test:preflight:postgres-smoke
 
-      - name: Provision isolated test database
-        env:
-          POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
-        run: >-
-          pnpm --filter @prisma-prim/api exec node --input-type=module --eval
-          'import pg from "pg"; const client = new pg.Client({ connectionString:
-          process.env.POSTGRES_ADMIN_URL }); await client.connect(); const existing =
-          await client.query("SELECT 1 FROM pg_database WHERE datname = $1",
-          ["prisma_prim_test"]); if (existing.rowCount === 0) await
-          client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
-          client.end();'
+      - name: Run canonical previous-schema migration preflight
+        if: ${{ inputs.mode == 'preflight' }}
+        run: pnpm test:preflight:migration
 
-      - name: Install Chromium for browser tests
-        run: pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
-
-      - name: Verify agent environment
-        run: pnpm agent:doctor:web-postgres
+      - name: Run canonical desktop and narrow Playwright preflight
+        if: ${{ inputs.mode == 'preflight' }}
+        run: pnpm test:preflight:playwright
 
       - name: Lint
+        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm lint
 
       - name: Type-check
+        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm typecheck
 
       - name: Test
+        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm test
 
       - name: Upload browser evidence
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && inputs.mode != 'preflight' && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-pr-${{ github.event.pull_request.number }}
@@ -86,7 +87,9 @@ jobs:
           retention-days: 14
 
       - name: Build
+        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm build
 
       - name: Check formatting
+        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm format:check
