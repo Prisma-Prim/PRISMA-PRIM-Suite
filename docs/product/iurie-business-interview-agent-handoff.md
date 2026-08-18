@@ -205,7 +205,7 @@ For each primary question, use this structure:
 
 ```yaml
 question_id: S00-Q01
-question_ro: "The exact Romanian question asked"
+question_ro: 'The exact Romanian question asked'
 answer_ro: "Iurie's answer, faithfully summarized"
 answer_ru: null
 evidence_authority: DIRECT_IURIE
@@ -213,24 +213,24 @@ source_declared_status: CONFIRMED
 semantic_coverage: FULL
 decision_sufficiency: SUFFICIENT
 confidence: HIGH
-current_practice: "What happens today"
-desired_behaviour: "What Iurie wants the application to enable"
+current_practice: 'What happens today'
+desired_behaviour: 'What Iurie wants the application to enable'
 actors_and_approvals:
-  - "Business roles or named evidence owners"
+  - 'Business roles or named evidence owners'
 company_scope:
-  - "PRISMA-PRIM"
-client_or_legal_entity_scope: "If relevant"
-normal_case: "Representative path"
+  - 'PRISMA-PRIM'
+client_or_legal_entity_scope: 'If relevant'
+normal_case: 'Representative path'
 exceptions:
-  - "Important exception"
-example: "Anonymized situation or reference"
+  - 'Important exception'
+example: 'Anonymized situation or reference'
 evidence:
   available: true
-  owner: "Who controls it"
+  owner: 'Who controls it'
   safe_extract_possible: true
 open_points:
-  - "What remains unanswered"
-follow_up_owner: "Iurie, accountant, administrator, specialist, Dan or agent"
+  - 'What remains unanswered'
+follow_up_owner: 'Iurie, accountant, administrator, specialist, Dan or agent'
 ```
 
 Use `null` or an empty list when a field does not apply. Do not invent content to fill the template.
