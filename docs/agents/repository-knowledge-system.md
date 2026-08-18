@@ -22,18 +22,18 @@ This document owns discovery, storage and external-deliverable rules. The [Speci
 
 ## 3. Authority map
 
-| Information | Authoritative owner |
-| --- | --- |
-| Always-applicable agent and engineering rules | `AGENTS.md` |
-| Canonical domain vocabulary | `CONTEXT.md` |
-| Approved observable product behaviour | Owning product PRD |
-| Reconciliation rationale and approved product decisions | Consolidated product decision record |
-| Durable, surprising and costly-to-reverse technical choice | ADR |
-| Work scope, blockers, acceptance and current delivery state | GitHub issue |
-| Implemented behaviour | Code through its stable public boundary |
-| Verification | Tests, CI and deterministic demonstration evidence |
-| Delivered diff, checks, risks and retrospective | Pull request |
-| External email document | Generated snapshot of named repository authorities |
+| Information                                                 | Authoritative owner                                |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| Always-applicable agent and engineering rules               | `AGENTS.md`                                        |
+| Canonical domain vocabulary                                 | `CONTEXT.md`                                       |
+| Approved observable product behaviour                       | Owning product PRD                                 |
+| Reconciliation rationale and approved product decisions     | Consolidated product decision record               |
+| Durable, surprising and costly-to-reverse technical choice  | ADR                                                |
+| Work scope, blockers, acceptance and current delivery state | GitHub issue                                       |
+| Implemented behaviour                                       | Code through its stable public boundary            |
+| Verification                                                | Tests, CI and deterministic demonstration evidence |
+| Delivered diff, checks, risks and retrospective             | Pull request                                       |
+| External email document                                     | Generated snapshot of named repository authorities |
 
 The environment is also an authority. Prefer package scripts, configuration and tool help over prose that merely copies discoverable commands or values.
 
@@ -52,16 +52,16 @@ This route is complete when the agent can name the behaviour to deliver, the art
 
 ## 5. Where new information goes
 
-| Information produced | Destination |
-| --- | --- |
-| Raw business answer or source evidence | Evidence issue or controlled source referenced by the coverage matrix |
-| Candidate interpretation or cross-source conflict | Clearly marked non-canonical reconciliation artifact |
-| Approved business rule | Owning PRD and, when needed, `CONTEXT.md` |
-| Approved technical decision | Code/configuration or ADR according to reversibility and cost |
-| Delivery work and blockers | GitHub issue |
-| Large requirement/evidence matrix | CSV plus a short Markdown guide when explanation is needed |
-| Implementation proof | Tests, CI artifacts, PR body and linked demonstrations |
-| Report intended for email | DOCX generated from named repository sources and revision |
+| Information produced                              | Destination                                                           |
+| ------------------------------------------------- | --------------------------------------------------------------------- |
+| Raw business answer or source evidence            | Evidence issue or controlled source referenced by the coverage matrix |
+| Candidate interpretation or cross-source conflict | Clearly marked non-canonical reconciliation artifact                  |
+| Approved business rule                            | Owning PRD and, when needed, `CONTEXT.md`                             |
+| Approved technical decision                       | Code/configuration or ADR according to reversibility and cost         |
+| Delivery work and blockers                        | GitHub issue                                                          |
+| Large requirement/evidence matrix                 | CSV plus a short Markdown guide when explanation is needed            |
+| Implementation proof                              | Tests, CI artifacts, PR body and linked demonstrations                |
+| Report intended for email                         | DOCX generated from named repository sources and revision             |
 
 Reconciliation artifacts preserve provenance and comparisons. They do not become a second product specification. Each normalized decision moves into its owning PRD, ADR, context or issue, while the reconciliation artifact retains the source mapping and resolution history.
 
