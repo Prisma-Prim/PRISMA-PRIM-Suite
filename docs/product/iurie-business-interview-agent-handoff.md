@@ -148,25 +148,25 @@ Never resolve a contradiction by choosing the answer you find more convenient. P
 
 These internal terms may help you read the product record. Do not present them unexplained to Iurie.
 
-| Internal term               | Explain it to Iurie as                                                                              |
-| --------------------------- | --------------------------------------------------------------------------------------------------- |
-| Workspace                   | the complete protected space of one customer organization using the platform                        |
-| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                           |
-| Client Account              | the shared operational dossier used to recognize the same Client across the group                   |
+| Internal term               | Explain it to Iurie as                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace                   | the complete protected space of one customer organization using the platform                                                                              |
+| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                                                                                 |
+| Client Account              | the shared operational dossier used to recognize the same Client across the group                                                                         |
 | Client Legal Entity         | the exact party that signs, is invoiced or is certified; for a branch or individual, record the real example without deciding its internal classification |
-| Client–Company Relationship | information about the work relationship that only the responsible group Company should see          |
-| Opportunity                 | a potential job considered serious enough to have a responsible person and next action              |
-| Sales Stage                 | the team's current named step between first contact and accepted or lost work                       |
-| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation |
-| Standard Edition            | the exact dated edition of a Standard applicable to the work                                        |
-| Scheme                      | the approved set of rules governing a type of audit, certification or credential                    |
-| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                    |
-| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                      |
-| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                            |
-| Activity Log                | business history showing who performed an important action, on what, and when                       |
-| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                               |
-| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident  |
-| RTO / recovery time         | how quickly essential work and records must become available again                                  |
+| Client–Company Relationship | information about the work relationship that only the responsible group Company should see                                                                |
+| Opportunity                 | a potential job considered serious enough to have a responsible person and next action                                                                    |
+| Sales Stage                 | the team's current named step between first contact and accepted or lost work                                                                             |
+| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation                                                       |
+| Standard Edition            | the exact dated edition of a Standard applicable to the work                                                                                              |
+| Scheme                      | the approved set of rules governing a type of audit, certification or credential                                                                          |
+| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                                                                          |
+| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                                                                            |
+| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                                                                                  |
+| Activity Log                | business history showing who performed an important action, on what, and when                                                                             |
+| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                                                                                     |
+| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident                                                        |
+| RTO / recovery time         | how quickly essential work and records must become available again                                                                                        |
 
 If Iurie starts using a different term, preserve his wording and explain the situation. Dan and his agent will later normalize terminology in the PRDs.
 
@@ -205,7 +205,7 @@ For each primary question, use this structure:
 
 ```yaml
 question_id: S00-Q01
-question_ro: 'The exact Romanian question asked'
+question_ro: "The exact Romanian question asked"
 answer_ro: "Iurie's answer, faithfully summarized"
 answer_ru: null
 evidence_authority: DIRECT_IURIE
@@ -213,24 +213,24 @@ source_declared_status: CONFIRMED
 semantic_coverage: FULL
 decision_sufficiency: SUFFICIENT
 confidence: HIGH
-current_practice: 'What happens today'
-desired_behaviour: 'What Iurie wants the application to enable'
+current_practice: "What happens today"
+desired_behaviour: "What Iurie wants the application to enable"
 actors_and_approvals:
-  - 'Business roles or named evidence owners'
+  - "Business roles or named evidence owners"
 company_scope:
-  - 'PRISMA-PRIM'
-client_or_legal_entity_scope: 'If relevant'
-normal_case: 'Representative path'
+  - "PRISMA-PRIM"
+client_or_legal_entity_scope: "If relevant"
+normal_case: "Representative path"
 exceptions:
-  - 'Important exception'
-example: 'Anonymized situation or reference'
+  - "Important exception"
+example: "Anonymized situation or reference"
 evidence:
   available: true
-  owner: 'Who controls it'
+  owner: "Who controls it"
   safe_extract_possible: true
 open_points:
-  - 'What remains unanswered'
-follow_up_owner: 'Iurie, accountant, administrator, specialist, Dan or agent'
+  - "What remains unanswered"
+follow_up_owner: "Iurie, accountant, administrator, specialist, Dan or agent"
 ```
 
 Use `null` or an empty list when a field does not apply. Do not invent content to fill the template.
