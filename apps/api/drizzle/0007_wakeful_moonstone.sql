@@ -8,12 +8,9 @@ CREATE TABLE "company_context_assignment_commands" (
 	"target_workspace_membership_id" uuid NOT NULL,
 	"company_id" uuid NOT NULL,
 	"result_assignment_id" uuid,
-	"result_active" boolean NOT NULL,
-	"transition_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "company_role_assignments" ADD COLUMN "transition_id" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
 ALTER TABLE "company_context_assignment_commands" ADD CONSTRAINT "company_context_assignment_commands_actor_fk" FOREIGN KEY ("workspace_id","actor_workspace_membership_id") REFERENCES "public"."workspace_memberships"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_context_assignment_commands" ADD CONSTRAINT "company_context_assignment_commands_target_membership_fk" FOREIGN KEY ("workspace_id","target_workspace_membership_id") REFERENCES "public"."workspace_memberships"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_context_assignment_commands" ADD CONSTRAINT "company_context_assignment_commands_company_fk" FOREIGN KEY ("workspace_id","company_id") REFERENCES "public"."companies"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
