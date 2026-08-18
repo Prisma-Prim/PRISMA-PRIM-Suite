@@ -404,7 +404,7 @@ function probePostgres(testDatabaseUrl) {
     'const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 3000 });',
     'try {',
     'await client.connect();',
-    'const response = await client.query("SELECT current_setting(\\'server_version_num\\')::integer AS server_version_number, COALESCE((SELECT rolsuper OR rolcreatedb FROM pg_roles WHERE rolname = current_user), false) AS can_create_database");',
+    'const response = await client.query("SELECT current_setting(\'server_version_num\')::integer AS server_version_number, COALESCE((SELECT rolsuper OR rolcreatedb FROM pg_roles WHERE rolname = current_user), false) AS can_create_database");',
     'const capabilities = response.rows[0];',
     'const available = Number.isInteger(capabilities?.server_version_number) && typeof capabilities?.can_create_database === "boolean";',
     'emit({ phase: "query", state: available ? "available" : "connection-failed", code: available ? null : "unexpected-query-result", serverVersionNumber: capabilities?.server_version_number ?? null, canCreateDatabase: capabilities?.can_create_database ?? false });',
