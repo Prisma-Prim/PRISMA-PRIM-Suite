@@ -2,7 +2,7 @@
 
 **Produs:** PRISMA-PRIM Suite  
 **Capacitate MVP:** Access and Accountability  
-**Statut:** Delivered — Release 0 foundation  
+**Statut:** Approved — Release 0 foundation delivered  
 **Versiune:** 1.0  
 **Data:** 2026-08-08  
 **PRD părinte:** [PRISMA-PRIM Suite MVP](./mvp-prd.md)
