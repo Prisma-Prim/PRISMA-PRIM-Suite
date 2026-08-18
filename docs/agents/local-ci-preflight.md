@@ -35,9 +35,11 @@ pnpm test:preflight:playwright
 ```
 
 The PostgreSQL command is destructive only against the isolated local test
-database required by `agent-doctor`. It runs serially and covers a real
-cross-Workspace REST setup plus migration from the immediately previous
-committed schema. The Playwright command starts the configured preview server
+database required by `agent-doctor`. The migration seam is runnable locally
+only when PostgreSQL is version 13 or newer and the local role has `CREATEDB`,
+because the previous-schema test creates and forcibly removes an isolated
+database. It runs serially and covers a real cross-Workspace REST setup plus
+migration from the immediately previous committed schema. The Playwright command starts the configured preview server
 and executes one production-shell journey in both desktop and narrow projects.
 
 The full local suite remains available separately; the preflight is intentionally
