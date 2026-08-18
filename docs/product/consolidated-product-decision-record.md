@@ -3450,7 +3450,7 @@ This record now preserves the complete reasoning needed for a context-free futur
 
 ## 33. Current work-status authority
 
-This rationale record does not own current backlog or delivery status. Use the [Product Requirements Index](prd-index.md) for current PRD navigation and readiness, live GitHub tracker issues for authoritative blockers, progress and delivery children, and owning PRDs for observable behaviour.
+This rationale record does not own current backlog or delivery status. Use the [Product Requirements Index](prd-index.md) for PRD navigation and stable delivered history, the [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) for readiness gates, live GitHub tracker issues for current readiness, status, blockers, progress and delivery children, and owning PRDs for observable behaviour.
 
 Apply the readiness gates in section 32.5 before creating an implementation issue.
 
