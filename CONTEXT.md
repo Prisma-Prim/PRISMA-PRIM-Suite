@@ -24,12 +24,21 @@ _Avoid_: User account, implicit access
 An additive permission bundle assigned to a Workspace Membership at Workspace or Company scope.
 _Avoid_: Job title, authentication role
 
-**Client**:
-The legal organization receiving consulting or related services.
-_Avoid_: Customer, account, company record
+**Client Account**:
+The tenant-level shared dossier used to recognize one Client across provider Companies.
+The canonical UI label may remain Client.
+_Avoid_: Client Legal Entity, Company-owned activity, duplicated Company client
+
+**Client Legal Entity**:
+The exact organization, branch, or person involved in a Contract or another legal act.
+_Avoid_: Client Account, provider Company
+
+**Client–Company Relationship**:
+The Company-specific commercial and operational context for one Client Account.
+_Avoid_: Shared Client identity, cross-Company activity
 
 **Contact**:
-A person associated with a Client who participates in a Client Request, Offer, or Contract.
+A person associated with a Client Account who participates in a Client Request, Offer, or Contract.
 _Avoid_: Client user, lead
 
 **Client Request**:
@@ -118,15 +127,18 @@ An approved Offer that the Client has accepted and that may be converted into a 
 _Avoid_: Approved offer when client acceptance has not occurred
 
 **Contract**:
-The agreement generated from an Accepted Offer without re-entering approved business data.
-_Avoid_: Agreement draft when no Contract entity exists
+A governed agreement that may originate from an Accepted Offer, controlled direct
+creation, import, or renewal. It may create a Project or link an authorized existing
+Project.
+_Avoid_: Agreement draft when no Contract entity exists, Accepted Offer
 
 **Contract Version**:
 An immutable revision of a Contract with its own checks, approval state, and generated files.
 
 **Project**:
-The minimal operational record created from an Accepted Offer and linked Contract.
-_Avoid_: Client Request, engagement when no operational record exists
+A Company-owned operational record for a Client Account. A Project may exist before a
+Contract; any Contract reference is optional and must use the same provider Company.
+_Avoid_: Client Request, Contract, workflow stage
 
 ## Knowledge and traceability
 
