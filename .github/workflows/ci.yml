@@ -53,9 +53,13 @@ jobs:
       - name: Verify preflight prerequisites
         run: pnpm preflight:local --check-only
 
-      - name: Run canonical PostgreSQL and migration preflight
+      - name: Run canonical PostgreSQL smoke preflight
         if: ${{ inputs.mode == 'preflight' }}
-        run: pnpm test:preflight:postgres
+        run: pnpm test:preflight:postgres-smoke
+
+      - name: Run canonical previous-schema migration preflight
+        if: ${{ inputs.mode == 'preflight' }}
+        run: pnpm test:preflight:migration
 
       - name: Run canonical desktop and narrow Playwright preflight
         if: ${{ inputs.mode == 'preflight' }}
