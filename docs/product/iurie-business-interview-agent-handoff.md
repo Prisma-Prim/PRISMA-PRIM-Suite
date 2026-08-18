@@ -54,16 +54,16 @@ Read them in this order. Do not rely on the repository name, README or existing 
 | 1     | `AGENTS.md`                                            | Understand repository boundaries, decision authority and the distinction between product authorities and implemented code. Ignore its delivery workflow because this interview mandate is read-only.                         |
 | 2     | `docs/product/consolidated-product-decision-record.md` | Primary product-reconciliation authority. Read sections 1.3, 2, 5–22 and 32–33 completely. Sections 23–31 are internal discovery source material; use the companion Romanian questionnaire instead of copying them verbatim. |
 | 3     | `docs/product/iurie-business-question-bank-ro.md`      | Master interview bank. Select questions by session and priority; never ask the whole bank at once.                                                                                                                           |
-| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the original commercial pilot. It is incomplete for the reconciled multi-Company product, so do not use it to contradict the consolidated record.                                           |
+| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the reconciled product. Use it to explain terms; observable behaviour remains in the owning PRDs, and delivery/readiness navigation remains in the Product Requirements Index.              |
 | 5     | `docs/product/mvp-prd.md`                              | Historical commercial-pilot specification. Use it to understand intake, pricing, Offers and Contracts, not as the complete product roadmap.                                                                                  |
-| 6     | `docs/product/access-and-accountability-prd.md`        | Existing identity and accountability foundation. Its initial single-Workspace/equal-permission assumptions do not decide the future multi-Company operating model.                                                           |
+| 6     | `docs/product/access-and-accountability-prd.md`        | Approved and delivered Release 0 identity and accountability foundation. Use it for the delivered Access seam and its ADR-0006 boundary; do not infer later business permissions.                                            |
 | 7     | `README.md` and `docs/adr/`                            | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie.                                                                                                      |
 | 8     | `apps/api/`, `apps/web/` and `/ui-baseline`            | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved.                                    |
-| 9     | GitHub issue `#22`                                     | Current compatible implementation slice: the first append-only Activity Log event. It does not define later business modules.                                                                                                |
+| 9     | `docs/product/prd-index.md`                             | Current navigation authority for PRD state, delivered foundations and readiness. Follow its linked trackers instead of copying a delivery frontier into this handoff.                                                        |
 
 Important reconciliation facts:
 
-- the present code is an early engineering and access foundation, not the finished product;
+- the present code is an early engineering, Access/Accountability and Company/RBAC foundation, not the finished product;
 - the target is a sellable multi-tenant vertical platform whose first tenant includes PRISMA-PRIM, BIC and ECG;
 - one Workspace is the tenant boundary; Companies operate inside it;
 - a shared Client dossier does not make Company-confidential activity visible to everyone;
