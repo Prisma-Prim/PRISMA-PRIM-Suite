@@ -2,7 +2,7 @@
 
 **Produs:** PRISMA-PRIM Suite  
 **Capacitate MVP:** Access and Accountability  
-**Statut:** Ready for ticketed implementation  
+**Statut:** Delivered — Release 0 foundation  
 **Versiune:** 1.0  
 **Data:** 2026-08-08  
 **PRD părinte:** [PRISMA-PRIM Suite MVP](./mvp-prd.md)
@@ -11,7 +11,7 @@
 
 Această capacitate oferă acces sigur, bazat pe invitație, la aplicația internă și leagă identitatea fiecărui utilizator de acțiunile sale de business. Ea stabilește fundația minimă pe care se vor baza toate fluxurile ulterioare pentru Client, Client Request, Analysis, Pricing, Offer, Contract și Approved Knowledge.
 
-MVP-ul folosește Clerk ca furnizor extern de identitate, dar modelul de business nu depinde de tipurile Clerk. O identitate externă verificată este tradusă într-un `External Principal`, rezolvată idempotent către un `Internal User` local și asociată unicului `Workspace` persistent al pilotului.
+MVP-ul folosește Clerk ca furnizor extern de identitate, dar modelul de business nu depinde de tipurile Clerk. O identitate externă verificată este tradusă într-un `External Principal`, rezolvată idempotent către un `Internal User` local și către un `Workspace Membership` activ stabilit de server. Ipoteza inițială a unui singur Workspace a fost înlocuită de modelul de tenancy din [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md), fără a schimba rezultatul acestei capacități.
 
 Prima creare a unui `Internal User` trebuie să lase o urmă unică, atribuită și append-only în `Activity Log`.
 
@@ -183,13 +183,13 @@ Fiecare issue urmează red-green-refactor la cea mai stabilă frontieră public�
 
 ## 12. Ordinea de livrare
 
-1. Alinierea guvernanței repository-ului la baseline-ul Atlas Blue evolutiv.
-2. Shell de producție minimal și reversibil.
-3. Access provider-neutral cu adaptor determinist și persistență reală.
-4. Adaptor runtime Clerk și flux de invitație/autentificare.
-5. Primul eveniment Accountability și ecranul minimal `Activity Log`.
+1. [#18](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/18) — alinierea guvernanței repository-ului la baseline-ul Atlas Blue evolutiv — livrat.
+2. [#19](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/19) — shell de producție minimal și reversibil — livrat.
+3. [#20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/20) — Access provider-neutral cu adaptor determinist și persistență reală — livrat.
+4. [#21](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/21) — adaptor runtime Clerk și flux de invitație/autentificare — livrat.
+5. [#22](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/22) — primul eveniment Accountability și ecranul minimal `Activity Log` — livrat.
 
-Fiecare pas este o issue verticală sau o excepție de prefactoring delimitată, executabilă într-o sesiune Codex proaspătă. Dependențele sunt secvențiale.
+Secvența Release 0 este completă. Extensiile ulterioare de Access și Accountability sunt guvernate de PRD-urile cross-cutting și de issue-uri verticale separate; ele nu redeschid această capacitate.
 
 ## 13. În afara domeniului
 
