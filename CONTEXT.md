@@ -25,7 +25,7 @@ An additive permission bundle assigned to a Workspace Membership at Workspace or
 _Avoid_: Job title, authentication role
 
 **Client Account**:
-The tenant-level shared dossier used to recognize one Client across provider Companies.
+The Workspace-level shared dossier used to recognize one Client across provider Companies.
 The canonical UI label may remain Client.
 _Avoid_: Client Legal Entity, Company-owned activity, duplicated Company client
 
