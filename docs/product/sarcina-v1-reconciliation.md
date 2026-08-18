@@ -157,7 +157,7 @@ These should be corrected in a small follow-up hygiene issue after #98, with eac
 
 ## Work that can proceed without asking Iurie again
 
-The reconciliation does **not** require another large questionnaire. Existing authorities and direct evidence are sufficient for the following two executable items. Later Release 1 capabilities retain their own readiness blockers.
+The reconciliation does **not** require another large questionnaire. Existing authorities and direct evidence are sufficient for repository and evidence maintenance only. **No product feature is currently ready for implementation without closing its owning PRD readiness gate.**
 
 ### 1. Finish repository normalization
 
@@ -170,29 +170,33 @@ Merge this report and CSV, then open one small hygiene issue to:
 
 This is maintenance, not a product decision.
 
-### 2. Next executable feature: deactivate a Workspace Membership
+### 2. Obtain addressable source evidence
 
-This is the strongest next tracer bullet because the business direction is already present and the repository has the required identity, Membership, authorization and Activity Log foundations. A focused issue can specify:
+Request the machine-readable 526-765 export from the father's agent using the contract below. This resolves provenance without asking Iurie to repeat answers.
 
-- authorized administrator deactivation;
-- immediate fail-closed denial on the next request;
-- session revocation where the configured identity provider supports it;
-- an invariant preventing removal of the last active owner;
-- idempotent and concurrency-safe commands;
-- an attributable Activity Log transition with a reason;
-- metadata-safe failures and Workspace isolation;
-- REST and browser proof, including stale-session behavior.
+## Next product candidate after readiness: Workspace Membership deactivation
 
-The issue must distinguish application truth from external identity-provider session evidence, but it does not need a new business interview.
+Workspace Membership deactivation remains a strong architectural fit for the delivered identity, Membership, authorization and Activity Log foundations, but it is **not executable yet**. The Company/RBAC PRD explicitly keeps broader deactivation rules blocked on first-tenant evidence.
+
+Before an implementation issue can be called ready, the owning PRD must normalize evidence for:
+
+- who may deactivate which Membership;
+- last-owner and continuity safeguards;
+- the required relationship between application deactivation and identity-provider session revocation;
+- reason, notification, approval and Activity Log expectations;
+- any exceptions or recovery path.
+
+Only after those business rules are accepted should a focused issue define idempotency, concurrency, metadata-safe failure, Workspace isolation, REST proof and browser proof. Until then, this is a prioritized candidate, not an approved tracer bullet.
 
 ## Canonical order after readiness gates are resolved
 
-The remaining Release 1 PRDs are Draft and their readiness sections still require concrete business examples or rules. They are **not ready for implementation issues without targeted answers**. Once each owning PRD closes its own readiness gate, retain this order:
+The Release 1 PRDs are Draft and their readiness sections still require concrete business examples or rules. They are **not ready for implementation issues without targeted answers**. Once each owning PRD closes its own readiness gate, retain this order:
 
-1. Shared Client Account and legal-entity identity;
-2. Project/Task lifecycle and completion evidence;
-3. Document Registry metadata and immutable versioning;
-4. Operational Dashboard evidence drill-down.
+1. Workspace Membership deactivation;
+2. Shared Client Account and legal-entity identity;
+3. Project/Task lifecycle and completion evidence;
+4. Document Registry metadata and immutable versioning;
+5. Operational Dashboard evidence drill-down.
 
 Each future issue should normalize only the relevant candidate rows from the CSV. It should not import a whole Sarcina module or its repeated generic acceptance criteria. Questions should be asked per capability at that gate, not as another cross-product questionnaire.
 
