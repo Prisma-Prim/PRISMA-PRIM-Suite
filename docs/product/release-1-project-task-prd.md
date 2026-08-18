@@ -132,8 +132,8 @@ Ticket decomposition is blocked on real Project categories, stage meanings, requ
 - Iurie identified C as certification, S1/S2 as surveillance audits and R as recertification; this does not by itself define the general Project lifecycle/stage model.
 - Required Tasks, responsibility, dates, reminders, completion evidence and attributable changes are desired operational capabilities.
 - Project Template changes create new versions and do not rewrite existing Projects or copied Tasks.
-- Project activation requires the configured start evidence or an explicit attributable exception; the exact evidence set remains category-specific and unresolved.
-- A controlled kickoff and initial Project summary are desired after activation.
+- Session 104 records Iurie's preference that activation without the configured start evidence require his approval; neither that authority nor the exact category-specific evidence set is normalized as a product rule yet.
+- A controlled kickoff is desired, and an initial Project summary should be generated after kickoff; the received evidence does not place kickoff before or after activation.
 
 **Still blocking**
 
