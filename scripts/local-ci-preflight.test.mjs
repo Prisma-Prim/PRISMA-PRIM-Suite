@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   commandsForRunnableVerifications,
   createPreflightPlan,
+  evaluateMigrationDatabaseCapability,
   formatPreflightReport,
 } from './local-ci-preflight.mjs';
 
@@ -25,6 +26,11 @@ const healthyChecks = [
     summary: 'Database targets are safe.',
   },
   { id: 'postgres', status: 'PASS', summary: 'PostgreSQL is available.' },
+  {
+    id: 'database-administration',
+    status: 'PASS',
+    summary: 'Migration database administration is available.',
+  },
   {
     id: 'migration-manifest',
     status: 'PASS',
@@ -99,6 +105,41 @@ test('reports actionable local blockers and delegates the same seams to early CI
   assert.match(report, /BLOCKED LOCALLY WITH REASON postgres-smoke/);
   assert.match(report, /DELEGATED TO EARLY CI playwright-narrow/);
   assert.match(report, /gh workflow run early-ci\.yml --ref <branch>/);
+});
+
+test('blocks database verification when the role cannot create migration databases', () => {
+  const capability = evaluateMigrationDatabaseCapability({
+    state: 'available',
+    serverVersionNumber: 170000,
+    canCreateDatabase: false,
+  });
+  const plan = createPreflightPlan({
+    doctorChecks: healthyChecks.map((check) =>
+      check.id === 'database-administration' ? capability : check,
+    ),
+  });
+
+  assert.equal(capability.status, 'FAIL');
+  assert.match(capability.summary, /cannot create isolated migration databases/);
+  assert.deepEqual(commandsForRunnableVerifications(plan), [
+    'test:preflight:playwright',
+  ]);
+  assert.equal(
+    plan.seams.find((seam) => seam.id === 'previous-schema-migration')
+      .localStatus,
+    'blocked-locally-with-reason',
+  );
+});
+
+test('requires PostgreSQL 13 or newer for forced migration cleanup', () => {
+  const capability = evaluateMigrationDatabaseCapability({
+    state: 'available',
+    serverVersionNumber: 120000,
+    canCreateDatabase: true,
+  });
+
+  assert.equal(capability.status, 'FAIL');
+  assert.match(capability.summary, /PostgreSQL 13 or newer/);
 });
 
 test('keeps runnable browser verification scheduled when PostgreSQL is delegated', () => {
