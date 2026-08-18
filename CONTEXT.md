@@ -127,9 +127,9 @@ An approved Offer whose acceptance for its named Client Legal Entity has been re
 _Avoid_: Approved offer when client acceptance has not occurred
 
 **Contract**:
-A governed agreement that may originate from an Accepted Offer, controlled direct
-creation, import, or renewal. It may create a Project or link an authorized existing
-Project.
+A governed agreement between a provider Company and a named Client Legal Entity.
+Contract origins and Project-linking behavior are owned by DEC-117 and the applicable
+Contract and Project PRDs, not by this glossary.
 _Avoid_: Agreement draft when no Contract entity exists, Accepted Offer
 
 **Contract Version**:
