@@ -8,10 +8,7 @@ import { validateIurieCoverage } from './validate-iurie-coverage.mjs';
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const fixture = {
   questionBank: await readFile(
-    resolve(
-      repositoryRoot,
-      'docs/product/iurie-business-question-bank-ro.md',
-    ),
+    resolve(repositoryRoot, 'docs/product/iurie-business-question-bank-ro.md'),
     'utf8',
   ),
   coverageMatrix: await readFile(
@@ -53,7 +50,10 @@ test('rejects a missing official question', () => {
 test('rejects a duplicate official question', () => {
   const row = matrixRow(fixture.coverageMatrix, 'S00-Q01');
   const coverageMatrix = fixture.coverageMatrix.replace(row, `${row}\n${row}`);
-  assert.match(errorsFor({ coverageMatrix }), /duplicate official question S00-Q01/u);
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /duplicate official question S00-Q01/u,
+  );
 });
 
 test('rejects an unknown source comment citation', () => {
@@ -93,7 +93,10 @@ test('rejects a displayed summary total that differs from the rows', () => {
 
 test('rejects an invalid provenance and status combination', () => {
   const row = matrixRow(fixture.coverageMatrix, 'S00-Q12');
-  const invalidRow = row.replace('| — | — | Not mapped |', '| Resolved | — | Not mapped |');
+  const invalidRow = row.replace(
+    '| — | — | Not mapped |',
+    '| Resolved | — | Not mapped |',
+  );
   const coverageMatrix = fixture.coverageMatrix.replace(row, invalidRow);
   assert.match(
     errorsFor({ coverageMatrix }),
