@@ -5,10 +5,8 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const QUESTION_BANK_PATH =
-  'docs/product/iurie-business-question-bank-ro.md';
-const COVERAGE_MATRIX_PATH =
-  'docs/product/iurie-business-answer-coverage.md';
+const QUESTION_BANK_PATH = 'docs/product/iurie-business-question-bank-ro.md';
+const COVERAGE_MATRIX_PATH = 'docs/product/iurie-business-answer-coverage.md';
 const SOURCE_SNAPSHOT_PATH =
   'docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl';
 
@@ -21,8 +19,7 @@ const EXPECTED_INVENTORY_SHA256 =
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
-const EXPECTED_SNAPSHOT_BASELINE =
-  'f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97';
+const EXPECTED_SNAPSHOT_BASELINE = 'f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97';
 
 const ALLOWED_SEMANTIC_COVERAGE = new Set([
   'Full',
@@ -108,7 +105,11 @@ function parseSnapshot(contents, errors) {
     if (line.trim() === '') continue;
     try {
       const record = JSON.parse(line);
-      if (record === null || typeof record !== 'object' || Array.isArray(record)) {
+      if (
+        record === null ||
+        typeof record !== 'object' ||
+        Array.isArray(record)
+      ) {
         errors.push(
           `${SOURCE_SNAPSHOT_PATH}:${index + 1}: expected a JSON object`,
         );
@@ -120,8 +121,12 @@ function parseSnapshot(contents, errors) {
     }
   }
 
-  const metadata = records.filter(({ record_type: type }) => type === 'snapshot');
-  const comments = records.filter(({ record_type: type }) => type === 'comment');
+  const metadata = records.filter(
+    ({ record_type: type }) => type === 'snapshot',
+  );
+  const comments = records.filter(
+    ({ record_type: type }) => type === 'comment',
+  );
   const unknown = records.filter(
     ({ record_type: type }) => type !== 'snapshot' && type !== 'comment',
   );
@@ -167,7 +172,10 @@ function parseSnapshot(contents, errors) {
       );
     }
     const canonicalUrl = `${SOURCE_ISSUE_URL}#issuecomment-${comment.comment_id}`;
-    if (!Number.isSafeInteger(comment.comment_id) || comment.url !== canonicalUrl) {
+    if (
+      !Number.isSafeInteger(comment.comment_id) ||
+      comment.url !== canonicalUrl
+    ) {
       errors.push(
         `${SOURCE_SNAPSHOT_PATH}: source ordinal ${expectedOrdinal} has an invalid comment ID or canonical URL`,
       );
@@ -223,8 +231,10 @@ function parseSnapshot(contents, errors) {
     errors.push(`${SOURCE_SNAPSHOT_PATH}: duplicate session number ${number}`);
   }
 
-  const expectedSessions = Array.from({ length: 104 }, (_, index) => index + 1)
-    .filter((number) => number !== 69 && number !== 91);
+  const expectedSessions = Array.from(
+    { length: 104 },
+    (_, index) => index + 1,
+  ).filter((number) => number !== 69 && number !== 91);
   const actualSessions = new Set(sessionEntries.map(({ number }) => number));
   for (const number of expectedSessions) {
     if (!actualSessions.has(number)) {
@@ -233,7 +243,9 @@ function parseSnapshot(contents, errors) {
   }
   for (const number of actualSessions) {
     if (!expectedSessions.includes(number)) {
-      errors.push(`${SOURCE_SNAPSHOT_PATH}: unexpected session number ${number}`);
+      errors.push(
+        `${SOURCE_SNAPSHOT_PATH}: unexpected session number ${number}`,
+      );
     }
   }
 
@@ -319,21 +331,29 @@ function parseMatrix(contents, errors) {
         );
         continue;
       }
-      ledger.push({ order: Number(cells[0]), provenance: cells[1], line: index + 1 });
+      ledger.push({
+        order: Number(cells[0]),
+        provenance: cells[1],
+        line: index + 1,
+      });
     }
   }
   return { rows, ledger };
 }
 
 function citedUrls(contents) {
-  return [...contents.matchAll(/\]\((https:\/\/github\.com\/Prisma-Prim\/PRISMA-PRIM-Suite\/issues\/81#issuecomment-\d+)\)/gu)].map(
-    (match) => match[1],
-  );
+  return [
+    ...contents.matchAll(
+      /\]\((https:\/\/github\.com\/Prisma-Prim\/PRISMA-PRIM-Suite\/issues\/81#issuecomment-\d+)\)/gu,
+    ),
+  ].map((match) => match[1]);
 }
 
 function validateMatrix({ contents, questions, comments }, errors) {
   const { rows, ledger } = parseMatrix(contents, errors);
-  const bankById = new Map(questions.map((question) => [question.id, question]));
+  const bankById = new Map(
+    questions.map((question) => [question.id, question]),
+  );
   const commentUrls = new Set(comments.map(({ url }) => url));
 
   if (rows.length !== EXPECTED_QUESTION_COUNT) {
@@ -347,7 +367,9 @@ function validateMatrix({ contents, questions, comments }, errors) {
   const rowIds = new Set(rows.map(({ id }) => id));
   for (const question of questions) {
     if (!rowIds.has(question.id)) {
-      errors.push(`${COVERAGE_MATRIX_PATH}: missing official question ${question.id}`);
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: missing official question ${question.id}`,
+      );
     }
   }
 
@@ -459,7 +481,8 @@ function validateMatrix({ contents, questions, comments }, errors) {
     official: rows.length,
     full: rows.filter(({ semantic }) => semantic === 'Full').length,
     partial: rows.filter(({ semantic }) => semantic === 'Partial').length,
-    notCovered: rows.filter(({ semantic }) => semantic === 'Not covered').length,
+    notCovered: rows.filter(({ semantic }) => semantic === 'Not covered')
+      .length,
     notMapped: rows.filter(({ semantic }) => semantic === 'Not mapped').length,
     comments: comments.length,
   };
@@ -514,7 +537,9 @@ export async function validateIurieCoverageFiles(repositoryRoot) {
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;
 if (invokedPath === fileURLToPath(import.meta.url)) {
-  const repositoryRoot = resolve(fileURLToPath(new URL('../', import.meta.url)));
+  const repositoryRoot = resolve(
+    fileURLToPath(new URL('../', import.meta.url)),
+  );
   const result = await validateIurieCoverageFiles(repositoryRoot);
   if (result.errors.length > 0) {
     console.error(result.errors.join('\n'));
