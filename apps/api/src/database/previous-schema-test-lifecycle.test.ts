@@ -68,6 +68,22 @@ describe('previous-schema test lifecycle', () => {
     expect(getConnectionCount).toHaveBeenCalledTimes(3);
   });
 
+  it('bounds a stalled connection-count query by the lifecycle deadline', async () => {
+    const getConnectionCount = vi.fn(
+      () => new Promise<number>(() => undefined),
+    );
+
+    await expect(
+      waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
+        timeoutMs: 5,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow(
+      'Timed out waiting for the target database connection-count query to finish.',
+    );
+    expect(getConnectionCount).toHaveBeenCalledTimes(1);
+  });
+
   it('uses a normal drop after target connections close', async () => {
     const waitForConnectionsToClose = vi.fn(async () => undefined);
     const dropDatabase = vi.fn(async () => undefined);
