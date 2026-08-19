@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
 import {
+  cleanupIsolatedTargetDatabase,
   runPreviousSchemaTestLifecycle,
   waitForTargetDatabaseConnectionsToClose,
 } from './previous-schema-test-lifecycle.js';
@@ -19,7 +20,7 @@ import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
-const previousSchemaMigrationTestTimeoutMs = 30_000;
+const previousSchemaMigrationTestTimeoutMs = 15_000;
 
 describeWithPostgres('previous schema migration preflight', () => {
   it(
@@ -31,7 +32,6 @@ describeWithPostgres('previous schema migration preflight', () => {
       let applicationPool: Pool | undefined;
       let application: INestApplication | undefined;
       let targetDatabaseCreated = false;
-      let targetDatabaseConnectionsClosed = false;
       let previousMigrationsDirectory: string | undefined;
 
       await runPreviousSchemaTestLifecycle(async () => {
@@ -117,33 +117,31 @@ describeWithPostgres('previous schema migration preflight', () => {
           },
         },
         {
-          name: 'target database connections',
-          cleanup: async () => {
-            if (!administrationPool || !targetDatabaseCreated) return;
-            await waitForTargetDatabaseConnectionsToClose(async () => {
-              const result = await administrationPool!.query<{
-                connectionCount: number;
-              }>(
-                `SELECT count(*)::integer AS "connectionCount"
-                 FROM pg_stat_activity
-                 WHERE datname = $1`,
-                [databaseName],
-              );
-              return result.rows[0]?.connectionCount ?? 0;
-            });
-            targetDatabaseConnectionsClosed = true;
-          },
-        },
-        {
           name: 'isolated target database',
           cleanup: async () => {
             if (!administrationPool || !targetDatabaseCreated) return;
-            await administrationPool.query(
-              `DROP DATABASE IF EXISTS "${databaseName}"${
-                targetDatabaseConnectionsClosed ? '' : ' WITH (FORCE)'
-              }`,
-            );
-            targetDatabaseCreated = false;
+            await cleanupIsolatedTargetDatabase({
+              waitForConnectionsToClose: () =>
+                waitForTargetDatabaseConnectionsToClose(async () => {
+                  const result = await administrationPool!.query<{
+                    connectionCount: number;
+                  }>(
+                    `SELECT count(*)::integer AS "connectionCount"
+                     FROM pg_stat_activity
+                     WHERE datname = $1`,
+                    [databaseName],
+                  );
+                  return result.rows[0]?.connectionCount ?? 0;
+                }),
+              dropDatabase: async (force) => {
+                await administrationPool!.query(
+                  `DROP DATABASE IF EXISTS "${databaseName}"${
+                    force ? ' WITH (FORCE)' : ''
+                  }`,
+                );
+                targetDatabaseCreated = false;
+              },
+            });
           },
         },
         {
