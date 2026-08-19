@@ -28,7 +28,9 @@ export async function waitForTargetDatabaseConnectionsToClose(
     throw new RangeError('The connection-close timeout must be positive.');
   }
   if (!Number.isFinite(pollIntervalMs) || pollIntervalMs <= 0) {
-    throw new RangeError('The connection-close poll interval must be positive.');
+    throw new RangeError(
+      'The connection-close poll interval must be positive.',
+    );
   }
 
   const deadline = now() + timeoutMs;
