@@ -121,6 +121,21 @@ test('rejects substantive drift in pinned comment content', () => {
   );
 });
 
+test('rejects promotion of the pinned evidence-only snapshot metadata', () => {
+  const records = fixture.sourceSnapshot
+    .trimEnd()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const metadata = records.find(({ record_type: type }) => type === 'snapshot');
+  metadata.authority_status = 'canonical approved product authority';
+  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+
+  assert.match(
+    errorsFor({ sourceSnapshot }),
+    /pinned complete snapshot metadata does not match the evidence-only authority boundary/u,
+  );
+});
+
 test('rejects a displayed summary total that differs from the rows', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     /\| Fully covered semantically\s+\|\s+\d+\s+\|/u,
