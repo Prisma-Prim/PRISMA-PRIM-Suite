@@ -16,6 +16,8 @@ const EXPECTED_SESSION_COUNT = 102;
 const EXPECTED_NON_SESSION_COMMENT_IDS = new Set([5307483085, 5308212347]);
 const EXPECTED_INVENTORY_SHA256 =
   '430627c8a7aa50fe01b499c02be880f5bcc972a123d65868425d0f53cbbae818';
+const EXPECTED_COMMENT_CONTENT_SHA256 =
+  'c009d766d0d3ca03a5e0a002c67114950f4aa5549463e6f56c7bbdc6af54ba69';
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
@@ -41,6 +43,66 @@ const SUMMARY_LABELS = {
   notMapped: 'Not atomically mapped by official ID',
   comments: 'Source comments inspected',
 };
+const BASELINE_SEMANTIC_IDS = {
+  Full: new Set([
+    'S00-Q01',
+    'S00-Q02',
+    'S00-Q03',
+    'S00-Q10',
+    'S00-Q11',
+    'S00-Q13',
+    'S00-Q14',
+    'S00-Q15',
+    'S01-Q10',
+    'S01-Q12',
+    'S02-Q08',
+    'S02-Q09',
+    'S02-Q21',
+    'S03-Q01',
+    'S03-Q04',
+    'S03-Q06',
+    'S03-Q08',
+    'S03-Q09',
+  ]),
+  Partial: new Set([
+    'S00-Q04',
+    'S00-Q05',
+    'S00-Q06',
+    'S00-Q07',
+    'S00-Q08',
+    'S00-Q09',
+    'S01-Q01',
+    'S01-Q04',
+    'S01-Q05',
+    'S01-Q06',
+    'S01-Q08',
+    'S01-Q09',
+    'S01-Q11',
+    'S01-Q13',
+    'S01-Q14',
+    'S01-Q15',
+    'S01-Q16',
+    'S02-Q02',
+    'S02-Q07',
+    'S02-Q10',
+    'S02-Q11',
+    'S02-Q12',
+    'S02-Q15',
+    'S02-Q16',
+    'S03-Q05',
+    'S03-Q07',
+    'S03-Q10',
+    'S03-Q11',
+    'S03-Q12',
+  ]),
+  'Not covered': new Set(['S02-Q13', 'S04-Q01']),
+};
+const TRANSITION_LABELS = [
+  'Not mapped to Full',
+  'Not mapped to Partial',
+  'Not covered to Partial',
+  'Partial to Full',
+];
 
 function splitMarkdownRow(line) {
   const trimmed = line.trim();
@@ -209,6 +271,20 @@ function parseSnapshot(contents, errors) {
     );
   }
 
+  const commentContent = `${comments
+    .map(({ ordinal, comment_id, url, author_login, body }) =>
+      JSON.stringify([ordinal, comment_id, url, author_login, body]),
+    )
+    .join('\n')}\n`;
+  const commentContentHash = createHash('sha256')
+    .update(commentContent)
+    .digest('hex');
+  if (commentContentHash !== EXPECTED_COMMENT_CONTENT_SHA256) {
+    errors.push(
+      `${SOURCE_SNAPSHOT_PATH}: pinned 104-comment author/body content does not match the audited boundary`,
+    );
+  }
+
   const sessionEntries = [];
   const nonSessionComments = [];
   for (const comment of comments) {
@@ -351,6 +427,200 @@ function citedUrls(contents) {
   ].map((match) => match[1]);
 }
 
+function semanticBaseline(questions, errors) {
+  const questionIds = new Set(questions.map(({ id }) => id));
+  const baseline = new Map(questions.map(({ id }) => [id, 'Not mapped']));
+  const assigned = new Set();
+
+  for (const [semantic, ids] of Object.entries(BASELINE_SEMANTIC_IDS)) {
+    for (const id of ids) {
+      if (!questionIds.has(id)) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}: pinned baseline contains unknown official question ${id}`,
+        );
+      }
+      if (assigned.has(id)) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}: pinned baseline assigns ${id} more than once`,
+        );
+      }
+      assigned.add(id);
+      baseline.set(id, semantic);
+    }
+  }
+
+  return baseline;
+}
+
+function parsePublishedTransitions(contents, errors) {
+  const transitions = new Map();
+  let inDeltaSection = false;
+
+  for (const [index, line] of contents.split('\n').entries()) {
+    if (line.startsWith('## 2.1 ')) {
+      inDeltaSection = true;
+      continue;
+    }
+    if (inDeltaSection && line.startsWith('## 3. ')) break;
+    if (!inDeltaSection) continue;
+
+    const match = line.match(
+      /^- (Not mapped to Full|Not mapped to Partial|Not covered to Partial|Partial to Full) \((\d+)\): (.+)\.$/u,
+    );
+    if (!match) continue;
+
+    const [, label, displayedCount, list] = match;
+    if (transitions.has(label)) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${index + 1}: duplicate transition list ${label}`,
+      );
+      continue;
+    }
+    const ids = list.split(',').map((id) => id.trim());
+    if (Number(displayedCount) !== ids.length) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${index + 1}: ${label} declares ${displayedCount} IDs but lists ${ids.length}`,
+      );
+    }
+    for (const id of duplicates(ids)) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${index + 1}: ${label} repeats ${id}`,
+      );
+    }
+    transitions.set(label, { ids: new Set(ids), line: index + 1 });
+  }
+
+  for (const label of TRANSITION_LABELS) {
+    if (!transitions.has(label)) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: missing published transition list ${label}`,
+      );
+    }
+  }
+  return transitions;
+}
+
+function setDifference(left, right) {
+  return [...left].filter((value) => !right.has(value));
+}
+
+function validateSemanticDelta({ contents, questions, rows }, errors) {
+  const baseline = semanticBaseline(questions, errors);
+  const current = new Map(rows.map(({ id, semantic }) => [id, semantic]));
+  const derived = new Map(TRANSITION_LABELS.map((label) => [label, new Set()]));
+
+  for (const question of questions) {
+    const before = baseline.get(question.id);
+    const after = current.get(question.id);
+    if (!after || before === after) continue;
+    const label = `${before} to ${after}`;
+    const transition = derived.get(label);
+    if (!transition) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: unsupported semantic transition ${question.id}: ${before} to ${after}`,
+      );
+      continue;
+    }
+    transition.add(question.id);
+  }
+
+  const published = parsePublishedTransitions(contents, errors);
+  const officialIds = new Set(questions.map(({ id }) => id));
+  const publishedOwners = new Map();
+
+  for (const label of TRANSITION_LABELS) {
+    const entry = published.get(label);
+    if (!entry) continue;
+    for (const id of entry.ids) {
+      if (!officialIds.has(id)) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}:${entry.line}: ${label} contains unknown official question ${id}`,
+        );
+      }
+      const priorOwner = publishedOwners.get(id);
+      if (priorOwner) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}:${entry.line}: ${id} appears in both ${priorOwner} and ${label}`,
+        );
+      }
+      publishedOwners.set(id, label);
+    }
+
+    const missing = setDifference(derived.get(label), entry.ids);
+    const unexpected = setDifference(entry.ids, derived.get(label));
+    if (missing.length > 0 || unexpected.length > 0) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${entry.line}: ${label} differs from the pinned baseline; missing [${missing.join(', ')}], unexpected [${unexpected.join(', ')}]`,
+      );
+    }
+  }
+
+  const baselineCounts = Object.fromEntries(
+    [...ALLOWED_SEMANTIC_COVERAGE].map((semantic) => [
+      semantic,
+      [...baseline.values()].filter((value) => value === semantic).length,
+    ]),
+  );
+  const currentCounts = Object.fromEntries(
+    [...ALLOWED_SEMANTIC_COVERAGE].map((semantic) => [
+      semantic,
+      [...current.values()].filter((value) => value === semantic).length,
+    ]),
+  );
+  const deltaRows = new Map();
+  let inDeltaSection = false;
+  for (const [index, line] of contents.split('\n').entries()) {
+    if (line.startsWith('## 2.1 ')) {
+      inDeltaSection = true;
+      continue;
+    }
+    if (inDeltaSection && line.startsWith('## 3. ')) break;
+    if (!inDeltaSection) continue;
+    const cells = splitMarkdownRow(line);
+    if (
+      cells?.length === 4 &&
+      [...ALLOWED_SEMANTIC_COVERAGE, 'Total official rows'].includes(cells[0])
+    ) {
+      deltaRows.set(cells[0], { cells, line: index + 1 });
+    }
+  }
+
+  const expectedRows = new Map(
+    [...ALLOWED_SEMANTIC_COVERAGE].map((semantic) => [
+      semantic,
+      [
+        baselineCounts[semantic],
+        currentCounts[semantic],
+        currentCounts[semantic] - baselineCounts[semantic],
+      ],
+    ]),
+  );
+  expectedRows.set('Total official rows', [
+    questions.length,
+    rows.length,
+    rows.length - questions.length,
+  ]);
+
+  for (const [label, expected] of expectedRows) {
+    const entry = deltaRows.get(label);
+    if (!entry) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: missing semantic delta row ${label}`,
+      );
+      continue;
+    }
+    const actual = entry.cells.slice(1).map((value) => Number(value));
+    if (
+      actual.some((value) => !Number.isInteger(value)) ||
+      actual.some((value, index) => value !== expected[index])
+    ) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${entry.line}: ${label} delta row is [${entry.cells.slice(1).join(', ')}], derived value is [${expected.join(', ')}]`,
+      );
+    }
+  }
+}
+
 function validateMatrix({ contents, questions, comments }, errors) {
   const { rows, ledger } = parseMatrix(contents, errors);
   const bankById = new Map(
@@ -452,6 +722,8 @@ function validateMatrix({ contents, questions, comments }, errors) {
     }
   }
 
+  validateSemanticDelta({ contents, questions, rows }, errors);
+
   if (ledger.length !== EXPECTED_COMMENT_COUNT) {
     errors.push(
       `${COVERAGE_MATRIX_PATH}: expected ${EXPECTED_COMMENT_COUNT} supplemental-ledger rows, found ${ledger.length}`,
@@ -486,73 +758,3 @@ function validateMatrix({ contents, questions, comments }, errors) {
     notCovered: rows.filter(({ semantic }) => semantic === 'Not covered')
       .length,
     notMapped: rows.filter(({ semantic }) => semantic === 'Not mapped').length,
-    comments: comments.length,
-  };
-  for (const [key, label] of Object.entries(SUMMARY_LABELS)) {
-    const displayed = summary.get(label);
-    if (displayed !== derived[key]) {
-      errors.push(
-        `${COVERAGE_MATRIX_PATH}: summary ${JSON.stringify(label)} is ${JSON.stringify(displayed)}, derived value is ${derived[key]}`,
-      );
-    }
-  }
-
-  return derived;
-}
-
-export function validateIurieCoverage({
-  questionBank,
-  coverageMatrix,
-  sourceSnapshot,
-}) {
-  const errors = [];
-  const questions = parseQuestionBank(questionBank, errors);
-  const source = parseSnapshot(sourceSnapshot, errors);
-  const summary = validateMatrix(
-    { contents: coverageMatrix, questions, comments: source.comments },
-    errors,
-  );
-  return {
-    errors,
-    summary,
-    source: {
-      comments: source.comments.length,
-      sessions: source.sessionEntries.length,
-      nonSessionComments: source.nonSessionComments.length,
-    },
-  };
-}
-
-export async function validateIurieCoverageFiles(repositoryRoot) {
-  const root = resolve(repositoryRoot);
-  const [questionBank, coverageMatrix, sourceSnapshot] = await Promise.all([
-    readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
-    readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
-    readFile(resolve(root, SOURCE_SNAPSHOT_PATH), 'utf8'),
-  ]);
-  return validateIurieCoverage({
-    questionBank,
-    coverageMatrix,
-    sourceSnapshot,
-  });
-}
-
-const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;
-if (invokedPath === fileURLToPath(import.meta.url)) {
-  const repositoryRoot = resolve(
-    fileURLToPath(new URL('../', import.meta.url)),
-  );
-  const result = await validateIurieCoverageFiles(repositoryRoot);
-  if (result.errors.length > 0) {
-    console.error(result.errors.join('\n'));
-    process.exitCode = 1;
-  } else {
-    console.log(
-      `Iurie coverage is valid: ${result.summary.official} official questions; ` +
-        `${result.source.comments} pinned comments; ${result.source.sessions} numbered sessions; ` +
-        `${result.source.nonSessionComments} non-session comments; ` +
-        `${result.summary.full} Full, ${result.summary.partial} Partial, ` +
-        `${result.summary.notCovered} Not covered, ${result.summary.notMapped} Not mapped.`,
-    );
-  }
-}
