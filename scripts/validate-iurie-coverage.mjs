@@ -30,6 +30,10 @@ const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
   'df4c57afd76547be01375c33978875d1d7521841685873fbe876951ae9f0c825';
 const EXPECTED_LEDGER_CONTENT_SHA256 =
   'd278f7b28ff77b8b22dfb8a7e9fa6c30a7b606adbc86c93c93732348a0a68020';
+const EXPECTED_MATRIX_PREAMBLE_SHA256 =
+  'e1b88052ebbe7466c9d5e6ebd5d2baf5a83c6b487707728a7cf178afb349895c';
+const EXPECTED_COMPLETE_MATRIX_SHA256 =
+  '7b2f7d4e20d3781f218bb1d96b036e55c5abd2ddbd44670f87c21ef780854f0c';
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
@@ -124,6 +128,27 @@ const TRANSITION_LABELS = [
   'Partial to Full',
   'Full to Partial',
 ];
+const OFFICIAL_MATRIX_HEADER = [
+  'Question',
+  'Priority',
+  'Official wording',
+  'Source-declared status',
+  'Evidence authority',
+  'Semantic coverage',
+  'Audit rationale',
+  'Provenance',
+  'Question actually asked',
+  'Iurie answer excerpt',
+];
+const OFFICIAL_MATRIX_SEPARATOR = Array(10).fill('---');
+const LEDGER_HEADER = [
+  'Source order',
+  'Provenance',
+  'Session/topic',
+  'Independent item range',
+  'Source status notation',
+];
+const LEDGER_SEPARATOR = ['---:', '---', '---', '---', '---'];
 
 function splitMarkdownRow(line) {
   const trimmed = line.trim();
@@ -167,7 +192,14 @@ function parseQuestionBank(contents, errors) {
     const match = line.match(
       /^\d+\.\s+\*\*(S\d{2}-Q\d{2}) · (P[012])\*\*\s+—\s+(.+)$/u,
     );
-    if (!match) continue;
+    if (!match) {
+      if (/^\d+\.\s+\*\*/u.test(line)) {
+        errors.push(
+          `${QUESTION_BANK_PATH}:${index + 1}: malformed official-question entry`,
+        );
+      }
+      continue;
+    }
     questions.push({
       id: match[1],
       priority: match[2],
@@ -429,17 +461,39 @@ function parseMatrix(contents, errors) {
   const rows = [];
   const ledger = [];
   let section = '';
+  let matrixHeaderCount = 0;
+  let matrixSeparatorCount = 0;
+  let ledgerHeaderCount = 0;
+  let ledgerSeparatorCount = 0;
 
   for (const [index, line] of contents.split('\n').entries()) {
     if (line.startsWith('## 3. ')) section = 'matrix';
     if (line.startsWith('## 4. ')) section = 'ledger';
+    if (line.startsWith('## 4.1 ')) section = '';
     if (line.startsWith('## 5. ')) section = '';
 
     const cells = splitMarkdownRow(line);
     if (!cells) continue;
     if (section === 'matrix') {
       const identifier = cells[0] ?? '';
-      if (identifier === 'Question' || /^:?-+:?$/u.test(identifier)) {
+      if (identifier === 'Question') {
+        matrixHeaderCount += 1;
+        if (JSON.stringify(cells) !== JSON.stringify(OFFICIAL_MATRIX_HEADER)) {
+          errors.push(
+            `${COVERAGE_MATRIX_PATH}:${index + 1}: official-matrix header differs from the pinned audit schema`,
+          );
+        }
+        continue;
+      }
+      if (/^:?-+:?$/u.test(identifier)) {
+        matrixSeparatorCount += 1;
+        if (
+          JSON.stringify(cells) !== JSON.stringify(OFFICIAL_MATRIX_SEPARATOR)
+        ) {
+          errors.push(
+            `${COVERAGE_MATRIX_PATH}:${index + 1}: official-matrix delimiter differs from the pinned audit schema`,
+          );
+        }
         continue;
       }
       if (cells.length !== 10) {
@@ -468,21 +522,56 @@ function parseMatrix(contents, errors) {
         line: index + 1,
       });
     }
-    if (section === 'ledger' && /^\d+$/u.test(cells[0] ?? '')) {
+    if (section === 'ledger') {
+      const sourceOrder = cells[0] ?? '';
+      if (sourceOrder === 'Source order') {
+        ledgerHeaderCount += 1;
+        if (JSON.stringify(cells) !== JSON.stringify(LEDGER_HEADER)) {
+          errors.push(
+            `${COVERAGE_MATRIX_PATH}:${index + 1}: supplemental-ledger header differs from the pinned audit schema`,
+          );
+        }
+        continue;
+      }
+      if (/^:?-+:?$/u.test(sourceOrder)) {
+        ledgerSeparatorCount += 1;
+        if (JSON.stringify(cells) !== JSON.stringify(LEDGER_SEPARATOR)) {
+          errors.push(
+            `${COVERAGE_MATRIX_PATH}:${index + 1}: supplemental-ledger delimiter differs from the pinned audit schema`,
+          );
+        }
+        continue;
+      }
       if (cells.length !== 5) {
         errors.push(
           `${COVERAGE_MATRIX_PATH}:${index + 1}: expected 5 supplemental-ledger columns, found ${cells.length}`,
         );
         continue;
       }
+      if (!/^\d+$/u.test(sourceOrder)) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}:${index + 1}: invalid supplemental-ledger source order ${JSON.stringify(sourceOrder)}`,
+        );
+        continue;
+      }
       ledger.push({
-        order: Number(cells[0]),
+        order: Number(sourceOrder),
         provenance: cells[1],
         sessionTopic: cells[2],
         itemRange: cells[3],
         sourceStatus: cells[4],
         line: index + 1,
       });
+    }
+  }
+  for (const [label, count] of [
+    ['official-matrix header', matrixHeaderCount],
+    ['official-matrix delimiter', matrixSeparatorCount],
+    ['supplemental-ledger header', ledgerHeaderCount],
+    ['supplemental-ledger delimiter', ledgerSeparatorCount],
+  ]) {
+    if (count !== 1) {
+      errors.push(`${COVERAGE_MATRIX_PATH}: expected exactly one ${label}`);
     }
   }
   return { rows, ledger };
@@ -710,6 +799,20 @@ function validateSemanticDelta({ contents, questions, rows }, errors) {
 }
 
 function validateMatrix({ contents, questions, comments }, errors) {
+  const completeMatrixHash = createHash('sha256')
+    .update(contents)
+    .digest('hex');
+  if (completeMatrixHash !== EXPECTED_COMPLETE_MATRIX_SHA256) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: pinned complete matrix content does not match the reviewed evidence audit`,
+    );
+  }
+  const preamble = contents.split('\n## 3. ')[0]?.trimEnd() ?? '';
+  if (canonicalRecordsHash([preamble]) !== EXPECTED_MATRIX_PREAMBLE_SHA256) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: pinned coverage-summary and authority preamble does not match the reviewed audit`,
+    );
+  }
   for (const declaration of EXPECTED_MATRIX_AUTHORITY_DECLARATIONS) {
     const occurrences = contents.split(declaration).length - 1;
     if (occurrences !== 1) {
