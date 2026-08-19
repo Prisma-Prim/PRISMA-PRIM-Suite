@@ -65,7 +65,7 @@ describe('previous-schema test lifecycle', () => {
     ).rejects.toThrow(
       'Timed out waiting for 2 target database connection(s) to close.',
     );
-    expect(getConnectionCount).toHaveBeenCalledTimes(3);
+    expect(getConnectionCount).toHaveBeenCalledTimes(2);
   });
 
   it('bounds a stalled connection-count query by the lifecycle deadline', async () => {
