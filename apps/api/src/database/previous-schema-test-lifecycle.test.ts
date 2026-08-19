@@ -82,6 +82,7 @@ describe('previous-schema test lifecycle', () => {
       'Timed out waiting for the target database connection-count query to finish.',
     );
     expect(getConnectionCount).toHaveBeenCalledTimes(1);
+    expect(getConnectionCount).toHaveBeenCalledWith(5);
   });
 
   it('uses a normal drop after target connections close', async () => {
