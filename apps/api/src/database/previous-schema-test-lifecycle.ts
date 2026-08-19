@@ -21,41 +21,52 @@ const defaultTimeoutMs = 5_000;
 const defaultPollIntervalMs = 25;
 
 function getConnectionCountBeforeDeadline(
-  getConnectionCount: (remainingMs: number) => Promise<number>,
+  getConnectionCount: (
+    remainingMs: number,
+    signal: AbortSignal,
+  ) => Promise<number>,
   remainingMs: number,
 ): Promise<number> {
-  return new Promise<number>((resolve, reject) => {
-    let settled = false;
-    const timeout = setTimeout(() => {
-      settled = true;
-      reject(
-        new Error(
-          'Timed out waiting for the target database connection-count query to finish.',
-        ),
-      );
+  const controller = new AbortController();
+  const timeoutFailure = new Error(
+    'Timed out waiting for the target database connection-count query to finish.',
+  );
+  let timedOut = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const operation = Promise.resolve().then(() =>
+    getConnectionCount(remainingMs, controller.signal),
+  );
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort(timeoutFailure);
+      reject(timeoutFailure);
     }, remainingMs);
-
-    void Promise.resolve()
-      .then(() => getConnectionCount(remainingMs))
-      .then(
-        (connectionCount) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          resolve(connectionCount);
-        },
-        (error: unknown) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          reject(error);
-        },
-      );
   });
+
+  return Promise.race([operation, deadline])
+    .catch(async (error: unknown) => {
+      if (!timedOut) throw error;
+
+      // The callback owns its PostgreSQL client. Wait for its abort cleanup so
+      // no diagnostic connection can outlive this lifecycle boundary.
+      try {
+        await operation;
+      } catch {
+        // The deterministic deadline error remains the public diagnostic.
+      }
+      throw timeoutFailure;
+    })
+    .finally(() => {
+      if (timeout) clearTimeout(timeout);
+    });
 }
 
 export async function waitForTargetDatabaseConnectionsToClose(
-  getConnectionCount: (remainingMs: number) => Promise<number>,
+  getConnectionCount: (
+    remainingMs: number,
+    signal: AbortSignal,
+  ) => Promise<number>,
   options: WaitForTargetDatabaseConnectionsOptions = {},
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
