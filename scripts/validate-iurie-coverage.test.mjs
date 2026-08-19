@@ -97,6 +97,24 @@ test('rejects a comment missing its body with an actionable diagnostic', () => {
   );
 });
 
+test('rejects substantive drift in pinned comment content', () => {
+  const records = fixture.sourceSnapshot
+    .trimEnd()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const comment = records.find(
+    ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+  );
+  comment.body +=
+    '\nSubstantive drift that preserves IDs and session structure.';
+  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+
+  assert.match(
+    errorsFor({ sourceSnapshot }),
+    /pinned 104-comment author\/body content does not match the audited boundary/u,
+  );
+});
+
 test('rejects a displayed summary total that differs from the rows', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     /\| Fully covered semantically\s+\|\s+\d+\s+\|/u,
@@ -118,5 +136,33 @@ test('rejects an invalid provenance and status combination', () => {
   assert.match(
     errorsFor({ coverageMatrix }),
     /S00-Q12 is Not mapped but has source status/u,
+  );
+});
+
+test('rejects an unknown ID in a published transition list', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    'Not mapped to Full (23): S02-Q20,',
+    'Not mapped to Full (23): S99-Q99,',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /Not mapped to Full contains unknown official question S99-Q99/u,
+  );
+});
+
+test('rejects status swaps that preserve aggregate totals', () => {
+  const fullRow = matrixRow(fixture.coverageMatrix, 'S02-Q20');
+  const partialRow = matrixRow(fixture.coverageMatrix, 'S02-Q01');
+  const coverageMatrix = fixture.coverageMatrix
+    .replace(fullRow, fullRow.replace('| Full |', '| Partial |'))
+    .replace(partialRow, partialRow.replace('| Partial |', '| Full |'));
+
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /Not mapped to Full differs from the pinned baseline/u,
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /Not mapped to Partial differs from the pinned baseline/u,
   );
 });
