@@ -69,8 +69,21 @@ describe('previous-schema test lifecycle', () => {
   });
 
   it('bounds a stalled connection-count query by the lifecycle deadline', async () => {
+    let diagnosticConnectionClosed = false;
     const getConnectionCount = vi.fn(
-      () => new Promise<number>(() => undefined),
+      (_remainingMs: number, signal: AbortSignal) =>
+        new Promise<number>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              queueMicrotask(() => {
+                diagnosticConnectionClosed = true;
+                reject(signal.reason);
+              });
+            },
+            { once: true },
+          );
+        }),
     );
 
     await expect(
@@ -81,8 +94,9 @@ describe('previous-schema test lifecycle', () => {
     ).rejects.toThrow(
       'Timed out waiting for the target database connection-count query to finish.',
     );
+    expect(diagnosticConnectionClosed).toBe(true);
     expect(getConnectionCount).toHaveBeenCalledTimes(1);
-    expect(getConnectionCount).toHaveBeenCalledWith(5);
+    expect(getConnectionCount).toHaveBeenCalledWith(5, expect.any(AbortSignal));
   });
 
   it('uses a normal drop after target connections close', async () => {
