@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   cleanupIsolatedTargetDatabase,
   runPreviousSchemaTestLifecycle,
+  waitForPostgresCallbackOrAbort,
   waitForTargetDatabaseConnectionsToClose,
 } from './previous-schema-test-lifecycle.js';
 
@@ -97,6 +98,25 @@ describe('previous-schema test lifecycle', () => {
     expect(diagnosticConnectionClosed).toBe(true);
     expect(getConnectionCount).toHaveBeenCalledTimes(1);
     expect(getConnectionCount).toHaveBeenCalledWith(5, expect.any(AbortSignal));
+  });
+
+  it('settles a PostgreSQL callback operation when abort wins the connect race', async () => {
+    const controller = new AbortController();
+    let complete:
+      | ((result: { readonly ok: true; readonly value: undefined }) => void)
+      | undefined;
+    const operation = waitForPostgresCallbackOrAbort<undefined>(
+      controller.signal,
+      (callback) => {
+        complete = callback;
+      },
+    );
+    const timeoutFailure = new Error('diagnostic deadline exceeded');
+
+    controller.abort(timeoutFailure);
+
+    await expect(operation).rejects.toBe(timeoutFailure);
+    complete?.({ ok: true, value: undefined });
   });
 
   it('uses a normal drop after target connections close', async () => {
