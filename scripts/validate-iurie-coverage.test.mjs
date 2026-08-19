@@ -80,6 +80,23 @@ test('rejects a duplicate session number without equating it to source order', (
   assert.match(errorsFor({ sourceSnapshot }), /duplicate session number 1/u);
 });
 
+test('rejects a comment missing its body with an actionable diagnostic', () => {
+  const records = fixture.sourceSnapshot
+    .trimEnd()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const comment = records.find(
+    ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+  );
+  delete comment.body;
+  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+
+  assert.match(
+    errorsFor({ sourceSnapshot }),
+    /source ordinal 1 is missing author or body provenance/u,
+  );
+});
+
 test('rejects a displayed summary total that differs from the rows', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     /\| Fully covered semantically\s+\|\s+\d+\s+\|/u,
