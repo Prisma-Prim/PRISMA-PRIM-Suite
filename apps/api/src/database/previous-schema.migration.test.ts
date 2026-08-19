@@ -122,34 +122,29 @@ describeWithPostgres('previous schema migration preflight', () => {
             if (!administrationPool || !targetDatabaseCreated) return;
             await cleanupIsolatedTargetDatabase({
               waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose(
-                  async (remainingMs) => {
-                    const boundedQueryMs = Math.max(
-                      1,
-                      Math.floor(remainingMs),
-                    );
-                    const diagnosticClient = new Client({
-                      connectionString: databaseUrl,
-                      connectionTimeoutMillis: boundedQueryMs,
-                      query_timeout: boundedQueryMs,
-                      statement_timeout: boundedQueryMs,
-                    });
-                    try {
-                      await diagnosticClient.connect();
-                      const result = await diagnosticClient.query<{
-                        connectionCount: number;
-                      }>(
-                        `SELECT count(*)::integer AS "connectionCount"
+                waitForTargetDatabaseConnectionsToClose(async (remainingMs) => {
+                  const boundedQueryMs = Math.max(1, Math.floor(remainingMs));
+                  const diagnosticClient = new Client({
+                    connectionString: databaseUrl,
+                    connectionTimeoutMillis: boundedQueryMs,
+                    query_timeout: boundedQueryMs,
+                    statement_timeout: boundedQueryMs,
+                  });
+                  try {
+                    await diagnosticClient.connect();
+                    const result = await diagnosticClient.query<{
+                      connectionCount: number;
+                    }>(
+                      `SELECT count(*)::integer AS "connectionCount"
                          FROM pg_stat_activity
                          WHERE datname = $1`,
-                        [databaseName],
-                      );
-                      return result.rows[0]?.connectionCount ?? 0;
-                    } finally {
-                      await diagnosticClient.end();
-                    }
-                  },
-                ),
+                      [databaseName],
+                    );
+                    return result.rows[0]?.connectionCount ?? 0;
+                  } finally {
+                    await diagnosticClient.end();
+                  }
+                }),
               dropDatabase: async (force) => {
                 await administrationPool!.query(
                   `DROP DATABASE IF EXISTS "${databaseName}"${
