@@ -44,6 +44,18 @@ test('accepts the real fixed-boundary coverage inventory', () => {
   assert.deepEqual(validateIurieCoverage(fixture).errors, []);
 });
 
+test('normalizes checkout line endings before validating pinned artifacts', () => {
+  const toCrlf = (contents) => contents.replaceAll('\n', '\r\n');
+  assert.deepEqual(
+    validateIurieCoverage({
+      questionBank: toCrlf(fixture.questionBank),
+      coverageMatrix: toCrlf(fixture.coverageMatrix),
+      sourceSnapshot: toCrlf(fixture.sourceSnapshot),
+    }).errors,
+    [],
+  );
+});
+
 test('rejects a missing official question', () => {
   const row = matrixRow(fixture.coverageMatrix, 'S00-Q01');
   const coverageMatrix = fixture.coverageMatrix.replace(`${row}\n`, '');
