@@ -72,9 +72,16 @@ export async function cleanupIsolatedTargetDatabase({
     gracefulFailure = error;
   }
 
+  let forceDropFailed = false;
+  let forceDropFailure: unknown;
   try {
     await dropDatabase(true);
-  } catch (forceDropFailure) {
+  } catch (error) {
+    forceDropFailed = true;
+    forceDropFailure = error;
+  }
+
+  if (forceDropFailed) {
     throw new AggregateError(
       [gracefulFailure, forceDropFailure],
       'Graceful target database cleanup failed and the forced fallback also failed.',
