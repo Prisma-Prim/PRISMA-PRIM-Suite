@@ -17,8 +17,49 @@ export type CleanupIsolatedTargetDatabaseOptions = {
   readonly dropDatabase: (force: boolean) => Promise<void>;
 };
 
+export type AbortablePostgresOperationResult<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: unknown };
+
 const defaultTimeoutMs = 5_000;
 const defaultPollIntervalMs = 25;
+
+export function waitForPostgresCallbackOrAbort<T>(
+  signal: AbortSignal,
+  start: (
+    complete: (result: AbortablePostgresOperationResult<T>) => void,
+  ) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const finish = (result: AbortablePostgresOperationResult<T>) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', abort);
+      if (result.ok) resolve(result.value);
+      else reject(result.error);
+    };
+    const abort = () => {
+      finish({
+        ok: false,
+        error:
+          signal.reason ??
+          new Error('PostgreSQL diagnostic operation aborted.'),
+      });
+    };
+
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    try {
+      start(finish);
+    } catch (error) {
+      finish({ ok: false, error });
+    }
+  });
+}
 
 function getConnectionCountBeforeDeadline(
   getConnectionCount: (
