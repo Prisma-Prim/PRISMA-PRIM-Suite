@@ -136,6 +136,60 @@ test('rejects promotion of the pinned evidence-only snapshot metadata', () => {
   );
 });
 
+test('rejects semantic fields added to a raw comment record', () => {
+  const records = fixture.sourceSnapshot
+    .trimEnd()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const comment = records.find(
+    ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+  );
+  comment.authority_status = 'canonical approved product rule';
+  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+
+  assert.match(
+    errorsFor({ sourceSnapshot }),
+    /pinned complete comment-record schema and content do not match the verbatim evidence boundary/u,
+  );
+});
+
+test('rejects drift in the matrix authority declarations', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    'They do not approve business rules',
+    'They approve business rules',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /expected exactly one pinned evidence-only authority declaration/u,
+  );
+});
+
+test('rejects a different published implementation baseline', () => {
+  const coverageMatrix = fixture.coverageMatrix
+    .replaceAll(
+      'f292bb0d784678537c955895d3027e8026cd2fad',
+      '0000000000000000000000000000000000000000',
+    )
+    .replaceAll('f292bb0…', '0000000…');
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /published implementation\/diff baseline must be f292bb0d784678537c955895d3027e8026cd2fad/u,
+  );
+});
+
+test('rejects a fabricated row in the official matrix', () => {
+  const row = matrixRow(fixture.coverageMatrix, 'S00-Q01');
+  const fabricated = row.replace('| S00-Q01 |', '| TYPO-Q999 |');
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    row,
+    `${fabricated}\n${row}`,
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /invalid official question identifier "TYPO-Q999"/u,
+  );
+});
+
 test('rejects a displayed summary total that differs from the rows', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     /\| Fully covered semantically\s+\|\s+\d+\s+\|/u,
