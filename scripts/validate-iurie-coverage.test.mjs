@@ -164,6 +164,39 @@ test('rejects drift in the matrix authority declarations', () => {
   );
 });
 
+test('rejects contradictory authority prose in the matrix preamble', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    '## 3. Official question-bank matrix',
+    'This audit is an approved product authority.\n\n## 3. Official question-bank matrix',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /pinned coverage-summary and authority preamble does not match the reviewed audit/u,
+  );
+});
+
+test('rejects contradictory authority prose outside the matrix preamble', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    '## 5. Confirmed evidence safe to normalize',
+    'This matrix is the sole approved product authority.\n\n## 5. Confirmed evidence safe to normalize',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /pinned complete matrix content does not match the reviewed evidence audit/u,
+  );
+});
+
+test('rejects drift in the official matrix header', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    '| Evidence authority |',
+    '| Approved product rule |',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /official-matrix header differs from the pinned audit schema/u,
+  );
+});
+
 test('rejects a different published implementation baseline', () => {
   const coverageMatrix = fixture.coverageMatrix
     .replaceAll(
@@ -312,6 +345,17 @@ test('rejects coordinated drift in the official question bank and matrix', () =>
   );
 });
 
+test('rejects a malformed official-question candidate', () => {
+  const questionBank = fixture.questionBank.replace(
+    '1. **S00-Q01 · P0**',
+    '999. **TYPO-Q999 · P0** — Fabricated question?\n1. **S00-Q01 · P0**',
+  );
+  assert.match(
+    errorsFor({ questionBank }),
+    /malformed official-question entry/u,
+  );
+});
+
 test('rejects a valid but unrelated citation substituted into a row', () => {
   const sourceRow = matrixRow(fixture.coverageMatrix, 'S00-Q01');
   const unrelatedUrl = sourceRow.match(
@@ -344,5 +388,18 @@ test('rejects drift in supplemental-ledger descriptions', () => {
   assert.match(
     errorsFor({ coverageMatrix }),
     /pinned supplemental-ledger descriptive content does not match the audited inventory/u,
+  );
+});
+
+test('rejects a malformed supplemental-ledger source order', () => {
+  const row = ledgerRow(fixture.coverageMatrix, 1);
+  const fabricated = row.replace('| 1 |', '| TYPO |');
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    row,
+    `${fabricated}\n${row}`,
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /invalid supplemental-ledger source order "TYPO"/u,
   );
 });
