@@ -13,6 +13,7 @@ import { DATABASE } from './database.constants.js';
 import {
   cleanupIsolatedTargetDatabase,
   runPreviousSchemaTestLifecycle,
+  waitForPostgresCallbackOrAbort,
   waitForTargetDatabaseConnectionsToClose,
 } from './previous-schema-test-lifecycle.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
@@ -143,17 +144,33 @@ describeWithPostgres('previous schema migration preflight', () => {
                       once: true,
                     });
                     try {
-                      if (signal.aborted) throw signal.reason;
-                      await diagnosticClient.connect();
-                      if (signal.aborted) throw signal.reason;
-                      const result = await diagnosticClient.query<{
-                        connectionCount: number;
-                      }>(
-                        `SELECT count(*)::integer AS "connectionCount"
-                         FROM pg_stat_activity
-                         WHERE datname = $1`,
-                        [databaseName],
+                      await waitForPostgresCallbackOrAbort<undefined>(
+                        signal,
+                        (complete) => {
+                          diagnosticClient.connect((error) => {
+                            if (error) complete({ ok: false, error });
+                            else complete({ ok: true, value: undefined });
+                          });
+                        },
                       );
+                      const result = await waitForPostgresCallbackOrAbort<{
+                        readonly rows: readonly {
+                          readonly connectionCount: number;
+                        }[];
+                      }>(signal, (complete) => {
+                        diagnosticClient.query<{
+                          connectionCount: number;
+                        }>(
+                          `SELECT count(*)::integer AS "connectionCount"
+                             FROM pg_stat_activity
+                             WHERE datname = $1`,
+                          [databaseName],
+                          (error, queryResult) => {
+                            if (error) complete({ ok: false, error });
+                            else complete({ ok: true, value: queryResult });
+                          },
+                        );
+                      });
                       return result.rows[0]?.connectionCount ?? 0;
                     } finally {
                       signal.removeEventListener('abort', closeOnAbort);
