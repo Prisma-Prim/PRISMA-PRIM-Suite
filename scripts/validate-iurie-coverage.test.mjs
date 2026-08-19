@@ -141,12 +141,51 @@ test('rejects an invalid provenance and status combination', () => {
 
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
-    'Not mapped to Full (23): S02-Q20,',
-    'Not mapped to Full (23): S99-Q99,',
+    'Not mapped to Full (22): S02-Q20,',
+    'Not mapped to Full (22): S99-Q99,',
   );
   assert.match(
     errorsFor({ coverageMatrix }),
     /Not mapped to Full contains unknown official question S99-Q99/u,
+  );
+});
+
+test('rejects blank mapped question and answer evidence', () => {
+  const row = matrixRow(fixture.coverageMatrix, 'S00-Q01');
+  const cells = row.split('|');
+  const blankQuestion = [...cells];
+  blankQuestion[9] = '';
+  const blankAnswer = [...cells];
+  blankAnswer[10] = '';
+
+  assert.match(
+    errorsFor({
+      coverageMatrix: fixture.coverageMatrix.replace(
+        row,
+        blankQuestion.join('|'),
+      ),
+    }),
+    /S00-Q01 is Full but has no question actually asked/u,
+  );
+  assert.match(
+    errorsFor({
+      coverageMatrix: fixture.coverageMatrix.replace(
+        row,
+        blankAnswer.join('|'),
+      ),
+    }),
+    /S00-Q01 is Full but has no answer excerpt/u,
+  );
+});
+
+test('rejects an unsupported extra published transition', () => {
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    'State-changing official IDs:',
+    'State-changing official IDs:\n\n- Full to Partial (1): S00-Q01.',
+  );
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /unsupported published transition Full to Partial/u,
   );
 });
 
