@@ -29,13 +29,13 @@ const EXPECTED_COMPLETE_QUESTION_BANK_SHA256 =
 const EXPECTED_ROW_CITATION_MAP_SHA256 =
   '3e8621e281b23c405ceec581254c5c5e2826f58f3513d5f0a205812bc7b89875';
 const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
-  '2a662196dd2cb71d6db4cc69767f4ade74be84bc75481807a2e50fe48171f767';
+  'f7cbbbe13d03c3882a94fa975d76a2a8eff7570cd6748cb1456fb84836d9be09';
 const EXPECTED_LEDGER_CONTENT_SHA256 =
   'd278f7b28ff77b8b22dfb8a7e9fa6c30a7b606adbc86c93c93732348a0a68020';
 const EXPECTED_MATRIX_PREAMBLE_SHA256 =
-  '3663f06c733e9f86b62dff036b3d535d986058982baf77f0fba13bce4ce36e27';
+  '857d5f27e7fe4a55724cd9bca6011d413a43188698edae8047a07e243168861e';
 const EXPECTED_COMPLETE_MATRIX_SHA256 =
-  '26e492d92baee9a98e13ae8aa3bfd2776a6d1bc9370a3632be85d2c0bfd6f12d';
+  '68a48feddc654c6a832f437cee6fe929610d5bcd8ede62da3a2c1d4aa4928857';
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
@@ -186,6 +186,10 @@ function duplicates(values) {
 function canonicalRecordsHash(records) {
   const contents = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
   return createHash('sha256').update(contents).digest('hex');
+}
+
+function normalizeLineEndings(contents) {
+  return contents.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 }
 
 function parseQuestionBank(contents, errors) {
@@ -1053,10 +1057,17 @@ export function validateIurieCoverage({
   sourceSnapshot,
 }) {
   const errors = [];
-  const questions = parseQuestionBank(questionBank, errors);
-  const source = parseSnapshot(sourceSnapshot, errors);
+  const normalizedQuestionBank = normalizeLineEndings(questionBank);
+  const normalizedCoverageMatrix = normalizeLineEndings(coverageMatrix);
+  const normalizedSourceSnapshot = normalizeLineEndings(sourceSnapshot);
+  const questions = parseQuestionBank(normalizedQuestionBank, errors);
+  const source = parseSnapshot(normalizedSourceSnapshot, errors);
   const summary = validateMatrix(
-    { contents: coverageMatrix, questions, comments: source.comments },
+    {
+      contents: normalizedCoverageMatrix,
+      questions,
+      comments: source.comments,
+    },
     errors,
   );
   return {
