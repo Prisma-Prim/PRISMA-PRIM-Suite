@@ -24,16 +24,18 @@ const EXPECTED_SNAPSHOT_METADATA_SHA256 =
   'a74f1aa964d722ff77c57be1ba0d6a1e993de506486ae8018dfe539d99d0e816';
 const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
   '0bc9216d41ac27b5613c2a2c997accfa2216fc68447c5753fcd0230a42cb5d8e';
+const EXPECTED_COMPLETE_QUESTION_BANK_SHA256 =
+  '7e58e52c75cc96a27273be2208479b119077f74ca86eb3c7eb66d69f17fc9da3';
 const EXPECTED_ROW_CITATION_MAP_SHA256 =
   '3e8621e281b23c405ceec581254c5c5e2826f58f3513d5f0a205812bc7b89875';
 const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
-  'df4c57afd76547be01375c33978875d1d7521841685873fbe876951ae9f0c825';
+  '2a662196dd2cb71d6db4cc69767f4ade74be84bc75481807a2e50fe48171f767';
 const EXPECTED_LEDGER_CONTENT_SHA256 =
   'd278f7b28ff77b8b22dfb8a7e9fa6c30a7b606adbc86c93c93732348a0a68020';
 const EXPECTED_MATRIX_PREAMBLE_SHA256 =
-  'e1b88052ebbe7466c9d5e6ebd5d2baf5a83c6b487707728a7cf178afb349895c';
+  '3663f06c733e9f86b62dff036b3d535d986058982baf77f0fba13bce4ce36e27';
 const EXPECTED_COMPLETE_MATRIX_SHA256 =
-  '7b2f7d4e20d3781f218bb1d96b036e55c5abd2ddbd44670f87c21ef780854f0c';
+  '26e492d92baee9a98e13ae8aa3bfd2776a6d1bc9370a3632be85d2c0bfd6f12d';
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
@@ -187,6 +189,14 @@ function canonicalRecordsHash(records) {
 }
 
 function parseQuestionBank(contents, errors) {
+  const completeQuestionBankHash = createHash('sha256')
+    .update(contents)
+    .digest('hex');
+  if (completeQuestionBankHash !== EXPECTED_COMPLETE_QUESTION_BANK_SHA256) {
+    errors.push(
+      `${QUESTION_BANK_PATH}: pinned complete question-bank artifact does not match the reviewed source`,
+    );
+  }
   const questions = [];
   for (const [index, line] of contents.split('\n').entries()) {
     const match = line.match(
