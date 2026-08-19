@@ -18,6 +18,14 @@ const EXPECTED_INVENTORY_SHA256 =
   '430627c8a7aa50fe01b499c02be880f5bcc972a123d65868425d0f53cbbae818';
 const EXPECTED_COMMENT_CONTENT_SHA256 =
   'c009d766d0d3ca03a5e0a002c67114950f4aa5549463e6f56c7bbdc6af54ba69';
+const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
+  '0bc9216d41ac27b5613c2a2c997accfa2216fc68447c5753fcd0230a42cb5d8e';
+const EXPECTED_ROW_CITATION_MAP_SHA256 =
+  '3e8621e281b23c405ceec581254c5c5e2826f58f3513d5f0a205812bc7b89875';
+const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
+  '902da9d7f5fa235ffb5fe786de9d32f4aedbe98a00b48e517d2e837e96e526b0';
+const EXPECTED_LEDGER_CONTENT_SHA256 =
+  'd278f7b28ff77b8b22dfb8a7e9fa6c30a7b606adbc86c93c93732348a0a68020';
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
@@ -102,6 +110,7 @@ const TRANSITION_LABELS = [
   'Not mapped to Partial',
   'Not covered to Partial',
   'Partial to Full',
+  'Full to Partial',
 ];
 
 function splitMarkdownRow(line) {
@@ -135,6 +144,11 @@ function duplicates(values) {
   return [...repeated];
 }
 
+function canonicalRecordsHash(records) {
+  const contents = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+  return createHash('sha256').update(contents).digest('hex');
+}
+
 function parseQuestionBank(contents, errors) {
   const questions = [];
   for (const [index, line] of contents.split('\n').entries()) {
@@ -157,6 +171,14 @@ function parseQuestionBank(contents, errors) {
   }
   for (const id of duplicates(questions.map(({ id }) => id))) {
     errors.push(`${QUESTION_BANK_PATH}: duplicate official question ${id}`);
+  }
+  const questionBankHash = canonicalRecordsHash(
+    questions.map(({ id, priority, wording }) => [id, priority, wording]),
+  );
+  if (questionBankHash !== EXPECTED_QUESTION_BANK_CONTENT_SHA256) {
+    errors.push(
+      `${QUESTION_BANK_PATH}: pinned official question-bank content does not match the audited baseline`,
+    );
   }
   return questions;
 }
@@ -412,6 +434,9 @@ function parseMatrix(contents, errors) {
       ledger.push({
         order: Number(cells[0]),
         provenance: cells[1],
+        sessionTopic: cells[2],
+        itemRange: cells[3],
+        sourceStatus: cells[4],
         line: index + 1,
       });
     }
@@ -741,6 +766,38 @@ function validateMatrix({ contents, questions, comments }, errors) {
     }
   }
 
+  const citationMapHash = canonicalRecordsHash(
+    rows
+      .map((row) => [row.id, [...new Set(citedUrls(row.provenance))].sort()])
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+  if (citationMapHash !== EXPECTED_ROW_CITATION_MAP_SHA256) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: pinned official-row citation map does not match the audited provenance`,
+    );
+  }
+  const officialRowAuditHash = canonicalRecordsHash(
+    rows
+      .map((row) => [
+        row.id,
+        row.priority,
+        row.wording,
+        row.sourceStatus,
+        row.authority,
+        row.semantic,
+        row.rationale,
+        row.provenance,
+        row.asked,
+        row.answer,
+      ])
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+  if (officialRowAuditHash !== EXPECTED_OFFICIAL_ROW_AUDIT_SHA256) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: pinned complete official-row audit content does not match the reviewed matrix`,
+    );
+  }
+
   validateSemanticDelta({ contents, questions, rows }, errors);
 
   if (ledger.length !== EXPECTED_COMMENT_COUNT) {
@@ -762,6 +819,20 @@ function validateMatrix({ contents, questions, comments }, errors) {
         `${COVERAGE_MATRIX_PATH}:${entry.line}: source order ${entry.order} must pin ${expectedUrl ?? 'a known comment'}`,
       );
     }
+  }
+  const ledgerHash = canonicalRecordsHash(
+    ledger.map((entry, index) => [
+      entry.order,
+      comments[index]?.url,
+      entry.sessionTopic,
+      entry.itemRange,
+      entry.sourceStatus,
+    ]),
+  );
+  if (ledgerHash !== EXPECTED_LEDGER_CONTENT_SHA256) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: pinned supplemental-ledger descriptive content does not match the audited inventory`,
+    );
   }
 
   const summary = new Map();
