@@ -263,8 +263,8 @@ test('rejects source-declared status drift in an audited row', () => {
 
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
-    'Not mapped to Full (21): S02-Q20,',
-    'Not mapped to Full (21): S99-Q99,',
+    /Not mapped to Full \((\d+)\): S02-Q20,/u,
+    'Not mapped to Full ($1): S99-Q99,',
   );
   assert.match(
     errorsFor({ coverageMatrix }),
