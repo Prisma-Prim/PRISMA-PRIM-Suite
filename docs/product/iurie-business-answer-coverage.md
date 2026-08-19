@@ -35,20 +35,20 @@ Two independent assessments are preserved:
 | Metric                                        | Count |
 | --------------------------------------------- | ----: |
 | Official questions in the bank                |   278 |
-| Fully covered semantically                    |    42 |
-| Partially covered semantically                |   112 |
+| Fully covered semantically                    |    41 |
+| Partially covered semantically                |   113 |
 | Official ID attached but question not covered |     1 |
 | Not atomically mapped by official ID          |   123 |
 | Source comments inspected                     |   104 |
 
-The implementation/diff baseline at `f292bb0d784678537c955895d3027e8026cd2fad` reported 18 Full, 29 Partial, 2 Not covered and 229 Not mapped. Exhaustive line-by-line reconciliation against the fixed 104-comment corpus produces 42 Full, 112 Partial, 1 Not covered and 123 Not mapped. The snapshot metadata's `f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97` value pins the evidence-capture context only; it is not the baseline used for this semantic delta.
+The implementation/diff baseline at `f292bb0d784678537c955895d3027e8026cd2fad` reported 18 Full, 29 Partial, 2 Not covered and 229 Not mapped. Exhaustive line-by-line reconciliation against the fixed 104-comment corpus produces 41 Full, 113 Partial, 1 Not covered and 123 Not mapped. The snapshot metadata's `f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97` value pins the evidence-capture context only; it is not the baseline used for this semantic delta.
 
 ## 2.1 Exact semantic delta from the implementation/diff baseline
 
 | Semantic state      | GitHub baseline `f292bb0…` | Final provenance audit | Delta |
 | ------------------- | -------------------------: | ---------------------: | ----: |
-| Full                |                         18 |                     42 |   +24 |
-| Partial             |                         29 |                    112 |   +83 |
+| Full                |                         18 |                     41 |   +23 |
+| Partial             |                         29 |                    113 |   +84 |
 | Not covered         |                          2 |                      1 |    -1 |
 | Not mapped          |                        229 |                    123 |  -106 |
 | Total official rows |                        278 |                    278 |     0 |
@@ -58,10 +58,10 @@ State-changing official IDs:
 - Not mapped to Full (21): S02-Q20, S06-Q12, S06-Q13, S06-Q55, S07-Q17, S08-Q01, S08-Q02, S08-Q11, S08-Q13, S09-Q01, S09-Q10, S09-Q11, S09-Q13, S10-Q02, S10-Q03, S10-Q09, S10-Q10, S11-Q02, S11-Q03, S11-Q05, S11-Q11.
 - Not mapped to Partial (85): S02-Q01, S02-Q14, S02-Q18, S02-Q22, S03-Q02, S03-Q03, S03-Q14, S03-Q15, S03-Q16, S04-Q08, S04-Q09, S04-Q10, S04-Q11, S04-Q12, S04-Q13, S04-Q14, S04-Q15, S04-Q16, S04-Q20, S04-Q23, S04-Q25, S04-Q27, S04-Q28, S04-Q30, S04-Q31, S04-Q32, S04-Q33, S04-Q38, S04-Q40, S04-Q41, S04-Q42, S05-Q10, S05-Q12, S05-Q17, S05-Q19, S06-Q01, S06-Q02, S06-Q06, S06-Q21, S06-Q29, S06-Q32, S06-Q33, S06-Q34, S06-Q36, S06-Q40, S06-Q42, S06-Q44, S06-Q46, S06-Q50, S06-Q52, S06-Q54, S07-Q01, S07-Q06, S07-Q12, S07-Q13, S07-Q16, S07-Q19, S07-Q21, S07-Q23, S07-Q24, S07-Q25, S08-Q03, S08-Q06, S08-Q14, S09-Q02, S09-Q03, S09-Q07, S09-Q08, S09-Q09, S09-Q12, S09-Q14, S09-Q15, S10-Q04, S10-Q06, S10-Q08, S10-Q12, S10-Q13, S10-Q15, S11-Q01, S11-Q04, S11-Q09, S11-Q13, S11-Q15, S11-Q16, S11-Q18.
 - Not covered to Partial (1): S04-Q01.
-- Partial to Full (4): S00-Q08, S01-Q05, S01-Q11, S01-Q16.
+- Partial to Full (3): S00-Q08, S01-Q05, S01-Q11.
 - Full to Partial (1): S00-Q03.
 
-These five transition sets are disjoint and contain 112 state-changing official IDs in total.
+These five transition sets are disjoint and contain 111 state-changing official IDs in total.
 
 The resulting states are evidence classifications only. They do not approve business rules, Product readiness, enforcement behavior or implementation scope.
 
@@ -100,7 +100,7 @@ The resulting states are evidence classifications only. They do not approve busi
 | S01-Q13 | P1 | Cine poate corecta o informație importantă și trebuie păstrată valoarea anterioară? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms preservation of prior values and actor/time history, but does not identify who may correct important information. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Dacă cineva corectează o informație importantă — de exemplu suma unui contract, termenul unui audit sau responsabilul unui proiect — vrei să rămână păstrată și valoarea veche, inclusiv cine a schimbat și când? | Da, numaidecât. |
 | S01-Q14 | P1 | Cine poate exporta informații și pentru ce scopuri? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Defines who may export and auditability, but not the purposes for which exports are permitted. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Cine trebuie să poată exporta informații din sistem, de exemplu liste de clienți, proiecte, rapoarte, situații financiare sau documente? | Da, este de acord cu următoarea regulă: Iurie poate exporta tot ce are dreptul să vadă; ceilalți utilizatori doar în limita rolului și companiei lor; colaboratorii temporari doar cu drept explicit; exporturile importante rămân înregistrate în istoric. |
 | S01-Q15 | P1 | În ce situații suportul tehnic poate vedea date reale și cine trebuie să autorizeze accesul? | Resolved | Direct or faithfully paraphrased Iurie response | Partial | Describes Valentin's technical scope and allows Dan real-data access, but does not define exceptional situations and authorization authority. | [session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831) | Valentin, pentru mentenanță IT, trebuie să poată vedea și documentele/clienții/finanțele firmei sau numai partea tehnică necesară funcționării sistemului? / Dan, ca dezvoltator, trebuie să poată vedea datele reale ale clienților, contractele și sumele sau să nu aibă acces decât atunci când este absolut necesar? | Partea tehnică. / „Lasă să aibă el.” |
-| S01-Q16 | P2 | Există perioade, proiecte sau tipuri de documente pentru care accesul trebuie limitat suplimentar? | Partially resolved | Agent-framed proposition explicitly accepted by Iurie | Full | Confirms that additional restrictions are required and identifies sensitive Contracts, financial data, legal Documents, salary/personal data and confidential Projects as applicable categories. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Există anumite documente sau perioade pentru care vrei acces și mai strict, de exemplu contracte sensibile, date financiare, documente juridice, salarii/date personale sau proiecte confidențiale? | Da. |
+| S01-Q16 | P2 | Există perioade, proiecte sau tipuri de documente pentru care accesul trebuie limitat suplimentar? | Partially resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms extra restrictions for sensitive Contracts, financial data, legal Documents, salary/personal data and confidential Projects, but does not identify restricted periods or complete the per-category rule. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Există anumite documente sau perioade pentru care vrei acces și mai strict, de exemplu contracte sensibile, date financiare, documente juridice, salarii/date personale sau proiecte confidențiale? | Da. |
 | S02-Q01 | P0 | Cum recunoaște echipa că o organizație sau persoană este deja client? | Resolved; Confirmed by Iurie | Agent-framed proposition explicitly accepted by Iurie | Partial | Supplies recognition clues for associating material with an existing Client, but not the complete business rule by which the team decides that an Organization or Person is already a Client. | [session 12](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307185626) | Should the system associate an email or document using email address, Client name, Contract number, Project and participants, and request confirmation when uncertain? | Yes. |
 | S02-Q02 | P0 | Ce date generale despre client trebuie să fie vizibile într-un singur dosar comun? | Partially resolved; Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms one dossier and a general shared/separated principle, but not the requested list of general Client data. | [session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831), [session 3](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307050946) | Dacă aceeași firmă-client lucrează și cu PRISMA-PRIM, și cu BIC, și cu ECG, vrei să vezi o singură fișă generală a clientului, iar în interior separat ce a făcut fiecare companie cu el? / Dacă același client lucrează cu PRISMA-PRIM și BIC, datele generale despre client pot fi comune, iar contractele, prețurile, facturile, plățile și documentele sensibile să rămână separate pe fiecare companie? | Da, cred că e bine așa. / Da. |
 | S02-Q03 | P0 | Poate același grup de client să conțină mai multe companii, filiale sau persoane care primesc oferte ori semnează contracte diferite? | — | — | Not mapped | No atomic source section is attached to this official ID. | — | — | — |
