@@ -41,7 +41,7 @@ describe('previous-schema test lifecycle', () => {
 
     await Promise.resolve();
     expect(getConnectionCount).toHaveBeenCalledTimes(2);
-    expect(dropDatabase).toHaveBeenCalledOnce();
+    expect(dropDatabase).toHaveBeenCalledTimes(1);
     expect(lateConnectionErrors).toEqual([]);
   });
 
@@ -92,8 +92,8 @@ describe('previous-schema test lifecycle', () => {
     expect(aggregate.cause).toBe(primaryFailure);
     expect(aggregate.errors[0]).toBe(primaryFailure);
     expect((aggregate.errors[1] as Error).cause).toBe(cleanupFailure);
-    expect(firstCleanup).toHaveBeenCalledOnce();
-    expect(secondCleanup).toHaveBeenCalledOnce();
+    expect(firstCleanup).toHaveBeenCalledTimes(1);
+    expect(secondCleanup).toHaveBeenCalledTimes(1);
   });
 
   it('rethrows an injected preflight failure after successful cleanup', async () => {
@@ -113,7 +113,7 @@ describe('previous-schema test lifecycle', () => {
     }
 
     expect(lifecycleFailure).toBe(primaryFailure);
-    expect(cleanup).toHaveBeenCalledOnce();
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it('keeps an unexpected PostgreSQL connection error fatal', async () => {
