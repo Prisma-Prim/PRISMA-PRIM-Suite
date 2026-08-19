@@ -122,29 +122,45 @@ describeWithPostgres('previous schema migration preflight', () => {
             if (!administrationPool || !targetDatabaseCreated) return;
             await cleanupIsolatedTargetDatabase({
               waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose(async (remainingMs) => {
-                  const boundedQueryMs = Math.max(1, Math.floor(remainingMs));
-                  const diagnosticClient = new Client({
-                    connectionString: databaseUrl,
-                    connectionTimeoutMillis: boundedQueryMs,
-                    query_timeout: boundedQueryMs,
-                    statement_timeout: boundedQueryMs,
-                  });
-                  try {
-                    await diagnosticClient.connect();
-                    const result = await diagnosticClient.query<{
-                      connectionCount: number;
-                    }>(
-                      `SELECT count(*)::integer AS "connectionCount"
+                waitForTargetDatabaseConnectionsToClose(
+                  async (remainingMs, signal) => {
+                    const boundedQueryMs = Math.max(1, Math.floor(remainingMs));
+                    const diagnosticClient = new Client({
+                      connectionString: databaseUrl,
+                      connectionTimeoutMillis: boundedQueryMs,
+                      query_timeout: boundedQueryMs,
+                      statement_timeout: boundedQueryMs,
+                    });
+                    let closePromise: Promise<void> | undefined;
+                    const closeDiagnosticClient = () => {
+                      closePromise ??= diagnosticClient.end();
+                      return closePromise;
+                    };
+                    const closeOnAbort = () => {
+                      void closeDiagnosticClient().catch(() => undefined);
+                    };
+                    signal.addEventListener('abort', closeOnAbort, {
+                      once: true,
+                    });
+                    try {
+                      if (signal.aborted) throw signal.reason;
+                      await diagnosticClient.connect();
+                      if (signal.aborted) throw signal.reason;
+                      const result = await diagnosticClient.query<{
+                        connectionCount: number;
+                      }>(
+                        `SELECT count(*)::integer AS "connectionCount"
                          FROM pg_stat_activity
                          WHERE datname = $1`,
-                      [databaseName],
-                    );
-                    return result.rows[0]?.connectionCount ?? 0;
-                  } finally {
-                    await diagnosticClient.end();
-                  }
-                }),
+                        [databaseName],
+                      );
+                      return result.rows[0]?.connectionCount ?? 0;
+                    } finally {
+                      signal.removeEventListener('abort', closeOnAbort);
+                      await closeDiagnosticClient();
+                    }
+                  },
+                ),
               dropDatabase: async (force) => {
                 await administrationPool!.query(
                   `DROP DATABASE IF EXISTS "${databaseName}"${
