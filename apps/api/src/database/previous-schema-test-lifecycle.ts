@@ -21,7 +21,7 @@ const defaultTimeoutMs = 5_000;
 const defaultPollIntervalMs = 25;
 
 function getConnectionCountBeforeDeadline(
-  getConnectionCount: () => Promise<number>,
+  getConnectionCount: (remainingMs: number) => Promise<number>,
   remainingMs: number,
 ): Promise<number> {
   return new Promise<number>((resolve, reject) => {
@@ -36,7 +36,7 @@ function getConnectionCountBeforeDeadline(
     }, remainingMs);
 
     void Promise.resolve()
-      .then(getConnectionCount)
+      .then(() => getConnectionCount(remainingMs))
       .then(
         (connectionCount) => {
           if (settled) return;
@@ -55,7 +55,7 @@ function getConnectionCountBeforeDeadline(
 }
 
 export async function waitForTargetDatabaseConnectionsToClose(
-  getConnectionCount: () => Promise<number>,
+  getConnectionCount: (remainingMs: number) => Promise<number>,
   options: WaitForTargetDatabaseConnectionsOptions = {},
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
