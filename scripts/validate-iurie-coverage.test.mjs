@@ -145,6 +145,20 @@ test('rejects an invalid provenance and status combination', () => {
   );
 });
 
+test('rejects source-declared status drift in an audited row', () => {
+  const row = matrixRow(fixture.coverageMatrix, 'S00-Q01');
+  const changedRow = row.replace(
+    '| Resolved |',
+    '| Contradicted and rejected |',
+  );
+  const coverageMatrix = fixture.coverageMatrix.replace(row, changedRow);
+
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /pinned complete official-row audit content does not match the reviewed matrix/u,
+  );
+});
+
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     'Not mapped to Full (21): S02-Q20,',
