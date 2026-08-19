@@ -73,11 +73,14 @@ export async function waitForTargetDatabaseConnectionsToClose(
   }
 
   const deadline = now() + timeoutMs;
+  let lastConnectionCount: number | undefined;
   for (;;) {
     const remainingBeforeQueryMs = deadline - now();
     if (remainingBeforeQueryMs <= 0) {
       throw new Error(
-        'Timed out waiting for target database connections to close.',
+        lastConnectionCount === undefined
+          ? 'Timed out waiting for target database connections to close.'
+          : `Timed out waiting for ${lastConnectionCount} target database connection(s) to close.`,
       );
     }
     const connectionCount = await getConnectionCountBeforeDeadline(
@@ -90,6 +93,7 @@ export async function waitForTargetDatabaseConnectionsToClose(
       );
     }
     if (connectionCount === 0) return;
+    lastConnectionCount = connectionCount;
 
     const remainingMs = deadline - now();
     if (remainingMs <= 0) {
