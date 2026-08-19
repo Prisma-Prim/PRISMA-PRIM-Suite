@@ -356,6 +356,14 @@ test('rejects a malformed official-question candidate', () => {
   );
 });
 
+test('rejects unrecognized content added to the official question bank', () => {
+  const questionBank = `${fixture.questionBank}\n999. S99-Q99 - Fabricated official question`;
+  assert.match(
+    errorsFor({ questionBank }),
+    /pinned complete question-bank artifact does not match the reviewed source/u,
+  );
+});
+
 test('rejects a valid but unrelated citation substituted into a row', () => {
   const sourceRow = matrixRow(fixture.coverageMatrix, 'S00-Q01');
   const unrelatedUrl = sourceRow.match(
