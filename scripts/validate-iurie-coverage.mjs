@@ -18,6 +18,8 @@ const EXPECTED_INVENTORY_SHA256 =
   '430627c8a7aa50fe01b499c02be880f5bcc972a123d65868425d0f53cbbae818';
 const EXPECTED_COMMENT_CONTENT_SHA256 =
   'c009d766d0d3ca03a5e0a002c67114950f4aa5549463e6f56c7bbdc6af54ba69';
+const EXPECTED_COMPLETE_COMMENT_RECORDS_SHA256 =
+  '96e05ed08f74690a34043bc4a1acf92a238f480f190421e25bf5cfbb6c190bc8';
 const EXPECTED_SNAPSHOT_METADATA_SHA256 =
   'a74f1aa964d722ff77c57be1ba0d6a1e993de506486ae8018dfe539d99d0e816';
 const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
@@ -32,6 +34,14 @@ const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
 const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
 const EXPECTED_SNAPSHOT_BASELINE = 'f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97';
+const EXPECTED_IMPLEMENTATION_BASELINE =
+  'f292bb0d784678537c955895d3027e8026cd2fad';
+const EXPECTED_MATRIX_AUTHORITY_DECLARATIONS = [
+  '**Authority boundary:** This file maps evidence. It does not turn agent interpretation, examples, narrow reformulations or weak confirmations into approved product behaviour.',
+  'The resulting states are evidence classifications only. They do not approve business rules, Product readiness, enforcement behavior or implementation scope.',
+  'No row promotion in this audit approves Product readiness, permissions, enforcement, legal classification or implementation scope.',
+  'Implementation issues must cite the updated canonical PRD, not this matrix or a raw interview comment as their sole behavioural authority.',
+];
 
 const ALLOWED_SEMANTIC_COVERAGE = new Set([
   'Full',
@@ -318,6 +328,18 @@ function parseSnapshot(contents, errors) {
       `${SOURCE_SNAPSHOT_PATH}: pinned 104-comment author/body content does not match the audited boundary`,
     );
   }
+  const completeCommentRecordsHash = canonicalRecordsHash(
+    comments.map((comment) =>
+      Object.entries(comment).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+  );
+  if (completeCommentRecordsHash !== EXPECTED_COMPLETE_COMMENT_RECORDS_SHA256) {
+    errors.push(
+      `${SOURCE_SNAPSHOT_PATH}: pinned complete comment-record schema and content do not match the verbatim evidence boundary`,
+    );
+  }
 
   const sessionEntries = [];
   const nonSessionComments = [];
@@ -415,15 +437,25 @@ function parseMatrix(contents, errors) {
 
     const cells = splitMarkdownRow(line);
     if (!cells) continue;
-    if (section === 'matrix' && /^S\d{2}-Q\d{2}$/u.test(cells[0] ?? '')) {
+    if (section === 'matrix') {
+      const identifier = cells[0] ?? '';
+      if (identifier === 'Question' || /^:?-+:?$/u.test(identifier)) {
+        continue;
+      }
       if (cells.length !== 10) {
         errors.push(
           `${COVERAGE_MATRIX_PATH}:${index + 1}: expected 10 official-matrix columns, found ${cells.length}`,
         );
         continue;
       }
+      if (!/^S\d{2}-Q\d{2}$/u.test(identifier)) {
+        errors.push(
+          `${COVERAGE_MATRIX_PATH}:${index + 1}: invalid official question identifier ${JSON.stringify(identifier)}`,
+        );
+        continue;
+      }
       rows.push({
-        id: cells[0],
+        id: identifier,
         priority: cells[1],
         wording: cells[2],
         sourceStatus: cells[3],
@@ -678,6 +710,34 @@ function validateSemanticDelta({ contents, questions, rows }, errors) {
 }
 
 function validateMatrix({ contents, questions, comments }, errors) {
+  for (const declaration of EXPECTED_MATRIX_AUTHORITY_DECLARATIONS) {
+    const occurrences = contents.split(declaration).length - 1;
+    if (occurrences !== 1) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: expected exactly one pinned evidence-only authority declaration ${JSON.stringify(declaration)}`,
+      );
+    }
+  }
+  const implementationBaseline = contents.match(
+    /^\*\*Implementation\/diff baseline:\*\* `([0-9a-f]{40})`/mu,
+  );
+  if (implementationBaseline?.[1] !== EXPECTED_IMPLEMENTATION_BASELINE) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: published implementation/diff baseline must be ${EXPECTED_IMPLEMENTATION_BASELINE}`,
+    );
+  }
+  const fullBaselineOccurrences =
+    contents.split(EXPECTED_IMPLEMENTATION_BASELINE).length - 1;
+  const shortBaseline = `${EXPECTED_IMPLEMENTATION_BASELINE.slice(0, 7)}…`;
+  if (
+    fullBaselineOccurrences !== 2 ||
+    !contents.includes(`GitHub baseline \`${shortBaseline}\``)
+  ) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: all published semantic-delta baseline references must identify ${EXPECTED_IMPLEMENTATION_BASELINE}`,
+    );
+  }
+
   const { rows, ledger } = parseMatrix(contents, errors);
   const bankById = new Map(
     questions.map((question) => [question.id, question]),
