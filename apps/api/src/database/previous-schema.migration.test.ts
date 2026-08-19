@@ -147,10 +147,12 @@ describeWithPostgres('previous schema migration preflight', () => {
                       await waitForPostgresCallbackOrAbort<undefined>(
                         signal,
                         (complete) => {
-                          diagnosticClient.connect((error) => {
-                            if (error) complete({ ok: false, error });
-                            else complete({ ok: true, value: undefined });
-                          });
+                          diagnosticClient.connect(
+                            (error: Error | undefined) => {
+                              if (error) complete({ ok: false, error });
+                              else complete({ ok: true, value: undefined });
+                            },
+                          );
                         },
                       );
                       const result = await waitForPostgresCallbackOrAbort<{
