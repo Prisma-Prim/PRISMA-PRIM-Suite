@@ -758,3 +758,73 @@ function validateMatrix({ contents, questions, comments }, errors) {
     notCovered: rows.filter(({ semantic }) => semantic === 'Not covered')
       .length,
     notMapped: rows.filter(({ semantic }) => semantic === 'Not mapped').length,
+    comments: comments.length,
+  };
+  for (const [key, label] of Object.entries(SUMMARY_LABELS)) {
+    const displayed = summary.get(label);
+    if (displayed !== derived[key]) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}: summary ${JSON.stringify(label)} is ${JSON.stringify(displayed)}, derived value is ${derived[key]}`,
+      );
+    }
+  }
+
+  return derived;
+}
+
+export function validateIurieCoverage({
+  questionBank,
+  coverageMatrix,
+  sourceSnapshot,
+}) {
+  const errors = [];
+  const questions = parseQuestionBank(questionBank, errors);
+  const source = parseSnapshot(sourceSnapshot, errors);
+  const summary = validateMatrix(
+    { contents: coverageMatrix, questions, comments: source.comments },
+    errors,
+  );
+  return {
+    errors,
+    summary,
+    source: {
+      comments: source.comments.length,
+      sessions: source.sessionEntries.length,
+      nonSessionComments: source.nonSessionComments.length,
+    },
+  };
+}
+
+export async function validateIurieCoverageFiles(repositoryRoot) {
+  const root = resolve(repositoryRoot);
+  const [questionBank, coverageMatrix, sourceSnapshot] = await Promise.all([
+    readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
+    readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
+    readFile(resolve(root, SOURCE_SNAPSHOT_PATH), 'utf8'),
+  ]);
+  return validateIurieCoverage({
+    questionBank,
+    coverageMatrix,
+    sourceSnapshot,
+  });
+}
+
+const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  const repositoryRoot = resolve(
+    fileURLToPath(new URL('../', import.meta.url)),
+  );
+  const result = await validateIurieCoverageFiles(repositoryRoot);
+  if (result.errors.length > 0) {
+    console.error(result.errors.join('\n'));
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `Iurie coverage is valid: ${result.summary.official} official questions; ` +
+        `${result.source.comments} pinned comments; ${result.source.sessions} numbered sessions; ` +
+        `${result.source.nonSessionComments} non-session comments; ` +
+        `${result.summary.full} Full, ${result.summary.partial} Partial, ` +
+        `${result.summary.notCovered} Not covered, ${result.summary.notMapped} Not mapped.`,
+    );
+  }
+}
