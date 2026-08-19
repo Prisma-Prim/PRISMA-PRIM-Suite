@@ -22,22 +22,25 @@ describe('previous-schema test lifecycle', () => {
       }
     });
 
-    await runPreviousSchemaTestLifecycle(async () => undefined, [
-      { name: 'application pool', cleanup: async () => undefined },
-      { name: 'migration pool', cleanup: async () => undefined },
-      {
-        name: 'target database connections',
-        cleanup: () =>
-          waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
-            timeoutMs: 10,
-            pollIntervalMs: 1,
-            sleep: async () => {
-              targetConnectionCount = 0;
-            },
-          }),
-      },
-      { name: 'isolated target database', cleanup: dropDatabase },
-    ]);
+    await runPreviousSchemaTestLifecycle(
+      async () => undefined,
+      [
+        { name: 'application pool', cleanup: async () => undefined },
+        { name: 'migration pool', cleanup: async () => undefined },
+        {
+          name: 'target database connections',
+          cleanup: () =>
+            waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
+              timeoutMs: 10,
+              pollIntervalMs: 1,
+              sleep: async () => {
+                targetConnectionCount = 0;
+              },
+            }),
+        },
+        { name: 'isolated target database', cleanup: dropDatabase },
+      ],
+    );
 
     await Promise.resolve();
     expect(getConnectionCount).toHaveBeenCalledTimes(2);
@@ -74,15 +77,12 @@ describe('previous-schema test lifecycle', () => {
 
     let lifecycleFailure: unknown;
     try {
-      await runPreviousSchemaTestLifecycle(
-        async () => {
-          throw primaryFailure;
-        },
-        [
-          { name: 'application pool', cleanup: firstCleanup },
-          { name: 'migration pool', cleanup: secondCleanup },
-        ],
-      );
+      await runPreviousSchemaTestLifecycle(async () => {
+        throw primaryFailure;
+      }, [
+        { name: 'application pool', cleanup: firstCleanup },
+        { name: 'migration pool', cleanup: secondCleanup },
+      ]);
     } catch (error) {
       lifecycleFailure = error;
     }
@@ -102,12 +102,9 @@ describe('previous-schema test lifecycle', () => {
 
     let lifecycleFailure: unknown;
     try {
-      await runPreviousSchemaTestLifecycle(
-        async () => {
-          throw primaryFailure;
-        },
-        [{ name: 'migration pool', cleanup }],
-      );
+      await runPreviousSchemaTestLifecycle(async () => {
+        throw primaryFailure;
+      }, [{ name: 'migration pool', cleanup }]);
     } catch (error) {
       lifecycleFailure = error;
     }
@@ -124,14 +121,17 @@ describe('previous-schema test lifecycle', () => {
 
     let lifecycleFailure: unknown;
     try {
-      await runPreviousSchemaTestLifecycle(async () => undefined, [
-        {
-          name: 'migration pool',
-          cleanup: async () => {
-            throw connectionError;
+      await runPreviousSchemaTestLifecycle(
+        async () => undefined,
+        [
+          {
+            name: 'migration pool',
+            cleanup: async () => {
+              throw connectionError;
+            },
           },
-        },
-      ]);
+        ],
+      );
     } catch (error) {
       lifecycleFailure = error;
     }
