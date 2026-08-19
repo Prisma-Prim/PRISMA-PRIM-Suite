@@ -38,8 +38,29 @@ jobs:
       - name: Check out exact requested head
         uses: actions/checkout@v4
 
-      - name: Set up repository verification
-        uses: ./.github/actions/setup-verification
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Provision isolated test database
+        run: >-
+          pnpm --filter @prisma-prim/api exec node --input-type=module --eval
+          'import pg from "pg"; const client = new pg.Client({ connectionString:
+          process.env.POSTGRES_ADMIN_URL }); await client.connect(); const existing =
+          await client.query("SELECT 1 FROM pg_database WHERE datname = $1",
+          ["prisma_prim_test"]); if (existing.rowCount === 0) await
+          client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
+          client.end();'
 
       - name: Verify preflight prerequisites
         run: pnpm preflight:local --check-only
