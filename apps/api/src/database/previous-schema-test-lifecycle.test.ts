@@ -67,6 +67,56 @@ describe('previous-schema test lifecycle', () => {
     expect(getConnectionCount).toHaveBeenCalledTimes(3);
   });
 
+  it('preserves a connection-wait failure while continuing to forced cleanup', async () => {
+    let now = 0;
+    let targetDatabaseConnectionsClosed = false;
+    const forceDropDatabase = vi.fn(async () => undefined);
+
+    let lifecycleFailure: unknown;
+    try {
+      await runPreviousSchemaTestLifecycle(
+        async () => undefined,
+        [
+          {
+            name: 'target database connections',
+            cleanup: async () => {
+              await waitForTargetDatabaseConnectionsToClose(async () => 1, {
+                timeoutMs: 1,
+                pollIntervalMs: 1,
+                now: () => now,
+                sleep: async (delayMs) => {
+                  now += delayMs;
+                },
+              });
+              targetDatabaseConnectionsClosed = true;
+            },
+          },
+          {
+            name: 'isolated target database',
+            cleanup: async () => {
+              if (!targetDatabaseConnectionsClosed) {
+                await forceDropDatabase();
+              }
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      lifecycleFailure = error;
+    }
+
+    expect(lifecycleFailure).toBeInstanceOf(Error);
+    expect((lifecycleFailure as Error).message).toBe(
+      'Failed to clean up target database connections.',
+    );
+    expect((lifecycleFailure as Error).cause).toEqual(
+      new Error(
+        'Timed out waiting for 1 target database connection(s) to close.',
+      ),
+    );
+    expect(forceDropDatabase).toHaveBeenCalledTimes(1);
+  });
+
   it('attempts every cleanup once and preserves the primary failure', async () => {
     const primaryFailure = new Error('health assertion failed');
     const cleanupFailure = new Error('application pool close failed');
