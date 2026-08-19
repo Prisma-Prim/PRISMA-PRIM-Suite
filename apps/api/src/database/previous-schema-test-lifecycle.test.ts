@@ -70,7 +70,7 @@ describe('previous-schema test lifecycle', () => {
 
   it('uses a normal drop after target connections close', async () => {
     const waitForConnectionsToClose = vi.fn(async () => undefined);
-    const dropDatabase = vi.fn(async (_force: boolean) => undefined);
+    const dropDatabase = vi.fn(async () => undefined);
 
     await cleanupIsolatedTargetDatabase({
       waitForConnectionsToClose,
