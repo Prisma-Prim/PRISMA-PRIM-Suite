@@ -12,6 +12,11 @@ export type WaitForTargetDatabaseConnectionsOptions = {
   readonly sleep?: (delayMs: number) => Promise<void>;
 };
 
+export type CleanupIsolatedTargetDatabaseOptions = {
+  readonly waitForConnectionsToClose: () => Promise<void>;
+  readonly dropDatabase: (force: boolean) => Promise<void>;
+};
+
 const defaultTimeoutMs = 5_000;
 const defaultPollIntervalMs = 25;
 
@@ -52,6 +57,32 @@ export async function waitForTargetDatabaseConnectionsToClose(
 
     await sleep(Math.min(pollIntervalMs, remainingMs));
   }
+}
+
+export async function cleanupIsolatedTargetDatabase({
+  waitForConnectionsToClose,
+  dropDatabase,
+}: CleanupIsolatedTargetDatabaseOptions): Promise<void> {
+  let gracefulFailure: unknown;
+  try {
+    await waitForConnectionsToClose();
+    await dropDatabase(false);
+    return;
+  } catch (error) {
+    gracefulFailure = error;
+  }
+
+  try {
+    await dropDatabase(true);
+  } catch (forceDropFailure) {
+    throw new AggregateError(
+      [gracefulFailure, forceDropFailure],
+      'Graceful target database cleanup failed and the forced fallback also failed.',
+      { cause: gracefulFailure },
+    );
+  }
+
+  throw gracefulFailure;
 }
 
 export async function runPreviousSchemaTestLifecycle(
