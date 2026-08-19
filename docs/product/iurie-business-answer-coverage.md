@@ -35,20 +35,20 @@ Two independent assessments are preserved:
 | Metric                                        | Count |
 | --------------------------------------------- | ----: |
 | Official questions in the bank                |   278 |
-| Fully covered semantically                    |    38 |
-| Partially covered semantically                |   116 |
+| Fully covered semantically                    |    37 |
+| Partially covered semantically                |   117 |
 | Official ID attached but question not covered |     1 |
 | Not atomically mapped by official ID          |   123 |
 | Source comments inspected                     |   104 |
 
-The implementation/diff baseline at `f292bb0d784678537c955895d3027e8026cd2fad` reported 18 Full, 29 Partial, 2 Not covered and 229 Not mapped. Exhaustive line-by-line reconciliation against the fixed 104-comment corpus produces 38 Full, 116 Partial, 1 Not covered and 123 Not mapped. The snapshot metadata's `f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97` value pins the evidence-capture context only; it is not the baseline used for this semantic delta.
+The implementation/diff baseline at `f292bb0d784678537c955895d3027e8026cd2fad` reported 18 Full, 29 Partial, 2 Not covered and 229 Not mapped. Exhaustive line-by-line reconciliation against the fixed 104-comment corpus produces 37 Full, 117 Partial, 1 Not covered and 123 Not mapped. The snapshot metadata's `f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97` value pins the evidence-capture context only; it is not the baseline used for this semantic delta.
 
 ## 2.1 Exact semantic delta from the implementation/diff baseline
 
 | Semantic state      | GitHub baseline `f292bb0…` | Final provenance audit | Delta |
 | ------------------- | -------------------------: | ---------------------: | ----: |
-| Full                |                         18 |                     38 |   +20 |
-| Partial             |                         29 |                    116 |   +87 |
+| Full                |                         18 |                     37 |   +19 |
+| Partial             |                         29 |                    117 |   +88 |
 | Not covered         |                          2 |                      1 |    -1 |
 | Not mapped          |                        229 |                    123 |  -106 |
 | Total official rows |                        278 |                    278 |     0 |
@@ -58,10 +58,10 @@ State-changing official IDs:
 - Not mapped to Full (19): S02-Q20, S06-Q12, S06-Q13, S06-Q55, S07-Q17, S08-Q01, S08-Q02, S08-Q11, S09-Q01, S09-Q10, S09-Q11, S09-Q13, S10-Q02, S10-Q03, S10-Q09, S10-Q10, S11-Q02, S11-Q03, S11-Q11.
 - Not mapped to Partial (87): S02-Q01, S02-Q14, S02-Q18, S02-Q22, S03-Q02, S03-Q03, S03-Q14, S03-Q15, S03-Q16, S04-Q08, S04-Q09, S04-Q10, S04-Q11, S04-Q12, S04-Q13, S04-Q14, S04-Q15, S04-Q16, S04-Q20, S04-Q23, S04-Q25, S04-Q27, S04-Q28, S04-Q30, S04-Q31, S04-Q32, S04-Q33, S04-Q38, S04-Q40, S04-Q41, S04-Q42, S05-Q10, S05-Q12, S05-Q17, S05-Q19, S06-Q01, S06-Q02, S06-Q06, S06-Q21, S06-Q29, S06-Q32, S06-Q33, S06-Q34, S06-Q36, S06-Q40, S06-Q42, S06-Q44, S06-Q46, S06-Q50, S06-Q52, S06-Q54, S07-Q01, S07-Q06, S07-Q12, S07-Q13, S07-Q16, S07-Q19, S07-Q21, S07-Q23, S07-Q24, S07-Q25, S08-Q03, S08-Q06, S08-Q13, S08-Q14, S09-Q02, S09-Q03, S09-Q07, S09-Q08, S09-Q09, S09-Q12, S09-Q14, S09-Q15, S10-Q04, S10-Q06, S10-Q08, S10-Q12, S10-Q13, S10-Q15, S11-Q01, S11-Q04, S11-Q05, S11-Q09, S11-Q13, S11-Q15, S11-Q16, S11-Q18.
 - Not covered to Partial (1): S04-Q01.
-- Partial to Full (2): S00-Q08, S01-Q11.
+- Partial to Full (1): S00-Q08.
 - Full to Partial (1): S00-Q03.
 
-These five transition sets are disjoint and contain 110 state-changing official IDs in total.
+These five transition sets are disjoint and contain 109 state-changing official IDs in total.
 
 The resulting states are evidence classifications only. They do not approve business rules, Product readiness, enforcement behavior or implementation scope.
 
@@ -95,7 +95,7 @@ The resulting states are evidence classifications only. They do not approve busi
 | S01-Q08 | P0 | Pentru ce acțiuni este obligatorie verificarea sau aprobarea unei alte persoane? | Partially resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms a principal approver for examples, but not the complete set of actions requiring independent review or approval. | [session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831) | Cine poate aproba lucrurile importante — de exemplu oferta finală, contractul, o reducere mare, ștergerea unui document sau închiderea unui proiect? La moment, vrei ca tu să fii aprobatorul principal? | Da. |
 | S01-Q09 | P0 | Ce acțiuni importante trebuie să păstreze întotdeauna cine le-a făcut, asupra cărui dosar și când? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Covers traceability of technical interventions only, not all important actions. | [session 1](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5306997831) | Dacă Dan sau Valentin intră pentru intervenție tehnică, vrei să rămână în sistem o urmă clară: cine a intrat, când și ce a modificat? | Da. |
 | S01-Q10 | P0 | Ce trebuie să se întâmple imediat când un colaborator pleacă, își schimbă rolul sau își pierde dispozitivul? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Full | Covers all three triggering situations and the immediate access/history outcomes. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Dacă un colaborator pleacă din firmă, își schimbă rolul sau își pierde telefonul/laptopul, ce vrei să se întâmple imediat cu accesul lui? | Da, este de acord ca accesul să fie blocat imediat, sesiunile active să fie închise, drepturile să fie retrase, iar istoricul activității să rămână păstrat. |
-| S01-Q11 | P1 | Ce acces limitat au nevoie auditorii externi, formatorii, experții, contabilii sau colaboratorii temporari? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Full | Gives category-specific access for every listed external or temporary professional: the auditor sees the audited dossier/Project, the accountant the necessary financial area, the trainer/expert the relevant Project/Documents, and a temporary collaborator only the work and period concerned. All access is limited by role and Project. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Should external auditors, trainers, experts, the accountant and temporary collaborators receive limited, temporary access strictly by role and Project—for example the auditor only the audited dossier, the accountant only necessary finance, the trainer/expert only relevant Project/Documents, and the temporary collaborator only for the work period? | Yes. |
+| S01-Q11 | P1 | Ce acces limitat au nevoie auditorii externi, formatorii, experții, contabilii sau colaboratorii temporari? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms a generic limited, temporary, role- and Project-scoped access rule for the listed external or temporary professionals, but the category-specific allocations remain agent-authored examples rather than separately confirmed access needs. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Should external auditors, trainers, experts, the accountant and temporary collaborators receive limited, temporary access strictly by role and Project? | Yes. |
 | S01-Q12 | P1 | Un client extern trebuie să aibă acces la platformă? Dacă da, la ce rezultat concret și în ce etapă viitoare? | Resolved | Direct or faithfully paraphrased Iurie response | Full | Rejects external Client platform access; the conditional follow-up is therefore not applicable for the stated scope. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Clientul extern trebuie să aibă acces la platformă? | Nu. |
 | S01-Q13 | P1 | Cine poate corecta o informație importantă și trebuie păstrată valoarea anterioară? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Confirms preservation of prior values and actor/time history, but does not identify who may correct important information. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Dacă cineva corectează o informație importantă — de exemplu suma unui contract, termenul unui audit sau responsabilul unui proiect — vrei să rămână păstrată și valoarea veche, inclusiv cine a schimbat și când? | Da, numaidecât. |
 | S01-Q14 | P1 | Cine poate exporta informații și pentru ce scopuri? | Resolved | Agent-framed proposition explicitly accepted by Iurie | Partial | Defines who may export and auditability, but not the purposes for which exports are permitted. | [session 2](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307014633) | Cine trebuie să poată exporta informații din sistem, de exemplu liste de clienți, proiecte, rapoarte, situații financiare sau documente? | Da, este de acord cu următoarea regulă: Iurie poate exporta tot ce are dreptul să vadă; ceilalți utilizatori doar în limita rolului și companiei lor; colaboratorii temporari doar cu drept explicit; exporturile importante rămân înregistrate în istoric. |
