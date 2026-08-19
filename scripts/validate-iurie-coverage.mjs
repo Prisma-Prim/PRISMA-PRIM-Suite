@@ -212,7 +212,8 @@ function parseSnapshot(contents, errors) {
   const sessionEntries = [];
   const nonSessionComments = [];
   for (const comment of comments) {
-    const match = comment.body.match(
+    const body = typeof comment.body === 'string' ? comment.body : '';
+    const match = body.match(
       /^\s*#{1,3}\s+(?:Sesiunea|Sesiune|Session)\s+(\d+)\b/imu,
     );
     if (match) {
@@ -268,8 +269,9 @@ function parseSnapshot(contents, errors) {
     /^\*\*Întrebarea\s+(\d+)\*\*/gimu,
   ];
   for (const comment of comments) {
+    const body = typeof comment.body === 'string' ? comment.body : '';
     for (const pattern of atomicPatterns) {
-      for (const match of comment.body.matchAll(pattern)) {
+      for (const match of body.matchAll(pattern)) {
         atomicItems.push(Number(match[1]));
       }
     }
