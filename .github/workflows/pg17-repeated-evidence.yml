@@ -62,8 +62,8 @@ jobs:
           client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
           client.end();'
 
-      - name: Verify preflight prerequisites
-        run: pnpm preflight:local --check-only
+      - name: Verify PostgreSQL prerequisites
+        run: pnpm agent:doctor:postgres
 
       - name: Run ten consecutive migration preflights
         run: |
