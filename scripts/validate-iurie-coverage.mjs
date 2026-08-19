@@ -465,11 +465,17 @@ function parsePublishedTransitions(contents, errors) {
     if (!inDeltaSection) continue;
 
     const match = line.match(
-      /^- (Not mapped to Full|Not mapped to Partial|Not covered to Partial|Partial to Full) \((\d+)\): (.+)\.$/u,
+      /^- ((?:Full|Partial|Not covered|Not mapped) to (?:Full|Partial|Not covered|Not mapped)) \((\d+)\): (.+)\.$/u,
     );
     if (!match) continue;
 
     const [, label, displayedCount, list] = match;
+    if (!TRANSITION_LABELS.includes(label)) {
+      errors.push(
+        `${COVERAGE_MATRIX_PATH}:${index + 1}: unsupported published transition ${label}`,
+      );
+      continue;
+    }
     if (transitions.has(label)) {
       errors.push(
         `${COVERAGE_MATRIX_PATH}:${index + 1}: duplicate transition list ${label}`,
@@ -619,6 +625,19 @@ function validateSemanticDelta({ contents, questions, rows }, errors) {
       );
     }
   }
+
+  const expectedChangedIds = [...derived.values()].reduce(
+    (count, ids) => count + ids.size,
+    0,
+  );
+  const declaredChangedIds = contents.match(
+    /contain (\d+) state-changing official IDs in total\./u,
+  );
+  if (Number(declaredChangedIds?.[1]) !== expectedChangedIds) {
+    errors.push(
+      `${COVERAGE_MATRIX_PATH}: declared state-changing ID total is ${JSON.stringify(declaredChangedIds?.[1])}, derived value is ${expectedChangedIds}`,
+    );
+  }
 }
 
 function validateMatrix({ contents, questions, comments }, errors) {
@@ -694,7 +713,7 @@ function validateMatrix({ contents, questions, comments }, errors) {
         );
       }
     } else {
-      if (row.sourceStatus === '—') {
+      if (row.sourceStatus === '' || row.sourceStatus === '—') {
         errors.push(
           `${COVERAGE_MATRIX_PATH}:${row.line}: ${row.id} is ${row.semantic} but has no source-declared status`,
         );
@@ -713,7 +732,7 @@ function validateMatrix({ contents, questions, comments }, errors) {
         ['question actually asked', row.asked],
         ['answer excerpt', row.answer],
       ]) {
-        if (value === '—') {
+        if (value === '' || value === '—') {
           errors.push(
             `${COVERAGE_MATRIX_PATH}:${row.line}: ${row.id} is ${row.semantic} but has no ${field}`,
           );
