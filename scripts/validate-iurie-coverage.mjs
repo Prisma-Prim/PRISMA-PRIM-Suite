@@ -18,6 +18,8 @@ const EXPECTED_INVENTORY_SHA256 =
   '430627c8a7aa50fe01b499c02be880f5bcc972a123d65868425d0f53cbbae818';
 const EXPECTED_COMMENT_CONTENT_SHA256 =
   'c009d766d0d3ca03a5e0a002c67114950f4aa5549463e6f56c7bbdc6af54ba69';
+const EXPECTED_SNAPSHOT_METADATA_SHA256 =
+  'a74f1aa964d722ff77c57be1ba0d6a1e993de506486ae8018dfe539d99d0e816';
 const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
   '0bc9216d41ac27b5613c2a2c997accfa2216fc68447c5753fcd0230a42cb5d8e';
 const EXPECTED_ROW_CITATION_MAP_SHA256 =
@@ -227,6 +229,16 @@ function parseSnapshot(contents, errors) {
   }
 
   const snapshot = metadata[0];
+  const metadataHash = canonicalRecordsHash([
+    Object.entries(snapshot ?? {}).sort(([left], [right]) =>
+      left.localeCompare(right),
+    ),
+  ]);
+  if (metadataHash !== EXPECTED_SNAPSHOT_METADATA_SHA256) {
+    errors.push(
+      `${SOURCE_SNAPSHOT_PATH}: pinned complete snapshot metadata does not match the evidence-only authority boundary`,
+    );
+  }
   const expectedMetadata = [
     ['source_issue_number', 81],
     ['source_issue_url', SOURCE_ISSUE_URL],
