@@ -34,6 +34,12 @@ function matrixRow(contents, questionId) {
     .find((line) => line.startsWith(`| ${questionId} |`));
 }
 
+function ledgerRow(contents, sourceOrder) {
+  return contents
+    .split('\n')
+    .find((line) => line.startsWith(`| ${sourceOrder} |`));
+}
+
 test('accepts the real fixed-boundary coverage inventory', () => {
   assert.deepEqual(validateIurieCoverage(fixture).errors, []);
 });
@@ -141,8 +147,8 @@ test('rejects an invalid provenance and status combination', () => {
 
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
-    'Not mapped to Full (22): S02-Q20,',
-    'Not mapped to Full (22): S99-Q99,',
+    'Not mapped to Full (21): S02-Q20,',
+    'Not mapped to Full (21): S99-Q99,',
   );
   assert.match(
     errorsFor({ coverageMatrix }),
@@ -181,11 +187,11 @@ test('rejects blank mapped question and answer evidence', () => {
 test('rejects an unsupported extra published transition', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
     'State-changing official IDs:',
-    'State-changing official IDs:\n\n- Full to Partial (1): S00-Q01.',
+    'State-changing official IDs:\n\n- Full to Not covered (1): S00-Q01.',
   );
   assert.match(
     errorsFor({ coverageMatrix }),
-    /unsupported published transition Full to Partial/u,
+    /unsupported published transition Full to Not covered/u,
   );
 });
 
@@ -203,5 +209,57 @@ test('rejects status swaps that preserve aggregate totals', () => {
   assert.match(
     errorsFor({ coverageMatrix }),
     /Not mapped to Partial differs from the pinned baseline/u,
+  );
+});
+
+test('rejects coordinated drift in the official question bank and matrix', () => {
+  const questionBank = fixture.questionBank.replace(
+    'S00-Q12 · P0',
+    'S99-Q99 · P0',
+  );
+  const row = matrixRow(fixture.coverageMatrix, 'S00-Q12');
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    row,
+    row.replace('| S00-Q12 |', '| S99-Q99 |'),
+  );
+
+  assert.match(
+    errorsFor({ questionBank, coverageMatrix }),
+    /pinned official question-bank content does not match the audited baseline/u,
+  );
+});
+
+test('rejects a valid but unrelated citation substituted into a row', () => {
+  const sourceRow = matrixRow(fixture.coverageMatrix, 'S00-Q01');
+  const unrelatedUrl = sourceRow.match(
+    /https:\/\/github\.com\/Prisma-Prim\/PRISMA-PRIM-Suite\/issues\/81#issuecomment-\d+/u,
+  )[0];
+  const targetRow = matrixRow(fixture.coverageMatrix, 'S02-Q20');
+  const changedTargetRow = targetRow.replace(
+    /https:\/\/github\.com\/Prisma-Prim\/PRISMA-PRIM-Suite\/issues\/81#issuecomment-\d+/u,
+    unrelatedUrl,
+  );
+  const coverageMatrix = fixture.coverageMatrix.replace(
+    targetRow,
+    changedTargetRow,
+  );
+
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /pinned official-row citation map does not match the audited provenance/u,
+  );
+});
+
+test('rejects drift in supplemental-ledger descriptions', () => {
+  const row = ledgerRow(fixture.coverageMatrix, 1);
+  const cells = row.split('|');
+  cells[3] = ' Incorrect topic ';
+  cells[4] = ' 999–1000 ';
+  cells[5] = ' Not confirmed ';
+  const coverageMatrix = fixture.coverageMatrix.replace(row, cells.join('|'));
+
+  assert.match(
+    errorsFor({ coverageMatrix }),
+    /pinned supplemental-ledger descriptive content does not match the audited inventory/u,
   );
 });
