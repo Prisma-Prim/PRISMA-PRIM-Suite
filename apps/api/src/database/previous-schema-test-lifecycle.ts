@@ -20,6 +20,40 @@ export type CleanupIsolatedTargetDatabaseOptions = {
 const defaultTimeoutMs = 5_000;
 const defaultPollIntervalMs = 25;
 
+function getConnectionCountBeforeDeadline(
+  getConnectionCount: () => Promise<number>,
+  remainingMs: number,
+): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      settled = true;
+      reject(
+        new Error(
+          'Timed out waiting for the target database connection-count query to finish.',
+        ),
+      );
+    }, remainingMs);
+
+    void Promise.resolve()
+      .then(getConnectionCount)
+      .then(
+        (connectionCount) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          resolve(connectionCount);
+        },
+        (error: unknown) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          reject(error);
+        },
+      );
+  });
+}
+
 export async function waitForTargetDatabaseConnectionsToClose(
   getConnectionCount: () => Promise<number>,
   options: WaitForTargetDatabaseConnectionsOptions = {},
@@ -40,7 +74,16 @@ export async function waitForTargetDatabaseConnectionsToClose(
 
   const deadline = now() + timeoutMs;
   for (;;) {
-    const connectionCount = await getConnectionCount();
+    const remainingBeforeQueryMs = deadline - now();
+    if (remainingBeforeQueryMs <= 0) {
+      throw new Error(
+        'Timed out waiting for target database connections to close.',
+      );
+    }
+    const connectionCount = await getConnectionCountBeforeDeadline(
+      getConnectionCount,
+      remainingBeforeQueryMs,
+    );
     if (!Number.isSafeInteger(connectionCount) || connectionCount < 0) {
       throw new Error(
         `Expected a non-negative target database connection count, received ${connectionCount}.`,
