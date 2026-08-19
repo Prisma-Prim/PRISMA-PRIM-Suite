@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { Test } from '@nestjs/testing';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
+import { Client, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
@@ -36,8 +36,8 @@ describeWithPostgres('previous schema migration preflight', () => {
 
       await runPreviousSchemaTestLifecycle(async () => {
         administrationPool = new Pool({ connectionString: databaseUrl });
-        await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
         targetDatabaseCreated = true;
+        await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
 
         const target = new URL(databaseUrl!);
         target.pathname = `/${databaseName}`;
@@ -122,17 +122,34 @@ describeWithPostgres('previous schema migration preflight', () => {
             if (!administrationPool || !targetDatabaseCreated) return;
             await cleanupIsolatedTargetDatabase({
               waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose(async () => {
-                  const result = await administrationPool!.query<{
-                    connectionCount: number;
-                  }>(
-                    `SELECT count(*)::integer AS "connectionCount"
-                     FROM pg_stat_activity
-                     WHERE datname = $1`,
-                    [databaseName],
-                  );
-                  return result.rows[0]?.connectionCount ?? 0;
-                }),
+                waitForTargetDatabaseConnectionsToClose(
+                  async (remainingMs) => {
+                    const boundedQueryMs = Math.max(
+                      1,
+                      Math.floor(remainingMs),
+                    );
+                    const diagnosticClient = new Client({
+                      connectionString: databaseUrl,
+                      connectionTimeoutMillis: boundedQueryMs,
+                      query_timeout: boundedQueryMs,
+                      statement_timeout: boundedQueryMs,
+                    });
+                    try {
+                      await diagnosticClient.connect();
+                      const result = await diagnosticClient.query<{
+                        connectionCount: number;
+                      }>(
+                        `SELECT count(*)::integer AS "connectionCount"
+                         FROM pg_stat_activity
+                         WHERE datname = $1`,
+                        [databaseName],
+                      );
+                      return result.rows[0]?.connectionCount ?? 0;
+                    } finally {
+                      await diagnosticClient.end();
+                    }
+                  },
+                ),
               dropDatabase: async (force) => {
                 await administrationPool!.query(
                   `DROP DATABASE IF EXISTS "${databaseName}"${
