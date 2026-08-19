@@ -30,6 +30,7 @@
     "test:agent-governance": "node --test scripts/*.test.mjs",
     "check:complex-preflight": "node scripts/validate-complex-feature-preflight.mjs",
     "typecheck": "pnpm --recursive typecheck",
+    "validate:iurie-coverage": "node scripts/validate-iurie-coverage.mjs",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",
     "db:migrate": "pnpm --filter @prisma-prim/api db:migrate"
   },
