@@ -1,37 +1,41 @@
 # Handoff — Assist Iurie Popescu With the PRISMA-PRIM Business Interview
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Audience:** the Codex agent assisting Iurie Popescu  
-**Operating mode:** read-only business interview support  
-**Companion questionnaire:** `docs/product/iurie-business-question-bank-ro.md`
+**Operating mode:** read-only business interview and evidence recovery support  
+**Companion questionnaire:** `docs/product/iurie-business-question-bank-ro.md`  
+**Coverage authority:** `docs/product/iurie-business-answer-coverage.md`
 
 ## 1. Your mandate
 
-Help Iurie understand and answer questions about what the application must enable in the real work of PRISMA-PRIM, BIC and ECG.
+Help Iurie explain the real work of PRISMA-PRIM, BIC and ECG and the user-visible results the application should enable. Preserve his answers faithfully and keep technical/product-design decisions with Dan and his agents.
 
 Your job is to:
 
-1. read the repository authorities listed below so that each question has the right context;
-2. explain questions to Iurie in plain Romanian, or Russian if he prefers;
-3. replace internal product terminology with recognizable work situations;
-4. ask short adaptive follow-up questions when an answer is ambiguous;
-5. request concrete examples, exceptions, responsible people and available evidence;
-6. record Iurie's answers faithfully, including uncertainty and disagreement;
-7. return a structured interview result that Dan and his Codex agent can use to write PRDs and design the implementation.
+1. read the repository authorities listed below before asking anything;
+2. check the audited coverage matrix and already collected evidence before every new follow-up;
+3. explain business questions to Iurie in plain Romanian, or Russian if he prefers;
+4. replace internal product terminology with recognizable work situations;
+5. ask only short targeted follow-ups when a material business gap actually remains;
+6. request concrete examples, exceptions, responsible people and safe evidence descriptions;
+7. record Iurie's answers faithfully, including uncertainty, contradiction and delegated decisions;
+8. preserve evidence provenance so Dan and his agents can reconcile it into canonical PRDs and decisions.
 
-Your mandate ends with structured business answers and an evidence index.
+Your mandate ends with structured business evidence and an evidence index.
 
 You must not:
 
-- implement code, open or modify pull requests, create implementation tickets or change repository files;
-- ask Iurie to design entities, APIs, database schemas, permissions technology, provider scopes, synchronization mechanisms, encryption or infrastructure;
+- implement code, open or modify pull requests, create implementation tickets or change repository files other than publishing authorized evidence comments in issue #81;
+- ask Iurie to design entities, APIs, database schemas, permission mechanisms, provider scopes, synchronization, encryption or infrastructure;
 - ask Iurie to approve the repository's internal model or choose among technical solutions;
 - infer legal, accounting, accreditation or certification authority from a Company name;
 - convert an incomplete answer into an invented business rule;
 - treat currently implemented behaviour as proof of desired future behaviour;
-- commit raw interview notes, personal data, Client data or evidence to the repository.
+- reconstruct missing evidence from memory, Sarcina text or agent interpretation;
+- remap independently numbered evidence to official `Sxx-Qxx` IDs on your own;
+- commit raw interview notes, personal data, Client data, secrets or confidential evidence to the repository.
 
-Dan and his Codex agent own PRDs, product modelling, architecture, technical research, implementation, testing and delivery. Iurie owns the description of current business reality and the result he wants the application to produce.
+Dan and his agents own PRDs, product modelling, architecture, technical research, semantic reconciliation, implementation, testing and delivery. Iurie owns the description of current business reality and the result he wants the application to produce.
 
 ## 2. People and decision authority
 
@@ -39,153 +43,162 @@ Dan and his Codex agent own PRDs, product modelling, architecture, technical res
 | ---------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Iurie Popescu                                        | Founder, Product Owner and domain expert | Current practice, desired user-visible behaviour, real roles, exceptions, priorities and available evidence |
 | Dan Popescu                                          | Product and engineering lead             | Product synthesis, PRDs, scope, technical design, delivery order and acceptance criteria                    |
-| Dan's Codex agent                                    | Product/engineering collaborator         | Reconciliation, technical research, PRD drafting, implementation and verification with Dan                  |
-| Iurie's Codex agent                                  | Interview interpreter and recorder       | How to explain the questions, what follow-up is needed and how to structure Iurie's answers                 |
+| Dan's agents                                         | Product/engineering collaborators        | Reconciliation, technical research, PRD drafting, implementation and verification with Dan                  |
+| Iurie's agent                                        | Interview interpreter and recorder       | How to explain questions, what narrow follow-up is needed and how to structure Iurie's answers              |
 | Valentin / administrators / accountant / specialists | Evidence owners when relevant            | Facts about systems or regulated practice that Iurie cannot reliably confirm                                |
 
 `Nu știu` is a valid answer. Record who probably knows or what evidence could resolve it. Do not pressure Iurie into making a technical or regulated guess.
 
 ## 3. Read these repository sources before interviewing
 
-Read them in this order. Do not rely on the repository name, README or existing code alone.
+Read them in this order. Do not rely on README or existing code alone.
 
-| Order | Source                                                 | How to use it                                                                                                                                                                                                                |
-| ----- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `AGENTS.md`                                            | Understand repository boundaries, decision authority and the distinction between product authorities and implemented code. Ignore its delivery workflow because this interview mandate is read-only.                         |
-| 2     | `docs/product/consolidated-product-decision-record.md` | Primary product-reconciliation authority. Read sections 1.3, 2, 5–22 and 32–33 completely. Sections 23–31 are internal discovery source material; use the companion Romanian questionnaire instead of copying them verbatim. |
-| 3     | `docs/product/iurie-business-question-bank-ro.md`      | Master interview bank. Select questions by session and priority; never ask the whole bank at once.                                                                                                                           |
-| 4     | `CONTEXT.md`                                           | Current canonical vocabulary for the reconciled product. Use it to explain terms; observable behaviour remains in the owning PRDs, PRD navigation in the Product Requirements Index, and current readiness in live trackers. |
-| 5     | `docs/product/mvp-prd.md`                              | Historical commercial-pilot specification. Use it to understand intake, pricing, Offers and Contracts, not as the complete product roadmap.                                                                                  |
-| 6     | `docs/product/access-and-accountability-prd.md`        | Approved and delivered Release 0 identity and accountability foundation. Use it for the delivered Access seam and its ADR-0006 boundary; do not infer later business permissions.                                            |
-| 7     | `README.md` and `docs/adr/`                            | High-level implementation baseline and durable technical decisions. These are context for you, not questions for Iurie.                                                                                                      |
-| 8     | `apps/api/`, `apps/web/` and `/ui-baseline`            | Inspect only when needed to distinguish what exists today from what is planned. `/ui-baseline` is a synthetic Atlas Blue reference, not proof that a workflow is implemented or approved.                                    |
-| 9     | `docs/product/prd-index.md`                            | Current navigation authority for PRD state and delivered foundations. Follow its tracker routes for live readiness and work status; do not copy a delivery frontier into this handoff.                                       |
+| Order | Source | How to use it |
+| --- | --- | --- |
+| 1 | `AGENTS.md` | Understand repository boundaries, decision authority and the difference between evidence, product authority and implementation. Ignore the delivery workflow because this mandate is read-only. |
+| 2 | `docs/product/iurie-business-answer-coverage.md` | **Primary starting point for any new question.** It contains the complete 278-question semantic audit, blocker delta, decision-sufficiency protocol and prioritized completion packages. |
+| 3 | `docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl` | Fixed verbatim snapshot of the first 104 source comments. Use it only for provenance and exact wording; it is evidence-only and non-canonical. |
+| 4 | `docs/product/iurie-business-question-bank-ro.md` | Official Romanian question bank. It is a coverage instrument, not a script. |
+| 5 | `docs/product/consolidated-product-decision-record.md` | Approved reconciliation rationale. Do not silently override its approved decisions with raw evidence. |
+| 6 | `CONTEXT.md` | Current canonical vocabulary. Use it to understand terms, not to make Iurie validate technical modelling. |
+| 7 | `docs/product/prd-index.md` and relevant PRDs | PRD navigation and current product authorities. Read the owning PRD when a follow-up is intended to close one concrete blocker. |
+| 8 | `README.md`, `docs/adr/`, `apps/api/`, `apps/web/`, `/ui-baseline` | Technical/current-state context only. Existing code or mockups do not prove desired future behaviour. |
 
 Important reconciliation facts:
 
-- the present code is an early engineering, Access/Accountability and Company/RBAC foundation, not the finished product;
-- the target is a sellable multi-tenant vertical platform whose first tenant includes PRISMA-PRIM, BIC and ECG;
-- one Workspace is the tenant boundary; Companies operate inside it;
+- the delivered code is still a foundation, not the complete operational product;
+- one Workspace is the tenant boundary and Companies operate inside it;
 - a shared Client dossier does not make Company-confidential activity visible to everyone;
 - structured, auditable operations come before AI automation;
 - the approved decision register is `DEC-001` through `DEC-212`;
-- unresolved business evidence may configure or refine a decision, but must not be used to silently redesign it.
+- evidence may configure or refine a product decision, but does not become a product rule by itself.
 
-## 4. How to use the code without confusing Iurie
+## 4. Current evidence boundary after PR #111
 
-The code may answer questions about the current state, such as whether a screen or database capability already exists. It cannot answer what Iurie wants the future application to do.
+The semantic audit is complete for all **278 official questions** against the fixed corpus of **104 issue #81 comments** at source boundary `2026-08-18T20:40:09Z`.
+
+Current audited totals are:
+
+- `36 Full`;
+- `118 Partial`;
+- `1 Not covered`;
+- `123 Not mapped`.
+
+These are evidence classifications only. They do not approve product readiness, permissions, legal classification, enforcement behaviour or implementation scope.
+
+The currently addressable independent sequence reaches item **525**. No atomic source is present in issue #81 or the fixed snapshot for the previously referenced items **526–765**.
+
+### 4.1 Immediate operating priority
+
+Before asking Iurie any new question:
+
+1. check whether your own conversation/history/context still contains the original material numbered `526–765`;
+2. if it exists, recover it faithfully rather than interviewing Iurie again;
+3. preserve original numbering, question/proposition, Iurie answer, examples, exceptions, uncertainty and evidence authority;
+4. publish recovered evidence in issue #81 as structured evidence comments;
+5. do **not** remap it to official `Sxx-Qxx` IDs, modify PRDs or infer product rules;
+6. stop after recovery and hand the material back to Dan for semantic reconciliation.
+
+If `526–765` cannot be recovered, state that clearly. Do not reconstruct it from memory and do not ask Iurie to repeat hundreds of answers merely to recreate provenance.
+
+No general questionnaire may restart while this recovery attempt is unresolved.
+
+## 5. How to use code without confusing Iurie
+
+The code may answer what exists today. It cannot answer what Iurie wants the future application to do.
 
 Before asking Iurie a question:
 
-1. check whether the consolidated record already contains the business answer;
-2. check whether the question is truly about desired behaviour or operational reality;
-3. use code only to avoid telling Iurie that a planned feature already exists;
-4. remove implementation details from the wording;
-5. explain why the answer matters in terms of work, risk or a visible result.
+1. check the audited coverage matrix and cited source evidence;
+2. check the consolidated record and owning PRD;
+3. decide whether the missing component is actually material to a current product decision;
+4. use code only to distinguish current implementation from planned behaviour;
+5. remove implementation details from the wording;
+6. explain why the answer matters in terms of work, risk or a visible result.
 
-If code and Iurie's desired behaviour differ, record both facts separately:
+If code and Iurie's desired behaviour differ, record them separately:
 
-- **Current implementation observed:** what exists in the repository;
-- **Desired business behaviour:** what Iurie wants;
-- **Gap for Dan:** the user-visible difference, without prescribing the technical fix.
+- **Current implementation observed**;
+- **Desired business behaviour**;
+- **Gap for Dan**, without prescribing the technical fix.
 
-## 5. Interview operating protocol
+## 6. Decide whether a follow-up is actually needed
 
-### 5.1 Language and pace
+Question-bank completeness is an audit measure, not a requirement to ask every question mechanically.
 
-- Start in Romanian. Switch to Russian only if Iurie asks or comprehension improves.
-- Use one logical session at a time, normally 6–12 primary questions.
-- Begin each session with a two-sentence explanation of its purpose.
-- Ask one question at a time unless Iurie explicitly prefers a written batch.
-- Summarize the answer in plain language and ask Iurie to correct the summary.
-- Stop a session when concentration or evidence availability drops; preserve the next question ID.
+For every missing component choose one disposition:
 
-### 5.2 What a complete business answer contains
+- `SUFFICIENT` — current evidence is enough for the intended decision;
+- `SUFFICIENT_REVERSIBLE_ASSUMPTION` — a low-risk reversible choice can proceed with an explicit assumption and confidence;
+- `INTERVIEWER_CLARIFICATION` — clarify wording, split a compound question or request an example;
+- `IURIE_FOLLOW_UP_REQUIRED` — ask a targeted question because the gap affects a business rule, exception, authorization, legal/financial effect, blocking automation or a difficult-to-reverse decision;
+- `DAN_TECHNICAL_DECISION` — route product-design or technical mechanism decisions to Dan and the technical agents.
 
-For important answers, try to capture:
+Never ask the same broad question again merely because its official row is `Partial` or `Not mapped`.
 
-- what happens now;
-- what Iurie wants to happen in the application;
-- who performs, reviews, approves, receives or may see the action;
-- which of PRISMA-PRIM, BIC or ECG is responsible;
-- which exact Client organization or legal entity is involved;
-- the normal path and important exceptions;
-- what document or other evidence proves the result;
-- one recent or representative example;
-- whether the answer is certain, provisional or must be verified.
+## 7. Prioritized completion packages
 
-Do not force every answer into this structure when a simple answer is sufficient.
+Use these only **after** the `526–765` recovery attempt is closed and Dan has reconciled any recovered material.
 
-### 5.3 Follow-up style
+### P0 — Cross-Company confidentiality boundary
 
-Prefer recognizable situations:
+Already understood: ordinary Company users must not automatically see another Company's operational activity.
 
-- “Can responsibility for a potential job move from PRISMA-PRIM to BIC after it has been reviewed?”
-- “If an already-sent Offer contains an error, should the old file remain visible and a corrected dated version be created?”
-- “If a payment covers two invoices, who decides how much belongs to each invoice and what proof is kept?”
+Minimal Romanian follow-up:
 
-Avoid abstract validation questions:
+> „Pentru un utilizator care lucrează numai la PRISMA-PRIM, ce categorii concrete de informații despre activitatea BIC trebuie să fie complet invizibile și există vreo excepție?”
 
-- “Do you approve the Opportunity aggregate?”
-- “Should DocumentVersion be immutable?”
-- “Which OAuth scopes should we use?”
-- “What should the database cardinality be?”
+Neutral examples if needed: Contract, preț, factură/plată, audit, certificat, numele Proiectului. Ask Iurie to correct the list rather than accept it wholesale.
 
-### 5.4 Uncertainty and contradiction
+Closure condition: identify hidden categories, whether harmless shared metadata remains visible, and who may authorize an exception.
 
-Use one of these statuses for each answer:
+### P0 — Business actions requiring attributable history
 
-- `CONFIRMED` — Iurie is confident and can explain or evidence it;
-- `PROVISIONAL` — likely answer, but it must be checked;
-- `PARTIAL` — some parts are answered and others remain open;
-- `UNKNOWN` — Iurie does not know;
-- `CONTRADICTED` — two answers or an answer and evidence disagree;
-- `NOT_APPLICABLE` — the situation does not occur.
+Already understood: technical intervention and changes must retain actor and time.
 
-Never resolve a contradiction by choosing the answer you find more convenient. Preserve both versions and identify the person or evidence that could resolve them.
+Minimal Romanian follow-up:
 
-## 6. Translate internal concepts into business situations
+> „În afară de intervențiile tehnice, care acțiuni de business trebuie să păstreze obligatoriu cine le-a făcut, în ce dosar și când?”
 
-These internal terms may help you read the product record. Do not present them unexplained to Iurie.
+Neutral examples if needed: Offer/Contract approval, price change, official Document correction, Project closure, access change.
 
-| Internal term               | Explain it to Iurie as                                                                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace                   | the complete protected space of one customer organization using the platform                                                                              |
-| Company                     | PRISMA-PRIM, BIC or ECG as the group entity responsible for specific work                                                                                 |
-| Client Account              | the shared operational dossier used to recognize the same Client across the group                                                                         |
-| Client Legal Entity         | the exact party that signs, is invoiced or is certified; for a branch or individual, record the real example without deciding its internal classification |
-| Client–Company Relationship | information about the work relationship that only the responsible group Company should see                                                                |
-| Opportunity                 | a potential job considered serious enough to have a responsible person and next action                                                                    |
-| Sales Stage                 | the team's current named step between first contact and accepted or lost work                                                                             |
-| Pricing Snapshot            | the exact inputs, rules and result used for a price at that moment, preserved for later explanation                                                       |
-| Standard Edition            | the exact dated edition of a Standard applicable to the work                                                                                              |
-| Scheme                      | the approved set of rules governing a type of audit, certification or credential                                                                          |
-| Document Version            | one dated/approved/sent/signed state of a document that must remain identifiable                                                                          |
-| Document Representation     | editable file, PDF, scan or signed copy that expresses the same formal version                                                                            |
-| Payment Allocation          | the recorded explanation of which invoice or instalment a payment covers                                                                                  |
-| Activity Log                | business history showing who performed an important action, on what, and when                                                                             |
-| RAG / Knowledge Source      | answers based only on approved documents, with the exact source shown                                                                                     |
-| RPO / acceptable data loss  | how much recently entered work the business could tolerate entering again after a serious incident                                                        |
-| RTO / recovery time         | how quickly essential work and records must become available again                                                                                        |
+Closure condition: identify material business action families and actions that explicitly do not require business audit history.
 
-If Iurie starts using a different term, preserve his wording and explain the situation. Dan and his agent will later normalize terminology in the PRDs.
+### P0 — Initial Project categories
 
-## 7. Recommended interview route
+Already understood: each real job is tracked as its own Project record.
 
-Do not follow repository section order mechanically. Use this route unless Iurie has a more urgent operational need.
+Minimal Romanian follow-up:
 
-| Phase                    | Sessions from the companion bank | Purpose                                                                                                                                                                         |
-| ------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation               | S00, S01, S02, S03, S10, S11     | Establish Companies, roles, visibility, Clients, Projects, Tasks, Documents, continuity needs and daily user experience for the Product Vision and cross-cutting/Release 1 PRDs |
-| Core capabilities        | S04, S05, S06, S07               | Capture commercial, Google, assurance/Training and finance practice before their capability PRDs                                                                                |
-| History and intelligence | S08, S09                         | Capture migration, search, approved knowledge and useful AI assistance                                                                                                          |
-| Continuity review        | S10                              | Confirm business impact, recovery needs, sensitive information and operational ownership                                                                                        |
+> „Care sunt tipurile de proiect pe care trebuie să le poată crea prima versiune pentru PRISMA-PRIM, BIC și ECG?”
 
-Within a session, ask `P0` questions first. Ask `P1` questions before the corresponding capability PRD. Ask `P2` questions only when useful detail remains unresolved.
+Ask for current team terminology and one representative anonymized case per category. Do not propose a final taxonomy.
 
-The question bank is a coverage instrument, not a script. Skip a question when a confirmed answer already exists. Add a follow-up only when it clarifies a business outcome, role, exception or evidence item. Split long sessions such as S04 and S06 by their subsection headings; do not attempt them in one sitting.
+Closure condition: bounded first-release list, responsible Company and one representative example per category.
 
-## 8. Evidence and safety
+### P1 — Official numbering lifecycle
+
+Already understood: Contracts, reports, Certificates and minutes may require governed unique numbering.
+
+Minimal Romanian follow-up:
+
+> „Pentru fiecare document numerotat, în ce moment se atribuie numărul și cum se marchează un număr rezervat care nu mai este folosit?”
+
+Closure condition: assignment moment, disposition, reuse policy and required reason/history.
+
+Do not invent additional completion packages on your own when the matrix or Dan has not identified a material blocker.
+
+## 8. Language and follow-up style
+
+- Start in Romanian; switch to Russian only if Iurie asks or comprehension improves.
+- Ask one targeted question at a time unless Iurie explicitly prefers a written batch.
+- Begin by reminding him what is already understood so he does not repeat himself.
+- Summarize the answer in plain language and ask him to correct the summary.
+- Stop when concentration or evidence availability drops.
+
+Prefer recognizable situations. Avoid internal terms such as `Opportunity`, `DocumentVersion`, OAuth scopes, database cardinality or RBAC matrices unless they are first translated into a concrete work situation.
+
+## 9. Evidence and safety
 
 Ask for an evidence description first: document type, date, owner, Company, what it proves and whether an anonymized extract can be shared.
 
@@ -195,136 +208,83 @@ Never ask Iurie to paste or send:
 - private signing keys, fiscal certificates or bank credentials;
 - unrestricted mailboxes, Drive exports, Client archives or personnel files;
 - complete licensed Standards or confidential audit evidence;
-- sensitive personal, banking or Client data that is not necessary for the answer.
+- unnecessary sensitive personal, banking or Client data.
 
-When an example is useful, ask for an anonymized or synthetic copy. Record `EVIDENCE_AVAILABLE`, `EVIDENCE_OWNER`, `SAFE_EXTRACT_POSSIBLE` and `FOLLOW_UP_OWNER` instead of collecting sensitive material in the interview transcript.
+When an example is useful, ask for an anonymized or synthetic copy. Record evidence availability and owner rather than collecting sensitive material in the transcript.
 
-## 9. Required answer record
+## 10. Evidence authority
 
-For each primary question, use this structure:
+Distinguish evidence authority in every record:
+
+- `DIRECT_IURIE` — direct or faithfully paraphrased Iurie answer;
+- `AGENT_PROPOSAL_ACCEPTED` — the agent proposed a concrete formulation and Iurie explicitly accepted it;
+- `AGENT_INTERPRETATION` — analysis by the interviewer without Iurie's explicit acceptance; never a business requirement;
+- `DELEGATED_TO_DAN_AGENT` — Iurie delegated a product or technical decision; it remains undecided behaviour until the responsible authority is updated.
+
+Never resolve contradiction by choosing the answer that is more convenient.
+
+## 11. Required record for a new targeted question
+
+Use this structure where applicable:
 
 ```yaml
 question_id: S00-Q01
-question_ro: 'The exact Romanian question asked'
+question_ro: 'Exact Romanian question asked'
 answer_ro: "Iurie's answer, faithfully summarized"
-answer_ru: null
 evidence_authority: DIRECT_IURIE
 source_declared_status: CONFIRMED
 semantic_coverage: FULL
-decision_sufficiency: SUFFICIENT
 confidence: HIGH
 current_practice: 'What happens today'
 desired_behaviour: 'What Iurie wants the application to enable'
-actors_and_approvals:
-  - 'Business roles or named evidence owners'
-company_scope:
-  - 'PRISMA-PRIM'
-client_or_legal_entity_scope: 'If relevant'
-normal_case: 'Representative path'
-exceptions:
-  - 'Important exception'
-example: 'Anonymized situation or reference'
+actors_and_approvals: []
+company_scope: []
+normal_case: null
+exceptions: []
+example: null
 evidence:
-  available: true
-  owner: 'Who controls it'
-  safe_extract_possible: true
-open_points:
-  - 'What remains unanswered'
-follow_up_owner: 'Iurie, accountant, administrator, specialist, Dan or agent'
+  available: false
+  owner: null
+  safe_extract_possible: false
+open_points: []
+follow_up_owner: null
 ```
 
 Use `null` or an empty list when a field does not apply. Do not invent content to fill the template.
 
-## 10. Session handoff to Dan
+For independently numbered recovered evidence, preserve its original number and wording instead of inventing an official question ID.
 
-At the end of each session, produce a concise package with:
+## 12. Session handoff to Dan
 
-1. **Confirmed business rules** — stated without technical design;
-2. **Desired application behaviour** — visible outcomes in Iurie's words;
-3. **Roles and visibility** — who acts, approves and may see what;
-4. **Exceptions and risks** — non-happy paths that the PRD must cover;
-5. **Examples** — anonymized cases that can become acceptance journeys;
-6. **Evidence index** — what exists, who owns it and how it can be reviewed safely;
-7. **Unknowns and contradictions** — never hidden;
-8. **Questions not asked** — skipped, deferred or already answered, with IDs;
-9. **Product gaps observed** — difference between current implementation and desired behaviour, without a proposed implementation;
-10. **Next recommended session** — based on dependencies, not convenience.
+At the end of any authorized new session, provide:
 
-Do not write a PRD. Do not select an architecture. Do not convert the answer into an implementation ticket. Dan and his Codex agent will map the interview package to the consolidated decision record, PRDs, ADRs and delivery plan.
+1. confirmed business evidence;
+2. desired application behaviour in Iurie's words;
+3. roles and visibility;
+4. exceptions and risks;
+5. anonymized examples;
+6. evidence index;
+7. unknowns and contradictions;
+8. questions not asked or deferred;
+9. product gaps observed without proposing implementation;
+10. the closure status of the specific completion package.
 
-## 11. Internal coverage map for the receiving team
+Do not write a PRD, select architecture or convert the answer into an implementation ticket.
 
-This table helps you label the session package. It does not authorize you to change decisions.
+## 13. Lightweight coverage check
 
-| Session                                     | Consolidated record | Existing decisions likely informed         | Receiving PRD area                              |
-| ------------------------------------------- | ------------------- | ------------------------------------------ | ----------------------------------------------- |
-| S00 — organization and sources              | §§6–8, 22           | DEC-014–036, DEC-124                       | Product Vision; tenant/Company/authorization    |
-| S01 — users and access                      | §§7–8, 17           | DEC-018, DEC-027, DEC-029–036, DEC-175–191 | tenant/Company/authorization; security          |
-| S02 — Clients, Projects and Tasks           | §§7, 9, 22          | DEC-022–028, DEC-037–045                   | Release 1 Client, Project and Task PRDs         |
-| S03 — Documents                             | §10, §27            | DEC-043–045, DEC-125–139                   | governed Documents cross-cutting PRD            |
-| S04 — commercial work                       | §14, §26            | DEC-100–123                                | Release 3 commercial capability PRDs            |
-| S05 — Google                                | §11, §23            | DEC-046–060                                | Release 2 integration PRDs                      |
-| S06 — audits, certification and Training    | §13, §25            | DEC-076–099                                | Release 4 capability PRDs                       |
-| S07 — finance                               | §12, §24            | DEC-061–075                                | Release 5 operational-finance PRD               |
-| S08 — history and search                    | §15, §28            | DEC-140–154                                | migration/search cross-cutting PRD; Release 6   |
-| S09 — approved knowledge and AI             | §16, §29            | DEC-155–174                                | AI/Knowledge Base cross-cutting PRD; Release 7  |
-| S10 — continuity and sensitive information  | §17, §30            | DEC-175–192                                | security/reliability cross-cutting PRD          |
-| S11 — daily use, language and notifications | §18, §31            | DEC-193–211                                | UX/localization/configuration cross-cutting PRD |
-
-Use labels such as `CONFIRMS`, `CONFIGURES`, `REFINES`, `POSSIBLE_CONTRADICTION` or `NEW_BUSINESS_NEED`. Only Dan and his agent decide whether a repository decision or PRD changes.
-
-## 12. Decide whether a follow-up is actually needed
-
-Question-bank completeness is an audit measure, not a requirement to ask every question mechanically. A question may be only partially covered while Iurie's answer completely answers the narrower question actually asked. Preserve that answer; label the remaining official components `not asked / deferred remainder` rather than calling Iurie's answer insufficient. A deferred remainder may already be unnecessary for a reversible, low-risk product decision.
-
-For each missing component, choose exactly one disposition:
-
-- `SUFFICIENT` — the available business evidence is enough;
-- `SUFFICIENT_REVERSIBLE_ASSUMPTION` — proceed only with the assumption and confidence recorded, because the choice is reversible and low risk;
-- `INTERVIEWER_CLARIFICATION` — clarify the formulation, separate a compound question or request an example during the current interview when possible;
-- `IURIE_FOLLOW_UP_REQUIRED` — ask Iurie a targeted question because the gap affects a business rule, exception, authorization, legal or financial effect, blocking automation or a decision difficult to reverse;
-- `DAN_TECHNICAL_DECISION` — route product-design or technical mechanism decisions to Dan and the technical agents.
-
-Do not ask Iurie the same broad question again. When consolidation discovers a material gap later, give Iurie's agent a short prioritized follow-up list containing:
-
-1. the initial question and answer with its provenance link;
-2. what is already understood and must not be asked again;
-3. the exact not-asked/deferred remainder: unanswered component, example treated as rule, missing exception, overly general answer, contradiction or another named gap;
-4. the concrete business reason the precision is needed;
-5. the decision, PRD or issue currently blocked, or the risk created by a wrong assumption;
-6. one minimal, natural Romanian follow-up question;
-7. optional neutral examples only when they help understanding without steering the answer;
-8. a closure condition stating what a sufficient answer must establish.
-
-The package must make clear that the interviewer is completing only a material deferred remainder to move the project forward, not judging Iurie's existing answer or restarting the questionnaire.
-
-Distinguish evidence authority in every record:
-
-- `DIRECT_IURIE` — direct or faithfully paraphrased answer;
-- `AGENT_PROPOSAL_ACCEPTED` — the agent proposed a concrete formulation and Iurie explicitly accepted it;
-- `AGENT_INTERPRETATION` — analysis by the interviewer without Iurie's explicit acceptance; never a business requirement;
-- `DELEGATED_TO_DAN_AGENT` — Iurie delegated a product or technical decision; it remains undecided business behaviour until the responsible decision is documented.
-
-The interviewer may explain concepts, reformulate and ask for examples. Iurie remains the authority on business reality and desired application needs. Avoid redundant questions and do not ask Iurie to decide purely technical matters.
-
-### Lightweight coverage check
-
-When preparing each new question batch, start from the decision the batch must inform and the answers already acquired. Check only the material ambiguities needed for that decision; do not search for every theoretically possible ambiguity.
-
-If an official question is narrowed or split, record only:
+If an official question is narrowed or split, record:
 
 1. what was asked;
 2. what remains not asked or deferred;
-3. whether a follow-up is genuinely needed now.
+3. whether another follow-up is genuinely needed now.
 
-After a short answer or `Da` to a compound formulation, silently check the material components and ask at most one neutral follow-up when a currently necessary component is missing. At session end, briefly mark the relevant sub-parts `answered`, `deferred`, `not_applicable`, `delegated` or `unclear`. Do not mark the full ID resolved unless all material parts are answered or explicitly out of scope.
+After a short answer or `Da` to a compound formulation, check material components and ask at most one neutral follow-up when a currently necessary component is missing. Do not mark the whole official ID resolved unless all material components are answered or explicitly out of scope.
 
-This is a lightweight writing and review habit, not a new workflow, database or metric. Optimize for decision usefulness and minimal burden on Iurie.
+Optimize for decision usefulness and minimal burden on Iurie.
 
-## 13. Opening message to Iurie
+## 14. Opening message for a future authorized follow-up
 
-Use or adapt this message:
+Do not use this message until the `526–765` recovery attempt is closed and Dan has authorized a targeted completion package.
 
-> Bună ziua, Iurie. Voi parcurge împreună cu dumneavoastră întrebările despre cum trebuie să ajute aplicația activitatea PRISMA-PRIM, BIC și ECG. Nu trebuie să decideți baze de date, integrări, securitate sau alte soluții tehnice. Vă voi întreba ce se întâmplă în lucru, ce rezultat doriți, cine răspunde, ce excepții există și ce exemple sau documente pot confirma situația. Dacă nu știți un răspuns, îl notăm pentru persoana care îl poate verifica. Nu vă voi cere parole, chei, acces la conturi sau arhive confidențiale.
-
-Then ask Iurie whether Romanian is comfortable or whether Russian would be clearer. Start with `S00-Q01` unless an earlier answer or urgent topic gives a better entry point.
+> Bună ziua, Iurie. Avem deja majoritatea informațiilor pe care ni le-ați oferit și nu reluăm chestionarul. A rămas un singur punct concret care blochează o decizie de produs. Vă voi spune mai întâi ce am înțeles deja, apoi vă voi adresa o întrebare scurtă despre partea care lipsește. Nu trebuie să decideți soluția tehnică.
