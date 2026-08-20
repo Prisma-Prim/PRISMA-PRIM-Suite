@@ -1,13 +1,13 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — interview evidence received; representative cases pending
-**Version:** 0.2  
+**Status:** Draft — audited interview evidence received; representative cases pending  
+**Version:** 0.3  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
 ## 1. Problem statement
 
-The same real Client may work with PRISMA-PRIM, BIC and ECG, while commercial and operational activity must remain Company-scoped. Duplicating the Client per Company fragments identity; sharing every field exposes confidential relationships. One Client group may also contain several legal entities that receive different Offers, Contracts, invoices or credentials.
+The same real Client may work with PRISMA-PRIM, BIC and ECG, while commercial and operational activity must remain Company-scoped. Duplicating the Client per Company fragments identity; sharing every field exposes confidential relationships. One Client group may also contain several exact parties that receive different Offers, Contracts, invoices or credentials.
 
 ## 2. Release 1 outcome
 
@@ -36,7 +36,7 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 - search by initial business identifiers;
 - duplicate-candidate review without automatic merge;
 - authorized Client list and central overview;
-- critical Activity Log events.
+- critical Activity Log events owned by this capability.
 
 ## 5. Out of scope
 
@@ -66,6 +66,8 @@ The first slice requires only enough shared identity to recognize the Client and
 
 Separate permissions cover shared read/create/update, relationship update, archive and duplicate resolution. Legal-entity changes used by governed Documents require stronger correction/history behaviour.
 
+The exact field-level shared-versus-Company-confidential boundary is not yet approved. The product must therefore not infer broad cross-Company visibility from the existence of a shared Client Account.
+
 ## 9. UX states
 
 - empty Client list;
@@ -80,7 +82,7 @@ Separate permissions cover shared read/create/update, relationship update, archi
 
 ## 10. Activity Log
 
-Record Client creation, significant identity correction, relationship create/archive, Client archive/restore and governed duplicate disposition.
+Record Client creation, significant identity correction, relationship create/archive, Client archive/restore and governed duplicate disposition once the exact mutation and authorization rules are ready in this capability. Do not infer additional event families from raw interview examples.
 
 ## 11. Testing decisions
 
@@ -94,41 +96,39 @@ Record Client creation, significant identity correction, relationship create/arc
 
 A BIC user searches for an existing shared Client, adds a BIC relationship and sees only authorized activity. A PRISMA-PRIM user sees the same shared identity with separate activity. A new similar name produces a duplicate warning, not a merge. An authorized reviewer resolves the candidate and history remains attributable.
 
-## 13. Business evidence
+## 13. Business evidence after PR #111
 
-- shared versus Company-specific fields;
-- real multi-legal-entity examples;
-- representative branch and natural-person cases before their internal classification is specified;
-- identifiers used to recognize Clients;
-- duplicate-resolution authority;
-- permitted work before exact legal identity;
-- ten representative Clients and Client overview questions.
+The final audited evidence supports the following direction:
 
-Question sources: S00 and S02.
+- Iurie wants one general Client dossier shared across PRISMA-PRIM, BIC and ECG.
+- Operational activity remains separated by responsible Company.
+- Future ordinary Company users must not automatically see another Company's Contracts, money or other operational activity.
+- Authorized consolidated oversight is desired, but the exact metadata/categories visible across Companies and the exception authority remain incomplete.
+
+Still blocking ticket decomposition:
+
+- exact field-level shared-versus-Company-confidential Client inventory;
+- representative multi-legal-entity, branch and natural-person cases;
+- identifiers used to recognize representative Clients;
+- duplicate-resolution and significant shared-identity correction authority;
+- archive/correction practice for real representative Clients;
+- ten representative anonymized Client cases and the questions users must answer from the Client overview.
+
+The P0 cross-Company confidentiality completion package in the coverage matrix directly owns the most material unresolved visibility boundary after any recovered 526–765 evidence is reconciled.
+
+Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 14. Technical dependencies
 
 - Company/RBAC capability;
-- canonical Client vocabulary update;
+- canonical Client vocabulary;
 - matching normalization research without automatic authority;
 - duplicate-resolution and referential-history design.
 
 ## 15. Readiness
 
-Ticket decomposition is blocked on representative Client examples, field visibility and duplicate authority. The capability must follow Company/RBAC.
+Ticket decomposition remains blocked on representative Client examples, field visibility and duplicate authority. PR #111 narrows those blockers but does not make a Shared Client implementation child ready. The capability must follow a ready Company/RBAC slice.
 
-## 16. Interview evidence reconciliation (2026-08-16)
+## 16. Evidence authority boundary
 
-**Supported direction (field boundary still partial)**
-
-- Iurie wants one general Client dossier shared across the group.
-- Operational activity remains separated by responsible Company.
-- Authorized consolidated users need a group view without converting Company-owned work into shared ownership.
-
-**Still blocking**
-
-- The exact shared fields and Company-confidential fields remain partially resolved.
-- Representative multi-legal-entity, branch and natural-person cases, matching identifiers and duplicate-resolution authority remain absent.
-- No answer authorizes automatic duplicate merge or broad cross-Company activity disclosure.
-
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1, 3 and 12; [coverage matrix](iurie-business-answer-coverage.md). The existing archive, provenance, human duplicate-review and non-leakage rules remain unchanged.
+The coverage matrix and issue #81 preserve provenance and semantic completeness. They do not authorize automatic duplicate handling, broad cross-Company visibility or any runtime rule by themselves. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
