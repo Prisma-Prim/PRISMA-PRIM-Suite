@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Draft — interview evidence received; role and metric definitions pending
-**Version:** 0.2  
+**Status:** Draft — audited interview evidence received; role and metric definitions pending  
+**Version:** 0.3  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -101,17 +101,31 @@ Do not create compliance Activity Log events merely for viewing the dashboard. R
 
 An administrator creates the initial Company and role membership. An authorized user registers a shared Client, creates a pre-contract Project from an approved category, receives copied Tasks, completes a required Task with evidence, registers a governed Document and promotes its first Version as official. A manager enters through the operational home, sees an evidence-backed next action, drills into the Client overview and verifies the Project, Task and Document history. A restricted user sees neither the confidential Representation nor a leaking count. The journey remains usable at the supported mobile viewport and every mutation is attributable in the owning capability.
 
-## 13. Business evidence
+## 13. Business evidence after PR #111
 
-- initial roles and the first useful home view for each;
-- real decisions users make daily or weekly;
-- acceptable next-action rules and urgency meanings;
-- metric names, formulas, time basis and drill-down expectations;
-- representative empty and exception states;
-- mobile priority and minimum supported journey;
-- business acceptance participants and evidence.
+The final audited evidence supports these directions:
 
-Question sources: S00, S02 and S11.
+- Iurie wants Company-specific and authorized consolidated views;
+- the consolidated view should surface active Projects, overdue Tasks, money to collect, upcoming audits/trainings and urgent problems with Company attribution;
+- the daily operational view should emphasize actionable work and changes/near-term attention rather than vanity metrics;
+- mobile access and quick approvals are desired directions;
+- generic dedicated queues for matters requiring Iurie's decision, overdue risks and commercial exceptions are supported.
+
+Still blocking ticket decomposition:
+
+- first useful home actions for every initial role;
+- exact approval queue contents and delayed-work queue contents;
+- metric names actually used in practice, formulas, time basis, Company scope and drill-down definitions;
+- urgency thresholds and ordering rules;
+- complete reminder catalogue by Project type and any external reminder channels;
+- Romanian/Russian/English language matrix and organization-specific terminology;
+- representative empty/error states tied to real roles;
+- bulk actions, if any, that are genuinely needed in Release 1;
+- readiness of all upstream Release 1 capabilities.
+
+The coverage matrix's P0/P1 follow-up protocol applies: do not ask every partial dashboard question mechanically. Only material queue/action/metric gaps required for a concrete Release 1 decision should return to Iurie after any recovered 526–765 evidence is reconciled.
+
+Question sources: S00, S02 and S11. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 14. Technical dependencies
 
@@ -123,20 +137,8 @@ Question sources: S00, S02 and S11.
 
 ## 15. Readiness
 
-Ticket decomposition is blocked on initial roles, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. This PRD owns the final integrated acceptance slice; it does not make blocked upstream capabilities ready.
+Ticket decomposition remains blocked on initial role journeys, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. PR #111 narrows the evidence boundary but does not make this final integrated acceptance slice ready.
 
-## 16. Interview evidence reconciliation (2026-08-16)
+## 16. Evidence authority boundary
 
-**Confirmed evidence**
-
-- Iurie wants a daily operational view with immediate attention, changes since the previous day and upcoming work.
-- Company-specific and authorized consolidated views are both useful.
-- Dashboard items should lead to underlying records and actionable work; mobile access and quick approvals are desired directions.
-
-**Still blocking**
-
-- Metric formulas, time bases, urgency thresholds and the first role-specific journeys are not approved.
-- Voice, offline behaviour, forecasting and AI prioritization remain later capabilities unless separately specified.
-- Compound confirmations do not justify hidden ranking or automatic business decisions.
-
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 19 and 28–31; [coverage matrix](iurie-business-answer-coverage.md). This PRD remains blocked on upstream Release 1 readiness and testable metric/action definitions.
+Issue #81 and the coverage matrix preserve evidence and semantic coverage only. They do not authorize metric formulas, ranking, automatic prioritization or dashboard permissions by themselves. Future implementation issues must cite this PRD after the relevant product evidence has been normalized here.
