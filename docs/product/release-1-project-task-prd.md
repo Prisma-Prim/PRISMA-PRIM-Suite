@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Draft — interview evidence received; workflow examples pending
-**Version:** 0.2  
+**Status:** Draft — audited interview evidence received; workflow examples pending  
+**Version:** 0.3  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -39,7 +39,7 @@ Authorized users create a Company-owned Project for a shared Client, choose a bo
 - Task instances with Company scope, assignee, due date and completion;
 - required Task and evidence rules kept bounded;
 - Client/Project list and detail UI;
-- critical Activity Log events.
+- critical Activity Log events owned by this capability.
 
 ## 5. Out of scope
 
@@ -49,7 +49,7 @@ Authorized users create a Company-owned Project for a shared Client, choose a bo
 - time tracking and payroll;
 - Google Calendar synchronization;
 - assurance-specific audit execution;
-- commercial Project creation automation.
+- commercial Project creation automation unless separately specified.
 
 ## 6. Domain and lifecycle
 
@@ -88,7 +88,7 @@ Separate read, create, update, stage/lifecycle transition, Task assign/complete 
 
 ## 10. Activity Log
 
-Record Project creation, responsible-scope changes if ever allowed through governance, lifecycle transitions, significant stage transitions, assignment of sensitive Tasks, required Task completion/reopening and closure/cancellation.
+Record Project creation, responsible-scope changes if ever allowed through governance, lifecycle transitions, significant stage transitions, assignment of sensitive Tasks, required Task completion/reopening and closure/cancellation only after their exact owning rules are approved. Raw interview examples do not create event families by themselves.
 
 ## 11. Testing decisions
 
@@ -102,16 +102,32 @@ Record Project creation, responsible-scope changes if ever allowed through gover
 
 An authorized Company user opens a shared Client, creates a pre-contract Project from a real category, selects Standard Editions and receives copied Tasks. Assigned users complete required Tasks with evidence. A blocked stage transition explains the missing requirement. A later template change does not alter the active Project. Closure preserves attributable history.
 
-## 13. Business evidence
+## 13. Business evidence after PR #111
 
-- first-release Project categories;
-- meaning of Stage 1, Stage 2, S1 and S2;
-- lifecycle transitions and exceptions;
-- required Tasks, actors, dates and completion evidence;
-- representative pre-contract and multi-Standard Projects;
-- suspension/cancellation behaviour.
+The final audited evidence supports the following direction strongly enough to keep it in this PRD:
 
-Question source: S02.
+- a real job should be represented as its own Project with separate responsibility, status, deadlines and Documents;
+- Project Templates and copied Tasks are desired, and template versions must not rewrite historical Projects;
+- Task reminders/escalation examples are supported, but the complete reminder catalogue by Project type remains incomplete;
+- completion evidence and explicit responsibility are desired;
+- later sessions support controlled Project start, kickoff and start-dossier concepts, but they do not define a complete universal gate;
+- one interview statement suggests a precontract requirement before Project start, but this conflicts with approved DEC-026, which also permits preparation, migration, free/internal work and delayed-paperwork cases. That evidence remains subject to PRD arbitration and does not create an exclusive precontract rule.
+
+Still blocking ticket decomposition:
+
+- bounded first-release Project categories and one representative anonymized case per category;
+- representative Project Templates and exact required Tasks;
+- observable distinction between lifecycle status and category-specific workflow stage;
+- exact meaning/use of Stage 1, Stage 2, S1 and S2 in each relevant workflow;
+- actors, dates, dependencies and required completion evidence;
+- lifecycle exceptions, suspension/cancellation behaviour and unfinished-Task treatment;
+- exact start-dossier evidence sets and permitted exceptions;
+- pre-Contract arbitration consistent with DEC-026;
+- complete reminder catalogue by Project type.
+
+The P0 initial-Project-categories completion package in the coverage matrix is the current highest-priority business follow-up for this PRD after any recovered 526–765 evidence is reconciled.
+
+Question source: S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 14. Technical dependencies
 
@@ -122,24 +138,8 @@ Question source: S02.
 
 ## 15. Readiness
 
-Ticket decomposition is blocked on real Project categories, stage meanings, required Tasks and acceptance examples. It follows Company/RBAC and Shared Client.
+Ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. PR #111 narrows the evidence boundary but does not make an implementation child ready. This capability follows Company/RBAC and Shared Client.
 
-## 16. Interview evidence reconciliation (2026-08-16)
+## 16. Evidence authority boundary
 
-**Confirmed evidence**
-
-- A Project may exist before a signed Contract.
-- Iurie identified C as certification, S1/S2 as surveillance audits and R as recertification; this does not by itself define the general Project lifecycle/stage model.
-- Required Tasks, responsibility, dates, reminders, completion evidence and attributable changes are desired operational capabilities.
-- Project Template changes create new versions and do not rewrite existing Projects or copied Tasks.
-- Session 104 records Iurie's preference that activation without the configured start evidence require his approval; neither that authority nor the exact category-specific evidence set is normalized as a product rule yet.
-- A controlled kickoff is desired, and an initial Project summary should be generated after kickoff; the received evidence does not place kickoff before or after activation.
-
-**Still blocking**
-
-- The first Release 1 Project categories, representative templates and the observable distinction between lifecycle status and current workflow stage are not approved.
-- Permitted pre-contract actions, lifecycle exceptions, exact required Tasks and evidence gates remain incomplete.
-- Later agent-authored automation proposals do not independently approve every transition or escalation rule.
-- Sessions 103–104 do not select the first Release 1 categories, their exact start-evidence sets, or their required Task templates.
-
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 3–5, 13–14, 20, [103](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313726306) and [104](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313749302); [coverage matrix](iurie-business-answer-coverage.md). No new implementation child is ready solely from this evidence.
+Issue #81 and the coverage matrix preserve business evidence and semantic coverage. They do not authorize lifecycle transitions, automation, permissions or start gates by themselves. Any implementation issue must cite this PRD after the relevant evidence has been normalized here.
