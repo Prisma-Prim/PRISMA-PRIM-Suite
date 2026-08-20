@@ -1,7 +1,7 @@
 # PRD — Release 1 Company and RBAC
 
-**Status:** Draft — interview evidence received; permission matrix pending
-**Version:** 0.3  
+**Status:** Draft — audited interview evidence received; permission matrix pending  
+**Version:** 0.4  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD
 
@@ -94,14 +94,27 @@ A current owner configures PRISMA-PRIM, BIC and ECG, assigns one Workspace manag
 
 ## 13. Business evidence
 
-Required before ticketing first-tenant-dependent assignments and permission bundles beyond the approved Company Context Access slice:
+The final audited evidence inventory from PR #111 narrows the first-tenant boundary without completing it.
 
-- named users and responsibilities;
-- who needs group-wide oversight;
-- exact initial permission matrix;
-- deactivation and exceptional-access expectations.
+Confirmed enough to inform this PRD:
 
-Question source: S00 and S01.
+- Iurie requires authorized group-wide oversight across PRISMA-PRIM, BIC and ECG;
+- the current named actors are Iurie, Dan and Valentin;
+- Valentin's ordinary scope is technical maintenance;
+- Iurie accepted Dan's access to real Client, Contract and amount data when needed for development/intervention, but the authorization boundary for that exceptional support access is not defined;
+- ordinary future Company users must not automatically see another Company's operational activity;
+- Iurie is the principal approver for the examples discussed, but the complete approval/delegation set is not established.
+
+Still required before ticketing first-tenant-dependent assignments and permission bundles beyond the delivered Company Context Access slice:
+
+- exact first-tenant role/permission bundles;
+- exact cross-Company hidden categories, metadata visibility and exception authority;
+- authorization boundary for exceptional support access to real data;
+- restricted periods and per-category access rules;
+- complete approval/delegation and deactivation expectations;
+- final product treatment of `All Companies` beyond the already delivered Company-context mechanism.
+
+Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business-answer-coverage.md), final 104-comment audit.
 
 ## 14. Technical dependencies
 
@@ -112,28 +125,10 @@ Question source: S00 and S01.
 
 ## 15. Readiness
 
-The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). [#88 — narrow Company Context Access assignment](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) delivered the further approved business-independent slice: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That named Company-scoped permission bundle permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability. Every role assignment and permission bundle beyond Company Context Access, finalized templates, “All Companies,” consolidated oversight, broader deactivation rules, and exceptional access remain blocked on first-tenant evidence.
+The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). [#88 — narrow Company Context Access assignment](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) delivered the further approved business-independent slice: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That named Company-scoped permission bundle permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability.
 
-## 16. Interview evidence reconciliation (2026-08-16)
+PR #111 improves evidence precision but does not make any additional assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
 
-**Approved product decision (2026-08-16)**
+## 16. Evidence authority boundary
 
-- A Workspace Owner may grant or revoke one narrow Company Context Access Role Assignment for an existing active Workspace Membership.
-- The canonical Role Assignment mechanism grants the named `Company Context Access` bundle at Company scope. That bundle contains only `company.context.use`, allowing the member to list and select only that active Company after server revalidation; it grants no business-domain permission.
-- Grant and revocation are attributable Activity Log events. Default denial, Workspace isolation and metadata-safe failures remain mandatory.
-
-**Confirmed evidence**
-
-- Iurie requires group-wide oversight across PRISMA-PRIM, BIC and ECG.
-- The initial named actors are Iurie, Dan and Valentin.
-- Valentin's ordinary scope is technical maintenance; Iurie accepted Dan's access to real data when development or intervention requires it.
-- Future Company users must be restricted to the activity of their Company.
-- Iurie is the principal approver for the important-action examples asked in session 1; the complete approval set remains partial.
-
-**Still blocking**
-
-- The exact Company-selector and “All Companies” interaction was delegated to the interviewer and remains partial.
-- Exact first-tenant role bundles, the complete approval and audit-trail sets, approval delegation, deactivation behaviour and exceptional-access rules are not complete.
-- Compound confirmations do not yet constitute a testable permission matrix.
-
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 1–2; [coverage matrix](iurie-business-answer-coverage.md). These statements narrow the evidence blockers but do not authorize any assignment beyond the approved `Company Context Access` slice, any broader role matrix, or any consolidated-view implementation child.
+The interview coverage matrix maps provenance and semantic completeness. It is not an implementation authority. Any future implementation issue must cite this PRD after the relevant blocker has been normalized here; a raw comment, independently numbered item or matrix row is not sufficient behavioural authority on its own.
