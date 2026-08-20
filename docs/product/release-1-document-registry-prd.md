@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Draft — interview evidence received; representative practice pending
-**Version:** 0.2  
+**Status:** Draft — audited interview evidence received; representative practice pending  
+**Version:** 0.3  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -38,7 +38,7 @@ An authorized Company user registers a Document for a shared Client or Company-o
 - confidentiality classification and permission enforcement;
 - registration, list and detail UI;
 - correction and archive paths that preserve history;
-- critical Activity Log events.
+- critical Activity Log events owned by this capability.
 
 ## 5. Out of scope
 
@@ -90,7 +90,7 @@ Separate permission to read metadata, open/download a Representation, register a
 
 ## 10. Activity Log
 
-Record Document registration, Company/Client/Project relationship changes, confidentiality changes, Version creation, official promotion or supersession, governed metadata correction, Representation addition/replacement/inaccessibility and archival/restoration. Routine reads are excluded unless a later compliance policy explicitly requires them.
+Record Document registration, relationship changes, confidentiality changes, Version creation, official promotion/supersession, governed metadata correction, Representation addition/replacement/inaccessibility and archival/restoration only after the exact owning mutation and authorization rules are approved.
 
 ## 11. Testing decisions
 
@@ -104,17 +104,31 @@ Record Document registration, Company/Client/Project relationship changes, confi
 
 An authorized Company user opens a Project, registers a representative Document, records its type and confidentiality, and attaches a Representation. The user promotes the Version as official. A corrected file creates a second formal Version; the original remains visible and attributable. A user without confidential-content permission can see only the permitted metadata. If the provider link later fails, the governed Document and its history remain intact with a clear inaccessible state.
 
-## 13. Business evidence
+## 13. Business evidence after PR #111
 
-- representative Release 1 Document types and purposes;
-- which records require a current official Version;
-- draft-to-official authority and correction practice;
-- confidentiality classes and who may open content;
-- real examples of multiple files or formats representing one Version;
-- archive/restoration practice and required metadata;
-- whether initial Release 1 uses upload, external links or both.
+The final audited evidence supports these directions:
 
-Question source: S03.
+- received external originals must remain preserved;
+- official Documents require visible version history and may not be silently overwritten;
+- corrections after officialization require a new governed state/version and attributable history;
+- exact-Version approval/signature evidence is important;
+- Company separation, selected confidentiality examples, retention concerns and active-case holds are supported as direction.
+
+Still blocking ticket decomposition:
+
+- representative Release 1 Document families and purposes;
+- per-family responsibility matrix;
+- exact confidentiality classes and who may open content;
+- exact draft-to-official/promotion/correction authority;
+- exact retention schedule and archive/restoration rules;
+- reusable-evidence rules and file-format policy;
+- whether Release 1 uses upload, external links or both;
+- exact sending/receipt evidence where it matters;
+- official numbering lifecycle: when numbers are assigned, what happens to reserved/unused/abandoned numbers, reuse policy and required history.
+
+The P1 official-numbering completion package in the coverage matrix is the current prioritized follow-up for numbering after any recovered 526–765 evidence is reconciled.
+
+Question source: S03. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 14. Technical dependencies
 
@@ -126,21 +140,8 @@ Question source: S03.
 
 ## 15. Readiness
 
-Ticket decomposition is blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. It follows Company/RBAC, Shared Client and the minimum Project relationship.
+Ticket decomposition remains blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. PR #111 narrows the evidence boundary but does not make a Document Registry implementation child ready.
 
-## 16. Interview evidence reconciliation (2026-08-16)
+## 16. Evidence authority boundary
 
-**Confirmed evidence**
-
-- Received external originals must remain preserved.
-- Official Documents require visible version history and may not be silently overwritten.
-- Corrections after officialization require a new governed state/version and attributable history.
-- The system must preserve attributable evidence of approval or signature for the exact Version; sending and receipt evidence remain partially defined.
-
-**Still blocking**
-
-- Representative Release 1 Document families and confidentiality classes are not selected.
-- Exact draft-to-official authority, retention/archive rules and initial upload-versus-link mechanism remain incomplete.
-- A general “yes” to automation does not authorize automatic legal, signature or deletion behaviour.
-
-Provenance: [issue #81](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81), sessions 6–7 and 35–36; [coverage matrix](iurie-business-answer-coverage.md). The provider-independent Document/Version/Representation model remains the canonical boundary.
+Issue #81 and the coverage matrix preserve evidence and semantic coverage only. They do not authorize numbering, legal/signature behaviour, promotion authority or storage mechanisms by themselves. Future implementation issues must cite this PRD after the relevant blocker is normalized here.
