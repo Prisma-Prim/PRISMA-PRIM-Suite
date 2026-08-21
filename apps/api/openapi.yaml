@@ -98,7 +98,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CompanyRecord'
         '400':
-          description: The Company display name or idempotency key is blank or missing.
+          description: The Company display name or idempotency key is blank or missing, or the idempotency key was already used for a different registration command.
         '401':
           description: No verified External Principal is available.
         '403':
