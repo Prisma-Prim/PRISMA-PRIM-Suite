@@ -58,6 +58,11 @@ export class CompanyService {
             )
             .limit(1)
         )[0];
+      if (!company)
+        throw new Error(
+          'The idempotent Company command could not be resolved.',
+        );
+      if (!inserted) assertSameRegistrationCommand(company, displayName);
       if (inserted) {
         await this.accountability.record({
           actor,
@@ -128,6 +133,17 @@ function requireIdempotencyKey(value: string | undefined): string {
     throw new BadRequestException('Idempotency-Key header is required.');
   }
   return value.trim();
+}
+
+function assertSameRegistrationCommand(
+  company: typeof companies.$inferSelect,
+  displayName: string,
+): void {
+  if (company.displayName !== displayName) {
+    throw new BadRequestException(
+      'Idempotency-Key was already used for another command.',
+    );
+  }
 }
 
 function toCompanyRecord(
