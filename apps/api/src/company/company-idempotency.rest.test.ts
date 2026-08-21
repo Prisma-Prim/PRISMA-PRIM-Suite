@@ -27,7 +27,8 @@ describeWithPostgres('Company registration idempotency REST API', () => {
     process.env.ACCESS_IDENTITY_MODE = 'test';
     process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
     process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'workspace-owner';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY = 'company-idempotency-workspace';
+    process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY =
+      'company-idempotency-workspace';
     process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME =
       'Company Idempotency Workspace';
     process.env.ACCESS_ACCEPTED_INVITATIONS_JSON = '[]';
