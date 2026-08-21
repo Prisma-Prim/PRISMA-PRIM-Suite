@@ -1,21 +1,19 @@
 import type { INestApplication } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Test } from '@nestjs/testing';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Client, Pool } from 'pg';
+import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
 import {
-  cleanupIsolatedTargetDatabase,
-  runPreviousSchemaTestLifecycle,
-  waitForPostgresCallbackOrAbort,
-  waitForTargetDatabaseConnectionsToClose,
-} from './previous-schema-test-lifecycle.js';
+  createIsolatedPostgresTestDatabase,
+  type IsolatedPostgresTestDatabase,
+} from './isolated-postgres-test-database.js';
+import { runPreviousSchemaTestLifecycle } from './previous-schema-test-lifecycle.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -27,23 +25,19 @@ describeWithPostgres('previous schema migration preflight', () => {
   it(
     'starts the current application after migrating the immediately previous committed schema',
     async () => {
-      const databaseName = `prisma_prim_previous_${randomUUID().replaceAll('-', '')}_test`;
-      let administrationPool: Pool | undefined;
+      let isolatedDatabase: IsolatedPostgresTestDatabase | undefined;
       let migrationPool: Pool | undefined;
       let applicationPool: Pool | undefined;
       let application: INestApplication | undefined;
-      let targetDatabaseCreated = false;
       let previousMigrationsDirectory: string | undefined;
 
       await runPreviousSchemaTestLifecycle(async () => {
-        administrationPool = new Pool({ connectionString: databaseUrl });
-        targetDatabaseCreated = true;
-        await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
-
-        const target = new URL(databaseUrl!);
-        target.pathname = `/${databaseName}`;
-        const targetUrl = target.toString();
-        migrationPool = new Pool({ connectionString: targetUrl });
+        isolatedDatabase = await createIsolatedPostgresTestDatabase({
+          baseDatabaseUrl: databaseUrl!,
+          namePrefix: 'prisma_prim_previous',
+        });
+        migrationPool = isolatedDatabase.targetPool;
+        const targetUrl = isolatedDatabase.targetUrl;
 
         const migrationsDirectory = resolve('drizzle');
         const journal = JSON.parse(
@@ -112,89 +106,9 @@ describeWithPostgres('previous schema migration preflight', () => {
           },
         },
         {
-          name: 'migration database pool',
-          cleanup: async () => {
-            await migrationPool?.end();
-          },
-        },
-        {
           name: 'isolated target database',
           cleanup: async () => {
-            if (!administrationPool || !targetDatabaseCreated) return;
-            await cleanupIsolatedTargetDatabase({
-              waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose(
-                  async (remainingMs, signal) => {
-                    const boundedQueryMs = Math.max(1, Math.floor(remainingMs));
-                    const diagnosticClient = new Client({
-                      connectionString: databaseUrl,
-                      connectionTimeoutMillis: boundedQueryMs,
-                      query_timeout: boundedQueryMs,
-                      statement_timeout: boundedQueryMs,
-                    });
-                    let closePromise: Promise<void> | undefined;
-                    const closeDiagnosticClient = () => {
-                      closePromise ??= diagnosticClient.end();
-                      return closePromise;
-                    };
-                    const closeOnAbort = () => {
-                      void closeDiagnosticClient().catch(() => undefined);
-                    };
-                    signal.addEventListener('abort', closeOnAbort, {
-                      once: true,
-                    });
-                    try {
-                      await waitForPostgresCallbackOrAbort<undefined>(
-                        signal,
-                        (complete) => {
-                          diagnosticClient.connect(
-                            (error: Error | undefined) => {
-                              if (error) complete({ ok: false, error });
-                              else complete({ ok: true, value: undefined });
-                            },
-                          );
-                        },
-                      );
-                      const result = await waitForPostgresCallbackOrAbort<{
-                        readonly rows: readonly {
-                          readonly connectionCount: number;
-                        }[];
-                      }>(signal, (complete) => {
-                        diagnosticClient.query<{
-                          connectionCount: number;
-                        }>(
-                          `SELECT count(*)::integer AS "connectionCount"
-                             FROM pg_stat_activity
-                             WHERE datname = $1`,
-                          [databaseName],
-                          (error, queryResult) => {
-                            if (error) complete({ ok: false, error });
-                            else complete({ ok: true, value: queryResult });
-                          },
-                        );
-                      });
-                      return result.rows[0]?.connectionCount ?? 0;
-                    } finally {
-                      signal.removeEventListener('abort', closeOnAbort);
-                      await closeDiagnosticClient();
-                    }
-                  },
-                ),
-              dropDatabase: async (force) => {
-                await administrationPool!.query(
-                  `DROP DATABASE IF EXISTS "${databaseName}"${
-                    force ? ' WITH (FORCE)' : ''
-                  }`,
-                );
-                targetDatabaseCreated = false;
-              },
-            });
-          },
-        },
-        {
-          name: 'administration database pool',
-          cleanup: async () => {
-            await administrationPool?.end();
+            await isolatedDatabase?.close();
           },
         },
         {

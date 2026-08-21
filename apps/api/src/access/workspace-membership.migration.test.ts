@@ -12,7 +12,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
-import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
+import {
+  createIsolatedPostgresTestDatabase,
+  type IsolatedPostgresTestDatabase,
+} from '../database/isolated-postgres-test-database.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
@@ -20,7 +23,6 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
     'TEST_DATABASE_URL is required for the destructive Workspace Membership migration suite.',
   );
 }
-if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 const LEGACY_POOL = Symbol('LEGACY_POOL');
@@ -83,26 +85,21 @@ class LegacyActivityLogController {
 }
 
 describeWithPostgres('Workspace Membership migration', () => {
-  const databaseName = `prisma_prim_membership_${randomUUID().replaceAll('-', '')}_test`;
-  let administrationPool: Pool;
+  let isolatedDatabase: IsolatedPostgresTestDatabase;
   let migrationPool: Pool;
   let targetUrl: string;
 
   beforeAll(async () => {
-    administrationPool = new Pool({ connectionString: databaseUrl });
-    await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
-    const target = new URL(databaseUrl!);
-    target.pathname = `/${databaseName}`;
-    targetUrl = target.toString();
-    migrationPool = new Pool({ connectionString: targetUrl });
+    isolatedDatabase = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl!,
+      namePrefix: 'prisma_prim_membership',
+    });
+    migrationPool = isolatedDatabase.targetPool;
+    targetUrl = isolatedDatabase.targetUrl;
   });
 
   afterAll(async () => {
-    await migrationPool?.end();
-    await administrationPool?.query(
-      `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
-    );
-    await administrationPool?.end();
+    await isolatedDatabase?.close();
   });
 
   it('keeps legacy and current Access and Activity Log routes compatible through expand/backfill', async () => {
@@ -361,8 +358,7 @@ describeWithPostgres('Workspace Membership migration', () => {
     );
     await migrationPool.query(
       `INSERT INTO internal_users (
-         id, workspace_id, external_provider, external_subject,
-         display_name, email
+         id, workspace_id, external_provider, external_subject, display_name, email
        ) VALUES ($1, $2, 'deterministic-test', 'migrated-subject',
          'Migrated User', 'migrated@example.test')`,
       [ids.internalUserId, ids.workspaceId],
