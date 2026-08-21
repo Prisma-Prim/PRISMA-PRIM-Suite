@@ -151,19 +151,28 @@ async function countTargetDatabaseConnections(
   const closeOnAbort = () => {
     void closeDiagnosticClient().catch(() => undefined);
   };
-  signal.addEventListener('abort', closeOnAbort, { once: true });
+  signal.addEventListener('abort', closeOnAbort, {
+    once: true,
+  });
 
   try {
-    await waitForPostgresCallbackOrAbort<undefined>(signal, (complete) => {
-      diagnosticClient.connect((error: Error | undefined) => {
-        if (error) complete({ ok: false, error });
-        else complete({ ok: true, value: undefined });
-      });
-    });
+    await waitForPostgresCallbackOrAbort<undefined>(
+      signal,
+      (complete) => {
+        diagnosticClient.connect((error: Error | undefined) => {
+          if (error) complete({ ok: false, error });
+          else complete({ ok: true, value: undefined });
+        });
+      },
+    );
     const result = await waitForPostgresCallbackOrAbort<{
-      readonly rows: readonly { readonly connectionCount: number }[];
+      readonly rows: readonly {
+        readonly connectionCount: number;
+      }[];
     }>(signal, (complete) => {
-      diagnosticClient.query<{ connectionCount: number }>(
+      diagnosticClient.query<{
+        connectionCount: number;
+      }>(
         `SELECT count(*)::integer AS "connectionCount"
          FROM pg_stat_activity
          WHERE datname = $1`,
