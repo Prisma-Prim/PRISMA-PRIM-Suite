@@ -27,7 +27,7 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md) | Non-canonical source comparison, implementation evidence and unresolved conflicts |
 
-The current fixed Iurie evidence boundary is the 104-comment snapshot audited by PR #111. Any recovered independently numbered material `526–765` must enter through the prepared [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112); #112 remains blocked until addressable source evidence exists and does not itself authorize PRD or implementation changes.
+Use the [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) to route any recovered independently numbered `526–765` material into the next audited evidence boundary. The tracker owns its live state; the coverage matrix and versioned evidence artifacts own published audit results.
 
 ## 4. Cross-cutting PRDs
 
