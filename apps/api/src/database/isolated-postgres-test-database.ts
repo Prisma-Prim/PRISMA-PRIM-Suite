@@ -31,8 +31,8 @@ export async function createIsolatedPostgresTestDatabase({
   let targetDatabaseCreated = false;
 
   try {
-    await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
     targetDatabaseCreated = true;
+    await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
     const target = new URL(baseDatabaseUrl);
     target.pathname = `/${databaseName}`;
     const targetUrl = target.toString();
