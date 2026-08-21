@@ -2,7 +2,14 @@ import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from '../database/database.constants.js';
 import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
@@ -28,7 +35,8 @@ describeWithPostgres('Company registration idempotency REST API', () => {
     process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
     process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'workspace-owner';
     process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY = 'company-idempotency-workspace';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME = 'Company Idempotency Workspace';
+    process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME =
+      'Company Idempotency Workspace';
     process.env.ACCESS_ACCEPTED_INVITATIONS_JSON = '[]';
     process.env.DATABASE_URL = databaseUrl;
 
@@ -59,61 +67,64 @@ describeWithPostgres('Company registration idempotency REST API', () => {
     await applicationPool?.end();
   });
 
-  it('replays the same registration command but rejects a different command using the same key', async () => {
-    const idempotencyKey = 'register-command-equivalence';
-    const firstResponse = await registerCompany({
-      idempotencyKey,
-      displayName: '  Atlas Assurance  ',
-    });
-    const firstCompany = await firstResponse.json();
+  it(
+    'replays the same registration command but rejects a different command using the same key',
+    async () => {
+      const idempotencyKey = 'register-command-equivalence';
+      const firstResponse = await registerCompany({
+        idempotencyKey,
+        displayName: '  Atlas Assurance  ',
+      });
+      const firstCompany = await firstResponse.json();
 
-    expect(firstResponse.status).toBe(201);
-    expect(firstCompany).toMatchObject({
-      displayName: 'Atlas Assurance',
-      status: 'active',
-    });
+      expect(firstResponse.status).toBe(201);
+      expect(firstCompany).toMatchObject({
+        displayName: 'Atlas Assurance',
+        status: 'active',
+      });
 
-    const replayResponse = await registerCompany({
-      idempotencyKey,
-      displayName: 'Atlas Assurance',
-    });
-    expect(replayResponse.status).toBe(201);
-    await expect(replayResponse.json()).resolves.toEqual(firstCompany);
+      const replayResponse = await registerCompany({
+        idempotencyKey,
+        displayName: 'Atlas Assurance',
+      });
+      expect(replayResponse.status).toBe(201);
+      await expect(replayResponse.json()).resolves.toEqual(firstCompany);
 
-    const mismatchResponse = await registerCompany({
-      idempotencyKey,
-      displayName: 'Different Provider',
-    });
-    expect(mismatchResponse.status).toBe(400);
-    await expect(mismatchResponse.json()).resolves.toEqual({
-      message: 'Idempotency-Key was already used for another command.',
-      error: 'Bad Request',
-      statusCode: 400,
-    });
+      const mismatchResponse = await registerCompany({
+        idempotencyKey,
+        displayName: 'Different Provider',
+      });
+      expect(mismatchResponse.status).toBe(400);
+      await expect(mismatchResponse.json()).resolves.toEqual({
+        message: 'Idempotency-Key was already used for another command.',
+        error: 'Bad Request',
+        statusCode: 400,
+      });
 
-    const companies = await pool.query<{
-      display_name: string;
-      registration_idempotency_key: string;
-    }>(
-      `SELECT display_name, registration_idempotency_key
-       FROM companies
-       WHERE registration_idempotency_key = $1`,
-      [idempotencyKey],
-    );
-    expect(companies.rows).toEqual([
-      {
-        display_name: 'Atlas Assurance',
-        registration_idempotency_key: idempotencyKey,
-      },
-    ]);
+      const companies = await pool.query<{
+        display_name: string;
+        registration_idempotency_key: string;
+      }>(
+        `SELECT display_name, registration_idempotency_key
+         FROM companies
+         WHERE registration_idempotency_key = $1`,
+        [idempotencyKey],
+      );
+      expect(companies.rows).toEqual([
+        {
+          display_name: 'Atlas Assurance',
+          registration_idempotency_key: idempotencyKey,
+        },
+      ]);
 
-    const events = await pool.query<{ count: string }>(
-      `SELECT count(*)::text AS count
-       FROM activity_log_events
-       WHERE action = 'company.registered'`,
-    );
-    expect(events.rows[0]?.count).toBe('1');
-  });
+      const events = await pool.query<{ count: string }>(
+        `SELECT count(*)::text AS count
+         FROM activity_log_events
+         WHERE action = 'company.registered'`,
+      );
+      expect(events.rows[0]?.count).toBe('1');
+    },
+  );
 
   function registerCompany(input: {
     idempotencyKey: string;
