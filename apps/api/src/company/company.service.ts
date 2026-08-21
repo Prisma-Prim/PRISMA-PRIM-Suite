@@ -59,7 +59,9 @@ export class CompanyService {
             .limit(1)
         )[0];
       if (!company)
-        throw new Error('The idempotent Company command could not be resolved.');
+        throw new Error(
+          'The idempotent Company command could not be resolved.',
+        );
       if (!inserted) assertSameRegistrationCommand(company, displayName);
       if (inserted) {
         await this.accountability.record({
