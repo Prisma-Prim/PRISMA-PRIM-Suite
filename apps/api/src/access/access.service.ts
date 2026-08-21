@@ -23,8 +23,7 @@ import {
   type AccessAdmission,
   type AccessAdmissionDecision,
 } from './access-admission.js';
-import { CompanyPermissionResolver } from './company-permission-resolver.js';
-import { COMPANY_CONTEXT_USE_PERMISSION } from './company-permissions.js';
+import { CompanyContextAuthorization } from './company-context-authorization.js';
 
 const bootstrapWorkspacePermissions = [
   'company.manage',
@@ -40,7 +39,7 @@ export class AccessService {
     private readonly admission: AccessAdmission,
     @Inject(ACTIVE_COMPANY_CONTEXT_LOOKUP)
     private readonly activeCompanyContexts: ActiveCompanyContextLookup,
-    private readonly companyPermissions: CompanyPermissionResolver,
+    private readonly companyContextAuthorization: CompanyContextAuthorization,
   ) {}
 
   async resolveActor(
@@ -164,13 +163,10 @@ export class AccessService {
 
       if (requestedCompanyId !== undefined) {
         const canUseCompany =
-          actor.workspacePermissions.includes('company.manage') ||
-          (await this.companyPermissions.has(
-            actor.workspaceId,
-            actor.workspaceMembershipId,
+          await this.companyContextAuthorization.hasCompanyContextAuthority(
+            actor,
             requestedCompanyId,
-            COMPANY_CONTEXT_USE_PERMISSION,
-          ));
+          );
         if (!canUseCompany) throw new ForbiddenException();
         const activeCompany = await this.activeCompanyContexts.findActive(
           actor.workspaceId,
