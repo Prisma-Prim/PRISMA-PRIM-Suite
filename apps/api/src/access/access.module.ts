@@ -5,12 +5,12 @@ import {
   ACCESS_ADMISSION,
   configuredAccessAdmission,
 } from './access-admission.js';
-import { CompanyPermissionResolver } from './company-permission-resolver.js';
+import { CompanyContextAuthorization } from './company-context-authorization.js';
 
 @Module({
   imports: [DatabaseModule],
   providers: [
-    CompanyPermissionResolver,
+    CompanyContextAuthorization,
     {
       provide: ACCESS_ADMISSION,
       inject: [ConfigService],
@@ -34,6 +34,6 @@ import { CompanyPermissionResolver } from './company-permission-resolver.js';
         }),
     },
   ],
-  exports: [ACCESS_ADMISSION, CompanyPermissionResolver],
+  exports: [ACCESS_ADMISSION, CompanyContextAuthorization],
 })
 export class AccessModule {}
