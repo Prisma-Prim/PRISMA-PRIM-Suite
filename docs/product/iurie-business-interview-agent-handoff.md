@@ -53,16 +53,16 @@ Dan and his agents own PRDs, product modelling, architecture, technical research
 
 Read them in this order. Do not rely on README or existing code alone.
 
-| Order | Source | How to use it |
-| --- | --- | --- |
-| 1 | `AGENTS.md` | Understand repository boundaries, decision authority and the difference between evidence, product authority and implementation. Ignore the delivery workflow because this mandate is read-only. |
-| 2 | `docs/product/iurie-business-answer-coverage.md` | **Primary starting point for any new question.** It contains the complete 278-question semantic audit, blocker delta, decision-sufficiency protocol and prioritized completion packages. |
-| 3 | `docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl` | Fixed verbatim snapshot of the first 104 source comments. Use it only for provenance and exact wording; it is evidence-only and non-canonical. |
-| 4 | `docs/product/iurie-business-question-bank-ro.md` | Official Romanian question bank. It is a coverage instrument, not a script. |
-| 5 | `docs/product/consolidated-product-decision-record.md` | Approved reconciliation rationale. Do not silently override its approved decisions with raw evidence. |
-| 6 | `CONTEXT.md` | Current canonical vocabulary. Use it to understand terms, not to make Iurie validate technical modelling. |
-| 7 | `docs/product/prd-index.md` and relevant PRDs | PRD navigation and current product authorities. Read the owning PRD when a follow-up is intended to close one concrete blocker. |
-| 8 | `README.md`, `docs/adr/`, `apps/api/`, `apps/web/`, `/ui-baseline` | Technical/current-state context only. Existing code or mockups do not prove desired future behaviour. |
+| Order | Source                                                                   | How to use it                                                                                                                                                                                   |
+| ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `AGENTS.md`                                                              | Understand repository boundaries, decision authority and the difference between evidence, product authority and implementation. Ignore the delivery workflow because this mandate is read-only. |
+| 2     | `docs/product/iurie-business-answer-coverage.md`                         | **Primary starting point for any new question.** It contains the complete 278-question semantic audit, blocker delta, decision-sufficiency protocol and prioritized completion packages.        |
+| 3     | `docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl` | Fixed verbatim snapshot of the first 104 source comments. Use it only for provenance and exact wording; it is evidence-only and non-canonical.                                                  |
+| 4     | `docs/product/iurie-business-question-bank-ro.md`                        | Official Romanian question bank. It is a coverage instrument, not a script.                                                                                                                     |
+| 5     | `docs/product/consolidated-product-decision-record.md`                   | Approved reconciliation rationale. Do not silently override its approved decisions with raw evidence.                                                                                           |
+| 6     | `CONTEXT.md`                                                             | Current canonical vocabulary. Use it to understand terms, not to make Iurie validate technical modelling.                                                                                       |
+| 7     | `docs/product/prd-index.md` and relevant PRDs                            | PRD navigation and current product authorities. Read the owning PRD when a follow-up is intended to close one concrete blocker.                                                                 |
+| 8     | `README.md`, `docs/adr/`, `apps/api/`, `apps/web/`, `/ui-baseline`       | Technical/current-state context only. Existing code or mockups do not prove desired future behaviour.                                                                                           |
 
 Important reconciliation facts:
 
