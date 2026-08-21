@@ -1,10 +1,9 @@
-import { type INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppModule } from '../app.module.js';
-import { DATABASE } from '../database/database.constants.js';
+import {
+  createPostgresRestTestHarness,
+  type PostgresRestTestHarness,
+} from '../database/postgres-rest-test-harness.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
@@ -12,70 +11,46 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
     'TEST_DATABASE_URL is required for the destructive PostgreSQL Access REST suite.',
   );
 }
-if (databaseUrl) {
-  const databaseTarget = new URL(databaseUrl);
-  const localHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
-  const databaseName = decodeURIComponent(databaseTarget.pathname.slice(1));
-  const isSafeTestTarget =
-    new Set(['postgres:', 'postgresql:']).has(databaseTarget.protocol) &&
-    !databaseTarget.search &&
-    !databaseTarget.hash &&
-    localHosts.has(databaseTarget.hostname) &&
-    databaseName.endsWith('_test');
-
-  if (!isSafeTestTarget) {
-    throw new Error(
-      'TEST_DATABASE_URL must identify a local database whose name ends with "_test", without connection-target overrides.',
-    );
-  }
-}
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 describeWithPostgres('Access REST API', () => {
-  let app: INestApplication;
+  let harness: PostgresRestTestHarness;
   let origin: string;
   let pool: Pool;
-  let applicationPool: Pool;
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.ACCESS_IDENTITY_MODE = 'test';
-    process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
-    process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'subject-20';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY = 'pilot-workspace';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME = 'PRISMA Workspace';
-    process.env.ACCESS_ACCEPTED_INVITATIONS_JSON = JSON.stringify([
-      {
-        provider: 'deterministic-test',
-        subject: 'invited-subject',
-        workspaceKey: 'pilot-workspace',
+    if (!databaseUrl) {
+      throw new Error('TEST_DATABASE_URL is required to start this suite.');
+    }
+    harness = await createPostgresRestTestHarness({
+      databaseUrl,
+      environment: {
+        NODE_ENV: 'test',
+        ACCESS_IDENTITY_MODE: 'test',
+        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
+        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'subject-20',
+        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'pilot-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'PRISMA Workspace',
+        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'invited-subject',
+            workspaceKey: 'pilot-workspace',
+          },
+          {
+            provider: 'deterministic-test',
+            subject: 'invited-to-missing-workspace',
+            workspaceKey: 'missing-workspace',
+          },
+          {
+            provider: 'deterministic-test',
+            subject: 'invited-existing-subject',
+            workspaceKey: 'invitation-target-workspace',
+          },
+        ]),
       },
-      {
-        provider: 'deterministic-test',
-        subject: 'invited-to-missing-workspace',
-        workspaceKey: 'missing-workspace',
-      },
-      {
-        provider: 'deterministic-test',
-        subject: 'invited-existing-subject',
-        workspaceKey: 'invitation-target-workspace',
-      },
-    ]);
-    process.env.DATABASE_URL = databaseUrl;
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api');
-    await app.init();
-    await app.listen(0, '127.0.0.1');
-    origin = await app.getUrl();
-
-    const database = app.get(DATABASE);
-    applicationPool = database.$client;
-    await migrate(database, { migrationsFolder: './drizzle' });
-    pool = new Pool({ connectionString: databaseUrl });
+    });
+    ({ origin, pool } = harness);
   });
 
   beforeEach(async () => {
@@ -87,9 +62,7 @@ describeWithPostgres('Access REST API', () => {
   });
 
   afterAll(async () => {
-    await pool?.end();
-    await app?.close();
-    await applicationPool?.end();
+    await harness?.close();
   });
 
   function identityHeaders(

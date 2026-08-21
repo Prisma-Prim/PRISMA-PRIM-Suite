@@ -1,51 +1,42 @@
-import { type INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppModule } from '../app.module.js';
-import { DATABASE } from '../database/database.constants.js';
-import { assertLocalTestDatabaseUrl } from '../database/test-database-target.js';
+import {
+  createPostgresRestTestHarness,
+  type PostgresRestTestHarness,
+} from '../database/postgres-rest-test-harness.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 
 describeWithPostgres('Company Context Access assignments REST API', () => {
-  let app: INestApplication;
+  let harness: PostgresRestTestHarness;
   let origin: string;
   let pool: Pool;
-  let applicationPool: Pool;
   let commandSequence = 0;
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.ACCESS_IDENTITY_MODE = 'test';
-    process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
-    process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'workspace-owner';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY = 'assignment-workspace';
-    process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME = 'Assignment Workspace';
-    process.env.ACCESS_ACCEPTED_INVITATIONS_JSON = JSON.stringify([
-      {
-        provider: 'deterministic-test',
-        subject: 'workspace-member',
-        workspaceKey: 'assignment-workspace',
+    if (!databaseUrl) {
+      throw new Error('TEST_DATABASE_URL is required to start this suite.');
+    }
+    harness = await createPostgresRestTestHarness({
+      databaseUrl,
+      environment: {
+        NODE_ENV: 'test',
+        ACCESS_IDENTITY_MODE: 'test',
+        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
+        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
+        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'assignment-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Assignment Workspace',
+        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'workspace-member',
+            workspaceKey: 'assignment-workspace',
+          },
+        ]),
       },
-    ]);
-    process.env.DATABASE_URL = databaseUrl;
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api');
-    await app.init();
-    await app.listen(0, '127.0.0.1');
-    origin = await app.getUrl();
-    const database = app.get(DATABASE);
-    applicationPool = database.$client;
-    await migrate(database, { migrationsFolder: './drizzle' });
-    pool = new Pool({ connectionString: databaseUrl });
+    });
+    ({ origin, pool } = harness);
   });
 
   beforeEach(async () => {
@@ -55,9 +46,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
   });
 
   afterAll(async () => {
-    await pool?.end();
-    await app?.close();
-    await applicationPool?.end();
+    await harness?.close();
   });
 
   it('grants and revokes only the fixed Company Context Access assignment', async () => {
