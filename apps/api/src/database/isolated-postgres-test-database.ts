@@ -61,14 +61,13 @@ export async function createIsolatedPostgresTestDatabase({
             if (!targetDatabaseCreated) return;
             await cleanupIsolatedTargetDatabase({
               waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose(
-                  (remainingMs, signal) =>
-                    countTargetDatabaseConnections(
-                      baseDatabaseUrl,
-                      databaseName,
-                      remainingMs,
-                      signal,
-                    ),
+                waitForTargetDatabaseConnectionsToClose((remainingMs, signal) =>
+                  countTargetDatabaseConnections(
+                    baseDatabaseUrl,
+                    databaseName,
+                    remainingMs,
+                    signal,
+                  ),
                 ),
               dropDatabase: async (force) => {
                 await administrationPool.query(
@@ -156,15 +155,12 @@ async function countTargetDatabaseConnections(
   });
 
   try {
-    await waitForPostgresCallbackOrAbort<undefined>(
-      signal,
-      (complete) => {
-        diagnosticClient.connect((error: Error | undefined) => {
-          if (error) complete({ ok: false, error });
-          else complete({ ok: true, value: undefined });
-        });
-      },
-    );
+    await waitForPostgresCallbackOrAbort<undefined>(signal, (complete) => {
+      diagnosticClient.connect((error: Error | undefined) => {
+        if (error) complete({ ok: false, error });
+        else complete({ ok: true, value: undefined });
+      });
+    });
     const result = await waitForPostgresCallbackOrAbort<{
       readonly rows: readonly {
         readonly connectionCount: number;
