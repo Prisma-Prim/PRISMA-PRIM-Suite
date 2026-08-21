@@ -92,11 +92,10 @@ describe('PostgreSQL REST test harness', () => {
     expect(boundaries.Pool).toHaveBeenCalledWith({
       connectionString: databaseUrl,
     });
-    expect(harness).toMatchObject({
-      app: boundaries.app,
-      database: boundaries.database,
+    expect(harness).toEqual({
       origin: 'http://127.0.0.1:4321',
       pool: boundaries.rawPool,
+      close: expect.any(Function),
     });
 
     await harness.close();

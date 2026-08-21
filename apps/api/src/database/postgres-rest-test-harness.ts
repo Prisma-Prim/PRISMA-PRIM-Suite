@@ -1,4 +1,3 @@
-import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -7,15 +6,13 @@ import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
-export type PostgresRestTestDatabase = NodePgDatabase & {
+type PostgresRestTestDatabase = NodePgDatabase & {
   readonly $client: Pool;
 };
 
 export interface PostgresRestTestHarness {
-  readonly app: INestApplication;
   readonly origin: string;
   readonly pool: Pool;
-  readonly database: PostgresRestTestDatabase;
   close(): Promise<void>;
 }
 
@@ -58,10 +55,8 @@ export async function createPostgresRestTestHarness({
     let closed = false;
 
     return {
-      app,
       origin,
       pool,
-      database,
       async close() {
         if (closed) return;
         closed = true;
