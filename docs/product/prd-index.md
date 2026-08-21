@@ -27,6 +27,8 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md) | Non-canonical source comparison, implementation evidence and unresolved conflicts |
 
+Use the [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) to route any recovered independently numbered `526–765` material into the next audited evidence boundary. The tracker owns its live state; the coverage matrix and versioned evidence artifacts own published audit results.
+
 ## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | Document status | Primary authority                                                         |
