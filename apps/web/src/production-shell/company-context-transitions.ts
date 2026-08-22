@@ -41,7 +41,9 @@ export interface ActivityLogEvent {
     | 'internal_user.provisioned'
     | 'company.registered'
     | 'company_context_assignment.granted'
-    | 'company_context_assignment.revoked';
+    | 'company_context_assignment.revoked'
+    | 'client.created'
+    | 'client_company_relationship.established';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
@@ -59,6 +61,19 @@ export interface ActivityLogEvent {
         workspaceMembershipId: string;
         internalUserId: string;
         internalUserDisplayName: string;
+      }
+    | {
+        type: 'client_account';
+        clientAccountId: string;
+        displayName: string;
+      }
+    | {
+        type: 'client_company_relationship';
+        relationshipId: string;
+        clientAccountId: string;
+        clientDisplayName: string;
+        companyId: string;
+        companyDisplayName: string;
       };
   metadata:
     | { identityProvider: string }

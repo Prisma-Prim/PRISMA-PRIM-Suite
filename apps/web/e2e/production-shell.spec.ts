@@ -781,6 +781,190 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await expect(page.getByText(/permission to view Companies/)).toHaveCount(0);
 });
 
+test('creates and reuses one shared Client identity across two Company contexts', async ({
+  page,
+}, testInfo) => {
+  const companies = [
+    {
+      id: '00000000-0000-4000-8000-000000001411',
+      displayName: 'PRISMA-PRIM',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000001412',
+      displayName: 'BIC',
+    },
+  ];
+  const client = {
+    id: '00000000-0000-4000-8000-000000001413',
+    displayName: 'Exemplu Client SRL',
+    relatedToActiveCompany: true,
+  };
+  const relatedCompanyIds = new Set<string>();
+  const activityEvents: Array<{
+    action: string;
+    target: { companyId?: string; [key: string]: unknown };
+    [key: string]: unknown;
+  }> = [];
+
+  await page.route('**/api/access/current-actor', (route) => {
+    const selectedId = route.request().headers()['x-company-context-id'];
+    const activeCompany = companies.find(({ id }) => id === selectedId);
+    return route.fulfill({
+      json: {
+        ...actorContextFixture,
+        workspacePermissions: [
+          'company.manage',
+          'company.assignment.manage',
+          'client.manage',
+        ],
+        ...(activeCompany ? { activeCompany } : {}),
+      },
+    });
+  });
+  await page.route('**/api/companies', (route) =>
+    route.fulfill({ json: companies }),
+  );
+  await page.route('**/api/activity-log', (route) => {
+    const companyId = route.request().headers()['x-company-context-id'];
+    return route.fulfill({
+      json: {
+        events: activityEvents.filter(
+          (event) =>
+            event.action !== 'client_company_relationship.established' ||
+            event.target.companyId === companyId,
+        ),
+      },
+    });
+  });
+  await page.route(/\/api\/clients(?:\/[^?]*)?(?:\?.*)?$/, (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const companyId = request.headers()['x-company-context-id'];
+    expect(companyId).toBeTruthy();
+
+    if (url.pathname.endsWith('/clients/search')) {
+      expect(url.searchParams.get('query')).toBe('Exemplu');
+      return route.fulfill({
+        json: [
+          {
+            ...client,
+            relatedToActiveCompany: relatedCompanyIds.has(companyId!),
+          },
+        ],
+      });
+    }
+    if (url.pathname.endsWith('/active-company-relationship')) {
+      expect(request.method()).toBe('PUT');
+      relatedCompanyIds.add(companyId!);
+      activityEvents.push({
+        id: `relationship-${companyId}`,
+        action: 'client_company_relationship.established',
+        occurredAt: '2026-08-22T12:05:00.000Z',
+        actor: {
+          internalUserId: actorContextFixture.internalUserId,
+          displayName: actorContextFixture.displayName,
+        },
+        target: {
+          type: 'client_company_relationship',
+          relationshipId: `relationship-${companyId}`,
+          clientAccountId: client.id,
+          clientDisplayName: client.displayName,
+          companyId,
+          companyDisplayName: companies.find(({ id }) => id === companyId)!
+            .displayName,
+        },
+        metadata: {},
+      });
+      return route.fulfill({ json: client });
+    }
+    if (request.method() === 'POST') {
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      expect(request.postDataJSON()).toEqual({
+        displayName: client.displayName,
+      });
+      relatedCompanyIds.add(companyId!);
+      activityEvents.push(
+        {
+          id: 'client-created',
+          action: 'client.created',
+          occurredAt: '2026-08-22T12:00:00.000Z',
+          actor: {
+            internalUserId: actorContextFixture.internalUserId,
+            displayName: actorContextFixture.displayName,
+          },
+          target: {
+            type: 'client_account',
+            clientAccountId: client.id,
+            displayName: client.displayName,
+          },
+          metadata: {},
+        },
+        {
+          id: `relationship-${companyId}`,
+          action: 'client_company_relationship.established',
+          occurredAt: '2026-08-22T12:01:00.000Z',
+          actor: {
+            internalUserId: actorContextFixture.internalUserId,
+            displayName: actorContextFixture.displayName,
+          },
+          target: {
+            type: 'client_company_relationship',
+            relationshipId: `relationship-${companyId}`,
+            clientAccountId: client.id,
+            clientDisplayName: client.displayName,
+            companyId,
+            companyDisplayName: companies.find(({ id }) => id === companyId)!
+              .displayName,
+          },
+          metadata: {},
+        },
+      );
+      return route.fulfill({ status: 201, json: client });
+    }
+    return route.fulfill({
+      json: relatedCompanyIds.has(companyId!) ? [client] : [],
+    });
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Active Company').selectOption(companies[0]!.id);
+  await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
+  await page.getByLabel('Client display name').fill(client.displayName);
+  await page.getByRole('button', { name: 'Create Client' }).click();
+  await expect(
+    page.getByRole('heading', { name: client.displayName }),
+  ).toBeVisible();
+  await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
+  await expect(
+    page.getByText(`${actorContextFixture.displayName} created a Client`),
+  ).toBeVisible();
+
+  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
+  await expect(page.getByText('No Clients for BIC yet.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
+  await page.getByLabel('Find a shared Client').fill('Exemplu');
+  await page.getByRole('button', { name: 'Search Clients' }).click();
+  await page.getByRole('button', { name: 'Add to BIC' }).click();
+  await expect(page.getByText('Available in BIC')).toBeVisible();
+  await expect(page.getByText(`Client ID: ${client.id}`)).toHaveCount(2);
+  await expect(
+    page.getByText(
+      `Target: ${client.displayName} — ${companies[1]!.displayName}`,
+    ),
+  ).toBeVisible();
+
+  const geometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  await page.screenshot({
+    path: testInfo.outputPath(`shared-client-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+});
+
 function companyContextStorageKey(): string {
   return `prisma-prim.company-context:${actorContextFixture.workspaceId}:${actorContextFixture.workspaceMembershipId}`;
 }

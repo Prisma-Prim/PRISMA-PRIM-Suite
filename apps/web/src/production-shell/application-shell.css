@@ -167,6 +167,7 @@
 }
 
 .activity-log,
+.client-workspace,
 .company-context,
 .company-registration {
   padding: clamp(1.25rem, 3vw, 2rem);
@@ -185,6 +186,7 @@
 }
 
 .company-context-heading h2,
+.client-workspace > div:first-child h2,
 .company-registration-heading h2,
 .company-record h2 {
   margin: 0;
@@ -234,27 +236,35 @@
 }
 
 .company-registration-heading > p:last-child,
+.client-workspace > div:first-child > p:last-child,
 .company-record > p,
 .company-record dd {
   color: var(--shell-muted);
 }
 
-.company-registration form {
+.company-registration form,
+.client-workspace form {
   display: grid;
   gap: 0.5rem;
+}
+
+.company-registration form {
   margin-top: 1.25rem;
 }
 
-.company-registration label {
+.company-registration label,
+.client-workspace form label {
   font-weight: 650;
 }
 
-.company-registration-controls {
+.company-registration-controls,
+.client-workspace form > div {
   display: flex;
   gap: 0.75rem;
 }
 
-.company-registration input {
+.company-registration input,
+.client-workspace input {
   min-width: 0;
   flex: 1;
   padding: 0.75rem;
@@ -265,7 +275,8 @@
   font: inherit;
 }
 
-.company-registration button {
+.company-registration button,
+.client-workspace button {
   min-height: 2.75rem;
   padding: 0.65rem 1rem;
   border: 0;
@@ -276,9 +287,74 @@
   font-weight: 700;
 }
 
-.company-registration button:disabled {
+.company-registration button:disabled,
+.client-workspace button:disabled {
   cursor: wait;
   opacity: 0.65;
+}
+
+.client-workspace {
+  display: grid;
+  gap: 1.25rem;
+  scroll-margin-top: 1rem;
+}
+
+.client-workspace > div:first-child .eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--shell-blue);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.client-workspace > div:first-child > p:last-child,
+.client-workspace form,
+.client-workspace > p,
+.client-list,
+.client-search-results {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.client-list,
+.client-search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.client-list li,
+.client-search-results li {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-left: 0.25rem solid var(--shell-blue);
+  border-radius: 0.35rem;
+  background: var(--shell-canvas);
+}
+
+.client-list h3,
+.client-search-results h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--shell-navy-deep);
+  font-size: 1rem;
+}
+
+.client-list p,
+.client-search-results p {
+  margin: 0.5rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--shell-muted);
+  font-size: 0.82rem;
+}
+
+.client-search-results button {
+  width: 100%;
+  margin-top: 0.75rem;
 }
 
 .company-registration-denied {
@@ -457,6 +533,10 @@
   }
 
   .company-registration-controls {
+    display: grid;
+  }
+
+  .client-workspace form > div {
     display: grid;
   }
 }

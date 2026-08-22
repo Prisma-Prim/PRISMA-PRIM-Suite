@@ -1,0 +1,675 @@
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deterministicBrowserIdentity } from '../access-composition';
+import type { ActorContext } from '../access-types';
+import { ClientWorkspace } from './ClientWorkspace';
+
+const actor: ActorContext = {
+  internalUserId: 'owner-1',
+  workspaceMembershipId: 'membership-1',
+  workspaceId: 'workspace-1',
+  workspaceName: 'PRISMA Workspace',
+  displayName: 'Iurie',
+  email: 'iurie@example.test',
+  active: true,
+  workspacePermissions: [
+    'company.manage',
+    'company.assignment.manage',
+    'client.manage',
+  ],
+  activeCompany: {
+    id: 'company-a',
+    displayName: 'PRISMA-PRIM',
+  },
+};
+
+describe('ClientWorkspace', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('creates and lists a minimal Client in the active Company', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-1',
+              displayName: 'Exemplu Client SRL',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-1',
+                displayName: 'Exemplu Client SRL',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(
+      await screen.findByText('No Clients for PRISMA-PRIM yet.'),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Exemplu Client SRL' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Exemplu Client SRL' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Client ID: client-1')).toBeInTheDocument();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/clients',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'content-type': 'application/json',
+          'idempotency-key': expect.any(String),
+          'x-company-context-id': 'company-a',
+        }),
+        body: JSON.stringify({ displayName: 'Exemplu Client SRL' }),
+      }),
+    );
+  });
+
+  it('supersedes an older Client list after a successful creation', async () => {
+    const initialList = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockReturnValueOnce(initialList.promise)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-new',
+              displayName: 'New Client',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-new',
+                displayName: 'New Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    const initialSignal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
+
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'New Client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'New Client' }),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(initialSignal?.aborted).toBe(true);
+
+    await act(async () => {
+      initialList.resolve(
+        new Response(
+          JSON.stringify([
+            {
+              id: 'client-stale',
+              displayName: 'Stale Client',
+              relatedToActiveCompany: true,
+            },
+          ]),
+          { status: 200 },
+        ),
+      );
+      await initialList.promise;
+    });
+    expect(screen.getByText('New Client')).toBeInTheDocument();
+    expect(screen.queryByText('Stale Client')).not.toBeInTheDocument();
+  });
+
+  it('searches and attaches an existing shared Client to the active Company', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-1',
+                displayName: 'Exemplu Client SRL',
+                relatedToActiveCompany: false,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-1',
+              displayName: 'Exemplu Client SRL',
+              relatedToActiveCompany: true,
+            }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-1',
+                displayName: 'Exemplu Client SRL',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const bicActor: ActorContext = {
+      ...actor,
+      activeCompany: { id: 'company-b', displayName: 'BIC' },
+    };
+
+    render(
+      <ClientWorkspace
+        actor={bicActor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByText('No Clients for BIC yet.');
+
+    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
+      target: { value: 'Exemplu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Exemplu Client SRL' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to BIC' }));
+
+    expect(await screen.findByText('Available in BIC')).toBeInTheDocument();
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/clients/client-1/active-company-relationship',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({
+          'x-company-context-id': 'company-b',
+        }),
+      }),
+    );
+  });
+
+  it('validates blank creation and search without sending a mutation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Client display name is required.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
+    expect(
+      screen.getByText('Enter a Client name to search.'),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a forbidden Company context through the shell interface', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(null, { status: 403 })),
+    );
+    const rejectCompany = vi.fn();
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={rejectCompany}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You do not have permission to manage Clients.',
+    );
+    expect(rejectCompany).toHaveBeenCalledWith('company-a');
+  });
+
+  it('does not publish a late Client list from a previous Company', async () => {
+    const oldList = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockReturnValueOnce(oldList.promise)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-b',
+                displayName: 'BIC Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const identity = deterministicBrowserIdentity();
+    const { rerender } = render(
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <ClientWorkspace
+        actor={{
+          ...actor,
+          activeCompany: { id: 'company-b', displayName: 'BIC' },
+        }}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    expect(await screen.findByText('BIC Client')).toBeInTheDocument();
+
+    await act(async () => {
+      oldList.resolve(
+        new Response(
+          JSON.stringify([
+            {
+              id: 'client-a',
+              displayName: 'Stale PRISMA Client',
+              relatedToActiveCompany: true,
+            },
+          ]),
+          { status: 200 },
+        ),
+      );
+      await oldList.promise;
+    });
+    expect(screen.queryByText('Stale PRISMA Client')).not.toBeInTheDocument();
+  });
+
+  it('aborts and suppresses a late registration after active Company replacement', async () => {
+    const staleRegistration = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockReturnValueOnce(staleRegistration.promise)
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        ),
+    );
+    const identity = deterministicBrowserIdentity();
+    const refreshActivity = vi.fn(async () => undefined);
+    const { rerender } = render(
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Stale Registration' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    const registrationSignal = vi.mocked(fetch).mock.calls[1]?.[1]?.signal;
+
+    rerender(
+      <ClientWorkspace
+        actor={{
+          ...actor,
+          activeCompany: { id: 'company-b', displayName: 'BIC' },
+        }}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    expect(await screen.findByText('No Clients for BIC yet.')).toBeVisible();
+    expect(registrationSignal?.aborted).toBe(true);
+
+    await act(async () => {
+      staleRegistration.resolve(
+        new Response(
+          JSON.stringify({
+            id: 'stale-client',
+            displayName: 'Stale Registration',
+            relatedToActiveCompany: true,
+          }),
+          { status: 201 },
+        ),
+      );
+      await staleRegistration.promise;
+    });
+    expect(screen.queryByText('Stale Registration')).not.toBeInTheDocument();
+    expect(refreshActivity).not.toHaveBeenCalled();
+  });
+
+  it('preserves a pending mutation across callback-only shell updates', async () => {
+    const registration = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockReturnValueOnce(registration.promise)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-stable',
+                displayName: 'Stable Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const identity = deterministicBrowserIdentity();
+    const { rerender } = render(
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Stable Client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    const registrationSignal = vi.mocked(fetch).mock.calls[1]?.[1]?.signal;
+
+    rerender(
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    expect(registrationSignal?.aborted).toBe(false);
+
+    registration.resolve(
+      new Response(
+        JSON.stringify({
+          id: 'client-stable',
+          displayName: 'Stable Client',
+          relatedToActiveCompany: true,
+        }),
+        { status: 201 },
+      ),
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Stable Client' }),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('settles initial loading as retryable error when identity token resolution fails', async () => {
+    const identity = {
+      ...deterministicBrowserIdentity(),
+      getToken: vi.fn(async () => {
+        throw new Error('token unavailable');
+      }),
+    };
+    vi.stubGlobal('fetch', vi.fn());
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Clients…');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load Clients. Please try again.',
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('reuses the registration command key after a retryable failure and refreshes activity after success', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-retry',
+              displayName: 'Retry Client',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-retry',
+                displayName: 'Retry Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const refreshActivity = vi.fn(async () => undefined);
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Retry Client' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await screen.findByRole('heading', { name: 'Retry Client' });
+
+    const firstHeaders = vi.mocked(fetch).mock.calls[1]?.[1]?.headers;
+    const retryHeaders = vi.mocked(fetch).mock.calls[2]?.[1]?.headers;
+    expect(firstHeaders).toMatchObject({
+      'idempotency-key': expect.any(String),
+    });
+    expect(retryHeaders).toMatchObject({
+      'idempotency-key': (firstHeaders as Record<string, string>)[
+        'idempotency-key'
+      ],
+    });
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('keeps attachment ownership separate from search and refreshes activity on completion', async () => {
+    const attachment = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-pending',
+                displayName: 'Pending Client',
+                relatedToActiveCompany: false,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockReturnValueOnce(attachment.promise)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-pending',
+                displayName: 'Pending Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const refreshActivity = vi.fn(async () => undefined);
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
+      target: { value: 'Pending' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    await screen.findByRole('heading', { name: 'Pending Client' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to PRISMA-PRIM' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+
+    const attachSignal = vi.mocked(fetch).mock.calls[2]?.[1]?.signal;
+    expect(
+      screen.getByRole('button', { name: 'Search Clients' }),
+    ).toBeDisabled();
+    expect(attachSignal?.aborted).toBe(false);
+
+    attachment.resolve(
+      new Response(
+        JSON.stringify({
+          id: 'client-pending',
+          displayName: 'Pending Client',
+          relatedToActiveCompany: true,
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(
+      await screen.findByText('Available in PRISMA-PRIM'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}

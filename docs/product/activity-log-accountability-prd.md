@@ -95,7 +95,8 @@ Retention and authorized export require a later policy based on business and leg
 
 - Accountability owns persistence, idempotency and serialization.
 - Owning business modules call its narrow public interface.
-- The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, and `company_context_assignment.revoked`.
+- The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, `company_context_assignment.revoked`, `client.created`, and `client_company_relationship.established`.
+- Client target labels require `client.manage` in addition to the existing Activity Log visibility boundary. Client–Company Relationship events are returned only for the server-validated active Company; without an active Company, Client events are omitted.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
@@ -107,6 +108,7 @@ Retention and authorized export require a later policy based on business and leg
 - Tests do not import Accountability persistence internals.
 - The #65 migration seam preserves existing event IDs, actor and target attribution, append-only history, `/activity-log` visibility, and exactly-once provisioning semantics while references become membership-aware.
 - The #66 public Company seam proves that one successful provider-Company registration creates one attributable event and failed, retried, or unauthorized attempts do not create false or duplicate success history.
+- The #141 Client REST seam proves one `client.created` event and one event for each newly established Client–Company Relationship; retries, concurrent attachment and rolled-back mutations do not duplicate or fabricate success history, and another Company's relationship event is not returned.
 
 ## 12. Acceptance journey
 
@@ -128,4 +130,4 @@ Technical dependencies:
 
 ## 14. Readiness
 
-Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; and [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds only the approved Company-context assignment grant and revocation events. All other event families remain blocked until their owning capability PRD and permissions are ready.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds only the approved Company-context assignment grant and revocation events; and [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds only Client creation and Client–Company Relationship establishment. All other event families remain blocked until their owning capability PRD and permissions are ready.

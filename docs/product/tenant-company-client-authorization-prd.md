@@ -1,13 +1,13 @@
 # PRD — Tenant, Company, Shared Client and Authorization
 
 **Status:** Draft — audited first-tenant evidence received; material authorization and Client boundaries pending  
-**Version:** 0.3  
+**Version:** 0.4
 **Owner:** Dan Popescu  
 **Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212
 
 ## 1. Problem statement
 
-The first tenant operates through PRISMA-PRIM, BIC and ECG. Users need one shared Client identity without exposing Company-confidential Projects, Contracts, finance, assurance work or notes. The delivered foundation now resolves explicit Workspace Membership, provider Companies, server-revalidated Company context and the narrow Company Context Access assignment. It does not yet define the target product's broader business permissions or complete Client visibility boundary.
+The first tenant operates through PRISMA-PRIM, BIC and ECG. Users need one shared Client identity without exposing Company-confidential Projects, Contracts, finance, assurance work or notes. The delivered foundation resolves explicit Workspace Membership, provider Companies, server-revalidated Company context and the narrow Company Context Access assignment. Issue #141 adds only a bootstrap Workspace Owner tracer for minimal shared Client identity and explicit active-Company relationships. It does not define the target product's broader business permissions or complete Client visibility boundary.
 
 ## 2. Solution
 
@@ -90,6 +90,8 @@ The canonical UI label may remain Client while the internal distinction stays pr
 
 Exact first-tenant bundles remain configuration evidence, not hard-coded product rules.
 
+Issue #141 introduces the narrow Workspace permission `client.manage` only through the configured bootstrap Workspace Owner path. It authorizes listing, searching, creating and explicitly relating the minimal Client identity in a server-validated active Company context. It grants no ordinary Company-user access and no access to operational activity.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
@@ -121,6 +123,7 @@ Existing Internal Users receive explicit Workspace Memberships, and existing Act
 - Migration tests exercise expand–backfill–contract from the current Access/#22 schema while preserving identifiers and events.
 - Access REST tests prove non-leaking denial for unknown, inactive, membership-less and unauthorized actors.
 - Database constraint tests reject cross-Workspace relationships.
+- Issue #141 uses REST/PostgreSQL and browser seams to prove that the bootstrap Workspace Owner can create one minimal Workspace Client, relate the same identifier to two active Companies deliberately, and receive no other-Company relationship or activity metadata.
 
 ## 13. Acceptance journey
 
@@ -149,6 +152,8 @@ Material blockers that remain:
 
 The prioritized P0 confidentiality follow-up in the coverage matrix is the current business completion package for this authority.
 
+Dan approved the reversible #141 tracer while that completion package remains open: shared data is restricted to the server id and display name, only the bootstrap Workspace Owner receives `client.manage`, every query and command requires an active Company, and reuse requires an explicit attach action. This approval does not answer or narrow any deferred ordinary-user, support, field, correction, archive or duplicate rule.
+
 Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 15. Technical dependencies
@@ -160,9 +165,9 @@ Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-busine
 
 ## 16. Readiness
 
-The cross-cutting model is ready to govern Release 1 PRDs. The business-independent foundation through #65, #66, #67 and #88 is delivered. The current coverage audit narrows the remaining evidence boundary but does not make another business-dependent implementation child ready.
+The cross-cutting model is ready to govern Release 1 PRDs. The foundation through #65, #66, #67 and #88 is delivered, and #141 delivers the separately approved conservative Shared Client tracer.
 
-Every assignment or permission bundle beyond Company Context Access, consolidated oversight permissions, shared/confidential Client fields, broader deactivation and exceptional access remain blocked until their owning evidence is normalized into this PRD.
+Every assignment or permission bundle beyond Company Context Access and the bootstrap-only `client.manage` tracer, consolidated oversight permissions, shared/confidential Client fields beyond id and display name, broader deactivation and exceptional access remain blocked until their owning evidence is normalized into this PRD.
 
 ## 17. Evidence authority boundary
 

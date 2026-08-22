@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
 **Status:** Draft — audited interview evidence received; representative cases pending  
-**Version:** 0.3  
+**Version:** 0.4
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -60,11 +60,15 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 
 ## 7. Minimal data
 
-The first slice requires only enough shared identity to recognize the Client and preserve provenance. Exact mandatory fields depend on real examples; absent tax/legal identifiers do not block early intake unless the downstream action requires them.
+Issue #141 fixes the first slice's complete shared interface to the server-assigned Client Account id and one required display name. Registration atomically establishes the server-validated active Company's relationship. Workspace search returns only that identity and whether it is already related to the active Company; a deliberate attach action reuses the same Client Account in another Company. Names never trigger an automatic merge.
+
+All additional mandatory fields still depend on representative examples. Absent tax/legal identifiers do not block this early tracer and no downstream legal act is included.
 
 ## 8. Permissions
 
 Separate permissions cover shared read/create/update, relationship update, archive and duplicate resolution. Legal-entity changes used by governed Documents require stronger correction/history behaviour.
+
+Issue #141 introduces only `client.manage`, a Workspace permission granted by the configured bootstrap Workspace Owner path. It covers the minimal list, search, create and attach operations in an active Company context. It does not establish an ordinary-user bundle or authorize update, archive, duplicate resolution or operational activity.
 
 The exact field-level shared-versus-Company-confidential boundary is not yet approved. The product must therefore not infer broad cross-Company visibility from the existence of a shared Client Account.
 
@@ -82,7 +86,7 @@ The exact field-level shared-versus-Company-confidential boundary is not yet app
 
 ## 10. Activity Log
 
-Record Client creation, significant identity correction, relationship create/archive, Client archive/restore and governed duplicate disposition once the exact mutation and authorization rules are ready in this capability. Do not infer additional event families from raw interview examples.
+Issue #141 authorizes exactly `client.created` and `client_company_relationship.established`, recorded atomically with their successful mutations. Significant identity correction, relationship archive, Client archive/restore and governed duplicate disposition remain blocked. Do not infer additional event families from raw interview examples.
 
 ## 11. Testing decisions
 
@@ -91,6 +95,7 @@ Record Client creation, significant identity correction, relationship create/arc
 - negative tests for Company activity and metadata leakage;
 - duplicate scenarios with representative scripts/spellings;
 - correction/history tests through public commands.
+- #141 proves its narrow two-Company identity journey through REST/PostgreSQL, migration, public UI and browser seams while returning no relationship collection or operational activity.
 
 ## 12. Acceptance journey
 
@@ -127,7 +132,9 @@ Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-an
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on representative Client examples, field visibility and duplicate authority. The current coverage audit narrows those blockers but does not make a Shared Client implementation child ready. The capability must follow a ready Company/RBAC slice.
+Issue #141 is the only approved implementation child: a bootstrap Workspace Owner can create a Client Account containing only id and display name, search that minimal identity and explicitly relate it to a second active Company. This is a reversible tracer approved by Dan while #140 remains open.
+
+Further ticket decomposition remains blocked on representative Client examples, field visibility, ordinary-user permissions, correction/archive practice and duplicate authority. The narrow tracer does not make the wider Shared Client capability ready.
 
 ## 16. Evidence authority boundary
 

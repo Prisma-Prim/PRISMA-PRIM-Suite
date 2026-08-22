@@ -6,7 +6,7 @@ export type ApiResult<T> =
   | { status: 'validation'; message?: string };
 
 export interface ApiRequest {
-  method?: 'GET' | 'POST' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   headers?: Record<string, string>;
   body?: string;
   companyContextId?: string;

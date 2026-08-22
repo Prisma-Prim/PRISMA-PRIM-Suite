@@ -252,6 +252,122 @@ describe('production shell session', () => {
     observed.unsubscribe();
   });
 
+  it('refreshes the active Company Activity Log without reloading actor authority', async () => {
+    let activityRequest = 0;
+    const loadActor = vi.fn(async ({ companyId }: { companyId?: string }) => ({
+      status: 'ok' as const,
+      value: companyId ? selectedActor(companyId) : baseActor,
+    }));
+    const observed = observeSession({
+      transport: transportWith({
+        loadActor,
+        async loadCompanies() {
+          return { status: 'ok', value: [companies[0]!] };
+        },
+        async loadActivityLog({ companyId }) {
+          activityRequest += 1;
+          const [event] = activitySuccess(companyId).value.events;
+          return {
+            status: 'ok',
+            value: {
+              events: event
+                ? [{ ...event, id: `activity-${companyId}-${activityRequest}` }]
+                : [],
+            },
+          };
+        },
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext).toMatchObject({
+        activityLog: {
+          events: [{ id: 'activity-company-a-1' }],
+        },
+      }),
+    );
+
+    await observed.current().refreshActivityLog();
+
+    expect(observed.current().shellContext).toMatchObject({
+      activityLog: {
+        events: [{ id: 'activity-company-a-2' }],
+      },
+    });
+    expect(loadActor).toHaveBeenCalledTimes(2);
+    observed.unsubscribe();
+  });
+
+  it('does not let an older Activity Log load overwrite a mutation refresh', async () => {
+    const initialActivity = deferred<
+      ApiResult<{
+        events: ReturnType<typeof activitySuccess>['value']['events'];
+      }>
+    >();
+    let activityRequest = 0;
+    let initialSignal: AbortSignal | undefined;
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? selectedActor(companyId) : baseActor,
+          };
+        },
+        async loadCompanies() {
+          return { status: 'ok', value: [companies[0]!] };
+        },
+        async loadActivityLog({ companyId, signal }) {
+          activityRequest += 1;
+          if (activityRequest === 1) {
+            initialSignal = signal;
+            return initialActivity.promise;
+          }
+          const refreshed = activitySuccess(companyId);
+          return {
+            ...refreshed,
+            value: {
+              events: refreshed.value.events.map((event) => ({
+                ...event,
+                id: 'activity-after-mutation',
+              })),
+            },
+          };
+        },
+      }),
+    });
+    await vi.waitFor(() => {
+      expect(activityRequest).toBe(1);
+      expect(observed.current().shellContext.status).toBe('active');
+    });
+
+    await observed.current().refreshActivityLog();
+
+    expect(initialSignal?.aborted).toBe(true);
+    expect(observed.current().shellContext).toMatchObject({
+      activityLog: {
+        events: [{ id: 'activity-after-mutation' }],
+      },
+    });
+    initialActivity.resolve({
+      status: 'ok',
+      value: {
+        events: [
+          {
+            ...activitySuccess('company-a').value.events[0]!,
+            id: 'stale-activity',
+          },
+        ],
+      },
+    });
+    await initialActivity.promise;
+    expect(observed.current().shellContext).toMatchObject({
+      activityLog: {
+        events: [{ id: 'activity-after-mutation' }],
+      },
+    });
+    observed.unsubscribe();
+  });
+
   it('removes a denied Company and returns selection to an idle recovery state', async () => {
     const observed = observeSession({
       transport: transportWith({

@@ -7,6 +7,8 @@ import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
+import { ClientWorkspace } from './client/ClientWorkspace';
+import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import {
   useProductionShellContext,
@@ -20,6 +22,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     selectCompany,
     rejectCompanyContext,
     includeCompany,
+    refreshActivityLog,
   } = useProductionShellContext(identity);
 
   if (!identity.loaded)
@@ -49,7 +52,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   return (
     <ApplicationShell
       activeHref="/"
-      navigationItems={[{ href: '/', label: 'Home' }]}
+      navigationItems={[
+        { href: '/', label: 'Home' },
+        ...(access.actor.workspacePermissions.includes('client.manage')
+          ? [{ href: '#clients', label: clientWorkspaceCopy.navigationLabel }]
+          : []),
+      ]}
       userArea={
         <span>
           <strong>{access.actor.displayName}</strong>
@@ -73,12 +81,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         state={access.companyContext}
         onSelect={selectCompany}
       />
+      {access.actor.workspacePermissions.includes('client.manage') && (
+        <ClientWorkspace
+          key={`client:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActivityRecorded={refreshActivityLog}
+        />
+      )}
       {access.actor.workspacePermissions.includes(
         'company.assignment.manage',
       ) && <CompanyContextAccess actor={access.actor} identity={identity} />}
       {access.actor.workspacePermissions.includes('company.manage') && (
         <CompanyRegistration
-          key={`${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
@@ -130,12 +147,24 @@ function activityDescription(event: ActivityLogEvent): string {
     'internal_user.provisioned': 'was provisioned',
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
+    ...clientWorkspaceCopy.activityActionLabels,
   };
   return `${event.actor.displayName} ${actionLabels[event.action]}`;
 }
 
 function activityTargetDescription(event: ActivityLogEvent): string {
-  return event.target.type === 'company_role_assignment'
-    ? `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`
-    : event.target.displayName;
+  switch (event.target.type) {
+    case 'company_role_assignment':
+      return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
+    case 'client_company_relationship':
+      return `${event.target.clientDisplayName} — ${event.target.companyDisplayName}`;
+    case 'internal_user':
+    case 'company':
+    case 'client_account':
+      return event.target.displayName;
+    default: {
+      const exhaustive: never = event.target;
+      return exhaustive;
+    }
+  }
 }

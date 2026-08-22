@@ -24,6 +24,7 @@ export const workspaceMembershipStatus = pgEnum('workspace_membership_status', [
 export const workspacePermission = pgEnum('workspace_permission', [
   'company.manage',
   'company.assignment.manage',
+  'client.manage',
 ]);
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
@@ -35,6 +36,14 @@ export const companyContextAssignmentOperation = pgEnum(
 );
 
 export const companyStatus = pgEnum('company_status', ['active', 'inactive']);
+export const clientAccountStatus = pgEnum('client_account_status', [
+  'active',
+  'archived',
+]);
+export const clientCompanyRelationshipStatus = pgEnum(
+  'client_company_relationship_status',
+  ['active', 'archived'],
+);
 
 export const workspaces = pgTable(
   'workspaces',
@@ -298,17 +307,180 @@ export const companyContextAssignmentCommands = pgTable(
   ],
 );
 
+export const clientAccounts = pgTable(
+  'client_accounts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    displayName: text('display_name').notNull(),
+    status: clientAccountStatus('status').default('active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
+    createdByWorkspaceMembershipId: uuid(
+      'created_by_workspace_membership_id',
+    ).notNull(),
+  },
+  (table) => [
+    uniqueIndex('client_accounts_workspace_id_id_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'client_accounts_creator_membership_fk',
+      columns: [
+        table.workspaceId,
+        table.createdByWorkspaceMembershipId,
+        table.createdByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+  ],
+);
+
+export const clientCompanyRelationships = pgTable(
+  'client_company_relationships',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    clientAccountId: uuid('client_account_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    status: clientCompanyRelationshipStatus('status')
+      .default('active')
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
+    createdByWorkspaceMembershipId: uuid(
+      'created_by_workspace_membership_id',
+    ).notNull(),
+  },
+  (table) => [
+    uniqueIndex('client_company_relationships_scope_unique').on(
+      table.workspaceId,
+      table.clientAccountId,
+      table.companyId,
+    ),
+    uniqueIndex('client_company_relationships_target_unique').on(
+      table.workspaceId,
+      table.clientAccountId,
+      table.companyId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'client_company_relationships_client_fk',
+      columns: [table.workspaceId, table.clientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'client_company_relationships_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'client_company_relationships_creator_membership_fk',
+      columns: [
+        table.workspaceId,
+        table.createdByWorkspaceMembershipId,
+        table.createdByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+  ],
+);
+
+export const clientAccountRegistrationCommands = pgTable(
+  'client_account_registration_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    displayName: text('display_name').notNull(),
+    companyId: uuid('company_id').notNull(),
+    resultClientAccountId: uuid('result_client_account_id'),
+    resultRelationshipId: uuid('result_relationship_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('client_registration_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'client_registration_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'client_registration_commands_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'client_registration_commands_client_fk',
+      columns: [table.workspaceId, table.resultClientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'client_registration_commands_relationship_fk',
+      columns: [
+        table.workspaceId,
+        table.resultClientAccountId,
+        table.companyId,
+        table.resultRelationshipId,
+      ],
+      foreignColumns: [
+        clientCompanyRelationships.workspaceId,
+        clientCompanyRelationships.clientAccountId,
+        clientCompanyRelationships.companyId,
+        clientCompanyRelationships.id,
+      ],
+    }),
+    check(
+      'client_registration_commands_result_shape_check',
+      sql`(
+        (${table.resultClientAccountId} IS NULL AND ${table.resultRelationshipId} IS NULL)
+        OR
+        (${table.resultClientAccountId} IS NOT NULL AND ${table.resultRelationshipId} IS NOT NULL)
+      )`,
+    ),
+  ],
+);
+
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
   'company.registered',
   'company_context_assignment.granted',
   'company_context_assignment.revoked',
+  'client.created',
+  'client_company_relationship.established',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
   'internal_user',
   'company',
   'company_role_assignment',
+  'client_account',
+  'client_company_relationship',
 ]);
 
 export const activityLogEvents = pgTable(
@@ -326,6 +498,10 @@ export const activityLogEvents = pgTable(
     targetWorkspaceMembershipId: uuid('target_workspace_membership_id'),
     targetCompanyId: uuid('target_company_id'),
     targetCompanyRoleAssignmentId: uuid('target_company_role_assignment_id'),
+    targetClientAccountId: uuid('target_client_account_id'),
+    targetClientCompanyRelationshipId: uuid(
+      'target_client_company_relationship_id',
+    ),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -388,6 +564,26 @@ export const activityLogEvents = pgTable(
       columns: [table.workspaceId, table.targetCompanyId],
       foreignColumns: [companies.workspaceId, companies.id],
     }),
+    foreignKey({
+      name: 'activity_log_events_target_client_fk',
+      columns: [table.workspaceId, table.targetClientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'activity_log_events_target_client_relationship_fk',
+      columns: [
+        table.workspaceId,
+        table.targetClientAccountId,
+        table.targetCompanyId,
+        table.targetClientCompanyRelationshipId,
+      ],
+      foreignColumns: [
+        clientCompanyRelationships.workspaceId,
+        clientCompanyRelationships.clientAccountId,
+        clientCompanyRelationships.companyId,
+        clientCompanyRelationships.id,
+      ],
+    }),
     check(
       'activity_log_events_target_shape_check',
       sql`(
@@ -395,19 +591,41 @@ export const activityLogEvents = pgTable(
           AND ${table.targetInternalUserId} IS NOT NULL
           AND ${table.targetWorkspaceMembershipId} IS NOT NULL
           AND ${table.targetCompanyId} IS NULL
-          AND ${table.targetCompanyRoleAssignmentId} IS NULL)
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
         OR
         (${table.targetType}::text = 'company'
           AND ${table.targetInternalUserId} IS NULL
           AND ${table.targetWorkspaceMembershipId} IS NULL
           AND ${table.targetCompanyId} IS NOT NULL
-          AND ${table.targetCompanyRoleAssignmentId} IS NULL)
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
         OR
         (${table.targetType}::text = 'company_role_assignment'
           AND ${table.targetInternalUserId} IS NOT NULL
           AND ${table.targetWorkspaceMembershipId} IS NOT NULL
           AND ${table.targetCompanyId} IS NOT NULL
-          AND ${table.targetCompanyRoleAssignmentId} IS NOT NULL)
+          AND ${table.targetCompanyRoleAssignmentId} IS NOT NULL
+          AND ${table.targetClientAccountId} IS NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
+        OR
+        (${table.targetType}::text = 'client_account'
+          AND ${table.targetInternalUserId} IS NULL
+          AND ${table.targetWorkspaceMembershipId} IS NULL
+          AND ${table.targetCompanyId} IS NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NOT NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
+        OR
+        (${table.targetType}::text = 'client_company_relationship'
+          AND ${table.targetInternalUserId} IS NULL
+          AND ${table.targetWorkspaceMembershipId} IS NULL
+          AND ${table.targetCompanyId} IS NOT NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NOT NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NOT NULL)
       )`,
     ),
   ],

@@ -211,6 +211,7 @@ describeWithPostgres('Workspace Membership migration', () => {
     await applyMigration('0007_wakeful_moonstone.sql');
     await applyMigration('0008_backfill_company_assignment_authority.sql');
     await applyMigration('0008_backfill_company_assignment_authority.sql');
+    await applyMigration('0009_open_night_thrasher.sql');
 
     const upgradedOwnerPermissions = await migrationPool.query<{
       permission: string;

@@ -64,6 +64,13 @@
       "when": 1786995940000,
       "tag": "0008_backfill_company_assignment_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787429709556,
+      "tag": "0009_open_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

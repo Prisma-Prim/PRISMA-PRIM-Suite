@@ -9,13 +9,22 @@ import { AccountabilityModule } from './accountability/accountability.module.js'
 import { ActivityLogController } from './accountability/activity-log.controller.js';
 import { CompanyController } from './company/company.controller.js';
 import { CompanyModule } from './company/company.module.js';
+import { ClientController } from './client/client.controller.js';
+import { ClientModule } from './client/client.module.js';
 import { DatabaseModule } from './database/database.module.js';
 
 @Module({
-  imports: [AccessModule, AccountabilityModule, CompanyModule, DatabaseModule],
+  imports: [
+    AccessModule,
+    AccountabilityModule,
+    ClientModule,
+    CompanyModule,
+    DatabaseModule,
+  ],
   controllers: [
     AccessController,
     ActivityLogController,
+    ClientController,
     CompanyController,
     CompanyContextAssignmentController,
   ],

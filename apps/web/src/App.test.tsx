@@ -213,6 +213,77 @@ describe('App', () => {
     },
   );
 
+  it.each([
+    [
+      'client.created',
+      'created a Client',
+      {
+        type: 'client_account',
+        clientAccountId: 'client-1',
+        displayName: 'Exemplu Client SRL',
+      },
+      'Target: Exemplu Client SRL',
+    ],
+    [
+      'client_company_relationship.established',
+      'linked a Client to a Company',
+      {
+        type: 'client_company_relationship',
+        relationshipId: 'relationship-1',
+        clientAccountId: 'client-1',
+        clientDisplayName: 'Exemplu Client SRL',
+        companyId: 'company-1',
+        companyDisplayName: 'BIC',
+      },
+      'Target: Exemplu Client SRL — BIC',
+    ],
+  ] as const)(
+    'renders the canonical %s Activity Log event',
+    async (action, label, target, targetLabel) => {
+      vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.toString().endsWith('/companies')
+                ? []
+                : input.toString().endsWith('/activity-log')
+                  ? {
+                      events: [
+                        {
+                          id: `event-${action}`,
+                          action,
+                          occurredAt: '2026-08-22T12:00:00.000Z',
+                          actor: {
+                            internalUserId: 'owner-1',
+                            displayName: 'Workspace Owner',
+                          },
+                          target,
+                          metadata: {},
+                        },
+                      ],
+                    }
+                  : {
+                      internalUserId: 'owner-1',
+                      displayName: 'Workspace Owner',
+                      email: 'owner@example.test',
+                      workspaceName: 'PRISMA Workspace',
+                      workspacePermissions: ['company.manage'],
+                    },
+            ),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      render(<App identity={deterministicBrowserIdentity()} />);
+
+      expect(
+        await screen.findByText(`Workspace Owner ${label}`),
+      ).toBeInTheDocument();
+      expect(screen.getByText(targetLabel)).toBeInTheDocument();
+    },
+  );
+
   it('keeps Company Context assignment Activity Log labels in the copy resource', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({
       'company_context_assignment.granted': 'granted Company Context Access',

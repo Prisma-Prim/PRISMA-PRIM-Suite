@@ -23,7 +23,7 @@ const previousSchemaMigrationTestTimeoutMs = 15_000;
 
 describeWithPostgres('previous schema migration preflight', () => {
   it(
-    'starts the current application after migrating the immediately previous committed schema',
+    'starts the current application after migration without promoting a membership outside bootstrap resolution',
     async () => {
       let isolatedDatabase: IsolatedPostgresTestDatabase | undefined;
       let migrationPool: Pool | undefined;
@@ -72,11 +72,37 @@ describeWithPostgres('previous schema migration preflight', () => {
         await migrate(database, {
           migrationsFolder: previousMigrationsDirectory,
         });
+        await migrationPool.query(`
+          WITH seeded_workspace AS (
+            INSERT INTO workspaces (singleton_key, name)
+            VALUES ('previous-schema-workspace', 'Previous Schema Workspace')
+            RETURNING id
+          )
+            INSERT INTO internal_users (
+              workspace_id, external_provider, external_subject,
+              display_name, email
+            )
+            SELECT id, 'deterministic-test', 'previous-schema-owner',
+              'Previous Owner', 'previous-owner@example.test'
+            FROM seeded_workspace
+        `);
         await migrate(database, { migrationsFolder: migrationsDirectory });
+        const grantsAfterMigration = await migrationPool.query<{
+          count: string;
+        }>(`SELECT count(*)
+            FROM workspace_permission_grants
+            WHERE permission::text = 'client.manage'`);
+        expect(grantsAfterMigration.rows[0]).toEqual({ count: '0' });
 
         process.env.NODE_ENV = 'test';
         process.env.ACCESS_IDENTITY_MODE = 'test';
         process.env.DATABASE_URL = targetUrl;
+        process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
+        process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'previous-schema-owner';
+        process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY =
+          'previous-schema-workspace';
+        process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME =
+          'Previous Schema Workspace';
         const moduleRef = await Test.createTestingModule({
           imports: [AppModule],
         }).compile();
@@ -85,9 +111,30 @@ describeWithPostgres('previous schema migration preflight', () => {
         application.setGlobalPrefix('api');
         await application.listen(0, '127.0.0.1');
 
-        const response = await fetch(
-          `${await application.getUrl()}/api/health`,
+        const applicationUrl = await application.getUrl();
+        const actorResponse = await fetch(
+          `${applicationUrl}/api/access/current-actor`,
+          {
+            headers: {
+              'x-test-external-provider': 'deterministic-test',
+              'x-test-external-subject': 'previous-schema-owner',
+              'x-test-display-name': 'Previous Owner',
+              'x-test-email': 'previous-owner@example.test',
+            },
+          },
         );
+        expect(actorResponse.status).toBe(200);
+        await expect(actorResponse.json()).resolves.toMatchObject({
+          workspacePermissions: expect.arrayContaining(['client.manage']),
+        });
+        const grantsAfterBootstrapResolution = await migrationPool.query<{
+          count: string;
+        }>(`SELECT count(*)
+            FROM workspace_permission_grants
+            WHERE permission::text = 'client.manage'`);
+        expect(grantsAfterBootstrapResolution.rows[0]).toEqual({ count: '1' });
+
+        const response = await fetch(`${applicationUrl}/api/health`);
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toEqual(
           expect.objectContaining({ status: 'ok' }),
