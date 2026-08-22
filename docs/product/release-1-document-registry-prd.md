@@ -104,9 +104,9 @@ Record Document registration, relationship changes, confidentiality changes, Ver
 
 An authorized Company user opens a Project, registers a representative Document, records its type and confidentiality, and attaches a Representation. The user promotes the Version as official. A corrected file creates a second formal Version; the original remains visible and attributable. A user without confidential-content permission can see only the permitted metadata. If the provider link later fails, the governed Document and its history remain intact with a clear inaccessible state.
 
-## 13. Business evidence after PR #111
+## 13. Business evidence at the current audited boundary
 
-The final audited evidence supports these directions:
+The current audited evidence supports these directions:
 
 - received external originals must remain preserved;
 - official Documents require visible version history and may not be silently overwritten;
@@ -126,7 +126,7 @@ Still blocking ticket decomposition:
 - exact sending/receipt evidence where it matters;
 - official numbering lifecycle: when numbers are assigned, what happens to reserved/unused/abandoned numbers, reuse policy and required history.
 
-The P1 official-numbering completion package in the coverage matrix is the current prioritized follow-up for numbering after any recovered 526–765 evidence is reconciled.
+The P1 official-numbering completion package in the coverage matrix is the current prioritized follow-up for numbering.
 
 Question source: S03. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
@@ -140,8 +140,8 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. PR #111 narrows the evidence boundary but does not make a Document Registry implementation child ready.
+Ticket decomposition remains blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. The current coverage audit narrows the evidence boundary but does not make a Document Registry implementation child ready.
 
 ## 16. Evidence authority boundary
 
-Issue #81 and the coverage matrix preserve evidence and semantic coverage only. They do not authorize numbering, legal/signature behaviour, promotion authority or storage mechanisms by themselves. Future implementation issues must cite this PRD after the relevant blocker is normalized here.
+Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes numbering, legal/signature behaviour, promotion authority or storage mechanisms by itself. Future implementation issues must cite this PRD after the relevant blocker is normalized here.

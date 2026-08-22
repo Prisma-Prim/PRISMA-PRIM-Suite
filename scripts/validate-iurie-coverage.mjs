@@ -5,42 +5,38 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  CURRENT_SOURCE_COMMENT_COUNT,
+  CURRENT_SOURCE_SNAPSHOT_PATH,
+  HISTORICAL_SOURCE_SNAPSHOT_PATH,
+  validateIurieEvidenceSnapshots,
+} from './validate-iurie-evidence-snapshots.mjs';
+import {
+  canonicalRecordsHash,
+  duplicates,
+  normalizeLineEndings,
+} from './validation-helpers.mjs';
+
 const QUESTION_BANK_PATH = 'docs/product/iurie-business-question-bank-ro.md';
 const COVERAGE_MATRIX_PATH = 'docs/product/iurie-business-answer-coverage.md';
-const SOURCE_SNAPSHOT_PATH =
-  'docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl';
-
 const EXPECTED_QUESTION_COUNT = 278;
-const EXPECTED_COMMENT_COUNT = 104;
-const EXPECTED_SESSION_COUNT = 102;
-const EXPECTED_NON_SESSION_COMMENT_IDS = new Set([5307483085, 5308212347]);
-const EXPECTED_INVENTORY_SHA256 =
-  '430627c8a7aa50fe01b499c02be880f5bcc972a123d65868425d0f53cbbae818';
-const EXPECTED_COMMENT_CONTENT_SHA256 =
-  'c009d766d0d3ca03a5e0a002c67114950f4aa5549463e6f56c7bbdc6af54ba69';
-const EXPECTED_COMPLETE_COMMENT_RECORDS_SHA256 =
-  '96e05ed08f74690a34043bc4a1acf92a238f480f190421e25bf5cfbb6c190bc8';
-const EXPECTED_SNAPSHOT_METADATA_SHA256 =
-  'a74f1aa964d722ff77c57be1ba0d6a1e993de506486ae8018dfe539d99d0e816';
 const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
   '0bc9216d41ac27b5613c2a2c997accfa2216fc68447c5753fcd0230a42cb5d8e';
 const EXPECTED_COMPLETE_QUESTION_BANK_SHA256 =
   '7e58e52c75cc96a27273be2208479b119077f74ca86eb3c7eb66d69f17fc9da3';
 const EXPECTED_ROW_CITATION_MAP_SHA256 =
-  '3e8621e281b23c405ceec581254c5c5e2826f58f3513d5f0a205812bc7b89875';
+  '5b7f4b08937bdcb43166f575e6bee9f14967bd30b1a000c8f4ddbcc9696fe72b';
 const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
-  '538f9f0559b20edd100d5649138678618f8a51eab11b915a960518728be107f3';
+  '712f6157d1d805995908961490a805d9e5c90f90a5f9cf2d360cd6def29b93f8';
 const EXPECTED_LEDGER_CONTENT_SHA256 =
-  'd278f7b28ff77b8b22dfb8a7e9fa6c30a7b606adbc86c93c93732348a0a68020';
+  'f30af29fdcaeaaf510a6e831bc05707127cf0e56afaff47c111cf99b77e1c492';
 const EXPECTED_MATRIX_PREAMBLE_SHA256 =
-  'a39cbf58fcfb5d34de5b8b19c0e89f3da7022e978b82b95928a36b8bd681bb02';
+  '8101c72cf40118d8aebb4f1adea8a1eb50030b1b07d62cb332675c99bb16fb93';
 const EXPECTED_COMPLETE_MATRIX_SHA256 =
-  '29ec2efe286610124ccd9fb6c6168326af836b9959c864ba64c2eaa02127e799';
-const SOURCE_ISSUE_URL =
-  'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
-const EXPECTED_SNAPSHOT_BOUNDARY = '2026-08-18T20:40:09Z';
-const EXPECTED_SNAPSHOT_BASELINE = 'f1e0033184bb8bbcb7bb0177b4c9a8f5955f6e97';
-const EXPECTED_IMPLEMENTATION_BASELINE =
+  '955f7fadb2f8518ec8eb637494e975028fcfa3f9f6d3e9f621d094f6e6933a01';
+const EXPECTED_PRIOR_AUDIT_BASELINE =
+  '1e5965f13f7d889ddab1751a2266479c04d1b3d8';
+const EXPECTED_HISTORICAL_IMPLEMENTATION_BASELINE =
   'f292bb0d784678537c955895d3027e8026cd2fad';
 const EXPECTED_MATRIX_AUTHORITY_DECLARATIONS = [
   '**Authority boundary:** This file maps evidence. It does not turn agent interpretation, examples, narrow reformulations or weak confirmations into approved product behaviour.',
@@ -69,11 +65,11 @@ const SUMMARY_LABELS = {
   notMapped: 'Not atomically mapped by official ID',
   comments: 'Source comments inspected',
 };
-const BASELINE_SEMANTIC_IDS = {
+const PRIOR_PUBLISHED_SEMANTIC_IDS = {
   Full: new Set([
     'S00-Q01',
     'S00-Q02',
-    'S00-Q03',
+    'S00-Q08',
     'S00-Q10',
     'S00-Q11',
     'S00-Q13',
@@ -83,19 +79,37 @@ const BASELINE_SEMANTIC_IDS = {
     'S01-Q12',
     'S02-Q08',
     'S02-Q09',
+    'S02-Q20',
     'S02-Q21',
     'S03-Q01',
     'S03-Q04',
     'S03-Q06',
     'S03-Q08',
     'S03-Q09',
+    'S06-Q12',
+    'S06-Q13',
+    'S06-Q55',
+    'S07-Q17',
+    'S08-Q01',
+    'S08-Q02',
+    'S08-Q11',
+    'S09-Q01',
+    'S09-Q10',
+    'S09-Q11',
+    'S09-Q13',
+    'S10-Q02',
+    'S10-Q03',
+    'S10-Q09',
+    'S10-Q10',
+    'S11-Q02',
+    'S11-Q03',
   ]),
   Partial: new Set([
+    'S00-Q03',
     'S00-Q04',
     'S00-Q05',
     'S00-Q06',
     'S00-Q07',
-    'S00-Q08',
     'S00-Q09',
     'S01-Q01',
     'S01-Q04',
@@ -108,28 +122,111 @@ const BASELINE_SEMANTIC_IDS = {
     'S01-Q14',
     'S01-Q15',
     'S01-Q16',
+    'S02-Q01',
     'S02-Q02',
     'S02-Q07',
     'S02-Q10',
     'S02-Q11',
     'S02-Q12',
+    'S02-Q14',
     'S02-Q15',
     'S02-Q16',
+    'S02-Q18',
+    'S02-Q22',
+    'S03-Q02',
+    'S03-Q03',
     'S03-Q05',
     'S03-Q07',
     'S03-Q10',
     'S03-Q11',
     'S03-Q12',
+    'S03-Q14',
+    'S03-Q15',
+    'S03-Q16',
+    'S04-Q01',
+    'S04-Q08',
+    'S04-Q09',
+    'S04-Q10',
+    'S04-Q11',
+    'S04-Q12',
+    'S04-Q13',
+    'S04-Q14',
+    'S04-Q15',
+    'S04-Q16',
+    'S04-Q20',
+    'S04-Q23',
+    'S04-Q25',
+    'S04-Q27',
+    'S04-Q28',
+    'S04-Q30',
+    'S04-Q31',
+    'S04-Q32',
+    'S04-Q33',
+    'S04-Q38',
+    'S04-Q40',
+    'S04-Q41',
+    'S04-Q42',
+    'S05-Q10',
+    'S05-Q12',
+    'S05-Q17',
+    'S05-Q19',
+    'S06-Q01',
+    'S06-Q02',
+    'S06-Q06',
+    'S06-Q21',
+    'S06-Q29',
+    'S06-Q32',
+    'S06-Q33',
+    'S06-Q34',
+    'S06-Q36',
+    'S06-Q40',
+    'S06-Q42',
+    'S06-Q44',
+    'S06-Q46',
+    'S06-Q50',
+    'S06-Q52',
+    'S06-Q54',
+    'S07-Q01',
+    'S07-Q06',
+    'S07-Q12',
+    'S07-Q13',
+    'S07-Q16',
+    'S07-Q19',
+    'S07-Q21',
+    'S07-Q23',
+    'S07-Q24',
+    'S07-Q25',
+    'S08-Q03',
+    'S08-Q06',
+    'S08-Q13',
+    'S08-Q14',
+    'S09-Q02',
+    'S09-Q03',
+    'S09-Q07',
+    'S09-Q08',
+    'S09-Q09',
+    'S09-Q12',
+    'S09-Q14',
+    'S09-Q15',
+    'S10-Q04',
+    'S10-Q06',
+    'S10-Q08',
+    'S10-Q12',
+    'S10-Q13',
+    'S10-Q15',
+    'S11-Q01',
+    'S11-Q04',
+    'S11-Q05',
+    'S11-Q09',
+    'S11-Q11',
+    'S11-Q13',
+    'S11-Q15',
+    'S11-Q16',
+    'S11-Q18',
   ]),
-  'Not covered': new Set(['S02-Q13', 'S04-Q01']),
+  'Not covered': new Set(['S02-Q13']),
 };
-const TRANSITION_LABELS = [
-  'Not mapped to Full',
-  'Not mapped to Partial',
-  'Not covered to Partial',
-  'Partial to Full',
-  'Full to Partial',
-];
+const TRANSITION_LABELS = ['Not mapped to Partial'];
 const OFFICIAL_MATRIX_HEADER = [
   'Question',
   'Priority',
@@ -171,25 +268,6 @@ function splitMarkdownRow(line) {
   }
   cells.push(cell.trim());
   return cells;
-}
-
-function duplicates(values) {
-  const seen = new Set();
-  const repeated = new Set();
-  for (const value of values) {
-    if (seen.has(value)) repeated.add(value);
-    seen.add(value);
-  }
-  return [...repeated];
-}
-
-function canonicalRecordsHash(records) {
-  const contents = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-  return createHash('sha256').update(contents).digest('hex');
-}
-
-function normalizeLineEndings(contents) {
-  return contents.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 }
 
 function parseQuestionBank(contents, errors) {
@@ -239,236 +317,6 @@ function parseQuestionBank(contents, errors) {
     );
   }
   return questions;
-}
-
-function parseSnapshot(contents, errors) {
-  const records = [];
-  for (const [index, line] of contents.split('\n').entries()) {
-    if (line.trim() === '') continue;
-    try {
-      const record = JSON.parse(line);
-      if (
-        record === null ||
-        typeof record !== 'object' ||
-        Array.isArray(record)
-      ) {
-        errors.push(
-          `${SOURCE_SNAPSHOT_PATH}:${index + 1}: expected a JSON object`,
-        );
-      } else {
-        records.push(record);
-      }
-    } catch {
-      errors.push(`${SOURCE_SNAPSHOT_PATH}:${index + 1}: invalid JSON`);
-    }
-  }
-
-  const metadata = records.filter(
-    ({ record_type: type }) => type === 'snapshot',
-  );
-  const comments = records.filter(
-    ({ record_type: type }) => type === 'comment',
-  );
-  const unknown = records.filter(
-    ({ record_type: type }) => type !== 'snapshot' && type !== 'comment',
-  );
-
-  if (metadata.length !== 1 || records[0]?.record_type !== 'snapshot') {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: expected one snapshot record before all comment records`,
-    );
-  }
-  if (unknown.length > 0) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: found ${unknown.length} unknown record type(s)`,
-    );
-  }
-
-  const snapshot = metadata[0];
-  const metadataHash = canonicalRecordsHash([
-    Object.entries(snapshot ?? {}).sort(([left], [right]) =>
-      left.localeCompare(right),
-    ),
-  ]);
-  if (metadataHash !== EXPECTED_SNAPSHOT_METADATA_SHA256) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: pinned complete snapshot metadata does not match the evidence-only authority boundary`,
-    );
-  }
-  const expectedMetadata = [
-    ['source_issue_number', 81],
-    ['source_issue_url', SOURCE_ISSUE_URL],
-    ['source_issue_updated_at', EXPECTED_SNAPSHOT_BOUNDARY],
-    ['source_comment_count', EXPECTED_COMMENT_COUNT],
-    ['repository_baseline_sha', EXPECTED_SNAPSHOT_BASELINE],
-  ];
-  for (const [field, expected] of expectedMetadata) {
-    if (snapshot?.[field] !== expected) {
-      errors.push(
-        `${SOURCE_SNAPSHOT_PATH}: snapshot ${field} must be ${JSON.stringify(expected)}`,
-      );
-    }
-  }
-
-  if (comments.length !== EXPECTED_COMMENT_COUNT) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: expected ${EXPECTED_COMMENT_COUNT} comment records, found ${comments.length}`,
-    );
-  }
-
-  for (const [index, comment] of comments.entries()) {
-    const expectedOrdinal = index + 1;
-    if (comment.ordinal !== expectedOrdinal) {
-      errors.push(
-        `${SOURCE_SNAPSHOT_PATH}: expected source ordinal ${expectedOrdinal}, found ${JSON.stringify(comment.ordinal)}`,
-      );
-    }
-    const canonicalUrl = `${SOURCE_ISSUE_URL}#issuecomment-${comment.comment_id}`;
-    if (
-      !Number.isSafeInteger(comment.comment_id) ||
-      comment.url !== canonicalUrl
-    ) {
-      errors.push(
-        `${SOURCE_SNAPSHOT_PATH}: source ordinal ${expectedOrdinal} has an invalid comment ID or canonical URL`,
-      );
-    }
-    if (
-      typeof comment.author_login !== 'string' ||
-      comment.author_login.length === 0 ||
-      typeof comment.body !== 'string' ||
-      comment.body.length === 0
-    ) {
-      errors.push(
-        `${SOURCE_SNAPSHOT_PATH}: source ordinal ${expectedOrdinal} is missing author or body provenance`,
-      );
-    }
-  }
-
-  for (const id of duplicates(comments.map(({ comment_id: id }) => id))) {
-    errors.push(`${SOURCE_SNAPSHOT_PATH}: duplicate comment ID ${id}`);
-  }
-  for (const url of duplicates(comments.map(({ url }) => url))) {
-    errors.push(`${SOURCE_SNAPSHOT_PATH}: duplicate canonical URL ${url}`);
-  }
-
-  const inventory = `${comments
-    .map(({ ordinal, comment_id: id, url }) => `${ordinal}:${id}:${url}`)
-    .join('\n')}\n`;
-  const inventoryHash = createHash('sha256').update(inventory).digest('hex');
-  if (inventoryHash !== EXPECTED_INVENTORY_SHA256) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: pinned 104-comment ID/URL inventory does not match the audited boundary`,
-    );
-  }
-
-  const commentContent = `${comments
-    .map(({ ordinal, comment_id, url, author_login, body }) =>
-      JSON.stringify([ordinal, comment_id, url, author_login, body]),
-    )
-    .join('\n')}\n`;
-  const commentContentHash = createHash('sha256')
-    .update(commentContent)
-    .digest('hex');
-  if (commentContentHash !== EXPECTED_COMMENT_CONTENT_SHA256) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: pinned 104-comment author/body content does not match the audited boundary`,
-    );
-  }
-  const completeCommentRecordsHash = canonicalRecordsHash(
-    comments.map((comment) =>
-      Object.entries(comment).sort(([left], [right]) =>
-        left.localeCompare(right),
-      ),
-    ),
-  );
-  if (completeCommentRecordsHash !== EXPECTED_COMPLETE_COMMENT_RECORDS_SHA256) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: pinned complete comment-record schema and content do not match the verbatim evidence boundary`,
-    );
-  }
-
-  const sessionEntries = [];
-  const nonSessionComments = [];
-  for (const comment of comments) {
-    const body = typeof comment.body === 'string' ? comment.body : '';
-    const match = body.match(
-      /^\s*#{1,3}\s+(?:Sesiunea|Sesiune|Session)\s+(\d+)\b/imu,
-    );
-    if (match) {
-      sessionEntries.push({ number: Number(match[1]), comment });
-    } else {
-      nonSessionComments.push(comment);
-    }
-  }
-
-  if (sessionEntries.length !== EXPECTED_SESSION_COUNT) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: expected ${EXPECTED_SESSION_COUNT} numbered sessions, found ${sessionEntries.length}`,
-    );
-  }
-  for (const number of duplicates(sessionEntries.map(({ number }) => number))) {
-    errors.push(`${SOURCE_SNAPSHOT_PATH}: duplicate session number ${number}`);
-  }
-
-  const expectedSessions = Array.from(
-    { length: 104 },
-    (_, index) => index + 1,
-  ).filter((number) => number !== 69 && number !== 91);
-  const actualSessions = new Set(sessionEntries.map(({ number }) => number));
-  for (const number of expectedSessions) {
-    if (!actualSessions.has(number)) {
-      errors.push(`${SOURCE_SNAPSHOT_PATH}: missing session number ${number}`);
-    }
-  }
-  for (const number of actualSessions) {
-    if (!expectedSessions.includes(number)) {
-      errors.push(
-        `${SOURCE_SNAPSHOT_PATH}: unexpected session number ${number}`,
-      );
-    }
-  }
-
-  const nonSessionIds = new Set(
-    nonSessionComments.map(({ comment_id: id }) => id),
-  );
-  if (
-    nonSessionIds.size !== EXPECTED_NON_SESSION_COMMENT_IDS.size ||
-    [...EXPECTED_NON_SESSION_COMMENT_IDS].some((id) => !nonSessionIds.has(id))
-  ) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: expected non-session comments 5307483085 and 5308212347`,
-    );
-  }
-
-  const atomicItems = [];
-  const atomicPatterns = [
-    /^###\s+(?:Întrebarea\s+)?(\d+)(?:\.|\s|$)/gimu,
-    /^\s*-\s+\*\*(\d+)\s+[—-]/gimu,
-    /^\*\*Întrebarea\s+(\d+)\*\*/gimu,
-  ];
-  for (const comment of comments) {
-    const body = typeof comment.body === 'string' ? comment.body : '';
-    for (const pattern of atomicPatterns) {
-      for (const match of body.matchAll(pattern)) {
-        atomicItems.push(Number(match[1]));
-      }
-    }
-  }
-  if (!atomicItems.includes(525)) {
-    errors.push(`${SOURCE_SNAPSHOT_PATH}: atomic item frontier 525 is missing`);
-  }
-  const unsupportedItems = atomicItems.filter(
-    (number) => number >= 526 && number <= 765,
-  );
-  if (unsupportedItems.length > 0) {
-    errors.push(
-      `${SOURCE_SNAPSHOT_PATH}: found claimed atomic item(s) 526–765: ${[
-        ...new Set(unsupportedItems),
-      ].join(', ')}`,
-    );
-  }
-
-  return { comments, sessionEntries, nonSessionComments };
 }
 
 function parseMatrix(contents, errors) {
@@ -599,21 +447,21 @@ function citedUrls(contents) {
   ].map((match) => match[1]);
 }
 
-function semanticBaseline(questions, errors) {
+function priorPublishedSemanticState(questions, errors) {
   const questionIds = new Set(questions.map(({ id }) => id));
   const baseline = new Map(questions.map(({ id }) => [id, 'Not mapped']));
   const assigned = new Set();
 
-  for (const [semantic, ids] of Object.entries(BASELINE_SEMANTIC_IDS)) {
+  for (const [semantic, ids] of Object.entries(PRIOR_PUBLISHED_SEMANTIC_IDS)) {
     for (const id of ids) {
       if (!questionIds.has(id)) {
         errors.push(
-          `${COVERAGE_MATRIX_PATH}: pinned baseline contains unknown official question ${id}`,
+          `${COVERAGE_MATRIX_PATH}: pinned prior audit contains unknown official question ${id}`,
         );
       }
       if (assigned.has(id)) {
         errors.push(
-          `${COVERAGE_MATRIX_PATH}: pinned baseline assigns ${id} more than once`,
+          `${COVERAGE_MATRIX_PATH}: pinned prior audit assigns ${id} more than once`,
         );
       }
       assigned.add(id);
@@ -683,7 +531,7 @@ function setDifference(left, right) {
 }
 
 function validateSemanticDelta({ contents, questions, rows }, errors) {
-  const baseline = semanticBaseline(questions, errors);
+  const baseline = priorPublishedSemanticState(questions, errors);
   const current = new Map(rows.map(({ id, semantic }) => [id, semantic]));
   const derived = new Map(TRANSITION_LABELS.map((label) => [label, new Set()]));
 
@@ -728,7 +576,7 @@ function validateSemanticDelta({ contents, questions, rows }, errors) {
     const unexpected = setDifference(entry.ids, derived.get(label));
     if (missing.length > 0 || unexpected.length > 0) {
       errors.push(
-        `${COVERAGE_MATRIX_PATH}:${entry.line}: ${label} differs from the pinned baseline; missing [${missing.join(', ')}], unexpected [${unexpected.join(', ')}]`,
+        `${COVERAGE_MATRIX_PATH}:${entry.line}: ${label} differs from the pinned prior audit; missing [${missing.join(', ')}], unexpected [${unexpected.join(', ')}]`,
       );
     }
   }
@@ -803,7 +651,7 @@ function validateSemanticDelta({ contents, questions, rows }, errors) {
     0,
   );
   const declaredChangedIds = contents.match(
-    /contain (\d+) state-changing official IDs in total\./u,
+    /contains? (\d+) state-changing official IDs in total\./u,
   );
   if (Number(declaredChangedIds?.[1]) !== expectedChangedIds) {
     errors.push(
@@ -835,23 +683,23 @@ function validateMatrix({ contents, questions, comments }, errors) {
       );
     }
   }
-  const implementationBaseline = contents.match(
-    /^\*\*Implementation\/diff baseline:\*\* `([0-9a-f]{40})`/mu,
+  const priorAuditBaseline = contents.match(
+    /^\*\*Prior published audit baseline:\*\* `([0-9a-f]{40})`/mu,
   );
-  if (implementationBaseline?.[1] !== EXPECTED_IMPLEMENTATION_BASELINE) {
+  if (priorAuditBaseline?.[1] !== EXPECTED_PRIOR_AUDIT_BASELINE) {
     errors.push(
-      `${COVERAGE_MATRIX_PATH}: published implementation/diff baseline must be ${EXPECTED_IMPLEMENTATION_BASELINE}`,
+      `${COVERAGE_MATRIX_PATH}: prior published audit baseline must be ${EXPECTED_PRIOR_AUDIT_BASELINE}`,
     );
   }
-  const fullBaselineOccurrences =
-    contents.split(EXPECTED_IMPLEMENTATION_BASELINE).length - 1;
-  const shortBaseline = `${EXPECTED_IMPLEMENTATION_BASELINE.slice(0, 7)}…`;
+  const historicalImplementationBaseline = contents.match(
+    /^\*\*Historical implementation baseline:\*\* `([0-9a-f]{40})`/mu,
+  );
   if (
-    fullBaselineOccurrences !== 2 ||
-    !contents.includes(`GitHub baseline \`${shortBaseline}\``)
+    historicalImplementationBaseline?.[1] !==
+    EXPECTED_HISTORICAL_IMPLEMENTATION_BASELINE
   ) {
     errors.push(
-      `${COVERAGE_MATRIX_PATH}: all published semantic-delta baseline references must identify ${EXPECTED_IMPLEMENTATION_BASELINE}`,
+      `${COVERAGE_MATRIX_PATH}: historical implementation baseline must be ${EXPECTED_HISTORICAL_IMPLEMENTATION_BASELINE}`,
     );
   }
 
@@ -989,9 +837,9 @@ function validateMatrix({ contents, questions, comments }, errors) {
 
   validateSemanticDelta({ contents, questions, rows }, errors);
 
-  if (ledger.length !== EXPECTED_COMMENT_COUNT) {
+  if (ledger.length !== CURRENT_SOURCE_COMMENT_COUNT) {
     errors.push(
-      `${COVERAGE_MATRIX_PATH}: expected ${EXPECTED_COMMENT_COUNT} supplemental-ledger rows, found ${ledger.length}`,
+      `${COVERAGE_MATRIX_PATH}: expected ${CURRENT_SOURCE_COMMENT_COUNT} supplemental-ledger rows, found ${ledger.length}`,
     );
   }
   for (const [index, entry] of ledger.entries()) {
@@ -1054,14 +902,28 @@ function validateMatrix({ contents, questions, comments }, errors) {
 export function validateIurieCoverage({
   questionBank,
   coverageMatrix,
-  sourceSnapshot,
+  sourceSnapshots,
 }) {
   const errors = [];
   const normalizedQuestionBank = normalizeLineEndings(questionBank);
   const normalizedCoverageMatrix = normalizeLineEndings(coverageMatrix);
-  const normalizedSourceSnapshot = normalizeLineEndings(sourceSnapshot);
   const questions = parseQuestionBank(normalizedQuestionBank, errors);
-  const source = parseSnapshot(normalizedSourceSnapshot, errors);
+  const snapshotValidation = validateIurieEvidenceSnapshots(sourceSnapshots);
+  errors.push(...snapshotValidation.errors);
+  const previousSource = snapshotValidation.historical;
+  const source = snapshotValidation.current;
+  if (!snapshotValidation.inputComplete) {
+    return {
+      errors,
+      summary: null,
+      source: {
+        comments: 0,
+        sessions: 0,
+        nonSessionComments: 0,
+        previousComments: 0,
+      },
+    };
+  }
   const summary = validateMatrix(
     {
       contents: normalizedCoverageMatrix,
@@ -1077,21 +939,27 @@ export function validateIurieCoverage({
       comments: source.comments.length,
       sessions: source.sessionEntries.length,
       nonSessionComments: source.nonSessionComments.length,
+      previousComments: previousSource.comments.length,
     },
   };
 }
 
 export async function validateIurieCoverageFiles(repositoryRoot) {
   const root = resolve(repositoryRoot);
-  const [questionBank, coverageMatrix, sourceSnapshot] = await Promise.all([
-    readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
-    readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
-    readFile(resolve(root, SOURCE_SNAPSHOT_PATH), 'utf8'),
-  ]);
+  const [questionBank, coverageMatrix, historicalSnapshot, currentSnapshot] =
+    await Promise.all([
+      readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
+      readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
+      readFile(resolve(root, HISTORICAL_SOURCE_SNAPSHOT_PATH), 'utf8'),
+      readFile(resolve(root, CURRENT_SOURCE_SNAPSHOT_PATH), 'utf8'),
+    ]);
   return validateIurieCoverage({
     questionBank,
     coverageMatrix,
-    sourceSnapshot,
+    sourceSnapshots: {
+      historical: historicalSnapshot,
+      current: currentSnapshot,
+    },
   });
 }
 

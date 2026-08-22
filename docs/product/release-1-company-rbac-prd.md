@@ -94,7 +94,7 @@ A current owner configures PRISMA-PRIM, BIC and ECG, assigns one Workspace manag
 
 ## 13. Business evidence
 
-The final audited evidence inventory from PR #111 narrows the first-tenant boundary without completing it.
+The coverage matrix's current audited evidence inventory narrows the first-tenant boundary without completing it.
 
 Confirmed enough to inform this PRD:
 
@@ -114,7 +114,7 @@ Still required before ticketing first-tenant-dependent assignments and permissio
 - complete approval/delegation and deactivation expectations;
 - final product treatment of `All Companies` beyond the already delivered Company-context mechanism.
 
-Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business-answer-coverage.md), final 104-comment audit.
+Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business-answer-coverage.md), current audited boundary.
 
 ## 14. Technical dependencies
 
@@ -127,7 +127,7 @@ Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business
 
 The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). [#88 — narrow Company Context Access assignment](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) delivered the further approved business-independent slice: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That named Company-scoped permission bundle permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability.
 
-PR #111 improves evidence precision but does not make any additional assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
+The current coverage audit improves evidence precision but does not make any additional assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
 
 ## 16. Evidence authority boundary
 

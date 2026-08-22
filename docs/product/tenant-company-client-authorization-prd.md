@@ -126,9 +126,9 @@ Existing Internal Users receive explicit Workspace Memberships, and existing Act
 
 An administrator configures two Companies and users with different scopes. One shared Client is related to both. Each Company creates separate activity. A Company-scoped user sees shared identity and only authorized activity; a Workspace-authorized manager sees a governed consolidated view. Attempts to cross tenant or Company boundaries fail without metadata leakage, and critical access changes appear in authorized history.
 
-## 14. Evidence normalization after PR #111
+## 14. Evidence normalization
 
-The complete 104-comment audit establishes the following business direction strongly enough to inform this PRD without closing its readiness gates:
+The coverage matrix's current audited boundary establishes the following business direction strongly enough to inform this PRD without closing its readiness gates:
 
 - Iurie requires authorized consolidated visibility across PRISMA-PRIM, BIC and ECG.
 - The current named actors are Iurie, Dan and Valentin.
@@ -147,7 +147,7 @@ Material blockers that remain:
 - duplicate-resolution/correction authority;
 - broader deactivation expectations and final `All Companies` product behaviour.
 
-The prioritized P0 confidentiality follow-up in the coverage matrix is the current business completion package for this authority after any recovered 526–765 evidence is reconciled.
+The prioritized P0 confidentiality follow-up in the coverage matrix is the current business completion package for this authority.
 
 Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
@@ -160,10 +160,10 @@ Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-busine
 
 ## 16. Readiness
 
-The cross-cutting model is ready to govern Release 1 PRDs. The business-independent foundation through #65, #66, #67 and #88 is delivered. PR #111 narrows the remaining evidence boundary but does not make another business-dependent implementation child ready.
+The cross-cutting model is ready to govern Release 1 PRDs. The business-independent foundation through #65, #66, #67 and #88 is delivered. The current coverage audit narrows the remaining evidence boundary but does not make another business-dependent implementation child ready.
 
 Every assignment or permission bundle beyond Company Context Access, consolidated oversight permissions, shared/confidential Client fields, broader deactivation and exceptional access remain blocked until their owning evidence is normalized into this PRD.
 
 ## 17. Evidence authority boundary
 
-The coverage matrix and issue #81 preserve evidence and semantic coverage. They do not authorize runtime behaviour by themselves. Future implementation issues must cite this PRD after the relevant business evidence has been normalized here.
+Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes runtime behaviour by itself. Future implementation issues must cite this PRD after the relevant business evidence has been normalized here.

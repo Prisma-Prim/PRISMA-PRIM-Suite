@@ -102,9 +102,9 @@ Record Project creation, responsible-scope changes if ever allowed through gover
 
 An authorized Company user opens a shared Client, creates a pre-contract Project from a real category, selects Standard Editions and receives copied Tasks. Assigned users complete required Tasks with evidence. A blocked stage transition explains the missing requirement. A later template change does not alter the active Project. Closure preserves attributable history.
 
-## 13. Business evidence after PR #111
+## 13. Business evidence at the current audited boundary
 
-The final audited evidence supports the following direction strongly enough to keep it in this PRD:
+The current audited evidence supports the following direction strongly enough to keep it in this PRD:
 
 - a real job should be represented as its own Project with separate responsibility, status, deadlines and Documents;
 - Project Templates and copied Tasks are desired, and template versions must not rewrite historical Projects;
@@ -125,7 +125,7 @@ Still blocking ticket decomposition:
 - pre-Contract arbitration consistent with DEC-026;
 - complete reminder catalogue by Project type.
 
-The P0 initial-Project-categories completion package in the coverage matrix is the current highest-priority business follow-up for this PRD after any recovered 526–765 evidence is reconciled.
+The P0 initial-Project-categories completion package in the coverage matrix is the current highest-priority business follow-up for this PRD.
 
 Question source: S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
@@ -138,8 +138,8 @@ Question source: S02. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. PR #111 narrows the evidence boundary but does not make an implementation child ready. This capability follows Company/RBAC and Shared Client.
+Ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary but does not make an implementation child ready. This capability follows Company/RBAC and Shared Client.
 
 ## 16. Evidence authority boundary
 
-Issue #81 and the coverage matrix preserve business evidence and semantic coverage. They do not authorize lifecycle transitions, automation, permissions or start gates by themselves. Any implementation issue must cite this PRD after the relevant evidence has been normalized here.
+Issue #81 preserves raw business evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes lifecycle transitions, automation, permissions or start gates by itself. Any implementation issue must cite this PRD after the relevant evidence has been normalized here.
