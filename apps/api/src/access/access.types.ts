@@ -6,7 +6,7 @@ export interface ExternalPrincipal {
 }
 
 export type WorkspacePermission =
-  'company.manage' | 'company.assignment.manage';
+  'company.manage' | 'company.assignment.manage' | 'client.manage';
 
 export interface ActiveCompanyContext {
   id: string;

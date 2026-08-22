@@ -34,6 +34,7 @@ export interface ProductionShellTransport {
 export interface ProductionShellSessionSnapshot {
   readonly shellContext: ProductionShellContext;
   readonly selectCompany: (companyId: string) => Promise<void>;
+  readonly refreshActivityLog: () => Promise<void>;
   readonly rejectCompanyContext: (companyId: string) => void;
   readonly includeCompany: (company: VisibleCompany) => void;
 }
@@ -72,6 +73,7 @@ export function createProductionShellSession({
   let shellContext: ProductionShellContext = { status: 'checking' };
   let snapshot = createSnapshot(shellContext);
   let operation: RequestOperation | undefined;
+  let activityOperation: RequestOperation | undefined;
   let generation = 0;
   let connected = false;
 
@@ -82,6 +84,7 @@ export function createProductionShellSession({
     return {
       shellContext: context,
       selectCompany: (companyId) => selectCompany(context, origin, companyId),
+      refreshActivityLog: () => refreshActivityLog(context, origin),
       rejectCompanyContext: (companyId) => {
         if (!connected || !origin) return;
         dispatch({
@@ -111,6 +114,8 @@ export function createProductionShellSession({
 
   function beginOperation(): RequestOperation {
     operation?.controller.abort();
+    activityOperation?.controller.abort();
+    activityOperation = undefined;
     operation = {
       generation: ++generation,
       controller: new AbortController(),
@@ -120,13 +125,28 @@ export function createProductionShellSession({
 
   function disconnect(): void {
     operation?.controller.abort();
+    activityOperation?.controller.abort();
     operation = undefined;
+    activityOperation = undefined;
     generation += 1;
     connected = false;
   }
 
   function isCurrent(candidate: RequestOperation): boolean {
-    return connected && candidate.generation === generation;
+    return (
+      connected &&
+      !candidate.controller.signal.aborted &&
+      candidate.generation === generation
+    );
+  }
+
+  function beginActivityOperation(): RequestOperation {
+    activityOperation?.controller.abort();
+    activityOperation = {
+      generation,
+      controller: new AbortController(),
+    };
+    return activityOperation;
   }
 
   function matchesCurrentOrigin(origin: CompanyContextOrigin): boolean {
@@ -225,7 +245,7 @@ export function createProductionShellSession({
       transport,
       loaded.actor,
       originFor(loaded.actor, candidate.generation),
-      candidate,
+      beginActivityOperation(),
     );
   }
 
@@ -275,11 +295,49 @@ export function createProductionShellSession({
         transport,
         actor,
         originFor(actor, origin.sessionGeneration),
-        candidate,
+        beginActivityOperation(),
       );
     } catch (error: unknown) {
       if (!isCurrent(candidate) || isAbortError(error)) return;
       dispatch({ type: 'selection-failed', origin, companyId });
+    }
+  }
+
+  async function refreshActivityLog(
+    capturedContext: ProductionShellContext,
+    origin: CompanyContextOrigin | undefined,
+  ): Promise<void> {
+    if (
+      !connected ||
+      !origin ||
+      !matchesCurrentOrigin(origin) ||
+      capturedContext.status !== 'active'
+    )
+      return;
+    const candidate = beginActivityOperation();
+    try {
+      const transport = await createTransport();
+      if (!isCurrent(candidate) || !matchesCurrentOrigin(origin)) return;
+      await loadActivityLog(
+        transport,
+        capturedContext.actor,
+        origin,
+        candidate,
+      );
+    } catch (error: unknown) {
+      if (
+        !isCurrent(candidate) ||
+        !matchesCurrentOrigin(origin) ||
+        isAbortError(error)
+      )
+        return;
+      dispatch({
+        type: 'activity-resolved',
+        origin,
+        activityLog: { status: 'error' },
+      });
+    } finally {
+      if (activityOperation === candidate) activityOperation = undefined;
     }
   }
 

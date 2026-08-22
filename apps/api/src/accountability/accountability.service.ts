@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   activityLogEvents,
+  clientAccounts,
   companies,
   internalUsers,
   workspaceMemberships,
@@ -48,6 +49,10 @@ export class AccountabilityService {
     const eventActor = alias(internalUsers, 'activity_log_actor');
     const eventTarget = alias(internalUsers, 'activity_log_target');
     const eventTargetCompany = alias(companies, 'activity_log_target_company');
+    const eventTargetClient = alias(
+      clientAccounts,
+      'activity_log_target_client',
+    );
     const actorMembership = alias(
       workspaceMemberships,
       'activity_log_actor_membership',
@@ -57,7 +62,31 @@ export class AccountabilityService {
       'activity_log_target_membership',
     );
     const visibleEvents = actor.workspacePermissions.includes('company.manage')
-      ? eq(activityLogEvents.workspaceId, actor.workspaceId)
+      ? and(
+          eq(activityLogEvents.workspaceId, actor.workspaceId),
+          or(
+            notInArray(activityLogEvents.targetType, [
+              'client_account',
+              'client_company_relationship',
+            ]),
+            actor.workspacePermissions.includes('client.manage') &&
+              actor.activeCompany
+              ? or(
+                  eq(activityLogEvents.targetType, 'client_account'),
+                  and(
+                    eq(
+                      activityLogEvents.targetType,
+                      'client_company_relationship',
+                    ),
+                    eq(
+                      activityLogEvents.targetCompanyId,
+                      actor.activeCompany.id,
+                    ),
+                  ),
+                )
+              : sql<boolean>`false`,
+          ),
+        )
       : and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
           eq(activityLogEvents.targetType, 'internal_user'),
@@ -78,6 +107,10 @@ export class AccountabilityService {
         targetInternalUserDisplayName: eventTarget.displayName,
         targetCompanyId: eventTargetCompany.id,
         targetCompanyDisplayName: eventTargetCompany.displayName,
+        targetClientAccountId: eventTargetClient.id,
+        targetClientDisplayName: eventTargetClient.displayName,
+        targetClientCompanyRelationshipId:
+          activityLogEvents.targetClientCompanyRelationshipId,
         metadata: activityLogEvents.metadata,
       })
       .from(activityLogEvents)
@@ -118,6 +151,13 @@ export class AccountabilityService {
           eq(activityLogEvents.targetCompanyId, eventTargetCompany.id),
         ),
       )
+      .leftJoin(
+        eventTargetClient,
+        and(
+          eq(activityLogEvents.workspaceId, eventTargetClient.workspaceId),
+          eq(activityLogEvents.targetClientAccountId, eventTargetClient.id),
+        ),
+      )
       .where(visibleEvents)
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
       .limit(INITIAL_PAGE_SIZE);
@@ -147,6 +187,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetWorkspaceMembershipId: event.actor.workspaceMembershipId,
         targetCompanyId: null,
         targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: null,
+        targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.internalUserId}`,
       };
     case 'company.registered':
@@ -156,6 +198,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetWorkspaceMembershipId: null,
         targetCompanyId: event.target.companyId,
         targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: null,
+        targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
     case 'company_context_assignment.granted':
@@ -166,7 +210,31 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetWorkspaceMembershipId: event.target.workspaceMembershipId,
         targetCompanyId: event.target.companyId,
         targetCompanyRoleAssignmentId: event.target.assignmentId,
+        targetClientAccountId: null,
+        targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.assignmentId}:${event.transitionId}`,
+      };
+    case 'client.created':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: null,
+        targetWorkspaceMembershipId: null,
+        targetCompanyId: null,
+        targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: event.target.clientAccountId,
+        targetClientCompanyRelationshipId: null,
+        idempotencyKey: `${event.action}:${event.target.clientAccountId}`,
+      };
+    case 'client_company_relationship.established':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: null,
+        targetWorkspaceMembershipId: null,
+        targetCompanyId: event.target.companyId,
+        targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: event.target.clientAccountId,
+        targetClientCompanyRelationshipId: event.target.relationshipId,
+        idempotencyKey: `${event.action}:${event.target.relationshipId}`,
       };
     default:
       return assertNever(event);
@@ -174,13 +242,21 @@ function persistenceFor(event: CanonicalActivityEvent) {
 }
 
 interface PersistedActivityTarget {
-  targetType: 'internal_user' | 'company' | 'company_role_assignment';
+  targetType:
+    | 'internal_user'
+    | 'company'
+    | 'company_role_assignment'
+    | 'client_account'
+    | 'client_company_relationship';
   targetCompanyRoleAssignmentId: string | null;
   targetWorkspaceMembershipId: string | null;
   targetInternalUserId: string | null;
   targetInternalUserDisplayName: string | null;
   targetCompanyId: string | null;
   targetCompanyDisplayName: string | null;
+  targetClientAccountId: string | null;
+  targetClientDisplayName: string | null;
+  targetClientCompanyRelationshipId: string | null;
 }
 
 function canonicalTarget(event: PersistedActivityTarget) {
@@ -226,6 +302,33 @@ function canonicalTarget(event: PersistedActivityTarget) {
         internalUserDisplayName: required(
           event.targetInternalUserDisplayName,
           'Internal User display name',
+        ),
+      };
+    case 'client_account':
+      return {
+        type: event.targetType,
+        clientAccountId: required(event.targetClientAccountId, 'Client id'),
+        displayName: required(
+          event.targetClientDisplayName,
+          'Client display name',
+        ),
+      };
+    case 'client_company_relationship':
+      return {
+        type: event.targetType,
+        relationshipId: required(
+          event.targetClientCompanyRelationshipId,
+          'Client–Company Relationship id',
+        ),
+        clientAccountId: required(event.targetClientAccountId, 'Client id'),
+        clientDisplayName: required(
+          event.targetClientDisplayName,
+          'Client display name',
+        ),
+        companyId: required(event.targetCompanyId, 'Company id'),
+        companyDisplayName: required(
+          event.targetCompanyDisplayName,
+          'Company name',
         ),
       };
     default:

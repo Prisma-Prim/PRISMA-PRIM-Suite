@@ -24,6 +24,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
 const bootstrapWorkspacePermissions = [
   'company.manage',
   'company.assignment.manage',
+  'client.manage',
 ] satisfies readonly WorkspacePermission[];
 
 @Injectable()

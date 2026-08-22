@@ -190,13 +190,121 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/clients:
+    get:
+      operationId: listActiveCompanyClients
+      summary: List minimal shared Clients related to the active Company
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Active Client identities related to the active Company.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientAccountView'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client authority or a valid active Company context.
+    post:
+      operationId: registerClientForActiveCompany
+      summary: Register a minimal shared Client and establish its active Company relationship
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterClientInput'
+      responses:
+        '201':
+          description: The new Client identity related to the active Company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientAccountView'
+        '400':
+          description: The display name or idempotency key is invalid, or the key was used for another command.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client authority or a valid active Company context.
+  /api/clients/search:
+    get:
+      operationId: searchWorkspaceClients
+      summary: Search the Workspace minimal shared Client identity
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        '200':
+          description: At most 20 matching Client identities and their active-Company relationship state.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 20
+                items:
+                  $ref: '#/components/schemas/ClientAccountView'
+        '400':
+          description: The search query is blank, missing or too long.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client authority or a valid active Company context.
+  /api/clients/{clientAccountId}/active-company-relationship:
+    put:
+      operationId: attachClientToActiveCompany
+      summary: Establish the active Company's relationship to an existing shared Client
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The existing Client identity related to the active Company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientAccountView'
+        '400':
+          description: The Client identifier is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client authority or a valid active Company context.
+        '404':
+          description: No active Client matches the identifier in the actor's Workspace.
 components:
   parameters:
     IdempotencyKey:
       in: header
       name: Idempotency-Key
       required: true
-      description: A caller-scoped command key whose replay returns the original assignment result.
+      description: A caller-scoped command key whose replay returns the original command result.
       schema:
         type: string
         minLength: 1
@@ -205,6 +313,13 @@ components:
       name: X-Company-Context-Id
       required: false
       description: A Company selection hint revalidated by Access on this protected request.
+      schema:
+        type: string
+    RequiredCompanyContextId:
+      in: header
+      name: X-Company-Context-Id
+      required: true
+      description: The active Company selection revalidated by Access for this Client operation.
       schema:
         type: string
   schemas:
@@ -229,6 +344,8 @@ components:
             - company.registered
             - company_context_assignment.granted
             - company_context_assignment.revoked
+            - client.created
+            - client_company_relationship.established
         occurredAt:
           type: string
           format: date-time
@@ -239,6 +356,8 @@ components:
             - $ref: '#/components/schemas/ActivityLogInternalUserTargetReference'
             - $ref: '#/components/schemas/ActivityLogCompanyTargetReference'
             - $ref: '#/components/schemas/ActivityLogCompanyRoleAssignmentTargetReference'
+            - $ref: '#/components/schemas/ActivityLogClientTargetReference'
+            - $ref: '#/components/schemas/ActivityLogClientCompanyRelationshipTargetReference'
         metadata:
           oneOf:
             - $ref: '#/components/schemas/IdentityProvisionedMetadata'
@@ -339,6 +458,49 @@ components:
           format: uuid
         internalUserDisplayName:
           type: string
+    ActivityLogClientTargetReference:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - clientAccountId
+        - displayName
+      properties:
+        type:
+          type: string
+          const: client_account
+        clientAccountId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    ActivityLogClientCompanyRelationshipTargetReference:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - relationshipId
+        - clientAccountId
+        - clientDisplayName
+        - companyId
+        - companyDisplayName
+      properties:
+        type:
+          type: string
+          const: client_company_relationship
+        relationshipId:
+          type: string
+          format: uuid
+        clientAccountId:
+          type: string
+          format: uuid
+        clientDisplayName:
+          type: string
+        companyId:
+          type: string
+          format: uuid
+        companyDisplayName:
+          type: string
     GrantCompanyContextAssignmentInput:
       type: object
       additionalProperties: false
@@ -413,6 +575,30 @@ components:
         createdByInternalUserId:
           type: string
           format: uuid
+    RegisterClientInput:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+    ClientAccountView:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+        - relatedToActiveCompany
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        relatedToActiveCompany:
+          type: boolean
     ActorContext:
       type: object
       additionalProperties: false
@@ -453,6 +639,7 @@ components:
             enum:
               - company.manage
               - company.assignment.manage
+              - client.manage
         activeCompany:
           $ref: '#/components/schemas/ActiveCompanyContext'
     ActiveCompanyContext:

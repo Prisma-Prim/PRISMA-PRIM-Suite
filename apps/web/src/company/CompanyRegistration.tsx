@@ -2,10 +2,15 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import type { ApiResult } from '../api/authenticated-api-client';
 import {
-  createAuthenticatedApiClient,
-  type ApiResult,
-} from '../api/authenticated-api-client';
+  resolveIdempotentDisplayNameCommand,
+  type IdempotentDisplayNameCommand,
+} from '../api/idempotent-display-name-command';
+import {
+  handleAuthenticatedAccessRejection,
+  runLatestAuthenticatedRequest,
+} from '../api/latest-authenticated-request';
 import { companyRegistrationCopy as copy } from './company-registration.copy';
 
 interface CompanyRecord {
@@ -38,13 +43,9 @@ export function CompanyRegistration({
 }) {
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
-  const retryCommand = useRef<
-    | {
-        displayName: string;
-        idempotencyKey: string;
-      }
-    | undefined
-  >(undefined);
+  const retryCommand = useRef<IdempotentDisplayNameCommand | undefined>(
+    undefined,
+  );
   const pendingRequest = useRef<AbortController | undefined>(undefined);
   useEffect(
     () => () => pendingRequest.current?.abort(),
@@ -68,25 +69,28 @@ export function CompanyRegistration({
   async function handleAccessRejection(
     result: ApiResult<unknown>,
     requestCompanyContextId: string | undefined,
+    signal: AbortSignal,
   ): Promise<boolean> {
-    if (result.status === 'unauthorized') {
-      await identity.rejectSession();
-      setState({ status: 'error' });
-      return true;
-    }
-    if (result.status === 'forbidden') {
-      if (requestCompanyContextId)
-        onCompanyContextRejected(requestCompanyContextId);
-      setState({ status: 'forbidden' });
-      return true;
-    }
-    return false;
+    if (signal.aborted) return true;
+    const rejection = await handleAuthenticatedAccessRejection({
+      result,
+      identity,
+      companyContextId: requestCompanyContextId,
+      onCompanyContextRejected,
+    });
+    if (signal.aborted) return true;
+    if (!rejection) return false;
+    setState({ status: rejection === 'forbidden' ? 'forbidden' : 'error' });
+    return true;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedName = displayName.trim();
-    if (!normalizedName) {
+    const command = resolveIdempotentDisplayNameCommand(
+      displayName,
+      retryCommand.current,
+    );
+    if (!command) {
       setState({
         status: 'validation',
         message: copy.displayNameRequired,
@@ -94,65 +98,65 @@ export function CompanyRegistration({
       return;
     }
 
-    const command =
-      retryCommand.current?.displayName === normalizedName
-        ? retryCommand.current
-        : {
-            displayName: normalizedName,
-            idempotencyKey: crypto.randomUUID(),
-          };
     retryCommand.current = command;
     setState({ status: 'submitting' });
     const requestCompanyContextId = actor.activeCompany?.id;
-    pendingRequest.current?.abort();
-    const request = new AbortController();
-    pendingRequest.current = request;
-
-    try {
-      const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted) return;
-      const createResult = await api.request<CompanyRecord>('/companies', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'idempotency-key': command.idempotencyKey,
-        },
-        companyContextId: requestCompanyContextId,
-        body: JSON.stringify({ displayName: command.displayName }),
-        signal: request.signal,
-      });
-      if (request.signal.aborted) return;
-      if (await handleAccessRejection(createResult, requestCompanyContextId))
-        return;
-      if (createResult.status === 'validation') {
-        return setState({
-          status: 'validation',
-          message: createResult.message ?? copy.displayNameRequired,
-        });
-      }
-      if (createResult.status !== 'ok') return setState({ status: 'error' });
-
-      const readResult = await api.request<CompanyRecord>(
-        `/companies/${createResult.value.id}`,
-        {
+    await runLatestAuthenticatedRequest({
+      pending: pendingRequest,
+      identity,
+      execute: async (api, signal) => {
+        const createResult = await api.request<CompanyRecord>('/companies', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': command.idempotencyKey,
+          },
           companyContextId: requestCompanyContextId,
-          signal: request.signal,
-        },
-      );
-      if (request.signal.aborted) return;
-      if (await handleAccessRejection(readResult, requestCompanyContextId))
-        return;
-      if (readResult.status !== 'ok') return setState({ status: 'error' });
-      retryCommand.current = undefined;
-      onCompanyRegistered(readResult.value);
-      setState({ status: 'ready', company: readResult.value });
-    } catch {
-      if (request.signal.aborted) return;
-      setState({ status: 'error' });
-    } finally {
-      if (pendingRequest.current === request)
-        pendingRequest.current = undefined;
-    }
+          body: JSON.stringify({ displayName: command.displayName }),
+          signal,
+        });
+        if (createResult.status !== 'ok')
+          return { phase: 'create' as const, result: createResult };
+        signal.throwIfAborted();
+        const readResult = await api.request<CompanyRecord>(
+          `/companies/${createResult.value.id}`,
+          {
+            companyContextId: requestCompanyContextId,
+            signal,
+          },
+        );
+        return { phase: 'read' as const, result: readResult };
+      },
+      async onResult(request, signal) {
+        if (
+          await handleAccessRejection(
+            request.result,
+            requestCompanyContextId,
+            signal,
+          )
+        )
+          return;
+        if (request.phase === 'create') {
+          setState(
+            request.result.status === 'validation'
+              ? {
+                  status: 'validation',
+                  message: request.result.message ?? copy.displayNameRequired,
+                }
+              : { status: 'error' },
+          );
+          return;
+        }
+        if (request.result.status !== 'ok') {
+          setState({ status: 'error' });
+          return;
+        }
+        retryCommand.current = undefined;
+        onCompanyRegistered(request.result.value);
+        setState({ status: 'ready', company: request.result.value });
+      },
+      onError: () => setState({ status: 'error' }),
+    });
   }
 
   return (

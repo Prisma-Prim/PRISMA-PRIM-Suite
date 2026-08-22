@@ -1,7 +1,7 @@
 # PRD — Release 1 Company and RBAC
 
 **Status:** Draft — audited interview evidence received; permission matrix pending  
-**Version:** 0.4  
+**Version:** 0.5
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD
 
@@ -86,6 +86,7 @@ Preserve existing Workspace/Internal User identities and Clerk subject mappings.
 - [Issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) uses the public Company REST and authorization interfaces to prove that only the bootstrap Workspace Owner can register and view a provider Company in the current Workspace and that registration records one Activity Log event.
 - [Issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) uses REST and browser seams to prove visible selection among authorized active Companies, server revalidation on every protected request, and non-leaking invalid or stale selection recovery.
 - [Issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) used REST and browser seams to prove that a Workspace Owner can grant or revoke one narrow Company Context Access Role Assignment for an existing active Workspace Membership. The assignment permits only listing and selecting that active Company; it grants no Client, Project, Document, finance or other domain capability.
+- [Issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) uses a distinct bootstrap-only `client.manage` Workspace permission. It does not extend Company Context Access or define an ordinary-user role bundle.
 - Cross-cutting migration, isolation, denial, metadata-leakage, and database-constraint cases remain owned by the Tenant, Company, Shared Client and Authorization PRD.
 
 ## 12. Acceptance journey
@@ -127,7 +128,9 @@ Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business
 
 The PRD is structurally complete. Its delivered business-independent sequence is [#65 — explicit Workspace membership](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65), [#66 — Workspace Owner provider-Company registration and view](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66), then [#67 — server-revalidated active Company selection](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67). [#88 — narrow Company Context Access assignment](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) delivered the further approved business-independent slice: a Workspace Owner may grant or revoke an existing active Workspace Membership's narrow access to an active Company context. That named Company-scoped permission bundle permits only listing and selecting the Company and grants no Client, Project, Document, finance or other domain capability.
 
-The current coverage audit improves evidence precision but does not make any additional assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
+The conservative #141 tracer grants `client.manage` only through the configured bootstrap Workspace Owner resolution path and requires a server-validated active Company. It does not promote an existing membership through migration and does not extend Company Context Access.
+
+The current coverage audit still does not make any additional ordinary-user assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access and the bootstrap-only Client tracer, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
 
 ## 16. Evidence authority boundary
 

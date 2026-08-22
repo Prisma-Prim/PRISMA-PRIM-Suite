@@ -8,6 +8,9 @@ export const COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION =
   'company_context_assignment.granted' as const;
 export const COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION =
   'company_context_assignment.revoked' as const;
+export const CLIENT_CREATED_ACTION = 'client.created' as const;
+export const CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION =
+  'client_company_relationship.established' as const;
 
 export type CanonicalActivityEvent =
   | {
@@ -44,6 +47,26 @@ export type CanonicalActivityEvent =
       };
       metadata: { bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL };
       transitionId: string;
+    }
+  | {
+      actor: ActorContext;
+      action: typeof CLIENT_CREATED_ACTION;
+      target: {
+        type: 'client_account';
+        clientAccountId: string;
+      };
+      metadata: Record<string, never>;
+    }
+  | {
+      actor: ActorContext;
+      action: typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION;
+      target: {
+        type: 'client_company_relationship';
+        relationshipId: string;
+        clientAccountId: string;
+        companyId: string;
+      };
+      metadata: Record<string, never>;
     };
 
 export interface ActivityLogEvent {
@@ -52,7 +75,9 @@ export interface ActivityLogEvent {
     | typeof INTERNAL_USER_PROVISIONED_ACTION
     | typeof COMPANY_REGISTERED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-    | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
+    | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+    | typeof CLIENT_CREATED_ACTION
+    | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION;
   occurredAt: string;
   actor: {
     internalUserId: string;
@@ -77,6 +102,19 @@ export interface ActivityLogEvent {
         workspaceMembershipId: string;
         internalUserId: string;
         internalUserDisplayName: string;
+      }
+    | {
+        type: 'client_account';
+        clientAccountId: string;
+        displayName: string;
+      }
+    | {
+        type: 'client_company_relationship';
+        relationshipId: string;
+        clientAccountId: string;
+        clientDisplayName: string;
+        companyId: string;
+        companyDisplayName: string;
       };
   metadata:
     | { identityProvider: string }
