@@ -1,5 +1,5 @@
 import type { ActorContext } from '../access-types';
-import type { CompanyContextState } from '../production-shell/company-context-transitions';
+import type { CompanyContextState } from '../production-shell/useProductionShellContext';
 import { companyContextCopy as copy } from './company-context.copy';
 
 export function CompanyContextSelector({
