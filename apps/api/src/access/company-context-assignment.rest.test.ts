@@ -97,6 +97,18 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       statusCode: 403,
     });
 
+    const emptySelection = await fetch(`${origin}/api/access/current-actor`, {
+      headers: {
+        ...identityHeaders('workspace-member', 'Member'),
+        'x-company-context-id': '',
+      },
+    });
+    expect(emptySelection.status).toBe(403);
+    await expect(emptySelection.json()).resolves.toEqual({
+      message: 'Forbidden',
+      statusCode: 403,
+    });
+
     const selected = await fetch(`${origin}/api/access/current-actor`, {
       headers: {
         ...identityHeaders('workspace-member', 'Member'),
@@ -105,7 +117,10 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     });
     expect(selected.status).toBe(200);
     await expect(selected.json()).resolves.toMatchObject({
-      activeCompany: { id: company.id },
+      activeCompany: {
+        id: company.id,
+        displayName: company.displayName,
+      },
     });
     const unassignedSelection = await fetch(
       `${origin}/api/access/current-actor`,

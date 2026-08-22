@@ -9,10 +9,6 @@ import {
   workspaceMemberships,
   workspaces,
 } from '../database/schema/index.js';
-import {
-  ACTIVE_COMPANY_CONTEXT_LOOKUP,
-  type ActiveCompanyContextLookup,
-} from './active-company-context.port.js';
 import type {
   ActorContext,
   ExternalPrincipal,
@@ -37,8 +33,6 @@ export class AccessService {
     private readonly accountability: AccountabilityService,
     @Inject(ACCESS_ADMISSION)
     private readonly admission: AccessAdmission,
-    @Inject(ACTIVE_COMPANY_CONTEXT_LOOKUP)
-    private readonly activeCompanyContexts: ActiveCompanyContextLookup,
     private readonly companyContextAuthorization: CompanyContextAuthorization,
   ) {}
 
@@ -162,16 +156,11 @@ export class AccessService {
       };
 
       if (requestedCompanyId !== undefined) {
-        const canUseCompany =
-          await this.companyContextAuthorization.hasCompanyContextAuthority(
+        const activeCompany =
+          await this.companyContextAuthorization.resolveAuthorizedActiveCompany(
             actor,
             requestedCompanyId,
           );
-        if (!canUseCompany) throw new ForbiddenException();
-        const activeCompany = await this.activeCompanyContexts.findActive(
-          actor.workspaceId,
-          requestedCompanyId,
-        );
         if (!activeCompany) throw new ForbiddenException();
         actor.activeCompany = activeCompany;
       }
