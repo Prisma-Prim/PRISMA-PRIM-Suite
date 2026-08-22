@@ -3,6 +3,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  databaseTargetsAreSafe,
+  parsePostgresDatabaseTarget,
+} from '../apps/api/test-support/postgres-database-target.mjs';
+
+export { databaseTargetsAreSafe };
+export const parseDatabaseTarget = parsePostgresDatabaseTarget;
+
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(dirname(scriptPath), '..');
 
@@ -49,49 +57,6 @@ export function packageManagerVersion(packageManager) {
   return match?.[1] ?? null;
 }
 
-export function parseDatabaseTarget(value) {
-  try {
-    const url = new URL(String(value));
-    if (url.search || url.hash) {
-      return null;
-    }
-    if (!new Set(['postgres:', 'postgresql:']).has(url.protocol)) {
-      return null;
-    }
-
-    const database = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
-    if (!database || database.includes('/')) {
-      return null;
-    }
-
-    return {
-      database,
-      hostname: url.hostname,
-      port: url.port || '5432',
-    };
-  } catch {
-    return null;
-  }
-}
-
-function isLoopbackHost(hostname) {
-  return new Set(['127.0.0.1', 'localhost', '[::1]']).has(hostname);
-}
-
-export function databaseTargetsAreSafe(databaseUrl, testDatabaseUrl) {
-  const developmentDatabase = parseDatabaseTarget(databaseUrl);
-  const testDatabase = parseDatabaseTarget(testDatabaseUrl);
-
-  return Boolean(
-    developmentDatabase &&
-    testDatabase &&
-    isLoopbackHost(developmentDatabase.hostname) &&
-    isLoopbackHost(testDatabase.hostname) &&
-    developmentDatabase.database !== testDatabase.database &&
-    testDatabase.database.endsWith('_test'),
-  );
-}
-
 function requiresChromium(profile) {
   return profile === 'web' || profile === 'web-postgres';
 }
@@ -119,8 +84,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   const parsedRequiredPnpm = parseVersion(requiredPnpm);
   const needsChromium = requiresChromium(profile);
   const needsPostgres = requiresPostgres(profile);
-  const developmentDatabase = parseDatabaseTarget(snapshot.databaseUrl);
-  const testDatabase = parseDatabaseTarget(snapshot.testDatabaseUrl);
+  const developmentDatabase = parsePostgresDatabaseTarget(snapshot.databaseUrl);
+  const testDatabase = parsePostgresDatabaseTarget(snapshot.testDatabaseUrl);
   const databaseVariablesValid =
     developmentDatabase !== null && testDatabase !== null;
   const databaseTargetsSafe = databaseTargetsAreSafe(
@@ -200,8 +165,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
         ? !databaseVariablesValid
           ? 'Database target safety was not checked until both PostgreSQL URLs are valid.'
           : databaseTargetsSafe
-            ? 'Development and test databases are distinct local targets; the test name ends in _test.'
-            : 'Database targets must be local, distinct, and the test database name must end in _test.'
+            ? 'Development and test databases are distinct numeric-loopback targets; the test name ends in _test.'
+            : 'Database targets must use numeric loopback addresses, remain distinct, and name the test database with a _test suffix.'
         : 'Database target safety is not required by the selected profile.',
       'Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud.',
     ),

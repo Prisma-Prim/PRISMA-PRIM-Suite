@@ -81,6 +81,27 @@ test('certifies only distinct loopback targets before connectivity is attempted'
     ),
     false,
   );
+  assert.equal(
+    databaseTargetsAreSafe(
+      healthyEnvironment.databaseUrl,
+      'postgresql://user:secret@localhost:5432/prisma_prim_test',
+    ),
+    false,
+  );
+  assert.equal(
+    databaseTargetsAreSafe(
+      healthyEnvironment.testDatabaseUrl,
+      healthyEnvironment.testDatabaseUrl,
+    ),
+    false,
+  );
+  assert.equal(
+    databaseTargetsAreSafe(
+      'postgresql://user:secret@[::1]:5432/prisma_prim_dev',
+      'postgres://user:secret@[::1]:5432/prisma_prim_test',
+    ),
+    true,
+  );
 });
 
 test('accepts the complete canonical environment', () => {
