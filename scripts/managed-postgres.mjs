@@ -5,7 +5,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { databaseTargetsAreSafe } from './agent-doctor.mjs';
+import { databaseTargetsAreSafe } from '../apps/api/test-support/postgres-database-target.mjs';
 import { createProcessGroupController } from './process-group.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
