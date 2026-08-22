@@ -2,23 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { companies, companyRoleAssignments } from '../database/schema/index.js';
-import type { ActorContext } from './access.types.js';
+import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import { COMPANY_CONTEXT_USE_BUNDLES } from './company-permissions.js';
 
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
-  async hasCompanyContextAuthority(
+  async resolveAuthorizedActiveCompany(
     actor: ActorContext,
     companyId: string,
-  ): Promise<boolean> {
-    if (actor.workspacePermissions.includes('company.manage')) return true;
-    const companyIds = await this.findAssignedActiveCompanyIds(
-      actor,
-      companyId,
-    );
-    return companyIds.length > 0;
+  ): Promise<ActiveCompanyContext | undefined> {
+    if (actor.workspacePermissions.includes('company.manage')) {
+      return this.findActiveCompany(actor.workspaceId, companyId);
+    }
+    return (await this.findAssignedActiveCompanies(actor, companyId))[0];
   }
 
   async resolveVisibleCompanyScope(
@@ -29,14 +27,34 @@ export class CompanyContextAuthorization {
     }
     return {
       kind: 'assigned-active',
-      companyIds: await this.findAssignedActiveCompanyIds(actor),
+      companyIds: (await this.findAssignedActiveCompanies(actor)).map(
+        (company) => company.id,
+      ),
     };
   }
 
-  private async findAssignedActiveCompanyIds(
+  private async findActiveCompany(
+    workspaceId: string,
+    companyId: string,
+  ): Promise<ActiveCompanyContext | undefined> {
+    const [company] = await this.databaseContext.connection
+      .select({ id: companies.id, displayName: companies.displayName })
+      .from(companies)
+      .where(
+        and(
+          eq(companies.workspaceId, workspaceId),
+          eq(sql<string>`${companies.id}::text`, companyId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .limit(1);
+    return company;
+  }
+
+  private async findAssignedActiveCompanies(
     actor: ActorContext,
     companyId?: string,
-  ): Promise<readonly string[]> {
+  ): Promise<readonly ActiveCompanyContext[]> {
     const conditions = [
       eq(companyRoleAssignments.workspaceId, actor.workspaceId),
       eq(
@@ -47,11 +65,11 @@ export class CompanyContextAuthorization {
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
     ];
-    if (companyId) {
+    if (companyId !== undefined) {
       conditions.push(eq(sql<string>`${companies.id}::text`, companyId));
     }
     const rows = await this.databaseContext.connection
-      .select({ companyId: companies.id })
+      .select({ id: companies.id, displayName: companies.displayName })
       .from(companyRoleAssignments)
       .innerJoin(
         companies,
@@ -61,7 +79,7 @@ export class CompanyContextAuthorization {
         ),
       )
       .where(and(...conditions));
-    return rows.map((row) => row.companyId);
+    return rows;
   }
 }
 
