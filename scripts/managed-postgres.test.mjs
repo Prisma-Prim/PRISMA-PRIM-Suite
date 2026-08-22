@@ -8,6 +8,7 @@ import {
   createManagedPostgresRunner,
   createSystemAdapter,
 } from './managed-postgres.mjs';
+import { skipWithoutDetachedProcessGroups } from './process-group-test-support.mjs';
 
 const environmentDocumentation = await readFile(
   new URL('../docs/agents/environment.md', import.meta.url),
@@ -399,7 +400,10 @@ test('removes the readiness abort listener when the delay timer settles', async 
   assert.equal(removed, 1);
 });
 
-test('interrupts and awaits a SIGTERM-resistant verification process tree before cleanup', async () => {
+test('interrupts and awaits a SIGTERM-resistant verification process tree before cleanup', async (context) => {
+  if (await skipWithoutDetachedProcessGroups(context)) {
+    return;
+  }
   const fixtureDirectory = await mkdtemp(
     join(tmpdir(), 'prisma-prim-process-tree-test-'),
   );
@@ -876,6 +880,14 @@ test('documents the direct managed runner while preserving native PostgreSQL', (
   assert.match(
     environmentDocumentation,
     /bash scripts\/codex-cloud-maintenance\.sh --profile postgres/,
+  );
+  assert.match(
+    environmentDocumentation,
+    /ChatGPT Work mode.*capability probe.*skip/i,
+  );
+  assert.match(
+    environmentDocumentation,
+    /GitHub Actions.*real POSIX process-group coverage/i,
   );
 });
 

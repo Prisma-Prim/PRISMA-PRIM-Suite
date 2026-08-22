@@ -5,8 +5,129 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { createSystemAdapter } from './managed-postgres.mjs';
+import {
+  createProcessGroupController,
+  probeDetachedProcessGroupCapability,
+} from './process-group.mjs';
+import { skipWithoutDetachedProcessGroups } from './process-group-test-support.mjs';
 
-test('bounds a never-completing process and awaits its terminated process group', async () => {
+test('covers TERM to KILL escalation without launching a detached process', async () => {
+  const signals = [];
+  const observedStates = [['S'], []];
+  const controller = createProcessGroupController({
+    groupExists: () => true,
+    platform: 'linux',
+    readProcessGroupStates: async () => observedStates.shift() ?? [],
+    signalProcessGroup: (processGroupId, signal) => {
+      signals.push([processGroupId, signal]);
+    },
+  });
+
+  await controller.terminate({ pid: 987_654_321 }, Promise.resolve(), 0);
+
+  assert.deepEqual(signals, [
+    [987_654_321, 'SIGTERM'],
+    [987_654_321, 'SIGKILL'],
+  ]);
+});
+
+test('reports an actionable fallback when a spawned process is not observable', async () => {
+  const listeners = new Map();
+  const killedSignals = [];
+  let probeSource = '';
+  let unreferenced = false;
+  const child = {
+    pid: 42,
+    kill: (signal) => {
+      killedSignals.push(signal);
+      return false;
+    },
+    once: (event, listener) => {
+      listeners.set(event, listener);
+      return child;
+    },
+    unref: () => {
+      unreferenced = true;
+    },
+  };
+  const capability = await probeDetachedProcessGroupCapability({
+    closeTimeoutMilliseconds: 5,
+    platform: 'linux',
+    readProcessStat: async () => {
+      const error = new Error('missing');
+      error.code = 'ENOENT';
+      throw error;
+    },
+    spawnProcess: (_command, args) => {
+      probeSource = args.at(-1);
+      queueMicrotask(() => listeners.get('spawn')?.());
+      return child;
+    },
+  });
+
+  assert.equal(capability.supported, false);
+  assert.match(capability.reason, /not expose.*\/proc/i);
+  assert.match(capability.reason, /GitHub Actions.*POSIX/i);
+  assert.match(probeSource, /setTimeout.*process\.exit\(0\).*1000/);
+  assert.deepEqual(killedSignals, ['SIGKILL']);
+  assert.equal(unreferenced, true);
+});
+
+test(
+  'bounds the capability probe when a harness omits child lifecycle events',
+  { timeout: 100 },
+  async () => {
+    const child = {
+      pid: 42,
+      kill: () => false,
+      once: () => child,
+      unref: () => undefined,
+    };
+
+    const capability = await probeDetachedProcessGroupCapability({
+      closeTimeoutMilliseconds: 5,
+      platform: 'linux',
+      spawnProcess: () => child,
+      spawnTimeoutMilliseconds: 5,
+    });
+
+    assert.equal(capability.supported, false);
+    assert.match(capability.reason, /did not deliver.*spawn.*event/i);
+  },
+);
+
+test('accepts an observable detached process group with a closing child', async () => {
+  const listeners = new Map();
+  const child = {
+    pid: 42,
+    kill: () => {
+      queueMicrotask(() => listeners.get('close')?.());
+      return true;
+    },
+    once: (event, listener) => {
+      listeners.set(event, listener);
+      return child;
+    },
+    unref: () => undefined,
+  };
+
+  const capability = await probeDetachedProcessGroupCapability({
+    closeTimeoutMilliseconds: 5,
+    platform: 'linux',
+    readProcessStat: async () => '42 (node) S 1 42 42 0',
+    spawnProcess: () => {
+      queueMicrotask(() => listeners.get('spawn')?.());
+      return child;
+    },
+  });
+
+  assert.deepEqual(capability, { supported: true, reason: '' });
+});
+
+test('bounds a never-completing process and awaits its terminated process group', async (context) => {
+  if (await skipWithoutDetachedProcessGroups(context)) {
+    return;
+  }
   const adapter = createSystemAdapter({ terminationGraceMilliseconds: 50 });
   const startedAt = Date.now();
 
@@ -86,7 +207,10 @@ test('ignores zombie-only Linux process groups but retains live members', async 
   });
 });
 
-test('reaps resistant descendants after a successful process-group leader exits', async () => {
+test('reaps resistant descendants after a successful process-group leader exits', async (context) => {
+  if (await skipWithoutDetachedProcessGroups(context)) {
+    return;
+  }
   const fixtureDirectory = await mkdtemp(
     join(tmpdir(), 'prisma-prim-orphan-process-test-'),
   );
