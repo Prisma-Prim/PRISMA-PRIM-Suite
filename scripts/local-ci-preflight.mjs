@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { collectEnvironment, evaluateEnvironment } from './agent-doctor.mjs';
+import { inspectEnvironment } from './agent-doctor.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -81,7 +81,7 @@ export function evaluateMigrationDatabaseCapability(postgresProbe) {
   };
 }
 
-export function collectPreflightChecks(environment = {}) {
+export function collectPreflightChecks(capabilities = {}) {
   const journalPath = resolve(
     repositoryRoot,
     'apps/api/drizzle/meta/_journal.json',
@@ -101,7 +101,7 @@ export function collectPreflightChecks(environment = {}) {
   }
 
   return [
-    evaluateMigrationDatabaseCapability(environment.postgresProbe),
+    evaluateMigrationDatabaseCapability(capabilities.postgres),
     {
       id: 'migration-manifest',
       status: migrationManifestAvailable ? 'PASS' : 'FAIL',
@@ -219,10 +219,10 @@ function runPackageScript(script) {
 export function main() {
   const json = process.argv.includes('--json');
   const checkOnly = process.argv.includes('--check-only');
-  const environment = collectEnvironment('web-postgres');
+  const inspection = inspectEnvironment('web-postgres');
   const doctorChecks = [
-    ...evaluateEnvironment(environment, 'web-postgres'),
-    ...collectPreflightChecks(environment),
+    ...inspection.checks,
+    ...collectPreflightChecks(inspection.capabilities),
   ];
   const plan = createPreflightPlan({ doctorChecks });
 

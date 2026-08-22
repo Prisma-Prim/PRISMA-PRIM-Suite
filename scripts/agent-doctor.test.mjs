@@ -1,18 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  classifyPnpmCommand,
-  classifyPostgresCommand,
-  compareVersions,
-  databaseTargetsAreSafe,
-  evaluateEnvironment,
-  maximumExclusiveVersion,
-  minimumVersion,
-  packageManagerVersion,
-  parseDatabaseTarget,
-  parseVersion,
-} from './agent-doctor.mjs';
+import * as agentDoctor from './agent-doctor.mjs';
+
+const { evaluateEnvironment: evaluateEnvironmentReport } = agentDoctor;
 
 const healthyEnvironment = {
   nodeRange: '>=24.0.0 <25.0.0',
@@ -30,85 +21,49 @@ const healthyEnvironment = {
   postgresProbe: { state: 'available' },
 };
 
-test('parses and compares semantic runtime versions', () => {
-  assert.deepEqual(parseVersion('v24.14.0'), [24, 14, 0]);
-  assert.equal(compareVersions([24, 1, 0], [24, 0, 9]), 1);
-  assert.deepEqual(minimumVersion('>=24.0.0 <25.0.0'), [24, 0, 0]);
-  assert.deepEqual(maximumExclusiveVersion('>=24.0.0 <25.0.0'), [25, 0, 0]);
-  assert.equal(packageManagerVersion('pnpm@11.20.0'), '11.20.0');
+function evaluateEnvironment(snapshot, profile) {
+  return evaluateEnvironmentReport(snapshot, profile).checks;
+}
+
+test('exposes only the stable evaluation and inspection operations', () => {
+  assert.deepEqual(Object.keys(agentDoctor).sort(), [
+    'evaluateEnvironment',
+    'inspectEnvironment',
+  ]);
 });
 
-test('parses PostgreSQL targets without exposing credentials', () => {
-  assert.deepEqual(
-    parseDatabaseTarget(
-      'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test',
-    ),
+test('publishes ordered checks and PostgreSQL capabilities in one report', () => {
+  const report = evaluateEnvironmentReport(
     {
-      database: 'prisma_prim_test',
-      hostname: '127.0.0.1',
-      port: '5432',
+      ...healthyEnvironment,
+      postgresProbe: {
+        state: 'available',
+        serverVersionNumber: 170000,
+        canCreateDatabase: true,
+      },
     },
+    'web-postgres',
   );
-  assert.equal(parseDatabaseTarget('https://example.test/database'), null);
-  assert.equal(
-    parseDatabaseTarget(
-      'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test?host=db.example.test',
-    ),
-    null,
-  );
-  assert.equal(parseDatabaseTarget('not-a-url'), null);
-});
 
-test('certifies only distinct loopback targets before connectivity is attempted', () => {
-  assert.equal(
-    databaseTargetsAreSafe(
-      healthyEnvironment.databaseUrl,
-      healthyEnvironment.testDatabaseUrl,
-    ),
-    true,
+  assert.deepEqual(
+    report.checks.map(({ id }) => id),
+    [
+      'node',
+      'pnpm',
+      'workspace',
+      'lockfile',
+      'dependencies',
+      'chromium',
+      'database-variables',
+      'database-safety',
+      'postgres',
+    ],
   );
-  assert.equal(
-    databaseTargetsAreSafe(
-      healthyEnvironment.databaseUrl,
-      'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test?host=db.example.test',
-    ),
-    false,
-  );
-  assert.equal(
-    databaseTargetsAreSafe(
-      healthyEnvironment.databaseUrl,
-      'postgresql://user:secret@db.example.test:5432/prisma_prim_test',
-    ),
-    false,
-  );
-  assert.equal(
-    databaseTargetsAreSafe(
-      healthyEnvironment.databaseUrl,
-      'postgresql://user:secret@localhost:5432/prisma_prim_test',
-    ),
-    false,
-  );
-  assert.equal(
-    databaseTargetsAreSafe(
-      healthyEnvironment.testDatabaseUrl,
-      healthyEnvironment.testDatabaseUrl,
-    ),
-    false,
-  );
-  assert.equal(
-    databaseTargetsAreSafe(
-      'postgresql://user:secret@127.0.0.1/foo%3F_test',
-      'postgresql://user:secret@127.0.0.1/foo%253F_test',
-    ),
-    false,
-  );
-  assert.equal(
-    databaseTargetsAreSafe(
-      'postgresql://user:secret@[::1]:5432/prisma_prim_dev',
-      'postgres://user:secret@[::1]:5432/prisma_prim_test',
-    ),
-    true,
-  );
+  assert.deepEqual(report.capabilities.postgres, {
+    state: 'available',
+    serverVersionNumber: 170000,
+    canCreateDatabase: true,
+  });
 });
 
 test('accepts the complete canonical environment', () => {
@@ -163,31 +118,35 @@ test('the web-postgres profile requires safe local database targets and connecti
   assert.equal(healthy.find((check) => check.id === 'postgres').status, 'PASS');
 });
 
-test('rejects missing, remote, shared, and non-test database targets', () => {
+test('certifies only distinct numeric-loopback PostgreSQL targets', () => {
   const missing = evaluateEnvironment(
     { ...healthyEnvironment, testDatabaseUrl: '' },
     'web-postgres',
   );
-  const remote = evaluateEnvironment(
+  const unsafeTargets = [
+    'postgresql://prisma_prim:secret@db.example.test:5432/prisma_prim_test',
+    'postgresql://prisma_prim:secret@localhost:5432/prisma_prim_test',
+    healthyEnvironment.databaseUrl,
+    'postgresql://prisma_prim:secret@127.0.0.1:5432/prisma_prim',
+  ].map((testDatabaseUrl) =>
+    evaluateEnvironment(
+      { ...healthyEnvironment, testDatabaseUrl },
+      'web-postgres',
+    ),
+  );
+  const encodedCollision = evaluateEnvironment(
     {
       ...healthyEnvironment,
-      testDatabaseUrl:
-        'postgresql://prisma_prim:secret@db.example.test:5432/prisma_prim_test',
+      databaseUrl: 'postgresql://user:secret@127.0.0.1/foo%3F_test',
+      testDatabaseUrl: 'postgresql://user:secret@127.0.0.1/foo%253F_test',
     },
     'web-postgres',
   );
-  const shared = evaluateEnvironment(
+  const ipv6 = evaluateEnvironment(
     {
       ...healthyEnvironment,
-      testDatabaseUrl: healthyEnvironment.databaseUrl,
-    },
-    'web-postgres',
-  );
-  const unsafeName = evaluateEnvironment(
-    {
-      ...healthyEnvironment,
-      testDatabaseUrl:
-        'postgresql://prisma_prim:secret@127.0.0.1:5432/prisma_prim',
+      databaseUrl: 'postgresql://user:secret@[::1]:5432/prisma_prim_dev',
+      testDatabaseUrl: 'postgres://user:secret@[::1]:5432/prisma_prim_test',
     },
     'web-postgres',
   );
@@ -196,12 +155,43 @@ test('rejects missing, remote, shared, and non-test database targets', () => {
     missing.find((check) => check.id === 'database-variables').status,
     'FAIL',
   );
-  for (const results of [remote, shared, unsafeName]) {
+  for (const results of unsafeTargets) {
     assert.equal(
       results.find((check) => check.id === 'database-safety').status,
       'FAIL',
     );
   }
+  for (const results of [
+    evaluateEnvironment(
+      {
+        ...healthyEnvironment,
+        testDatabaseUrl:
+          'postgresql://user:secret@127.0.0.1:5432/prisma_prim_test?host=db.example.test',
+      },
+      'web-postgres',
+    ),
+    evaluateEnvironment(
+      {
+        ...healthyEnvironment,
+        testDatabaseUrl: 'https://example.test/database',
+      },
+      'web-postgres',
+    ),
+    encodedCollision,
+  ]) {
+    assert.equal(
+      results.find((check) => check.id === 'database-variables').status,
+      'FAIL',
+    );
+    assert.equal(
+      results.find((check) => check.id === 'database-safety').status,
+      'SKIP',
+    );
+  }
+  assert.equal(
+    ipv6.find((check) => check.id === 'database-safety').status,
+    'PASS',
+  );
 });
 
 test('reports PostgreSQL connectivity independently from URL safety', () => {
@@ -256,75 +246,32 @@ test('distinguishes missing pnpm from a sandbox-denied pnpm subprocess', () => {
   );
 });
 
-test('classifies subprocess errors before a misleading zero exit status', () => {
-  assert.deepEqual(
-    classifyPnpmCommand({
-      status: 0,
-      stdout: '',
-      error: { code: 'EPERM' },
-    }),
-    { state: 'sandbox-denied', detail: 'EPERM' },
-  );
-  assert.deepEqual(
-    classifyPostgresCommand({
-      status: 0,
-      stdout: '',
-      error: { code: 'EPERM' },
-    }),
-    { state: 'sandbox-denied', detail: 'EPERM' },
-  );
-});
-
-test('classifies structured PostgreSQL probe phases without blaming PostgreSQL for tooling failures', () => {
-  assert.deepEqual(
-    classifyPostgresCommand({
-      status: 1,
-      stdout: JSON.stringify({
-        phase: 'bootstrap',
-        state: 'tooling-missing',
-        code: 'ERR_MODULE_NOT_FOUND',
-      }),
-    }),
-    { state: 'tooling-missing', detail: 'ERR_MODULE_NOT_FOUND' },
-  );
-  assert.deepEqual(
-    classifyPostgresCommand({
-      status: 1,
-      stdout: JSON.stringify({
-        phase: 'connect',
-        state: 'sandbox-denied',
-        code: 'EACCES',
-      }),
-    }),
-    { state: 'sandbox-denied', detail: 'EACCES' },
-  );
-  assert.deepEqual(
-    classifyPostgresCommand({
-      status: 1,
-      stdout: '',
-      stderr: 'pnpm bootstrap failed',
-    }),
-    { state: 'tooling-missing', detail: 'probe-bootstrap' },
-  );
-});
-
-test('preserves migration capabilities from a successful PostgreSQL probe', () => {
-  assert.deepEqual(
-    classifyPostgresCommand({
-      status: 0,
-      stdout: JSON.stringify({
-        phase: 'query',
-        state: 'available',
-        code: null,
-        serverVersionNumber: 170000,
-        canCreateDatabase: true,
-      }),
-    }),
+test('reports probe tooling and sandbox failures without blaming PostgreSQL', () => {
+  const tooling = evaluateEnvironment(
     {
-      state: 'available',
-      serverVersionNumber: 170000,
-      canCreateDatabase: true,
+      ...healthyEnvironment,
+      postgresProbe: {
+        state: 'tooling-missing',
+        detail: 'ERR_MODULE_NOT_FOUND',
+      },
     },
+    'postgres',
+  );
+  const denied = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      postgresProbe: { state: 'sandbox-denied', detail: 'EACCES' },
+    },
+    'postgres',
+  );
+
+  assert.match(
+    tooling.find((check) => check.id === 'postgres').summary,
+    /probe tooling or bootstrap is missing or broken/,
+  );
+  assert.match(
+    denied.find((check) => check.id === 'postgres').summary,
+    /sandbox denied the PostgreSQL probe subprocess \(EACCES\)/,
   );
 });
 
