@@ -1,6 +1,6 @@
 # Handoff — Assist Iurie Popescu With the PRISMA-PRIM Business Interview
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Audience:** the Codex agent assisting Iurie Popescu  
 **Operating mode:** read-only business interview and evidence recovery support  
 **Companion questionnaire:** `docs/product/iurie-business-question-bank-ro.md`  
@@ -53,16 +53,16 @@ Dan and his agents own PRDs, product modelling, architecture, technical research
 
 Read them in this order. Do not rely on README or existing code alone.
 
-| Order | Source                                                                   | How to use it                                                                                                                                                                                   |
-| ----- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `AGENTS.md`                                                              | Understand repository boundaries, decision authority and the difference between evidence, product authority and implementation. Ignore the delivery workflow because this mandate is read-only. |
-| 2     | `docs/product/iurie-business-answer-coverage.md`                         | **Primary starting point for any new question.** It contains the complete 278-question semantic audit, blocker delta, decision-sufficiency protocol and prioritized completion packages.        |
-| 3     | `docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl` | Fixed verbatim snapshot of the first 104 source comments. Use it only for provenance and exact wording; it is evidence-only and non-canonical.                                                  |
-| 4     | `docs/product/iurie-business-question-bank-ro.md`                        | Official Romanian question bank. It is a coverage instrument, not a script.                                                                                                                     |
-| 5     | `docs/product/consolidated-product-decision-record.md`                   | Approved reconciliation rationale. Do not silently override its approved decisions with raw evidence.                                                                                           |
-| 6     | `CONTEXT.md`                                                             | Current canonical vocabulary. Use it to understand terms, not to make Iurie validate technical modelling.                                                                                       |
-| 7     | `docs/product/prd-index.md` and relevant PRDs                            | PRD navigation and current product authorities. Read the owning PRD when a follow-up is intended to close one concrete blocker.                                                                 |
-| 8     | `README.md`, `docs/adr/`, `apps/api/`, `apps/web/`, `/ui-baseline`       | Technical/current-state context only. Existing code or mockups do not prove desired future behaviour.                                                                                           |
+| Order | Source                                                                                      | How to use it                                                                                                                                                                                                        |
+| ----- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `AGENTS.md`                                                                                 | Understand repository boundaries, decision authority and the difference between evidence, product authority and implementation. Ignore the delivery workflow because this mandate is read-only.                      |
+| 2     | `docs/product/iurie-business-answer-coverage.md`                                            | **Primary starting point for any new question.** It contains the complete 278-question semantic audit, blocker delta, decision-sufficiency protocol and prioritized completion packages.                             |
+| 3     | `docs/product/evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl` | Current fixed verbatim snapshot of 108 source comments. Use it only for provenance and exact wording; it is evidence-only and non-canonical. Its declared predecessor preserves the historical 104-comment boundary. |
+| 4     | `docs/product/iurie-business-question-bank-ro.md`                                           | Official Romanian question bank. It is a coverage instrument, not a script.                                                                                                                                          |
+| 5     | `docs/product/consolidated-product-decision-record.md`                                      | Approved reconciliation rationale. Do not silently override its approved decisions with raw evidence.                                                                                                                |
+| 6     | `CONTEXT.md`                                                                                | Current canonical vocabulary. Use it to understand terms, not to make Iurie validate technical modelling.                                                                                                            |
+| 7     | `docs/product/prd-index.md` and relevant PRDs                                               | PRD navigation and current product authorities. Read the owning PRD when a follow-up is intended to close one concrete blocker.                                                                                      |
+| 8     | `README.md`, `docs/adr/`, `apps/api/`, `apps/web/`, `/ui-baseline`                          | Technical/current-state context only. Existing code or mockups do not prove desired future behaviour.                                                                                                                |
 
 Important reconciliation facts:
 
@@ -73,35 +73,33 @@ Important reconciliation facts:
 - the approved decision register is `DEC-001` through `DEC-212`;
 - evidence may configure or refine a product decision, but does not become a product rule by itself.
 
-## 4. Current evidence boundary after PR #111
+## 4. Current evidence boundary
 
-The semantic audit is complete for all **278 official questions** against the fixed corpus of **104 issue #81 comments** at source boundary `2026-08-18T20:40:09Z`.
+The semantic audit is complete for all **278 official questions** against the fixed corpus of **108 issue #81 comments** at source boundary `2026-08-21T17:45:07Z`.
 
 Current audited totals are:
 
 - `36 Full`;
-- `118 Partial`;
+- `120 Partial`;
 - `1 Not covered`;
-- `123 Not mapped`.
+- `121 Not mapped`.
 
 These are evidence classifications only. They do not approve product readiness, permissions, legal classification, enforcement behaviour or implementation scope.
 
-The currently addressable independent sequence reaches item **525**. No atomic source is present in issue #81 or the fixed snapshot for the previously referenced items **526–765**.
+The successor snapshot adds atomic formulation and response evidence for items **702–705**, plus the formulation and a new confirmation for item **706**. It does not recover atomic wording for **526–701**, **707–753** or **755–765**. Consolidated validation and duplicate claims for those ranges remain non-atomic and cannot close official questions by themselves.
 
 ### 4.1 Immediate operating priority
 
-Before asking Iurie any new question:
+The broad recovery attempt is closed for the current evidence boundary. Before asking Iurie any new question:
 
-1. check whether your own conversation/history/context still contains the original material numbered `526–765`;
-2. if it exists, recover it faithfully rather than interviewing Iurie again;
-3. preserve original numbering, question/proposition, Iurie answer, examples, exceptions, uncertainty and evidence authority;
-4. publish recovered evidence in issue #81 as structured evidence comments;
-5. do **not** remap it to official `Sxx-Qxx` IDs, modify PRDs or infer product rules;
-6. stop after recovery and hand the material back to Dan for semantic reconciliation.
+1. use the coverage matrix's current completion packages and decision-sufficiency protocol;
+2. ask only a short, Dan-authorized follow-up that closes one concrete business blocker;
+3. do **not** restart the broad questionnaire or retry the same broad `526–765` recovery from consolidated claims;
+4. if genuinely new exact source material appears, preserve its original numbering, wording, response, examples, exceptions, uncertainty and evidence authority;
+5. publish newly authorized evidence in issue #81 without remapping it to official `Sxx-Qxx` IDs, modifying PRDs or inferring product rules;
+6. stop after publication and hand the material back to Dan for a new versioned evidence-boundary rollover and semantic reconciliation.
 
-If `526–765` cannot be recovered, state that clearly. Do not reconstruct it from memory and do not ask Iurie to repeat hundreds of answers merely to recreate provenance.
-
-No general questionnaire may restart while this recovery attempt is unresolved.
+Do not reconstruct missing items from memory and do not ask Iurie to repeat hundreds of answers merely to recreate provenance. A later source does not mutate the 108-comment snapshot; it requires a successor snapshot and a new audited delta.
 
 ## 5. How to use code without confusing Iurie
 
@@ -138,7 +136,7 @@ Never ask the same broad question again merely because its official row is `Part
 
 ## 7. Prioritized completion packages
 
-Use these only **after** the `526–765` recovery attempt is closed and Dan has reconciled any recovered material.
+Use these only when the coverage matrix still identifies the blocker and Dan has authorized that targeted completion package.
 
 ### P0 — Cross-Company confidentiality boundary
 
@@ -285,6 +283,6 @@ Optimize for decision usefulness and minimal burden on Iurie.
 
 ## 14. Opening message for a future authorized follow-up
 
-Do not use this message until the `526–765` recovery attempt is closed and Dan has authorized a targeted completion package.
+Do not use this message until Dan has authorized a targeted completion package that remains current in the coverage matrix.
 
 > Bună ziua, Iurie. Avem deja majoritatea informațiilor pe care ni le-ați oferit și nu reluăm chestionarul. A rămas un singur punct concret care blochează o decizie de produs. Vă voi spune mai întâi ce am înțeles deja, apoi vă voi adresa o întrebare scurtă despre partea care lipsește. Nu trebuie să decideți soluția tehnică.

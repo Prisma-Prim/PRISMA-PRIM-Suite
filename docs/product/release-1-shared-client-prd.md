@@ -96,9 +96,9 @@ Record Client creation, significant identity correction, relationship create/arc
 
 A BIC user searches for an existing shared Client, adds a BIC relationship and sees only authorized activity. A PRISMA-PRIM user sees the same shared identity with separate activity. A new similar name produces a duplicate warning, not a merge. An authorized reviewer resolves the candidate and history remains attributable.
 
-## 13. Business evidence after PR #111
+## 13. Business evidence at the current audited boundary
 
-The final audited evidence supports the following direction:
+The current audited evidence supports the following direction:
 
 - Iurie wants one general Client dossier shared across PRISMA-PRIM, BIC and ECG.
 - Operational activity remains separated by responsible Company.
@@ -114,7 +114,7 @@ Still blocking ticket decomposition:
 - archive/correction practice for real representative Clients;
 - ten representative anonymized Client cases and the questions users must answer from the Client overview.
 
-The P0 cross-Company confidentiality completion package in the coverage matrix directly owns the most material unresolved visibility boundary after any recovered 526–765 evidence is reconciled.
+The P0 cross-Company confidentiality completion package in the coverage matrix directly owns the most material unresolved visibility boundary.
 
 Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
@@ -127,8 +127,8 @@ Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-an
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on representative Client examples, field visibility and duplicate authority. PR #111 narrows those blockers but does not make a Shared Client implementation child ready. The capability must follow a ready Company/RBAC slice.
+Ticket decomposition remains blocked on representative Client examples, field visibility and duplicate authority. The current coverage audit narrows those blockers but does not make a Shared Client implementation child ready. The capability must follow a ready Company/RBAC slice.
 
 ## 16. Evidence authority boundary
 
-The coverage matrix and issue #81 preserve provenance and semantic completeness. They do not authorize automatic duplicate handling, broad cross-Company visibility or any runtime rule by themselves. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
+Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes automatic duplicate handling, broad cross-Company visibility or any runtime rule by itself. Implementation issues must cite this PRD after the relevant evidence has been normalized here.

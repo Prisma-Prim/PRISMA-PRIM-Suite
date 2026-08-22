@@ -101,9 +101,9 @@ Do not create compliance Activity Log events merely for viewing the dashboard. R
 
 An administrator creates the initial Company and role membership. An authorized user registers a shared Client, creates a pre-contract Project from an approved category, receives copied Tasks, completes a required Task with evidence, registers a governed Document and promotes its first Version as official. A manager enters through the operational home, sees an evidence-backed next action, drills into the Client overview and verifies the Project, Task and Document history. A restricted user sees neither the confidential Representation nor a leaking count. The journey remains usable at the supported mobile viewport and every mutation is attributable in the owning capability.
 
-## 13. Business evidence after PR #111
+## 13. Business evidence at the current audited boundary
 
-The final audited evidence supports these directions:
+The current audited evidence supports these directions:
 
 - Iurie wants Company-specific and authorized consolidated views;
 - the consolidated view should surface active Projects, overdue Tasks, money to collect, upcoming audits/trainings and urgent problems with Company attribution;
@@ -123,7 +123,7 @@ Still blocking ticket decomposition:
 - bulk actions, if any, that are genuinely needed in Release 1;
 - readiness of all upstream Release 1 capabilities.
 
-The coverage matrix's P0/P1 follow-up protocol applies: do not ask every partial dashboard question mechanically. Only material queue/action/metric gaps required for a concrete Release 1 decision should return to Iurie after any recovered 526–765 evidence is reconciled.
+The coverage matrix's P0/P1 follow-up protocol applies: do not ask every partial dashboard question mechanically. Only material queue/action/metric gaps required for a concrete Release 1 decision should return to Iurie.
 
 Question sources: S00, S02 and S11. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
 
@@ -137,8 +137,8 @@ Question sources: S00, S02 and S11. Provenance owner: `docs/product/iurie-busine
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on initial role journeys, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. PR #111 narrows the evidence boundary but does not make this final integrated acceptance slice ready.
+Ticket decomposition remains blocked on initial role journeys, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. The current coverage audit narrows the evidence boundary but does not make this final integrated acceptance slice ready.
 
 ## 16. Evidence authority boundary
 
-Issue #81 and the coverage matrix preserve evidence and semantic coverage only. They do not authorize metric formulas, ranking, automatic prioritization or dashboard permissions by themselves. Future implementation issues must cite this PRD after the relevant product evidence has been normalized here.
+Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes metric formulas, ranking, automatic prioritization or dashboard permissions by itself. Future implementation issues must cite this PRD after the relevant product evidence has been normalized here.

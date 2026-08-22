@@ -23,11 +23,13 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 ## 3. Evidence and non-canonical reconciliation
 
-| Artifact                                                    | Purpose                                                                           |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md) | Non-canonical source comparison, implementation evidence and unresolved conflicts |
+| Artifact                                                                                                              | Purpose                                                                              |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [Issue #81 snapshot through 2026-08-21](evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl) | Current immutable 108-comment raw-evidence boundary; non-canonical and evidence-only |
+| [Historical issue #81 snapshot](evidence/iurie-business-interview-issue-81-comments.jsonl)                            | Reproducible predecessor boundary of 104 comments through 2026-08-18                 |
+| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                                                           | Non-canonical source comparison, implementation evidence and unresolved conflicts    |
 
-Use the [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) to route any recovered independently numbered `526–765` material into the next audited evidence boundary. The tracker owns its live state; the coverage matrix and versioned evidence artifacts own published audit results.
+The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) records the rollover from 104 to 108 comments. The current boundary contains atomic evidence only for recovered items 702–706; consolidated claims for the missing ranges remain non-atomic. Any later source requires another versioned rollover. The coverage matrix owns semantic classifications and blocker deltas; immutable snapshots are evidence inputs.
 
 ## 4. Cross-cutting PRDs
 

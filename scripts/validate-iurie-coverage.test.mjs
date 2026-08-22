@@ -15,17 +15,53 @@ const fixture = {
     resolve(repositoryRoot, 'docs/product/iurie-business-answer-coverage.md'),
     'utf8',
   ),
-  sourceSnapshot: await readFile(
-    resolve(
-      repositoryRoot,
-      'docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl',
+  sourceSnapshots: {
+    historical: await readFile(
+      resolve(
+        repositoryRoot,
+        'docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl',
+      ),
+      'utf8',
     ),
-    'utf8',
-  ),
+    current: await readFile(
+      resolve(
+        repositoryRoot,
+        'docs/product/evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl',
+      ),
+      'utf8',
+    ),
+  },
 };
 
 function errorsFor(overrides = {}) {
-  return validateIurieCoverage({ ...fixture, ...overrides }).errors.join('\n');
+  const { historicalSnapshot, currentSnapshot, ...fixtureOverrides } =
+    overrides;
+  const sourceSnapshots = {
+    historical:
+      historicalSnapshot === undefined
+        ? fixture.sourceSnapshots.historical
+        : historicalSnapshot,
+    current:
+      currentSnapshot === undefined
+        ? fixture.sourceSnapshots.current
+        : currentSnapshot,
+  };
+  return validateIurieCoverage({
+    ...fixture,
+    ...fixtureOverrides,
+    sourceSnapshots,
+  }).errors.join('\n');
+}
+
+function rewriteSnapshot(contents, selectRecord, mutateRecord) {
+  const records = contents
+    .trimEnd()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const record = records.find(selectRecord);
+  assert.ok(record, 'expected a matching snapshot record');
+  mutateRecord(record);
+  return `${records.map((entry) => JSON.stringify(entry)).join('\n')}\n`;
 }
 
 function matrixRow(contents, questionId) {
@@ -40,7 +76,7 @@ function ledgerRow(contents, sourceOrder) {
     .find((line) => line.startsWith(`| ${sourceOrder} |`));
 }
 
-test('accepts the real fixed-boundary coverage inventory', () => {
+test('accepts the historical snapshot and its 108-comment successor', () => {
   assert.deepEqual(validateIurieCoverage(fixture).errors, []);
 });
 
@@ -50,7 +86,10 @@ test('normalizes checkout line endings before validating pinned artifacts', () =
     validateIurieCoverage({
       questionBank: toCrlf(fixture.questionBank),
       coverageMatrix: toCrlf(fixture.coverageMatrix),
-      sourceSnapshot: toCrlf(fixture.sourceSnapshot),
+      sourceSnapshots: {
+        historical: toCrlf(fixture.sourceSnapshots.historical),
+        current: toCrlf(fixture.sourceSnapshots.current),
+      },
     }).errors,
     [],
   );
@@ -86,83 +125,159 @@ test('rejects an unknown source comment citation', () => {
 });
 
 test('rejects a duplicate session number without equating it to source order', () => {
-  const records = fixture.sourceSnapshot
-    .trimEnd()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  const secondComment = records.find(
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 2,
+    (comment) => {
+      comment.body = comment.body.replace('Sesiunea 2', 'Sesiunea 1');
+    },
   );
-  secondComment.body = secondComment.body.replace('Sesiunea 2', 'Sesiunea 1');
-  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-  assert.match(errorsFor({ sourceSnapshot }), /duplicate session number 1/u);
+  assert.match(errorsFor({ currentSnapshot }), /duplicate session number 1/u);
 });
 
 test('rejects a comment missing its body with an actionable diagnostic', () => {
-  const records = fixture.sourceSnapshot
-    .trimEnd()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  const comment = records.find(
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+    (comment) => {
+      delete comment.body;
+    },
   );
-  delete comment.body;
-  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-
   assert.match(
-    errorsFor({ sourceSnapshot }),
+    errorsFor({ currentSnapshot }),
     /source ordinal 1 is missing author or body provenance/u,
   );
 });
 
 test('rejects substantive drift in pinned comment content', () => {
-  const records = fixture.sourceSnapshot
-    .trimEnd()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  const comment = records.find(
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+    (comment) => {
+      comment.body +=
+        '\nSubstantive drift that preserves IDs and session structure.';
+    },
   );
-  comment.body +=
-    '\nSubstantive drift that preserves IDs and session structure.';
-  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-
   assert.match(
-    errorsFor({ sourceSnapshot }),
+    errorsFor({ currentSnapshot }),
+    /pinned 108-comment author\/body content does not match the audited boundary/u,
+  );
+});
+
+test('rejects drift in the reproducible 104-comment predecessor', () => {
+  const historicalSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.historical,
+    ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+    (comment) => {
+      comment.body += '\nHistorical boundary drift.';
+    },
+  );
+  assert.match(
+    errorsFor({ historicalSnapshot }),
     /pinned 104-comment author\/body content does not match the audited boundary/u,
+  );
+  assert.match(
+    errorsFor({ historicalSnapshot }),
+    /first 104 comments must exactly reproduce/u,
+  );
+});
+
+test('rejects a missing recovered atomic item while preserving the gap', () => {
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
+    ({ comment_id: id }) => id === 5373284576,
+    (comment) => {
+      comment.body = comment.body.replace(
+        '### 702.',
+        '### Recovered item 702.',
+      );
+    },
+  );
+  assert.match(
+    errorsFor({ currentSnapshot }),
+    /missing recovered atomic item\(s\): 702/u,
+  );
+});
+
+test('rejects one recovered item claimed by two source comments', () => {
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
+    ({ comment_id: id }) => id === 5373293702,
+    (comment) => {
+      comment.body += '\n## 705 — duplicated recovered claim';
+    },
+  );
+  assert.match(
+    errorsFor({ currentSnapshot }),
+    /recovered atomic item 705 must occur only in comment 5373291180/u,
+  );
+});
+
+test('rejects fabrication of an atomic item inside a consolidated-only gap', () => {
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
+    ({ comment_id: id }) => id === 5366189353,
+    (comment) => {
+      comment.body += '\n### 526. Fabricated atomic wording';
+    },
+  );
+  assert.match(
+    errorsFor({ currentSnapshot }),
+    /found unsupported recovered atomic item\(s\): 526/u,
+  );
+});
+
+test('rejects successor metadata that points to a different predecessor', () => {
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
+    ({ record_type: type }) => type === 'snapshot',
+    (metadata) => {
+      metadata.predecessor_comment_count = 103;
+    },
+  );
+  assert.match(
+    errorsFor({ currentSnapshot }),
+    /snapshot predecessor_comment_count must be 104/u,
   );
 });
 
 test('rejects promotion of the pinned evidence-only snapshot metadata', () => {
-  const records = fixture.sourceSnapshot
-    .trimEnd()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  const metadata = records.find(({ record_type: type }) => type === 'snapshot');
-  metadata.authority_status = 'canonical approved product authority';
-  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
+    ({ record_type: type }) => type === 'snapshot',
+    (metadata) => {
+      metadata.authority_status = 'canonical approved product authority';
+    },
+  );
   assert.match(
-    errorsFor({ sourceSnapshot }),
+    errorsFor({ currentSnapshot }),
     /pinned complete snapshot metadata does not match the evidence-only authority boundary/u,
   );
 });
 
 test('rejects semantic fields added to a raw comment record', () => {
-  const records = fixture.sourceSnapshot
-    .trimEnd()
-    .split('\n')
-    .map((line) => JSON.parse(line));
-  const comment = records.find(
+  const currentSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.current,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
+    (comment) => {
+      comment.authority_status = 'canonical approved product rule';
+    },
   );
-  comment.authority_status = 'canonical approved product rule';
-  const sourceSnapshot = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
-
   assert.match(
-    errorsFor({ sourceSnapshot }),
+    errorsFor({ currentSnapshot }),
     /pinned complete comment-record schema and content do not match the verbatim evidence boundary/u,
   );
+});
+
+test('fails once when the required snapshot pair is absent', () => {
+  const result = validateIurieCoverage({
+    questionBank: fixture.questionBank,
+    coverageMatrix: fixture.coverageMatrix,
+    sourceSnapshots: { historical: fixture.sourceSnapshots.historical },
+  });
+  assert.deepEqual(result.errors, [
+    'Iurie evidence validation requires sourceSnapshots.historical and sourceSnapshots.current string contents',
+  ]);
 });
 
 test('rejects drift in the matrix authority declarations', () => {
@@ -209,16 +324,16 @@ test('rejects drift in the official matrix header', () => {
   );
 });
 
-test('rejects a different published implementation baseline', () => {
+test('rejects a different prior published audit baseline', () => {
   const coverageMatrix = fixture.coverageMatrix
     .replaceAll(
-      'f292bb0d784678537c955895d3027e8026cd2fad',
+      '1e5965f13f7d889ddab1751a2266479c04d1b3d8',
       '0000000000000000000000000000000000000000',
     )
-    .replaceAll('f292bb0…', '0000000…');
+    .replaceAll('1e5965f…', '0000000…');
   assert.match(
     errorsFor({ coverageMatrix }),
-    /published implementation\/diff baseline must be f292bb0d784678537c955895d3027e8026cd2fad/u,
+    /prior published audit baseline must be 1e5965f13f7d889ddab1751a2266479c04d1b3d8/u,
   );
 });
 
@@ -275,12 +390,12 @@ test('rejects source-declared status drift in an audited row', () => {
 
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
-    /Not mapped to Full \((\d+)\): S02-Q20,/u,
-    'Not mapped to Full ($1): S99-Q99,',
+    /Not mapped to Partial \((\d+)\): S09-Q06,/u,
+    'Not mapped to Partial ($1): S99-Q99,',
   );
   assert.match(
     errorsFor({ coverageMatrix }),
-    /Not mapped to Full contains unknown official question S99-Q99/u,
+    /Not mapped to Partial contains unknown official question S99-Q99/u,
   );
 });
 
@@ -324,19 +439,19 @@ test('rejects an unsupported extra published transition', () => {
 });
 
 test('rejects status swaps that preserve aggregate totals', () => {
+  const recoveredRow = matrixRow(fixture.coverageMatrix, 'S09-Q06');
   const fullRow = matrixRow(fixture.coverageMatrix, 'S02-Q20');
-  const partialRow = matrixRow(fixture.coverageMatrix, 'S02-Q01');
   const coverageMatrix = fixture.coverageMatrix
-    .replace(fullRow, fullRow.replace('| Full |', '| Partial |'))
-    .replace(partialRow, partialRow.replace('| Partial |', '| Full |'));
+    .replace(recoveredRow, recoveredRow.replace('| Partial |', '| Full |'))
+    .replace(fullRow, fullRow.replace('| Full |', '| Partial |'));
 
   assert.match(
     errorsFor({ coverageMatrix }),
-    /Not mapped to Full differs from the pinned baseline/u,
+    /unsupported semantic transition S09-Q06: Not mapped to Full/u,
   );
   assert.match(
     errorsFor({ coverageMatrix }),
-    /Not mapped to Partial differs from the pinned baseline/u,
+    /Not mapped to Partial differs from the pinned prior audit/u,
   );
 });
 
