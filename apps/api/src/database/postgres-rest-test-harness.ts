@@ -4,6 +4,11 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { AppModule } from '../app.module.js';
 import { DATABASE } from './database.constants.js';
+import {
+  createIdempotentCleanup,
+  rethrowAfterCleanup,
+  type OwnedResource,
+} from './owned-resource-cleanup.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
 type PostgresRestTestDatabase = NodePgDatabase & {
@@ -34,11 +39,14 @@ export async function createPostgresRestTestHarness({
       imports: [AppModule],
     }).compile();
     const app = moduleRef.createNestApplication();
-    ownedResources.push({ name: 'Nest application', close: () => app.close() });
+    ownedResources.push({
+      name: 'Nest application',
+      cleanup: () => app.close(),
+    });
     const database = app.get<PostgresRestTestDatabase>(DATABASE);
     ownedResources.push({
       name: 'application PostgreSQL pool',
-      close: () => database.$client.end(),
+      cleanup: () => database.$client.end(),
     });
 
     app.setGlobalPrefix('api');
@@ -50,68 +58,27 @@ export async function createPostgresRestTestHarness({
     const pool = new Pool({ connectionString: databaseUrl });
     ownedResources.unshift({
       name: 'raw PostgreSQL pool',
-      close: () => pool.end(),
+      cleanup: () => pool.end(),
     });
-    let closed = false;
+    const close = createIdempotentCleanup({
+      resources: ownedResources,
+      multipleFailuresMessage:
+        'Multiple PostgreSQL REST test harness resources failed to close.',
+      failureAction: 'close',
+    });
 
     return {
       origin,
       pool,
-      async close() {
-        if (closed) return;
-        closed = true;
-        await closeOwnedResources(ownedResources);
-      },
+      close,
     };
   } catch (error) {
-    let cleanupFailed = false;
-    let cleanupFailure: unknown;
-    try {
-      await closeOwnedResources(ownedResources);
-    } catch (caughtCleanupError) {
-      cleanupFailed = true;
-      cleanupFailure = caughtCleanupError;
-    }
-    if (cleanupFailed) {
-      const cleanupErrors =
-        cleanupFailure instanceof AggregateError
-          ? cleanupFailure.errors
-          : [cleanupFailure];
-      throw new AggregateError(
-        [error, ...cleanupErrors],
+    return await rethrowAfterCleanup({
+      primaryFailure: error,
+      resources: ownedResources,
+      message:
         'PostgreSQL REST test harness setup failed and cleanup also failed.',
-        { cause: error },
-      );
-    }
-    throw error;
-  }
-}
-
-interface OwnedResource {
-  readonly name: string;
-  readonly close: () => Promise<void>;
-}
-
-async function closeOwnedResources(
-  resources: readonly OwnedResource[],
-): Promise<void> {
-  const failures: Error[] = [];
-
-  for (const resource of resources) {
-    try {
-      await resource.close();
-    } catch (error) {
-      failures.push(
-        new Error(`Failed to close ${resource.name}.`, { cause: error }),
-      );
-    }
-  }
-
-  if (failures.length === 1) throw failures[0];
-  if (failures.length > 1) {
-    throw new AggregateError(
-      failures,
-      'Multiple PostgreSQL REST test harness resources failed to close.',
-    );
+      failureAction: 'close',
+    });
   }
 }
