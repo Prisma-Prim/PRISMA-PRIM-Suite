@@ -10,6 +10,10 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     setup,
     earlyCi,
     fullCi,
+    agentMetadata,
+    pnpmLauncher,
+    agents,
+    gitignore,
   ] = await Promise.all([
     readFile(new URL('../package.json', import.meta.url), 'utf8'),
     readFile(new URL('../apps/api/package.json', import.meta.url), 'utf8'),
@@ -26,6 +30,13 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
       'utf8',
     ),
     readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../.github/workflows/agent-metadata.yml', import.meta.url),
+      'utf8',
+    ),
+    readFile(new URL('./agent-pnpm.sh', import.meta.url), 'utf8'),
+    readFile(new URL('../AGENTS.md', import.meta.url), 'utf8'),
+    readFile(new URL('../.gitignore', import.meta.url), 'utf8'),
   ]);
   const packageJson = JSON.parse(packageJsonText);
   const apiPackage = JSON.parse(apiPackageText);
@@ -52,6 +63,30 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     1,
   );
   assert.match(earlyCi, /mode: preflight/);
+  assert.match(earlyCi, /pull_request_target:/);
+  assert.match(earlyCi, /types:\s*\[labeled\]/);
+  assert.match(earlyCi, /github\.event\.label\.name == 'early-ci'/);
+  assert.match(
+    earlyCi,
+    /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/,
+  );
+  assert.match(earlyCi, /github\.event\.pull_request\.head\.sha/);
+  assert.match(earlyCi, /checkout_ref:/);
+  assert.match(earlyCi, /statuses:\s*write/);
+  assert.match(earlyCi, /context='Early CI preflight'/);
+  assert.match(earlyCi, /state='pending'/);
+  assert.match(earlyCi, /state='success'/);
+  assert.match(earlyCi, /state='failure'/);
+  assert.match(fullCi, /checkout_ref:/);
+  assert.match(
+    fullCi,
+    /ref:\s*\$\{\{ inputs\.checkout_ref \|\| github\.sha \}\}/,
+  );
+  assert.match(fullCi, /git rev-parse HEAD/);
+  assert.match(
+    agentMetadata,
+    /ensure_label\s+\\\s*'early-ci'\s+\\\s*'0E8A16'\s+\\\s*'Run exact-head PostgreSQL, migration, and browser preflight'/,
+  );
   assert.equal(
     fullCi.match(/uses: \.\/\.github\/actions\/setup-verification/g)?.length,
     1,
@@ -60,6 +95,12 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
   assert.doesNotMatch(earlyCi, /postgres:17|DATABASE_URL/);
   assert.match(setup, /pnpm install --frozen-lockfile/);
   assert.match(setup, /playwright install --with-deps chromium/);
+  assert.doesNotMatch(setup, /version:\s*11\.20\.0/);
+  assert.match(pnpmLauncher, /--pm-on-fail=download/);
+  assert.match(pnpmLauncher, /PRISMA_PRIM_PNPM_HOME/);
+  assert.doesNotMatch(pnpmLauncher, /corepack enable|npm install --global/);
+  assert.match(agents, /scripts\/agent-pnpm\.sh/);
+  assert.match(gitignore, /^\.pnpm-home\/$/m);
 });
 
 test('the destructive migration preflight is serial and excluded from the parallel API phase', async () => {

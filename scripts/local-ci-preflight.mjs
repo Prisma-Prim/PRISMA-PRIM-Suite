@@ -7,7 +7,12 @@ import { inspectEnvironment } from './agent-doctor.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const earlyCiCommand = 'gh workflow run early-ci.yml --ref <branch>';
+const earlyCiDelegation = {
+  connector: 'apply the early-ci label to the open pull request',
+  statusContext: 'Early CI preflight',
+  githubUi: 'run Early CI preflight for the exact branch from Actions',
+  gh: 'gh workflow run early-ci.yml --ref <branch>',
+};
 const minimumMigrationPostgresVersion = 130000;
 
 const sharedPrerequisites = [
@@ -74,6 +79,7 @@ function evaluateMigrationDatabaseCapability(postgresProbe) {
   return {
     id: 'database-administration',
     status: capable ? 'PASS' : 'FAIL',
+    ciRecoverable: true,
     summary,
     remediation: capable
       ? null
@@ -107,6 +113,7 @@ function collectPreflightChecks(capabilities = {}, migrationManifestAvailable) {
     {
       id: 'migration-manifest',
       status: migrationManifestAvailable ? 'PASS' : 'FAIL',
+      ciRecoverable: false,
       summary: migrationManifestAvailable
         ? 'The previous and current committed migration states are reproducible.'
         : 'The migration journal or one of its committed SQL files is incomplete.',
@@ -128,6 +135,7 @@ function failedChecks(checks, ids) {
           {
             id,
             status: 'FAIL',
+            ciRecoverable: false,
             summary: `Required ${id} check is missing from the preflight.`,
             remediation:
               'Restore the prerequisite check before trusting local execution.',
@@ -148,12 +156,18 @@ function createPreflightPlan({ doctorChecks }) {
   const verifications = verificationDefinitions.map((definition) => {
     const failures = failedChecks(doctorChecks, definition.prerequisites);
     const runnable = failures.length === 0;
+    const recoverable =
+      !runnable && failures.every((check) => check.ciRecoverable === true);
     return {
       ...definition,
       localStatus: runnable
         ? 'runnable-locally'
         : 'blocked-locally-with-reason',
-      authority: runnable ? 'local-and-full-ci' : 'delegated-to-early-ci',
+      authority: runnable
+        ? 'local-and-full-ci'
+        : recoverable
+          ? 'delegated-to-early-ci'
+          : 'blocked-without-ci-recovery',
       reason: runnable
         ? 'All required local prerequisites are available.'
         : [...new Set(failures.map(checkReason))].join(' '),
@@ -169,7 +183,17 @@ function createPreflightPlan({ doctorChecks }) {
     })),
   );
 
-  return { earlyCiCommand, verifications, seams };
+  return {
+    earlyCiDelegation,
+    deliveryStatus: verifications.some(
+      (verification) =>
+        verification.authority === 'blocked-without-ci-recovery',
+    )
+      ? 'blocked'
+      : 'ready',
+    verifications,
+    seams,
+  };
 }
 
 function label(value) {
@@ -180,11 +204,17 @@ function formatPreflightReport(plan) {
   const lines = ['Local CI preflight'];
   for (const seam of plan.seams) {
     lines.push(`${label(seam.localStatus)} ${seam.id}: ${seam.reason}`);
-    lines.push(
-      seam.authority === 'delegated-to-early-ci'
-        ? `${label(seam.authority)} ${seam.id}: run ${plan.earlyCiCommand}`
-        : `${label(seam.authority)} ${seam.id}: local evidence is repeated by normal CI`,
-    );
+    if (seam.authority === 'delegated-to-early-ci') {
+      lines.push(
+        `${label(seam.authority)} ${seam.id}: ${plan.earlyCiDelegation.connector}; watch ${plan.earlyCiDelegation.statusContext}. UI fallback: ${plan.earlyCiDelegation.githubUi}. gh fallback: ${plan.earlyCiDelegation.gh}`,
+      );
+    } else if (seam.authority === 'blocked-without-ci-recovery') {
+      lines.push(`${label(seam.authority)} ${seam.id}: ${seam.reason}`);
+    } else {
+      lines.push(
+        `${label(seam.authority)} ${seam.id}: local evidence is repeated by normal CI`,
+      );
+    }
   }
   return lines.join('\n');
 }
@@ -241,10 +271,10 @@ export function runLocalCiPreflight({
     `${json ? JSON.stringify(plan, null, 2) : formatPreflightReport(plan)}\n`,
   );
 
-  const blocked = plan.seams.some(
+  const locallyBlocked = plan.seams.some(
     (seam) => seam.localStatus === 'blocked-locally-with-reason',
   );
-  if (checkOnly) return blocked ? 2 : 0;
+  if (checkOnly) return plan.deliveryStatus === 'ready' ? 0 : 2;
 
   for (const script of commandsForRunnableVerifications(plan)) {
     writeOutput(`RUNNABLE LOCALLY ${script}: starting\n`);
@@ -258,7 +288,7 @@ export function runLocalCiPreflight({
     if (result.status !== 0) return 1;
   }
 
-  return blocked ? 2 : 0;
+  return locallyBlocked ? 2 : 0;
 }
 
 function main() {

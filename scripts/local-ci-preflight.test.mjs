@@ -85,9 +85,10 @@ test('returns zero without executing commands for a healthy check-only preflight
   }
 });
 
-test('returns two without executing commands for a blocked check-only preflight', () => {
+test('accepts exact-head CI delegation for a recoverable check-only blocker', () => {
   const checks = replaceCheck('chromium', {
     status: 'FAIL',
+    ciRecoverable: true,
     summary: 'Chromium is missing.',
     remediation: 'Install Chromium explicitly.',
   });
@@ -96,24 +97,55 @@ test('returns two without executing commands for a blocked check-only preflight'
     checks,
   });
 
-  assert.equal(exitCode, 2);
+  assert.equal(exitCode, 0);
   assert.deepEqual(executedScripts, []);
   assert.deepEqual(stderr, []);
   assert.match(stdout.join(''), /Chromium is missing/);
   assert.match(stdout.join(''), /DELEGATED TO EARLY CI playwright-narrow/);
+  assert.match(stdout.join(''), /apply the early-ci label/u);
+  assert.match(stdout.join(''), /Early CI preflight/u);
   assert.match(stdout.join(''), /gh workflow run early-ci\.yml --ref <branch>/);
 });
 
-test('fails closed when an Agent Doctor prerequisite is skipped', () => {
+test('fails closed for an intrinsic defect even when its check ID is usually recoverable', () => {
+  const checks = replaceCheck('node', {
+    status: 'FAIL',
+    ciRecoverable: false,
+    summary: 'Unsupported Node engine declaration: ^24.0.0.',
+    remediation: 'Declare a supported bounded Node engine range.',
+  });
+
+  const { exitCode, stdout } = runPreflight({ checks });
+
+  assert.equal(exitCode, 2);
+  assert.match(stdout.join(''), /Unsupported Node engine declaration/);
+  assert.match(stdout.join(''), /BLOCKED WITHOUT CI RECOVERY postgres-smoke/);
+  assert.doesNotMatch(stdout.join(''), /DELEGATED TO EARLY CI postgres-smoke/);
+});
+
+test('fails closed when a failed check omits recoverability metadata', () => {
+  const checks = replaceCheck('node', {
+    status: 'FAIL',
+    summary: 'Unclassified Node failure.',
+  });
+
+  const { exitCode, stdout } = runPreflight({ checks });
+
+  assert.equal(exitCode, 2);
+  assert.match(stdout.join(''), /BLOCKED WITHOUT CI RECOVERY postgres-smoke/);
+});
+
+test('delegates a skipped harness prerequisite during check-only planning', () => {
   const checks = replaceCheck('database-safety', {
     status: 'SKIP',
+    ciRecoverable: true,
     summary: 'Database safety could not be established.',
     remediation: 'Configure isolated database targets.',
   });
 
   const { exitCode, stdout } = runPreflight({ checks });
 
-  assert.equal(exitCode, 2);
+  assert.equal(exitCode, 0);
   assert.match(stdout.join(''), /Database safety could not be established/);
   assert.match(stdout.join(''), /DELEGATED TO EARLY CI postgres-smoke/);
 });
@@ -127,11 +159,11 @@ test('fails closed when an expected Agent Doctor prerequisite is absent', () => 
 
   assert.equal(exitCode, 2);
   assert.match(stdout.join(''), /database-safety check is missing/);
-  assert.match(stdout.join(''), /DELEGATED TO EARLY CI postgres-smoke/);
+  assert.match(stdout.join(''), /BLOCKED WITHOUT CI RECOVERY postgres-smoke/);
   assert.match(stdout.join(''), /LOCAL AND FULL CI playwright-narrow/);
 });
 
-test('blocks only migration verification when the role cannot create databases', () => {
+test('delegates only migration verification when the local role cannot create databases', () => {
   const { exitCode, stdout } = runPreflight({
     postgres: {
       ...healthyPostgresCapability,
@@ -139,7 +171,7 @@ test('blocks only migration verification when the role cannot create databases',
     },
   });
 
-  assert.equal(exitCode, 2);
+  assert.equal(exitCode, 0);
   assert.match(stdout.join(''), /cannot create isolated migration databases/);
   assert.match(stdout.join(''), /LOCAL AND FULL CI postgres-smoke/);
   assert.match(
@@ -148,7 +180,7 @@ test('blocks only migration verification when the role cannot create databases',
   );
 });
 
-test('requires PostgreSQL 13 or newer for migration cleanup', () => {
+test('delegates migration cleanup when local PostgreSQL is too old', () => {
   const { exitCode, stdout } = runPreflight({
     postgres: {
       ...healthyPostgresCapability,
@@ -156,7 +188,7 @@ test('requires PostgreSQL 13 or newer for migration cleanup', () => {
     },
   });
 
-  assert.equal(exitCode, 2);
+  assert.equal(exitCode, 0);
   assert.match(stdout.join(''), /PostgreSQL 13 or newer/);
   assert.match(stdout.join(''), /LOCAL AND FULL CI postgres-smoke/);
 });
@@ -170,6 +202,10 @@ test('keeps an incomplete migration manifest from blocking other seams', () => {
   assert.match(stdout.join(''), /migration journal/);
   assert.match(stdout.join(''), /LOCAL AND FULL CI postgres-smoke/);
   assert.match(stdout.join(''), /LOCAL AND FULL CI playwright-narrow/);
+  assert.match(
+    stdout.join(''),
+    /BLOCKED WITHOUT CI RECOVERY previous-schema-migration/,
+  );
 });
 
 test('prints the report before running healthy verifications in canonical order', () => {
@@ -195,6 +231,7 @@ test('prints the report before running healthy verifications in canonical order'
 test('runs available verification before returning two for delegated seams', () => {
   const checks = replaceCheck('postgres', {
     status: 'FAIL',
+    ciRecoverable: true,
     summary: 'PostgreSQL is unavailable.',
     remediation: 'Configure an isolated local test database.',
   });
@@ -256,4 +293,11 @@ test('emits a valid plan as the only JSON check-only output', () => {
       'playwright-narrow',
     ],
   );
+  assert.deepEqual(plan.earlyCiDelegation, {
+    connector: 'apply the early-ci label to the open pull request',
+    statusContext: 'Early CI preflight',
+    githubUi: 'run Early CI preflight for the exact branch from Actions',
+    gh: 'gh workflow run early-ci.yml --ref <branch>',
+  });
+  assert.equal(plan.deliveryStatus, 'ready');
 });

@@ -13,27 +13,41 @@ permissions:
   issues: write
 
 jobs:
-  ensure-agent-friction-label:
+  ensure-agent-labels:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Create or normalize agent-friction label
+      - name: Create or normalize agent labels
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh api "repos/${GITHUB_REPOSITORY}/labels/agent-friction" >/dev/null 2>&1; then
-            gh api \
-              --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/labels/agent-friction" \
-              -f new_name='agent-friction' \
-              -f color='BFD4F2' \
-              -f description='Repeatable repository, environment, CI, or AI harness friction'
-          else
-            gh api \
-              --method POST \
-              "repos/${GITHUB_REPOSITORY}/labels" \
-              -f name='agent-friction' \
-              -f color='BFD4F2' \
-              -f description='Repeatable repository, environment, CI, or AI harness friction'
-          fi
+          ensure_label() {
+            local name="$1"
+            local color="$2"
+            local description="$3"
+            if gh api "repos/${GITHUB_REPOSITORY}/labels/${name}" >/dev/null 2>&1; then
+              gh api \
+                --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/labels/${name}" \
+                -f new_name="${name}" \
+                -f color="${color}" \
+                -f description="${description}"
+            else
+              gh api \
+                --method POST \
+                "repos/${GITHUB_REPOSITORY}/labels" \
+                -f name="${name}" \
+                -f color="${color}" \
+                -f description="${description}"
+            fi
+          }
+
+          ensure_label \
+            'agent-friction' \
+            'BFD4F2' \
+            'Repeatable repository, environment, CI, or AI harness friction'
+          ensure_label \
+            'early-ci' \
+            '0E8A16' \
+            'Run exact-head PostgreSQL, migration, and browser preflight'
