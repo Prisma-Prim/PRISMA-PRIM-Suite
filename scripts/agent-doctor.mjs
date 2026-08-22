@@ -1,20 +1,15 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   databaseTargetsAreSafe,
   parsePostgresDatabaseTarget,
 } from '../apps/api/test-support/postgres-database-target.mjs';
-
-export { databaseTargetsAreSafe };
-export const parseDatabaseTarget = parsePostgresDatabaseTarget;
+import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const repositoryRoot = resolve(dirname(scriptPath), '..');
 
-export function parseVersion(value) {
+function parseVersion(value) {
   const match = String(value)
     .trim()
     .match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
@@ -26,7 +21,7 @@ export function parseVersion(value) {
   return [Number(match[1]), Number(match[2] ?? 0), Number(match[3] ?? 0)];
 }
 
-export function compareVersions(left, right) {
+function compareVersions(left, right) {
   for (let index = 0; index < 3; index += 1) {
     if (left[index] !== right[index]) {
       return left[index] > right[index] ? 1 : -1;
@@ -36,21 +31,21 @@ export function compareVersions(left, right) {
   return 0;
 }
 
-export function minimumVersion(range) {
+function minimumVersion(range) {
   const match = String(range)
     .trim()
     .match(/^>=\s*(v?\d+(?:\.\d+){0,2})(?:\s+<\s*v?\d+(?:\.\d+){0,2})?$/);
   return match ? parseVersion(match[1]) : null;
 }
 
-export function maximumExclusiveVersion(range) {
+function maximumExclusiveVersion(range) {
   const match = String(range)
     .trim()
     .match(/<\s*(v?\d+(?:\.\d+){0,2})$/);
   return match ? parseVersion(match[1]) : null;
 }
 
-export function packageManagerVersion(packageManager) {
+function packageManagerVersion(packageManager) {
   const match = String(packageManager)
     .trim()
     .match(/^pnpm@(\d+(?:\.\d+){2})$/);
@@ -93,7 +88,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     snapshot.testDatabaseUrl,
   );
 
-  return [
+  const checks = [
     result(
       'node',
       requiredNode &&
@@ -177,6 +172,13 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
       snapshot.postgresProbe ?? { state: 'not-run' },
     ),
   ];
+
+  return {
+    checks,
+    capabilities: {
+      postgres: snapshot.postgresProbe ?? { state: 'not-run' },
+    },
+  };
 }
 
 function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
@@ -297,215 +299,16 @@ function evaluatePostgres(
   }
 }
 
-function run(command, args, options = {}) {
-  return spawnSync(command, args, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    timeout: 10_000,
-    ...options,
+export function inspectEnvironment(profile = 'base') {
+  const snapshot = collectEnvironmentSnapshot({
+    needsChromium: requiresChromium(profile),
+    needsPostgres: requiresPostgres(profile),
   });
+
+  return evaluateEnvironment(snapshot, profile);
 }
 
-function probePnpm() {
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const command = run(executable, ['--version']);
-  return classifyPnpmCommand(command);
-}
-
-export function classifyPnpmCommand(command) {
-  if (command.error?.code === 'ENOENT') {
-    return { state: 'missing' };
-  }
-
-  if (new Set(['EACCES', 'EPERM']).has(command.error?.code)) {
-    return { state: 'sandbox-denied', detail: command.error.code };
-  }
-
-  if (command.status === 0 && command.stdout.trim()) {
-    return { state: 'available', version: command.stdout.trim() };
-  }
-
-  return {
-    state: 'failed',
-    detail: command.error?.code ?? `exit ${command.status ?? 'unknown'}`,
-  };
-}
-
-function playwrightChromiumIsAvailable() {
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const probe = [
-    'import { existsSync } from "node:fs";',
-    'import { chromium } from "@playwright/test";',
-    'process.exit(existsSync(chromium.executablePath()) ? 0 : 1);',
-  ].join(' ');
-  const command = run(executable, [
-    '--filter',
-    '@prisma-prim/web',
-    'exec',
-    'node',
-    '--input-type=module',
-    '--eval',
-    probe,
-  ]);
-
-  return command.status === 0;
-}
-
-function probePostgres(testDatabaseUrl) {
-  if (!testDatabaseUrl) {
-    return { state: 'not-run' };
-  }
-
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const probe = [
-    'const emit = (value) => process.stdout.write(JSON.stringify(value));',
-    'let pg;',
-    'try { pg = (await import("pg")).default; }',
-    'catch (error) {',
-    'emit({ phase: "bootstrap", state: ["EACCES", "EPERM"].includes(error?.code) ? "sandbox-denied" : "tooling-missing", code: error?.code ?? null });',
-    'process.exit(1);',
-    '}',
-    'const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL, connectionTimeoutMillis: 3000 });',
-    'try {',
-    'await client.connect();',
-    'const response = await client.query("SELECT current_setting(\'server_version_num\')::integer AS server_version_number, COALESCE((SELECT rolsuper OR rolcreatedb FROM pg_roles WHERE rolname = current_user), false) AS can_create_database");',
-    'const capabilities = response.rows[0];',
-    'const available = Number.isInteger(capabilities?.server_version_number) && typeof capabilities?.can_create_database === "boolean";',
-    'emit({ phase: "query", state: available ? "available" : "connection-failed", code: available ? null : "unexpected-query-result", serverVersionNumber: capabilities?.server_version_number ?? null, canCreateDatabase: capabilities?.can_create_database ?? false });',
-    'process.exitCode = available ? 0 : 1;',
-    '} catch (error) {',
-    'emit({ phase: "connect", state: ["EACCES", "EPERM"].includes(error?.code) ? "sandbox-denied" : "connection-failed", code: error?.code ?? null });',
-    'process.exitCode = 1;',
-    '}',
-    'finally { await client.end().catch(() => undefined); }',
-  ].join(' ');
-  const command = run(
-    executable,
-    [
-      '--filter',
-      '@prisma-prim/api',
-      'exec',
-      'node',
-      '--input-type=module',
-      '--eval',
-      probe,
-    ],
-    {
-      env: { ...process.env, TEST_DATABASE_URL: testDatabaseUrl },
-    },
-  );
-
-  return classifyPostgresCommand(command);
-}
-
-export function classifyPostgresCommand(command) {
-  if (command.error?.code === 'ENOENT') {
-    return { state: 'tooling-missing' };
-  }
-
-  if (new Set(['EACCES', 'EPERM']).has(command.error?.code)) {
-    return { state: 'sandbox-denied', detail: command.error.code };
-  }
-
-  let payload;
-  try {
-    const serialized = command.stdout.match(/\{[^\n]*\}\s*$/)?.[0];
-    payload = serialized ? JSON.parse(serialized) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (payload?.state === 'sandbox-denied') {
-    return { state: 'sandbox-denied', detail: payload.code ?? payload.phase };
-  }
-
-  if (payload?.state === 'tooling-missing' || !payload) {
-    return {
-      state: 'tooling-missing',
-      detail: payload?.code ?? 'probe-bootstrap',
-    };
-  }
-
-  if (command.status === 0 && payload.state === 'available') {
-    return {
-      state: 'available',
-      serverVersionNumber: payload.serverVersionNumber,
-      canCreateDatabase: payload.canCreateDatabase,
-    };
-  }
-
-  const detail = payload.code;
-
-  if (detail === 'ECONNREFUSED') {
-    return { state: 'service-unavailable', detail };
-  }
-
-  if (
-    new Set([
-      'EAI_AGAIN',
-      'EHOSTUNREACH',
-      'ENETUNREACH',
-      'ENOTFOUND',
-      'ETIMEDOUT',
-    ]).has(detail)
-  ) {
-    return { state: 'unreachable', detail };
-  }
-
-  return {
-    state: 'connection-failed',
-    detail: detail ?? `probe exit ${command.status ?? 'unknown'}`,
-  };
-}
-
-export function collectEnvironment(profile = 'base') {
-  const packageJson = JSON.parse(
-    readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'),
-  );
-  const needsChromium = requiresChromium(profile);
-  const needsPostgres = requiresPostgres(profile);
-  const databaseUrl = process.env.DATABASE_URL ?? '';
-  const testDatabaseUrl = process.env.TEST_DATABASE_URL ?? '';
-  const databaseTargetsSafe = databaseTargetsAreSafe(
-    databaseUrl,
-    testDatabaseUrl,
-  );
-  const pnpmProbe = probePnpm();
-  const dependenciesInstalled = existsSync(
-    resolve(repositoryRoot, 'node_modules'),
-  );
-  let postgresProbe = { state: 'not-run' };
-  if (needsPostgres && databaseTargetsSafe) {
-    if (pnpmProbe.state === 'missing') {
-      postgresProbe = { state: 'tooling-missing', detail: 'pnpm' };
-    } else if (pnpmProbe.state === 'sandbox-denied') {
-      postgresProbe = { state: 'sandbox-denied', detail: pnpmProbe.detail };
-    } else if (!dependenciesInstalled) {
-      postgresProbe = { state: 'tooling-missing', detail: 'dependencies' };
-    } else {
-      postgresProbe = probePostgres(testDatabaseUrl);
-    }
-  }
-
-  return {
-    nodeRange: packageJson.engines?.node ?? '',
-    nodeVersion: process.version,
-    packageManager: packageJson.packageManager ?? '',
-    pnpmProbe,
-    workspaceManifestExists: existsSync(
-      resolve(repositoryRoot, 'pnpm-workspace.yaml'),
-    ),
-    lockfileExists: existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
-    dependenciesInstalled,
-    chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
-    databaseUrl,
-    testDatabaseUrl,
-    postgresProbe,
-  };
-}
-
-export function formatResults(results) {
+function formatResults(results) {
   return results
     .flatMap((check) => {
       const lines = [`${check.status} ${check.id}: ${check.summary}`];
@@ -517,7 +320,7 @@ export function formatResults(results) {
     .join('\n');
 }
 
-export function main() {
+function main() {
   const profileIndex = process.argv.indexOf('--profile');
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
   const json = process.argv.includes('--json');
@@ -530,7 +333,7 @@ export function main() {
     return;
   }
 
-  const results = evaluateEnvironment(collectEnvironment(profile), profile);
+  const results = inspectEnvironment(profile).checks;
   process.stdout.write(
     `${json ? JSON.stringify({ profile, results }, null, 2) : formatResults(results)}\n`,
   );
