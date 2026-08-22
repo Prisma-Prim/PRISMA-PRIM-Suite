@@ -20,6 +20,7 @@ describe('local test database target', () => {
     'postgresql://user:secret@127.0.0.1/prisma_prim_test?host=db.example.test',
     'postgresql://user:secret@127.0.0.1/prisma_prim_test#override',
     'postgresql://user:secret@127.0.0.1/prisma%2Fprim_test',
+    'postgresql://user:secret@127.0.0.1/prisma%3Fprim_test',
     'postgresql://user:secret@127.0.0.1/prisma%ZZ_test',
   ])('rejects an unsafe target: %s', (connectionString) => {
     expect(() => assertLocalTestDatabaseUrl(connectionString)).toThrow(

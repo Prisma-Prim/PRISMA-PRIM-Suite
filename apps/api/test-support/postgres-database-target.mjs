@@ -14,8 +14,8 @@ export function parsePostgresDatabaseTarget(value) {
       return null;
     }
 
-    const database = decodeURIComponent(target.pathname.slice(1));
-    if (!database || database.includes('/')) {
+    const database = target.pathname.slice(1);
+    if (!database || database.includes('/') || database.includes('%')) {
       return null;
     }
 

@@ -97,6 +97,13 @@ test('certifies only distinct loopback targets before connectivity is attempted'
   );
   assert.equal(
     databaseTargetsAreSafe(
+      'postgresql://user:secret@127.0.0.1/foo%3F_test',
+      'postgresql://user:secret@127.0.0.1/foo%253F_test',
+    ),
+    false,
+  );
+  assert.equal(
+    databaseTargetsAreSafe(
       'postgresql://user:secret@[::1]:5432/prisma_prim_dev',
       'postgres://user:secret@[::1]:5432/prisma_prim_test',
     ),
