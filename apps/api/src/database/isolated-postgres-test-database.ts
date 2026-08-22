@@ -5,6 +5,11 @@ import {
   waitForPostgresCallbackOrAbort,
   waitForTargetDatabaseConnectionsToClose,
 } from './isolated-postgres-test-lifecycle.js';
+import {
+  createIdempotentCleanup,
+  rethrowAfterCleanup,
+  type OwnedResource,
+} from './owned-resource-cleanup.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
 export interface IsolatedPostgresTestDatabase {
@@ -27,105 +32,87 @@ export async function createIsolatedPostgresTestDatabase({
   assertLocalTestDatabaseUrl(baseDatabaseUrl);
   const databaseName = isolatedDatabaseName(namePrefix);
   const administrationPool = new Pool({ connectionString: baseDatabaseUrl });
-  let targetPool: Pool | undefined;
   let targetDatabaseCreated = false;
+  const administrationPoolResource: OwnedResource = {
+    name: 'isolated database administration pool',
+    cleanup: () => administrationPool.end(),
+  };
+  const setupCleanupResources: OwnedResource[] = [administrationPoolResource];
+  const cleanupTargetDatabase = async () => {
+    if (!targetDatabaseCreated) return;
+    await cleanupIsolatedTargetDatabase({
+      waitForConnectionsToClose: () =>
+        waitForTargetDatabaseConnectionsToClose((remainingMs, signal) =>
+          countTargetDatabaseConnections(
+            baseDatabaseUrl,
+            databaseName,
+            remainingMs,
+            signal,
+          ),
+        ),
+      dropDatabase: async (force) => {
+        await administrationPool.query(
+          `DROP DATABASE IF EXISTS "${databaseName}"${
+            force ? ' WITH (FORCE)' : ''
+          }`,
+        );
+        targetDatabaseCreated = false;
+      },
+    });
+  };
+  const forceDropTargetDatabase = async () => {
+    if (!targetDatabaseCreated) return;
+    await administrationPool.query(
+      `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
+    );
+    targetDatabaseCreated = false;
+  };
 
   try {
     targetDatabaseCreated = true;
+    setupCleanupResources.unshift({
+      name: 'isolated target database',
+      cleanup: forceDropTargetDatabase,
+    });
     await administrationPool.query(`CREATE DATABASE "${databaseName}"`);
     const target = new URL(baseDatabaseUrl);
     target.pathname = `/${databaseName}`;
     const targetUrl = target.toString();
-    targetPool = new Pool({ connectionString: targetUrl });
+    const targetPool = new Pool({ connectionString: targetUrl });
+    const targetPoolResource: OwnedResource = {
+      name: 'isolated target database pool',
+      cleanup: () => targetPool.end(),
+    };
+    setupCleanupResources.unshift(targetPoolResource);
+    const close = createIdempotentCleanup({
+      resources: [
+        targetPoolResource,
+        {
+          name: 'isolated target database',
+          cleanup: cleanupTargetDatabase,
+        },
+        administrationPoolResource,
+      ],
+      multipleFailuresMessage:
+        'Multiple isolated PostgreSQL database cleanup steps failed.',
+      failureAction: 'clean up',
+    });
 
-    let closed = false;
     return {
       databaseName,
       targetUrl,
       administrationPool,
       targetPool,
-      async close() {
-        if (closed) return;
-        closed = true;
-        const cleanupFailures: Error[] = [];
-
-        await captureCleanupFailure(
-          cleanupFailures,
-          'isolated target database pool',
-          () => targetPool!.end(),
-        );
-        await captureCleanupFailure(
-          cleanupFailures,
-          'isolated target database',
-          async () => {
-            if (!targetDatabaseCreated) return;
-            await cleanupIsolatedTargetDatabase({
-              waitForConnectionsToClose: () =>
-                waitForTargetDatabaseConnectionsToClose((remainingMs, signal) =>
-                  countTargetDatabaseConnections(
-                    baseDatabaseUrl,
-                    databaseName,
-                    remainingMs,
-                    signal,
-                  ),
-                ),
-              dropDatabase: async (force) => {
-                await administrationPool.query(
-                  `DROP DATABASE IF EXISTS "${databaseName}"${
-                    force ? ' WITH (FORCE)' : ''
-                  }`,
-                );
-                targetDatabaseCreated = false;
-              },
-            });
-          },
-        );
-        await captureCleanupFailure(
-          cleanupFailures,
-          'isolated database administration pool',
-          () => administrationPool.end(),
-        );
-
-        if (cleanupFailures.length === 1) throw cleanupFailures[0];
-        if (cleanupFailures.length > 1) {
-          throw new AggregateError(
-            cleanupFailures,
-            'Multiple isolated PostgreSQL database cleanup steps failed.',
-          );
-        }
-      },
+      close,
     };
   } catch (error) {
-    const cleanupFailures: unknown[] = [];
-    if (targetPool) {
-      try {
-        await targetPool.end();
-      } catch (cleanupError) {
-        cleanupFailures.push(cleanupError);
-      }
-    }
-    if (targetDatabaseCreated) {
-      try {
-        await administrationPool.query(
-          `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
-        );
-      } catch (cleanupError) {
-        cleanupFailures.push(cleanupError);
-      }
-    }
-    try {
-      await administrationPool.end();
-    } catch (cleanupError) {
-      cleanupFailures.push(cleanupError);
-    }
-    if (cleanupFailures.length > 0) {
-      throw new AggregateError(
-        [error, ...cleanupFailures],
+    return await rethrowAfterCleanup({
+      primaryFailure: error,
+      resources: setupCleanupResources,
+      message:
         'Isolated PostgreSQL database creation failed and cleanup also failed.',
-        { cause: error },
-      );
-    }
-    throw error;
+      failureAction: 'clean up',
+    });
   }
 }
 
@@ -183,18 +170,6 @@ async function countTargetDatabaseConnections(
   } finally {
     signal.removeEventListener('abort', closeOnAbort);
     await closeDiagnosticClient();
-  }
-}
-
-async function captureCleanupFailure(
-  failures: Error[],
-  name: string,
-  cleanup: () => Promise<void>,
-): Promise<void> {
-  try {
-    await cleanup();
-  } catch (error) {
-    failures.push(new Error(`Failed to clean up ${name}.`, { cause: error }));
   }
 }
 

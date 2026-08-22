@@ -6,50 +6,34 @@ export {
   type CleanupIsolatedTargetDatabaseOptions,
   type WaitForTargetDatabaseConnectionsOptions,
 } from './isolated-postgres-test-lifecycle.js';
+import {
+  createIdempotentCleanup,
+  rethrowAfterCleanup,
+  type OwnedResource,
+} from './owned-resource-cleanup.js';
 
-export type PreviousSchemaTestCleanupStep = {
-  readonly name: string;
-  readonly cleanup: () => Promise<void>;
-};
+export type PreviousSchemaTestCleanupStep = OwnedResource;
 
 export async function runPreviousSchemaTestLifecycle(
   execute: () => Promise<void>,
   cleanupSteps: readonly PreviousSchemaTestCleanupStep[],
 ): Promise<void> {
-  let hasPrimaryFailure = false;
-  let primaryFailure: unknown;
+  const cleanupAfterSuccess = createIdempotentCleanup({
+    resources: cleanupSteps,
+    multipleFailuresMessage:
+      'Multiple previous-schema migration preflight cleanup steps failed.',
+    failureAction: 'clean up',
+  });
   try {
     await execute();
   } catch (error) {
-    hasPrimaryFailure = true;
-    primaryFailure = error;
+    await rethrowAfterCleanup({
+      primaryFailure: error,
+      resources: cleanupSteps,
+      message:
+        'The previous-schema migration preflight failed and cleanup also failed.',
+      failureAction: 'clean up',
+    });
   }
-
-  const cleanupFailures: Error[] = [];
-  for (const step of cleanupSteps) {
-    try {
-      await step.cleanup();
-    } catch (error) {
-      cleanupFailures.push(
-        new Error(`Failed to clean up ${step.name}.`, { cause: error }),
-      );
-    }
-  }
-
-  if (hasPrimaryFailure) {
-    if (cleanupFailures.length === 0) throw primaryFailure;
-    throw new AggregateError(
-      [primaryFailure, ...cleanupFailures],
-      'The previous-schema migration preflight failed and cleanup also failed.',
-      { cause: primaryFailure },
-    );
-  }
-
-  if (cleanupFailures.length === 1) throw cleanupFailures[0];
-  if (cleanupFailures.length > 1) {
-    throw new AggregateError(
-      cleanupFailures,
-      'Multiple previous-schema migration preflight cleanup steps failed.',
-    );
-  }
+  await cleanupAfterSuccess();
 }
