@@ -50,7 +50,7 @@ const verificationDefinitions = [
   },
 ];
 
-export function evaluateMigrationDatabaseCapability(postgresProbe) {
+function evaluateMigrationDatabaseCapability(postgresProbe) {
   const available = postgresProbe?.state === 'available';
   const canCreateDatabase = postgresProbe?.canCreateDatabase === true;
   const serverVersionSupported =
@@ -81,25 +81,27 @@ export function evaluateMigrationDatabaseCapability(postgresProbe) {
   };
 }
 
-export function collectPreflightChecks(capabilities = {}) {
+function migrationManifestIsAvailable() {
   const journalPath = resolve(
     repositoryRoot,
     'apps/api/drizzle/meta/_journal.json',
   );
-  let migrationManifestAvailable;
   try {
     const journal = JSON.parse(readFileSync(journalPath, 'utf8'));
-    migrationManifestAvailable =
+    return (
       journal.entries.length > 1 &&
       journal.entries.every((entry) =>
         existsSync(
           resolve(repositoryRoot, 'apps/api/drizzle', `${entry.tag}.sql`),
         ),
-      );
+      )
+    );
   } catch {
-    migrationManifestAvailable = false;
+    return false;
   }
+}
 
+function collectPreflightChecks(capabilities = {}, migrationManifestAvailable) {
   return [
     evaluateMigrationDatabaseCapability(capabilities.postgres),
     {
@@ -119,7 +121,7 @@ function failedChecks(checks, ids) {
   return ids.flatMap((id) => {
     const check = checks.find((candidate) => candidate.id === id);
     return check
-      ? check.status === 'FAIL'
+      ? check.status !== 'PASS'
         ? [check]
         : []
       : [
@@ -142,7 +144,7 @@ function checkReason(check) {
     .trim();
 }
 
-export function createPreflightPlan({ doctorChecks }) {
+function createPreflightPlan({ doctorChecks }) {
   const verifications = verificationDefinitions.map((definition) => {
     const failures = failedChecks(doctorChecks, definition.prerequisites);
     const runnable = failures.length === 0;
@@ -174,7 +176,7 @@ function label(value) {
   return value.replaceAll('-', ' ').toUpperCase();
 }
 
-export function formatPreflightReport(plan) {
+function formatPreflightReport(plan) {
   const lines = ['Local CI preflight'];
   for (const seam of plan.seams) {
     lines.push(`${label(seam.localStatus)} ${seam.id}: ${seam.reason}`);
@@ -187,7 +189,7 @@ export function formatPreflightReport(plan) {
   return lines.join('\n');
 }
 
-export function commandsForRunnableVerifications(plan) {
+function commandsForRunnableVerifications(plan) {
   return plan.verifications
     .filter((verification) => verification.localStatus === 'runnable-locally')
     .map((verification) => verification.command);
@@ -216,48 +218,59 @@ function runPackageScript(script) {
   });
 }
 
-export function main() {
-  const json = process.argv.includes('--json');
-  const checkOnly = process.argv.includes('--check-only');
-  const inspection = inspectEnvironment('web-postgres');
+export function runLocalCiPreflight({
+  args,
+  inspection,
+  migrationManifestAvailable,
+  runScript,
+  writeOutput,
+  writeError,
+}) {
+  const json = args.includes('--json');
+  const checkOnly = args.includes('--check-only');
   const doctorChecks = [
     ...inspection.checks,
-    ...collectPreflightChecks(inspection.capabilities),
+    ...collectPreflightChecks(
+      inspection.capabilities,
+      migrationManifestAvailable,
+    ),
   ];
   const plan = createPreflightPlan({ doctorChecks });
 
-  process.stdout.write(
+  writeOutput(
     `${json ? JSON.stringify(plan, null, 2) : formatPreflightReport(plan)}\n`,
   );
 
   const blocked = plan.seams.some(
     (seam) => seam.localStatus === 'blocked-locally-with-reason',
   );
-  if (checkOnly) {
-    if (blocked) process.exitCode = 2;
-    return;
-  }
+  if (checkOnly) return blocked ? 2 : 0;
 
-  const scripts = commandsForRunnableVerifications(plan);
-  for (const script of scripts) {
-    process.stdout.write(`RUNNABLE LOCALLY ${script}: starting\n`);
-    const result = runPackageScript(script);
+  for (const script of commandsForRunnableVerifications(plan)) {
+    writeOutput(`RUNNABLE LOCALLY ${script}: starting\n`);
+    const result = runScript(script);
     if (result.error) {
-      process.stderr.write(
+      writeError(
         `Local preflight could not start ${script}: ${result.error.code ?? result.error.message}\n`,
       );
-      process.exitCode = 1;
-      return;
+      return 1;
     }
-    if (result.status !== 0) {
-      process.exitCode = result.status ?? 1;
-      return;
-    }
+    if (result.status !== 0) return 1;
   }
 
-  if (blocked) {
-    process.exitCode = 2;
-  }
+  return blocked ? 2 : 0;
+}
+
+function main() {
+  const inspection = inspectEnvironment('web-postgres');
+  process.exitCode = runLocalCiPreflight({
+    args: process.argv.slice(2),
+    inspection,
+    migrationManifestAvailable: migrationManifestIsAvailable(),
+    runScript: runPackageScript,
+    writeOutput: (value) => process.stdout.write(value),
+    writeError: (value) => process.stderr.write(value),
+  });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === scriptPath) main();
