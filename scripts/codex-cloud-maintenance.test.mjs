@@ -58,12 +58,20 @@ test('activates and persists the repository Node runtime before pnpm', () => {
   assert.match(gitignore, /^\.nvmrc$/m);
 });
 
+test('activates the effective pinned pnpm without a system-global mutation', () => {
+  assert.match(maintenanceScript, /effective_pnpm_version/);
+  assert.match(maintenanceScript, /agent-pnpm\.sh --version/);
+  assert.equal(maintenanceScript.match(/effective_pnpm_version\)/g)?.length, 1);
+  assert.doesNotMatch(maintenanceScript, /corepack enable/);
+  assert.doesNotMatch(maintenanceScript, /npm install --global/);
+});
+
 test('reuses dependencies when their complete manifest fingerprint is unchanged', () => {
   assert.match(maintenanceScript, /\.codex-dependency-fingerprint/);
   assert.match(maintenanceScript, /git ls-files/);
   assert.match(
     maintenanceScript,
-    /pnpm install --frozen-lockfile --prefer-offline/,
+    /agent-pnpm\.sh install --frozen-lockfile --prefer-offline/,
   );
 });
 

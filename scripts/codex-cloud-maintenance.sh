@@ -104,17 +104,16 @@ persist_expected_node
 expected_pnpm="$(node --input-type=module --eval "import packageJson from './package.json' with { type: 'json' }; process.stdout.write(packageJson.packageManager.split('@').at(-1));")"
 
 activate_exact_pnpm() {
-  if command -v pnpm >/dev/null 2>&1 && [[ "$(pnpm --version)" == "${expected_pnpm}" ]]; then
-    return
+  local actual_pnpm
+  actual_pnpm="$(effective_pnpm_version)"
+  if [[ "${actual_pnpm}" != "${expected_pnpm}" ]]; then
+    echo "Unable to activate pnpm ${expected_pnpm}; effective version is ${actual_pnpm:-unknown}. Reset the Codex environment cache." >&2
+    return 1
   fi
+}
 
-  if command -v corepack >/dev/null 2>&1; then
-    if corepack enable && corepack prepare "pnpm@${expected_pnpm}" --activate; then
-      return
-    fi
-  fi
-
-  npm install --global "pnpm@${expected_pnpm}"
+effective_pnpm_version() {
+  bash scripts/agent-pnpm.sh --version
 }
 
 dependency_fingerprint() {
@@ -145,16 +144,11 @@ synchronize_dependencies() {
     return
   fi
 
-  pnpm install --frozen-lockfile --prefer-offline
+  bash scripts/agent-pnpm.sh install --frozen-lockfile --prefer-offline
   printf '%s\n' "${current_fingerprint}" >"${marker}"
 }
 
 run_step "Activate pnpm ${expected_pnpm}" activate_exact_pnpm
-
-if [[ "$(pnpm --version)" != "${expected_pnpm}" ]]; then
-  echo "Unable to activate pnpm ${expected_pnpm}. Reset the Codex environment cache." >&2
-  exit 1
-fi
 
 run_step "Synchronize workspace dependencies" synchronize_dependencies
 
@@ -166,6 +160,6 @@ if [[ "${profile}" == "postgres" ]]; then
   fi
 fi
 
-run_step "Verify the ${profile} Codex environment" node scripts/agent-doctor.mjs --profile "${profile}"
+run_step "Verify the ${profile} Codex environment" bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs --profile "${profile}"
 
 echo "Codex environment preparation completed in $((SECONDS - setup_started_at))s."

@@ -8,6 +8,14 @@ import { databaseTargetsAreSafe } from '../apps/api/test-support/postgres-databa
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(dirname(scriptPath), '..');
 
+function readRepositoryText(path) {
+  try {
+    return readFileSync(resolve(repositoryRoot, path), 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
     cwd: repositoryRoot,
@@ -18,7 +26,7 @@ function run(command, args, options = {}) {
   });
 }
 
-function classifyPnpmCommand(command) {
+export function classifyPnpmCommand(command) {
   if (command.error?.code === 'ENOENT') {
     return { state: 'missing' };
   }
@@ -27,8 +35,14 @@ function classifyPnpmCommand(command) {
     return { state: 'sandbox-denied', detail: command.error.code };
   }
 
-  if (command.status === 0 && command.stdout.trim()) {
-    return { state: 'available', version: command.stdout.trim() };
+  if (command.status === 0) {
+    const version = command.stdout.match(/\bpnpm\/(\d+\.\d+\.\d+)\b/)?.[1];
+    return version
+      ? { state: 'available', version }
+      : {
+          state: 'failed',
+          detail: 'unparseable-package-manager-user-agent',
+        };
   }
 
   return {
@@ -39,7 +53,15 @@ function classifyPnpmCommand(command) {
 
 function probePnpm() {
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  return classifyPnpmCommand(run(executable, ['--version']));
+  return classifyPnpmCommand(
+    run(executable, [
+      'exec',
+      'node',
+      '--input-type=module',
+      '--eval',
+      'process.stdout.write(process.env.npm_config_user_agent ?? "")',
+    ]),
+  );
 }
 
 function playwrightChromiumIsAvailable() {
@@ -199,6 +221,7 @@ export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {
   return {
     nodeRange: packageJson.engines?.node ?? '',
     nodeVersion: process.version,
+    pinnedNodeVersion: readRepositoryText('.node-version'),
     packageManager: packageJson.packageManager ?? '',
     pnpmProbe,
     workspaceManifestExists: existsSync(

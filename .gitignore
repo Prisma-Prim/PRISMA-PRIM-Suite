@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-home/
 dist/
 coverage/
 playwright-report/

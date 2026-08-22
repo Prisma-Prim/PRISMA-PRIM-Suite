@@ -8,11 +8,13 @@ import {
 import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
+const earlyCiRecovery =
+  'If this harness cannot provide it, apply the early-ci label to an open pull request for exact-head verification.';
 
 function parseVersion(value) {
   const match = String(value)
     .trim()
-    .match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    .match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
 
   if (!match) {
     return null;
@@ -52,6 +54,16 @@ function packageManagerVersion(packageManager) {
   return match?.[1] ?? null;
 }
 
+function versionSatisfiesRange(version, minimum, maximumExclusive) {
+  return (
+    version !== null &&
+    minimum !== null &&
+    compareVersions(version, minimum) >= 0 &&
+    (maximumExclusive === null ||
+      compareVersions(version, maximumExclusive) < 0)
+  );
+}
+
 function requiresChromium(profile) {
   return profile === 'web' || profile === 'web-postgres';
 }
@@ -60,19 +72,72 @@ function requiresPostgres(profile) {
   return profile === 'postgres' || profile === 'web-postgres';
 }
 
-function result(id, status, summary, remediation = null) {
+function result(
+  id,
+  status,
+  summary,
+  remediation = null,
+  { ciRecoverable = false } = {},
+) {
   return {
     id,
     status,
+    ciRecoverable,
     summary,
     remediation: status === 'FAIL' ? remediation : null,
   };
 }
 
-export function evaluateEnvironment(snapshot, profile = 'base') {
+function evaluateNode(snapshot) {
   const requiredNode = minimumVersion(snapshot.nodeRange);
   const maximumNode = maximumExclusiveVersion(snapshot.nodeRange);
   const actualNode = parseVersion(snapshot.nodeVersion);
+  const pinnedNode = parseVersion(snapshot.pinnedNodeVersion);
+
+  if (!requiredNode) {
+    return result(
+      'node',
+      'FAIL',
+      `Unsupported Node engine declaration: ${snapshot.nodeRange}.`,
+      'Declare the Node engine as a simple minimum range such as >=24.0.0.',
+    );
+  }
+
+  if (!pinnedNode) {
+    return result(
+      'node',
+      'FAIL',
+      `Unsupported pinned Node version: ${snapshot.pinnedNodeVersion}.`,
+      'Pin a numeric Node selector such as 24 or X.Y.Z in .node-version.',
+    );
+  }
+
+  if (!versionSatisfiesRange(pinnedNode, requiredNode, maximumNode)) {
+    return result(
+      'node',
+      'FAIL',
+      `Pinned Node ${snapshot.pinnedNodeVersion} does not satisfy ${snapshot.nodeRange}.`,
+      'Align .node-version with the Node engine declared in package.json.',
+    );
+  }
+
+  const hostSatisfiesRange = versionSatisfiesRange(
+    actualNode,
+    requiredNode,
+    maximumNode,
+  );
+  return result(
+    'node',
+    hostSatisfiesRange ? 'PASS' : 'FAIL',
+    actualNode
+      ? `Node ${snapshot.nodeVersion} is checked against ${snapshot.nodeRange}; CI pins ${snapshot.pinnedNodeVersion}.`
+      : `The host Node version could not be parsed: ${snapshot.nodeVersion}.`,
+    `Install a Node version satisfying ${snapshot.nodeRange}, then restart the harness session.`,
+    { ciRecoverable: true },
+  );
+}
+
+export function evaluateEnvironment(snapshot, profile = 'base') {
   const requiredPnpm = packageManagerVersion(snapshot.packageManager);
   const pnpmProbe = snapshot.pnpmProbe ?? { state: 'missing' };
   const actualPnpm = parseVersion(pnpmProbe.version);
@@ -89,21 +154,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   );
 
   const checks = [
-    result(
-      'node',
-      requiredNode &&
-        actualNode &&
-        compareVersions(actualNode, requiredNode) >= 0 &&
-        (!maximumNode || compareVersions(actualNode, maximumNode) < 0)
-        ? 'PASS'
-        : 'FAIL',
-      requiredNode && actualNode
-        ? `Node ${snapshot.nodeVersion} is checked against ${snapshot.nodeRange}.`
-        : `Unsupported Node engine declaration: ${snapshot.nodeRange}.`,
-      requiredNode
-        ? `Install a Node version satisfying ${snapshot.nodeRange}, then restart the harness session.`
-        : 'Declare the Node engine as a simple minimum range such as >=24.0.0.',
-    ),
+    evaluateNode(snapshot),
     evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, pnpmProbe),
     result(
       'workspace',
@@ -127,7 +178,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
       snapshot.dependenciesInstalled
         ? 'The root node_modules directory is present.'
         : 'The root node_modules directory is missing.',
-      'Run pnpm install --frozen-lockfile.',
+      'Run bash scripts/agent-pnpm.sh install --frozen-lockfile.',
+      { ciRecoverable: true },
     ),
     result(
       'chromium',
@@ -137,7 +189,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'Playwright Chromium is installed and executable.'
           : 'Playwright Chromium is missing or not executable.'
         : 'Playwright Chromium is not required by the selected profile.',
-      'Run pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium.',
+      `Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium. ${earlyCiRecovery}`,
+      { ciRecoverable: true },
     ),
     result(
       'database-variables',
@@ -147,7 +200,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.'
           : 'DATABASE_URL or TEST_DATABASE_URL is missing or invalid.'
         : 'Database variables are not required by the selected profile.',
-      'Configure both PostgreSQL URLs as Codex environment variables.',
+      `Configure both PostgreSQL URLs as documented isolated local targets. ${earlyCiRecovery}`,
+      { ciRecoverable: true },
     ),
     result(
       'database-safety',
@@ -163,7 +217,8 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
             ? 'Development and test databases are distinct numeric-loopback targets; the test name ends in _test.'
             : 'Database targets must use numeric loopback addresses, remain distinct, and name the test database with a _test suffix.'
         : 'Database target safety is not required by the selected profile.',
-      'Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud.',
+      `Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud. ${earlyCiRecovery}`,
+      { ciRecoverable: true },
     ),
     evaluatePostgres(
       needsPostgres,
@@ -196,7 +251,8 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
       'pnpm',
       'FAIL',
       `pnpm is not installed or not on PATH; repository expects ${requiredPnpm}.`,
-      `Activate pnpm ${requiredPnpm} from package.json, then run pnpm --version.`,
+      `Install a pnpm launcher, then run bash scripts/agent-pnpm.sh --version to activate ${requiredPnpm}.`,
+      { ciRecoverable: true },
     );
   }
 
@@ -206,6 +262,7 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
       'FAIL',
       `The harness sandbox denied the pnpm subprocess (${probe.detail ?? 'permission denied'}).`,
       `Verify the harness subprocess policy with corepack pnpm --version; use a permitted shell or update the sandbox policy before relying on pnpm checks.`,
+      { ciRecoverable: true },
     );
   }
 
@@ -221,7 +278,8 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
     probe.state === 'available'
       ? `pnpm ${probe.version}; repository expects ${requiredPnpm}.`
       : `pnpm could not report its version (${probe.detail ?? 'unknown subprocess failure'}).`,
-    `Activate pnpm ${requiredPnpm} from package.json before installing dependencies.`,
+    `Run repository commands through bash scripts/agent-pnpm.sh to activate pnpm ${requiredPnpm} without a system-global install.`,
+    { ciRecoverable: probe.state === 'available' },
   );
 }
 
@@ -244,6 +302,8 @@ function evaluatePostgres(
       'postgres',
       'SKIP',
       'PostgreSQL connectivity was not attempted until database configuration is valid and safe.',
+      null,
+      { ciRecoverable: true },
     );
   }
 
@@ -259,42 +319,49 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         'The PostgreSQL connectivity probe tooling or bootstrap is missing or broken.',
-        'Restore repository dependencies and the expected pnpm version, then retry the doctor.',
+        `Restore repository dependencies and the expected pnpm version, then retry the doctor. ${earlyCiRecovery}`,
+        {
+          ciRecoverable: ['dependencies', 'pnpm'].includes(probe.detail),
+        },
       );
     case 'sandbox-denied':
       return result(
         'postgres',
         'FAIL',
         `The harness sandbox denied the PostgreSQL probe subprocess (${probe.detail ?? 'permission denied'}).`,
-        'Run the doctor in a harness that permits repository subprocesses or update the sandbox policy.',
+        `Run the doctor in a harness that permits repository subprocesses or update the sandbox policy. ${earlyCiRecovery}`,
+        { ciRecoverable: true },
       );
     case 'service-unavailable':
       return result(
         'postgres',
         'FAIL',
         `No PostgreSQL service is listening at the configured local target (${probe.detail ?? 'connection refused'}).`,
-        'Start native PostgreSQL and retry the doctor, or run node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile postgres.',
+        `Start native PostgreSQL and retry the doctor, or run node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile postgres. ${earlyCiRecovery}`,
+        { ciRecoverable: true },
       );
     case 'unreachable':
       return result(
         'postgres',
         'FAIL',
         `The configured PostgreSQL target is unreachable (${probe.detail ?? 'network failure'}).`,
-        'Check the local PostgreSQL host and port, then retry the doctor.',
+        `Check the local PostgreSQL host and port, then retry the doctor. ${earlyCiRecovery}`,
+        { ciRecoverable: true },
       );
     case 'connection-failed':
       return result(
         'postgres',
         'FAIL',
         `PostgreSQL rejected the connection (${probe.detail ?? 'connection failure'}).`,
-        'Check that the local role, password, and database exist, then retry the doctor.',
+        `Check that the local role, password, and database exist, then retry the doctor. ${earlyCiRecovery}`,
+        { ciRecoverable: true },
       );
     default:
       return result(
         'postgres',
         'FAIL',
         'The PostgreSQL connectivity probe did not produce a result.',
-        'Run the doctor again after pnpm and the local database configuration pass.',
+        `Run the doctor again after pnpm and the local database configuration pass. ${earlyCiRecovery}`,
       );
   }
 }

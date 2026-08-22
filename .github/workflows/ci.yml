@@ -12,6 +12,11 @@ on:
         required: false
         default: full
         type: string
+      checkout_ref:
+        description: Exact commit to verify when invoked by Early CI.
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -46,6 +51,14 @@ jobs:
 
       - name: Check out exact requested head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+
+      - name: Verify exact requested head
+        if: ${{ inputs.checkout_ref != '' }}
+        env:
+          EXPECTED_HEAD: ${{ inputs.checkout_ref }}
+        run: test "$(git rev-parse HEAD)" = "${EXPECTED_HEAD}"
 
       - name: Set up repository verification
         uses: ./.github/actions/setup-verification

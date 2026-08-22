@@ -20,10 +20,13 @@ Each seam reports two independent facts:
 - `LOCAL AND FULL CI` or `DELEGATED TO EARLY CI` identifies where authoritative
   evidence can be obtained.
 
-Exit code `0` means every seam ran successfully, `1` means a runnable test
-failed, and `2` means at least one local prerequisite is missing. A blocked
-local result is not evidence that the implementation is wrong; use the early CI
-path before deep review.
+For a normal run, exit code `0` means every seam ran successfully, `1` means a
+runnable test failed, and `2` means at least one seam still needs delegated
+evidence. `--check-only` has narrower planning semantics: it returns `0` when
+every local blocker is recoverable by exact-head CI, and `2` only for an
+intrinsic repository defect such as a missing lockfile, workspace manifest,
+migration file, or prerequisite check. Delegation is not a PASS; the named
+commit status must still succeed before delivery.
 
 ## Local guarantees
 
@@ -48,20 +51,39 @@ The full local suite remains available separately; the preflight is intentionall
 small and does not duplicate lint, formatting, every unit test, every browser
 journey, or production builds.
 
-## Early CI delegation
+## Connector-compatible Early CI delegation
 
-Push a draft branch, then run **Early CI preflight** for that exact branch from
-the GitHub Actions interface. With authenticated GitHub CLI access, the equivalent
-command is:
+Push the branch and open or update its pull request, then apply the `early-ci`
+label. Connected GitHub interfaces can add that label without a local `gh`
+executable. The default-branch workflow accepts only an open, same-repository
+pull request, resolves its exact head SHA, and publishes the `Early CI preflight`
+commit status on that SHA. Remove and reapply the label to request another run.
+
+The GitHub Actions interface remains a fallback: run **Early CI preflight** for
+the exact branch. With authenticated GitHub CLI access, the equivalent command
+is:
 
 ```bash
 gh workflow run early-ci.yml --ref <branch>
 ```
 
-The run page records the exact commit and executes the same canonical package
-scripts as the local preflight with PostgreSQL 17 and an explicitly installed
-Chromium. This workflow is advisory and manually triggered; it does not replace
-the normal pull-request CI or the final review gates.
+Both routes execute the same canonical package scripts as the local preflight
+with PostgreSQL 17 and an explicitly installed Chromium. The workflow checks
+out and verifies the requested commit before executing repository code. It is
+advisory and does not replace normal pull-request CI or the final review gates.
+
+## Work mode package-manager drift
+
+If the hosted `pnpm --version` differs from root `packageManager`, run the
+preflight through the repository launcher:
+
+```bash
+bash scripts/agent-pnpm.sh preflight:local --check-only
+```
+
+The launcher selects and verifies the pinned pnpm in an ignored, private
+`.pnpm-home/` cache. Its first drift recovery needs package-network access; it
+does not mutate a system-global Corepack or npm installation.
 
 ## CI-only guarantees
 

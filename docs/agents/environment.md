@@ -67,6 +67,32 @@ bash scripts/codex-cloud-maintenance.sh
 
 Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, and reruns the base doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
 
+### ChatGPT Work mode pnpm bootstrap
+
+Some Work mode images expose a fallback pnpm that ignores the repository's
+`packageManager` version selection. When `pnpm --version` differs from the root
+pin, run repository commands through the versioned launcher:
+
+```bash
+bash scripts/agent-pnpm.sh --version
+bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs
+bash scripts/agent-pnpm.sh lint
+```
+
+The launcher gives an already exact pnpm a direct path. On drift, it uses
+pnpm's explicit `--pm-on-fail=download` mode, verifies the effective child
+package-manager identity, and keeps the downloaded version in the ignored,
+private `.pnpm-home/` directory. The first recovery therefore needs package
+network access during setup or maintenance. It never runs `corepack enable`,
+activates a system-global version, or installs a global npm package.
+
+Work mode does not promise local PostgreSQL or Chromium. If the matching Doctor
+profile reports either capability unavailable, open or update a same-repository
+pull request and apply the `early-ci` label. The `Early CI preflight` status on
+the exact PR head is the supported PostgreSQL, migration, and browser evidence;
+the absence of local executables does not justify installing system packages in
+the agent phase.
+
 ### Optional PostgreSQL environment
 
 Create a separate Codex environment only when a task genuinely requires local PostgreSQL. Configure these ordinary environment variables in that DB-specific environment:
@@ -104,7 +130,7 @@ Some hosted command boundaries, including ChatGPT Work mode, virtualize spawned 
 
 The standard Codex Cloud environment does not install Chromium. Its repository-wide verification uses `pnpm test:unit`, while GitHub Actions runs the complete `pnpm test` command including Playwright.
 
-Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Keep that cost out of the standard environment.
+Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, use another harness where Chromium is already available, or apply the `early-ci` label to an open pull request for exact-head evidence. Keep that cost out of the standard environment.
 
 ### Network and credentials
 
@@ -129,7 +155,7 @@ After changing the standard environment, launch a fresh issue task and require `
 ## Local and other harnesses
 
 1. Install a Node version satisfying the root engine.
-2. Activate the exact pnpm version declared by `packageManager`.
+2. Activate the exact pnpm version declared by `packageManager`; use `bash scripts/agent-pnpm.sh` when the harness launcher drifts.
 3. Install dependencies from the lockfile.
 4. Install Playwright Chromium when browser tests are required.
 5. Start an isolated local PostgreSQL instance and set explicit development and `_test` URLs when database tests are required.

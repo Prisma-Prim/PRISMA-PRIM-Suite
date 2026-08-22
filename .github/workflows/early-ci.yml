@@ -2,12 +2,85 @@ name: Early CI preflight
 
 on:
   workflow_dispatch:
+  pull_request_target:
+    types: [labeled]
 
 permissions:
   contents: read
 
 jobs:
-  database-and-browser-seams:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request_target' &&
+        github.event.label.name == 'early-ci' &&
+        github.event.pull_request.state == 'open' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    outputs:
+      checkout_ref: ${{ steps.target.outputs.checkout_ref }}
+
+    steps:
+      - name: Resolve and publish the exact requested head
+        id: target
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          checkout_ref="${PR_HEAD_SHA:-${DISPATCH_SHA}}"
+          echo "checkout_ref=${checkout_ref}" >>"${GITHUB_OUTPUT}"
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${checkout_ref}" \
+            -f state='pending' \
+            -f context='Early CI preflight' \
+            -f description='Exact-head preflight is running.' \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+  database_and_browser_seams:
+    needs: prepare
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
     with:
       mode: preflight
+      checkout_ref: ${{ needs.prepare.outputs.checkout_ref }}
+
+  publish_result:
+    if: ${{ always() && needs.prepare.result == 'success' }}
+    needs:
+      - prepare
+      - database_and_browser_seams
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+
+    steps:
+      - name: Publish the exact-head result
+        env:
+          CHECKOUT_REF: ${{ needs.prepare.outputs.checkout_ref }}
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.database_and_browser_seams.result }}
+        run: |
+          if [[ "${RESULT}" == 'success' ]]; then
+            state='success'
+            description='Exact-head preflight passed.'
+          else
+            state='failure'
+            description='Exact-head preflight failed or was cancelled.'
+          fi
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${CHECKOUT_REF}" \
+            -f state="${state}" \
+            -f context='Early CI preflight' \
+            -f description="${description}" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

@@ -8,6 +8,7 @@ const { evaluateEnvironment: evaluateEnvironmentReport } = agentDoctor;
 const healthyEnvironment = {
   nodeRange: '>=24.0.0 <25.0.0',
   nodeVersion: 'v24.14.0',
+  pinnedNodeVersion: '24',
   packageManager: 'pnpm@11.20.0',
   pnpmProbe: { state: 'available', version: '11.20.0' },
   workspaceManifestExists: true,
@@ -116,6 +117,26 @@ test('the web-postgres profile requires safe local database targets and connecti
     'PASS',
   );
   assert.equal(healthy.find((check) => check.id === 'postgres').status, 'PASS');
+});
+
+test('offers exact-head Early CI when hosted integration prerequisites are absent', () => {
+  const results = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      chromiumAvailable: false,
+      databaseUrl: '',
+      testDatabaseUrl: '',
+      postgresProbe: { state: 'not-run' },
+    },
+    'web-postgres',
+  );
+
+  for (const id of ['chromium', 'database-variables']) {
+    assert.match(
+      results.find((check) => check.id === id).remediation,
+      /apply the early-ci label.*exact-head/u,
+    );
+  }
 });
 
 test('certifies only distinct numeric-loopback PostgreSQL targets', () => {
@@ -236,6 +257,10 @@ test('distinguishes missing pnpm from a sandbox-denied pnpm subprocess', () => {
     missing.find((check) => check.id === 'pnpm').summary,
     /is not installed or not on PATH/,
   );
+  assert.equal(
+    missing.find((check) => check.id === 'pnpm').ciRecoverable,
+    true,
+  );
   assert.match(
     denied.find((check) => check.id === 'pnpm').summary,
     /sandbox denied the pnpm subprocess/,
@@ -243,6 +268,27 @@ test('distinguishes missing pnpm from a sandbox-denied pnpm subprocess', () => {
   assert.match(
     denied.find((check) => check.id === 'pnpm').remediation,
     /corepack pnpm --version/,
+  );
+  assert.equal(denied.find((check) => check.id === 'pnpm').ciRecoverable, true);
+});
+
+test('fails closed for unsupported or unclassified package-manager failures', () => {
+  const unsupported = evaluateEnvironment({
+    ...healthyEnvironment,
+    packageManager: 'npm@11.20.0',
+  });
+  const unclassified = evaluateEnvironment({
+    ...healthyEnvironment,
+    pnpmProbe: { state: 'failed', detail: 'exit 1' },
+  });
+
+  assert.equal(
+    unsupported.find((check) => check.id === 'pnpm').ciRecoverable,
+    false,
+  );
+  assert.equal(
+    unclassified.find((check) => check.id === 'pnpm').ciRecoverable,
+    false,
   );
 });
 
@@ -272,6 +318,36 @@ test('reports probe tooling and sandbox failures without blaming PostgreSQL', ()
   assert.match(
     denied.find((check) => check.id === 'postgres').summary,
     /sandbox denied the PostgreSQL probe subprocess \(EACCES\)/,
+  );
+});
+
+test('delegates known dependency drift but not an unknown PostgreSQL bootstrap failure', () => {
+  const dependencies = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      dependenciesInstalled: false,
+      postgresProbe: { state: 'tooling-missing', detail: 'dependencies' },
+    },
+    'postgres',
+  );
+  const unknown = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      postgresProbe: {
+        state: 'tooling-missing',
+        detail: 'ERR_MODULE_NOT_FOUND',
+      },
+    },
+    'postgres',
+  );
+
+  assert.equal(
+    dependencies.find((check) => check.id === 'postgres').ciRecoverable,
+    true,
+  );
+  assert.equal(
+    unknown.find((check) => check.id === 'postgres').ciRecoverable,
+    false,
   );
 });
 
@@ -324,7 +400,64 @@ test('reports an outdated Node runtime with a durable remediation', () => {
   const node = results.find((check) => check.id === 'node');
 
   assert.equal(node.status, 'FAIL');
+  assert.equal(node.ciRecoverable, true);
   assert.match(node.remediation, /satisfying >=24\.0\.0 <25\.0\.0/);
+});
+
+test('marks an unsupported Node engine declaration as intrinsic repository drift', () => {
+  const results = evaluateEnvironment({
+    ...healthyEnvironment,
+    nodeRange: '^24.0.0',
+  });
+  const node = results.find((check) => check.id === 'node');
+
+  assert.equal(node.status, 'FAIL');
+  assert.equal(node.ciRecoverable, false);
+  assert.match(node.summary, /Unsupported Node engine declaration/);
+});
+
+test('marks a Node engine range that excludes the CI pin as intrinsic repository drift', () => {
+  const results = evaluateEnvironment({
+    ...healthyEnvironment,
+    nodeRange: '>=25.0.0 <26.0.0',
+    nodeVersion: 'v25.1.0',
+  });
+  const node = results.find((check) => check.id === 'node');
+
+  assert.equal(node.status, 'FAIL');
+  assert.equal(node.ciRecoverable, false);
+  assert.match(node.summary, /Pinned Node 24 does not satisfy/);
+});
+
+test('marks absent, nonnumeric, and partially numeric CI Node pins as intrinsic', () => {
+  for (const pinnedNodeVersion of ['', 'current', '24junk']) {
+    const results = evaluateEnvironment({
+      ...healthyEnvironment,
+      pinnedNodeVersion,
+    });
+    const node = results.find((check) => check.id === 'node');
+
+    assert.equal(node.status, 'FAIL');
+    assert.equal(node.ciRecoverable, false);
+    assert.match(node.summary, /Unsupported pinned Node version/);
+    assert.match(
+      node.remediation,
+      /numeric Node selector such as 24 or X\.Y\.Z/,
+    );
+  }
+});
+
+test('does not delegate host drift when the CI Node pin is also incompatible', () => {
+  const results = evaluateEnvironment({
+    ...healthyEnvironment,
+    nodeVersion: 'v22.22.0',
+    pinnedNodeVersion: '25',
+  });
+  const node = results.find((check) => check.id === 'node');
+
+  assert.equal(node.status, 'FAIL');
+  assert.equal(node.ciRecoverable, false);
+  assert.match(node.summary, /Pinned Node 25 does not satisfy/);
 });
 
 test('rejects a future Node major that CI does not target', () => {
