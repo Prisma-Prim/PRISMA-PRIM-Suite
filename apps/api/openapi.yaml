@@ -815,7 +815,7 @@ components:
           type: integer
           format: int32
           minimum: 1
-          maximum: 2147483647
+          maximum: 2147483646
         displayName:
           type: string
           minLength: 1
@@ -935,10 +935,11 @@ components:
             - 'null'
         version:
           type: integer
+          format: int32
           minimum: 1
+          maximum: 2147483647
         involvedCompanyDisplayNames:
           type: array
-          uniqueItems: true
           items:
             type: string
     ActorContext:
