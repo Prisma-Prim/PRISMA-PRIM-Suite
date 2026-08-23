@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -102,6 +103,195 @@ describe('ClientWorkspace', () => {
         body: JSON.stringify({ displayName: 'Exemplu Client SRL' }),
       }),
     );
+  });
+
+  it('opens and corrects the enriched dossier with a versioned idempotent command', async () => {
+    const initialDossier = {
+      id: 'client-1',
+      displayName: 'Exemplu Client SRL',
+      relatedToActiveCompany: true,
+      taxId: '1003600123456',
+      address: 'Chișinău',
+      telephone: null,
+      generalEmail: 'office@example.test',
+      contacts: [
+        {
+          name: 'Ana | Popescu\nOperations',
+          email: 'ana@example.test',
+        },
+      ],
+      businessActivity: 'Consulting',
+      version: 1,
+      involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+    };
+    const correctedDossier = {
+      ...initialDossier,
+      telephone: '+373 69 111 222',
+      version: 2,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: initialDossier.id,
+                displayName: initialDossier.displayName,
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(initialDossier), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(correctedDossier), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: initialDossier.id,
+                displayName: initialDossier.displayName,
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    const refreshActivity = vi.fn(async () => undefined);
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: 'Exemplu Client SRL' });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    expect(await screen.findByText('Version 1')).toBeInTheDocument();
+    expect(screen.getByText('BIC, PRISMA-PRIM')).toBeInTheDocument();
+
+    const correctionForm = screen.getByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correctionForm).getByLabelText('Telephone'), {
+      target: { value: '+373 69 111 222' },
+    });
+    fireEvent.click(
+      within(correctionForm).getByRole('button', { name: 'Save correction' }),
+    );
+
+    expect(await screen.findByText('Version 2')).toBeInTheDocument();
+    expect(
+      screen.getByText('Client correction saved with attributable history.'),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/clients/client-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({
+          'idempotency-key': expect.any(String),
+          'x-company-context-id': 'company-a',
+        }),
+        body: expect.stringContaining('"expectedVersion":1'),
+      }),
+    );
+    const correctionBody = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[2]?.[1]?.body),
+    ) as { contacts: Array<{ name: string; email?: string }> };
+    expect(correctionBody.contacts).toEqual(initialDossier.contacts);
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('surfaces a stale correction and reloads the current dossier before retry', async () => {
+    const dossier = {
+      id: 'client-stale-version',
+      displayName: 'Concurrent Client',
+      relatedToActiveCompany: true,
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+      version: 1,
+      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: dossier.id,
+                displayName: dossier.displayName,
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(dossier), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'Conflict' }), {
+            status: 409,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ...dossier,
+              version: 2,
+              telephone: '+373 22 222 222',
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: dossier.displayName });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    const correctionForm = await screen.findByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correctionForm).getByLabelText('Telephone'), {
+      target: { value: '+373 60 000 000' },
+    });
+    fireEvent.click(
+      within(correctionForm).getByRole('button', { name: 'Save correction' }),
+    );
+
+    expect(
+      await screen.findByText(/changed before your correction was saved/i),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reload dossier' }));
+    expect(await screen.findByText('Version 2')).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole('form', { name: 'Correct Client dossier' }),
+      ).getByLabelText('Telephone'),
+    ).toHaveValue('+373 22 222 222');
   });
 
   it('supersedes an older Client list after a successful creation', async () => {
