@@ -206,6 +206,8 @@ describeWithPostgres('Client REST API', () => {
   it('replays registration safely and rejects an idempotency key with changed intent', async () => {
     const companyA = await registerCompany('PRISMA-PRIM', 'idempotency-a');
     const companyB = await registerCompany('BIC', 'idempotency-b');
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
     const request = {
       method: 'POST',
       headers: {
@@ -232,7 +234,6 @@ describeWithPostgres('Client REST API', () => {
     const originalResult = await first.json();
     await expect(replay.json()).resolves.toEqual(originalResult);
 
-    await grantOwnerDirectorClientAccess(companyA.id);
     const rename = await fetch(`${origin}/api/clients/${originalResult.id}`, {
       method: 'PATCH',
       headers: {
