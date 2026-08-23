@@ -232,6 +232,70 @@ describe('CompanyContextAccess', () => {
     },
   );
 
+  it('revalidates a self-assignment submitted with uppercase UUIDs', async () => {
+    const workspaceMembershipId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const companyId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const actor: ActorContext = {
+      ...ownerActor,
+      workspaceMembershipId,
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: [],
+      },
+    };
+    const revalidatedActor: ActorContext = {
+      ...actor,
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'self-assignment',
+              workspaceMembershipId,
+              companyId,
+              bundle: 'Company Director Client Access',
+              active: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revalidatedActor), { status: 200 }),
+        ),
+    );
+    const acceptActor = vi.fn(async () => undefined);
+    render(
+      <CompanyContextAccess
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={acceptActor}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
+      target: { value: workspaceMembershipId.toUpperCase() },
+    });
+    fireEvent.change(screen.getByLabelText('Company ID'), {
+      target: { value: companyId.toUpperCase() },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+  });
+
   it('grants access through native keyboard form submission', async () => {
     vi.stubGlobal(
       'fetch',
