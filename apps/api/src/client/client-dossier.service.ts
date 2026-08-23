@@ -23,6 +23,7 @@ import type {
   NormalizedDossierFields,
 } from './client-dossier-validation.js';
 import type { ClientDossierView } from './client.types.js';
+import { sameJsonValue } from './json-structural-equality.js';
 
 type ClientRow = Pick<
   typeof clientAccounts.$inferSelect,
@@ -311,7 +312,7 @@ function assertSameCorrection(
     persisted.companyId !== companyId ||
     persisted.clientAccountId !== command.clientAccountId ||
     persisted.expectedVersion !== command.expectedVersion ||
-    !sameJson(persisted.changes, command.changes)
+    !sameJsonValue(persisted.changes, command.changes)
   ) {
     throw new BadRequestException(
       'Idempotency-Key was already used for another Client correction.',
@@ -328,7 +329,7 @@ function materialCorrectionChanges(
     const key = dossierField(field);
     const before = current[key];
     const after = patch[key];
-    if (!sameJson(before, after)) changes[key] = { before, after };
+    if (!sameJsonValue(before, after)) changes[key] = { before, after };
   }
   return changes;
 }
@@ -346,8 +347,4 @@ function dossierField(value: string): keyof NormalizedDossierFields {
     default:
       throw new Error(`Unexpected Client dossier field: ${value}`);
   }
-}
-
-function sameJson(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
 }
