@@ -140,6 +140,98 @@ describe('CompanyContextAccess', () => {
     await waitFor(() => expect(refreshActivity).toHaveBeenCalledTimes(2));
   });
 
+  it.each([
+    {
+      submission: 'grant',
+      buttonName: 'Grant access',
+      assignmentStatus: 201,
+      permissions: ['client.read', 'client.create', 'client.update'],
+    },
+    {
+      submission: 'revoke',
+      buttonName: 'Revoke access',
+      assignmentStatus: 200,
+      permissions: [],
+    },
+  ] as const)(
+    'revalidates the active actor after a self-$submission',
+    async ({ buttonName, assignmentStatus, permissions }) => {
+      const revalidatedActor: ActorContext = {
+        ...ownerActor,
+        activeCompany: {
+          id: 'company-1',
+          displayName: 'PRISMA-PRIM',
+          clientPermissions: [...permissions],
+        },
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({
+                id: 'self-assignment',
+                workspaceMembershipId: ownerActor.workspaceMembershipId,
+                companyId: 'company-1',
+                bundle: 'Company Director Client Access',
+                active: assignmentStatus === 201,
+              }),
+              { status: assignmentStatus },
+            ),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify(revalidatedActor), { status: 200 }),
+          ),
+      );
+      const acceptActor = vi.fn(async () => undefined);
+      const refreshActivity = vi.fn(async () => undefined);
+      render(
+        <CompanyContextAccess
+          actor={{
+            ...ownerActor,
+            activeCompany: {
+              id: 'company-1',
+              displayName: 'PRISMA-PRIM',
+              clientPermissions:
+                assignmentStatus === 201
+                  ? []
+                  : ['client.read', 'client.create', 'client.update'],
+            },
+          }}
+          identity={deterministicBrowserIdentity()}
+          onActorRevalidated={acceptActor}
+          onActivityRecorded={refreshActivity}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText('Access bundle'), {
+        target: { value: 'director-client' },
+      });
+      fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
+        target: { value: ownerActor.workspaceMembershipId },
+      });
+      fireEvent.change(screen.getByLabelText('Company ID'), {
+        target: { value: 'company-1' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: buttonName }));
+
+      await waitFor(() =>
+        expect(fetch).toHaveBeenNthCalledWith(
+          2,
+          '/api/access/current-actor',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'x-company-context-id': 'company-1',
+            }),
+          }),
+        ),
+      );
+      expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+      expect(refreshActivity).toHaveBeenCalledOnce();
+    },
+  );
+
   it('grants access through native keyboard form submission', async () => {
     vi.stubGlobal(
       'fetch',
