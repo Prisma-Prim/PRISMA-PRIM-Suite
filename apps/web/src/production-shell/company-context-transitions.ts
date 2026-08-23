@@ -69,6 +69,8 @@ export interface ActivityLogEvent {
         type: 'client_account';
         clientAccountId: string;
         displayName: string;
+        companyId?: string;
+        companyDisplayName?: string;
       }
     | {
         type: 'client_company_relationship';
