@@ -96,7 +96,16 @@ export class AccountabilityService {
       canReadClients && actor.activeCompany
         ? canManageClientsAcrossWorkspace
           ? or(
-              eq(activityLogEvents.targetType, 'client_account'),
+              and(
+                eq(activityLogEvents.targetType, 'client_account'),
+                eq(activityLogEvents.action, 'client.created'),
+              ),
+              canReadClientsForCompany
+                ? and(
+                    eq(activityLogEvents.targetType, 'client_account'),
+                    visibleClientForCompany,
+                  )
+                : sql<boolean>`false`,
               and(
                 eq(activityLogEvents.targetType, 'client_company_relationship'),
                 eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
@@ -134,7 +143,17 @@ export class AccountabilityService {
             canReadClients && actor.activeCompany
               ? and(
                   or(
-                    eq(activityLogEvents.targetType, 'client_account'),
+                    and(
+                      eq(activityLogEvents.targetType, 'client_account'),
+                      or(
+                        canManageClientsAcrossWorkspace
+                          ? eq(activityLogEvents.action, 'client.created')
+                          : sql<boolean>`false`,
+                        canReadClientsForCompany
+                          ? sql<boolean>`true`
+                          : sql<boolean>`false`,
+                      ),
+                    ),
                     and(
                       eq(
                         activityLogEvents.targetType,
