@@ -229,7 +229,26 @@ describeWithPostgres('Client REST API', () => {
     const replay = await fetch(`${origin}/api/clients`, request);
     expect(first.status).toBe(201);
     expect(replay.status).toBe(201);
-    await expect(replay.json()).resolves.toEqual(await first.json());
+    const originalResult = await first.json();
+    await expect(replay.json()).resolves.toEqual(originalResult);
+
+    await grantOwnerDirectorClientAccess(companyA.id);
+    const rename = await fetch(`${origin}/api/clients/${originalResult.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(companyA.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'rename-stable-client',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        displayName: 'Renamed Stable Client',
+      }),
+    });
+    expect(rename.status).toBe(200);
+    const replayAfterRename = await fetch(`${origin}/api/clients`, request);
+    expect(replayAfterRename.status).toBe(201);
+    await expect(replayAfterRename.json()).resolves.toEqual(originalResult);
 
     const changedName = await fetch(`${origin}/api/clients`, {
       ...request,
@@ -956,6 +975,22 @@ describeWithPostgres('Client REST API', () => {
       },
     );
     expect(oversizedVersion.status).toBe(400);
+    const maximumPersistedVersion = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...directorHeaders(companyB.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'maximum-persisted-client-version',
+        },
+        body: JSON.stringify({
+          expectedVersion: 2_147_483_647,
+          telephone: '+373 69 999 999',
+        }),
+      },
+    );
+    expect(maximumPersistedVersion.status).toBe(400);
 
     const correctionRequest = {
       method: 'PATCH',
