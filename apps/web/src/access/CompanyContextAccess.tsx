@@ -43,7 +43,6 @@ export function CompanyContextAccess({
     setState({ status: 'idle' });
     return () => pendingRequest.current?.abort();
   }, [
-    actor.activeCompany?.id,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
