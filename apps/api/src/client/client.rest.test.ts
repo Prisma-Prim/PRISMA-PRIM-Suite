@@ -1125,12 +1125,13 @@ describeWithPostgres('Client REST API', () => {
     const events = await pool.query<{
       count: string;
       actor_workspace_membership_id: string;
+      target_company_id: string;
       metadata: {
         changes: Record<string, { before: unknown; after: unknown }>;
       };
     }>(
       `SELECT count(*) OVER () AS count, actor_workspace_membership_id,
-         metadata
+         target_company_id, metadata
        FROM activity_log_events
        WHERE action::text = 'client.corrected'`,
     );
@@ -1138,6 +1139,7 @@ describeWithPostgres('Client REST API', () => {
       {
         count: '1',
         actor_workspace_membership_id: member.workspaceMembershipId,
+        target_company_id: companyB.id,
         metadata: {
           changes: {
             telephone: { before: null, after: '+373 69 111 222' },
@@ -1156,6 +1158,14 @@ describeWithPostgres('Client REST API', () => {
     expect(activity.status).toBe(200);
     const activityBody = await activity.json();
     expect(JSON.stringify(activityBody)).toContain('client.corrected');
+    expect(
+      activityBody.events.find(
+        (event: { action: string }) => event.action === 'client.corrected',
+      ).target,
+    ).toMatchObject({
+      companyId: companyB.id,
+      companyDisplayName: 'BIC',
+    });
     expect(
       activityBody.events
         .filter(
