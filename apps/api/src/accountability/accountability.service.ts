@@ -62,9 +62,12 @@ export class AccountabilityService {
       workspaceMemberships,
       'activity_log_target_membership',
     );
+    const canManageClientsAcrossWorkspace =
+      actor.workspacePermissions.includes('client.manage');
+    const canReadClientsForCompany =
+      actor.activeCompany?.clientPermissions.includes('client.read') ?? false;
     const canReadClients =
-      actor.workspacePermissions.includes('client.manage') ||
-      actor.activeCompany?.clientPermissions.includes('client.read');
+      canManageClientsAcrossWorkspace || canReadClientsForCompany;
     const visibleClientForCompany = actor.activeCompany
       ? exists(
           this.databaseContext.connection
@@ -89,6 +92,30 @@ export class AccountabilityService {
             ),
         )
       : sql<boolean>`false`;
+    const visibleClientEventsForCompanyManager =
+      canReadClients && actor.activeCompany
+        ? canManageClientsAcrossWorkspace
+          ? or(
+              eq(activityLogEvents.targetType, 'client_account'),
+              and(
+                eq(activityLogEvents.targetType, 'client_company_relationship'),
+                eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
+              ),
+            )
+          : and(
+              or(
+                eq(activityLogEvents.targetType, 'client_account'),
+                and(
+                  eq(
+                    activityLogEvents.targetType,
+                    'client_company_relationship',
+                  ),
+                  eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
+                ),
+              ),
+              visibleClientForCompany,
+            )
+        : sql<boolean>`false`;
     const visibleEvents = actor.workspacePermissions.includes('company.manage')
       ? and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
@@ -97,21 +124,7 @@ export class AccountabilityService {
               'client_account',
               'client_company_relationship',
             ]),
-            canReadClients && actor.activeCompany
-              ? or(
-                  eq(activityLogEvents.targetType, 'client_account'),
-                  and(
-                    eq(
-                      activityLogEvents.targetType,
-                      'client_company_relationship',
-                    ),
-                    eq(
-                      activityLogEvents.targetCompanyId,
-                      actor.activeCompany.id,
-                    ),
-                  ),
-                )
-              : sql<boolean>`false`,
+            visibleClientEventsForCompanyManager,
           ),
         )
       : and(
