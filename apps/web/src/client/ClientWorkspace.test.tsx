@@ -27,6 +27,7 @@ const actor: ActorContext = {
   activeCompany: {
     id: 'company-a',
     displayName: 'PRISMA-PRIM',
+    clientPermissions: ['client.read', 'client.create', 'client.update'],
   },
 };
 
@@ -249,6 +250,64 @@ describe('ClientWorkspace', () => {
     ) as { contacts: Array<{ name: string; email?: string }> };
     expect(correctionBody.contacts).toEqual(initialDossier.contacts);
     expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('does not expose dossier correction through legacy client.manage alone', async () => {
+    const dossier = {
+      id: 'legacy-client',
+      displayName: 'Legacy Managed Client',
+      relatedToActiveCompany: true,
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+      version: 1,
+      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: dossier.id,
+                displayName: dossier.displayName,
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(dossier), { status: 200 }),
+        ),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={{
+          ...actor,
+          activeCompany: {
+            ...actor.activeCompany!,
+            clientPermissions: ['client.read', 'client.create'],
+          },
+        }}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: dossier.displayName });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    expect(await screen.findByText('Version 1')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('form', { name: 'Correct Client dossier' }),
+    ).not.toBeInTheDocument();
   });
 
   it('surfaces a stale correction and reloads the current dossier before retry', async () => {
