@@ -2,11 +2,13 @@ import type { BrowserIdentity } from '../access-composition';
 
 export type ApiResult<T> =
   | { status: 'ok'; value: T }
-  | { status: 'unauthorized' | 'forbidden' | 'error' }
+  | {
+      status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
+    }
   | { status: 'validation'; message?: string };
 
 export interface ApiRequest {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   body?: string;
   companyContextId?: string;
@@ -48,6 +50,8 @@ export async function createAuthenticatedApiClient(
         );
         if (response.status === 401) return { status: 'unauthorized' };
         if (response.status === 403) return { status: 'forbidden' };
+        if (response.status === 404) return { status: 'notFound' };
+        if (response.status === 409) return { status: 'conflict' };
         if (response.status === 400) {
           const body = await optionalJson(response);
           return {
