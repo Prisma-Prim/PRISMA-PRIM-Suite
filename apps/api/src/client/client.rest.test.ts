@@ -373,7 +373,8 @@ describeWithPostgres('Client REST API', () => {
       headers: ownerHeaders(company.id),
     });
     expect(legacyActor.status).toBe(200);
-    await expect(legacyActor.json()).resolves.toMatchObject({
+    const legacyActorBody = await legacyActor.json();
+    expect(legacyActorBody).toMatchObject({
       workspacePermissions: expect.arrayContaining(['client.manage']),
       activeCompany: {
         id: company.id,
@@ -452,6 +453,28 @@ describeWithPostgres('Client REST API', () => {
       correction,
     );
     expect(allowedCorrection.status).toBe(200);
+
+    const revoke = await fetch(
+      `${origin}/api/company-director-client-assignments/${legacyActorBody.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': 'revoke-owner-director-client-access',
+        },
+      },
+    );
+    expect(revoke.status).toBe(200);
+
+    const legacyActivity = await fetch(`${origin}/api/activity-log`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(legacyActivity.status).toBe(200);
+    const legacyActivityBody = await legacyActivity.text();
+    expect(legacyActivityBody).toContain('client.created');
+    expect(legacyActivityBody).not.toContain('client.corrected');
+    expect(legacyActivityBody).not.toContain('+373 22 111 111');
+    expect(legacyActivityBody).not.toContain('1003600123456');
   });
 
   it('denies Client access without the dedicated permission and without leaking metadata', async () => {
