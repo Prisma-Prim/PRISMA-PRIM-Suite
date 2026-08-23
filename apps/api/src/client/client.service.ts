@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
-import { LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS } from '../access/company-permissions.js';
 import type {
   ActorContext,
   CompanyClientPermission,
@@ -31,6 +30,7 @@ import type {
 import {
   type NormalizedDossierFields,
   normalizeCorrection,
+  normalizeMinimalRegistration,
   normalizeRegistration,
   requireVersion,
 } from './client-dossier-validation.js';
@@ -59,22 +59,27 @@ export class ClientService {
     actor: ActorContext,
     query: ClientQuery,
   ): Promise<ClientAccountView[] | ClientDossierView> {
-    const companyId = requireClientPermission(actor, 'client.read');
     switch (query.kind) {
-      case 'active-company-list':
+      case 'active-company-list': {
+        const companyId = requireMinimalClientPermission(actor, 'client.read');
         return this.listForActiveCompany(actor.workspaceId, companyId);
-      case 'workspace-search':
+      }
+      case 'workspace-search': {
+        const companyId = requireMinimalClientPermission(actor, 'client.read');
         return this.searchWorkspace(
           actor,
           companyId,
           requireSearchQuery(query.query),
         );
-      case 'dossier':
+      }
+      case 'dossier': {
+        const companyId = requireCompanyClientPermission(actor, 'client.read');
         return this.dossiers.read(
           actor.workspaceId,
           companyId,
           query.clientAccountId,
         );
+      }
       default:
         return assertNever(query);
     }
@@ -94,11 +99,19 @@ export class ClientService {
   ): Promise<ClientAccountView | ClientDossierView> {
     switch (command.kind) {
       case 'register': {
-        const companyId = requireClientPermission(actor, 'client.create');
+        const companyId = requireMinimalClientPermission(
+          actor,
+          'client.create',
+        );
+        const fields = actor.activeCompany?.clientPermissions.includes(
+          'client.create',
+        )
+          ? normalizeRegistration(command.fields)
+          : normalizeMinimalRegistration(command.fields);
         return this.register(
           actor,
           companyId,
-          normalizeRegistration(command.fields),
+          fields,
           requireIdempotencyKey(command.idempotencyKey),
         );
       }
@@ -108,7 +121,10 @@ export class ClientService {
         return this.attach(actor, companyId, command.clientAccountId);
       }
       case 'correct': {
-        const companyId = requireClientPermission(actor, 'client.update');
+        const companyId = requireCompanyClientPermission(
+          actor,
+          'client.update',
+        );
         return this.dossiers.correct(actor, companyId, {
           clientAccountId: command.clientAccountId,
           expectedVersion: requireVersion(command.expectedVersion),
@@ -419,20 +435,26 @@ export class ClientService {
   }
 }
 
-function requireClientPermission(
+function requireMinimalClientPermission(
   actor: ActorContext,
   permission: CompanyClientPermission,
 ): string {
   const companyId = requireActiveCompany(actor);
   if (
-    !(
-      actor.workspacePermissions.includes('client.manage') &&
-      (
-        LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS as readonly CompanyClientPermission[]
-      ).includes(permission)
-    ) &&
+    !actor.workspacePermissions.includes('client.manage') &&
     !actor.activeCompany?.clientPermissions.includes(permission)
   ) {
+    throw new ForbiddenException();
+  }
+  return companyId;
+}
+
+function requireCompanyClientPermission(
+  actor: ActorContext,
+  permission: CompanyClientPermission,
+): string {
+  const companyId = requireActiveCompany(actor);
+  if (!actor.activeCompany?.clientPermissions.includes(permission)) {
     throw new ForbiddenException();
   }
   return companyId;
