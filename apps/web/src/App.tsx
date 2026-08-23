@@ -21,6 +21,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     shellContext: access,
     selectCompany,
     rejectCompanyContext,
+    acceptRevalidatedActor,
     includeCompany,
     refreshActivityLog,
   } = useProductionShellContext(identity);
@@ -92,6 +93,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
           onActivityRecorded={refreshActivityLog}
         />
       )}
@@ -104,6 +106,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
           onCompanyRegistered={includeCompany}
         />
       )}
