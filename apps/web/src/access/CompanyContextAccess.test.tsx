@@ -325,6 +325,55 @@ describe('CompanyContextAccess', () => {
     },
   );
 
+  it('keeps a Workspace-scoped revocation alive while the active Company is restored', async () => {
+    const response = deferred<Response>();
+    let requestSignal: AbortSignal | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+        requestSignal = init?.signal ?? undefined;
+        return response.promise;
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    const { rerender } = render(
+      <CompanyContextAccess actor={ownerActor} identity={identity} />,
+    );
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fillAssignment();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+    rerender(
+      <CompanyContextAccess
+        actor={{
+          ...ownerActor,
+          activeCompany: { id: 'company-2', displayName: 'BIC' },
+        }}
+        identity={identity}
+      />,
+    );
+    await act(async () => {
+      response.resolve(
+        new Response(
+          JSON.stringify({
+            workspaceMembershipId: 'member-1',
+            companyId: 'company-1',
+            bundle: 'Company Director Client Access',
+            active: false,
+          }),
+          { status: 200 },
+        ),
+      );
+      await response.promise;
+    });
+
+    expect(requestSignal?.aborted).toBe(false);
+    expect(await screen.findByText('Access revoked.')).toBeInTheDocument();
+  });
+
   it('aborts an in-flight mutation when unmounted', async () => {
     let requestSignal: AbortSignal | undefined;
     vi.stubGlobal(
