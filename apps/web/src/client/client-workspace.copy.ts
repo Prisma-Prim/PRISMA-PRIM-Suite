@@ -19,6 +19,8 @@ export const clientWorkspaceCopy = {
   missingCompany: 'Select an active Company to work with Clients.',
   permissionDenied: 'You do not have permission to manage Clients.',
   displayNameRequired: 'Client display name is required.',
+  contactNameRequired:
+    'Primary contact name is required when contact details are entered.',
   retryableError: 'We could not load Clients. Please try again.',
   searchLabel: 'Find a shared Client',
   search: 'Search Clients',
