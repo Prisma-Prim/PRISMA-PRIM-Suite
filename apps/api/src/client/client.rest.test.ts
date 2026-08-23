@@ -889,6 +889,57 @@ describeWithPostgres('Client REST API', () => {
     expect(await activity.text()).toContain('client.corrected');
   });
 
+  it('does not replay a correction after the Client relationship is archived', async () => {
+    const company = await registerCompany(
+      'Replay Visibility Company',
+      'replay-visibility-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Replay Visibility Client',
+      'replay-visibility-client',
+    );
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Replay Director'),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+    const correctionRequest = {
+      method: 'PATCH',
+      headers: {
+        ...directorHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'replay-after-relationship-archive',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        telephone: '+373 60 123 456',
+      }),
+    } as const;
+
+    const corrected = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correctionRequest,
+    );
+    expect(corrected.status).toBe(200);
+    expect(await corrected.text()).toContain('Replay Visibility Company');
+
+    await pool.query(
+      `UPDATE client_company_relationships
+       SET status = 'archived'
+       WHERE client_account_id = $1 AND company_id = $2`,
+      [client.id, company.id],
+    );
+
+    const replay = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correctionRequest,
+    );
+    expect(replay.status).toBe(404);
+    const replayBody = await replay.text();
+    expect(replayBody).not.toContain(client.id);
+    expect(replayBody).not.toContain('Replay Visibility Company');
+  });
+
   it('allows one concurrent correction and rolls back the losing command without a success event', async () => {
     const company = await registerCompany(
       'PRISMA-PRIM',
