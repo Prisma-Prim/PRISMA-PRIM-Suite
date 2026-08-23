@@ -23,6 +23,24 @@ export interface NormalizedDossierFields {
 
 export type CorrectionPatch = Partial<NormalizedDossierFields>;
 
+export function normalizeMinimalRegistration(
+  input: ClientDossierFieldsInput,
+): NormalizedDossierFields {
+  const unknown = Object.keys(input).find((field) => field !== 'displayName');
+  if (unknown) {
+    throw new BadRequestException('Unknown Client field.');
+  }
+  return {
+    displayName: requireDisplayName(input.displayName),
+    taxId: null,
+    address: null,
+    telephone: null,
+    generalEmail: null,
+    contacts: [],
+    businessActivity: null,
+  };
+}
+
 export function normalizeRegistration(
   input: ClientDossierFieldsInput,
 ): NormalizedDossierFields {
