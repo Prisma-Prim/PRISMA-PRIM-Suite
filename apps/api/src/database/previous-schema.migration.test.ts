@@ -201,32 +201,31 @@ describeWithPostgres('previous schema migration preflight', () => {
             WHERE permission::text = 'client.manage'`);
         expect(grantsAfterBootstrapResolution.rows[0]).toEqual({ count: '1' });
 
-        const migratedClientResponse = await fetch(
-          `${applicationUrl}/api/clients/00000000-0000-4000-8000-000000001462`,
-          {
-            headers: {
-              'x-test-external-provider': 'deterministic-test',
-              'x-test-external-subject': 'previous-schema-owner',
-              'x-test-display-name': 'Previous Owner',
-              'x-test-email': 'previous-owner@example.test',
-              'x-company-context-id': '00000000-0000-4000-8000-000000001461',
-            },
-          },
+        const legacyClientHeaders = {
+          'x-test-external-provider': 'deterministic-test',
+          'x-test-external-subject': 'previous-schema-owner',
+          'x-test-display-name': 'Previous Owner',
+          'x-test-email': 'previous-owner@example.test',
+          'x-company-context-id': '00000000-0000-4000-8000-000000001461',
+        };
+        const migratedClientListResponse = await fetch(
+          `${applicationUrl}/api/clients`,
+          { headers: legacyClientHeaders },
         );
-        expect(migratedClientResponse.status).toBe(200);
-        await expect(migratedClientResponse.json()).resolves.toEqual({
-          id: '00000000-0000-4000-8000-000000001462',
-          displayName: 'Previous Shared Client',
-          relatedToActiveCompany: true,
-          taxId: null,
-          address: null,
-          telephone: null,
-          generalEmail: null,
-          contacts: [],
-          businessActivity: null,
-          version: 1,
-          involvedCompanyDisplayNames: ['Previous Provider'],
-        });
+        expect(migratedClientListResponse.status).toBe(200);
+        await expect(migratedClientListResponse.json()).resolves.toEqual([
+          {
+            id: '00000000-0000-4000-8000-000000001462',
+            displayName: 'Previous Shared Client',
+            relatedToActiveCompany: true,
+          },
+        ]);
+
+        const migratedClientDossierResponse = await fetch(
+          `${applicationUrl}/api/clients/00000000-0000-4000-8000-000000001462`,
+          { headers: legacyClientHeaders },
+        );
+        expect(migratedClientDossierResponse.status).toBe(403);
 
         const response = await fetch(`${applicationUrl}/api/health`);
         expect(response.status).toBe(200);
