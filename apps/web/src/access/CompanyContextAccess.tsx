@@ -117,8 +117,10 @@ export function CompanyContextAccess({
       if (
         result.status === 'ok' &&
         command.bundle === 'director-client' &&
-        command.workspaceMembershipId === actor.workspaceMembershipId &&
-        command.companyId === actor.activeCompany?.id
+        command.workspaceMembershipId.toLowerCase() ===
+          actor.workspaceMembershipId.toLowerCase() &&
+        command.companyId.toLowerCase() ===
+          actor.activeCompany?.id.toLowerCase()
       ) {
         const revalidated = await api.request<ActorContext>(
           '/access/current-actor',
