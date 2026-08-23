@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   foreignKey,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -29,6 +30,7 @@ export const workspacePermission = pgEnum('workspace_permission', [
 
 export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_context_access',
+  'company_director_client_access',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -229,6 +231,13 @@ export const companyRoleAssignments = pgTable(
       table.workspaceMembershipId,
       table.id,
     ),
+    uniqueIndex('company_role_assignments_bundle_target_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.workspaceMembershipId,
+      table.bundle,
+      table.id,
+    ),
     foreignKey({
       name: 'company_role_assignments_company_fk',
       columns: [table.workspaceId, table.companyId],
@@ -251,6 +260,9 @@ export const companyContextAssignmentCommands = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    bundle: companyRoleBundle('bundle')
+      .default('company_context_access')
+      .notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     operation: companyContextAssignmentOperation('operation').notNull(),
     targetWorkspaceMembershipId: uuid(
@@ -295,12 +307,14 @@ export const companyContextAssignmentCommands = pgTable(
         table.workspaceId,
         table.companyId,
         table.targetWorkspaceMembershipId,
+        table.bundle,
         table.resultAssignmentId,
       ],
       foreignColumns: [
         companyRoleAssignments.workspaceId,
         companyRoleAssignments.companyId,
         companyRoleAssignments.workspaceMembershipId,
+        companyRoleAssignments.bundle,
         companyRoleAssignments.id,
       ],
     }),
@@ -315,6 +329,16 @@ export const clientAccounts = pgTable(
       .notNull()
       .references(() => workspaces.id),
     displayName: text('display_name').notNull(),
+    taxId: text('tax_id'),
+    address: text('address'),
+    telephone: text('telephone'),
+    generalEmail: text('general_email'),
+    contacts: jsonb('contacts')
+      .$type<Array<{ name: string; telephone?: string; email?: string }>>()
+      .default([])
+      .notNull(),
+    businessActivity: text('business_activity'),
+    version: integer('version').default(1).notNull(),
     status: clientAccountStatus('status').default('active').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -323,6 +347,9 @@ export const clientAccounts = pgTable(
     createdByWorkspaceMembershipId: uuid(
       'created_by_workspace_membership_id',
     ).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     uniqueIndex('client_accounts_workspace_id_id_unique').on(
@@ -342,6 +369,7 @@ export const clientAccounts = pgTable(
         workspaceMemberships.internalUserId,
       ],
     }),
+    check('client_accounts_positive_version_check', sql`${table.version} > 0`),
   ],
 );
 
@@ -409,6 +437,15 @@ export const clientAccountRegistrationCommands = pgTable(
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     displayName: text('display_name').notNull(),
+    taxId: text('tax_id'),
+    address: text('address'),
+    telephone: text('telephone'),
+    generalEmail: text('general_email'),
+    contacts: jsonb('contacts')
+      .$type<Array<{ name: string; telephone?: string; email?: string }>>()
+      .default([])
+      .notNull(),
+    businessActivity: text('business_activity'),
     companyId: uuid('company_id').notNull(),
     resultClientAccountId: uuid('result_client_account_id'),
     resultRelationshipId: uuid('result_relationship_id'),
@@ -466,13 +503,79 @@ export const clientAccountRegistrationCommands = pgTable(
   ],
 );
 
+export const clientAccountCorrectionCommands = pgTable(
+  'client_account_correction_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    clientAccountId: uuid('client_account_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    expectedVersion: integer('expected_version').notNull(),
+    changes: jsonb('changes').$type<Record<string, unknown>>().notNull(),
+    result: jsonb('result').$type<{
+      id: string;
+      displayName: string;
+      relatedToActiveCompany: boolean;
+      taxId: string | null;
+      address: string | null;
+      telephone: string | null;
+      generalEmail: string | null;
+      contacts: Array<{ name: string; telephone?: string; email?: string }>;
+      businessActivity: string | null;
+      version: number;
+      involvedCompanyDisplayNames: string[];
+    }>(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('client_correction_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'client_correction_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'client_correction_commands_client_fk',
+      columns: [table.workspaceId, table.clientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'client_correction_commands_relationship_fk',
+      columns: [table.workspaceId, table.clientAccountId, table.companyId],
+      foreignColumns: [
+        clientCompanyRelationships.workspaceId,
+        clientCompanyRelationships.clientAccountId,
+        clientCompanyRelationships.companyId,
+      ],
+    }),
+    check(
+      'client_correction_commands_positive_version_check',
+      sql`${table.expectedVersion} > 0`,
+    ),
+  ],
+);
+
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
   'company.registered',
   'company_context_assignment.granted',
   'company_context_assignment.revoked',
+  'company_director_client_assignment.granted',
+  'company_director_client_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
+  'client.corrected',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -508,7 +611,10 @@ export const activityLogEvents = pgTable(
     metadata: jsonb('metadata')
       .$type<
         | { identityProvider: string }
-        | { bundle: 'Company Context Access' }
+        | {
+            bundle: 'Company Context Access' | 'Company Director Client Access';
+          }
+        | { changes: Record<string, { before: unknown; after: unknown }> }
         | Record<string, never>
       >()
       .notNull(),
