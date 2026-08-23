@@ -1329,8 +1329,15 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await page.getByLabel('IDNO / tax code').first().fill('1003600123456');
   await page.getByLabel('Address').first().fill('Chișinău');
   await page.getByLabel('General email').first().fill('office@example.test');
-  await page.getByLabel('Primary contact name').fill('Ana | Popescu');
   await page.getByLabel('Business activity').first().fill('Consulting');
+  await page.getByRole('button', { name: 'Add Contact' }).click();
+  await page.getByRole('button', { name: 'Add Contact' }).click();
+  const firstContact = page.getByRole('group', { name: 'Contact 1' });
+  await firstContact.getByLabel('Contact name').fill('Ana Popescu');
+  await firstContact.getByLabel('Contact telephone').fill('+373 60 111 111');
+  const secondContact = page.getByRole('group', { name: 'Contact 2' });
+  await secondContact.getByLabel('Contact name').fill('Ion Ionescu');
+  await secondContact.getByLabel('Contact email').fill('ion@example.test');
   await page.getByRole('button', { name: 'Create Client' }).click();
   await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
   await page.getByRole('button', { name: 'Open dossier' }).click();
@@ -1357,6 +1364,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await expect(page.getByText('BIC, PRISMA-PRIM')).toBeVisible();
   await expect(page.getByText('1003600123456')).toBeVisible();
   await expect(page.getByText('+373 69 111 222')).toBeVisible();
+  const contactsRegion = page.getByRole('region', { name: 'Contacts' });
+  await expect(contactsRegion.getByText('Ana Popescu')).toBeVisible();
+  await expect(contactsRegion.getByText('Ion Ionescu')).toBeVisible();
   await expect(page.getByText('Contract')).toHaveCount(0);
   await expect(page.getByText('Invoice')).toHaveCount(0);
   await expect(page.getByText('Project')).toHaveCount(0);
