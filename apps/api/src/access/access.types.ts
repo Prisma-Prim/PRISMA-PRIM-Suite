@@ -8,9 +8,13 @@ export interface ExternalPrincipal {
 export type WorkspacePermission =
   'company.manage' | 'company.assignment.manage' | 'client.manage';
 
+export type CompanyClientPermission =
+  'client.read' | 'client.create' | 'client.update';
+
 export interface ActiveCompanyContext {
   id: string;
   displayName: string;
+  clientPermissions: CompanyClientPermission[];
 }
 
 export interface ActorContext {
