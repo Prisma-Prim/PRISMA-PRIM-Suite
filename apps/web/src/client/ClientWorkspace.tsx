@@ -112,6 +112,7 @@ export function ClientWorkspace({
         companyContextId,
         onCompanyContextRejected: (rejectedCompanyId) =>
           rejectCompanyContext.current(rejectedCompanyId),
+        signal,
       });
       if (signal.aborted) return true;
       if (!rejection) return false;
