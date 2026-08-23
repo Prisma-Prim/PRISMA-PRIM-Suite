@@ -106,6 +106,79 @@ describe('ClientWorkspace', () => {
     );
   });
 
+  it('creates an enriched Client with an ordered Contact list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-contacts',
+              displayName: 'Ordered Contacts Client',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-contacts',
+                displayName: 'Ordered Contacts Client',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Ordered Contacts Client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+    const contactOne = screen.getByRole('group', { name: 'Contact 1' });
+    const contactTwo = screen.getByRole('group', { name: 'Contact 2' });
+    fireEvent.change(within(contactOne).getByLabelText('Contact name'), {
+      target: { value: 'Ana Popescu' },
+    });
+    fireEvent.change(within(contactOne).getByLabelText('Contact telephone'), {
+      target: { value: '+373 60 111 111' },
+    });
+    fireEvent.change(within(contactTwo).getByLabelText('Contact name'), {
+      target: { value: 'Ion Ionescu' },
+    });
+    fireEvent.change(within(contactTwo).getByLabelText('Contact email'), {
+      target: { value: 'ion@example.test' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    await screen.findByRole('heading', { name: 'Ordered Contacts Client' });
+    const body = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[1]?.[1]?.body),
+    ) as { contacts: unknown[] };
+    expect(body.contacts).toEqual([
+      { name: 'Ana Popescu', telephone: '+373 60 111 111' },
+      { name: 'Ion Ionescu', email: 'ion@example.test' },
+    ]);
+  });
+
   it('does not discard entered contact details when the contact name is missing', async () => {
     vi.stubGlobal(
       'fetch',
@@ -129,18 +202,19 @@ describe('ClientWorkspace', () => {
     fireEvent.change(screen.getByLabelText('Client display name'), {
       target: { value: 'Exemplu Client SRL' },
     });
-    fireEvent.change(screen.getByLabelText('Primary contact telephone'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+    fireEvent.change(screen.getByLabelText('Contact telephone'), {
       target: { value: '+373 69 111 222' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Primary contact name is required when contact details are entered.',
+      'Each Contact must have a name.',
     );
     expect(fetch).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText('Primary contact name')).toBeInvalid();
+    expect(screen.getByLabelText('Contact name')).toBeInvalid();
     expect(screen.getByLabelText('Client display name')).toBeValid();
-    expect(screen.getByLabelText('Primary contact telephone')).toHaveValue(
+    expect(screen.getByLabelText('Contact telephone')).toHaveValue(
       '+373 69 111 222',
     );
   });
@@ -295,9 +369,7 @@ describe('ClientWorkspace', () => {
     expect(screen.queryByLabelText('IDNO / tax code')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Address')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('General email')).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText('Primary contact name'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Contact name')).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText('Business activity'),
     ).not.toBeInTheDocument();
