@@ -1014,7 +1014,9 @@ test('creates and reuses one shared Client identity across two Company contexts'
   const correctionForm = page.getByRole('form', {
     name: 'Correct Client dossier',
   });
-  await correctionForm.getByLabel('Telephone').fill('+373 69 111 222');
+  await correctionForm
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 69 111 222');
   await correctionForm.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('Version 2')).toBeVisible();
   await expect(
@@ -1306,7 +1308,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   const correctionForm = page.getByRole('form', {
     name: 'Correct Client dossier',
   });
-  await correctionForm.getByLabel('Telephone').fill('+373 69 111 222');
+  await correctionForm
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 69 111 222');
   await correctionForm.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('Version 2')).toBeVisible();
 
