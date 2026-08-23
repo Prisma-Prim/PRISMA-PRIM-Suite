@@ -79,6 +79,49 @@ describe('CompanyContextAccess', () => {
     expect(revokeKey).not.toBe(grantKey);
   });
 
+  it('grants and revokes the fixed Company Director Client Access bundle', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'assignment-1',
+            workspaceMembershipId: 'member-1',
+            companyId: 'company-1',
+            bundle: 'Company Director Client Access',
+            active: true,
+          }),
+          { status: 201 },
+        ),
+      ),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fillAssignment();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/company-director-client-assignments',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/company-director-client-assignments/member-1/company-1',
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    );
+  });
+
   it('grants access through native keyboard form submission', async () => {
     vi.stubGlobal(
       'fetch',
