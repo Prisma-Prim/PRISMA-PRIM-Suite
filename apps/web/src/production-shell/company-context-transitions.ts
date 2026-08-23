@@ -42,8 +42,11 @@ export interface ActivityLogEvent {
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
+    | 'company_director_client_assignment.granted'
+    | 'company_director_client_assignment.revoked'
     | 'client.created'
-    | 'client_company_relationship.established';
+    | 'client_company_relationship.established'
+    | 'client.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
@@ -77,7 +80,10 @@ export interface ActivityLogEvent {
       };
   metadata:
     | { identityProvider: string }
-    | { bundle: 'Company Context Access' }
+    | {
+        bundle: 'Company Context Access' | 'Company Director Client Access';
+      }
+    | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
 }
 
