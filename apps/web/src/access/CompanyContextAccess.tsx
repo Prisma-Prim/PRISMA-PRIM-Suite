@@ -15,10 +15,12 @@ type State =
 export function CompanyContextAccess({
   actor,
   identity,
+  onActorRevalidated = () => undefined,
   onActivityRecorded = () => undefined,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onActivityRecorded?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
@@ -36,6 +38,8 @@ export function CompanyContextAccess({
     | undefined
   >(undefined);
   const pendingRequest = useRef<AbortController | undefined>(undefined);
+  const acceptRevalidatedActor = useRef(onActorRevalidated);
+  acceptRevalidatedActor.current = onActorRevalidated;
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
@@ -110,6 +114,31 @@ export function CompanyContextAccess({
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized') await identity.rejectSession();
       if (request.signal.aborted) return;
+      if (
+        result.status === 'ok' &&
+        command.bundle === 'director-client' &&
+        command.workspaceMembershipId === actor.workspaceMembershipId &&
+        command.companyId === actor.activeCompany?.id
+      ) {
+        const revalidated = await api.request<ActorContext>(
+          '/access/current-actor',
+          {
+            companyContextId: command.companyId,
+            signal: request.signal,
+          },
+        );
+        if (request.signal.aborted) return;
+        if (revalidated.status === 'unauthorized') {
+          await identity.rejectSession();
+          return;
+        }
+        if (revalidated.status !== 'ok') {
+          setState({ status: 'error' });
+          return;
+        }
+        await acceptRevalidatedActor.current(revalidated.value);
+        if (request.signal.aborted) return;
+      }
       if (result.status === 'ok') {
         retryCommand.current = undefined;
         void onActivityRecorded();
