@@ -94,9 +94,7 @@ export function ClientWorkspace({
   const canCreateClients =
     actor.workspacePermissions.includes('client.manage') ||
     clientPermissions.includes('client.create');
-  const canUpdateClients =
-    actor.workspacePermissions.includes('client.manage') ||
-    clientPermissions.includes('client.update');
+  const canUpdateClients = clientPermissions.includes('client.update');
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
   const handleAccessRejection = useCallback(
