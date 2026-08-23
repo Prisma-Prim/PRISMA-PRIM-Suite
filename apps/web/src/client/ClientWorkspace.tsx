@@ -33,7 +33,11 @@ type ListState =
 
 type CreateState =
   | { status: 'idle' | 'submitting' }
-  | { status: 'validation'; message: string }
+  | {
+      status: 'validation';
+      message: string;
+      field?: 'displayName' | 'contactName';
+    }
   | { status: 'forbidden' | 'error' };
 
 type SearchState =
@@ -183,11 +187,24 @@ export function ClientWorkspace({
       setCreateState({
         status: 'validation',
         message: copy.displayNameRequired,
+        field: 'displayName',
       });
       return;
     }
 
-    const contact = contactName.trim()
+    const contactAttempted = Boolean(
+      contactName.trim() || contactTelephone.trim() || contactEmail.trim(),
+    );
+    if (contactAttempted && !contactName.trim()) {
+      setCreateState({
+        status: 'validation',
+        message: copy.contactNameRequired,
+        field: 'contactName',
+      });
+      return;
+    }
+
+    const contact = contactAttempted
       ? {
           name: contactName.trim(),
           ...optionalProperty('telephone', contactTelephone),
@@ -368,7 +385,16 @@ export function ClientWorkspace({
               id="client-display-name"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              aria-invalid={createState.status === 'validation'}
+              aria-invalid={
+                createState.status === 'validation' &&
+                createState.field === 'displayName'
+              }
+              aria-describedby={
+                createState.status === 'validation' &&
+                createState.field === 'displayName'
+                  ? 'client-create-validation'
+                  : undefined
+              }
             />
           </div>
           <div className="client-dossier-fields">
@@ -412,6 +438,16 @@ export function ClientWorkspace({
               id="client-contact-name"
               value={contactName}
               onChange={(event) => setContactName(event.target.value)}
+              aria-invalid={
+                createState.status === 'validation' &&
+                createState.field === 'contactName'
+              }
+              aria-describedby={
+                createState.status === 'validation' &&
+                createState.field === 'contactName'
+                  ? 'client-create-validation'
+                  : undefined
+              }
             />
             <label htmlFor="client-contact-telephone">
               {copy.contactTelephoneLabel}
@@ -437,7 +473,9 @@ export function ClientWorkspace({
         </form>
       )}
       {createState.status === 'validation' && (
-        <p role="alert">{createState.message}</p>
+        <p id="client-create-validation" role="alert">
+          {createState.message}
+        </p>
       )}
       {createState.status === 'forbidden' && (
         <p role="alert">{copy.permissionDenied}</p>
