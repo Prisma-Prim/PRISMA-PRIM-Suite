@@ -777,19 +777,23 @@ components:
           type:
             - string
             - 'null'
+          maxLength: 500
         address:
           type:
             - string
             - 'null'
+          maxLength: 2000
         telephone:
           type:
             - string
             - 'null'
+          maxLength: 500
         generalEmail:
           type:
             - string
             - 'null'
           format: email
+          maxLength: 320
         contacts:
           type: array
           maxItems: 50
@@ -799,6 +803,7 @@ components:
           type:
             - string
             - 'null'
+          maxLength: 2000
     CorrectClientInput:
       type: object
       additionalProperties: false
@@ -817,19 +822,23 @@ components:
           type:
             - string
             - 'null'
+          maxLength: 500
         address:
           type:
             - string
             - 'null'
+          maxLength: 2000
         telephone:
           type:
             - string
             - 'null'
+          maxLength: 500
         generalEmail:
           type:
             - string
             - 'null'
           format: email
+          maxLength: 320
         contacts:
           type: array
           maxItems: 50
@@ -839,6 +848,7 @@ components:
           type:
             - string
             - 'null'
+          maxLength: 2000
     ClientContact:
       type: object
       additionalProperties: false
@@ -848,11 +858,14 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 500
         telephone:
           type: string
+          maxLength: 500
         email:
           type: string
           format: email
+          maxLength: 320
     ClientAccountView:
       type: object
       additionalProperties: false
