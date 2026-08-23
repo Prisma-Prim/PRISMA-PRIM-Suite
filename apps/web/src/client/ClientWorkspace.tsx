@@ -9,13 +9,15 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import type { ApiResult } from '../api/authenticated-api-client';
 import {
-  resolveIdempotentDisplayNameCommand,
-  type IdempotentDisplayNameCommand,
-} from '../api/idempotent-display-name-command';
-import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { ClientDossierPanel } from './ClientDossierPanel';
+import {
+  optionalProperty,
+  resolveRetryCommand,
+  type RetryCommand,
+} from './client-command';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 
 interface ClientAccountView {
@@ -51,6 +53,14 @@ export function ClientWorkspace({
   onActivityRecorded: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [address, setAddress] = useState('');
+  const [telephone, setTelephone] = useState('');
+  const [generalEmail, setGeneralEmail] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactTelephone, setContactTelephone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [businessActivity, setBusinessActivity] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [listState, setListState] = useState<ListState>({ status: 'loading' });
   const [createState, setCreateState] = useState<CreateState>({
@@ -62,17 +72,28 @@ export function ClientWorkspace({
   const [attachingClientId, setAttachingClientId] = useState<
     string | undefined
   >(undefined);
-  const retryCommand = useRef<IdempotentDisplayNameCommand | undefined>(
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
     undefined,
   );
+  const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
   const pendingSearch = useRef<AbortController | undefined>(undefined);
   const pendingAttach = useRef<AbortController | undefined>(undefined);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
   rejectCompanyContext.current = onCompanyContextRejected;
-  const canManageClients = actor.workspacePermissions.includes('client.manage');
   const activeCompany = actor.activeCompany;
+  const clientPermissions = activeCompany?.clientPermissions ?? [];
+  const canReadClients =
+    actor.workspacePermissions.includes('client.manage') ||
+    clientPermissions.includes('client.read');
+  const canCreateClients =
+    actor.workspacePermissions.includes('client.manage') ||
+    clientPermissions.includes('client.create');
+  const canUpdateClients =
+    actor.workspacePermissions.includes('client.manage') ||
+    clientPermissions.includes('client.update');
+  const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
   const handleAccessRejection = useCallback(
     async (
@@ -132,8 +153,9 @@ export function ClientWorkspace({
     setCreateState({ status: 'idle' });
     setSearchState({ status: 'idle' });
     setAttachingClientId(undefined);
+    setSelectedClientId(undefined);
 
-    if (!canManageClients || !activeCompany) return;
+    if (!canReadClients || !activeCompany) return;
     const companyContextId = activeCompany.id;
     setListState({ status: 'loading' });
 
@@ -149,24 +171,39 @@ export function ClientWorkspace({
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
-    canManageClients,
+    canReadClients,
     loadClients,
   ]);
 
   async function createClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!activeCompany) return;
-    const command = resolveIdempotentDisplayNameCommand(
-      displayName,
-      retryCommand.current,
-    );
-    if (!command) {
+    if (!activeCompany || !canCreateClients) return;
+    const normalizedDisplayName = displayName.trim();
+    if (!normalizedDisplayName) {
       setCreateState({
         status: 'validation',
         message: copy.displayNameRequired,
       });
       return;
     }
+
+    const contact = contactName.trim()
+      ? {
+          name: contactName.trim(),
+          ...optionalProperty('telephone', contactTelephone),
+          ...optionalProperty('email', contactEmail),
+        }
+      : undefined;
+    const serializedBody = JSON.stringify({
+      displayName: normalizedDisplayName,
+      ...optionalProperty('taxId', taxId),
+      ...optionalProperty('address', address),
+      ...optionalProperty('telephone', telephone),
+      ...optionalProperty('generalEmail', generalEmail),
+      ...(contact ? { contacts: [contact] } : {}),
+      ...optionalProperty('businessActivity', businessActivity),
+    });
+    const command = resolveRetryCommand(serializedBody, retryCommand.current);
 
     retryCommand.current = command;
     setCreateState({ status: 'submitting' });
@@ -181,7 +218,7 @@ export function ClientWorkspace({
             'idempotency-key': command.idempotencyKey,
           },
           companyContextId: activeCompany.id,
-          body: JSON.stringify({ displayName: command.displayName }),
+          body: command.serializedBody,
           signal,
         }),
       async onResult(result, signal) {
@@ -203,6 +240,14 @@ export function ClientWorkspace({
         }
         retryCommand.current = undefined;
         setDisplayName('');
+        setTaxId('');
+        setAddress('');
+        setTelephone('');
+        setGeneralEmail('');
+        setContactName('');
+        setContactTelephone('');
+        setContactEmail('');
+        setBusinessActivity('');
         setCreateState({ status: 'idle' });
         void onActivityRecorded();
         await loadClients(activeCompany.id);
@@ -247,7 +292,7 @@ export function ClientWorkspace({
   }
 
   async function attachClient(clientAccountId: string) {
-    if (!activeCompany) return;
+    if (!activeCompany || !canAttachClients) return;
     setAttachingClientId(clientAccountId);
     await runLatestAuthenticatedRequest({
       pending: pendingAttach,
@@ -289,7 +334,7 @@ export function ClientWorkspace({
     });
   }
 
-  if (!canManageClients) {
+  if (!canReadClients) {
     return (
       <section className="client-workspace">
         <p role="alert">{copy.permissionDenied}</p>
@@ -315,20 +360,82 @@ export function ClientWorkspace({
         <h2 id="client-workspace-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
-      <form onSubmit={(event) => void createClient(event)} noValidate>
-        <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
-        <div>
-          <input
-            id="client-display-name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            aria-invalid={createState.status === 'validation'}
-          />
+      {canCreateClients && (
+        <form onSubmit={(event) => void createClient(event)} noValidate>
+          <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
+          <div>
+            <input
+              id="client-display-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              aria-invalid={createState.status === 'validation'}
+            />
+          </div>
+          <div className="client-dossier-fields">
+            <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
+            <input
+              id="client-tax-id"
+              value={taxId}
+              onChange={(event) => setTaxId(event.target.value)}
+            />
+            <label htmlFor="client-address">{copy.addressLabel}</label>
+            <input
+              id="client-address"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+            />
+            <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
+            <input
+              id="client-telephone"
+              value={telephone}
+              onChange={(event) => setTelephone(event.target.value)}
+            />
+            <label htmlFor="client-general-email">
+              {copy.generalEmailLabel}
+            </label>
+            <input
+              id="client-general-email"
+              type="email"
+              value={generalEmail}
+              onChange={(event) => setGeneralEmail(event.target.value)}
+            />
+            <label htmlFor="client-business-activity">
+              {copy.businessActivityLabel}
+            </label>
+            <input
+              id="client-business-activity"
+              value={businessActivity}
+              onChange={(event) => setBusinessActivity(event.target.value)}
+            />
+            <label htmlFor="client-contact-name">{copy.contactNameLabel}</label>
+            <input
+              id="client-contact-name"
+              value={contactName}
+              onChange={(event) => setContactName(event.target.value)}
+            />
+            <label htmlFor="client-contact-telephone">
+              {copy.contactTelephoneLabel}
+            </label>
+            <input
+              id="client-contact-telephone"
+              value={contactTelephone}
+              onChange={(event) => setContactTelephone(event.target.value)}
+            />
+            <label htmlFor="client-contact-email">
+              {copy.contactEmailLabel}
+            </label>
+            <input
+              id="client-contact-email"
+              type="email"
+              value={contactEmail}
+              onChange={(event) => setContactEmail(event.target.value)}
+            />
+          </div>
           <button type="submit" disabled={createState.status === 'submitting'}>
             {createState.status === 'submitting' ? copy.creating : copy.create}
           </button>
-        </div>
-      </form>
+        </form>
+      )}
       {createState.status === 'validation' && (
         <p role="alert">{createState.message}</p>
       )}
@@ -380,7 +487,7 @@ export function ClientWorkspace({
                 <p>{copy.clientId(client.id)}</p>
                 {client.relatedToActiveCompany ? (
                   <p>{copy.availableInCompany(activeCompany.displayName)}</p>
-                ) : (
+                ) : canAttachClients ? (
                   <button
                     type="button"
                     disabled={attachingClientId !== undefined}
@@ -388,6 +495,8 @@ export function ClientWorkspace({
                   >
                     {copy.addToCompany(activeCompany.displayName)}
                   </button>
+                ) : (
+                  <p>{copy.notAvailableInCompany}</p>
                 )}
               </li>
             ))}
@@ -410,10 +519,25 @@ export function ClientWorkspace({
             <li key={client.id}>
               <h3>{client.displayName}</h3>
               <p>{copy.clientId(client.id)}</p>
+              <button
+                type="button"
+                onClick={() => setSelectedClientId(client.id)}
+              >
+                {copy.openDossier}
+              </button>
             </li>
           ))}
         </ol>
       )}
+      <ClientDossierPanel
+        clientAccountId={selectedClientId}
+        companyContextId={activeCompany.id}
+        canUpdate={canUpdateClients}
+        identity={identity}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActivityRecorded={onActivityRecorded}
+        onClientsChanged={() => loadClients(activeCompany.id)}
+      />
     </section>
   );
 }
