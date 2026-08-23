@@ -190,6 +190,66 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-director-client-assignments:
+    post:
+      operationId: grantCompanyDirectorClientAssignment
+      summary: Grant the fixed Company Director Client Access bundle to an active Workspace Membership
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Director Client Access assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDirectorClientAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-director-client-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyDirectorClientAssignment
+      summary: Revoke the fixed Company Director Client Access assignment
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Director Client Access assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDirectorClientAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/clients:
     get:
       operationId: listActiveCompanyClients
@@ -213,7 +273,7 @@ paths:
           description: The actor lacks Client authority or a valid active Company context.
     post:
       operationId: registerClientForActiveCompany
-      summary: Register a minimal shared Client and establish its active Company relationship
+      summary: Register a shared Client dossier and establish its active Company relationship
       tags:
         - Client
       parameters:
@@ -269,6 +329,70 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks Client authority or a valid active Company context.
+  /api/clients/{clientAccountId}:
+    get:
+      operationId: getActiveCompanyClientDossier
+      summary: Read the approved shared Client dossier through an active Company relationship
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Shared general fields and involved provider Company display names only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientDossierView'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client read authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible.
+    patch:
+      operationId: correctActiveCompanyClientDossier
+      summary: Correct shared Client fields using optimistic concurrency
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectClientInput'
+      responses:
+        '200':
+          description: The corrected Client dossier with its incremented version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientDossierView'
+        '400':
+          description: The correction, expected version or idempotent intent is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client update authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible.
+        '409':
+          description: The expected Client version is stale.
   /api/clients/{clientAccountId}/active-company-relationship:
     put:
       operationId: attachClientToActiveCompany
@@ -344,8 +468,11 @@ components:
             - company.registered
             - company_context_assignment.granted
             - company_context_assignment.revoked
+            - company_director_client_assignment.granted
+            - company_director_client_assignment.revoked
             - client.created
             - client_company_relationship.established
+            - client.corrected
         occurredAt:
           type: string
           format: date-time
@@ -363,6 +490,7 @@ components:
             - $ref: '#/components/schemas/IdentityProvisionedMetadata'
             - $ref: '#/components/schemas/CompanyRegisteredMetadata'
             - $ref: '#/components/schemas/CompanyContextAssignmentMetadata'
+            - $ref: '#/components/schemas/ClientCorrectedMetadata'
     ActivityLogInternalUserReference:
       type: object
       additionalProperties: false
@@ -426,7 +554,43 @@ components:
       properties:
         bundle:
           type: string
-          const: Company Context Access
+          enum:
+            - Company Context Access
+            - Company Director Client Access
+    ClientCorrectedMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - changes
+      properties:
+        changes:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            displayName:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            taxId:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            address:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            telephone:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            generalEmail:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            contacts:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            businessActivity:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+    ClientCorrectionChange:
+      type: object
+      additionalProperties: false
+      required:
+        - before
+        - after
+      properties:
+        before: {}
+        after: {}
     ActivityLogCompanyRoleAssignmentTargetReference:
       type: object
       additionalProperties: false
@@ -538,6 +702,30 @@ components:
           const: Company Context Access
         active:
           type: boolean
+    CompanyDirectorClientAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Director Client Access
+        active:
+          type: boolean
     RegisterCompanyInput:
       type: object
       additionalProperties: false
@@ -584,6 +772,87 @@ components:
         displayName:
           type: string
           minLength: 1
+          maxLength: 200
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+          format: email
+        contacts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+    CorrectClientInput:
+      type: object
+      additionalProperties: false
+      minProperties: 2
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+          format: email
+        contacts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+    ClientContact:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        telephone:
+          type: string
+        email:
+          type: string
+          format: email
     ClientAccountView:
       type: object
       additionalProperties: false
@@ -599,6 +868,64 @@ components:
           type: string
         relatedToActiveCompany:
           type: boolean
+    ClientDossierView:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+        - relatedToActiveCompany
+        - taxId
+        - address
+        - telephone
+        - generalEmail
+        - contacts
+        - businessActivity
+        - version
+        - involvedCompanyDisplayNames
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        relatedToActiveCompany:
+          type: boolean
+          const: true
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+          format: email
+        contacts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+        version:
+          type: integer
+          minimum: 1
+        involvedCompanyDisplayNames:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
     ActorContext:
       type: object
       additionalProperties: false
@@ -648,9 +975,19 @@ components:
       required:
         - id
         - displayName
+        - clientPermissions
       properties:
         id:
           type: string
           format: uuid
         displayName:
           type: string
+        clientPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - client.read
+              - client.create
+              - client.update
