@@ -2,11 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { companies, companyRoleAssignments } from '../database/schema/index.js';
-import type { ActiveCompanyContext, ActorContext } from './access.types.js';
+import type {
+  ActiveCompanyContext,
+  ActorContext,
+  CompanyClientPermission,
+} from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_PERMISSIONS,
+  LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS,
 } from './company-permissions.js';
 
 @Injectable()
@@ -23,12 +28,18 @@ export class CompanyContextAuthorization {
         companyId,
       );
       if (!company) return undefined;
-      const clientPermissions = actor.workspacePermissions.includes(
-        'client.manage',
-      )
-        ? [...COMPANY_DIRECTOR_CLIENT_PERMISSIONS]
-        : ((await this.findAssignedActiveCompanies(actor, companyId))[0]
-            ?.clientPermissions ?? []);
+      const assignedPermissions = (
+        await this.findAssignedActiveCompanies(actor, companyId)
+      )[0]?.clientPermissions;
+      const effectivePermissions = new Set<CompanyClientPermission>([
+        ...(actor.workspacePermissions.includes('client.manage')
+          ? LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS
+          : []),
+        ...(assignedPermissions ?? []),
+      ]);
+      const clientPermissions = COMPANY_DIRECTOR_CLIENT_PERMISSIONS.filter(
+        (permission) => effectivePermissions.has(permission),
+      );
       return { ...company, clientPermissions };
     }
     return (await this.findAssignedActiveCompanies(actor, companyId))[0];
