@@ -22,16 +22,14 @@ export class CompanyContextAuthorization {
         actor.workspaceId,
         companyId,
       );
-      return company
-        ? {
-            ...company,
-            clientPermissions: actor.workspacePermissions.includes(
-              'client.manage',
-            )
-              ? [...COMPANY_DIRECTOR_CLIENT_PERMISSIONS]
-              : [],
-          }
-        : undefined;
+      if (!company) return undefined;
+      const clientPermissions = actor.workspacePermissions.includes(
+        'client.manage',
+      )
+        ? [...COMPANY_DIRECTOR_CLIENT_PERMISSIONS]
+        : ((await this.findAssignedActiveCompanies(actor, companyId))[0]
+            ?.clientPermissions ?? []);
+      return { ...company, clientPermissions };
     }
     return (await this.findAssignedActiveCompanies(actor, companyId))[0];
   }
