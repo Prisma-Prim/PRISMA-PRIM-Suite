@@ -213,7 +213,16 @@ describeWithPostgres('Client REST API', () => {
         'content-type': 'application/json',
         'idempotency-key': 'stable-client-command',
       },
-      body: JSON.stringify({ displayName: 'Stable Client' }),
+      body: JSON.stringify({
+        displayName: 'Stable Client',
+        contacts: [
+          {
+            name: 'Ana Popescu',
+            telephone: '+373 60 000 000',
+            email: 'ana@example.test',
+          },
+        ],
+      }),
     } as const;
 
     const first = await fetch(`${origin}/api/clients`, request);
@@ -240,6 +249,47 @@ describeWithPostgres('Client REST API', () => {
       message: 'Idempotency-Key was already used for another Client command.',
     });
     await expectPersistenceCounts({ clients: 1, relationships: 1 });
+  });
+
+  it('combines a Company Director Client grant with Company management permissions', async () => {
+    const company = await registerCompany(
+      'Additive Permission Company',
+      'additive-permission-company',
+    );
+    const created = await createClient(
+      company.id,
+      'Additive Permission Client',
+      'additive-permission-client',
+    );
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Company Manager'),
+    }).then((response) => response.json());
+    await pool.query(
+      `INSERT INTO workspace_permission_grants (
+        workspace_id, workspace_membership_id, permission
+      ) VALUES ($1, $2, 'company.manage')`,
+      [member.workspaceId, member.workspaceMembershipId],
+    );
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+    const headers = {
+      ...identityHeaders('workspace-member', 'Company Manager'),
+      'x-company-context-id': company.id,
+    };
+
+    const actorResponse = await fetch(`${origin}/api/access/current-actor`, {
+      headers,
+    });
+    expect(actorResponse.status).toBe(200);
+    await expect(actorResponse.json()).resolves.toMatchObject({
+      workspacePermissions: ['company.manage'],
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    });
+    const clients = await fetch(`${origin}/api/clients`, { headers });
+    expect(clients.status).toBe(200);
+    await expect(clients.json()).resolves.toEqual([created]);
   });
 
   it('denies Client access without the dedicated permission and without leaking metadata', async () => {
@@ -938,6 +988,49 @@ describeWithPostgres('Client REST API', () => {
     const replayBody = await replay.text();
     expect(replayBody).not.toContain(client.id);
     expect(replayBody).not.toContain('Replay Visibility Company');
+  });
+
+  it('replays a full dossier correction after PostgreSQL canonicalizes JSON object keys', async () => {
+    const company = await registerCompany(
+      'Structural Replay Company',
+      'structural-replay-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Structural Replay Client',
+      'structural-replay-client',
+    );
+    const request = {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'structural-full-correction-replay',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        displayName: 'Structural Replay Client SRL',
+        taxId: '1003600123456',
+        address: 'Chișinău',
+        telephone: '+373 22 000 000',
+        generalEmail: 'office@structural-replay.test',
+        contacts: [
+          {
+            name: 'Ana Popescu',
+            telephone: '+373 60 000 000',
+            email: 'ana@structural-replay.test',
+          },
+        ],
+        businessActivity: 'Consulting',
+      }),
+    } as const;
+
+    const first = await fetch(`${origin}/api/clients/${client.id}`, request);
+    expect(first.status).toBe(200);
+    const corrected = await first.json();
+    const replay = await fetch(`${origin}/api/clients/${client.id}`, request);
+    expect(replay.status).toBe(200);
+    await expect(replay.json()).resolves.toEqual(corrected);
   });
 
   it('allows one concurrent correction and rolls back the losing command without a success event', async () => {
