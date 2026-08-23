@@ -940,6 +940,23 @@ describeWithPostgres('Client REST API', () => {
       involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
     });
 
+    const oversizedVersion = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...directorHeaders(companyB.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'oversized-client-version',
+        },
+        body: JSON.stringify({
+          expectedVersion: 2_147_483_648,
+          telephone: '+373 69 999 999',
+        }),
+      },
+    );
+    expect(oversizedVersion.status).toBe(400);
+
     const correctionRequest = {
       method: 'PATCH',
       headers: {
@@ -1018,7 +1035,18 @@ describeWithPostgres('Client REST API', () => {
       headers: directorHeaders(companyB.id),
     });
     expect(activity.status).toBe(200);
-    expect(await activity.text()).toContain('client.corrected');
+    const activityBody = await activity.json();
+    expect(JSON.stringify(activityBody)).toContain('client.corrected');
+    expect(
+      activityBody.events
+        .filter(
+          (event: { action: string }) =>
+            event.action === 'client_company_relationship.established',
+        )
+        .map(
+          (event: { target: { companyId: string } }) => event.target.companyId,
+        ),
+    ).toEqual([companyB.id]);
   });
 
   it('does not replay a correction after the Client relationship is archived', async () => {
