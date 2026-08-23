@@ -77,7 +77,7 @@ describeWithPostgres('previous schema migration preflight', () => {
             INSERT INTO workspaces (singleton_key, name)
             VALUES ('previous-schema-workspace', 'Previous Schema Workspace')
             RETURNING id
-          )
+          ), seeded_user AS (
             INSERT INTO internal_users (
               workspace_id, external_provider, external_subject,
               display_name, email
@@ -85,8 +85,69 @@ describeWithPostgres('previous schema migration preflight', () => {
             SELECT id, 'deterministic-test', 'previous-schema-owner',
               'Previous Owner', 'previous-owner@example.test'
             FROM seeded_workspace
+            RETURNING workspace_id, id
+          ), seeded_membership AS (
+            SELECT membership.workspace_id, membership.id,
+              membership.internal_user_id
+            FROM workspace_memberships AS membership
+            INNER JOIN seeded_user
+              ON seeded_user.workspace_id = membership.workspace_id
+              AND seeded_user.id = membership.internal_user_id
+          ), seeded_company AS (
+            INSERT INTO companies (
+              id, workspace_id, display_name, created_by_internal_user_id,
+              created_by_workspace_membership_id,
+              registration_idempotency_key
+            )
+            SELECT '00000000-0000-4000-8000-000000001461', workspace_id,
+              'Previous Provider', internal_user_id, id,
+              'previous-provider-registration'
+            FROM seeded_membership
+            RETURNING workspace_id, id
+          ), seeded_client AS (
+            INSERT INTO client_accounts (
+              id, workspace_id, display_name, created_by_internal_user_id,
+              created_by_workspace_membership_id
+            )
+            SELECT '00000000-0000-4000-8000-000000001462', workspace_id,
+              'Previous Shared Client', internal_user_id, id
+            FROM seeded_membership
+            RETURNING workspace_id, id
+          )
+          INSERT INTO client_company_relationships (
+            id, workspace_id, client_account_id, company_id,
+            created_by_internal_user_id, created_by_workspace_membership_id
+          )
+          SELECT '00000000-0000-4000-8000-000000001463',
+            seeded_client.workspace_id, seeded_client.id, seeded_company.id,
+            seeded_membership.internal_user_id, seeded_membership.id
+          FROM seeded_client
+          INNER JOIN seeded_company
+            ON seeded_company.workspace_id = seeded_client.workspace_id
+          INNER JOIN seeded_membership
+            ON seeded_membership.workspace_id = seeded_client.workspace_id
         `);
         await migrate(database, { migrationsFolder: migrationsDirectory });
+        const upgradedClient = await migrationPool.query<{
+          id: string;
+          relationship_id: string;
+          version: number;
+          contacts: unknown[];
+        }>(`SELECT client.id, relationship.id AS relationship_id,
+              client.version, client.contacts
+            FROM client_accounts AS client
+            INNER JOIN client_company_relationships AS relationship
+              ON relationship.workspace_id = client.workspace_id
+              AND relationship.client_account_id = client.id
+            WHERE client.id = '00000000-0000-4000-8000-000000001462'`);
+        expect(upgradedClient.rows).toEqual([
+          {
+            id: '00000000-0000-4000-8000-000000001462',
+            relationship_id: '00000000-0000-4000-8000-000000001463',
+            version: 1,
+            contacts: [],
+          },
+        ]);
         const grantsAfterMigration = await migrationPool.query<{
           count: string;
         }>(`SELECT count(*)
@@ -133,6 +194,33 @@ describeWithPostgres('previous schema migration preflight', () => {
             FROM workspace_permission_grants
             WHERE permission::text = 'client.manage'`);
         expect(grantsAfterBootstrapResolution.rows[0]).toEqual({ count: '1' });
+
+        const migratedClientResponse = await fetch(
+          `${applicationUrl}/api/clients/00000000-0000-4000-8000-000000001462`,
+          {
+            headers: {
+              'x-test-external-provider': 'deterministic-test',
+              'x-test-external-subject': 'previous-schema-owner',
+              'x-test-display-name': 'Previous Owner',
+              'x-test-email': 'previous-owner@example.test',
+              'x-company-context-id': '00000000-0000-4000-8000-000000001461',
+            },
+          },
+        );
+        expect(migratedClientResponse.status).toBe(200);
+        await expect(migratedClientResponse.json()).resolves.toEqual({
+          id: '00000000-0000-4000-8000-000000001462',
+          displayName: 'Previous Shared Client',
+          relatedToActiveCompany: true,
+          taxId: null,
+          address: null,
+          telephone: null,
+          generalEmail: null,
+          contacts: [],
+          businessActivity: null,
+          version: 1,
+          involvedCompanyDisplayNames: ['Previous Provider'],
+        });
 
         const response = await fetch(`${applicationUrl}/api/health`);
         expect(response.status).toBe(200);
