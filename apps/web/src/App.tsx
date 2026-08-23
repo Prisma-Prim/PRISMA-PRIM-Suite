@@ -175,8 +175,11 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${event.target.clientDisplayName} — ${event.target.companyDisplayName}`;
     case 'internal_user':
     case 'company':
-    case 'client_account':
       return event.target.displayName;
+    case 'client_account':
+      return event.target.companyDisplayName
+        ? `${event.target.displayName} — ${event.target.companyDisplayName}`
+        : event.target.displayName;
     default: {
       const exhaustive: never = event.target;
       return exhaustive;
