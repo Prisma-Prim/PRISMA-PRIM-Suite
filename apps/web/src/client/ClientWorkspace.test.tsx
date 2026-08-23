@@ -617,12 +617,14 @@ describe('ClientWorkspace', () => {
         ),
     );
     const rejectCompany = vi.fn();
+    const acceptActor = vi.fn();
 
     render(
       <ClientWorkspace
         actor={actor}
         identity={deterministicBrowserIdentity()}
         onCompanyContextRejected={rejectCompany}
+        onActorRevalidated={acceptActor}
         onActivityRecorded={vi.fn(async () => undefined)}
       />,
     );
@@ -631,6 +633,14 @@ describe('ClientWorkspace', () => {
       'You do not have permission to manage Clients.',
     );
     expect(rejectCompany).not.toHaveBeenCalled();
+    expect(acceptActor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeCompany: expect.objectContaining({
+          id: 'company-a',
+          clientPermissions: [],
+        }),
+      }),
+    );
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
