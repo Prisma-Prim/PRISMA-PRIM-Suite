@@ -368,6 +368,53 @@ describe('production shell session', () => {
     observed.unsubscribe();
   });
 
+  it('accepts a revalidated actor and reloads permission-filtered activity', async () => {
+    let activityRequest = 0;
+    const initiallyAuthorizedActor: ActorContext = {
+      ...selectedActor('company-a'),
+      activeCompany: {
+        ...selectedActor('company-a').activeCompany!,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? initiallyAuthorizedActor : baseActor,
+          };
+        },
+        async loadCompanies() {
+          return { status: 'ok', value: [companies[0]!] };
+        },
+        async loadActivityLog({ companyId }) {
+          activityRequest += 1;
+          return activitySuccess(companyId);
+        },
+      }),
+    });
+    await vi.waitFor(() => expect(activityRequest).toBe(1));
+
+    await observed.current().acceptRevalidatedActor({
+      ...initiallyAuthorizedActor,
+      activeCompany: {
+        ...initiallyAuthorizedActor.activeCompany!,
+        clientPermissions: [],
+      },
+    });
+
+    expect(observed.current().shellContext).toMatchObject({
+      status: 'active',
+      actor: {
+        activeCompany: { id: 'company-a', clientPermissions: [] },
+      },
+      activityLog: { status: 'ready' },
+    });
+    expect(activityRequest).toBe(2);
+    observed.unsubscribe();
+  });
+
   it('removes a denied Company and returns selection to an idle recovery state', async () => {
     const observed = observeSession({
       transport: transportWith({
