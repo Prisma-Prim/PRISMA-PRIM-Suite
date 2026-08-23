@@ -47,7 +47,6 @@ export function CompanyContextAccess({
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
-    bundle,
     canManageAssignments,
     identity,
   ]);
@@ -136,9 +135,12 @@ export function CompanyContextAccess({
         <select
           id="context-access-bundle"
           value={bundle}
-          onChange={(event) =>
-            setBundle(event.target.value as AssignmentBundle)
-          }
+          disabled={pending}
+          onChange={(event) => {
+            retryCommand.current = undefined;
+            setState({ status: 'idle' });
+            setBundle(event.target.value as AssignmentBundle);
+          }}
         >
           <option value="company-context">{copy.companyContextBundle}</option>
           <option value="director-client">{copy.directorClientBundle}</option>
