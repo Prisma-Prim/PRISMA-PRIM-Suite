@@ -156,6 +156,7 @@ export class ClientDossierService {
         target: {
           type: 'client_account',
           clientAccountId: command.clientAccountId,
+          companyId,
         },
         metadata: { changes: materialChanges },
         transitionId: reserved.id,
