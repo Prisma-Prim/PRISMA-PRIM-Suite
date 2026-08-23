@@ -1,7 +1,7 @@
 # PRD — Release 1 Company and RBAC
 
-**Status:** Draft — audited interview evidence received; permission matrix pending  
-**Version:** 0.5
+**Status:** Draft — first Company Director Client bundle approved; wider permission matrix pending
+**Version:** 0.6
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD
 
@@ -60,6 +60,8 @@ Release 1 supports Workspace Owner, Workspace Admin, Workspace Manager, Company 
 
 Finance and capability-specific assurance roles may exist as reserved templates but do not authorize absent Release 1 behaviour.
 
+For the first enriched Shared Client flow, `Company Director` is a fixed business role implemented through explicit permissions. The director may create, view and correct Client dossiers only for the Company or Companies they direct. Iurie currently directs all three provider Companies. Future directors do not inherit cross-Company access: each receives only the approved permissions for their own Company.
+
 ## 8. UX states
 
 - no verified identity;
@@ -105,17 +107,20 @@ Confirmed enough to inform this PRD:
 - Iurie accepted Dan's access to real Client, Contract and amount data when needed for development/intervention, but the authorization boundary for that exceptional support access is not defined;
 - ordinary future Company users must not automatically see another Company's operational activity;
 - Iurie is the principal approver for the examples discussed, but the complete approval/delegation set is not established.
+- the Company Director is the initial actor who may create, view and correct Client dossiers for their Company;
+- Iurie is currently Company Director for PRISMA-PRIM, BIC and ECG;
+- a future director's Client authority is limited to the Company they direct;
+- cross-Company exceptions for the approved confidential Client-activity categories may be authorized only by Iurie.
 
-Still required before ticketing first-tenant-dependent assignments and permission bundles beyond the delivered Company Context Access slice:
+Still required before ticketing assignments and permission bundles beyond the approved Company Director Client boundary:
 
-- exact first-tenant role/permission bundles;
-- exact cross-Company hidden categories, metadata visibility and exception authority;
+- role/permission bundles beyond the approved Company Director Client boundary;
 - authorization boundary for exceptional support access to real data;
 - restricted periods and per-category access rules;
 - complete approval/delegation and deactivation expectations;
 - final product treatment of `All Companies` beyond the already delivered Company-context mechanism.
 
-Question source: S00 and S01. Provenance owner: [coverage matrix](iurie-business-answer-coverage.md), current audited boundary.
+Question source: S00, S01 and the direct 2026-08-23 answer in #81. Provenance owner: issue #81; semantic coverage owner: [coverage matrix](iurie-business-answer-coverage.md).
 
 ## 14. Technical dependencies
 
@@ -130,7 +135,7 @@ The PRD is structurally complete. Its delivered business-independent sequence is
 
 The conservative #141 tracer grants `client.manage` only through the configured bootstrap Workspace Owner resolution path and requires a server-validated active Company. It does not promote an existing membership through migration and does not extend Company Context Access.
 
-The current coverage audit still does not make any additional ordinary-user assignment or consolidated-view implementation child ready. Every role assignment and permission bundle beyond Company Context Access and the bootstrap-only Client tracer, finalized templates, broader `All Companies` behaviour, consolidated oversight permissions, broader deactivation rules and exceptional support access remain blocked on the evidence listed above.
+The approved Company Director boundary makes one Client-specific vertical implementation child ready for ticketing after #144 provenance review. It does not make a general role-assignment UI or a consolidated-view child ready. Every other role bundle, broader `All Companies` behaviour, consolidated oversight permission, deactivation rule and exceptional support-access mechanism remains blocked on its owning evidence and issue.
 
 ## 16. Evidence authority boundary
 
