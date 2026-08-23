@@ -34,11 +34,13 @@ export function CompanyRegistration({
   actor,
   identity,
   onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
   onCompanyRegistered,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
   const [displayName, setDisplayName] = useState('');
@@ -77,6 +79,7 @@ export function CompanyRegistration({
       identity,
       companyContextId: requestCompanyContextId,
       onCompanyContextRejected,
+      onActorRevalidated,
       signal,
     });
     if (signal.aborted) return true;
