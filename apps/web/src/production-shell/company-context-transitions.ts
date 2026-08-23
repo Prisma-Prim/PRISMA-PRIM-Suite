@@ -144,6 +144,11 @@ export type CompanyContextTransition =
       actor: ActorContext;
     }
   | {
+      type: 'actor-revalidated';
+      origin: CompanyContextOrigin;
+      actor: ActorContext;
+    }
+  | {
       type: 'selection-denied';
       origin: CompanyContextOrigin;
       companyId: string;
@@ -225,6 +230,18 @@ export function transitionCompanyContext(
         ...current,
         actor: transition.actor,
         companyContext: readyCompanyContext(current.companyContext.companies),
+        activityLog: { status: 'loading' },
+      };
+    }
+    case 'actor-revalidated': {
+      if (
+        !matchesOrigin(current, transition.origin) ||
+        !actorMatchesOrigin(transition.actor, transition.origin)
+      )
+        return current;
+      return {
+        ...current,
+        actor: transition.actor,
         activityLog: { status: 'loading' },
       };
     }
@@ -436,6 +453,18 @@ function matchesSessionOrigin(
     context.actor.workspaceId === origin.workspaceId &&
     context.actor.workspaceMembershipId === origin.workspaceMembershipId &&
     context.sessionGeneration === origin.sessionGeneration
+  );
+}
+
+function actorMatchesOrigin(
+  actor: ActorContext,
+  origin: CompanyContextOrigin,
+): boolean {
+  return (
+    actor.activeCompany?.id === origin.activeCompanyId &&
+    actor.internalUserId === origin.internalUserId &&
+    actor.workspaceId === origin.workspaceId &&
+    actor.workspaceMembershipId === origin.workspaceMembershipId
   );
 }
 
