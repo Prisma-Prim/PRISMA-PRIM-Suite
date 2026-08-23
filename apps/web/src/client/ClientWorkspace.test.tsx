@@ -252,38 +252,18 @@ describe('ClientWorkspace', () => {
     expect(refreshActivity).toHaveBeenCalledOnce();
   });
 
-  it('does not expose dossier correction through legacy client.manage alone', async () => {
-    const dossier = {
+  it('keeps legacy client.manage on the minimal Client interface', async () => {
+    const client = {
       id: 'legacy-client',
       displayName: 'Legacy Managed Client',
       relatedToActiveCompany: true,
-      taxId: null,
-      address: null,
-      telephone: null,
-      generalEmail: null,
-      contacts: [],
-      businessActivity: null,
-      version: 1,
-      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
     };
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
         .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify([
-              {
-                id: dossier.id,
-                displayName: dossier.displayName,
-                relatedToActiveCompany: true,
-              },
-            ]),
-            { status: 200 },
-          ),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(dossier), { status: 200 }),
+          new Response(JSON.stringify([client]), { status: 200 }),
         ),
     );
 
@@ -293,7 +273,7 @@ describe('ClientWorkspace', () => {
           ...actor,
           activeCompany: {
             ...actor.activeCompany!,
-            clientPermissions: ['client.read', 'client.create'],
+            clientPermissions: [],
           },
         }}
         identity={deterministicBrowserIdentity()}
@@ -302,12 +282,26 @@ describe('ClientWorkspace', () => {
       />,
     );
 
-    await screen.findByRole('heading', { name: dossier.displayName });
-    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
-    expect(await screen.findByText('Version 1')).toBeInTheDocument();
+    await screen.findByRole('heading', { name: client.displayName });
     expect(
-      screen.queryByRole('form', { name: 'Correct Client dossier' }),
+      screen.getByRole('textbox', { name: 'Client display name' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: 'Find a shared Client' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Open dossier' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('IDNO / tax code')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Address')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('General email')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Primary contact name'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Business activity'),
+    ).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it('surfaces a stale correction and reloads the current dossier before retry', async () => {
