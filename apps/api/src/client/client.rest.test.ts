@@ -292,6 +292,54 @@ describeWithPostgres('Client REST API', () => {
     await expect(clients.json()).resolves.toEqual([created]);
   });
 
+  it('keeps legacy client.manage correction denied until the Owner has a Director grant', async () => {
+    const company = await registerCompany(
+      'Legacy Client Manager Company',
+      'legacy-client-manager-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Legacy Client Manager Client',
+      'legacy-client-manager-client',
+    );
+    const correction = {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'legacy-owner-correction',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        telephone: '+373 22 111 111',
+      }),
+    } as const;
+
+    const legacyActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(legacyActor.status).toBe(200);
+    await expect(legacyActor.json()).resolves.toMatchObject({
+      workspacePermissions: expect.arrayContaining(['client.manage']),
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create'],
+      },
+    });
+    const denied = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correction,
+    );
+    expect(denied.status).toBe(403);
+
+    await grantOwnerDirectorClientAccess(company.id);
+    const allowed = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correction,
+    );
+    expect(allowed.status).toBe(200);
+  });
+
   it('denies Client access without the dedicated permission and without leaking metadata', async () => {
     const company = await registerCompany('PRISMA-PRIM', 'denial-company');
     const created = await createClient(
@@ -1000,6 +1048,7 @@ describeWithPostgres('Client REST API', () => {
       'Structural Replay Client',
       'structural-replay-client',
     );
+    await grantOwnerDirectorClientAccess(company.id);
     const request = {
       method: 'PATCH',
       headers: {
@@ -1043,6 +1092,7 @@ describeWithPostgres('Client REST API', () => {
       'Concurrent Correction Client',
       'concurrent-correction-client',
     );
+    await grantOwnerDirectorClientAccess(company.id);
     const correct = (key: string, telephone: string) =>
       fetch(`${origin}/api/clients/${client.id}`, {
         method: 'PATCH',
@@ -1087,6 +1137,7 @@ describeWithPostgres('Client REST API', () => {
       'Rollback Correction Client',
       'rollback-correction-client',
     );
+    await grantOwnerDirectorClientAccess(company.id);
     await pool.query(`
       CREATE FUNCTION reject_client_correction_activity() RETURNS trigger AS $$
       BEGIN
@@ -1154,6 +1205,13 @@ describeWithPostgres('Client REST API', () => {
     });
     expect(response.status).toBe(201);
     return response.json();
+  }
+
+  async function grantOwnerDirectorClientAccess(companyId: string) {
+    const owner = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(companyId),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(owner.workspaceMembershipId, companyId);
   }
 
   async function createClient(
