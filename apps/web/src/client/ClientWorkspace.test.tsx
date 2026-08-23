@@ -105,6 +105,45 @@ describe('ClientWorkspace', () => {
     );
   });
 
+  it('does not discard entered contact details when the contact name is missing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        ),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Exemplu Client SRL' },
+    });
+    fireEvent.change(screen.getByLabelText('Primary contact telephone'), {
+      target: { value: '+373 69 111 222' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Primary contact name is required when contact details are entered.',
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText('Primary contact name')).toBeInvalid();
+    expect(screen.getByLabelText('Client display name')).toBeValid();
+    expect(screen.getByLabelText('Primary contact telephone')).toHaveValue(
+      '+373 69 111 222',
+    );
+  });
+
   it('opens and corrects the enriched dossier with a versioned idempotent command', async () => {
     const initialDossier = {
       id: 'client-1',
