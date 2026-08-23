@@ -306,7 +306,6 @@ export class ClientService {
     const [client] = await this.databaseContext.connection
       .select({
         id: clientAccounts.id,
-        displayName: clientAccounts.displayName,
       })
       .from(clientAccounts)
       .innerJoin(
@@ -335,7 +334,11 @@ export class ClientService {
       .limit(1);
     if (!client)
       throw new Error('The idempotent Client result is unavailable.');
-    return toSummary(client, true);
+    return {
+      id: client.id,
+      displayName: persistedCommand.displayName,
+      relatedToActiveCompany: true,
+    };
   }
 
   private attach(
