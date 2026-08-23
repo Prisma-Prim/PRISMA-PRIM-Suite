@@ -103,6 +103,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         <CompanyContextAccess
           actor={access.actor}
           identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
           onActivityRecorded={refreshActivityLog}
         />
       )}
