@@ -73,6 +73,7 @@ export type CanonicalActivityEvent =
       target: {
         type: 'client_account';
         clientAccountId: string;
+        companyId: string;
       };
       metadata: { changes: ClientCorrectionChanges };
       transitionId: string;
@@ -139,6 +140,8 @@ export interface ActivityLogEvent {
         type: 'client_account';
         clientAccountId: string;
         displayName: string;
+        companyId?: string;
+        companyDisplayName?: string;
       }
     | {
         type: 'client_company_relationship';
