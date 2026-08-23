@@ -49,11 +49,13 @@ export function ClientWorkspace({
   actor,
   identity,
   onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
   onActivityRecorded,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState('');
@@ -86,6 +88,8 @@ export function ClientWorkspace({
   const pendingAttach = useRef<AbortController | undefined>(undefined);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
   rejectCompanyContext.current = onCompanyContextRejected;
+  const acceptRevalidatedActor = useRef(onActorRevalidated);
+  acceptRevalidatedActor.current = onActorRevalidated;
   const activeCompany = actor.activeCompany;
   const clientPermissions = activeCompany?.clientPermissions ?? [];
   const canReadClients =
@@ -110,6 +114,8 @@ export function ClientWorkspace({
         companyContextId,
         onCompanyContextRejected: (rejectedCompanyId) =>
           rejectCompanyContext.current(rejectedCompanyId),
+        onActorRevalidated: (revalidatedActor) =>
+          acceptRevalidatedActor.current(revalidatedActor),
         signal,
       });
       if (signal.aborted) return true;
@@ -572,6 +578,7 @@ export function ClientWorkspace({
         canUpdate={canUpdateClients}
         identity={identity}
         onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
         onActivityRecorded={onActivityRecorded}
         onClientsChanged={() => loadClients(activeCompany.id)}
       />
