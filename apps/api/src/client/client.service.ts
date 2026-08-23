@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
+import { LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS } from '../access/company-permissions.js';
 import type {
   ActorContext,
   CompanyClientPermission,
@@ -421,7 +422,12 @@ function requireClientPermission(
 ): string {
   const companyId = requireActiveCompany(actor);
   if (
-    !actor.workspacePermissions.includes('client.manage') &&
+    !(
+      actor.workspacePermissions.includes('client.manage') &&
+      (
+        LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS as readonly CompanyClientPermission[]
+      ).includes(permission)
+    ) &&
     !actor.activeCompany?.clientPermissions.includes(permission)
   ) {
     throw new ForbiddenException();
