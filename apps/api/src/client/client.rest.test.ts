@@ -345,7 +345,7 @@ describeWithPostgres('Client REST API', () => {
     expect(activityBody).not.toContain('+373 22 999 999');
   });
 
-  it('keeps legacy client.manage correction denied until the Owner has a Director grant', async () => {
+  it('keeps legacy client.manage on the minimal interface until the Owner has a Director grant', async () => {
     const company = await registerCompany(
       'Legacy Client Manager Company',
       'legacy-client-manager-company',
@@ -376,21 +376,81 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: expect.arrayContaining(['client.manage']),
       activeCompany: {
         id: company.id,
-        clientPermissions: ['client.read', 'client.create'],
+        clientPermissions: [],
       },
     });
-    const denied = await fetch(
+    await expect(listClients(company.id)).resolves.toEqual([client]);
+
+    const deniedDossier = await fetch(`${origin}/api/clients/${client.id}`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(deniedDossier.status).toBe(403);
+
+    const enrichedRegistration = {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'legacy-owner-enriched-registration',
+      },
+      body: JSON.stringify({
+        displayName: 'Enriched Owner Client',
+        taxId: '1003600123456',
+      }),
+    } as const;
+    const deniedRegistration = await fetch(
+      `${origin}/api/clients`,
+      enrichedRegistration,
+    );
+    expect(deniedRegistration.status).toBe(400);
+    await expect(deniedRegistration.json()).resolves.toMatchObject({
+      message: 'Unknown Client field.',
+    });
+
+    const deniedCorrection = await fetch(
       `${origin}/api/clients/${client.id}`,
       correction,
     );
-    expect(denied.status).toBe(403);
+    expect(deniedCorrection.status).toBe(403);
 
     await grantOwnerDirectorClientAccess(company.id);
-    const allowed = await fetch(
+    const directorActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(directorActor.status).toBe(200);
+    await expect(directorActor.json()).resolves.toMatchObject({
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    });
+
+    const dossier = await fetch(`${origin}/api/clients/${client.id}`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(dossier.status).toBe(200);
+
+    const allowedRegistration = await fetch(
+      `${origin}/api/clients`,
+      enrichedRegistration,
+    );
+    expect(allowedRegistration.status).toBe(201);
+    const enrichedClient = await allowedRegistration.json();
+    const enrichedDossier = await fetch(
+      `${origin}/api/clients/${enrichedClient.id}`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(enrichedDossier.status).toBe(200);
+    await expect(enrichedDossier.json()).resolves.toMatchObject({
+      displayName: 'Enriched Owner Client',
+      taxId: '1003600123456',
+    });
+
+    const allowedCorrection = await fetch(
       `${origin}/api/clients/${client.id}`,
       correction,
     );
-    expect(allowed.status).toBe(200);
+    expect(allowedCorrection.status).toBe(200);
   });
 
   it('denies Client access without the dedicated permission and without leaking metadata', async () => {
