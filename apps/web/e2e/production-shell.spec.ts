@@ -583,6 +583,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     id: staleCompanyId,
     displayName: 'Deactivated Provider',
   };
+  let availableCompanyBecameStale = false;
   const storageKey = companyContextStorageKey();
   await page.addInitScript(
     ({ key, staleId }) => localStorage.setItem(key, staleId),
@@ -590,7 +591,10 @@ test('clears a stale persisted Company and recovers through safe reselection', a
   );
   await page.route('**/api/access/current-actor', (route) => {
     const selectedId = route.request().headers()['x-company-context-id'];
-    if (selectedId === staleCompanyId) {
+    if (
+      selectedId === staleCompanyId ||
+      (selectedId === availableCompany.id && availableCompanyBecameStale)
+    ) {
       return route.fulfill({
         status: 403,
         json: { message: 'Forbidden', statusCode: 403 },
@@ -614,6 +618,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
       expect(route.request().headers()['x-company-context-id']).toBe(
         availableCompany.id,
       );
+      availableCompanyBecameStale = true;
       return route.fulfill({
         status: 403,
         json: { message: 'Forbidden', statusCode: 403 },
@@ -828,7 +833,18 @@ test('creates and reuses one shared Client identity across two Company contexts'
           'company.assignment.manage',
           'client.manage',
         ],
-        ...(activeCompany ? { activeCompany } : {}),
+        ...(activeCompany
+          ? {
+              activeCompany: {
+                ...activeCompany,
+                clientPermissions: [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                ],
+              },
+            }
+          : {}),
       },
     });
   });
@@ -1142,36 +1158,39 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await page.route('**/api/companies', (route) =>
     route.fulfill({ json: companies }),
   );
-  await page.route('**/api/company-director-client-assignments**', (route) => {
-    const request = route.request();
-    expect(request.headers()['idempotency-key']).toBeTruthy();
-    if (request.method() === 'POST') {
-      const body = request.postDataJSON();
-      assignments.add(
-        assignmentKey(body.workspaceMembershipId, body.companyId),
-      );
+  await page.route(
+    /\/api\/company-director-client-assignments(?:\/.*)?$/,
+    (route) => {
+      const request = route.request();
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      if (request.method() === 'POST') {
+        const body = request.postDataJSON();
+        assignments.add(
+          assignmentKey(body.workspaceMembershipId, body.companyId),
+        );
+        return route.fulfill({
+          status: 201,
+          json: {
+            ...body,
+            bundle: 'Company Director Client Access',
+            active: true,
+          },
+        });
+      }
+      const pathParts = new URL(request.url()).pathname.split('/');
+      const companyId = pathParts.pop()!;
+      const membershipId = pathParts.pop()!;
+      assignments.delete(assignmentKey(membershipId, companyId));
       return route.fulfill({
-        status: 201,
         json: {
-          ...body,
+          workspaceMembershipId: membershipId,
+          companyId,
           bundle: 'Company Director Client Access',
-          active: true,
+          active: false,
         },
       });
-    }
-    const pathParts = new URL(request.url()).pathname.split('/');
-    const companyId = pathParts.pop()!;
-    const membershipId = pathParts.pop()!;
-    assignments.delete(assignmentKey(membershipId, companyId));
-    return route.fulfill({
-      json: {
-        workspaceMembershipId: membershipId,
-        companyId,
-        bundle: 'Company Director Client Access',
-        active: false,
-      },
-    });
-  });
+    },
+  );
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({
       json: {
