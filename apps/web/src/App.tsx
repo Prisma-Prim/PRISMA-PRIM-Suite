@@ -99,7 +99,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       )}
       {access.actor.workspacePermissions.includes(
         'company.assignment.manage',
-      ) && <CompanyContextAccess actor={access.actor} identity={identity} />}
+      ) && (
+        <CompanyContextAccess
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+        />
+      )}
       {access.actor.workspacePermissions.includes('company.manage') && (
         <CompanyRegistration
           key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
