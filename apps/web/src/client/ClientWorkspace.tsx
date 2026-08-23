@@ -98,6 +98,8 @@ export function ClientWorkspace({
   const canCreateClients =
     actor.workspacePermissions.includes('client.manage') ||
     clientPermissions.includes('client.create');
+  const canReadClientDossiers = clientPermissions.includes('client.read');
+  const canCreateEnrichedClients = clientPermissions.includes('client.create');
   const canUpdateClients = clientPermissions.includes('client.update');
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
@@ -181,6 +183,7 @@ export function ClientWorkspace({
     actor.workspaceId,
     actor.workspaceMembershipId,
     canReadClients,
+    canReadClientDossiers,
     loadClients,
   ]);
 
@@ -197,9 +200,11 @@ export function ClientWorkspace({
       return;
     }
 
-    const contactAttempted = Boolean(
-      contactName.trim() || contactTelephone.trim() || contactEmail.trim(),
-    );
+    const contactAttempted =
+      canCreateEnrichedClients &&
+      Boolean(
+        contactName.trim() || contactTelephone.trim() || contactEmail.trim(),
+      );
     if (contactAttempted && !contactName.trim()) {
       setCreateState({
         status: 'validation',
@@ -218,12 +223,16 @@ export function ClientWorkspace({
       : undefined;
     const serializedBody = JSON.stringify({
       displayName: normalizedDisplayName,
-      ...optionalProperty('taxId', taxId),
-      ...optionalProperty('address', address),
-      ...optionalProperty('telephone', telephone),
-      ...optionalProperty('generalEmail', generalEmail),
-      ...(contact ? { contacts: [contact] } : {}),
-      ...optionalProperty('businessActivity', businessActivity),
+      ...(canCreateEnrichedClients
+        ? {
+            ...optionalProperty('taxId', taxId),
+            ...optionalProperty('address', address),
+            ...optionalProperty('telephone', telephone),
+            ...optionalProperty('generalEmail', generalEmail),
+            ...(contact ? { contacts: [contact] } : {}),
+            ...optionalProperty('businessActivity', businessActivity),
+          }
+        : {}),
     });
     const command = resolveRetryCommand(serializedBody, retryCommand.current);
 
@@ -402,76 +411,80 @@ export function ClientWorkspace({
               }
             />
           </div>
-          <div className="client-dossier-fields">
-            <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
-            <input
-              id="client-tax-id"
-              value={taxId}
-              onChange={(event) => setTaxId(event.target.value)}
-            />
-            <label htmlFor="client-address">{copy.addressLabel}</label>
-            <input
-              id="client-address"
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-            />
-            <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
-            <input
-              id="client-telephone"
-              value={telephone}
-              onChange={(event) => setTelephone(event.target.value)}
-            />
-            <label htmlFor="client-general-email">
-              {copy.generalEmailLabel}
-            </label>
-            <input
-              id="client-general-email"
-              type="email"
-              value={generalEmail}
-              onChange={(event) => setGeneralEmail(event.target.value)}
-            />
-            <label htmlFor="client-business-activity">
-              {copy.businessActivityLabel}
-            </label>
-            <input
-              id="client-business-activity"
-              value={businessActivity}
-              onChange={(event) => setBusinessActivity(event.target.value)}
-            />
-            <label htmlFor="client-contact-name">{copy.contactNameLabel}</label>
-            <input
-              id="client-contact-name"
-              value={contactName}
-              onChange={(event) => setContactName(event.target.value)}
-              aria-invalid={
-                createState.status === 'validation' &&
-                createState.field === 'contactName'
-              }
-              aria-describedby={
-                createState.status === 'validation' &&
-                createState.field === 'contactName'
-                  ? 'client-create-validation'
-                  : undefined
-              }
-            />
-            <label htmlFor="client-contact-telephone">
-              {copy.contactTelephoneLabel}
-            </label>
-            <input
-              id="client-contact-telephone"
-              value={contactTelephone}
-              onChange={(event) => setContactTelephone(event.target.value)}
-            />
-            <label htmlFor="client-contact-email">
-              {copy.contactEmailLabel}
-            </label>
-            <input
-              id="client-contact-email"
-              type="email"
-              value={contactEmail}
-              onChange={(event) => setContactEmail(event.target.value)}
-            />
-          </div>
+          {canCreateEnrichedClients && (
+            <div className="client-dossier-fields">
+              <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
+              <input
+                id="client-tax-id"
+                value={taxId}
+                onChange={(event) => setTaxId(event.target.value)}
+              />
+              <label htmlFor="client-address">{copy.addressLabel}</label>
+              <input
+                id="client-address"
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+              />
+              <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
+              <input
+                id="client-telephone"
+                value={telephone}
+                onChange={(event) => setTelephone(event.target.value)}
+              />
+              <label htmlFor="client-general-email">
+                {copy.generalEmailLabel}
+              </label>
+              <input
+                id="client-general-email"
+                type="email"
+                value={generalEmail}
+                onChange={(event) => setGeneralEmail(event.target.value)}
+              />
+              <label htmlFor="client-business-activity">
+                {copy.businessActivityLabel}
+              </label>
+              <input
+                id="client-business-activity"
+                value={businessActivity}
+                onChange={(event) => setBusinessActivity(event.target.value)}
+              />
+              <label htmlFor="client-contact-name">
+                {copy.contactNameLabel}
+              </label>
+              <input
+                id="client-contact-name"
+                value={contactName}
+                onChange={(event) => setContactName(event.target.value)}
+                aria-invalid={
+                  createState.status === 'validation' &&
+                  createState.field === 'contactName'
+                }
+                aria-describedby={
+                  createState.status === 'validation' &&
+                  createState.field === 'contactName'
+                    ? 'client-create-validation'
+                    : undefined
+                }
+              />
+              <label htmlFor="client-contact-telephone">
+                {copy.contactTelephoneLabel}
+              </label>
+              <input
+                id="client-contact-telephone"
+                value={contactTelephone}
+                onChange={(event) => setContactTelephone(event.target.value)}
+              />
+              <label htmlFor="client-contact-email">
+                {copy.contactEmailLabel}
+              </label>
+              <input
+                id="client-contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(event) => setContactEmail(event.target.value)}
+              />
+            </div>
+          )}
           <button type="submit" disabled={createState.status === 'submitting'}>
             {createState.status === 'submitting' ? copy.creating : copy.create}
           </button>
@@ -562,26 +575,30 @@ export function ClientWorkspace({
             <li key={client.id}>
               <h3>{client.displayName}</h3>
               <p>{copy.clientId(client.id)}</p>
-              <button
-                type="button"
-                onClick={() => setSelectedClientId(client.id)}
-              >
-                {copy.openDossier}
-              </button>
+              {canReadClientDossiers && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedClientId(client.id)}
+                >
+                  {copy.openDossier}
+                </button>
+              )}
             </li>
           ))}
         </ol>
       )}
-      <ClientDossierPanel
-        clientAccountId={selectedClientId}
-        companyContextId={activeCompany.id}
-        canUpdate={canUpdateClients}
-        identity={identity}
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onActivityRecorded={onActivityRecorded}
-        onClientsChanged={() => loadClients(activeCompany.id)}
-      />
+      {canReadClientDossiers && (
+        <ClientDossierPanel
+          clientAccountId={selectedClientId}
+          companyContextId={activeCompany.id}
+          canUpdate={canUpdateClients}
+          identity={identity}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onActivityRecorded={onActivityRecorded}
+          onClientsChanged={() => loadClients(activeCompany.id)}
+        />
+      )}
     </section>
   );
 }
