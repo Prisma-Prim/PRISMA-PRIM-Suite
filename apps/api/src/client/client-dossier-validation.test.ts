@@ -1,7 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { requireVersion } from './client-dossier-validation.js';
+import {
+  normalizeMinimalRegistration,
+  requireVersion,
+} from './client-dossier-validation.js';
 
 describe('Client dossier validation', () => {
+  it('normalizes a legacy registration to the minimal Client interface', () => {
+    expect(
+      normalizeMinimalRegistration({ displayName: '  Exemplu Client SRL  ' }),
+    ).toEqual({
+      displayName: 'Exemplu Client SRL',
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+    });
+  });
+
+  it.each([
+    { taxId: null },
+    { address: '' },
+    { telephone: undefined },
+    { generalEmail: null },
+    { contacts: [] },
+    { businessActivity: null },
+  ])('rejects enriched fields from a minimal registration: %o', (field) => {
+    expect(() =>
+      normalizeMinimalRegistration({
+        displayName: 'Exemplu Client SRL',
+        ...field,
+      }),
+    ).toThrow('Unknown Client field.');
+  });
+
   it('accepts every version that can be incremented in PostgreSQL', () => {
     expect(requireVersion(1)).toBe(1);
     expect(requireVersion(2_147_483_646)).toBe(2_147_483_646);
