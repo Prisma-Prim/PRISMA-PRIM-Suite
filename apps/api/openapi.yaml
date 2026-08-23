@@ -281,6 +281,10 @@ paths:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
+        description: >-
+          Callers with legacy Workspace `client.manage` authority must use the
+          minimal request. Callers with active-Company `client.create`
+          authority may use the enriched dossier request.
         content:
           application/json:
             schema:
@@ -771,6 +775,23 @@ components:
           type: string
           format: uuid
     RegisterClientInput:
+      description: >-
+        Permission-dependent Client registration input. The server accepts the
+        enriched variant only for active-Company `client.create` authority.
+      anyOf:
+        - $ref: '#/components/schemas/RegisterMinimalClientInput'
+        - $ref: '#/components/schemas/RegisterClientDossierInput'
+    RegisterMinimalClientInput:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+    RegisterClientDossierInput:
       type: object
       additionalProperties: false
       required:
