@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — audited interview evidence received; representative cases pending  
-**Version:** 0.4
+**Status:** Draft — first enriched Company Director slice approved; duplicate workflow pending
+**Version:** 0.5
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -62,7 +62,17 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 
 Issue #141 fixes the first slice's complete shared interface to the server-assigned Client Account id and one required display name. Registration atomically establishes the server-validated active Company's relationship. Workspace search returns only that identity and whether it is already related to the active Company; a deliberate attach action reuses the same Client Account in another Company. Names never trigger an automatic merge.
 
-All additional mandatory fields still depend on representative examples. Absent tax/legal identifiers do not block this early tracer and no downstream legal act is included.
+For the next enriched slice, the approved shared general fields are:
+
+- Client name;
+- IDNO/tax code;
+- address;
+- telephone and general email;
+- Contacts;
+- business activity;
+- the fact that the Client also works with another involved Company.
+
+These fields may be seen by directors of the Companies involved with that Client. Their exact storage shapes, validation and Contact cardinality are technical design decisions inside the vertical issue; they must not broaden visibility or invent mandatory values that Iurie did not require.
 
 ## 8. Permissions
 
@@ -70,7 +80,7 @@ Separate permissions cover shared read/create/update, relationship update, archi
 
 Issue #141 introduces only `client.manage`, a Workspace permission granted by the configured bootstrap Workspace Owner path. It covers the minimal list, search, create and attach operations in an active Company context. It does not establish an ordinary-user bundle or authorize update, archive, duplicate resolution or operational activity.
 
-The exact field-level shared-versus-Company-confidential boundary is not yet approved. The product must therefore not infer broad cross-Company visibility from the existence of a shared Client Account.
+The Company Director may create, view and correct the Client dossier for the Company or Companies they direct. The following activity remains completely invisible to users of other Companies: Contracts, prices, invoices and Payments, audits, certificates and Project names. Only Iurie may authorize an exception; the exception mechanism itself is not part of the first enriched slice.
 
 ## 9. UX states
 
@@ -86,7 +96,9 @@ The exact field-level shared-versus-Company-confidential boundary is not yet app
 
 ## 10. Activity Log
 
-Issue #141 authorizes exactly `client.created` and `client_company_relationship.established`, recorded atomically with their successful mutations. Significant identity correction, relationship archive, Client archive/restore and governed duplicate disposition remain blocked. Do not infer additional event families from raw interview examples.
+Issue #141 authorizes exactly `client.created` and `client_company_relationship.established`, recorded atomically with their successful mutations. The next correction slice must add an attributable Client correction event that preserves all changed values with server-authoritative actor, date and time. Relationship archive, Client archive/restore and governed duplicate disposition remain separate event families.
+
+A future duplicate union must preserve both original records, every change, actor, date/time and the reason for union. It may be decided only by the director of the relevant Company and must never be automatic.
 
 ## 11. Testing decisions
 
@@ -103,25 +115,27 @@ A BIC user searches for an existing shared Client, adds a BIC relationship and s
 
 ## 13. Business evidence at the current audited boundary
 
-The current audited evidence supports the following direction:
+The current audited evidence and Iurie's direct 2026-08-23 response approve the following boundary:
 
 - Iurie wants one general Client dossier shared across PRISMA-PRIM, BIC and ECG.
 - Operational activity remains separated by responsible Company.
 - Future ordinary Company users must not automatically see another Company's Contracts, money or other operational activity.
-- Authorized consolidated oversight is desired, but the exact metadata/categories visible across Companies and the exception authority remain incomplete.
+- Directors of involved Companies may see the approved general fields and the fact of the other involved Company relationships.
+- Contracts, prices, invoices and Payments, audits, certificates and Project names are hidden from other Companies; only Iurie may authorize an exception.
+- Only the relevant Company's director may confirm a duplicate and decide a significant correction or union, with the required history preserved.
+- Representative cases are: a PRISMA-PRIM-only consulting Client; a Client using PRISMA-PRIM consulting, BIC certification and EUROCERTGRUP (`ECG`) internal audit; and one organization with multiple branches or legal entities whose Projects, Contracts and invoices remain separate but relate to the main organization.
 
-Still blocking ticket decomposition:
+Still blocking later ticket decomposition:
 
-- exact field-level shared-versus-Company-confidential Client inventory;
-- representative multi-legal-entity, branch and natural-person cases;
-- identifiers used to recognize representative Clients;
-- duplicate-resolution and significant shared-identity correction authority;
+- exact branch and Client Legal Entity modelling for the representative complex case;
+- identifier normalization and matching rules;
+- duplicate candidate generation, referential-history and safe union design;
 - archive/correction practice for real representative Clients;
-- ten representative anonymized Client cases and the questions users must answer from the Client overview.
+- broader Client-overview questions beyond the first enriched slice.
 
-The P0 cross-Company confidentiality completion package in the coverage matrix directly owns the most material unresolved visibility boundary.
+The #140 completion package is satisfied and normalized through #144 for the first enriched slice. It does not make duplicate union, archive/restore or Client Legal Entity behaviour ready.
 
-Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
+Question sources: S00, S02 and the direct 2026-08-23 answer in #81. Provenance owner: issue #81; semantic coverage owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 14. Technical dependencies
 
@@ -132,9 +146,9 @@ Question sources: S00 and S02. Provenance owner: `docs/product/iurie-business-an
 
 ## 15. Readiness
 
-Issue #141 is the only approved implementation child: a bootstrap Workspace Owner can create a Client Account containing only id and display name, search that minimal identity and explicitly relate it to a second active Company. This is a reversible tracer approved by Dan while #140 remains open.
+Issue #141 delivered the initial approved implementation child: a bootstrap Workspace Owner can create a Client Account containing only id and display name, search that minimal identity and explicitly relate it to a second active Company. It remains the runtime baseline for the newly approved enriched slice.
 
-Further ticket decomposition remains blocked on representative Client examples, field visibility, ordinary-user permissions, correction/archive practice and duplicate authority. The narrow tracer does not make the wider Shared Client capability ready.
+After #144 provenance review, one vertical child may enrich the Client dossier for a Company Director, enforce the approved shared/confidential boundary and provide attributable correction history. Governed duplicate union, archive/restore, Client Legal Entities and broader Client-overview behaviour remain separate blocked slices.
 
 ## 16. Evidence authority boundary
 
