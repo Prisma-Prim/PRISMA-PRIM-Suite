@@ -296,7 +296,6 @@ function persistenceFor(event: CanonicalActivityEvent) {
         idempotencyKey: `${event.action}:${event.target.assignmentId}:${event.transitionId}`,
       };
     case 'client.created':
-    case 'client.corrected':
       return {
         targetType: event.target.type,
         targetInternalUserId: null,
@@ -305,10 +304,18 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetCompanyRoleAssignmentId: null,
         targetClientAccountId: event.target.clientAccountId,
         targetClientCompanyRelationshipId: null,
-        idempotencyKey:
-          event.action === 'client.corrected'
-            ? `${event.action}:${event.target.clientAccountId}:${event.transitionId}`
-            : `${event.action}:${event.target.clientAccountId}`,
+        idempotencyKey: `${event.action}:${event.target.clientAccountId}`,
+      };
+    case 'client.corrected':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: null,
+        targetWorkspaceMembershipId: null,
+        targetCompanyId: event.target.companyId,
+        targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: event.target.clientAccountId,
+        targetClientCompanyRelationshipId: null,
+        idempotencyKey: `${event.action}:${event.target.clientAccountId}:${event.transitionId}`,
       };
     case 'client_company_relationship.established':
       return {
@@ -390,14 +397,28 @@ function canonicalTarget(event: PersistedActivityTarget) {
         ),
       };
     case 'client_account':
-      return {
-        type: event.targetType,
-        clientAccountId: required(event.targetClientAccountId, 'Client id'),
-        displayName: required(
-          event.targetClientDisplayName,
-          'Client display name',
-        ),
-      };
+      return event.targetCompanyId === null
+        ? {
+            type: event.targetType,
+            clientAccountId: required(event.targetClientAccountId, 'Client id'),
+            displayName: required(
+              event.targetClientDisplayName,
+              'Client display name',
+            ),
+          }
+        : {
+            type: event.targetType,
+            clientAccountId: required(event.targetClientAccountId, 'Client id'),
+            displayName: required(
+              event.targetClientDisplayName,
+              'Client display name',
+            ),
+            companyId: event.targetCompanyId,
+            companyDisplayName: required(
+              event.targetCompanyDisplayName,
+              'Company name',
+            ),
+          };
     case 'client_company_relationship':
       return {
         type: event.targetType,
