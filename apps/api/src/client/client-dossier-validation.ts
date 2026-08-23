@@ -9,7 +9,7 @@ const MAXIMUM_SHORT_TEXT_LENGTH = 500;
 const MAXIMUM_LONG_TEXT_LENGTH = 2_000;
 const MAXIMUM_EMAIL_LENGTH = 320;
 const MAXIMUM_CONTACTS = 50;
-const MAXIMUM_PERSISTED_VERSION = 2_147_483_647;
+const MAXIMUM_INCREMENTABLE_VERSION = 2_147_483_646;
 
 export interface NormalizedDossierFields {
   displayName: string;
@@ -107,10 +107,10 @@ export function requireVersion(value: unknown): number {
     !Number.isInteger(value) ||
     typeof value !== 'number' ||
     value < 1 ||
-    value > MAXIMUM_PERSISTED_VERSION
+    value > MAXIMUM_INCREMENTABLE_VERSION
   ) {
     throw new BadRequestException(
-      'Expected Client version must be an integer between 1 and 2147483647.',
+      'Expected Client version must be an integer between 1 and 2147483646.',
     );
   }
   return value;
