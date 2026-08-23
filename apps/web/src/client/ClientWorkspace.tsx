@@ -18,6 +18,11 @@ import {
   resolveRetryCommand,
   type RetryCommand,
 } from './client-command';
+import {
+  ClientContactEditor,
+  normalizedContacts,
+  type ClientContactDraft,
+} from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 
 interface ClientAccountView {
@@ -36,7 +41,7 @@ type CreateState =
   | {
       status: 'validation';
       message: string;
-      field?: 'displayName' | 'contactName';
+      field?: 'displayName' | 'contacts';
     }
   | { status: 'forbidden' | 'error' };
 
@@ -63,9 +68,7 @@ export function ClientWorkspace({
   const [address, setAddress] = useState('');
   const [telephone, setTelephone] = useState('');
   const [generalEmail, setGeneralEmail] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [contactTelephone, setContactTelephone] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
+  const [contacts, setContacts] = useState<ClientContactDraft[]>([]);
   const [businessActivity, setBusinessActivity] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [listState, setListState] = useState<ListState>({ status: 'loading' });
@@ -200,27 +203,17 @@ export function ClientWorkspace({
       return;
     }
 
-    const contactAttempted =
-      canCreateEnrichedClients &&
-      Boolean(
-        contactName.trim() || contactTelephone.trim() || contactEmail.trim(),
-      );
-    if (contactAttempted && !contactName.trim()) {
+    const normalizedClientContacts = canCreateEnrichedClients
+      ? normalizedContacts(contacts)
+      : [];
+    if (!normalizedClientContacts) {
       setCreateState({
         status: 'validation',
-        message: copy.contactNameRequired,
-        field: 'contactName',
+        message: copy.contactsInvalid,
+        field: 'contacts',
       });
       return;
     }
-
-    const contact = contactAttempted
-      ? {
-          name: contactName.trim(),
-          ...optionalProperty('telephone', contactTelephone),
-          ...optionalProperty('email', contactEmail),
-        }
-      : undefined;
     const serializedBody = JSON.stringify({
       displayName: normalizedDisplayName,
       ...(canCreateEnrichedClients
@@ -229,7 +222,9 @@ export function ClientWorkspace({
             ...optionalProperty('address', address),
             ...optionalProperty('telephone', telephone),
             ...optionalProperty('generalEmail', generalEmail),
-            ...(contact ? { contacts: [contact] } : {}),
+            ...(normalizedClientContacts.length > 0
+              ? { contacts: normalizedClientContacts }
+              : {}),
             ...optionalProperty('businessActivity', businessActivity),
           }
         : {}),
@@ -275,9 +270,7 @@ export function ClientWorkspace({
         setAddress('');
         setTelephone('');
         setGeneralEmail('');
-        setContactName('');
-        setContactTelephone('');
-        setContactEmail('');
+        setContacts([]);
         setBusinessActivity('');
         setCreateState({ status: 'idle' });
         void onActivityRecorded();
@@ -448,40 +441,15 @@ export function ClientWorkspace({
                 value={businessActivity}
                 onChange={(event) => setBusinessActivity(event.target.value)}
               />
-              <label htmlFor="client-contact-name">
-                {copy.contactNameLabel}
-              </label>
-              <input
-                id="client-contact-name"
-                value={contactName}
-                onChange={(event) => setContactName(event.target.value)}
-                aria-invalid={
+              <ClientContactEditor
+                contacts={contacts}
+                idPrefix="client-create-contact"
+                invalid={
                   createState.status === 'validation' &&
-                  createState.field === 'contactName'
+                  createState.field === 'contacts'
                 }
-                aria-describedby={
-                  createState.status === 'validation' &&
-                  createState.field === 'contactName'
-                    ? 'client-create-validation'
-                    : undefined
-                }
-              />
-              <label htmlFor="client-contact-telephone">
-                {copy.contactTelephoneLabel}
-              </label>
-              <input
-                id="client-contact-telephone"
-                value={contactTelephone}
-                onChange={(event) => setContactTelephone(event.target.value)}
-              />
-              <label htmlFor="client-contact-email">
-                {copy.contactEmailLabel}
-              </label>
-              <input
-                id="client-contact-email"
-                type="email"
-                value={contactEmail}
-                onChange={(event) => setContactEmail(event.target.value)}
+                errorId="client-create-validation"
+                onChange={setContacts}
               />
             </div>
           )}
