@@ -77,6 +77,7 @@ export function CompanyRegistration({
       identity,
       companyContextId: requestCompanyContextId,
       onCompanyContextRejected,
+      signal,
     });
     if (signal.aborted) return true;
     if (!rejection) return false;
