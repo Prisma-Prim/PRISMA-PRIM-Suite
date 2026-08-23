@@ -23,13 +23,14 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 ## 3. Evidence and non-canonical reconciliation
 
-| Artifact                                                                                                              | Purpose                                                                              |
-| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [Issue #81 snapshot through 2026-08-21](evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl) | Current immutable 108-comment raw-evidence boundary; non-canonical and evidence-only |
-| [Historical issue #81 snapshot](evidence/iurie-business-interview-issue-81-comments.jsonl)                            | Reproducible predecessor boundary of 104 comments through 2026-08-18                 |
-| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                                                           | Non-canonical source comparison, implementation evidence and unresolved conflicts    |
+| Artifact                                                                                                                              | Purpose                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [Issue #81 comments 109–112 through 2026-08-23](evidence/iurie-business-interview-issue-81-comments-109-112-through-2026-08-23.jsonl) | Verbatim increment containing the rollover note, direction, completion package and Iurie's direct answer |
+| [Issue #81 snapshot through 2026-08-21](evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl)                 | Current immutable 108-comment raw-evidence boundary; non-canonical and evidence-only                     |
+| [Historical issue #81 snapshot](evidence/iurie-business-interview-issue-81-comments.jsonl)                                            | Reproducible predecessor boundary of 104 comments through 2026-08-18                                     |
+| [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                                                                           | Non-canonical source comparison, implementation evidence and unresolved conflicts                        |
 
-The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) records the rollover from 104 to 108 comments. The current boundary contains atomic evidence only for recovered items 702–706; consolidated claims for the missing ranges remain non-atomic. Any later source requires another versioned rollover. The coverage matrix owns semantic classifications and blocker deltas; immutable snapshots are evidence inputs.
+The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) records the rollover from 104 to 108 comments. Issue #144 adds immutable comments 109–112 and their semantic delta without reopening recovery of items 526–765. The coverage matrix owns semantic classifications and blocker deltas; immutable snapshots are evidence inputs.
 
 ## 4. Cross-cutting PRDs
 
