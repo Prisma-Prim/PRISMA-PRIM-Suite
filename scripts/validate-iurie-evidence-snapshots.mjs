@@ -9,8 +9,10 @@ import {
 export const HISTORICAL_SOURCE_SNAPSHOT_PATH =
   'docs/product/evidence/iurie-business-interview-issue-81-comments.jsonl';
 export const CURRENT_SOURCE_SNAPSHOT_PATH =
+  'docs/product/evidence/iurie-business-interview-issue-81-comments-109-112-through-2026-08-23.jsonl';
+export const BASE_SOURCE_SNAPSHOT_PATH =
   'docs/product/evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl';
-export const CURRENT_SOURCE_COMMENT_COUNT = 108;
+export const CURRENT_SOURCE_COMMENT_COUNT = 112;
 
 const SOURCE_ISSUE_URL =
   'https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81';
@@ -51,14 +53,14 @@ const HISTORICAL_EXPECTATION = {
   recoveredItemComments: new Map(),
 };
 
-const CURRENT_EXPECTATION = {
-  path: CURRENT_SOURCE_SNAPSHOT_PATH,
-  commentCount: CURRENT_SOURCE_COMMENT_COUNT,
+const BASE_EXPECTATION = {
+  path: BASE_SOURCE_SNAPSHOT_PATH,
+  commentCount: 108,
   metadataFields: new Map([
     ['source_issue_number', 81],
     ['source_issue_url', SOURCE_ISSUE_URL],
     ['source_issue_updated_at', '2026-08-21T17:45:07Z'],
-    ['source_comment_count', CURRENT_SOURCE_COMMENT_COUNT],
+    ['source_comment_count', 108],
     ['repository_baseline_sha', '1e5965f13f7d889ddab1751a2266479c04d1b3d8'],
     ['predecessor_snapshot', HISTORICAL_SOURCE_SNAPSHOT_PATH],
     ['predecessor_source_issue_updated_at', '2026-08-18T20:40:09Z'],
@@ -87,6 +89,38 @@ const CURRENT_EXPECTATION = {
   ]),
 };
 
+const INCREMENT_EXPECTATION = {
+  path: CURRENT_SOURCE_SNAPSHOT_PATH,
+  metadataRecordType: 'snapshot_increment',
+  firstOrdinal: 109,
+  commentCount: 4,
+  metadataFields: new Map([
+    ['source_issue_number', 81],
+    ['source_issue_url', SOURCE_ISSUE_URL],
+    ['source_comment_count_at_boundary', 112],
+    ['increment_comment_count', 4],
+    ['predecessor_snapshot', BASE_SOURCE_SNAPSHOT_PATH],
+    ['first_increment_ordinal', 109],
+    ['last_increment_ordinal', 112],
+    ['snapshot_date', '2026-08-23'],
+  ]),
+  metadataHash:
+    '7ff0821965f298ed05aed0b2d5d909f40b1c036700fcb68e696c4fd4e3d40d44',
+  inventoryHash:
+    'be516d7b786deff4a3b1961a16d30dbf62b3545a2960887a2dd832de03749022',
+  commentContentHash:
+    '268eb543fa80058757db05bb1fb05000cc1cd9f04ad38b871098ff21e0d6b098',
+  completeCommentRecordsHash:
+    'd72f7953d31857f7a24ed3fefc80676975a85e29828e63c3da496d74dd4a3458',
+  sessionNumbers: new Set(),
+  nonSessionCommentIds: new Set([
+    5381410354, 5381434101, 5382131725, 5384426877,
+  ]),
+  requiredAtomicItems: new Set(),
+  recoveredRange: { first: 526, last: 765 },
+  recoveredItemComments: new Map(),
+};
+
 function parseJsonl(contents, expectation, errors) {
   const records = [];
   for (const [index, line] of contents.split('\n').entries()) {
@@ -110,13 +144,18 @@ function parseJsonl(contents, expectation, errors) {
 }
 
 function validateMetadata(records, expectation, errors) {
+  const metadataRecordType = expectation.metadataRecordType ?? 'snapshot';
   const metadataRecords = records.filter(
-    ({ record_type: type }) => type === 'snapshot',
+    ({ record_type: type }) => type === metadataRecordType,
   );
   const unknownRecords = records.filter(
-    ({ record_type: type }) => type !== 'snapshot' && type !== 'comment',
+    ({ record_type: type }) =>
+      type !== metadataRecordType && type !== 'comment',
   );
-  if (metadataRecords.length !== 1 || records[0]?.record_type !== 'snapshot') {
+  if (
+    metadataRecords.length !== 1 ||
+    records[0]?.record_type !== metadataRecordType
+  ) {
     errors.push(
       `${expectation.path}: expected one snapshot record before all comment records`,
     );
@@ -154,7 +193,7 @@ function validateCommentRecords(comments, expectation, errors) {
     );
   }
   for (const [index, comment] of comments.entries()) {
-    const expectedOrdinal = index + 1;
+    const expectedOrdinal = (expectation.firstOrdinal ?? 1) + index;
     if (comment.ordinal !== expectedOrdinal) {
       errors.push(
         `${expectation.path}: expected source ordinal ${expectedOrdinal}, found ${JSON.stringify(comment.ordinal)}`,
@@ -388,10 +427,11 @@ export function validateIurieEvidenceSnapshots(sourceSnapshots) {
     sourceSnapshots === null ||
     typeof sourceSnapshots !== 'object' ||
     typeof sourceSnapshots.historical !== 'string' ||
+    typeof sourceSnapshots.base !== 'string' ||
     typeof sourceSnapshots.current !== 'string'
   ) {
     errors.push(
-      'Iurie evidence validation requires sourceSnapshots.historical and sourceSnapshots.current string contents',
+      'Iurie evidence validation requires sourceSnapshots.historical, sourceSnapshots.base and sourceSnapshots.current string contents',
     );
     return {
       errors,
@@ -406,11 +446,24 @@ export function validateIurieEvidenceSnapshots(sourceSnapshots) {
     HISTORICAL_EXPECTATION,
     errors,
   );
-  const current = validateSnapshot(
-    normalizeLineEndings(sourceSnapshots.current),
-    CURRENT_EXPECTATION,
+  const base = validateSnapshot(
+    normalizeLineEndings(sourceSnapshots.base),
+    BASE_EXPECTATION,
     errors,
   );
-  validateRolloverPrefix(historical, current, errors);
+  const increment = validateSnapshot(
+    normalizeLineEndings(sourceSnapshots.current),
+    INCREMENT_EXPECTATION,
+    errors,
+  );
+  validateRolloverPrefix(historical, base, errors);
+  const current = {
+    comments: [...base.comments, ...increment.comments],
+    sessionEntries: base.sessionEntries,
+    nonSessionComments: [
+      ...base.nonSessionComments,
+      ...increment.nonSessionComments,
+    ],
+  };
   return { errors, inputComplete: true, historical, current };
 }

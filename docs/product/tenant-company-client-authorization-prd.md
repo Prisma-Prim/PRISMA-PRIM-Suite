@@ -1,7 +1,7 @@
 # PRD — Tenant, Company, Shared Client and Authorization
 
-**Status:** Draft — audited first-tenant evidence received; material authorization and Client boundaries pending  
-**Version:** 0.4
+**Status:** Draft — first Company Director and Shared Client boundary approved; wider authorization pending
+**Version:** 0.5
 **Owner:** Dan Popescu  
 **Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212
 
@@ -28,7 +28,7 @@ Clerk authenticates an external principal. NestJS resolves the local actor and a
 
 Workspace Owner, Workspace Admin, Workspace Manager, Company Manager, Project Professional, Finance, Read-only, limited external professional, Client Contact, platform support and AI capability.
 
-Role names are initial templates. Permissions, not role-name conditions, authorize behaviour. The first tenant's exact assignments remain evidence-dependent.
+Role names are initial templates. Permissions, not role-name conditions, authorize behaviour. For the first Shared Client flow, `Company Director` is the approved business actor: the director of a Company may create, view and correct Client dossiers for that Company. Iurie currently directs PRISMA-PRIM, BIC and ECG and therefore requires that authority in all three Companies. A future director receives authority only for the Company they direct, through approved permissions; this decision does not define the wider future role matrix.
 
 ## 5. User stories
 
@@ -73,6 +73,8 @@ The canonical UI label may remain Client while the internal distinction stays pr
 8. Authentication never substitutes for application authorization.
 9. Platform support and AI have no standing business permissions.
 10. Clients with critical history are archived rather than hard-deleted.
+11. A Company Director's Client authority is limited to the Company or Companies they direct.
+12. Cross-Company shared identity never includes Company-confidential operational categories.
 
 ## 8. Initial permission families
 
@@ -96,7 +98,7 @@ Issue #141 introduces the narrow Workspace permission `client.manage` only throu
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
 
-Corrections preserve prior governed identity when it has been used in Documents, Contracts, credentials or financial records.
+Corrections preserve prior governed identity when it has been used in Documents, Contracts, credentials or financial records. Significant Client corrections record the previous values, every change, server-authoritative date and time, and the actor. A governed duplicate disposition additionally preserves both original records and the reason for any union.
 
 ## 10. UX and error states
 
@@ -131,7 +133,7 @@ An administrator configures two Companies and users with different scopes. One s
 
 ## 14. Evidence normalization
 
-The coverage matrix's current audited boundary establishes the following business direction strongly enough to inform this PRD without closing its readiness gates:
+The audited evidence boundary and Iurie's direct 2026-08-23 response establish the following business direction:
 
 - Iurie requires authorized consolidated visibility across PRISMA-PRIM, BIC and ECG.
 - The current named actors are Iurie, Dan and Valentin.
@@ -139,22 +141,24 @@ The coverage matrix's current audited boundary establishes the following busines
 - Iurie accepted Dan's access to real Client, Contract and amount data when development/intervention requires it, but the authorization boundary, duration and per-category limits remain unresolved.
 - Future ordinary Company users must not automatically see another Company's operational activity.
 - One shared Client dossier is desired while Company-owned activity remains separated.
+- The director of each Company may create, view and correct Client dossiers for that Company. Iurie currently holds that responsibility for all three Companies.
+- The Shared Client PRD owns the approved common-field inventory, Company-confidential categories and Client correction/duplicate-history boundary.
+- Cross-Company exceptions to that Shared Client confidentiality boundary may be authorized only by Iurie.
 
 Material blockers that remain:
 
-- exact first-tenant role/permission bundles and approval delegation;
-- exact cross-Company hidden categories, metadata visibility and exception authority;
+- first-tenant role/permission bundles beyond the approved Company Director Client slice and wider approval delegation;
 - legitimate exceptional support-access cases, authorization boundary and restricted periods;
-- field-level shared-versus-Company-confidential Client inventory;
-- representative Client Legal Entity cases, including branch and natural-person treatment;
-- duplicate-resolution/correction authority;
+- field placement and validation rules for approved shared Client fields;
+- exact Client Legal Entity and branch modelling for the representative complex case;
+- safe duplicate matching, referential-history and union workflow design;
 - broader deactivation expectations and final `All Companies` product behaviour.
 
-The prioritized P0 confidentiality follow-up in the coverage matrix is the current business completion package for this authority.
+The five-question completion package is satisfied by the direct response preserved in #81 and normalized by #144. It makes one Company Director + Shared Client enrichment slice ready for vertical ticketing. Governed duplicate union remains a separate destructive slice.
 
-Dan approved the reversible #141 tracer while that completion package remains open: shared data is restricted to the server id and display name, only the bootstrap Workspace Owner receives `client.manage`, every query and command requires an active Company, and reuse requires an explicit attach action. This approval does not answer or narrow any deferred ordinary-user, support, field, correction, archive or duplicate rule.
+Dan approved the reversible #141 tracer before the completion package was answered: shared data was restricted to the server id and display name, only the bootstrap Workspace Owner received `client.manage`, every query and command required an active Company, and reuse required an explicit attach action. The later response expands the canonical target boundary but does not retroactively broaden #141.
 
-Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-business-answer-coverage.md`.
+Question sources: S00, S01, S02 and the direct 2026-08-23 answer in #81. Provenance owner: issue #81; semantic coverage owner: `docs/product/iurie-business-answer-coverage.md`.
 
 ## 15. Technical dependencies
 
@@ -167,7 +171,7 @@ Question sources: S00, S01 and S02. Provenance owner: `docs/product/iurie-busine
 
 The cross-cutting model is ready to govern Release 1 PRDs. The foundation through #65, #66, #67 and #88 is delivered, and #141 delivers the separately approved conservative Shared Client tracer.
 
-Every assignment or permission bundle beyond Company Context Access and the bootstrap-only `client.manage` tracer, consolidated oversight permissions, shared/confidential Client fields beyond id and display name, broader deactivation and exceptional access remain blocked until their owning evidence is normalized into this PRD.
+One next slice may introduce the Company Director's bounded Client permissions and the approved shared fields while preserving server-side Company confidentiality. Every other assignment or permission bundle, consolidated view, duplicate union, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
 
 ## 17. Evidence authority boundary
 

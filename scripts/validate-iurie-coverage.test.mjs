@@ -26,6 +26,13 @@ const fixture = {
     current: await readFile(
       resolve(
         repositoryRoot,
+        'docs/product/evidence/iurie-business-interview-issue-81-comments-109-112-through-2026-08-23.jsonl',
+      ),
+      'utf8',
+    ),
+    base: await readFile(
+      resolve(
+        repositoryRoot,
         'docs/product/evidence/iurie-business-interview-issue-81-comments-through-2026-08-21.jsonl',
       ),
       'utf8',
@@ -34,13 +41,19 @@ const fixture = {
 };
 
 function errorsFor(overrides = {}) {
-  const { historicalSnapshot, currentSnapshot, ...fixtureOverrides } =
-    overrides;
+  const {
+    historicalSnapshot,
+    baseSnapshot,
+    currentSnapshot,
+    ...fixtureOverrides
+  } = overrides;
   const sourceSnapshots = {
     historical:
       historicalSnapshot === undefined
         ? fixture.sourceSnapshots.historical
         : historicalSnapshot,
+    base:
+      baseSnapshot === undefined ? fixture.sourceSnapshots.base : baseSnapshot,
     current:
       currentSnapshot === undefined
         ? fixture.sourceSnapshots.current
@@ -88,6 +101,7 @@ test('normalizes checkout line endings before validating pinned artifacts', () =
       coverageMatrix: toCrlf(fixture.coverageMatrix),
       sourceSnapshots: {
         historical: toCrlf(fixture.sourceSnapshots.historical),
+        base: toCrlf(fixture.sourceSnapshots.base),
         current: toCrlf(fixture.sourceSnapshots.current),
       },
     }).errors,
@@ -125,33 +139,33 @@ test('rejects an unknown source comment citation', () => {
 });
 
 test('rejects a duplicate session number without equating it to source order', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 2,
     (comment) => {
       comment.body = comment.body.replace('Sesiunea 2', 'Sesiunea 1');
     },
   );
-  assert.match(errorsFor({ currentSnapshot }), /duplicate session number 1/u);
+  assert.match(errorsFor({ baseSnapshot }), /duplicate session number 1/u);
 });
 
 test('rejects a comment missing its body with an actionable diagnostic', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
     (comment) => {
       delete comment.body;
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /source ordinal 1 is missing author or body provenance/u,
   );
 });
 
 test('rejects substantive drift in pinned comment content', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
     (comment) => {
       comment.body +=
@@ -159,7 +173,7 @@ test('rejects substantive drift in pinned comment content', () => {
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /pinned 108-comment author\/body content does not match the audited boundary/u,
   );
 });
@@ -183,8 +197,8 @@ test('rejects drift in the reproducible 104-comment predecessor', () => {
 });
 
 test('rejects a missing recovered atomic item while preserving the gap', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ comment_id: id }) => id === 5373284576,
     (comment) => {
       comment.body = comment.body.replace(
@@ -194,77 +208,77 @@ test('rejects a missing recovered atomic item while preserving the gap', () => {
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /missing recovered atomic item\(s\): 702/u,
   );
 });
 
 test('rejects one recovered item claimed by two source comments', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ comment_id: id }) => id === 5373293702,
     (comment) => {
       comment.body += '\n## 705 — duplicated recovered claim';
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /recovered atomic item 705 must occur only in comment 5373291180/u,
   );
 });
 
 test('rejects fabrication of an atomic item inside a consolidated-only gap', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ comment_id: id }) => id === 5366189353,
     (comment) => {
       comment.body += '\n### 526. Fabricated atomic wording';
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /found unsupported recovered atomic item\(s\): 526/u,
   );
 });
 
 test('rejects successor metadata that points to a different predecessor', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type }) => type === 'snapshot',
     (metadata) => {
       metadata.predecessor_comment_count = 103;
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /snapshot predecessor_comment_count must be 104/u,
   );
 });
 
 test('rejects promotion of the pinned evidence-only snapshot metadata', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type }) => type === 'snapshot',
     (metadata) => {
       metadata.authority_status = 'canonical approved product authority';
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /pinned complete snapshot metadata does not match the evidence-only authority boundary/u,
   );
 });
 
 test('rejects semantic fields added to a raw comment record', () => {
-  const currentSnapshot = rewriteSnapshot(
-    fixture.sourceSnapshots.current,
+  const baseSnapshot = rewriteSnapshot(
+    fixture.sourceSnapshots.base,
     ({ record_type: type, ordinal }) => type === 'comment' && ordinal === 1,
     (comment) => {
       comment.authority_status = 'canonical approved product rule';
     },
   );
   assert.match(
-    errorsFor({ currentSnapshot }),
+    errorsFor({ baseSnapshot }),
     /pinned complete comment-record schema and content do not match the verbatim evidence boundary/u,
   );
 });
@@ -276,7 +290,7 @@ test('fails once when the required snapshot pair is absent', () => {
     sourceSnapshots: { historical: fixture.sourceSnapshots.historical },
   });
   assert.deepEqual(result.errors, [
-    'Iurie evidence validation requires sourceSnapshots.historical and sourceSnapshots.current string contents',
+    'Iurie evidence validation requires sourceSnapshots.historical, sourceSnapshots.base and sourceSnapshots.current string contents',
   ]);
 });
 
@@ -362,7 +376,7 @@ test('rejects a displayed summary total that differs from the rows', () => {
 });
 
 test('rejects an invalid provenance and status combination', () => {
-  const row = matrixRow(fixture.coverageMatrix, 'S00-Q12');
+  const row = matrixRow(fixture.coverageMatrix, 'S01-Q03');
   const invalidRow = row.replace(
     '| — | — | Not mapped |',
     '| Resolved | — | Not mapped |',
@@ -370,7 +384,7 @@ test('rejects an invalid provenance and status combination', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(row, invalidRow);
   assert.match(
     errorsFor({ coverageMatrix }),
-    /S00-Q12 is Not mapped but has source status/u,
+    /S01-Q03 is Not mapped but has source status/u,
   );
 });
 
@@ -390,7 +404,7 @@ test('rejects source-declared status drift in an audited row', () => {
 
 test('rejects an unknown ID in a published transition list', () => {
   const coverageMatrix = fixture.coverageMatrix.replace(
-    /Not mapped to Partial \((\d+)\): S09-Q06,/u,
+    /Not mapped to Partial \((\d+)\): S01-Q02,/u,
     'Not mapped to Partial ($1): S99-Q99,',
   );
   assert.match(
@@ -447,7 +461,7 @@ test('rejects status swaps that preserve aggregate totals', () => {
 
   assert.match(
     errorsFor({ coverageMatrix }),
-    /unsupported semantic transition S09-Q06: Not mapped to Full/u,
+    /Not mapped to Full differs from the pinned prior audit/u,
   );
   assert.match(
     errorsFor({ coverageMatrix }),
