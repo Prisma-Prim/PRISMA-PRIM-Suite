@@ -112,6 +112,7 @@ export function ClientDossierPanel({
             companyContextId,
             onCompanyContextRejected: (rejectedCompanyId) =>
               rejectCompanyContext.current(rejectedCompanyId),
+            signal,
           });
           if (signal.aborted) return;
           if (rejection) {
@@ -212,6 +213,7 @@ export function ClientDossierPanel({
           companyContextId,
           onCompanyContextRejected: (rejectedCompanyId) =>
             rejectCompanyContext.current(rejectedCompanyId),
+          signal,
         });
         if (signal.aborted) return;
         if (rejection) {
