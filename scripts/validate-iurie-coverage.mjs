@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CURRENT_SOURCE_COMMENT_COUNT,
   CURRENT_SOURCE_SNAPSHOT_PATH,
+  BASE_SOURCE_SNAPSHOT_PATH,
   HISTORICAL_SOURCE_SNAPSHOT_PATH,
   validateIurieEvidenceSnapshots,
 } from './validate-iurie-evidence-snapshots.mjs';
@@ -25,15 +26,15 @@ const EXPECTED_QUESTION_BANK_CONTENT_SHA256 =
 const EXPECTED_COMPLETE_QUESTION_BANK_SHA256 =
   '7e58e52c75cc96a27273be2208479b119077f74ca86eb3c7eb66d69f17fc9da3';
 const EXPECTED_ROW_CITATION_MAP_SHA256 =
-  '5b7f4b08937bdcb43166f575e6bee9f14967bd30b1a000c8f4ddbcc9696fe72b';
+  '8ba23d6344b0efc4b8cafc1d3cb4da3304e43a12e3333d908257837faeca146a';
 const EXPECTED_OFFICIAL_ROW_AUDIT_SHA256 =
-  '712f6157d1d805995908961490a805d9e5c90f90a5f9cf2d360cd6def29b93f8';
+  '0ddb326eeaf4cbb78ff5e990f09cc059090c49e077e25d63bda26ffbb2722c7e';
 const EXPECTED_LEDGER_CONTENT_SHA256 =
-  'f30af29fdcaeaaf510a6e831bc05707127cf0e56afaff47c111cf99b77e1c492';
+  'bd2b44892cc560f687c76153ec2fed5fd464e102e5210cd8f956409c5ec165a9';
 const EXPECTED_MATRIX_PREAMBLE_SHA256 =
-  '8101c72cf40118d8aebb4f1adea8a1eb50030b1b07d62cb332675c99bb16fb93';
+  'aa44c916b8480cd02510126adb135562f2d2eae7ad018910b2250e7fc2ac24bd';
 const EXPECTED_COMPLETE_MATRIX_SHA256 =
-  '955f7fadb2f8518ec8eb637494e975028fcfa3f9f6d3e9f621d094f6e6933a01';
+  'd66644087ebb44769f00ac508cd791afea13f3e4c16459d5dc5a048526ff1cc4';
 const EXPECTED_PRIOR_AUDIT_BASELINE =
   '1e5965f13f7d889ddab1751a2266479c04d1b3d8';
 const EXPECTED_HISTORICAL_IMPLEMENTATION_BASELINE =
@@ -226,7 +227,11 @@ const PRIOR_PUBLISHED_SEMANTIC_IDS = {
   ]),
   'Not covered': new Set(['S02-Q13']),
 };
-const TRANSITION_LABELS = ['Not mapped to Partial'];
+const TRANSITION_LABELS = [
+  'Partial to Full',
+  'Not mapped to Full',
+  'Not mapped to Partial',
+];
 const OFFICIAL_MATRIX_HEADER = [
   'Question',
   'Priority',
@@ -946,18 +951,25 @@ export function validateIurieCoverage({
 
 export async function validateIurieCoverageFiles(repositoryRoot) {
   const root = resolve(repositoryRoot);
-  const [questionBank, coverageMatrix, historicalSnapshot, currentSnapshot] =
-    await Promise.all([
-      readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
-      readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
-      readFile(resolve(root, HISTORICAL_SOURCE_SNAPSHOT_PATH), 'utf8'),
-      readFile(resolve(root, CURRENT_SOURCE_SNAPSHOT_PATH), 'utf8'),
-    ]);
+  const [
+    questionBank,
+    coverageMatrix,
+    historicalSnapshot,
+    baseSnapshot,
+    currentSnapshot,
+  ] = await Promise.all([
+    readFile(resolve(root, QUESTION_BANK_PATH), 'utf8'),
+    readFile(resolve(root, COVERAGE_MATRIX_PATH), 'utf8'),
+    readFile(resolve(root, HISTORICAL_SOURCE_SNAPSHOT_PATH), 'utf8'),
+    readFile(resolve(root, BASE_SOURCE_SNAPSHOT_PATH), 'utf8'),
+    readFile(resolve(root, CURRENT_SOURCE_SNAPSHOT_PATH), 'utf8'),
+  ]);
   return validateIurieCoverage({
     questionBank,
     coverageMatrix,
     sourceSnapshots: {
       historical: historicalSnapshot,
+      base: baseSnapshot,
       current: currentSnapshot,
     },
   });
