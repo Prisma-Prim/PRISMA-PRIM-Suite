@@ -638,6 +638,13 @@ components:
           format: uuid
         displayName:
           type: string
+        companyId:
+          type: string
+          format: uuid
+          description: Responsible Company for a Company-scoped Client action.
+        companyDisplayName:
+          type: string
+          description: Display name of the responsible Company.
     ActivityLogClientCompanyRelationshipTargetReference:
       type: object
       additionalProperties: false
