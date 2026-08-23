@@ -1,4 +1,5 @@
 import type { BrowserIdentity } from '../access-composition';
+import type { ActorContext } from '../access-types';
 import {
   createAuthenticatedApiClient,
   type AuthenticatedApiClient,
@@ -46,12 +47,14 @@ export async function handleAuthenticatedAccessRejection({
   identity,
   companyContextId,
   onCompanyContextRejected,
+  onActorRevalidated,
   signal,
 }: {
   result: ApiResult<unknown>;
   identity: BrowserIdentity;
   companyContextId: string | undefined;
   onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   signal?: AbortSignal;
 }): Promise<'unauthorized' | 'forbidden' | undefined> {
   if (result.status === 'unauthorized') {
@@ -62,7 +65,7 @@ export async function handleAuthenticatedAccessRejection({
   if (!companyContextId) return 'forbidden';
   const api = await createAuthenticatedApiClient(identity);
   if (signal?.aborted) return 'forbidden';
-  const context = await api.request<unknown>('/access/current-actor', {
+  const context = await api.request<ActorContext>('/access/current-actor', {
     companyContextId,
     signal,
   });
@@ -73,6 +76,13 @@ export async function handleAuthenticatedAccessRejection({
   }
   if (context.status === 'forbidden') {
     onCompanyContextRejected(companyContextId);
+  }
+  if (context.status === 'ok') {
+    if (context.value.activeCompany?.id !== companyContextId) {
+      onCompanyContextRejected(companyContextId);
+    } else {
+      await onActorRevalidated(context.value);
+    }
   }
   return 'forbidden';
 }
