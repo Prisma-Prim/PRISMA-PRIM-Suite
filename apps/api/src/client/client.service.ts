@@ -34,6 +34,7 @@ import {
   requireVersion,
 } from './client-dossier-validation.js';
 import { ClientDossierService } from './client-dossier.service.js';
+import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
 const MAXIMUM_SEARCH_LENGTH = 200;
@@ -444,12 +445,8 @@ function sameRegistrationFields(
     persisted.telephone === fields.telephone &&
     persisted.generalEmail === fields.generalEmail &&
     persisted.businessActivity === fields.businessActivity &&
-    sameJson(persisted.contacts, fields.contacts)
+    sameJsonValue(persisted.contacts, fields.contacts)
   );
-}
-
-function sameJson(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function requireSearchQuery(value: unknown): string {
