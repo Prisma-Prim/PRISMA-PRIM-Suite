@@ -11,18 +11,14 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { resolveRetryCommand, type RetryCommand } from './client-command';
 import {
-  optionalProperty,
-  resolveRetryCommand,
-  type RetryCommand,
-} from './client-command';
+  ClientContactEditor,
+  normalizedContacts,
+  type ClientContact,
+  type ClientContactDraft,
+} from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
-
-interface ClientContact {
-  name: string;
-  telephone?: string;
-  email?: string;
-}
 
 interface ClientDossierView {
   id: string;
@@ -46,12 +42,6 @@ interface DossierDraft {
   generalEmail: string;
   contacts: ClientContactDraft[];
   businessActivity: string;
-}
-
-interface ClientContactDraft {
-  name: string;
-  telephone: string;
-  email: string;
 }
 
 type DossierState =
@@ -392,86 +382,11 @@ function CorrectionForm({
           onChange={(value) => onDraftChange({ ...draft, [field]: value })}
         />
       ))}
-      <p className="client-contact-editor-label">{copy.contactsEditLabel}</p>
-      <div className="client-contact-editor">
-        {draft.contacts.map((contact, index) => (
-          <fieldset key={index}>
-            <legend>{copy.contactEditorLabel(index + 1)}</legend>
-            <ContactField
-              id={`dossier-contact-${index}-name`}
-              label={copy.contactNameLabel}
-              type="text"
-              value={contact.name}
-              onChange={(value) =>
-                onDraftChange({
-                  ...draft,
-                  contacts: replaceContact(draft.contacts, index, {
-                    ...contact,
-                    name: value,
-                  }),
-                })
-              }
-            />
-            <ContactField
-              id={`dossier-contact-${index}-telephone`}
-              label={copy.contactTelephoneLabel}
-              type="text"
-              value={contact.telephone}
-              onChange={(value) =>
-                onDraftChange({
-                  ...draft,
-                  contacts: replaceContact(draft.contacts, index, {
-                    ...contact,
-                    telephone: value,
-                  }),
-                })
-              }
-            />
-            <ContactField
-              id={`dossier-contact-${index}-email`}
-              label={copy.contactEmailLabel}
-              type="email"
-              value={contact.email}
-              onChange={(value) =>
-                onDraftChange({
-                  ...draft,
-                  contacts: replaceContact(draft.contacts, index, {
-                    ...contact,
-                    email: value,
-                  }),
-                })
-              }
-            />
-            <button
-              type="button"
-              onClick={() =>
-                onDraftChange({
-                  ...draft,
-                  contacts: draft.contacts.filter(
-                    (_, contactIndex) => contactIndex !== index,
-                  ),
-                })
-              }
-            >
-              {copy.removeContact}
-            </button>
-          </fieldset>
-        ))}
-        <button
-          type="button"
-          onClick={() =>
-            onDraftChange({
-              ...draft,
-              contacts: [
-                ...draft.contacts,
-                { name: '', telephone: '', email: '' },
-              ],
-            })
-          }
-        >
-          {copy.addContact}
-        </button>
-      </div>
+      <ClientContactEditor
+        contacts={draft.contacts}
+        idPrefix="dossier-contact"
+        onChange={(contacts) => onDraftChange({ ...draft, contacts })}
+      />
       <button type="submit" disabled={pending}>
         {pending ? copy.savingCorrection : copy.saveCorrection}
       </button>
@@ -498,31 +413,6 @@ function InputField({
       <input
         id={id}
         type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </>
-  );
-}
-
-function ContactField({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  type: 'email' | 'text';
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <>
-      <label htmlFor={id}>{label}</label>
-      <textarea
-        id={id}
-        rows={2}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -558,27 +448,6 @@ function draftFrom(dossier: ClientDossierView): DossierDraft {
   };
 }
 
-function normalizedContacts(
-  drafts: ClientContactDraft[],
-): ClientContact[] | undefined {
-  if (drafts.some((contact) => !contact.name.trim())) return undefined;
-  return drafts.map((contact) => ({
-    name: contact.name.trim(),
-    ...optionalProperty('telephone', contact.telephone),
-    ...optionalProperty('email', contact.email),
-  }));
-}
-
 function nullableText(value: string): string | null {
   return value.trim() || null;
-}
-
-function replaceContact(
-  contacts: ClientContactDraft[],
-  index: number,
-  replacement: ClientContactDraft,
-): ClientContactDraft[] {
-  return contacts.map((contact, contactIndex) =>
-    contactIndex === index ? replacement : contact,
-  );
 }
