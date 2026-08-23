@@ -538,6 +538,43 @@ describe('ClientWorkspace', () => {
     expect(rejectCompany).toHaveBeenCalledWith('company-a');
   });
 
+  it('keeps a valid Company context when only the Client resource is forbidden', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(null, { status: 403 }))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              ...actor,
+              activeCompany: {
+                ...actor.activeCompany,
+                clientPermissions: [],
+              },
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    const rejectCompany = vi.fn();
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={rejectCompany}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You do not have permission to manage Clients.',
+    );
+    expect(rejectCompany).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('does not publish a late Client list from a previous Company', async () => {
     const oldList = deferred<Response>();
     vi.stubGlobal(
