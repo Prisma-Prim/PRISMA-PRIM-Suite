@@ -15,9 +15,11 @@ type State =
 export function CompanyContextAccess({
   actor,
   identity,
+  onActivityRecorded = () => undefined,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
+  onActivityRecorded?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -108,7 +110,10 @@ export function CompanyContextAccess({
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized') await identity.rejectSession();
       if (request.signal.aborted) return;
-      if (result.status === 'ok') retryCommand.current = undefined;
+      if (result.status === 'ok') {
+        retryCommand.current = undefined;
+        void onActivityRecorded();
+      }
       setState(
         result.status === 'ok'
           ? { status: 'ready', submission }
