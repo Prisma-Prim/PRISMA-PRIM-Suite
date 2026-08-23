@@ -21,6 +21,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     shellContext: access,
     selectCompany,
     rejectCompanyContext,
+    acceptRevalidatedActor,
     includeCompany,
     refreshActivityLog,
   } = useProductionShellContext(identity);
@@ -49,12 +50,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     );
   }
 
+  const canAccessClients =
+    access.actor.workspacePermissions.includes('client.manage') ||
+    access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
+      true;
+
   return (
     <ApplicationShell
       activeHref="/"
       navigationItems={[
         { href: '/', label: 'Home' },
-        ...(access.actor.workspacePermissions.includes('client.manage')
+        ...(canAccessClients
           ? [{ href: '#clients', label: clientWorkspaceCopy.navigationLabel }]
           : []),
       ]}
@@ -81,24 +87,33 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         state={access.companyContext}
         onSelect={selectCompany}
       />
-      {access.actor.workspacePermissions.includes('client.manage') && (
+      {canAccessClients && (
         <ClientWorkspace
           key={`client:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
           onActivityRecorded={refreshActivityLog}
         />
       )}
       {access.actor.workspacePermissions.includes(
         'company.assignment.manage',
-      ) && <CompanyContextAccess actor={access.actor} identity={identity} />}
+      ) && (
+        <CompanyContextAccess
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onActivityRecorded={refreshActivityLog}
+        />
+      )}
       {access.actor.workspacePermissions.includes('company.manage') && (
         <CompanyRegistration
           key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
           onCompanyRegistered={includeCompany}
         />
       )}
@@ -160,8 +175,11 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${event.target.clientDisplayName} — ${event.target.companyDisplayName}`;
     case 'internal_user':
     case 'company':
-    case 'client_account':
       return event.target.displayName;
+    case 'client_account':
+      return event.target.companyDisplayName
+        ? `${event.target.displayName} — ${event.target.companyDisplayName}`
+        : event.target.displayName;
     default: {
       const exhaustive: never = event.target;
       return exhaustive;

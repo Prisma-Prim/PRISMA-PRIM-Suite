@@ -206,6 +206,8 @@ describeWithPostgres('Client REST API', () => {
   it('replays registration safely and rejects an idempotency key with changed intent', async () => {
     const companyA = await registerCompany('PRISMA-PRIM', 'idempotency-a');
     const companyB = await registerCompany('BIC', 'idempotency-b');
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
     const request = {
       method: 'POST',
       headers: {
@@ -213,14 +215,41 @@ describeWithPostgres('Client REST API', () => {
         'content-type': 'application/json',
         'idempotency-key': 'stable-client-command',
       },
-      body: JSON.stringify({ displayName: 'Stable Client' }),
+      body: JSON.stringify({
+        displayName: 'Stable Client',
+        contacts: [
+          {
+            name: 'Ana Popescu',
+            telephone: '+373 60 000 000',
+            email: 'ana@example.test',
+          },
+        ],
+      }),
     } as const;
 
     const first = await fetch(`${origin}/api/clients`, request);
     const replay = await fetch(`${origin}/api/clients`, request);
     expect(first.status).toBe(201);
     expect(replay.status).toBe(201);
-    await expect(replay.json()).resolves.toEqual(await first.json());
+    const originalResult = await first.json();
+    await expect(replay.json()).resolves.toEqual(originalResult);
+
+    const rename = await fetch(`${origin}/api/clients/${originalResult.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(companyA.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'rename-stable-client',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        displayName: 'Renamed Stable Client',
+      }),
+    });
+    expect(rename.status).toBe(200);
+    const replayAfterRename = await fetch(`${origin}/api/clients`, request);
+    expect(replayAfterRename.status).toBe(201);
+    await expect(replayAfterRename.json()).resolves.toEqual(originalResult);
 
     const changedName = await fetch(`${origin}/api/clients`, {
       ...request,
@@ -240,6 +269,212 @@ describeWithPostgres('Client REST API', () => {
       message: 'Idempotency-Key was already used for another Client command.',
     });
     await expectPersistenceCounts({ clients: 1, relationships: 1 });
+  });
+
+  it('combines a Company Director Client grant with Company management permissions', async () => {
+    const company = await registerCompany(
+      'Additive Permission Company',
+      'additive-permission-company',
+    );
+    const unrelatedCompany = await registerCompany(
+      'Unrelated Permission Company',
+      'unrelated-permission-company',
+    );
+    const created = await createClient(
+      company.id,
+      'Additive Permission Client',
+      'additive-permission-client',
+    );
+    const unrelatedClient = await createClient(
+      unrelatedCompany.id,
+      'Unrelated Permission Client',
+      'unrelated-permission-client',
+    );
+    await grantOwnerDirectorClientAccess(unrelatedCompany.id);
+    const unrelatedCorrection = await fetch(
+      `${origin}/api/clients/${unrelatedClient.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...ownerHeaders(unrelatedCompany.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'unrelated-permission-correction',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          telephone: '+373 22 999 999',
+        }),
+      },
+    );
+    expect(unrelatedCorrection.status).toBe(200);
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Company Manager'),
+    }).then((response) => response.json());
+    await pool.query(
+      `INSERT INTO workspace_permission_grants (
+        workspace_id, workspace_membership_id, permission
+      ) VALUES ($1, $2, 'company.manage')`,
+      [member.workspaceId, member.workspaceMembershipId],
+    );
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+    const headers = {
+      ...identityHeaders('workspace-member', 'Company Manager'),
+      'x-company-context-id': company.id,
+    };
+
+    const actorResponse = await fetch(`${origin}/api/access/current-actor`, {
+      headers,
+    });
+    expect(actorResponse.status).toBe(200);
+    await expect(actorResponse.json()).resolves.toMatchObject({
+      workspacePermissions: ['company.manage'],
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    });
+    const clients = await fetch(`${origin}/api/clients`, { headers });
+    expect(clients.status).toBe(200);
+    await expect(clients.json()).resolves.toEqual([created]);
+    const activity = await fetch(`${origin}/api/activity-log`, { headers });
+    expect(activity.status).toBe(200);
+    const activityBody = await activity.text();
+    expect(activityBody).toContain(created.id);
+    expect(activityBody).toContain(created.displayName);
+    expect(activityBody).not.toContain(unrelatedClient.id);
+    expect(activityBody).not.toContain(unrelatedClient.displayName);
+    expect(activityBody).not.toContain('+373 22 999 999');
+  });
+
+  it('keeps legacy client.manage on the minimal interface until the Owner has a Director grant', async () => {
+    const company = await registerCompany(
+      'Legacy Client Manager Company',
+      'legacy-client-manager-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Legacy Client Manager Client',
+      'legacy-client-manager-client',
+    );
+    const correction = {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'legacy-owner-correction',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        telephone: '+373 22 111 111',
+      }),
+    } as const;
+
+    const legacyActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(legacyActor.status).toBe(200);
+    const legacyActorBody = await legacyActor.json();
+    expect(legacyActorBody).toMatchObject({
+      workspacePermissions: expect.arrayContaining(['client.manage']),
+      activeCompany: {
+        id: company.id,
+        clientPermissions: [],
+      },
+    });
+    await expect(listClients(company.id)).resolves.toEqual([client]);
+
+    const deniedDossier = await fetch(`${origin}/api/clients/${client.id}`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(deniedDossier.status).toBe(403);
+
+    const enrichedRegistration = {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'legacy-owner-enriched-registration',
+      },
+      body: JSON.stringify({
+        displayName: 'Enriched Owner Client',
+        taxId: '1003600123456',
+      }),
+    } as const;
+    const deniedRegistration = await fetch(
+      `${origin}/api/clients`,
+      enrichedRegistration,
+    );
+    expect(deniedRegistration.status).toBe(400);
+    await expect(deniedRegistration.json()).resolves.toMatchObject({
+      message: 'Unknown Client field.',
+    });
+
+    const deniedCorrection = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correction,
+    );
+    expect(deniedCorrection.status).toBe(403);
+
+    await grantOwnerDirectorClientAccess(company.id);
+    const directorActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(directorActor.status).toBe(200);
+    await expect(directorActor.json()).resolves.toMatchObject({
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    });
+
+    const dossier = await fetch(`${origin}/api/clients/${client.id}`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(dossier.status).toBe(200);
+
+    const allowedRegistration = await fetch(
+      `${origin}/api/clients`,
+      enrichedRegistration,
+    );
+    expect(allowedRegistration.status).toBe(201);
+    const enrichedClient = await allowedRegistration.json();
+    const enrichedDossier = await fetch(
+      `${origin}/api/clients/${enrichedClient.id}`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(enrichedDossier.status).toBe(200);
+    await expect(enrichedDossier.json()).resolves.toMatchObject({
+      displayName: 'Enriched Owner Client',
+      taxId: '1003600123456',
+    });
+
+    const allowedCorrection = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correction,
+    );
+    expect(allowedCorrection.status).toBe(200);
+
+    const revoke = await fetch(
+      `${origin}/api/company-director-client-assignments/${legacyActorBody.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': 'revoke-owner-director-client-access',
+        },
+      },
+    );
+    expect(revoke.status).toBe(200);
+
+    const legacyActivity = await fetch(`${origin}/api/activity-log`, {
+      headers: ownerHeaders(company.id),
+    });
+    expect(legacyActivity.status).toBe(200);
+    const legacyActivityBody = await legacyActivity.text();
+    expect(legacyActivityBody).toContain('client.created');
+    expect(legacyActivityBody).not.toContain('client.corrected');
+    expect(legacyActivityBody).not.toContain('+373 22 111 111');
+    expect(legacyActivityBody).not.toContain('1003600123456');
   });
 
   it('denies Client access without the dedicated permission and without leaking metadata', async () => {
@@ -600,6 +835,555 @@ describeWithPostgres('Client REST API', () => {
     await expectPersistenceCounts({ clients: 1, relationships: 1 });
   });
 
+  it('requires only the Client display name and rejects malformed enriched fields without persistence', async () => {
+    const company = await registerCompany('PRISMA-PRIM', 'validation-company');
+    const invalidBodies = [
+      { telephone: '+373 22 000 000' },
+      { displayName: '   ', taxId: '1003600123456' },
+      { displayName: 'Invalid Email', generalEmail: 'not-an-email' },
+      { displayName: 'Invalid Contact', contacts: [{ telephone: '123' }] },
+      { displayName: 'Unknown Field', contractPrice: '1000' },
+    ];
+    for (const [index, body] of invalidBodies.entries()) {
+      const response = await fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': `invalid-enriched-client-${index}`,
+        },
+        body: JSON.stringify(body),
+      });
+      expect(response.status).toBe(400);
+    }
+    await expectPersistenceCounts({ clients: 0, relationships: 0 });
+    const events = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text IN ('client.created', 'client.corrected')`,
+    );
+    expect(events.rows[0]).toEqual({ count: '0' });
+  });
+
+  it('grants a narrow Company Director bundle for enriched Client create and read, then revokes it immediately', async () => {
+    const company = await registerCompany('PRISMA-PRIM', 'director-company');
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Company Director'),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+
+    const actorResponse = await fetch(`${origin}/api/access/current-actor`, {
+      headers: directorHeaders(company.id),
+    });
+    expect(actorResponse.status).toBe(200);
+    await expect(actorResponse.json()).resolves.toMatchObject({
+      workspacePermissions: [],
+      activeCompany: {
+        id: company.id,
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    });
+
+    const createResponse = await fetch(`${origin}/api/clients`, {
+      method: 'POST',
+      headers: {
+        ...directorHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'director-enriched-create',
+      },
+      body: JSON.stringify({
+        displayName: 'Director Client SRL',
+        taxId: '1003600123456',
+        address: 'Str. Independenței 10, Chișinău',
+        telephone: '+373 22 000 000',
+        generalEmail: 'office@director-client.test',
+        contacts: [
+          {
+            name: 'Ana Popescu',
+            telephone: '+373 60 000 000',
+            email: 'ana@director-client.test',
+          },
+        ],
+        businessActivity: 'Consulting',
+      }),
+    });
+    expect(createResponse.status).toBe(201);
+    const created = await createResponse.json();
+
+    const dossierResponse = await fetch(`${origin}/api/clients/${created.id}`, {
+      headers: directorHeaders(company.id),
+    });
+    expect(dossierResponse.status).toBe(200);
+    await expect(dossierResponse.json()).resolves.toEqual({
+      ...created,
+      taxId: '1003600123456',
+      address: 'Str. Independenței 10, Chișinău',
+      telephone: '+373 22 000 000',
+      generalEmail: 'office@director-client.test',
+      contacts: [
+        {
+          name: 'Ana Popescu',
+          telephone: '+373 60 000 000',
+          email: 'ana@director-client.test',
+        },
+      ],
+      businessActivity: 'Consulting',
+      version: 1,
+      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+    });
+
+    const forbiddenCompanyMutation = await fetch(`${origin}/api/companies`, {
+      method: 'POST',
+      headers: {
+        ...directorHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'director-cannot-create-company',
+      },
+      body: JSON.stringify({ displayName: 'Forbidden Provider' }),
+    });
+    expect(forbiddenCompanyMutation.status).toBe(403);
+
+    const otherCompany = await registerCompany('BIC', 'director-other-company');
+    const foreignClient = await createClient(
+      otherCompany.id,
+      'Confidential BIC Client',
+      'confidential-bic-client',
+    );
+    const hiddenSearch = await fetch(
+      `${origin}/api/clients/search?query=Confidential`,
+      { headers: directorHeaders(company.id) },
+    );
+    expect(hiddenSearch.status).toBe(200);
+    await expect(hiddenSearch.json()).resolves.toEqual([]);
+    const hiddenRead = await fetch(
+      `${origin}/api/clients/${foreignClient.id}`,
+      {
+        headers: directorHeaders(company.id),
+      },
+    );
+    expect(hiddenRead.status).toBe(404);
+    expect(await hiddenRead.text()).not.toContain(foreignClient.id);
+    const forbiddenAttach = await fetch(
+      `${origin}/api/clients/${foreignClient.id}/active-company-relationship`,
+      { method: 'PUT', headers: directorHeaders(company.id) },
+    );
+    expect(forbiddenAttach.status).toBe(403);
+    expect(await forbiddenAttach.text()).not.toContain(foreignClient.id);
+
+    const revoke = await fetch(
+      `${origin}/api/company-director-client-assignments/${member.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': 'revoke-director-client-access',
+        },
+      },
+    );
+    expect(revoke.status).toBe(200);
+    await expect(revoke.json()).resolves.toMatchObject({
+      bundle: 'Company Director Client Access',
+      active: false,
+    });
+    const revokeReplay = await fetch(
+      `${origin}/api/company-director-client-assignments/${member.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': 'revoke-director-client-access',
+        },
+      },
+    );
+    expect(revokeReplay.status).toBe(200);
+    await expect(revokeReplay.json()).resolves.toMatchObject({
+      bundle: 'Company Director Client Access',
+      active: false,
+    });
+    const assignmentEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text LIKE 'company_director_client_assignment.%'`,
+    );
+    expect(assignmentEvents.rows[0]).toEqual({ count: '2' });
+
+    const denied = await fetch(`${origin}/api/clients/${created.id}`, {
+      headers: directorHeaders(company.id),
+    });
+    expect(denied.status).toBe(403);
+    expect(await denied.text()).not.toContain(created.id);
+    expect(await listClients(company.id)).toEqual([created]);
+  });
+
+  it('shows involved provider names and records one attributable correction with optimistic concurrency', async () => {
+    const companyA = await registerCompany('PRISMA-PRIM', 'correct-company-a');
+    const companyB = await registerCompany('BIC', 'correct-company-b');
+    const created = await createClient(
+      companyA.id,
+      'Shared Director Client',
+      'shared-director-client',
+    );
+    const attach = await fetch(
+      `${origin}/api/clients/${created.id}/active-company-relationship`,
+      { method: 'PUT', headers: ownerHeaders(companyB.id) },
+    );
+    expect(attach.status).toBe(200);
+
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'BIC Director'),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(member.workspaceMembershipId, companyB.id);
+
+    const firstRead = await fetch(`${origin}/api/clients/${created.id}`, {
+      headers: directorHeaders(companyB.id),
+    });
+    expect(firstRead.status).toBe(200);
+    const initial = await firstRead.json();
+    expect(initial).toMatchObject({
+      version: 1,
+      involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+    });
+
+    const oversizedVersion = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...directorHeaders(companyB.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'oversized-client-version',
+        },
+        body: JSON.stringify({
+          expectedVersion: 2_147_483_648,
+          telephone: '+373 69 999 999',
+        }),
+      },
+    );
+    expect(oversizedVersion.status).toBe(400);
+    const maximumPersistedVersion = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...directorHeaders(companyB.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'maximum-persisted-client-version',
+        },
+        body: JSON.stringify({
+          expectedVersion: 2_147_483_647,
+          telephone: '+373 69 999 999',
+        }),
+      },
+    );
+    expect(maximumPersistedVersion.status).toBe(400);
+
+    const correctionRequest = {
+      method: 'PATCH',
+      headers: {
+        ...directorHeaders(companyB.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'correct-client-telephone',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        telephone: '+373 69 111 222',
+        businessActivity: 'Consulting and certification',
+      }),
+    } as const;
+    const correctedResponse = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      correctionRequest,
+    );
+    expect(correctedResponse.status).toBe(200);
+    const corrected = await correctedResponse.json();
+    expect(corrected).toMatchObject({
+      id: created.id,
+      version: 2,
+      telephone: '+373 69 111 222',
+      businessActivity: 'Consulting and certification',
+      involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+    });
+
+    const replay = await fetch(
+      `${origin}/api/clients/${created.id}`,
+      correctionRequest,
+    );
+    expect(replay.status).toBe(200);
+    await expect(replay.json()).resolves.toEqual(corrected);
+
+    const stale = await fetch(`${origin}/api/clients/${created.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...directorHeaders(companyB.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'stale-client-correction',
+      },
+      body: JSON.stringify({ expectedVersion: 1, address: 'Stale address' }),
+    });
+    expect(stale.status).toBe(409);
+    expect(await stale.text()).not.toContain('+373 69 111 222');
+
+    const events = await pool.query<{
+      count: string;
+      actor_workspace_membership_id: string;
+      target_company_id: string;
+      metadata: {
+        changes: Record<string, { before: unknown; after: unknown }>;
+      };
+    }>(
+      `SELECT count(*) OVER () AS count, actor_workspace_membership_id,
+         target_company_id, metadata
+       FROM activity_log_events
+       WHERE action::text = 'client.corrected'`,
+    );
+    expect(events.rows).toEqual([
+      {
+        count: '1',
+        actor_workspace_membership_id: member.workspaceMembershipId,
+        target_company_id: companyB.id,
+        metadata: {
+          changes: {
+            telephone: { before: null, after: '+373 69 111 222' },
+            businessActivity: {
+              before: null,
+              after: 'Consulting and certification',
+            },
+          },
+        },
+      },
+    ]);
+
+    const activity = await fetch(`${origin}/api/activity-log`, {
+      headers: directorHeaders(companyB.id),
+    });
+    expect(activity.status).toBe(200);
+    const activityBody = await activity.json();
+    expect(JSON.stringify(activityBody)).toContain('client.corrected');
+    expect(
+      activityBody.events.find(
+        (event: { action: string }) => event.action === 'client.corrected',
+      ).target,
+    ).toMatchObject({
+      companyId: companyB.id,
+      companyDisplayName: 'BIC',
+    });
+    expect(
+      activityBody.events
+        .filter(
+          (event: { action: string }) =>
+            event.action === 'client_company_relationship.established',
+        )
+        .map(
+          (event: { target: { companyId: string } }) => event.target.companyId,
+        ),
+    ).toEqual([companyB.id]);
+  });
+
+  it('does not replay a correction after the Client relationship is archived', async () => {
+    const company = await registerCompany(
+      'Replay Visibility Company',
+      'replay-visibility-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Replay Visibility Client',
+      'replay-visibility-client',
+    );
+    const member = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Replay Director'),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(member.workspaceMembershipId, company.id);
+    const correctionRequest = {
+      method: 'PATCH',
+      headers: {
+        ...directorHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'replay-after-relationship-archive',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        telephone: '+373 60 123 456',
+      }),
+    } as const;
+
+    const corrected = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correctionRequest,
+    );
+    expect(corrected.status).toBe(200);
+    expect(await corrected.text()).toContain('Replay Visibility Company');
+
+    await pool.query(
+      `UPDATE client_company_relationships
+       SET status = 'archived'
+       WHERE client_account_id = $1 AND company_id = $2`,
+      [client.id, company.id],
+    );
+
+    const replay = await fetch(
+      `${origin}/api/clients/${client.id}`,
+      correctionRequest,
+    );
+    expect(replay.status).toBe(404);
+    const replayBody = await replay.text();
+    expect(replayBody).not.toContain(client.id);
+    expect(replayBody).not.toContain('Replay Visibility Company');
+  });
+
+  it('replays a full dossier correction after PostgreSQL canonicalizes JSON object keys', async () => {
+    const company = await registerCompany(
+      'Structural Replay Company',
+      'structural-replay-company',
+    );
+    const client = await createClient(
+      company.id,
+      'Structural Replay Client',
+      'structural-replay-client',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const request = {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'structural-full-correction-replay',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        displayName: 'Structural Replay Client SRL',
+        taxId: '1003600123456',
+        address: 'Chișinău',
+        telephone: '+373 22 000 000',
+        generalEmail: 'office@structural-replay.test',
+        contacts: [
+          {
+            name: 'Ana Popescu',
+            telephone: '+373 60 000 000',
+            email: 'ana@structural-replay.test',
+          },
+        ],
+        businessActivity: 'Consulting',
+      }),
+    } as const;
+
+    const first = await fetch(`${origin}/api/clients/${client.id}`, request);
+    expect(first.status).toBe(200);
+    const corrected = await first.json();
+    const replay = await fetch(`${origin}/api/clients/${client.id}`, request);
+    expect(replay.status).toBe(200);
+    await expect(replay.json()).resolves.toEqual(corrected);
+  });
+
+  it('allows one concurrent correction and rolls back the losing command without a success event', async () => {
+    const company = await registerCompany(
+      'PRISMA-PRIM',
+      'concurrent-correction',
+    );
+    const client = await createClient(
+      company.id,
+      'Concurrent Correction Client',
+      'concurrent-correction-client',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const correct = (key: string, telephone: string) =>
+      fetch(`${origin}/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify({ expectedVersion: 1, telephone }),
+      });
+
+    const responses = await Promise.all([
+      correct('concurrent-correction-a', '+373 60 000 001'),
+      correct('concurrent-correction-b', '+373 60 000 002'),
+    ]);
+    expect(responses.map((response) => response.status).toSorted()).toEqual([
+      200, 409,
+    ]);
+    const counts = await pool.query<{
+      commands: string;
+      events: string;
+      version: number;
+    }>(
+      `SELECT
+      (SELECT count(*) FROM client_account_correction_commands) AS commands,
+      (SELECT count(*) FROM activity_log_events
+        WHERE action::text = 'client.corrected') AS events,
+      (SELECT version FROM client_accounts WHERE id = $1) AS version`,
+      [client.id],
+    );
+    expect(counts.rows[0]).toEqual({
+      commands: '1',
+      events: '1',
+      version: 2,
+    });
+  });
+
+  it('rolls back a correction and its command when attributable history cannot be recorded', async () => {
+    const company = await registerCompany('PRISMA-PRIM', 'rollback-correction');
+    const client = await createClient(
+      company.id,
+      'Rollback Correction Client',
+      'rollback-correction-client',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    await pool.query(`
+      CREATE FUNCTION reject_client_correction_activity() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.action::text = 'client.corrected' THEN
+          RAISE EXCEPTION 'reject correction history';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER reject_client_correction_activity_insert
+      BEFORE INSERT ON activity_log_events
+      FOR EACH ROW EXECUTE FUNCTION reject_client_correction_activity();
+    `);
+    try {
+      const response = await fetch(`${origin}/api/clients/${client.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'rollback-client-correction',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          telephone: '+373 60 999 999',
+        }),
+      });
+      expect(response.status).toBe(500);
+      const persisted = await pool.query<{
+        telephone: string | null;
+        version: number;
+        commands: string;
+        events: string;
+      }>(
+        `SELECT telephone, version,
+          (SELECT count(*) FROM client_account_correction_commands) AS commands,
+          (SELECT count(*) FROM activity_log_events
+            WHERE action::text = 'client.corrected') AS events
+        FROM client_accounts WHERE id = $1`,
+        [client.id],
+      );
+      expect(persisted.rows[0]).toEqual({
+        telephone: null,
+        version: 1,
+        commands: '0',
+        events: '0',
+      });
+    } finally {
+      await pool.query(`
+        DROP TRIGGER reject_client_correction_activity_insert
+          ON activity_log_events;
+        DROP FUNCTION reject_client_correction_activity();
+      `);
+    }
+  });
+
   async function registerCompany(displayName: string, key: string) {
     const response = await fetch(`${origin}/api/companies`, {
       method: 'POST',
@@ -612,6 +1396,13 @@ describeWithPostgres('Client REST API', () => {
     });
     expect(response.status).toBe(201);
     return response.json();
+  }
+
+  async function grantOwnerDirectorClientAccess(companyId: string) {
+    const owner = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(companyId),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(owner.workspaceMembershipId, companyId);
   }
 
   async function createClient(
@@ -719,6 +1510,31 @@ describeWithPostgres('Client REST API', () => {
     expect(response.status).toBe(201);
   }
 
+  async function grantDirectorClientAccess(
+    workspaceMembershipId: string,
+    companyId: string,
+  ) {
+    const response = await fetch(
+      `${origin}/api/company-director-client-assignments`,
+      {
+        method: 'POST',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'content-type': 'application/json',
+          'idempotency-key': `director-${workspaceMembershipId}-${companyId}`,
+        },
+        body: JSON.stringify({ workspaceMembershipId, companyId }),
+      },
+    );
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      workspaceMembershipId,
+      companyId,
+      bundle: 'Company Director Client Access',
+      active: true,
+    });
+  }
+
   async function expectPersistenceCounts(expected: {
     clients: number;
     relationships: number;
@@ -738,6 +1554,13 @@ describeWithPostgres('Client REST API', () => {
   function ownerHeaders(companyId: string) {
     return {
       ...identityHeaders('workspace-owner', 'Workspace Owner'),
+      'x-company-context-id': companyId,
+    };
+  }
+
+  function directorHeaders(companyId: string) {
+    return {
+      ...identityHeaders('workspace-member', 'Company Director'),
       'x-company-context-id': companyId,
     };
   }

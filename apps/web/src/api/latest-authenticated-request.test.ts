@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
+import type { ActorContext } from '../access-types';
 import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from './latest-authenticated-request';
 
 describe('latest authenticated request', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it('aborts an older request owned by the same resource', async () => {
     const pending = { current: undefined as AbortController | undefined };
     const first = deferred<string>();
@@ -57,10 +63,11 @@ describe('latest authenticated request', () => {
     expect(pending.current).toBeUndefined();
   });
 
-  it('handles unauthorized and forbidden outcomes through one policy', async () => {
+  it('rejects an unauthorized session without changing Company context', async () => {
     const identity = deterministicBrowserIdentity();
     const rejectSession = vi.spyOn(identity, 'rejectSession');
     const rejectCompany = vi.fn();
+    const acceptActor = vi.fn();
 
     await expect(
       handleAuthenticatedAccessRejection({
@@ -68,10 +75,46 @@ describe('latest authenticated request', () => {
         identity,
         companyContextId: 'company-a',
         onCompanyContextRejected: rejectCompany,
+        onActorRevalidated: acceptActor,
       }),
     ).resolves.toBe('unauthorized');
     expect(rejectSession).toHaveBeenCalledOnce();
     expect(rejectCompany).not.toHaveBeenCalled();
+    expect(acceptActor).not.toHaveBeenCalled();
+  });
+
+  it('revalidates Company context before classifying a resource 403 as stale context', async () => {
+    const revalidatedActor: ActorContext = {
+      internalUserId: 'user-a',
+      workspaceMembershipId: 'membership-a',
+      workspaceId: 'workspace-a',
+      workspaceName: 'Workspace A',
+      displayName: 'Ada',
+      email: 'ada@example.test',
+      active: true,
+      workspacePermissions: [],
+      activeCompany: {
+        id: 'company-a',
+        displayName: 'Company A',
+        clientPermissions: [],
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revalidatedActor), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'Forbidden' }), {
+            status: 403,
+          }),
+        ),
+    );
+    const identity = deterministicBrowserIdentity();
+    const rejectCompany = vi.fn();
+    const acceptActor = vi.fn();
 
     await expect(
       handleAuthenticatedAccessRejection({
@@ -79,9 +122,24 @@ describe('latest authenticated request', () => {
         identity,
         companyContextId: 'company-a',
         onCompanyContextRejected: rejectCompany,
+        onActorRevalidated: acceptActor,
+      }),
+    ).resolves.toBe('forbidden');
+    expect(rejectCompany).not.toHaveBeenCalled();
+    expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+
+    await expect(
+      handleAuthenticatedAccessRejection({
+        result: { status: 'forbidden' },
+        identity,
+        companyContextId: 'company-a',
+        onCompanyContextRejected: rejectCompany,
+        onActorRevalidated: acceptActor,
       }),
     ).resolves.toBe('forbidden');
     expect(rejectCompany).toHaveBeenCalledWith('company-a');
+    expect(acceptActor).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
 

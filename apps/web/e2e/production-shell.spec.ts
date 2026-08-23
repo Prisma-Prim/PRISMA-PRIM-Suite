@@ -583,6 +583,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     id: staleCompanyId,
     displayName: 'Deactivated Provider',
   };
+  let availableCompanyBecameStale = false;
   const storageKey = companyContextStorageKey();
   await page.addInitScript(
     ({ key, staleId }) => localStorage.setItem(key, staleId),
@@ -590,7 +591,10 @@ test('clears a stale persisted Company and recovers through safe reselection', a
   );
   await page.route('**/api/access/current-actor', (route) => {
     const selectedId = route.request().headers()['x-company-context-id'];
-    if (selectedId === staleCompanyId) {
+    if (
+      selectedId === staleCompanyId ||
+      (selectedId === availableCompany.id && availableCompanyBecameStale)
+    ) {
       return route.fulfill({
         status: 403,
         json: { message: 'Forbidden', statusCode: 403 },
@@ -614,6 +618,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
       expect(route.request().headers()['x-company-context-id']).toBe(
         availableCompany.id,
       );
+      availableCompanyBecameStale = true;
       return route.fulfill({
         status: 403,
         json: { message: 'Forbidden', statusCode: 403 },
@@ -799,6 +804,17 @@ test('creates and reuses one shared Client identity across two Company contexts'
     displayName: 'Exemplu Client SRL',
     relatedToActiveCompany: true,
   };
+  let dossier = {
+    ...client,
+    taxId: null,
+    address: null,
+    telephone: null,
+    generalEmail: null,
+    contacts: [],
+    businessActivity: null,
+    version: 1,
+    involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+  };
   const relatedCompanyIds = new Set<string>();
   const activityEvents: Array<{
     action: string;
@@ -817,7 +833,18 @@ test('creates and reuses one shared Client identity across two Company contexts'
           'company.assignment.manage',
           'client.manage',
         ],
-        ...(activeCompany ? { activeCompany } : {}),
+        ...(activeCompany
+          ? {
+              activeCompany: {
+                ...activeCompany,
+                clientPermissions: [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                ],
+              },
+            }
+          : {}),
       },
     });
   });
@@ -876,6 +903,54 @@ test('creates and reuses one shared Client identity across two Company contexts'
         metadata: {},
       });
       return route.fulfill({ json: client });
+    }
+    if (url.pathname.endsWith(`/clients/${client.id}`)) {
+      if (request.method() === 'PATCH') {
+        expect(request.headers()['idempotency-key']).toBeTruthy();
+        const body = request.postDataJSON();
+        expect(body.expectedVersion).toBe(dossier.version);
+        dossier = {
+          ...dossier,
+          ...body,
+          version: dossier.version + 1,
+          involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+        };
+        activityEvents.push({
+          id: 'client-corrected',
+          action: 'client.corrected',
+          occurredAt: '2026-08-22T12:10:00.000Z',
+          actor: {
+            internalUserId: actorContextFixture.internalUserId,
+            displayName: actorContextFixture.displayName,
+          },
+          target: {
+            type: 'client_account',
+            clientAccountId: client.id,
+            displayName: client.displayName,
+            companyId,
+            companyDisplayName: companies.find(({ id }) => id === companyId)!
+              .displayName,
+          },
+          metadata: {
+            changes: {
+              telephone: {
+                before: null,
+                after: body.telephone,
+              },
+            },
+          },
+        });
+        return route.fulfill({ json: dossier });
+      }
+      dossier = {
+        ...dossier,
+        involvedCompanyDisplayNames: [...relatedCompanyIds]
+          .map(
+            (id) => companies.find((company) => company.id === id)!.displayName,
+          )
+          .sort(),
+      };
+      return route.fulfill({ json: dossier });
     }
     if (request.method() === 'POST') {
       expect(request.headers()['idempotency-key']).toBeTruthy();
@@ -953,6 +1028,26 @@ test('creates and reuses one shared Client identity across two Company contexts'
       `Target: ${client.displayName} — ${companies[1]!.displayName}`,
     ),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Open dossier' }).click();
+  await expect(page.getByText('BIC, PRISMA-PRIM')).toBeVisible();
+  const correctionForm = page.getByRole('form', {
+    name: 'Correct Client dossier',
+  });
+  await correctionForm
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 69 111 222');
+  await correctionForm.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByText('Version 2')).toBeVisible();
+  await expect(
+    page.getByText(
+      `${actorContextFixture.displayName} corrected a Client dossier`,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      `Target: ${client.displayName} — ${companies[1]!.displayName}`,
+    ),
+  ).toHaveCount(2);
 
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -961,6 +1056,350 @@ test('creates and reuses one shared Client identity across two Company contexts'
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
   await page.screenshot({
     path: testInfo.outputPath(`shared-client-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+});
+
+test('covers the Owner-to-Director shared Client journey and immediate revocation', async ({
+  page,
+}, testInfo) => {
+  const companies = [
+    {
+      id: '00000000-0000-4000-8000-000000001461',
+      displayName: 'PRISMA-PRIM',
+    },
+    {
+      id: '00000000-0000-4000-8000-000000001462',
+      displayName: 'BIC',
+    },
+  ];
+  const directors = {
+    a: {
+      internalUserId: 'director-a',
+      workspaceMembershipId: 'director-membership-a',
+      displayName: 'PRISMA Director',
+      email: 'director-a@example.test',
+      company: companies[0]!,
+    },
+    b: {
+      internalUserId: 'director-b',
+      workspaceMembershipId: 'director-membership-b',
+      displayName: 'BIC Director',
+      email: 'director-b@example.test',
+      company: companies[1]!,
+    },
+  };
+  const client = {
+    id: '00000000-0000-4000-8000-000000001463',
+    displayName: 'Director Client SRL',
+    relatedToActiveCompany: true,
+  };
+  type Identity = 'owner' | 'director-a' | 'director-b';
+  let identity: Identity = 'owner';
+  const assignments = new Set<string>();
+  const relatedCompanyIds = new Set<string>();
+  let clientCreated = false;
+  let correctionRecorded = false;
+  let dossier = {
+    ...client,
+    taxId: null as string | null,
+    address: null as string | null,
+    telephone: null as string | null,
+    generalEmail: null as string | null,
+    contacts: [] as Array<{
+      name: string;
+      telephone?: string;
+      email?: string;
+    }>,
+    businessActivity: null as string | null,
+    version: 1,
+    involvedCompanyDisplayNames: [] as string[],
+  };
+  const assignmentKey = (membershipId: string, companyId: string) =>
+    `${membershipId}:${companyId}`;
+
+  await page.route('**/api/access/current-actor', (route) => {
+    const selectedCompanyId = route.request().headers()['x-company-context-id'];
+    if (identity === 'owner') {
+      const activeCompany = companies.find(
+        (company) => company.id === selectedCompanyId,
+      );
+      return route.fulfill({
+        json: {
+          ...actorContextFixture,
+          workspacePermissions: [
+            'company.manage',
+            'company.assignment.manage',
+            'client.manage',
+          ],
+          ...(activeCompany ? { activeCompany } : {}),
+        },
+      });
+    }
+    const director = identity === 'director-a' ? directors.a : directors.b;
+    const assigned = assignments.has(
+      assignmentKey(director.workspaceMembershipId, director.company.id),
+    );
+    return route.fulfill({
+      json: {
+        ...actorContextFixture,
+        internalUserId: director.internalUserId,
+        workspaceMembershipId: director.workspaceMembershipId,
+        displayName: director.displayName,
+        email: director.email,
+        workspacePermissions: [],
+        ...(assigned
+          ? {
+              activeCompany: {
+                ...director.company,
+                clientPermissions: [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                ],
+              },
+            }
+          : {}),
+      },
+    });
+  });
+  await page.route('**/api/companies', (route) =>
+    route.fulfill({ json: companies }),
+  );
+  await page.route(
+    /\/api\/company-director-client-assignments(?:\/.*)?$/,
+    (route) => {
+      const request = route.request();
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      if (request.method() === 'POST') {
+        const body = request.postDataJSON();
+        assignments.add(
+          assignmentKey(body.workspaceMembershipId, body.companyId),
+        );
+        return route.fulfill({
+          status: 201,
+          json: {
+            ...body,
+            bundle: 'Company Director Client Access',
+            active: true,
+          },
+        });
+      }
+      const pathParts = new URL(request.url()).pathname.split('/');
+      const companyId = pathParts.pop()!;
+      const membershipId = pathParts.pop()!;
+      assignments.delete(assignmentKey(membershipId, companyId));
+      return route.fulfill({
+        json: {
+          workspaceMembershipId: membershipId,
+          companyId,
+          bundle: 'Company Director Client Access',
+          active: false,
+        },
+      });
+    },
+  );
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({
+      json: {
+        events: correctionRecorded
+          ? [
+              {
+                id: 'director-client-corrected',
+                action: 'client.corrected',
+                occurredAt: '2026-08-23T12:10:00.000Z',
+                actor: {
+                  internalUserId: directors.a.internalUserId,
+                  displayName: directors.a.displayName,
+                },
+                target: {
+                  type: 'client_account',
+                  clientAccountId: client.id,
+                  displayName: client.displayName,
+                  companyId: directors.a.company.id,
+                  companyDisplayName: directors.a.company.displayName,
+                },
+                metadata: {},
+              },
+            ]
+          : [],
+      },
+    }),
+  );
+  await page.route(/\/api\/clients(?:\/[^?]*)?(?:\?.*)?$/, (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const companyId = request.headers()['x-company-context-id'];
+    const activeDirector =
+      identity === 'director-a'
+        ? directors.a
+        : identity === 'director-b'
+          ? directors.b
+          : undefined;
+    if (
+      activeDirector &&
+      !assignments.has(
+        assignmentKey(
+          activeDirector.workspaceMembershipId,
+          activeDirector.company.id,
+        ),
+      )
+    ) {
+      return route.fulfill({ status: 403, json: { message: 'Forbidden' } });
+    }
+    expect(companyId).toBeTruthy();
+    if (url.pathname.endsWith('/clients/search')) {
+      return route.fulfill({
+        json: clientCreated
+          ? [
+              {
+                ...client,
+                relatedToActiveCompany: relatedCompanyIds.has(companyId!),
+              },
+            ]
+          : [],
+      });
+    }
+    if (url.pathname.endsWith('/active-company-relationship')) {
+      relatedCompanyIds.add(companyId!);
+      return route.fulfill({ json: client });
+    }
+    if (url.pathname.endsWith(`/clients/${client.id}`)) {
+      if (!clientCreated || !relatedCompanyIds.has(companyId!)) {
+        return route.fulfill({ status: 404, json: { message: 'Not Found' } });
+      }
+      dossier = {
+        ...dossier,
+        involvedCompanyDisplayNames: [...relatedCompanyIds]
+          .map(
+            (id) => companies.find((company) => company.id === id)!.displayName,
+          )
+          .sort(),
+      };
+      if (request.method() === 'PATCH') {
+        expect(request.headers()['idempotency-key']).toBeTruthy();
+        const body = request.postDataJSON();
+        expect(body.expectedVersion).toBe(dossier.version);
+        dossier = { ...dossier, ...body, version: dossier.version + 1 };
+        correctionRecorded = true;
+      }
+      return route.fulfill({ json: dossier });
+    }
+    if (request.method() === 'POST') {
+      const body = request.postDataJSON();
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      clientCreated = true;
+      relatedCompanyIds.add(companyId!);
+      dossier = {
+        ...dossier,
+        ...body,
+        version: 1,
+        involvedCompanyDisplayNames: [companies[0]!.displayName],
+      };
+      return route.fulfill({ status: 201, json: client });
+    }
+    return route.fulfill({
+      json: clientCreated && relatedCompanyIds.has(companyId!) ? [client] : [],
+    });
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Access bundle').selectOption('director-client');
+  for (const director of [directors.a, directors.b]) {
+    await page
+      .getByLabel('Workspace membership ID')
+      .fill(director.workspaceMembershipId);
+    await page.getByLabel('Company ID').fill(director.company.id);
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/company-director-client-assignments') &&
+          response.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: 'Grant access' }).click(),
+    ]);
+    await expect(page.getByRole('status')).toHaveText('Access granted.');
+  }
+
+  identity = 'director-a';
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Clients' })).toBeVisible();
+  await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
+  await page.getByLabel('Client display name').fill(client.displayName);
+  await page.getByLabel('IDNO / tax code').first().fill('1003600123456');
+  await page.getByLabel('Address').first().fill('Chișinău');
+  await page.getByLabel('General email').first().fill('office@example.test');
+  await page.getByLabel('Business activity').first().fill('Consulting');
+  await page.getByRole('button', { name: 'Add Contact' }).click();
+  await page.getByRole('button', { name: 'Add Contact' }).click();
+  const firstContact = page.getByRole('group', { name: 'Contact 1' });
+  await firstContact.getByLabel('Contact name').fill('Ana Popescu');
+  await firstContact.getByLabel('Contact telephone').fill('+373 60 111 111');
+  const secondContact = page.getByRole('group', { name: 'Contact 2' });
+  await secondContact.getByLabel('Contact name').fill('Ion Ionescu');
+  await secondContact.getByLabel('Contact email').fill('ion@example.test');
+  await page.getByRole('button', { name: 'Create Client' }).click();
+  await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Open dossier' }).click();
+  const correctionForm = page.getByRole('form', {
+    name: 'Correct Client dossier',
+  });
+  await correctionForm
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 69 111 222');
+  await correctionForm.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByText('Version 2')).toBeVisible();
+
+  identity = 'owner';
+  await page.reload();
+  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
+  await page.getByLabel('Find a shared Client').fill('Director Client');
+  await page.getByRole('button', { name: 'Search Clients' }).click();
+  await page.getByRole('button', { name: 'Add to BIC' }).click();
+  await expect(page.getByText('Available in BIC')).toBeVisible();
+
+  identity = 'director-b';
+  await page.reload();
+  await page.getByRole('button', { name: 'Open dossier' }).click();
+  await expect(page.getByText('BIC, PRISMA-PRIM')).toBeVisible();
+  await expect(page.getByText('1003600123456')).toBeVisible();
+  await expect(page.getByText('+373 69 111 222')).toBeVisible();
+  const contactsRegion = page.getByRole('region', { name: 'Contacts' });
+  await expect(contactsRegion.getByText('Ana Popescu')).toBeVisible();
+  await expect(contactsRegion.getByText('Ion Ionescu')).toBeVisible();
+  await expect(page.getByText('Contract')).toHaveCount(0);
+  await expect(page.getByText('Invoice')).toHaveCount(0);
+  await expect(page.getByText('Project')).toHaveCount(0);
+
+  identity = 'owner';
+  await page.reload();
+  await page.getByLabel('Access bundle').selectOption('director-client');
+  await page
+    .getByLabel('Workspace membership ID')
+    .fill(directors.a.workspaceMembershipId);
+  await page.getByLabel('Company ID').fill(directors.a.company.id);
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/company-director-client-assignments/') &&
+        response.request().method() === 'DELETE',
+    ),
+    page.getByRole('button', { name: 'Revoke access' }).click(),
+  ]);
+  await expect(page.getByRole('status')).toHaveText('Access revoked.');
+
+  identity = 'director-a';
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Clients' })).toHaveCount(0);
+
+  const geometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  await page.screenshot({
+    path: testInfo.outputPath(`director-client-${testInfo.project.name}.png`),
     fullPage: true,
   });
 });

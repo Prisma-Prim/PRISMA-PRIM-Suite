@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
-import type { ActorContext } from '../access/access.types.js';
+import type {
+  ActorContext,
+  CompanyClientPermission,
+} from '../access/access.types.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import {
   CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION,
@@ -21,33 +24,62 @@ import {
 import type {
   ClientAccountView,
   ClientCommand,
+  ClientDossierView,
   ClientQuery,
 } from './client.types.js';
+import {
+  type NormalizedDossierFields,
+  normalizeCorrection,
+  normalizeMinimalRegistration,
+  normalizeRegistration,
+  requireVersion,
+} from './client-dossier-validation.js';
+import { ClientDossierService } from './client-dossier.service.js';
+import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
 const MAXIMUM_SEARCH_LENGTH = 200;
-
 @Injectable()
 export class ClientService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
+    private readonly dossiers: ClientDossierService,
   ) {}
 
   async query(
     actor: ActorContext,
+    query: { kind: 'dossier'; clientAccountId: string },
+  ): Promise<ClientDossierView>;
+  async query(
+    actor: ActorContext,
+    query: Exclude<ClientQuery, { kind: 'dossier' }>,
+  ): Promise<ClientAccountView[]>;
+  async query(
+    actor: ActorContext,
     query: ClientQuery,
-  ): Promise<ClientAccountView[]> {
-    const companyId = requireClientAuthority(actor);
+  ): Promise<ClientAccountView[] | ClientDossierView> {
     switch (query.kind) {
-      case 'active-company-list':
+      case 'active-company-list': {
+        const companyId = requireMinimalClientPermission(actor, 'client.read');
         return this.listForActiveCompany(actor.workspaceId, companyId);
-      case 'workspace-search':
+      }
+      case 'workspace-search': {
+        const companyId = requireMinimalClientPermission(actor, 'client.read');
         return this.searchWorkspace(
-          actor.workspaceId,
+          actor,
           companyId,
           requireSearchQuery(query.query),
         );
+      }
+      case 'dossier': {
+        const companyId = requireCompanyClientPermission(actor, 'client.read');
+        return this.dossiers.read(
+          actor.workspaceId,
+          companyId,
+          query.clientAccountId,
+        );
+      }
       default:
         return assertNever(query);
     }
@@ -55,17 +87,51 @@ export class ClientService {
 
   async execute(
     actor: ActorContext,
+    command: Extract<ClientCommand, { kind: 'correct' }>,
+  ): Promise<ClientDossierView>;
+  async execute(
+    actor: ActorContext,
+    command: Exclude<ClientCommand, { kind: 'correct' }>,
+  ): Promise<ClientAccountView>;
+  async execute(
+    actor: ActorContext,
     command: ClientCommand,
-  ): Promise<ClientAccountView> {
-    const companyId = requireClientAuthority(actor);
+  ): Promise<ClientAccountView | ClientDossierView> {
     switch (command.kind) {
-      case 'register':
-        return this.register(actor, companyId, {
-          displayName: requireDisplayName(command.displayName),
+      case 'register': {
+        const companyId = requireMinimalClientPermission(
+          actor,
+          'client.create',
+        );
+        const fields = actor.activeCompany?.clientPermissions.includes(
+          'client.create',
+        )
+          ? normalizeRegistration(command.fields)
+          : normalizeMinimalRegistration(command.fields);
+        return this.register(
+          actor,
+          companyId,
+          fields,
+          requireIdempotencyKey(command.idempotencyKey),
+        );
+      }
+      case 'attach': {
+        requireWorkspacePermission(actor, 'client.manage');
+        const companyId = requireActiveCompany(actor);
+        return this.attach(actor, companyId, command.clientAccountId);
+      }
+      case 'correct': {
+        const companyId = requireCompanyClientPermission(
+          actor,
+          'client.update',
+        );
+        return this.dossiers.correct(actor, companyId, {
+          clientAccountId: command.clientAccountId,
+          expectedVersion: requireVersion(command.expectedVersion),
+          changes: normalizeCorrection(command.changes),
           idempotencyKey: requireIdempotencyKey(command.idempotencyKey),
         });
-      case 'attach':
-        return this.attach(actor, companyId, command.clientAccountId);
+      }
       default:
         return assertNever(command);
     }
@@ -100,11 +166,11 @@ export class ClientService {
         ),
       )
       .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id));
-    return rows.map((client) => toView(client, true));
+    return rows.map((client) => toSummary(client, true));
   }
 
   private async searchWorkspace(
-    workspaceId: string,
+    actor: ActorContext,
     companyId: string,
     query: string,
   ): Promise<ClientAccountView[]> {
@@ -130,20 +196,26 @@ export class ClientService {
       )
       .where(
         and(
-          eq(clientAccounts.workspaceId, workspaceId),
+          eq(clientAccounts.workspaceId, actor.workspaceId),
           eq(clientAccounts.status, 'active'),
           sql`${clientAccounts.displayName} ILIKE ${pattern} ESCAPE ${'\\'}`,
+          actor.workspacePermissions.includes('client.manage')
+            ? undefined
+            : sql`${clientCompanyRelationships.id} IS NOT NULL`,
         ),
       )
       .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id))
       .limit(SEARCH_RESULT_LIMIT);
-    return rows.map((client) => toView(client, client.relationshipId !== null));
+    return rows.map((client) =>
+      toSummary(client, client.relationshipId !== null),
+    );
   }
 
   private register(
     actor: ActorContext,
     companyId: string,
-    command: { displayName: string; idempotencyKey: string },
+    fields: NormalizedDossierFields,
+    idempotencyKey: string,
   ): Promise<ClientAccountView> {
     return this.databaseContext.transaction(async () => {
       const [insertedCommand] = await this.databaseContext.connection
@@ -151,9 +223,9 @@ export class ClientService {
         .values({
           workspaceId: actor.workspaceId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey: command.idempotencyKey,
-          displayName: command.displayName,
+          idempotencyKey,
           companyId,
+          ...fields,
         })
         .onConflictDoNothing({
           target: [
@@ -165,14 +237,19 @@ export class ClientService {
         .returning();
 
       if (!insertedCommand) {
-        return this.resolveRegistrationReplay(actor, companyId, command);
+        return this.resolveRegistrationReplay(
+          actor,
+          companyId,
+          fields,
+          idempotencyKey,
+        );
       }
 
       const [client] = await this.databaseContext.connection
         .insert(clientAccounts)
         .values({
           workspaceId: actor.workspaceId,
-          displayName: command.displayName,
+          ...fields,
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
         })
@@ -201,14 +278,15 @@ export class ClientService {
         metadata: {},
       });
       await this.recordRelationship(actor, relationship);
-      return toView(client, true);
+      return toSummary(client, true);
     });
   }
 
   private async resolveRegistrationReplay(
     actor: ActorContext,
     companyId: string,
-    command: { displayName: string; idempotencyKey: string },
+    fields: NormalizedDossierFields,
+    idempotencyKey: string,
   ): Promise<ClientAccountView> {
     const [persistedCommand] = await this.databaseContext.connection
       .select()
@@ -220,10 +298,7 @@ export class ClientService {
             clientAccountRegistrationCommands.actorWorkspaceMembershipId,
             actor.workspaceMembershipId,
           ),
-          eq(
-            clientAccountRegistrationCommands.idempotencyKey,
-            command.idempotencyKey,
-          ),
+          eq(clientAccountRegistrationCommands.idempotencyKey, idempotencyKey),
         ),
       )
       .limit(1);
@@ -231,8 +306,8 @@ export class ClientService {
       throw new Error('The idempotent Client command could not be resolved.');
     }
     if (
-      persistedCommand.displayName !== command.displayName ||
-      persistedCommand.companyId !== companyId
+      persistedCommand.companyId !== companyId ||
+      !sameRegistrationFields(persistedCommand, fields)
     ) {
       throw new BadRequestException(
         'Idempotency-Key was already used for another Client command.',
@@ -247,7 +322,6 @@ export class ClientService {
     const [client] = await this.databaseContext.connection
       .select({
         id: clientAccounts.id,
-        displayName: clientAccounts.displayName,
       })
       .from(clientAccounts)
       .innerJoin(
@@ -274,10 +348,13 @@ export class ClientService {
         ),
       )
       .limit(1);
-    if (!client) {
+    if (!client)
       throw new Error('The idempotent Client result is unavailable.');
-    }
-    return toView(client, true);
+    return {
+      id: client.id,
+      displayName: persistedCommand.displayName,
+      relatedToActiveCompany: true,
+    };
   }
 
   private attach(
@@ -336,7 +413,7 @@ export class ClientService {
           .limit(1);
         if (!activeRelationship) throw new NotFoundException();
       }
-      return toView(client, true);
+      return toSummary(client, true);
     });
   }
 
@@ -358,17 +435,49 @@ export class ClientService {
   }
 }
 
-function requireClientAuthority(actor: ActorContext): string {
-  requireWorkspacePermission(actor, 'client.manage');
+function requireMinimalClientPermission(
+  actor: ActorContext,
+  permission: CompanyClientPermission,
+): string {
+  const companyId = requireActiveCompany(actor);
+  if (
+    !actor.workspacePermissions.includes('client.manage') &&
+    !actor.activeCompany?.clientPermissions.includes(permission)
+  ) {
+    throw new ForbiddenException();
+  }
+  return companyId;
+}
+
+function requireCompanyClientPermission(
+  actor: ActorContext,
+  permission: CompanyClientPermission,
+): string {
+  const companyId = requireActiveCompany(actor);
+  if (!actor.activeCompany?.clientPermissions.includes(permission)) {
+    throw new ForbiddenException();
+  }
+  return companyId;
+}
+
+function requireActiveCompany(actor: ActorContext): string {
   if (!actor.activeCompany) throw new ForbiddenException();
   return actor.activeCompany.id;
 }
 
-function requireDisplayName(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new BadRequestException('Client display name is required.');
-  }
-  return value.trim();
+function sameRegistrationFields(
+  persisted: typeof clientAccountRegistrationCommands.$inferSelect,
+  fields: NormalizedDossierFields,
+): boolean {
+  return (
+    persisted.displayName === fields.displayName &&
+    persisted.taxId === fields.taxId &&
+    persisted.address === fields.address &&
+    persisted.telephone === fields.telephone &&
+    persisted.generalEmail === fields.generalEmail &&
+    persisted.businessActivity === fields.businessActivity &&
+    sameJsonValue(persisted.contacts, fields.contacts)
+  );
 }
 
 function requireSearchQuery(value: unknown): string {
@@ -393,7 +502,7 @@ function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, '\\$&');
 }
 
-function toView(
+function toSummary(
   client: { id: string; displayName: string },
   relatedToActiveCompany: boolean,
 ): ClientAccountView {

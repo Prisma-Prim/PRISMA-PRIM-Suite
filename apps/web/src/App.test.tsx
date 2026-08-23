@@ -75,6 +75,55 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('exposes Clients to a Company Director without Workspace Client access', async () => {
+    vi.mocked(fetch).mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const body = url.endsWith('/access/current-actor')
+          ? {
+              internalUserId: 'director-1',
+              workspaceMembershipId: 'membership-1',
+              workspaceId: 'workspace-1',
+              workspaceName: 'PRISMA Workspace',
+              displayName: 'Company Director',
+              email: 'director@example.test',
+              active: true,
+              workspacePermissions: [],
+              activeCompany: {
+                id: 'company-1',
+                displayName: 'PRISMA-PRIM',
+                clientPermissions: [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                ],
+              },
+            }
+          : url.endsWith('/activity-log')
+            ? { events: [] }
+            : [];
+        if (url.endsWith('/clients')) {
+          expect(init?.headers).toMatchObject({
+            'x-company-context-id': 'company-1',
+          });
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200 }),
+        );
+      },
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByRole('region', { name: 'Clients' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Clients' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create Client' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the shell when Company preference storage is unavailable', async () => {
     const identity = deterministicBrowserIdentity();
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
@@ -284,10 +333,73 @@ describe('App', () => {
     },
   );
 
+  it('shows the responsible Company on a Client correction event', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            input.toString().endsWith('/companies')
+              ? []
+              : input.toString().endsWith('/activity-log')
+                ? {
+                    events: [
+                      {
+                        id: 'event-client-corrected',
+                        action: 'client.corrected',
+                        occurredAt: '2026-08-22T12:00:00.000Z',
+                        actor: {
+                          internalUserId: 'director-1',
+                          displayName: 'Company Director',
+                        },
+                        target: {
+                          type: 'client_account',
+                          clientAccountId: 'client-1',
+                          displayName: 'Exemplu Client SRL',
+                          companyId: 'company-1',
+                          companyDisplayName: 'BIC',
+                        },
+                        metadata: {
+                          changes: {
+                            telephone: {
+                              before: null,
+                              after: '+373 60 000 000',
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  }
+                : {
+                    internalUserId: 'owner-1',
+                    displayName: 'Workspace Owner',
+                    email: 'owner@example.test',
+                    workspaceName: 'PRISMA Workspace',
+                    workspacePermissions: ['company.manage'],
+                  },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByText('Company Director corrected a Client dossier'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Target: Exemplu Client SRL — BIC'),
+    ).toBeInTheDocument();
+  });
+
   it('keeps Company Context assignment Activity Log labels in the copy resource', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
+      'company_director_client_assignment.granted':
+        'granted Company Director Client Access',
+      'company_director_client_assignment.revoked':
+        'revoked Company Director Client Access',
     });
   });
 

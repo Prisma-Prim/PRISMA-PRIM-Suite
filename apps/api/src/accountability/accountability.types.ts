@@ -1,5 +1,8 @@
 import type { ActorContext } from '../access/access.types.js';
-import type { COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL } from '../access/company-permissions.js';
+import type {
+  COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
+} from '../access/company-permissions.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -8,9 +11,19 @@ export const COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION =
   'company_context_assignment.granted' as const;
 export const COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION =
   'company_context_assignment.revoked' as const;
+export const COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION =
+  'company_director_client_assignment.granted' as const;
+export const COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION =
+  'company_director_client_assignment.revoked' as const;
 export const CLIENT_CREATED_ACTION = 'client.created' as const;
 export const CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION =
   'client_company_relationship.established' as const;
+export const CLIENT_CORRECTED_ACTION = 'client.corrected' as const;
+
+export type ClientCorrectionChanges = Record<
+  string,
+  { before: unknown; after: unknown }
+>;
 
 export type CanonicalActivityEvent =
   | {
@@ -37,7 +50,9 @@ export type CanonicalActivityEvent =
       actor: ActorContext;
       action:
         | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-        | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
+        | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+        | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+        | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION;
       target: {
         type: 'company_role_assignment';
         assignmentId: string;
@@ -45,7 +60,22 @@ export type CanonicalActivityEvent =
         workspaceMembershipId: string;
         internalUserId: string;
       };
-      metadata: { bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL };
+      metadata: {
+        bundle:
+          | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
+      };
+      transitionId: string;
+    }
+  | {
+      actor: ActorContext;
+      action: typeof CLIENT_CORRECTED_ACTION;
+      target: {
+        type: 'client_account';
+        clientAccountId: string;
+        companyId: string;
+      };
+      metadata: { changes: ClientCorrectionChanges };
       transitionId: string;
     }
   | {
@@ -76,8 +106,11 @@ export interface ActivityLogEvent {
     | typeof COMPANY_REGISTERED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+    | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+    | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
     | typeof CLIENT_CREATED_ACTION
-    | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION;
+    | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
+    | typeof CLIENT_CORRECTED_ACTION;
   occurredAt: string;
   actor: {
     internalUserId: string;
@@ -107,6 +140,8 @@ export interface ActivityLogEvent {
         type: 'client_account';
         clientAccountId: string;
         displayName: string;
+        companyId?: string;
+        companyDisplayName?: string;
       }
     | {
         type: 'client_company_relationship';
@@ -118,7 +153,12 @@ export interface ActivityLogEvent {
       };
   metadata:
     | { identityProvider: string }
-    | { bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL }
+    | {
+        bundle:
+          | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
+      }
+    | { changes: ClientCorrectionChanges }
     | Record<string, never>;
 }
 

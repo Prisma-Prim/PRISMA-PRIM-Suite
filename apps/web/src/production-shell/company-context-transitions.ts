@@ -42,8 +42,11 @@ export interface ActivityLogEvent {
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
+    | 'company_director_client_assignment.granted'
+    | 'company_director_client_assignment.revoked'
     | 'client.created'
-    | 'client_company_relationship.established';
+    | 'client_company_relationship.established'
+    | 'client.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
@@ -66,6 +69,8 @@ export interface ActivityLogEvent {
         type: 'client_account';
         clientAccountId: string;
         displayName: string;
+        companyId?: string;
+        companyDisplayName?: string;
       }
     | {
         type: 'client_company_relationship';
@@ -77,7 +82,10 @@ export interface ActivityLogEvent {
       };
   metadata:
     | { identityProvider: string }
-    | { bundle: 'Company Context Access' }
+    | {
+        bundle: 'Company Context Access' | 'Company Director Client Access';
+      }
+    | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
 }
 
@@ -135,6 +143,11 @@ export type CompanyContextTransition =
       type: 'selection-confirmed';
       origin: CompanyContextOrigin;
       companyId: string;
+      actor: ActorContext;
+    }
+  | {
+      type: 'actor-revalidated';
+      origin: CompanyContextOrigin;
       actor: ActorContext;
     }
   | {
@@ -219,6 +232,18 @@ export function transitionCompanyContext(
         ...current,
         actor: transition.actor,
         companyContext: readyCompanyContext(current.companyContext.companies),
+        activityLog: { status: 'loading' },
+      };
+    }
+    case 'actor-revalidated': {
+      if (
+        !matchesOrigin(current, transition.origin) ||
+        !actorMatchesOrigin(transition.actor, transition.origin)
+      )
+        return current;
+      return {
+        ...current,
+        actor: transition.actor,
         activityLog: { status: 'loading' },
       };
     }
@@ -430,6 +455,18 @@ function matchesSessionOrigin(
     context.actor.workspaceId === origin.workspaceId &&
     context.actor.workspaceMembershipId === origin.workspaceMembershipId &&
     context.sessionGeneration === origin.sessionGeneration
+  );
+}
+
+function actorMatchesOrigin(
+  actor: ActorContext,
+  origin: CompanyContextOrigin,
+): boolean {
+  return (
+    actor.activeCompany?.id === origin.activeCompanyId &&
+    actor.internalUserId === origin.internalUserId &&
+    actor.workspaceId === origin.workspaceId &&
+    actor.workspaceMembershipId === origin.workspaceMembershipId
   );
 }
 

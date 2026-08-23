@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, notInArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   activityLogEvents,
   clientAccounts,
+  clientCompanyRelationships,
   companies,
   internalUsers,
   workspaceMemberships,
@@ -61,6 +62,69 @@ export class AccountabilityService {
       workspaceMemberships,
       'activity_log_target_membership',
     );
+    const canManageClientsAcrossWorkspace =
+      actor.workspacePermissions.includes('client.manage');
+    const canReadClientsForCompany =
+      actor.activeCompany?.clientPermissions.includes('client.read') ?? false;
+    const canReadClients =
+      canManageClientsAcrossWorkspace || canReadClientsForCompany;
+    const visibleClientForCompany = actor.activeCompany
+      ? exists(
+          this.databaseContext.connection
+            .select({ id: clientCompanyRelationships.id })
+            .from(clientCompanyRelationships)
+            .where(
+              and(
+                eq(
+                  clientCompanyRelationships.workspaceId,
+                  activityLogEvents.workspaceId,
+                ),
+                eq(
+                  clientCompanyRelationships.clientAccountId,
+                  activityLogEvents.targetClientAccountId,
+                ),
+                eq(
+                  clientCompanyRelationships.companyId,
+                  actor.activeCompany.id,
+                ),
+                eq(clientCompanyRelationships.status, 'active'),
+              ),
+            ),
+        )
+      : sql<boolean>`false`;
+    const visibleClientEventsForCompanyManager =
+      canReadClients && actor.activeCompany
+        ? canManageClientsAcrossWorkspace
+          ? or(
+              and(
+                eq(activityLogEvents.targetType, 'client_account'),
+                eq(activityLogEvents.action, 'client.created'),
+              ),
+              canReadClientsForCompany
+                ? and(
+                    eq(activityLogEvents.targetType, 'client_account'),
+                    visibleClientForCompany,
+                  )
+                : sql<boolean>`false`,
+              and(
+                eq(activityLogEvents.targetType, 'client_company_relationship'),
+                eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
+              ),
+            )
+          : and(
+              or(
+                eq(activityLogEvents.targetType, 'client_account'),
+                and(
+                  eq(
+                    activityLogEvents.targetType,
+                    'client_company_relationship',
+                  ),
+                  eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
+                ),
+              ),
+              visibleClientForCompany,
+            )
+        : sql<boolean>`false`;
     const visibleEvents = actor.workspacePermissions.includes('company.manage')
       ? and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
@@ -69,27 +133,42 @@ export class AccountabilityService {
               'client_account',
               'client_company_relationship',
             ]),
-            actor.workspacePermissions.includes('client.manage') &&
-              actor.activeCompany
-              ? or(
-                  eq(activityLogEvents.targetType, 'client_account'),
-                  and(
-                    eq(
-                      activityLogEvents.targetType,
-                      'client_company_relationship',
-                    ),
-                    eq(
-                      activityLogEvents.targetCompanyId,
-                      actor.activeCompany.id,
-                    ),
-                  ),
-                )
-              : sql<boolean>`false`,
+            visibleClientEventsForCompanyManager,
           ),
         )
       : and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
-          eq(activityLogEvents.targetType, 'internal_user'),
+          or(
+            eq(activityLogEvents.targetType, 'internal_user'),
+            canReadClients && actor.activeCompany
+              ? and(
+                  or(
+                    and(
+                      eq(activityLogEvents.targetType, 'client_account'),
+                      or(
+                        canManageClientsAcrossWorkspace
+                          ? eq(activityLogEvents.action, 'client.created')
+                          : sql<boolean>`false`,
+                        canReadClientsForCompany
+                          ? sql<boolean>`true`
+                          : sql<boolean>`false`,
+                      ),
+                    ),
+                    and(
+                      eq(
+                        activityLogEvents.targetType,
+                        'client_company_relationship',
+                      ),
+                      eq(
+                        activityLogEvents.targetCompanyId,
+                        actor.activeCompany.id,
+                      ),
+                    ),
+                  ),
+                  visibleClientForCompany,
+                )
+              : sql<boolean>`false`,
+          ),
         );
     const rows = await this.databaseContext.connection
       .select({
@@ -204,6 +283,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
       };
     case 'company_context_assignment.granted':
     case 'company_context_assignment.revoked':
+    case 'company_director_client_assignment.granted':
+    case 'company_director_client_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
@@ -224,6 +305,17 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientAccountId: event.target.clientAccountId,
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.clientAccountId}`,
+      };
+    case 'client.corrected':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: null,
+        targetWorkspaceMembershipId: null,
+        targetCompanyId: event.target.companyId,
+        targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: event.target.clientAccountId,
+        targetClientCompanyRelationshipId: null,
+        idempotencyKey: `${event.action}:${event.target.clientAccountId}:${event.transitionId}`,
       };
     case 'client_company_relationship.established':
       return {
@@ -305,14 +397,28 @@ function canonicalTarget(event: PersistedActivityTarget) {
         ),
       };
     case 'client_account':
-      return {
-        type: event.targetType,
-        clientAccountId: required(event.targetClientAccountId, 'Client id'),
-        displayName: required(
-          event.targetClientDisplayName,
-          'Client display name',
-        ),
-      };
+      return event.targetCompanyId === null
+        ? {
+            type: event.targetType,
+            clientAccountId: required(event.targetClientAccountId, 'Client id'),
+            displayName: required(
+              event.targetClientDisplayName,
+              'Client display name',
+            ),
+          }
+        : {
+            type: event.targetType,
+            clientAccountId: required(event.targetClientAccountId, 'Client id'),
+            displayName: required(
+              event.targetClientDisplayName,
+              'Client display name',
+            ),
+            companyId: event.targetCompanyId,
+            companyDisplayName: required(
+              event.targetCompanyDisplayName,
+              'Company name',
+            ),
+          };
     case 'client_company_relationship':
       return {
         type: event.targetType,

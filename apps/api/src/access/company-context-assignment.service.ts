@@ -8,6 +8,8 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import {
   COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION,
   COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION,
+  COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION,
+  COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
 } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -22,6 +24,8 @@ import type { ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from './company-permissions.js';
 import type {
   CompanyContextAssignmentRecord,
@@ -30,6 +34,22 @@ import type {
 
 type Operation = 'grant' | 'revoke';
 type CommandRow = typeof companyContextAssignmentCommands.$inferSelect;
+type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
+type BundleDefinition = {
+  value: Bundle;
+  label:
+    | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
+    | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
+};
+
+const CONTEXT_BUNDLE: BundleDefinition = {
+  value: COMPANY_CONTEXT_ACCESS_BUNDLE,
+  label: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+};
+const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
+  value: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+  label: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
+};
 
 @Injectable()
 export class CompanyContextAssignmentService {
@@ -44,6 +64,21 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
+      CONTEXT_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async grantDirectorClientAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      DIRECTOR_CLIENT_BUNDLE,
       'grant',
       command.workspaceMembershipId,
       command.companyId,
@@ -59,6 +94,23 @@ export class CompanyContextAssignmentService {
   ): Promise<CompanyContextAssignmentRecord> {
     return this.mutate(
       actor,
+      CONTEXT_BUNDLE,
+      'revoke',
+      workspaceMembershipIdValue,
+      companyIdValue,
+      idempotencyKey,
+    );
+  }
+
+  async revokeDirectorClientAccess(
+    actor: ActorContext,
+    workspaceMembershipIdValue: unknown,
+    companyIdValue: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      DIRECTOR_CLIENT_BUNDLE,
       'revoke',
       workspaceMembershipIdValue,
       companyIdValue,
@@ -68,6 +120,7 @@ export class CompanyContextAssignmentService {
 
   private async mutate(
     actor: ActorContext,
+    bundle: BundleDefinition,
     operation: Operation,
     workspaceMembershipIdValue: unknown,
     companyIdValue: unknown,
@@ -80,8 +133,14 @@ export class CompanyContextAssignmentService {
     return this.databaseContext.transaction(async () => {
       const replay = await this.findCommand(actor, idempotencyKey);
       if (replay) {
-        assertSameCommand(replay, operation, workspaceMembershipId, companyId);
-        return commandResult(replay);
+        assertSameCommand(
+          replay,
+          bundle.value,
+          operation,
+          workspaceMembershipId,
+          companyId,
+        );
+        return commandResult(replay, bundle.label);
       }
       const target = await this.requireActiveTargets(
         actor.workspaceId,
@@ -93,6 +152,7 @@ export class CompanyContextAssignmentService {
         .values({
           workspaceId: actor.workspaceId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          bundle: bundle.value,
           idempotencyKey,
           operation,
           targetWorkspaceMembershipId: workspaceMembershipId,
@@ -104,8 +164,14 @@ export class CompanyContextAssignmentService {
         const raced = await this.findCommand(actor, idempotencyKey);
         if (!raced)
           throw new Error('The idempotent command could not be resolved.');
-        assertSameCommand(raced, operation, workspaceMembershipId, companyId);
-        return commandResult(raced);
+        assertSameCommand(
+          raced,
+          bundle.value,
+          operation,
+          workspaceMembershipId,
+          companyId,
+        );
+        return commandResult(raced, bundle.label);
       }
       const assignment =
         operation === 'grant'
@@ -113,11 +179,13 @@ export class CompanyContextAssignmentService {
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
+              bundle.value,
             )
           : await this.applyRevoke(
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
+              bundle.value,
             );
       await this.databaseContext.connection
         .update(companyContextAssignmentCommands)
@@ -127,9 +195,13 @@ export class CompanyContextAssignmentService {
         await this.accountability.record({
           actor,
           action:
-            operation === 'grant'
-              ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-              : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION,
+            bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+              ? operation === 'grant'
+                ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+                : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+              : operation === 'grant'
+                ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+                : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -137,7 +209,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
             internalUserId: target.internalUserId,
           },
-          metadata: { bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL },
+          metadata: { bundle: bundle.label },
           transitionId: reserved.id,
         });
       }
@@ -145,7 +217,7 @@ export class CompanyContextAssignmentService {
         id: assignment.id,
         workspaceMembershipId,
         companyId,
-        bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+        bundle: bundle.label,
         active: operation === 'grant',
       };
     });
@@ -187,6 +259,7 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
+    bundle: Bundle,
   ) {
     const [changed] = await this.databaseContext.connection
       .insert(companyRoleAssignments)
@@ -194,7 +267,7 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
-        bundle: COMPANY_CONTEXT_ACCESS_BUNDLE,
+        bundle,
       })
       .onConflictDoUpdate({
         target: [
@@ -213,6 +286,7 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
+        bundle,
       ));
     if (!assignment)
       throw new Error('The canonical assignment could not be resolved.');
@@ -223,6 +297,7 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
+    bundle: Bundle,
   ) {
     const [changed] = await this.databaseContext.connection
       .update(companyRoleAssignments)
@@ -235,7 +310,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_CONTEXT_ACCESS_BUNDLE),
+          eq(companyRoleAssignments.bundle, bundle),
           isNull(companyRoleAssignments.revokedAt),
         ),
       )
@@ -246,6 +321,7 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
+        bundle,
       ));
     if (!assignment) throw new ForbiddenException();
     return { ...assignment, changed: Boolean(changed) };
@@ -273,6 +349,7 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
+    bundle: Bundle,
   ) {
     const [assignment] = await this.databaseContext.connection
       .select()
@@ -285,7 +362,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_CONTEXT_ACCESS_BUNDLE),
+          eq(companyRoleAssignments.bundle, bundle),
         ),
       )
       .limit(1);
@@ -313,11 +390,13 @@ function requireIdempotencyKey(value: string | undefined): string {
 
 function assertSameCommand(
   command: CommandRow,
+  bundle: Bundle,
   operation: Operation,
   workspaceMembershipId: string,
   companyId: string,
 ): void {
   if (
+    command.bundle !== bundle ||
     command.operation !== operation ||
     command.targetWorkspaceMembershipId !== workspaceMembershipId ||
     command.companyId !== companyId
@@ -330,14 +409,19 @@ function assertSameCommand(
     throw new Error('The idempotent command is incomplete.');
 }
 
-function commandResult(command: CommandRow): CompanyContextAssignmentRecord {
+function commandResult(
+  command: CommandRow,
+  bundleLabel:
+    | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
+    | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
+): CompanyContextAssignmentRecord {
   if (!command.resultAssignmentId)
     throw new Error('The idempotent command is incomplete.');
   return {
     id: command.resultAssignmentId,
     workspaceMembershipId: command.targetWorkspaceMembershipId,
     companyId: command.companyId,
-    bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+    bundle: bundleLabel,
     active: command.operation === 'grant',
   };
 }

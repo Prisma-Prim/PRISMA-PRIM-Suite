@@ -9,13 +9,20 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import type { ApiResult } from '../api/authenticated-api-client';
 import {
-  resolveIdempotentDisplayNameCommand,
-  type IdempotentDisplayNameCommand,
-} from '../api/idempotent-display-name-command';
-import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { ClientDossierPanel } from './ClientDossierPanel';
+import {
+  optionalProperty,
+  resolveRetryCommand,
+  type RetryCommand,
+} from './client-command';
+import {
+  ClientContactEditor,
+  normalizedContacts,
+  type ClientContactDraft,
+} from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 
 interface ClientAccountView {
@@ -31,7 +38,11 @@ type ListState =
 
 type CreateState =
   | { status: 'idle' | 'submitting' }
-  | { status: 'validation'; message: string }
+  | {
+      status: 'validation';
+      message: string;
+      field?: 'displayName' | 'contacts';
+    }
   | { status: 'forbidden' | 'error' };
 
 type SearchState =
@@ -43,14 +54,22 @@ export function ClientWorkspace({
   actor,
   identity,
   onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
   onActivityRecorded,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [address, setAddress] = useState('');
+  const [telephone, setTelephone] = useState('');
+  const [generalEmail, setGeneralEmail] = useState('');
+  const [contacts, setContacts] = useState<ClientContactDraft[]>([]);
+  const [businessActivity, setBusinessActivity] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [listState, setListState] = useState<ListState>({ status: 'loading' });
   const [createState, setCreateState] = useState<CreateState>({
@@ -62,17 +81,30 @@ export function ClientWorkspace({
   const [attachingClientId, setAttachingClientId] = useState<
     string | undefined
   >(undefined);
-  const retryCommand = useRef<IdempotentDisplayNameCommand | undefined>(
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
     undefined,
   );
+  const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
   const pendingSearch = useRef<AbortController | undefined>(undefined);
   const pendingAttach = useRef<AbortController | undefined>(undefined);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
   rejectCompanyContext.current = onCompanyContextRejected;
-  const canManageClients = actor.workspacePermissions.includes('client.manage');
+  const acceptRevalidatedActor = useRef(onActorRevalidated);
+  acceptRevalidatedActor.current = onActorRevalidated;
   const activeCompany = actor.activeCompany;
+  const clientPermissions = activeCompany?.clientPermissions ?? [];
+  const canReadClients =
+    actor.workspacePermissions.includes('client.manage') ||
+    clientPermissions.includes('client.read');
+  const canCreateClients =
+    actor.workspacePermissions.includes('client.manage') ||
+    clientPermissions.includes('client.create');
+  const canReadClientDossiers = clientPermissions.includes('client.read');
+  const canCreateEnrichedClients = clientPermissions.includes('client.create');
+  const canUpdateClients = clientPermissions.includes('client.update');
+  const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
   const handleAccessRejection = useCallback(
     async (
@@ -87,6 +119,9 @@ export function ClientWorkspace({
         companyContextId,
         onCompanyContextRejected: (rejectedCompanyId) =>
           rejectCompanyContext.current(rejectedCompanyId),
+        onActorRevalidated: (revalidatedActor) =>
+          acceptRevalidatedActor.current(revalidatedActor),
+        signal,
       });
       if (signal.aborted) return true;
       if (!rejection) return false;
@@ -132,8 +167,9 @@ export function ClientWorkspace({
     setCreateState({ status: 'idle' });
     setSearchState({ status: 'idle' });
     setAttachingClientId(undefined);
+    setSelectedClientId(undefined);
 
-    if (!canManageClients || !activeCompany) return;
+    if (!canReadClients || !activeCompany) return;
     const companyContextId = activeCompany.id;
     setListState({ status: 'loading' });
 
@@ -149,24 +185,51 @@ export function ClientWorkspace({
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
-    canManageClients,
+    canReadClients,
+    canReadClientDossiers,
     loadClients,
   ]);
 
   async function createClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!activeCompany) return;
-    const command = resolveIdempotentDisplayNameCommand(
-      displayName,
-      retryCommand.current,
-    );
-    if (!command) {
+    if (!activeCompany || !canCreateClients) return;
+    const normalizedDisplayName = displayName.trim();
+    if (!normalizedDisplayName) {
       setCreateState({
         status: 'validation',
         message: copy.displayNameRequired,
+        field: 'displayName',
       });
       return;
     }
+
+    const normalizedClientContacts = canCreateEnrichedClients
+      ? normalizedContacts(contacts)
+      : [];
+    if (!normalizedClientContacts) {
+      setCreateState({
+        status: 'validation',
+        message: copy.contactsInvalid,
+        field: 'contacts',
+      });
+      return;
+    }
+    const serializedBody = JSON.stringify({
+      displayName: normalizedDisplayName,
+      ...(canCreateEnrichedClients
+        ? {
+            ...optionalProperty('taxId', taxId),
+            ...optionalProperty('address', address),
+            ...optionalProperty('telephone', telephone),
+            ...optionalProperty('generalEmail', generalEmail),
+            ...(normalizedClientContacts.length > 0
+              ? { contacts: normalizedClientContacts }
+              : {}),
+            ...optionalProperty('businessActivity', businessActivity),
+          }
+        : {}),
+    });
+    const command = resolveRetryCommand(serializedBody, retryCommand.current);
 
     retryCommand.current = command;
     setCreateState({ status: 'submitting' });
@@ -181,7 +244,7 @@ export function ClientWorkspace({
             'idempotency-key': command.idempotencyKey,
           },
           companyContextId: activeCompany.id,
-          body: JSON.stringify({ displayName: command.displayName }),
+          body: command.serializedBody,
           signal,
         }),
       async onResult(result, signal) {
@@ -203,6 +266,12 @@ export function ClientWorkspace({
         }
         retryCommand.current = undefined;
         setDisplayName('');
+        setTaxId('');
+        setAddress('');
+        setTelephone('');
+        setGeneralEmail('');
+        setContacts([]);
+        setBusinessActivity('');
         setCreateState({ status: 'idle' });
         void onActivityRecorded();
         await loadClients(activeCompany.id);
@@ -247,7 +316,7 @@ export function ClientWorkspace({
   }
 
   async function attachClient(clientAccountId: string) {
-    if (!activeCompany) return;
+    if (!activeCompany || !canAttachClients) return;
     setAttachingClientId(clientAccountId);
     await runLatestAuthenticatedRequest({
       pending: pendingAttach,
@@ -289,7 +358,7 @@ export function ClientWorkspace({
     });
   }
 
-  if (!canManageClients) {
+  if (!canReadClients) {
     return (
       <section className="client-workspace">
         <p role="alert">{copy.permissionDenied}</p>
@@ -315,22 +384,84 @@ export function ClientWorkspace({
         <h2 id="client-workspace-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
-      <form onSubmit={(event) => void createClient(event)} noValidate>
-        <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
-        <div>
-          <input
-            id="client-display-name"
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            aria-invalid={createState.status === 'validation'}
-          />
+      {canCreateClients && (
+        <form onSubmit={(event) => void createClient(event)} noValidate>
+          <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
+          <div>
+            <input
+              id="client-display-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              aria-invalid={
+                createState.status === 'validation' &&
+                createState.field === 'displayName'
+              }
+              aria-describedby={
+                createState.status === 'validation' &&
+                createState.field === 'displayName'
+                  ? 'client-create-validation'
+                  : undefined
+              }
+            />
+          </div>
+          {canCreateEnrichedClients && (
+            <div className="client-dossier-fields">
+              <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
+              <input
+                id="client-tax-id"
+                value={taxId}
+                onChange={(event) => setTaxId(event.target.value)}
+              />
+              <label htmlFor="client-address">{copy.addressLabel}</label>
+              <input
+                id="client-address"
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+              />
+              <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
+              <input
+                id="client-telephone"
+                value={telephone}
+                onChange={(event) => setTelephone(event.target.value)}
+              />
+              <label htmlFor="client-general-email">
+                {copy.generalEmailLabel}
+              </label>
+              <input
+                id="client-general-email"
+                type="email"
+                value={generalEmail}
+                onChange={(event) => setGeneralEmail(event.target.value)}
+              />
+              <label htmlFor="client-business-activity">
+                {copy.businessActivityLabel}
+              </label>
+              <input
+                id="client-business-activity"
+                value={businessActivity}
+                onChange={(event) => setBusinessActivity(event.target.value)}
+              />
+              <ClientContactEditor
+                contacts={contacts}
+                idPrefix="client-create-contact"
+                invalid={
+                  createState.status === 'validation' &&
+                  createState.field === 'contacts'
+                }
+                errorId="client-create-validation"
+                onChange={setContacts}
+              />
+            </div>
+          )}
           <button type="submit" disabled={createState.status === 'submitting'}>
             {createState.status === 'submitting' ? copy.creating : copy.create}
           </button>
-        </div>
-      </form>
+        </form>
+      )}
       {createState.status === 'validation' && (
-        <p role="alert">{createState.message}</p>
+        <p id="client-create-validation" role="alert">
+          {createState.message}
+        </p>
       )}
       {createState.status === 'forbidden' && (
         <p role="alert">{copy.permissionDenied}</p>
@@ -380,7 +511,7 @@ export function ClientWorkspace({
                 <p>{copy.clientId(client.id)}</p>
                 {client.relatedToActiveCompany ? (
                   <p>{copy.availableInCompany(activeCompany.displayName)}</p>
-                ) : (
+                ) : canAttachClients ? (
                   <button
                     type="button"
                     disabled={attachingClientId !== undefined}
@@ -388,6 +519,8 @@ export function ClientWorkspace({
                   >
                     {copy.addToCompany(activeCompany.displayName)}
                   </button>
+                ) : (
+                  <p>{copy.notAvailableInCompany}</p>
                 )}
               </li>
             ))}
@@ -410,9 +543,29 @@ export function ClientWorkspace({
             <li key={client.id}>
               <h3>{client.displayName}</h3>
               <p>{copy.clientId(client.id)}</p>
+              {canReadClientDossiers && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedClientId(client.id)}
+                >
+                  {copy.openDossier}
+                </button>
+              )}
             </li>
           ))}
         </ol>
+      )}
+      {canReadClientDossiers && (
+        <ClientDossierPanel
+          clientAccountId={selectedClientId}
+          companyContextId={activeCompany.id}
+          canUpdate={canUpdateClients}
+          identity={identity}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onActivityRecorded={onActivityRecorded}
+          onClientsChanged={() => loadClients(activeCompany.id)}
+        />
       )}
     </section>
   );

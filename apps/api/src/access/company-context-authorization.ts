@@ -2,8 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import { companies, companyRoleAssignments } from '../database/schema/index.js';
-import type { ActiveCompanyContext, ActorContext } from './access.types.js';
-import { COMPANY_CONTEXT_USE_BUNDLES } from './company-permissions.js';
+import type {
+  ActiveCompanyContext,
+  ActorContext,
+  CompanyClientPermission,
+} from './access.types.js';
+import {
+  COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+  COMPANY_DIRECTOR_CLIENT_PERMISSIONS,
+} from './company-permissions.js';
 
 @Injectable()
 export class CompanyContextAuthorization {
@@ -14,7 +22,21 @@ export class CompanyContextAuthorization {
     companyId: string,
   ): Promise<ActiveCompanyContext | undefined> {
     if (actor.workspacePermissions.includes('company.manage')) {
-      return this.findActiveCompany(actor.workspaceId, companyId);
+      const company = await this.findActiveCompany(
+        actor.workspaceId,
+        companyId,
+      );
+      if (!company) return undefined;
+      const assignedPermissions = (
+        await this.findAssignedActiveCompanies(actor, companyId)
+      )[0]?.clientPermissions;
+      const effectivePermissions = new Set<CompanyClientPermission>([
+        ...(assignedPermissions ?? []),
+      ]);
+      const clientPermissions = COMPANY_DIRECTOR_CLIENT_PERMISSIONS.filter(
+        (permission) => effectivePermissions.has(permission),
+      );
+      return { ...company, clientPermissions };
     }
     return (await this.findAssignedActiveCompanies(actor, companyId))[0];
   }
@@ -48,7 +70,7 @@ export class CompanyContextAuthorization {
         ),
       )
       .limit(1);
-    return company;
+    return company ? { ...company, clientPermissions: [] } : undefined;
   }
 
   private async findAssignedActiveCompanies(
@@ -69,7 +91,11 @@ export class CompanyContextAuthorization {
       conditions.push(eq(sql<string>`${companies.id}::text`, companyId));
     }
     const rows = await this.databaseContext.connection
-      .select({ id: companies.id, displayName: companies.displayName })
+      .select({
+        id: companies.id,
+        displayName: companies.displayName,
+        bundle: companyRoleAssignments.bundle,
+      })
       .from(companyRoleAssignments)
       .innerJoin(
         companies,
@@ -79,7 +105,19 @@ export class CompanyContextAuthorization {
         ),
       )
       .where(and(...conditions));
-    return rows;
+    const companiesById = new Map<string, ActiveCompanyContext>();
+    for (const row of rows) {
+      const company = companiesById.get(row.id) ?? {
+        id: row.id,
+        displayName: row.displayName,
+        clientPermissions: [],
+      };
+      if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
+        company.clientPermissions = [...COMPANY_DIRECTOR_CLIENT_PERMISSIONS];
+      }
+      companiesById.set(row.id, company);
+    }
+    return [...companiesById.values()];
   }
 }
 

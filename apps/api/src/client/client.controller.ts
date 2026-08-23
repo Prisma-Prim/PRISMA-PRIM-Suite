@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  Patch,
   Param,
   ParseUUIDPipe,
   Post,
@@ -16,7 +17,11 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { ClientService } from './client.service.js';
-import type { ClientAccountView } from './client.types.js';
+import type {
+  ClientAccountView,
+  ClientDossierFieldsInput,
+  ClientDossierView,
+} from './client.types.js';
 
 @Controller('clients')
 @UseGuards(ActorContextAdapter)
@@ -45,11 +50,11 @@ export class ClientController {
   register(
     @Req() request: ActorContextRequest,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
-    @Body() body: { displayName?: unknown },
+    @Body() body: ClientDossierFieldsInput,
   ): Promise<ClientAccountView> {
     return this.clients.execute(request.actorContext!, {
       kind: 'register',
-      displayName: body?.displayName,
+      fields: body ?? {},
       idempotencyKey,
     });
   }
@@ -62,6 +67,35 @@ export class ClientController {
     return this.clients.execute(request.actorContext!, {
       kind: 'attach',
       clientAccountId,
+    });
+  }
+
+  @Get(':clientAccountId')
+  read(
+    @Req() request: ActorContextRequest,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+  ): Promise<ClientDossierView> {
+    return this.clients.query(request.actorContext!, {
+      kind: 'dossier',
+      clientAccountId,
+    });
+  }
+
+  @Patch(':clientAccountId')
+  correct(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+    @Body()
+    body: ClientDossierFieldsInput & { expectedVersion?: unknown },
+  ): Promise<ClientDossierView> {
+    const { expectedVersion, ...changes } = body ?? {};
+    return this.clients.execute(request.actorContext!, {
+      kind: 'correct',
+      clientAccountId,
+      expectedVersion,
+      changes,
+      idempotencyKey,
     });
   }
 }

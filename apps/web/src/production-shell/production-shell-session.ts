@@ -35,6 +35,7 @@ export interface ProductionShellSessionSnapshot {
   readonly shellContext: ProductionShellContext;
   readonly selectCompany: (companyId: string) => Promise<void>;
   readonly refreshActivityLog: () => Promise<void>;
+  readonly acceptRevalidatedActor: (actor: ActorContext) => Promise<void>;
   readonly rejectCompanyContext: (companyId: string) => void;
   readonly includeCompany: (company: VisibleCompany) => void;
 }
@@ -85,6 +86,8 @@ export function createProductionShellSession({
       shellContext: context,
       selectCompany: (companyId) => selectCompany(context, origin, companyId),
       refreshActivityLog: () => refreshActivityLog(context, origin),
+      acceptRevalidatedActor: (actor) =>
+        acceptRevalidatedActor(context, origin, actor),
       rejectCompanyContext: (companyId) => {
         if (!connected || !origin) return;
         dispatch({
@@ -324,6 +327,47 @@ export function createProductionShellSession({
         origin,
         candidate,
       );
+    } catch (error: unknown) {
+      if (
+        !isCurrent(candidate) ||
+        !matchesCurrentOrigin(origin) ||
+        isAbortError(error)
+      )
+        return;
+      dispatch({
+        type: 'activity-resolved',
+        origin,
+        activityLog: { status: 'error' },
+      });
+    } finally {
+      if (activityOperation === candidate) activityOperation = undefined;
+    }
+  }
+
+  async function acceptRevalidatedActor(
+    capturedContext: ProductionShellContext,
+    origin: CompanyContextOrigin | undefined,
+    actor: ActorContext,
+  ): Promise<void> {
+    if (
+      !connected ||
+      !origin ||
+      !matchesCurrentOrigin(origin) ||
+      capturedContext.status !== 'active'
+    )
+      return;
+    dispatch({ type: 'actor-revalidated', origin, actor });
+    if (
+      shellContext.status !== 'active' ||
+      shellContext.actor !== actor ||
+      !matchesCurrentOrigin(origin)
+    )
+      return;
+    const candidate = beginActivityOperation();
+    try {
+      const transport = await createTransport();
+      if (!isCurrent(candidate) || !matchesCurrentOrigin(origin)) return;
+      await loadActivityLog(transport, actor, origin, candidate);
     } catch (error: unknown) {
       if (
         !isCurrent(candidate) ||

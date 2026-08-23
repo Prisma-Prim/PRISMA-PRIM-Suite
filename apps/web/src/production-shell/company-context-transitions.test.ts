@@ -112,6 +112,50 @@ describe('Company context transitions', () => {
     });
   });
 
+  it('refreshes permissions only for the current actor and Company', () => {
+    const activeActor: ActorContext = {
+      ...selectedActor('company-a', 'Company A'),
+      activeCompany: {
+        id: 'company-a',
+        displayName: 'Company A',
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    const active = activate(
+      [{ id: 'company-a', displayName: 'Company A' }],
+      activeActor,
+    );
+    const origin = requiredOrigin(active);
+    const revalidatedActor: ActorContext = {
+      ...activeActor,
+      activeCompany: {
+        ...activeActor.activeCompany!,
+        clientPermissions: [],
+      },
+    };
+
+    const refreshed = transitionCompanyContext(active, {
+      type: 'actor-revalidated',
+      origin,
+      actor: revalidatedActor,
+    });
+
+    expect(refreshed).toMatchObject({
+      status: 'active',
+      actor: {
+        activeCompany: { id: 'company-a', clientPermissions: [] },
+      },
+      activityLog: { status: 'loading' },
+    });
+    expect(
+      transitionCompanyContext(active, {
+        type: 'actor-revalidated',
+        origin,
+        actor: selectedActor('company-b', 'Company B'),
+      }),
+    ).toBe(active);
+  });
+
   it('recovers from stale Company denial without preserving denied activity', () => {
     const active = activate(
       [
