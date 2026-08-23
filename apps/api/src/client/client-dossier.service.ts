@@ -56,12 +56,11 @@ export class ClientDossierService {
     companyId: string,
     clientAccountId: string,
   ): Promise<ClientDossierView> {
-    const client = await this.findRelatedClient(
+    const client = await this.requireRelatedClient(
       workspaceId,
       companyId,
       clientAccountId,
     );
-    if (!client) throw new NotFoundException();
     return this.toDossier(client, workspaceId);
   }
 
@@ -80,6 +79,11 @@ export class ClientDossierService {
         if (!existingCommand.result) {
           throw new Error('The idempotent Client correction is incomplete.');
         }
+        await this.requireRelatedClient(
+          actor.workspaceId,
+          companyId,
+          command.clientAccountId,
+        );
         return existingCommand.result;
       }
 
@@ -175,7 +179,26 @@ export class ClientDossierService {
     if (!racedCommand.result) {
       throw new ConflictException('The correction command is still pending.');
     }
+    await this.requireRelatedClient(
+      actor.workspaceId,
+      companyId,
+      command.clientAccountId,
+    );
     return racedCommand.result;
+  }
+
+  private async requireRelatedClient(
+    workspaceId: string,
+    companyId: string,
+    clientAccountId: string,
+  ): Promise<ClientRow> {
+    const client = await this.findRelatedClient(
+      workspaceId,
+      companyId,
+      clientAccountId,
+    );
+    if (!client) throw new NotFoundException();
+    return client;
   }
 
   private async findCorrectionCommand(
