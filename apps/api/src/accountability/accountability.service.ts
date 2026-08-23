@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, notInArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   activityLogEvents,
   clientAccounts,
+  clientCompanyRelationships,
   companies,
   internalUsers,
   workspaceMemberships,
@@ -61,6 +62,33 @@ export class AccountabilityService {
       workspaceMemberships,
       'activity_log_target_membership',
     );
+    const canReadClients =
+      actor.workspacePermissions.includes('client.manage') ||
+      actor.activeCompany?.clientPermissions.includes('client.read');
+    const visibleClientForCompany = actor.activeCompany
+      ? exists(
+          this.databaseContext.connection
+            .select({ id: clientCompanyRelationships.id })
+            .from(clientCompanyRelationships)
+            .where(
+              and(
+                eq(
+                  clientCompanyRelationships.workspaceId,
+                  activityLogEvents.workspaceId,
+                ),
+                eq(
+                  clientCompanyRelationships.clientAccountId,
+                  activityLogEvents.targetClientAccountId,
+                ),
+                eq(
+                  clientCompanyRelationships.companyId,
+                  actor.activeCompany.id,
+                ),
+                eq(clientCompanyRelationships.status, 'active'),
+              ),
+            ),
+        )
+      : sql<boolean>`false`;
     const visibleEvents = actor.workspacePermissions.includes('company.manage')
       ? and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
@@ -69,8 +97,7 @@ export class AccountabilityService {
               'client_account',
               'client_company_relationship',
             ]),
-            actor.workspacePermissions.includes('client.manage') &&
-              actor.activeCompany
+            canReadClients && actor.activeCompany
               ? or(
                   eq(activityLogEvents.targetType, 'client_account'),
                   and(
@@ -89,7 +116,21 @@ export class AccountabilityService {
         )
       : and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
-          eq(activityLogEvents.targetType, 'internal_user'),
+          or(
+            eq(activityLogEvents.targetType, 'internal_user'),
+            canReadClients && actor.activeCompany
+              ? and(
+                  or(
+                    eq(activityLogEvents.targetType, 'client_account'),
+                    eq(
+                      activityLogEvents.targetType,
+                      'client_company_relationship',
+                    ),
+                  ),
+                  visibleClientForCompany,
+                )
+              : sql<boolean>`false`,
+          ),
         );
     const rows = await this.databaseContext.connection
       .select({
@@ -204,6 +245,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
       };
     case 'company_context_assignment.granted':
     case 'company_context_assignment.revoked':
+    case 'company_director_client_assignment.granted':
+    case 'company_director_client_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
@@ -215,6 +258,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
         idempotencyKey: `${event.action}:${event.target.assignmentId}:${event.transitionId}`,
       };
     case 'client.created':
+    case 'client.corrected':
       return {
         targetType: event.target.type,
         targetInternalUserId: null,
@@ -223,7 +267,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetCompanyRoleAssignmentId: null,
         targetClientAccountId: event.target.clientAccountId,
         targetClientCompanyRelationshipId: null,
-        idempotencyKey: `${event.action}:${event.target.clientAccountId}`,
+        idempotencyKey:
+          event.action === 'client.corrected'
+            ? `${event.action}:${event.target.clientAccountId}:${event.transitionId}`
+            : `${event.action}:${event.target.clientAccountId}`,
       };
     case 'client_company_relationship.established':
       return {
