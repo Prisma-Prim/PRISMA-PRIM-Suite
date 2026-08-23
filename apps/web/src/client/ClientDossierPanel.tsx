@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
+import type { ActorContext } from '../access-types';
 import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
@@ -67,6 +68,7 @@ export function ClientDossierPanel({
   canUpdate,
   identity,
   onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
   onActivityRecorded,
   onClientsChanged,
 }: {
@@ -75,6 +77,7 @@ export function ClientDossierPanel({
   canUpdate: boolean;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
 }) {
@@ -90,6 +93,8 @@ export function ClientDossierPanel({
   const pendingCorrection = useRef<AbortController | undefined>(undefined);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
   rejectCompanyContext.current = onCompanyContextRejected;
+  const acceptRevalidatedActor = useRef(onActorRevalidated);
+  acceptRevalidatedActor.current = onActorRevalidated;
 
   const loadDossier = useCallback(
     async (selectedClientId: string): Promise<void> => {
@@ -112,6 +117,8 @@ export function ClientDossierPanel({
             companyContextId,
             onCompanyContextRejected: (rejectedCompanyId) =>
               rejectCompanyContext.current(rejectedCompanyId),
+            onActorRevalidated: (revalidatedActor) =>
+              acceptRevalidatedActor.current(revalidatedActor),
             signal,
           });
           if (signal.aborted) return;
@@ -213,6 +220,8 @@ export function ClientDossierPanel({
           companyContextId,
           onCompanyContextRejected: (rejectedCompanyId) =>
             rejectCompanyContext.current(rejectedCompanyId),
+          onActorRevalidated: (revalidatedActor) =>
+            acceptRevalidatedActor.current(revalidatedActor),
           signal,
         });
         if (signal.aborted) return;
