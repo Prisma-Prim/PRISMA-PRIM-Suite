@@ -720,12 +720,6 @@ export const activityLogEvents = pgTable(
         (${table.targetType}::text = 'client_account'
           AND ${table.targetInternalUserId} IS NULL
           AND ${table.targetWorkspaceMembershipId} IS NULL
-          AND (
-            (${table.action}::text = 'client.corrected'
-              AND ${table.targetCompanyId} IS NOT NULL)
-            OR
-            (${table.action}::text <> 'client.corrected'
-              AND ${table.targetCompanyId} IS NULL))
           AND ${table.targetCompanyRoleAssignmentId} IS NULL
           AND ${table.targetClientAccountId} IS NOT NULL
           AND ${table.targetClientCompanyRelationshipId} IS NULL)
