@@ -77,22 +77,28 @@ describeWithPostgres('previous schema migration preflight', () => {
             INSERT INTO workspaces (singleton_key, name)
             VALUES ('previous-schema-workspace', 'Previous Schema Workspace')
             RETURNING id
-          ), seeded_user AS (
-            INSERT INTO internal_users (
-              workspace_id, external_provider, external_subject,
-              display_name, email
-            )
-            SELECT id, 'deterministic-test', 'previous-schema-owner',
-              'Previous Owner', 'previous-owner@example.test'
-            FROM seeded_workspace
-            RETURNING workspace_id, id
-          ), seeded_membership AS (
+          )
+          INSERT INTO internal_users (
+            workspace_id, external_provider, external_subject,
+            display_name, email
+          )
+          SELECT id, 'deterministic-test', 'previous-schema-owner',
+            'Previous Owner', 'previous-owner@example.test'
+          FROM seeded_workspace
+        `);
+        await migrationPool.query(`
+          WITH seeded_membership AS (
             SELECT membership.workspace_id, membership.id,
               membership.internal_user_id
             FROM workspace_memberships AS membership
-            INNER JOIN seeded_user
-              ON seeded_user.workspace_id = membership.workspace_id
-              AND seeded_user.id = membership.internal_user_id
+            INNER JOIN internal_users AS internal_user
+              ON internal_user.workspace_id = membership.workspace_id
+              AND internal_user.id = membership.internal_user_id
+            INNER JOIN workspaces AS workspace
+              ON workspace.id = membership.workspace_id
+            WHERE workspace.singleton_key = 'previous-schema-workspace'
+              AND internal_user.external_provider = 'deterministic-test'
+              AND internal_user.external_subject = 'previous-schema-owner'
           ), seeded_company AS (
             INSERT INTO companies (
               id, workspace_id, display_name, created_by_internal_user_id,
