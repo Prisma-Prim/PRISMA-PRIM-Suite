@@ -135,9 +135,15 @@ export class AccountabilityService {
               ? and(
                   or(
                     eq(activityLogEvents.targetType, 'client_account'),
-                    eq(
-                      activityLogEvents.targetType,
-                      'client_company_relationship',
+                    and(
+                      eq(
+                        activityLogEvents.targetType,
+                        'client_company_relationship',
+                      ),
+                      eq(
+                        activityLogEvents.targetCompanyId,
+                        actor.activeCompany.id,
+                      ),
                     ),
                   ),
                   visibleClientForCompany,
