@@ -49,12 +49,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     );
   }
 
+  const canAccessClients =
+    access.actor.workspacePermissions.includes('client.manage') ||
+    access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
+      true;
+
   return (
     <ApplicationShell
       activeHref="/"
       navigationItems={[
         { href: '/', label: 'Home' },
-        ...(access.actor.workspacePermissions.includes('client.manage')
+        ...(canAccessClients
           ? [{ href: '#clients', label: clientWorkspaceCopy.navigationLabel }]
           : []),
       ]}
@@ -81,7 +86,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         state={access.companyContext}
         onSelect={selectCompany}
       />
-      {access.actor.workspacePermissions.includes('client.manage') && (
+      {canAccessClients && (
         <ClientWorkspace
           key={`client:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
