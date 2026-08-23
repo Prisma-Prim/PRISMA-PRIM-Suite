@@ -75,6 +75,55 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('exposes Clients to a Company Director without Workspace Client access', async () => {
+    vi.mocked(fetch).mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input.toString();
+        const body = url.endsWith('/access/current-actor')
+          ? {
+              internalUserId: 'director-1',
+              workspaceMembershipId: 'membership-1',
+              workspaceId: 'workspace-1',
+              workspaceName: 'PRISMA Workspace',
+              displayName: 'Company Director',
+              email: 'director@example.test',
+              active: true,
+              workspacePermissions: [],
+              activeCompany: {
+                id: 'company-1',
+                displayName: 'PRISMA-PRIM',
+                clientPermissions: [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                ],
+              },
+            }
+          : url.endsWith('/activity-log')
+            ? { events: [] }
+            : [];
+        if (url.endsWith('/clients')) {
+          expect(init?.headers).toMatchObject({
+            'x-company-context-id': 'company-1',
+          });
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(body), { status: 200 }),
+        );
+      },
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    expect(
+      await screen.findByRole('region', { name: 'Clients' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Clients' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create Client' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the shell when Company preference storage is unavailable', async () => {
     const identity = deterministicBrowserIdentity();
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
@@ -288,6 +337,10 @@ describe('App', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
+      'company_director_client_assignment.granted':
+        'granted Company Director Client Access',
+      'company_director_client_assignment.revoked':
+        'revoked Company Director Client Access',
     });
   });
 
