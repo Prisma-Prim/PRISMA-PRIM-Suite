@@ -80,6 +80,8 @@ Sensitive metadata is minimized and may require capability-specific permissions.
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
 
+Iurie's combined duplicate/correction answer requires both original records, all modifications, actor, date/time and union reason to remain reconstructable. Product normalization applies preservation of prior values, actor and server-authoritative date/time to an ordinary significant correction; preservation of both original records and the stated reason additionally applies when two records are united. The Shared Client PRD owns the exact command/event split; no union event is authorized until its separate destructive workflow is approved.
+
 Retention and authorized export require a later policy based on business and legal evidence. Absence of a final retention period does not permit silent deletion.
 
 ## 9. UX
