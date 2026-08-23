@@ -256,11 +256,37 @@ describeWithPostgres('Client REST API', () => {
       'Additive Permission Company',
       'additive-permission-company',
     );
+    const unrelatedCompany = await registerCompany(
+      'Unrelated Permission Company',
+      'unrelated-permission-company',
+    );
     const created = await createClient(
       company.id,
       'Additive Permission Client',
       'additive-permission-client',
     );
+    const unrelatedClient = await createClient(
+      unrelatedCompany.id,
+      'Unrelated Permission Client',
+      'unrelated-permission-client',
+    );
+    await grantOwnerDirectorClientAccess(unrelatedCompany.id);
+    const unrelatedCorrection = await fetch(
+      `${origin}/api/clients/${unrelatedClient.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...ownerHeaders(unrelatedCompany.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'unrelated-permission-correction',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          telephone: '+373 22 999 999',
+        }),
+      },
+    );
+    expect(unrelatedCorrection.status).toBe(200);
     const member = await fetch(`${origin}/api/access/current-actor`, {
       headers: identityHeaders('workspace-member', 'Company Manager'),
     }).then((response) => response.json());
@@ -290,6 +316,14 @@ describeWithPostgres('Client REST API', () => {
     const clients = await fetch(`${origin}/api/clients`, { headers });
     expect(clients.status).toBe(200);
     await expect(clients.json()).resolves.toEqual([created]);
+    const activity = await fetch(`${origin}/api/activity-log`, { headers });
+    expect(activity.status).toBe(200);
+    const activityBody = await activity.text();
+    expect(activityBody).toContain(created.id);
+    expect(activityBody).toContain(created.displayName);
+    expect(activityBody).not.toContain(unrelatedClient.id);
+    expect(activityBody).not.toContain(unrelatedClient.displayName);
+    expect(activityBody).not.toContain('+373 22 999 999');
   });
 
   it('keeps legacy client.manage correction denied until the Owner has a Director grant', async () => {
