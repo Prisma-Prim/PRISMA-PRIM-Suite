@@ -15,8 +15,3 @@ export const COMPANY_DIRECTOR_CLIENT_PERMISSIONS = [
   'client.create',
   'client.update',
 ] as const;
-
-export const LEGACY_CLIENT_MANAGE_COMPANY_PERMISSIONS = [
-  'client.read',
-  'client.create',
-] as const;
