@@ -80,25 +80,41 @@ describe('CompanyContextAccess', () => {
   });
 
   it('grants and revokes the fixed Company Director Client Access bundle', async () => {
+    const refreshActivity = vi.fn(async () => undefined);
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 'assignment-1',
-            workspaceMembershipId: 'member-1',
-            companyId: 'company-1',
-            bundle: 'Company Director Client Access',
-            active: true,
-          }),
-          { status: 201 },
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'assignment-1',
+              workspaceMembershipId: 'member-1',
+              companyId: 'company-1',
+              bundle: 'Company Director Client Access',
+              active: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'assignment-1',
+              workspaceMembershipId: 'member-1',
+              companyId: 'company-1',
+              bundle: 'Company Director Client Access',
+              active: false,
+            }),
+            { status: 200 },
+          ),
         ),
-      ),
     );
     render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
       />,
     );
     fireEvent.change(screen.getByLabelText('Access bundle'), {
@@ -113,6 +129,7 @@ describe('CompanyContextAccess', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+    await waitFor(() => expect(refreshActivity).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
@@ -120,6 +137,7 @@ describe('CompanyContextAccess', () => {
         expect.objectContaining({ method: 'DELETE' }),
       ),
     );
+    await waitFor(() => expect(refreshActivity).toHaveBeenCalledTimes(2));
   });
 
   it('grants access through native keyboard form submission', async () => {
