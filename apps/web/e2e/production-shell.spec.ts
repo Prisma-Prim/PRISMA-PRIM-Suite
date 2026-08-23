@@ -927,6 +927,9 @@ test('creates and reuses one shared Client identity across two Company contexts'
             type: 'client_account',
             clientAccountId: client.id,
             displayName: client.displayName,
+            companyId,
+            companyDisplayName: companies.find(({ id }) => id === companyId)!
+              .displayName,
           },
           metadata: {
             changes: {
@@ -1040,6 +1043,11 @@ test('creates and reuses one shared Client identity across two Company contexts'
       `${actorContextFixture.displayName} corrected a Client dossier`,
     ),
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      `Target: ${client.displayName} — ${companies[1]!.displayName}`,
+    ),
+  ).toHaveCount(2);
 
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -1208,6 +1216,8 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
                   type: 'client_account',
                   clientAccountId: client.id,
                   displayName: client.displayName,
+                  companyId: directors.a.company.id,
+                  companyDisplayName: directors.a.company.displayName,
                 },
                 metadata: {},
               },
