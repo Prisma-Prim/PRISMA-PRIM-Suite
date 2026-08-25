@@ -43,16 +43,16 @@ When friction occurred:
 
 Allowed confidence values are `Confirmed`, `Suspected`, and `Unknown`. Allowed status values are `Fixed in PR`, `Fixed externally`, `Follow-up required`, and `Not reproducible`.
 
-When no friction occurred:
+When no friction occurred, this compact block is the complete required format:
 
 ```markdown
 ## Agent environment retrospective
 
 - Harness: Codex Cloud
 - Avoidable environment or repository friction: none observed.
-- Required checks not run: none.
-- Suggested environment improvements: none.
 ```
+
+A required check that could not run is reportable friction, so it uses the full format above. Record suggested environment improvements only when a concrete improvement exists; do not add a `none` placeholder.
 
 ## Fix or follow up
 

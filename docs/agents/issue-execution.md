@@ -12,6 +12,21 @@ Do not create a manual Codex Cloud task whose prompt contains only the issue URL
 
 Every harness must follow these steps even when it cannot perform GitHub or local Git actions itself.
 
+### Low-risk fast path
+
+Use this path by default when the issue and planned PR are mechanical or documentation-only, set `Product contract changed` to `no`, declare `exempt-low-risk`, and cross no high-risk boundary.
+
+- Use a **15-minute execution target** measured after the required environment is ready. When the target is exceeded, finish the current safe check and diagnose the process or environment before adding more review cycles.
+- Complete the full narrow diff and affected checks before publication. Run repository-wide checks only when the issue or affected surface requires them.
+- Perform **one final review pass** covering both repository Standards and the originating issue or Spec.
+- Publish **one focused commit**. Amend or replace it for a grouped correction; do not stack review-iteration commits.
+- Request the exact-head terminal review once after the complete diff is published.
+- **P0 and P1 findings are blocking.** A **P2 blocks only** when it directly violates the issue acceptance criteria or demonstrates a concrete security or correctness defect in the changed scope. For every nonblocking finding, record the deferred disposition, resolve its review thread without changing the branch, and trigger terminal-gate re-evaluation; **do not request another Codex review**.
+- If terminal feedback contains blocking findings, collect them before editing and allow one grouped correction plus one final exact-head confirmation. A second new blocking wave stops the PR for process or preflight diagnosis instead of continuing a correction loop.
+- Merge immediately under standing authorization when CI, governance, and terminal review are green and no blocking feedback remains.
+
+Every PR that is not eligible for the low-risk fast path uses the full verification and separate-review path below. This includes product-contract changes, every implementation change, migrations, authorization, privacy, concurrency, transversal changes, and any other high-risk boundary. The fast path never waives their conditional evidence.
+
 ### Before changing anything
 
 1. Read the complete issue body and all available comments.
@@ -40,14 +55,14 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 1. Run targeted tests while iterating.
 2. Run every command required by the issue.
 3. For UI work, inspect the real journey at every named viewport and retain deterministic evidence.
-4. Review the final diff against repository Standards.
-5. Review it again against the originating issue or Spec.
-6. Correct every material finding and rerun affected checks.
+4. On the low-risk fast path, review the final diff once against both repository Standards and the originating issue or Spec.
+5. On the full path, review against repository Standards and then review again against the originating issue or Spec.
+6. On the low-risk fast path, correct blocking findings and disposition every nonblocking finding as described above; on the full path, correct every material finding. Rerun affected checks after corrections.
 7. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
 
 Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
 
-After terminal feedback, collect all findings before changing the branch and publish at most one grouped correction. If another material product-contract wave appears, stop editing and return the issue to preflight. Do not continue a one-finding/one-commit loop.
+After terminal feedback, apply the severity gate from the selected path. Collect all blocking findings before changing the branch and publish at most one grouped correction. If another blocking wave appears, stop editing and return the issue to process diagnosis or preflight. Do not continue a one-finding/one-commit loop.
 
 For a slice that crosses PostgreSQL, migrations, or browser behavior, run the
 [local PostgreSQL and browser preflight](local-ci-preflight.md) before deep
@@ -77,7 +92,7 @@ Harness capabilities and user authorization determine publication actions. A tas
 
 If `AGENTS.md` records standing repository authorization, it satisfies the authorization requirement for every conformant PR until explicitly revoked. Do not pause to request per-PR confirmation. Readiness remains mandatory: all required checks must be green, Standards and Spec reviews complete, scope conformant, and blocking feedback resolved.
 
-The PR body must include `Closes #N`, the three common classification fields, any applicable conditional evidence, delivered behavior, checks, browser evidence when applicable, decisions, remaining limitations, Standards review, Spec review, and the environment retrospective. Pull-request governance fetches the closing issue and verifies that its preflight disposition and required approval marker match the PR; editing that issue dispatches a fresh check on every affected open PR head. Review-iteration metrics come from GitHub timelines during the five-PR retrospective; authors do not maintain a blocking counter.
+The PR body must include `Closes #N`, the three common classification fields, any applicable conditional evidence, the delivered outcome, affected-check evidence, blocking-feedback state, and the environment retrospective. Add browser evidence, consequential decisions, remaining limitations, deferred follow-up links, and separate Standards and Spec conclusions only when they apply; the full path records both conclusions. Pull-request governance fetches the closing issue and verifies that its preflight disposition and required approval marker match the PR; editing that issue dispatches a fresh check on every affected open PR head. Review-iteration metrics come from GitHub timelines during the five-PR retrospective; authors do not maintain a blocking counter.
 
 ## Genuine blockers
 

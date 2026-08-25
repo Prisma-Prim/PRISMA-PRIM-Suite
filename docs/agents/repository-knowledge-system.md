@@ -97,6 +97,6 @@ Do not create:
 
 ## 8. Change and review rule
 
-Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, removes stale duplicates, and reviews the final diff first against repository Standards and then against its originating issue.
+Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the selected path in [AI agent issue execution](issue-execution.md): one combined Standards and originating-issue pass for eligible low-risk documentation, or the separate full-path reviews otherwise.
 
 The minimum verification for a documentation-only change is the repository formatting check plus link and pointer inspection for every changed authority. Additional checks run when scripts, configuration or generated artifacts change.

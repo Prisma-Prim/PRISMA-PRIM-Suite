@@ -26,6 +26,11 @@ without adding a comment, re-run the most recent gate workflow or dispatch
 `Codex terminal review` with the pull-request number. Re-evaluation reads the
 current GitHub state and writes the result to the current head SHA.
 
+Resolving a thread records its disposition; it does not necessarily mean the
+branch changed. On the low-risk fast path, every nonblocking finding is explicitly
+recorded as deferred and resolved, then the gate is re-evaluated without
+requesting another Codex review.
+
 ## Required GitHub configuration
 
 Repository code can publish the status, but it cannot make that status a merge

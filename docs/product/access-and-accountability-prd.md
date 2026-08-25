@@ -182,7 +182,7 @@ Comportamentul Access și Accountability este testat prin API-ul REST public îm
 
 Testele automate folosesc adaptorul determinist și nu necesită rețea externă. Integrarea Clerk primește suplimentar un smoke test manual documentat într-un mediu de test configurat.
 
-Fiecare issue urmează red-green-refactor la cea mai stabilă frontieră publică și se încheie cu revizuire Standards, apoi Spec.
+Fiecare issue urmează red-green-refactor la cea mai stabilă frontieră publică și traseul de revizuire selectat în `docs/agents/issue-execution.md`: o singură revizuire finală combinată pentru lucrările low-risk eligibile, respectiv revizuiri Standards și Spec separate pentru traseul complet.
 
 ## 12. Ordinea de livrare
 
