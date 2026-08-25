@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — first enriched Company Director slice approved; duplicate workflow pending
-**Version:** 0.5
+**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution contract approved for one vertical slice
+**Version:** 0.6
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -44,6 +44,7 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 - semantic search;
 - external Client portal;
 - automatic registry validation unless separately approved;
+- Document-backed duplicate matching, comparison or identity basis until the Document Registry authorization model is delivered;
 - universal corporate-group modeling;
 - destructive merge that erases prior references.
 
@@ -62,7 +63,7 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 
 Issue #141 fixes the first slice's complete shared interface to the server-assigned Client Account id and one required display name. Registration atomically establishes the server-validated active Company's relationship. Workspace search returns only that identity and whether it is already related to the active Company; a deliberate attach action reuses the same Client Account in another Company. Names never trigger an automatic merge.
 
-For the next enriched slice, the approved shared general fields are:
+The delivered #146 / PR #147 enriched slice approved and implemented these shared general fields:
 
 - Client name;
 - IDNO/tax code;
@@ -72,7 +73,7 @@ For the next enriched slice, the approved shared general fields are:
 - business activity;
 - the fact that the Client also works with another involved Company.
 
-These fields may be seen by directors of the Companies involved with that Client. Their exact storage shapes, validation and Contact cardinality are technical design decisions inside the vertical issue; they must not broaden visibility or invent mandatory values that Iurie did not require.
+These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require.
 
 ## 8. Permissions
 
@@ -81,6 +82,8 @@ Separate permissions cover shared read/create/update, relationship update, archi
 Issue #141 introduces only `client.manage`, a Workspace permission granted by the configured bootstrap Workspace Owner path. It covers the minimal list, search, create and attach operations in an active Company context. It does not establish an ordinary-user bundle or authorize update, archive, duplicate resolution or operational activity.
 
 The Company Director may create, view and correct the Client dossier for the Company or Companies they direct. The following activity remains completely invisible to users of other Companies: Contracts, prices, invoices and Payments, audits, certificates and Project names. Only Iurie may authorize an exception; the exception mechanism itself is not part of the first enriched slice.
+
+The [Tenant, Company, Shared Client and Authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) is the sole normative owner of duplicate-resolution permission-set versioning or hashing, the Workspace Owner grant/revoke lifecycle, legacy-assignment migration and fail-closed behavior. The Shared Client-specific consequence is that pending-review listing, reference lookup and full comparison require current Client read authority for every persisted candidate plus an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every Company in the live candidate review scope. Union, reversal and restricted operation detail require current read authority for both affected Clients plus that captured resolver-enabled `v2` authority in every affected Company. The shared bundle label, legacy `v1`, Client visibility, Workspace ownership and free-form role names are insufficient. One cross-Company resolver must hold every affected `v2` scope; asynchronous multi-person approval remains deferred.
 
 ## 9. UX states
 
@@ -92,28 +95,103 @@ The Company Director may create, view and correct the Client dossier for the Com
 - archived Client;
 - hidden relationship/activity;
 - concurrent update conflict;
+- possible duplicate comparison and disagreement;
+- union blocked by conflicting legal identifiers or incomplete Company authority;
+- superseded dossier and reversible-union history;
 - safe not found/forbidden behaviour.
 
 ## 10. Activity Log
 
-Issue #141 authorizes exactly `client.created` and `client_company_relationship.established`, recorded atomically with their successful mutations. The next correction slice must add an attributable Client correction event that preserves all changed values with server-authoritative actor, date and time. Relationship archive, Client archive/restore and governed duplicate disposition remain separate event families.
+Issue #141 authorizes exactly `client.created` and `client_company_relationship.established`, recorded atomically with their successful mutations. Issue #146 / PR #147 delivers attributable `client.corrected` history with previous values, server-authoritative actor, date and time. Relationship archive and broader Client archive/restore remain separate event families.
 
-A future duplicate union must preserve both original records, every change, actor, date/time and the reason for union. It may be decided only by the director of the relevant Company and must never be automatic.
+A successful governed union requests `client.union_confirmed`, and a successful reversal requests `client.union_reversed`, through the Accountability boundary. Failed, conflicted, unauthorized and replayed commands request no success event. The [Activity Log and accountability PRD](activity-log-accountability-prd.md#8-retention-correction-and-export) solely owns the internal operation record, Company projections, redaction, attribution, visibility and restricted-detail contract.
 
-## 11. Testing decisions
+## 11. Governed duplicate resolution
+
+### 11.1 Candidate and identity boundary
+
+Candidate generation is advisory and uses one deterministic key predicate in the first vertical implementation: a submitted non-empty IDNO/tax identifier triggers a candidate when its exact normalized value equals the non-empty normalized identifier on another Client or when that exact key is retained by union history and resolves to a live persisted Client. For this slice, normalization is exactly the representation already produced by the delivered Client dossier validator: trim leading and trailing whitespace, then compare the remaining value exactly; do not remove punctuation or internal whitespace, fold case, transliterate or infer numeric equivalence. A value empty after trimming is missing. Thus `"12345"` and `" 12345 "` match, while `"12-345"`, `"12 345"`, `"ABC"` and `"abc"` remain distinct values. The first vertical implementation permits union only when both dossiers carry that same identifier. Official name, address, telephone, general email and Contacts may support human comparison of those exact-ID candidates but never establish identity by themselves. Official Documents may become stronger evidence only after the Document Registry authorization model is delivered, so this slice does not inspect, match, compare, disclose or accept any Document-derived identity basis. Name similarity never authorizes union. A missing or different legal/tax identifier on either input blocks the union.
+
+The server may evaluate candidate signals across the Workspace, but an ordinary create or search flow receives only an opaque “possible duplicate requires authorized review” warning. That warning exposes no candidate identifier, field value, Contact, Document, count, affected Company or match reason.
+
+The first slice carries that warning into authorized work through a server-generated, unpredictable `duplicate_review_reference`. The reference contains no embedded Client or Company data, grants no read or resolution authority and cannot be enumerated by an ordinary user. A blocked registration or correction returns only that reference with the generic conflict and binds it server-side to the active Company selected for the rejected command. For two persisted Client inputs, the **candidate review scope** is their affected-Company set and must contain at least one active Company. If that persisted-only scope is empty, pending review, reference dereference and comparison return a safe unavailable outcome with no row, count, detail, mutation or success event; resolver authority never passes vacuously. For a rejected registration or correction proposal, the candidate review scope is the union of every persisted candidate's affected Companies and that attempted Company; the attempted Company is required even though the failed command created no Client–Company Relationship. A resolver-only pending-review view exposes a reference only after the server confirms the complete current authority owned by the Tenant/Authorization PRD across that live review scope and current Client-read authority for every persisted candidate. A-only or attempted-Company-only authority therefore returns no reference, row, count or hidden metadata. Candidate discovery for the submitted normalized identifier builds one complete candidate group from the deduplicated union of every active, non-superseded persisted Client carrying that identifier currently and every live target to which the historical reservation index resolves that key. An unreversed union reservation resolves to its current canonical Client even if that Client's current identifier later changed; after reversal, it resolves to the restored original dossier or dossiers. A superseded source that resolves to an already included canonical Client is not counted twice. A rejected proposal is reviewable only when that group contains exactly one persisted Client; an existing-dossier union comparison is reviewable only when the group contains exactly two persisted Clients and those are the two proposed inputs. If a rejected proposal matches two or more persisted Clients, or an existing-dossier request has a complete group of three or more, partial authority returns the same safe denial; after complete current review-scope and Client-read authority passes, the server returns only `multiple_duplicate_candidates_require_data_remediation`, without comparison data or arbitrary pair selection. That outcome creates no union, mutation or success event, and remediation of the legacy data is a separately scoped capability. For a supported candidate cardinality, presenting the reference for review causes the server to re-resolve the complete live candidate group, review scope, exact identifier, lifecycle and versions and to reapply that complete authority before returning either the existing Client with the rejected proposed values for deliberate attach or correction, or both already persisted Clients for governed union comparison. Any changed attempted Company, identifier, dossier version, relationship set, lifecycle state or authority makes the reference stale; stale review returns a safe denial and creates no mutation or success event.
+
+When Client registration itself hits that exact-ID predicate, the command returns a safe `possible_duplicate_review_required` conflict and commits no Client Account, Client–Company Relationship, `client.created` event or relationship event. It does not auto-attach or disclose the existing Client. The governed union path remains available for duplicates that already exist; a blocked registration may proceed only through the delivered deliberate attach flow when the actor can already read and select the existing Client, or after correction of a genuinely mistaken submitted identifier. This first slice provides no override that creates a second persisted Client with the same normalized IDNO/tax identifier.
+
+Registration and every correction that changes an IDNO/tax value to a non-empty normalized value use the same atomic conflict boundary. Inside the owning transaction, the server acquires a lock keyed by `(Workspace, normalized identifier)` and then rechecks both non-superseded Clients and identifiers retained by union history before any mutation. A normalized identifier retained in a superseded snapshot remains reserved to that union's canonical Client even when the canonical Client's current identifier later changes. A correction target may reclaim a reserved identifier only when the reservation's deduplicated live-target set contains exactly that target and no different current non-superseded Client carries the identifier; this sole-owner reclaim is not a collision. Every other current or reserved match returns the same opaque `possible_duplicate_review_required` conflict and commits no Client, relationship, dossier correction, version change or `client.created`, `client.corrected` or relationship event. The server resolves a reserved match to its live target set only inside the authorized handoff; the conflict exposes no historical or canonical identity, and the first slice has no identifier-release or reassignment action for a different Client. After a successful reversal, the reservation resolves to the restored original dossier or dossiers, so no third Client may claim it. Registration↔registration, registration↔correction and correction↔correction races for the same key serialize, so at most one previously unused and unreserved normalized identifier mutation commits. A correction that leaves its target's normalized identifier unchanged, or that performs the permitted sole-owner reservation reclaim, is not a new collision. Viewing the full candidate comparison requires current read authority for every persisted candidate plus an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every Company in the candidate review scope. The shared `company_director_client_access` label or legacy `v1` alone is insufficient. The server resolves and authorizes that complete Company set before returning comparison data; a partial or failed check returns only safe denial and no hidden metadata.
+
+A resolver assertion or any combination of supporting fields cannot override the missing-ID guard. Ambiguous branch, subsidiary or distinct-legal-entity cases stay outside this workflow until Client Legal Entity behavior is delivered.
+
+### 11.2 Authority and disagreement
+
+For persisted-only candidate comparison and a new union, the **affected Companies** are the unique active Companies that have an active Client–Company Relationship to either input at command time. That set must be nonempty; an empty set returns a safe unavailable outcome, grants no authority vacuously, changes nothing and requests no Activity Log projection. A successful union immutably captures that complete nonempty Company set on its operation. Reversal always reuses the captured set rather than recomputing it from current relationships or Company status. An archived relationship remains preserved against its source Client but is excluded from duplicate-resolution authority, confirmation, canonical current-access projection and Activity Log projection scope; union never reactivates it. An active relationship to an inactive Company blocks union under the active-Company guard. Any future relationship-restore capability must reconcile its Client to the then-current canonical identity in a separate governed transition.
+
+A same-Company union requires an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in that Company. A cross-Company union requires that same captured `v2` authority in every affected Company. One actor may confirm in one command only when that actor already holds every required Company scope. Otherwise the operation is unavailable until a separately delivered multi-approver workflow exists.
+
+Any disagreement means no union. AI, matching score, Workspace ownership and role-name strings cannot override the missing approval.
+
+Every union requires at least one affected Company, current read authority for both affected Clients, active affected Companies, complete duplicate-resolution authority, fresh versions and complete affected-Company confirmation. Reversal requires the same guards across every Company captured by the union; if any captured Company is inactive, unavailable or unauthorized, reversal blocks instead of shrinking the scope. A failure of any such guard, including a concurrency conflict, blocks the requested command.
+
+For a new union, both inputs must also be active, current Client dossiers that are not already superseded and do not participate in another unreversed union. They must be the complete exact-normalized-identifier candidate group of exactly two persisted Clients at command time; a third active non-superseded match blocks pairwise union with the authorized remediation-required outcome. An archived or superseded Client or an active union participant blocks the new union command. Chained or overlapping unions and legacy multi-candidate remediation are outside the first vertical slice. Every denial creates no success event and reveals no hidden Client or Company metadata.
+
+### 11.3 Union result
+
+The resolver:
+
+- chooses the canonical Client and current shared values field by field;
+- reviews the identity basis and every material difference;
+- places every Contact entry from both inputs, with its stable source identity and provenance, on the canonical current dossier by default;
+- supplies a written reason;
+- confirms the complete affected-Company set.
+
+Union never hard-deletes either Client or rewrites its immutable pre-union snapshot. The selected field values update the chosen canonical Client's current projection as one attributable union change, while both pre-union snapshots remain reconstructible. Complementary Contacts from both inputs are therefore visible on the canonical current dossier; no Contact is automatically deduplicated, collapsed or stranded only on the superseded dossier. Explicit Contact consolidation selects the retained current representation field by field, preserves every source identity in union history and never erases either pre-union value.
+
+Before mutation, union preflight computes the complete source-preserving current Contact result after any explicit consolidation. If it would exceed the delivered maximum of 50 Contacts, the whole union is blocked with a safe non-leaking capacity error and creates no mutation, success event or projection. This slice does not raise that limit, discard a Contact, auto-consolidate entries or strand overflow on the superseded dossier. The operation may be retried only when a source-preserving result is within the delivered limit or separately approved capacity work raises it.
+
+Every original Client–Company Relationship retains its identifier, responsible Company, confidentiality and historical source Client. Ordinary current access uses one active canonical relationship projection for each Company in the union of both dossiers' active relationships: an existing canonical relationship is reused, otherwise union creates a projection that references the preserved source relationship. No duplicate active canonical Client–Company pair is created. Before mutation, if the chosen canonical Client already owns an archived relationship for an affected Company whose relationship from the other input must remain active, union is blocked with a safe non-leaking conflict; the first slice never reactivates or repurposes that archived row as a canonical projection. The resolver may choose the other Client as canonical and retry when that removes the collision; if neither choice does, union remains unavailable. Because no archived row changes status, reversal never has to guess or restore a pre-union archived state. Lists and dossier reads use these canonical projections, so each previously involved Company keeps authorized access to the canonical Client. Company-owned Project, Contract, Document, invoice, Certificate and later operational records remain on their original identifiers and ownership boundary.
+
+The superseded dossier leaves default active search, but authorized users can follow its “united with…” history to the readable canonical Client.
+
+### 11.4 Reversal
+
+Union is reversible only under complete authority for the exact nonempty affected-Company set captured by that union. Reversal never recomputes or shrinks this set: every captured Company must still be active, and the actor must still hold current Client read plus captured resolver-enabled `v2` authority across all of them. Its Activity Log action emits exactly one projection for each captured Company. Reversal restores the governed pre-union state because originals and references remain preserved, and it never rewrites subsequent history.
+
+The first vertical implementation permits reversal only while version fences prove that the canonical dossier, its Contacts, every captured or union-created Client–Company Relationship and every captured Company's active lifecycle remain valid since union. Any post-union correction, Contact change, relationship attach/archive or new operational reference blocks reversal for controlled resolution. A successful reversal removes only union-created canonical relationship projections, restores ordinary lookup through the preserved original relationships and leaves pre-existing canonical relationships intact.
+
+Reversal requires its own written reason. The restricted operation record appends it separately and never overwrites the original union reason. The command never discards, guesses at or automatically redistributes intervening data.
+
+### 11.5 Representative acceptance cases
+
+1. Same IDNO with spelling variation and complementary Contacts: eligible for human-confirmed union.
+2. Similar name with different IDNO: union blocked.
+3. Shared brand or corporate group with distinct legal identifiers and Contracts: separate legal entities, outside this workflow.
+
+These are synthetic Product Owner acceptance cases, not examples supplied by Iurie. Real anonymized cases may improve later matching evaluation without blocking the first safe slice.
+
+## 12. Testing decisions
 
 - PostgreSQL REST tests for identity, relationship uniqueness and isolation;
 - browser journey for search-before-create, relationship and overview;
 - negative tests for Company activity and metadata leakage;
-- duplicate scenarios with representative scripts/spellings;
-- correction/history tests through public commands.
+- exact normalized IDNO/tax candidates with display-name script/spelling variations, plus negative name-only and missing/different-identifier cases;
+- registration-conflict tests proving an exact-ID hit returns only `possible_duplicate_review_required` and creates no Client, relationship or success event, while non-candidates retain the delivered registration behavior;
+- PostgreSQL REST concurrency tests for registration↔registration, registration↔ID-changing correction and correction↔correction on the same Workspace/normalized-ID key, proving one commit at most, opaque conflicts for losers, no losing version changes or success events, and independent progress for different Workspaces or identifiers;
+- correction-conflict tests proving that a sequential ID change to another current or historically reserved normalized identifier returns the same nonmutating opaque conflict, that a superseded reservation follows its canonical Client, that an authorized handoff for reserved X includes and authorizes the canonical Client after its current identifier changes to Y or the restored originals after reversal before applying cardinality, that the sole live reservation owner may atomically reclaim X while another Client or a shared restored reservation still conflicts, and that an unchanged normalized ID does not create a false collision;
+- correction/history tests through public commands;
+- PostgreSQL REST tests for one logical union/reversal operation, one internal operation identifier, stable `client_union_operation` target type, a distinct unpredictable public projection reference per affected Company, no shared/internal correlation key, actor identity, exact/coarse action time or cross-scope ordering key in redacted reads, independently generated Company-local ordering, shared correlation/actor/time only after complete affected-Company captured-`v2` authority, separate union/reversal reasons, redacted Company-scoped event projections and matching safe target representations, exactly one event projection per union-captured affected Company, reversal rejection when any captured Company becomes inactive instead of scope shrinkage, versioned fixed-bundle assignment lifecycle, rejection of any Document-derived candidate or identity-basis input, canonical Contact union/consolidation, canonical relationship projection/reuse, continued Company access, stale state, blocked identifiers, post-union reversal guards and preserved source relationships;
+- migration tests starting from the delivered unversioned assignment schema and proving every legacy row is backfilled to `v1` with exactly `client.read`, `client.create` and `client.update`, denies `client.duplicate.resolve`, preserves scope/status and fails closed for null or unknown versions;
+- assignment-version tests proving that a prior-version active assignee gains no resolver authority until an explicit attributable Workspace Owner revoke and fresh versioned grant;
+- comparison-authorization tests proving that the shared bundle label and legacy `v1` cannot reveal full candidate data, that a captured resolver-enabled `v2` version or hash is required throughout the candidate review scope, and that a rejected Company B attempt against a Company A Client denies both A-only and B-only resolvers; multi-candidate cases cover a rejected proposal matching exactly two persisted Clients as well as existing-dossier groups of three or more, and prove partial authority reveals nothing while complete authority receives only `multiple_duplicate_candidates_require_data_remediation`, with no comparison, arbitrary pair, mutation or success event; affected-scope cases prove archived relationships are preserved but excluded, a persisted-only group with no active relationship cannot be compared or united, and an active relationship to an inactive Company blocks union;
+- Contact-capacity tests proving that a 51-to-100-entry union result is rejected atomically without discard, stranding or success events, while a source-preserving result at or below 50 succeeds;
+- relationship-collision tests proving that a chosen canonical Client's pre-existing archived row blocks any union that would need it active, creates no mutation/event, permits retry with the other canonical choice when safe, and never requires reversal to restore an archived status;
+- browser comparison at desktop and narrow widths for canonical field selection, reason, blocked union, superseded history and reversal.
 - #141 proves its narrow two-Company identity journey through REST/PostgreSQL, migration, public UI and browser seams while returning no relationship collection or operational activity.
 
-## 12. Acceptance journey
+## 13. Acceptance journey
 
-A BIC user searches for an existing shared Client, adds a BIC relationship and sees only authorized activity. A PRISMA-PRIM user sees the same shared identity with separate activity. A new similar name produces a duplicate warning, not a merge. An authorized reviewer resolves the candidate and history remains attributable.
+A BIC user searches for an existing shared Client, adds a BIC relationship and sees only authorized activity. A PRISMA-PRIM user sees the same shared identity with separate activity. A reused exact normalized IDNO/tax identifier makes registration return an opaque `possible_duplicate_review_required` conflict with no Client, relationship or success event; it neither merges nor auto-attaches, while a similar name alone produces no candidate in this slice. The same result applies when a correction attempts to adopt another Client's normalized identifier, and simultaneous create/correction attempts on one Workspace/identifier key permit at most one commit. An authorized reviewer resolves the candidate and history remains attributable.
 
-## 13. Business evidence at the current audited boundary
+## 14. Business evidence at the current audited boundary
 
 The current audited evidence and Iurie's direct 2026-08-23 response approve the following boundary:
 
@@ -125,31 +203,32 @@ The current audited evidence and Iurie's direct 2026-08-23 response approve the 
 - Only the relevant Company's director may confirm a duplicate and decide a significant correction or union, with the required history preserved.
 - Representative cases are: a PRISMA-PRIM-only consulting Client; a Client using PRISMA-PRIM consulting, BIC certification and EUROCERTGRUP (`ECG`) internal audit; and one organization with multiple branches or legal entities whose Projects, Contracts and invoices remain separate but relate to the main organization.
 
-Still blocking later ticket decomposition:
+Still blocking separate later slices:
 
 - exact branch and Client Legal Entity modelling for the representative complex case;
-- identifier normalization and matching rules;
-- duplicate candidate generation, referential-history and safe union design;
-- archive/correction practice for real representative Clients;
-- broader Client-overview questions beyond the first enriched slice.
+- general fuzzy matching, transliteration and evaluation against real examples;
+- asynchronous multi-person approval when no one resolver holds every affected Company scope;
+- remediation of legacy normalized identifiers shared by three or more active Clients;
+- archive/restore practice beyond governed union reversal;
+- broader Client-overview questions beyond the delivered Company Director dossier.
 
-The #140 completion package is satisfied and normalized through #144 for the first enriched slice. It does not make duplicate union, archive/restore or Client Legal Entity behaviour ready.
+The #140 completion package is satisfied and normalized through #144 for the first enriched slice. Dan's separately approved DEC-213 / #148 product synthesis makes one conservative governed duplicate-resolution slice ready for vertical ticketing; broader archive/restore and Client Legal Entity behaviour remain separate.
 
 Question sources: S00, S02 and the direct 2026-08-23 answer in #81. Provenance owner: issue #81; semantic coverage owner: `docs/product/iurie-business-answer-coverage.md`.
 
-## 14. Technical dependencies
+## 15. Technical dependencies
 
 - Company/RBAC capability;
 - canonical Client vocabulary;
-- matching normalization research without automatic authority;
-- duplicate-resolution and referential-history design.
+- general fuzzy/transliteration matching research without automatic authority;
+- transaction, persistence and rollback implementation for the approved union-operation and source-reference contract inside the vertical slice.
 
-## 15. Readiness
+## 16. Readiness
 
-Issue #141 delivered the initial approved implementation child: a bootstrap Workspace Owner can create a Client Account containing only id and display name, search that minimal identity and explicitly relate it to a second active Company. It remains the runtime baseline for the newly approved enriched slice.
+Issue #141 delivered the initial minimal Client implementation child. Issue #146 / PR #147 then delivered the enriched Company Director dossier and is the runtime baseline for the newly approved duplicate-resolution slice.
 
-After #144 provenance review, one vertical child may enrich the Client dossier for a Company Director, enforce the approved shared/confidential boundary and provide attributable correction history. Governed duplicate union, archive/restore, Client Legal Entities and broader Client-overview behaviour remain separate blocked slices.
+Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential boundary and attributable correction history. After #148 normalization, one next vertical child may implement the conservative governed duplicate-resolution contract in section 11. Client Legal Entities, general fuzzy entity resolution, legacy multi-candidate data remediation, asynchronous multi-person approval, broader archive/restore and broader Client-overview behaviour remain separate slices.
 
-## 16. Evidence authority boundary
+## 17. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes automatic duplicate handling, broad cross-Company visibility or any runtime rule by itself. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
