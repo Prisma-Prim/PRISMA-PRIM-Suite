@@ -20,7 +20,7 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Use the base profile only when neither PostgreSQL nor browser coverage is required. Fix safe setup drift before implementation and record unresolved failures in the final retrospective.
 5. Inspect the current implementation and the highest stable public test seam.
 6. Restate the observable outcome, exclusions, authority owners, decisions that require escalation, public module boundary, and first failing test in a short execution note.
-7. Classify the issue using the [complex-feature preflight](complex-feature-preflight.md). For a triggered issue, complete or link the matrix and obtain the pre-code Spec review result before the first implementation edit. For a narrow low-risk issue, record the compact exemption marker instead.
+7. Classify the issue and planned PR as `mechanical`, `product-contract`, or `implementation` using the [complex-feature preflight](complex-feature-preflight.md). Classify semantics rather than file types. For a triggered issue, complete or link the matrix and obtain the exact pre-code Spec approval marker before the first implementation edit. For a narrow low-risk issue, record the exemption marker and a concrete `- Exemption reason:` line. Every issue that a PR closes has exactly one disposition marker.
 
 ### Implementation
 
@@ -44,6 +44,10 @@ Every harness must follow these steps even when it cannot perform GitHub or loca
 5. Review it again against the originating issue or Spec.
 6. Correct every material finding and rerun affected checks.
 7. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
+
+Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
+
+After terminal feedback, collect all findings before changing the branch and publish at most one grouped correction. If another material product-contract wave appears, stop editing and return the issue to preflight. Do not continue a one-finding/one-commit loop.
 
 For a slice that crosses PostgreSQL, migrations, or browser behavior, run the
 [local PostgreSQL and browser preflight](local-ci-preflight.md) before deep
@@ -73,7 +77,7 @@ Harness capabilities and user authorization determine publication actions. A tas
 
 If `AGENTS.md` records standing repository authorization, it satisfies the authorization requirement for every conformant PR until explicitly revoked. Do not pause to request per-PR confirmation. Readiness remains mandatory: all required checks must be green, Standards and Spec reviews complete, scope conformant, and blocking feedback resolved.
 
-The PR body must include `Closes #N`, delivered behavior, checks, browser evidence when applicable, decisions, remaining limitations, Standards review, Spec review, and the environment retrospective.
+The PR body must include `Closes #N`, the three common classification fields, any applicable conditional evidence, delivered behavior, checks, browser evidence when applicable, decisions, remaining limitations, Standards review, Spec review, and the environment retrospective. Pull-request governance fetches the closing issue and verifies that its preflight disposition and required approval marker match the PR; editing that issue dispatches a fresh check on every affected open PR head. Review-iteration metrics come from GitHub timelines during the five-PR retrospective; authors do not maintain a blocking counter.
 
 ## Genuine blockers
 

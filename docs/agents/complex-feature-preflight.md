@@ -1,23 +1,33 @@
 # Complex-feature preflight
 
-Use this small pre-code check when one issue crosses a boundary where a missing contract can create late, repeated review cycles. It is repository guidance, not a personal skill or a replacement for Standards, Spec, CI, deep review, or product decisions.
+Use this pre-code check only when a missing product contract could create late review cycles. Classify the semantic change, not the file type: a Markdown edit that changes product behavior is a product-contract change.
 
-## When it is required
+## Pull-request classification
 
-Complete the preflight when the issue involves any of these high-risk boundaries:
+Every PR declares exactly three fields:
 
-- authentication, authorization, permissions, Role Assignments, or Workspace isolation;
-- schema constraints, backfills, or migration from the previous schema;
-- Activity Log attribution or immutable evidence;
-- asynchronous identity, session, or selected-context changes in the UI;
-- concurrency, retries, idempotency, ABA, cancellation, or stale requests;
-- a transversal slice spanning several of API, persistence, audit, web, and browser seams.
+- **Class:** `mechanical`, `product-contract`, or `implementation`;
+- **Product contract changed:** `yes` or `no`;
+- **Preflight:** `exempt-low-risk`, `required`, or `linked path/to/preflight.md`.
 
-An isolated low-risk change or narrow documentation correction is exempt. Do not use the preflight merely because a diff touches several files. If classification is uncertain, the execution note states the concern and the Spec reviewer decides before code.
+Add evidence only when it applies:
 
-## Portable markers and advisory guard
+- **Exemption reason:** required for `exempt-low-risk`;
+- **High-risk boundaries:** required when one or more boundaries apply; absence means none;
+- **Normative owner:** required when the product contract changed;
+- **Pre-code Spec review:** `approved`, required when the product contract changed or a full preflight is used.
 
-Put exactly one marker in the issue or execution-note Markdown:
+Do not add `not-applicable` placeholders. A mechanical PR must declare no product-contract change and use `exempt-low-risk`. A product-contract PR must declare a product-contract change. Any high-risk boundary requires a full preflight.
+
+## High-risk boundaries
+
+Use the canonical values `authentication`, `authorization`, `permissions`, `workspace-isolation`, `migration`, `activity-log`, `privacy`, `async-identity`, `concurrency`, and `transversal`.
+
+A full preflight is required when one of those boundaries applies. An isolated low-risk change is exempt. A narrow product-contract clarification may be exempt only when it has no high-risk boundary and receives Spec approval before code.
+
+## Exact issue markers
+
+Every issue closed by a PR contains exactly one disposition marker:
 
 ```markdown
 <!-- complex-feature-preflight: required -->
@@ -25,39 +35,44 @@ Put exactly one marker in the issue or execution-note Markdown:
 <!-- complex-feature-preflight: linked docs/path/to/authoritative-preflight.md -->
 ```
 
-Keep only the marker that applies. The guard rejects notes containing multiple or contradictory markers. A linked path is repository-relative and must remain inside the repository. Check the note with:
+Keep only the applicable line. An exemption also contains a concrete line in this exact form:
+
+```markdown
+- Exemption reason: isolated documentation correction with no product-contract change.
+```
+
+A required or linked preflight, and every product-contract change, records approval with exactly one marker in the authoritative issue or linked note:
+
+```markdown
+<!-- pre-code-spec-review: approved -->
+```
+
+The validator reads only these machine markers and named fields outside code examples. It does not interpret review headings, `PASS` prose, or legacy approval sentences. A linked path is case-sensitive and repository-relative; its canonical target must stay inside the repository, including through symlinks.
+
+For local drafting, run:
 
 ```text
 node scripts/validate-complex-feature-preflight.mjs --advisory path/to/issue-or-brief.md
 ```
 
-The guard checks only the marker and named fields. It deliberately does not judge architecture or natural-language quality. A missing marker does not fail because the agent and Spec reviewer own risk classification; once an issue is marked as required, missing fields produce clear advice. Remove `--advisory` when a harness needs a non-zero exit code.
+Pull-request governance runs the same checks in blocking mode against the closing issue.
 
-## Required compact matrix
+## Required matrix
 
-Use the [ticket template](complex-feature-preflight-template.md) or link an existing authoritative document. Keep entries concise and observable.
+For `required` or `linked`, use the [execution-note template](complex-feature-preflight-template.md) and complete these seven sections before implementation:
 
-1. **States and transitions**: initial, pending, success, error, empty, forbidden, inactive or revoked, and recovery paths that apply.
-2. **Actors and identities**: caller, target, Workspace, selected context, and identity replacement or sign-out while work is pending.
-3. **Mutation contract**: route, request and response statuses, safe errors, idempotency scope, retry or ABA semantics, stale-actor or cancellation behaviour, and Activity Log transition.
-4. **Data authority**: named permissions, server-authoritative checks, database constraints, and previous-schema migration expectations.
-5. **Surfaces**: backend, schema or migration, audit, frontend, browser journey, and docs or OpenAPI, explicitly marking non-applicable surfaces.
-6. **Test matrix**: the highest stable seam for each meaningful transition, including empty versus forbidden and stale identity when relevant.
-7. **Exclusions and unresolved decisions**: scope deliberately deferred and decisions that still block safe implementation.
-8. **Spec review result**: the reviewer confirms before code that the matrix covers the issue and its authoritative PRD, or records the missing contract that must be resolved first.
+1. **States and transitions**
+2. **Actors and identities**
+3. **Mutation contract**
+4. **Data authority**
+5. **Surfaces**
+6. **Test matrix**
+7. **Exclusions and unresolved decisions**
 
-## Worked transversal example
+The Spec reviewer decides whether the content is sufficient and adds the exact approval marker. Automation verifies structure and recorded disposition, not architectural quality.
 
-A Company-context access mutation changes authorization, persistence, Activity Log evidence, and an asynchronous selector. Its matrix distinguishes an active member with no assigned Company (empty success) from a caller lacking the named permission (forbidden). It records what happens when the caller signs out during a pending mutation, scopes the idempotency key to the actor and operation, requires the database constraint and previous-schema migration test, then maps those transitions to API, PostgreSQL, UI, and browser seams. Spec review approves that matrix before implementation.
+## Review-cycle stop rule
 
-## Exempt narrow example
+Complete formatting, Standards review, and Spec review against the full diff before the first publication. After terminal feedback, collect all material findings and publish one grouped correction. If a second material product-contract wave appears, stop editing and return the issue to preflight.
 
-A correction to a broken documentation link has no business-state transition, identity, mutation, persistence, or browser contract. Its execution note contains only:
-
-```markdown
-<!-- complex-feature-preflight: exempt-low-risk -->
-
-Reason: isolated documentation link correction with no observable product behaviour change.
-```
-
-Do not manufacture a state matrix for that issue.
+After five merged PRs, use GitHub timelines and a short retrospective to compare late corrections, false-positive failures, and mechanical-PR completion time. Keep this gate only if it reduces rework without slowing the simple path; otherwise simplify or remove it.

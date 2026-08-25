@@ -4,6 +4,21 @@
 
 Closes #
 
+## Change classification
+
+<!-- Keep this block compact. Use canonical values from docs/agents/complex-feature-preflight.md. -->
+
+- Class: mechanical / product-contract / implementation
+- Product contract changed: yes / no
+- Preflight: exempt-low-risk / required / linked path/to/preflight.md
+
+<!-- Add only the lines that apply:
+- Exemption reason: concrete reason for exempt-low-risk
+- High-risk boundaries: authentication, authorization, permissions, workspace-isolation, migration, activity-log, privacy, async-identity, concurrency, transversal
+- Normative owner: docs/path/to/normative-document.md
+- Pre-code Spec review: approved
+-->
+
 ## Scope and decisions
 
 - In scope:
