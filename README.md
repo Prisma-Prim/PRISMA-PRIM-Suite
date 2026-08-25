@@ -154,7 +154,7 @@ For Codex Cloud setup, maintenance, isolated database variables, and cache-reset
 4. Each GitHub ticket is a narrow, end-to-end tracer bullet with explicit blockers.
 5. Every AI coding harness reads `AGENTS.md` and `docs/agents/issue-execution.md` before editing.
 6. Implementation follows red-green-refactor at the highest stable test seam.
-7. The final diff is reviewed against both repository standards and the originating specification.
+7. The final diff follows the [selected delivery path](docs/agents/issue-execution.md): one combined review for eligible low-risk work, or the full review path otherwise.
 8. Every AI-assisted PR records an Agent environment retrospective so recurring setup friction becomes an actionable improvement.
 9. Generated SQL migrations are inspected and committed; schema push is not used in production.
 
