@@ -73,6 +73,6 @@ The Spec reviewer decides whether the content is sufficient and adds the exact a
 
 ## Review-cycle stop rule
 
-Complete formatting, Standards review, and Spec review against the full diff before the first publication. After terminal feedback, collect all material findings and publish one grouped correction. If a second material product-contract wave appears, stop editing and return the issue to preflight.
+Complete formatting and the selected path's final review against the full diff before the first publication. After terminal feedback, apply the severity gate in [issue execution](issue-execution.md): the low-risk fast path collects blocking findings, defers all nonblocking feedback, and allows one grouped correction; the full path collects all material findings for its grouped correction. If a second blocking wave appears, stop editing and return the issue to process diagnosis or preflight.
 
 After five merged PRs, use GitHub timelines and a short retrospective to compare late corrections, false-positive failures, and mechanical-PR completion time. Keep this gate only if it reduces rework without slowing the simple path; otherwise simplify or remove it.

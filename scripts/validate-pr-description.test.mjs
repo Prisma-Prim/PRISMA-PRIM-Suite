@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,6 +18,27 @@ import {
   validatePullRequestBody,
   validatePullRequestGovernance,
 } from './validate-pr-description.mjs';
+
+async function readMarkdownTree(directoryUrl) {
+  const contents = [];
+
+  for (const entry of await readdir(directoryUrl, { withFileTypes: true })) {
+    const entryUrl = new URL(
+      `${entry.name}${entry.isDirectory() ? '/' : ''}`,
+      directoryUrl,
+    );
+
+    if (entry.isDirectory()) {
+      contents.push(...(await readMarkdownTree(entryUrl)));
+    } else if (entry.name.endsWith('.md')) {
+      contents.push(
+        `${entryUrl.pathname}\n${await readFile(entryUrl, 'utf8')}`,
+      );
+    }
+  }
+
+  return contents;
+}
 
 const minimalMechanicalBody = `
 ## Outcome
@@ -513,4 +541,146 @@ test('keeps only common mandatory fields visible in the PR template', async () =
   assert.match(template, /- Preflight:/);
   assert.doesNotMatch(template, /Review iterations after first publication/);
   assert.doesNotMatch(template, /not-applicable/);
+});
+
+test('makes the low-risk fast path the default PR process', async () => {
+  const [
+    agents,
+    execution,
+    preflight,
+    retrospective,
+    terminalGate,
+    knowledge,
+    ticketing,
+    template,
+  ] = await Promise.all([
+    readFile(new URL('../AGENTS.md', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../docs/agents/issue-execution.md', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../docs/agents/complex-feature-preflight.md', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL(
+        '../docs/agents/agent-environment-retrospective.md',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    readFile(
+      new URL('../docs/agents/codex-terminal-review-gate.md', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../docs/agents/repository-knowledge-system.md', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL(
+        '../docs/product/specification-and-ticketing-standard.md',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    readFile(
+      new URL('../.github/pull_request_template.md', import.meta.url),
+      'utf8',
+    ),
+  ]);
+
+  assert.match(agents, /low-risk fast path/i);
+  assert.match(agents, /docs\/agents\/issue-execution\.md/);
+
+  assert.match(execution, /low-risk fast path/i);
+  assert.match(execution, /P0 and P1.*blocking/is);
+  assert.match(
+    execution,
+    /P2 blocks only.*acceptance criteria.*security.*correctness/is,
+  );
+  assert.match(execution, /one final review pass/i);
+  assert.match(execution, /one focused commit/i);
+  assert.match(execution, /15-minute execution target/i);
+  assert.match(
+    execution,
+    /every nonblocking finding.*record the deferred disposition.*resolve.*review thread.*terminal-gate re-evaluation/is,
+  );
+  assert.match(execution, /do not request another Codex review/i);
+  assert.match(execution, /exact-head terminal review once/i);
+  assert.match(
+    execution,
+    /Merge immediately.*CI.*governance.*terminal review.*green/is,
+  );
+  assert.match(
+    execution,
+    /Every PR that is not eligible.*full verification.*This includes product-contract changes.*every implementation change/is,
+  );
+
+  assert.match(
+    preflight,
+    /low-risk fast path.*blocking findings.*defers all nonblocking feedback/is,
+  );
+  assert.match(preflight, /full path.*all material findings/is);
+  assert.match(retrospective, /compact block is the complete required format/i);
+  assert.match(
+    retrospective,
+    /required check that could not run is reportable friction/i,
+  );
+  assert.match(retrospective, /do not add a `none` placeholder/i);
+  assert.match(
+    terminalGate,
+    /every nonblocking finding.*deferred and resolved.*without\s+requesting another Codex review/is,
+  );
+  assert.match(
+    knowledge,
+    /one combined Standards.*originating-issue pass.*low-risk documentation.*separate full-path reviews/is,
+  );
+  assert.match(
+    ticketing,
+    /one combined final pass.*low-risk work.*separate Standards and Spec reviews.*full path/is,
+  );
+
+  const processMarkdown = [
+    agents,
+    ...(await readMarkdownTree(new URL('../docs/', import.meta.url))),
+  ].join('\n');
+
+  assert.doesNotMatch(processMarkdown, /defer other P2 feedback/i);
+  assert.doesNotMatch(
+    processMarkdown,
+    /Review the actual finished diff twice/i,
+  );
+  assert.doesNotMatch(
+    processMarkdown,
+    /reviews? the final diff first against repository Standards and then against its originating issue/i,
+  );
+  assert.doesNotMatch(
+    processMarkdown,
+    /Standards review followed by Spec review/i,
+  );
+  assert.doesNotMatch(processMarkdown, /Review Standards, then Product/i);
+  assert.doesNotMatch(
+    processMarkdown,
+    /First review the document against this standard.*Then review it against the business problem/is,
+  );
+  assert.doesNotMatch(processMarkdown, /revizuire Standards,\s*apoi Spec/i);
+  assert.match(
+    processMarkdown,
+    /Fiecare issue.*traseul de revizuire selectat.*issue-execution/is,
+  );
+
+  assert.doesNotMatch(template, /## Scope and decisions/);
+  assert.doesNotMatch(template, /## Browser evidence/);
+  assert.doesNotMatch(template, /\| Check\s+\| Result/);
+  assert.doesNotMatch(template, /### Checks not run/);
+  assert.match(template, /- Evidence:/);
+  assert.match(template, /- Blocking feedback:/);
+  assert.match(template, /Full path: record both conclusions/);
+  assert.match(
+    template,
+    /full friction-case format in docs\/agents\/agent-environment-retrospective\.md/i,
+  );
+  assert.match(template, /none observed/i);
 });

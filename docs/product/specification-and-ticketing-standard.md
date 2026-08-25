@@ -74,9 +74,9 @@ Use the mandatory content in section 5. Apply to-spec discipline to the problem,
 
 **Complete when:** a context-free agent can explain the intended behaviour, boundaries, open evidence and acceptance journey without consulting the original conversation.
 
-### Step 4 — Review Standards, then Product
+### Step 4 — Review through the selected execution path
 
-First review the document against this standard and repository authorities. Then review it against the business problem and consolidated decisions. Resolve material findings before publication.
+Use the path selected by `docs/agents/issue-execution.md`. An eligible low-risk mechanical documentation change uses one combined final pass covering this standard, repository authorities and its originating issue. A PRD content or other product-contract change uses the full path: Standards review first, then Product or Spec review. Resolve findings according to that path before publication.
 
 **Complete when:** every decision is sourced, every open dependency is visible and no second source of truth is introduced.
 
@@ -202,7 +202,7 @@ Implementation follows docs/agents/issue-execution.md:
 - confirm blockers before editing;
 - red-green-refactor at the named seam;
 - one focused branch and PR;
-- Standards review followed by Spec review;
+- review through the selected issue-execution path: one combined final pass for eligible low-risk work, or separate Standards and Spec reviews on the full path;
 - complete verification and browser evidence where applicable;
 - mandatory Agent environment retrospective;
 - squash merge only after green checks and no blocking feedback.

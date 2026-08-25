@@ -1,6 +1,6 @@
 ## Outcome
 
-<!-- Describe the observable result, not the implementation chronology. -->
+<!-- State the observable result in one or two sentences. -->
 
 Closes #
 
@@ -19,51 +19,21 @@ Closes #
 - Pre-code Spec review: approved
 -->
 
-## Scope and decisions
-
-- In scope:
-- Explicitly excluded:
-- Consequential reversible decisions:
-- Deferred follow-ups:
-
 ## Verification
 
-| Check               | Result | Evidence or reason not run |
-| ------------------- | ------ | -------------------------- |
-| Targeted tests      |        |                            |
-| `pnpm agent:doctor` |        |                            |
-| `pnpm lint`         |        |                            |
-| `pnpm typecheck`    |        |                            |
-| `pnpm test`         |        |                            |
-| `pnpm build`        |        |                            |
-| `pnpm format:check` |        |                            |
+- Evidence:
 
-## Browser evidence
-
-<!-- Add viewports, journey, URLs, and deterministic capture paths, or explain why browser evidence is not applicable. -->
+<!-- List only affected checks and browser evidence that apply. -->
 
 ## Review
 
-- [ ] Standards review completed against the final diff; all material findings fixed.
-- [ ] Spec review completed against the originating issue; all material findings fixed.
-- Remaining limitations: none.
+- Blocking feedback: none.
+
+<!-- Low risk: one final pass covering Standards and Spec. Full path: record both conclusions. Add consequential decisions, material limitations, and deferred follow-up links only when they exist. -->
 
 ## Agent environment retrospective
 
 - Harness:
-- Environment:
-- OS/runtime:
+- Avoidable environment or repository friction: none observed.
 
-<!-- Use the full table when friction occurred. Otherwise keep the explicit no-friction declaration below. -->
-
-| Category | Evidence                                                  | Root cause | Confidence | Workaround | Durable fix | Status      |
-| -------- | --------------------------------------------------------- | ---------- | ---------- | ---------- | ----------- | ----------- |
-| None     | No avoidable environment or repository friction observed. | N/A        | Confirmed  | N/A        | None        | Fixed in PR |
-
-### Checks not run
-
-- None.
-
-### Follow-up
-
-- None.
+<!-- If friction occurred, replace the no-friction line with the full friction-case format in docs/agents/agent-environment-retrospective.md. -->
