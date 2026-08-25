@@ -2,6 +2,7 @@
 
 <!-- Keep exactly one marker and delete the other examples. -->
 <!-- complex-feature-preflight: required -->
+<!-- The Spec reviewer adds the exact approval marker documented in complex-feature-preflight.md only after approval. -->
 
 ## Outcome and risk classification
 
@@ -54,9 +55,3 @@
 
 - Explicit exclusions:
 - Unresolved decisions or blockers:
-
-### Spec review result
-
-- Reviewer:
-- Result: approved before code / changes required
-- Contract gaps found:

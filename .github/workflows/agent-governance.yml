@@ -1,30 +1,672 @@
 name: Agent governance
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened]
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, closed]
+  issues:
+    types: [edited]
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Pull request number to revalidate
+        required: true
+        type: string
+      head_sha:
+        description: Exact pull request head SHA to revalidate
+        required: true
+        type: string
+      revision_token:
+        description: Digest of the exact PR and issue revision to revalidate
+        required: true
+        type: string
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
-  pr-description:
+  refresh-after-issue-edit:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: write
 
     steps:
-      - name: Check out repository
+      - name: Check out trusted default branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Revalidate pull requests that close the edited issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = await import('node:path');
+            const { pathToFileURL } = await import('node:url');
+            const validatorUrl = pathToFileURL(
+              path.join(
+                process.env.GITHUB_WORKSPACE,
+                'scripts/validate-pr-description.mjs',
+              ),
+            ).href;
+            const {
+              closingIssueNumber,
+              governanceRevisionToken,
+            } = await import(validatorUrl);
+            const issueNumber = context.payload.issue.number;
+            const issueBody = context.payload.issue.body ?? '';
+            const statusContext = 'Agent governance / pr-description';
+            const pullRequests = await github.paginate(
+              github.rest.pulls.list,
+              { ...context.repo, state: 'open', per_page: 100 },
+            );
+
+            for (const pullRequest of pullRequests) {
+              if (closingIssueNumber(pullRequest.body ?? '') !== issueNumber) {
+                continue;
+              }
+
+              const sharedHeadPullRequests = pullRequests.filter(
+                (candidate) => candidate.head.sha === pullRequest.head.sha,
+              );
+              if (sharedHeadPullRequests.length !== 1) {
+                await github.rest.repos.createCommitStatus({
+                  ...context.repo,
+                  sha: pullRequest.head.sha,
+                  state: 'failure',
+                  context: statusContext,
+                  description: 'Open PRs must not share one head commit.',
+                });
+                core.setFailed(
+                  `PR #${pullRequest.number} shares head ${pullRequest.head.sha} with another open PR.`,
+                );
+                continue;
+              }
+
+              try {
+                await github.rest.repos.createCommitStatus({
+                  ...context.repo,
+                  sha: pullRequest.head.sha,
+                  state: 'pending',
+                  context: statusContext,
+                  description: 'Revalidating after the closing issue changed.',
+                  target_url:
+                    `${context.serverUrl}/${context.repo.owner}/` +
+                    `${context.repo.repo}/actions/runs/${context.runId}`,
+                });
+                await github.rest.actions.createWorkflowDispatch({
+                  ...context.repo,
+                  workflow_id: 'agent-governance.yml',
+                  ref: context.payload.repository.default_branch,
+                  inputs: {
+                    pull_request_number: String(pullRequest.number),
+                    head_sha: pullRequest.head.sha,
+                    revision_token: governanceRevisionToken({
+                      pullRequestNumber: pullRequest.number,
+                      headSha: pullRequest.head.sha,
+                      pullRequestBody: pullRequest.body,
+                      issueNumber,
+                      issueBody,
+                    }),
+                  },
+                });
+              } catch (error) {
+                await github.rest.repos.createCommitStatus({
+                  ...context.repo,
+                  sha: pullRequest.head.sha,
+                  state: 'failure',
+                  context: statusContext,
+                  description: 'Could not start fresh issue revalidation.',
+                  target_url:
+                    `${context.serverUrl}/${context.repo.owner}/` +
+                    `${context.repo.repo}/actions/runs/${context.runId}`,
+                });
+                core.setFailed(
+                  `Could not revalidate PR #${pullRequest.number}: ${error.message}`,
+                );
+              }
+            }
+
+  refresh-after-shared-head-change:
+    if: github.event_name == 'pull_request_target' && (github.event.action == 'closed' || github.event.action == 'synchronize')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: write
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Revalidate a remaining PR on the vacated head
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = await import('node:path');
+            const { pathToFileURL } = await import('node:url');
+            const validatorUrl = pathToFileURL(
+              path.join(
+                process.env.GITHUB_WORKSPACE,
+                'scripts/validate-pr-description.mjs',
+              ),
+            ).href;
+            const {
+              closingIssueNumber,
+              governanceRevisionToken,
+            } = await import(validatorUrl);
+            const vacatedHead =
+              context.payload.action === 'closed'
+                ? context.payload.pull_request.head.sha
+                : context.payload.before;
+            const pullRequests = await github.paginate(
+              github.rest.pulls.list,
+              { ...context.repo, state: 'open', per_page: 100 },
+            );
+            const survivors = pullRequests.filter(
+              (pullRequest) => pullRequest.head.sha === vacatedHead,
+            );
+            if (survivors.length === 0) return;
+
+            const statusContext = 'Agent governance / pr-description';
+            if (survivors.length > 1) {
+              await github.rest.repos.createCommitStatus({
+                ...context.repo,
+                sha: vacatedHead,
+                state: 'failure',
+                context: statusContext,
+                description: 'Open PRs must not share one head commit.',
+              });
+              core.setFailed('Multiple open PRs still share the vacated head.');
+              return;
+            }
+
+            const pullRequest = survivors[0];
+            const issueNumber = closingIssueNumber(pullRequest.body ?? '');
+            let issueBody = '';
+            if (issueNumber !== null) {
+              const { data: issue } = await github.rest.issues.get({
+                ...context.repo,
+                issue_number: issueNumber,
+              });
+              issueBody = issue.body ?? '';
+            }
+            const revisionToken = governanceRevisionToken({
+              pullRequestNumber: pullRequest.number,
+              headSha: pullRequest.head.sha,
+              pullRequestBody: pullRequest.body,
+              issueNumber,
+              issueBody,
+            });
+            await github.rest.repos.createCommitStatus({
+              ...context.repo,
+              sha: pullRequest.head.sha,
+              state: 'pending',
+              context: statusContext,
+              description: 'Revalidating after a shared-head PR closed.',
+              target_url:
+                `${context.serverUrl}/${context.repo.owner}/` +
+                `${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo,
+              workflow_id: 'agent-governance.yml',
+              ref: context.payload.repository.default_branch,
+              inputs: {
+                pull_request_number: String(pullRequest.number),
+                head_sha: pullRequest.head.sha,
+                revision_token: revisionToken,
+              },
+            });
+
+  mark-pr-governance-pending:
+    if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+      statuses: write
+
+    steps:
+      - name: Mark the exact pull request head as pending
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const requestedPullRequest = context.payload.pull_request;
+            const { data: currentPullRequest } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: requestedPullRequest.number,
+            });
+            if (
+              currentPullRequest.head.sha !== requestedPullRequest.head.sha ||
+              (currentPullRequest.body ?? '') !==
+                (requestedPullRequest.body ?? '')
+            ) {
+              core.setFailed('Ignored a stale pull request event.');
+              return;
+            }
+            await github.rest.repos.createCommitStatus({
+              ...context.repo,
+              sha: requestedPullRequest.head.sha,
+              state: 'pending',
+              context: 'Agent governance / pr-description',
+              description: 'Validating pull request governance declarations.',
+              target_url:
+                `${context.serverUrl}/${context.repo.owner}/` +
+                `${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+
+  pr-description:
+    needs: mark-pr-governance-pending
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.action != 'closed' && needs.mark-pr-governance-pending.result == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      revision-token: ${{ steps.enforce.outputs.revision-token }}
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Check out candidate data
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ format('refs/pull/{0}/head', github.event_name == 'workflow_dispatch' && inputs.pull_request_number || github.event.pull_request.number) }}
+          path: candidate
+          persist-credentials: false
+
+      - name: Verify exact pull request head
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
+        run: test "$(git -C candidate rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .node-version
+          node-version-file: trusted/.node-version
 
-      - name: Test governance validators
-        run: node --test scripts/validate-pr-description.test.mjs
+      - name: Test trusted governance validators
+        run: >-
+          node --test
+          trusted/scripts/validate-pr-description.test.mjs
+          trusted/scripts/validate-complex-feature-preflight.test.mjs
 
-      - name: Review pull request description (advisory)
+      - name: Enforce pull request and originating issue contract
+        id: enforce
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = await import('node:path');
+            const { pathToFileURL } = await import('node:url');
+            const dispatched = context.eventName === 'workflow_dispatch';
+            const trustedRoot = path.join(
+              process.env.GITHUB_WORKSPACE,
+              'trusted',
+            );
+            const candidateRoot = path.join(
+              process.env.GITHUB_WORKSPACE,
+              'candidate',
+            );
+            const validatorUrl = pathToFileURL(
+              path.join(
+                trustedRoot,
+                'scripts/validate-pr-description.mjs',
+              ),
+            ).href;
+            const {
+              closingIssueNumber,
+              governanceRevisionToken,
+              validatePullRequestGovernance,
+            } = await import(validatorUrl);
+
+            let pullRequest = context.payload.pull_request;
+            if (dispatched) {
+              const pullRequestNumber = Number(
+                context.payload.inputs?.pull_request_number,
+              );
+              const response = await github.rest.pulls.get({
+                ...context.repo,
+                pull_number: pullRequestNumber,
+              });
+              pullRequest = response.data;
+              if (
+                pullRequest.head.sha !== context.payload.inputs?.head_sha
+              ) {
+                core.setFailed(
+                  `PR #${pullRequestNumber} moved after revalidation was requested.`,
+                );
+                return;
+              }
+            }
+
+            const openPullRequests = await github.paginate(
+              github.rest.pulls.list,
+              { ...context.repo, state: 'open', per_page: 100 },
+            );
+            const sharedHeadPullRequests = openPullRequests.filter(
+              (candidate) => candidate.head.sha === pullRequest.head.sha,
+            );
+            if (
+              sharedHeadPullRequests.length !== 1 ||
+              sharedHeadPullRequests[0].number !== pullRequest.number
+            ) {
+              core.setFailed(
+                'Open PRs must not share one head commit during governance validation.',
+              );
+              return;
+            }
+
+            const body = pullRequest?.body ?? '';
+            const issueNumber = closingIssueNumber(body);
+            let issueBody = '';
+            let issueIsPullRequest = false;
+            let issueLookupFailed = false;
+            if (issueNumber !== null) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  ...context.repo,
+                  issue_number: issueNumber,
+                });
+                issueBody = issue.body ?? '';
+                issueIsPullRequest = Boolean(issue.pull_request);
+              } catch (error) {
+                issueLookupFailed = true;
+                issueBody = '<closing-issue-unavailable>';
+                core.warning(
+                  `Could not load closing issue #${issueNumber}: ${error.message}`,
+                );
+              }
+            }
+
+            const currentRevisionToken = governanceRevisionToken({
+              pullRequestNumber: pullRequest.number,
+              headSha: pullRequest.head.sha,
+              pullRequestBody: body,
+              issueNumber,
+              issueBody,
+            });
+            if (dispatched) {
+              if (
+                currentRevisionToken !==
+                context.payload.inputs?.revision_token
+              ) {
+                core.setFailed(
+                  `PR #${pullRequest.number} or its closing issue changed after revalidation was requested.`,
+                );
+                return;
+              }
+            }
+            core.setOutput('revision-token', currentRevisionToken);
+            if (issueLookupFailed) {
+              core.setFailed(`Closing issue #${issueNumber} could not be loaded.`);
+              return;
+            }
+
+            const errors = await validatePullRequestGovernance({
+              body,
+              issueBody,
+              issueIsPullRequest,
+              repositoryRoot: candidateRoot,
+              issueSource:
+                issueNumber === null
+                  ? 'originating issue'
+                  : `issue #${issueNumber}`,
+            });
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join('\n'));
+            } else {
+              core.notice(
+                `PR and issue #${issueNumber} governance declarations are valid.`,
+              );
+            }
+
+  report-governance-result:
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.action != 'closed'))
+    needs: pr-description
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: write
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Report exact-head governance result
+        uses: actions/github-script@v7
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: node scripts/validate-pr-description.mjs --advisory
+          VALIDATION_RESULT: ${{ needs.pr-description.result }}
+          VALIDATED_REVISION_TOKEN: ${{ needs.pr-description.outputs.revision-token }}
+        with:
+          script: |
+            const path = await import('node:path');
+            const { pathToFileURL } = await import('node:url');
+            const validatorUrl = pathToFileURL(
+              path.join(
+                process.env.GITHUB_WORKSPACE,
+                'scripts/validate-pr-description.mjs',
+              ),
+            ).href;
+            const {
+              closingIssueNumber,
+              governanceRevisionToken,
+            } = await import(validatorUrl);
+            const statusContext = 'Agent governance / pr-description';
+            const targetUrl =
+              `${context.serverUrl}/${context.repo.owner}/` +
+              `${context.repo.repo}/actions/runs/${context.runId}`;
+            const requestedHeadSha =
+              context.eventName === 'workflow_dispatch'
+                ? context.payload.inputs?.head_sha
+                : context.payload.pull_request.head.sha;
+            const requestedPullRequestBody =
+              context.eventName === 'pull_request_target'
+                ? context.payload.pull_request.body ?? ''
+                : null;
+
+            async function loadCurrentRevision() {
+              const pullRequestNumber =
+                context.eventName === 'workflow_dispatch'
+                  ? Number(context.payload.inputs?.pull_request_number)
+                  : context.payload.pull_request.number;
+              const { data: requestedPullRequest } = await github.rest.pulls.get({
+                ...context.repo,
+                pull_number: pullRequestNumber,
+              });
+              const openPullRequests = await github.paginate(
+                github.rest.pulls.list,
+                { ...context.repo, state: 'open', per_page: 100 },
+              );
+              const sharedHeadPullRequests = openPullRequests.filter(
+                (candidate) =>
+                  candidate.head.sha === requestedPullRequest.head.sha,
+              );
+              const pullRequest =
+                sharedHeadPullRequests.length === 1
+                  ? sharedHeadPullRequests[0]
+                  : requestedPullRequest;
+              const issueNumber = closingIssueNumber(pullRequest.body ?? '');
+              let issueBody = '';
+              let issueLookupFailed = false;
+              if (issueNumber !== null) {
+                try {
+                  const { data: issue } = await github.rest.issues.get({
+                    ...context.repo,
+                    issue_number: issueNumber,
+                  });
+                  issueBody = issue.body ?? '';
+                } catch (error) {
+                  issueLookupFailed = true;
+                  issueBody = '<closing-issue-unavailable>';
+                  core.warning(
+                    `Could not load closing issue #${issueNumber}: ${error.message}`,
+                  );
+                }
+              }
+              return {
+                pullRequest,
+                sharedHeadPullRequests,
+                issueNumber,
+                issueBody,
+                issueLookupFailed,
+                token: governanceRevisionToken({
+                  pullRequestNumber,
+                  headSha: pullRequest.head.sha,
+                  pullRequestBody: pullRequest.body,
+                  issueNumber,
+                  issueBody,
+                }),
+              };
+            }
+
+            async function dispatchFreshRevision(revision) {
+              await github.rest.repos.createCommitStatus({
+                ...context.repo,
+                sha: revision.pullRequest.head.sha,
+                state: 'pending',
+                context: statusContext,
+                description: 'Inputs changed; revalidating the latest revision.',
+                target_url: targetUrl,
+              });
+              await github.rest.actions.createWorkflowDispatch({
+                ...context.repo,
+                workflow_id: 'agent-governance.yml',
+                ref: context.payload.repository.default_branch,
+                inputs: {
+                  pull_request_number: String(revision.pullRequest.number),
+                  head_sha: revision.pullRequest.head.sha,
+                  revision_token: revision.token,
+                },
+              });
+            }
+
+            const before = await loadCurrentRevision();
+            if (before.sharedHeadPullRequests.length > 1) {
+              await github.rest.repos.createCommitStatus({
+                ...context.repo,
+                sha: before.pullRequest.head.sha,
+                state: 'failure',
+                context: statusContext,
+                description: 'Open PRs must not share one head commit.',
+                target_url: targetUrl,
+              });
+              core.setFailed(
+                'Governance cannot publish a shared commit status for multiple open PRs.',
+              );
+              return;
+            }
+            if (before.sharedHeadPullRequests.length === 0) {
+              core.notice('The requested head no longer belongs to an open PR.');
+              return;
+            }
+            if (before.pullRequest.head.sha !== requestedHeadSha) {
+              core.notice('Ignored a stale reporter for a replaced PR head.');
+              return;
+            }
+            if (
+              requestedPullRequestBody !== null &&
+              (before.pullRequest.body ?? '') !== requestedPullRequestBody
+            ) {
+              core.notice('Ignored a stale reporter for an edited PR body.');
+              return;
+            }
+            if (before.issueLookupFailed) {
+              core.setFailed('Governance could not load the closing issue.');
+              return;
+            }
+            if (!process.env.VALIDATED_REVISION_TOKEN) {
+              if (
+                context.eventName === 'workflow_dispatch' &&
+                before.token !== context.payload.inputs?.revision_token
+              ) {
+                await dispatchFreshRevision(before);
+                core.notice(
+                  'Skipped a stale tokenless result and dispatched the latest revision.',
+                );
+                return;
+              }
+              core.setFailed('Governance validation produced no revision token.');
+              return;
+            }
+            if (before.token !== process.env.VALIDATED_REVISION_TOKEN) {
+              await dispatchFreshRevision(before);
+              core.notice('Skipped a stale result and dispatched the latest revision.');
+              return;
+            }
+
+            const success = process.env.VALIDATION_RESULT === 'success';
+            await github.rest.repos.createCommitStatus({
+              ...context.repo,
+              sha: before.pullRequest.head.sha,
+              state: success ? 'success' : 'failure',
+              context: statusContext,
+              description: success
+                ? 'Closing issue and pull request declarations are valid.'
+                : 'Fresh issue revalidation failed.',
+              target_url: targetUrl,
+            });
+
+            const after = await loadCurrentRevision();
+            if (after.sharedHeadPullRequests.length > 1) {
+              await github.rest.repos.createCommitStatus({
+                ...context.repo,
+                sha: after.pullRequest.head.sha,
+                state: 'failure',
+                context: statusContext,
+                description: 'Open PRs must not share one head commit.',
+                target_url: targetUrl,
+              });
+              core.setFailed(
+                'A second open PR began sharing the head while governance was reporting.',
+              );
+              return;
+            }
+            if (after.sharedHeadPullRequests.length === 0) return;
+            if (after.pullRequest.head.sha !== requestedHeadSha) return;
+            if (after.issueLookupFailed) {
+              await github.rest.repos.createCommitStatus({
+                ...context.repo,
+                sha: requestedHeadSha,
+                state: 'pending',
+                context: statusContext,
+                description: 'Closing issue could not be loaded.',
+                target_url: targetUrl,
+              });
+              core.setFailed(
+                'The closing issue became unavailable while governance was reporting.',
+              );
+              return;
+            }
+            if (after.token !== before.token) {
+              await dispatchFreshRevision(after);
+              core.notice('Inputs changed while reporting; dispatched the latest revision.');
+            }
