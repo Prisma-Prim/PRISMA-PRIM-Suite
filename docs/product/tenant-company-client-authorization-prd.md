@@ -1,9 +1,9 @@
 # PRD — Tenant, Company, Shared Client and Authorization
 
-**Status:** Draft — first Company Director and Shared Client boundary approved; wider authorization pending
-**Version:** 0.5
+**Status:** Draft — Company Director dossier delivered and governed duplicate-resolution boundary approved; wider authorization pending
+**Version:** 0.6
 **Owner:** Dan Popescu  
-**Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212
+**Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212, DEC-213
 
 ## 1. Problem statement
 
@@ -94,11 +94,17 @@ Exact first-tenant bundles remain configuration evidence, not hard-coded product
 
 Issue #141 introduces the narrow Workspace permission `client.manage` only through the configured bootstrap Workspace Owner path. It authorizes listing, searching, creating and explicitly relating the minimal Client identity in a server-validated active Company context. It grants no ordinary Company-user access and no access to operational activity.
 
+The first vertical slice defines a new permission-set version of the delivered fixed Company-scoped `company_director_client_access` bundle that includes `client.duplicate.resolve`. It creates no separate assignment type, standalone grant or wider bundle. Existing active assignments remain on their prior captured version and gain no resolver authority automatically. The active Workspace Owner must explicitly revoke a prior assignment and issue a fresh grant through the existing governed Role Assignment commands before that Company scope can resolve duplicates. The fresh grant records the exact permission-set version or immutable hash; the delivered `company_director_client_assignment.revoked` and `company_director_client_assignment.granted` events attribute the transition and remain the complete assignment lifecycle. Runtime authorization evaluates the version or hash captured by the active assignment, never a mutable current bundle constant, display title or free-form role-name string. Every full comparison requires current Client read authority for every persisted candidate and the resolver-enabled bundle version in each Company in the live candidate review scope defined by the Shared Client PRD. Every union or reversal requires current Client read authority for both Clients and that resolver-enabled version in each affected Company defined there. Every restricted `client_union_operation` detail read requires current Client read authority for every named Client and that same version in every affected Company; generic Activity Log read is insufficient. One cross-Company resolver must direct every affected Company and already hold every affected scope; asynchronous multi-person approval remains separate. Neither Workspace ownership nor ordinary Client read/update access substitutes for that complete authority.
+
+Before resolver authorization is enabled, an additive migration adds a required captured permission-set version or immutable hash and deterministically backfills every current and historical unversioned `company_director_client_access` row to legacy `v1`, whose exact effective permissions are `client.read`, `client.create` and `client.update`. The backfill preserves assignment identity, Company scope, status and existing access, denies `client.duplicate.resolve`, and makes null or unknown versions fail closed. Only an explicit fresh Workspace Owner grant after that migration may capture resolver-enabled `v2` (`v1` plus `client.duplicate.resolve`).
+
+The `client.duplicate.resolve` predicate above gates full candidate comparison, resolver-only pending-review listing and `duplicate_review_reference` lookup in every Company in the live candidate review scope defined by the Shared Client PRD, including the selected Company of a rejected create or correction attempt. Union and reversal require it in every affected Company defined there, while restricted operation detail requires it in every affected Company recorded by the Activity Log authority. Partial authority fails closed without hidden metadata. The [Shared Client PRD](release-1-shared-client-prd.md#11-governed-duplicate-resolution) solely owns warning and reference contents, candidate and conflict outcomes, concurrency behavior, stale-review handling and Document-evidence exclusions.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
 
-Corrections preserve prior governed identity when it has been used in Documents, Contracts, credentials or financial records. Significant Client corrections record the previous values, every change, server-authoritative date and time, and the actor. A governed duplicate disposition additionally preserves both original records and the reason for any union.
+Corrections preserve prior governed identity when it has been used in Documents, Contracts, credentials or financial records. Significant Client corrections record the previous values, every change, server-authoritative date and time, and the actor. A governed duplicate union additionally preserves both original records, source values, Contacts, relationships and the written identity basis. It is reversible under equivalent authority, and reversal never rewrites intervening history or invents ownership for ambiguous later activity.
 
 ## 10. UX and error states
 
@@ -112,7 +118,7 @@ Corrections preserve prior governed identity when it has been used in Documents,
 
 ## 11. Migration
 
-Extend the existing Workspace and Internal User foundation through reviewed migrations without invalidating the Access and Accountability work already delivered.
+Extend the existing Workspace and Internal User foundation through reviewed migrations without invalidating the Access and Accountability work already delivered. The duplicate-resolution migration must prove from the delivered label-only schema that every legacy `company_director_client_access` assignment becomes immutable `v1` with exactly its existing Client read/create/update authority and no resolver permission before `v2` authorization code is enabled. Migration and authorization tests cover active and revoked rows, null/unknown fail-closed behavior, preserved Company scope/status and the explicit revoke/fresh-grant path to `v2`.
 
 Existing Internal Users receive explicit Workspace Memberships, and existing Activity Log events retain their Workspace and identifiers. Current Access and Activity Log records have no Company ownership to backfill. Any later migration of Company-scoped business records requires explicit evidence; no Company is inferred from names, email domains, or free text.
 
@@ -126,6 +132,7 @@ Existing Internal Users receive explicit Workspace Memberships, and existing Act
 - Access REST tests prove non-leaking denial for unknown, inactive, membership-less and unauthorized actors.
 - Database constraint tests reject cross-Workspace relationships.
 - Issue #141 uses REST/PostgreSQL and browser seams to prove that the bootstrap Workspace Owner can create one minimal Workspace Client, relate the same identifier to two active Companies deliberately, and receive no other-Company relationship or activity metadata.
+- The next duplicate-resolution slice proves that authorization covers every affected Company as defined by the Shared Client PRD, and that missing, stale, inactive or partial authority denies without revealing hidden activity.
 
 ## 13. Acceptance journey
 
@@ -149,12 +156,11 @@ Material blockers that remain:
 
 - first-tenant role/permission bundles beyond the approved Company Director Client slice and wider approval delegation;
 - legitimate exceptional support-access cases, authorization boundary and restricted periods;
-- field placement and validation rules for approved shared Client fields;
 - exact Client Legal Entity and branch modelling for the representative complex case;
-- safe duplicate matching, referential-history and union workflow design;
+- asynchronous multi-person duplicate approval and general fuzzy-matching evaluation against real examples;
 - broader deactivation expectations and final `All Companies` product behaviour.
 
-The five-question completion package is satisfied by the direct response preserved in #81 and normalized by #144. It makes one Company Director + Shared Client enrichment slice ready for vertical ticketing. Governed duplicate union remains a separate destructive slice.
+The five-question completion package is satisfied by the direct response preserved in #81 and normalized by #144. It made the Company Director + Shared Client enrichment slice ready and PR #147 delivered it. Dan's separately approved DEC-213 / #148 synthesis authorizes one non-destructive, reversible duplicate-resolution slice without changing Iurie evidence.
 
 Dan approved the reversible #141 tracer before the completion package was answered: shared data was restricted to the server id and display name, only the bootstrap Workspace Owner received `client.manage`, every query and command required an active Company, and reuse required an explicit attach action. The later response expands the canonical target boundary but does not retroactively broaden #141.
 
@@ -171,7 +177,7 @@ Question sources: S00, S01, S02 and the direct 2026-08-23 answer in #81. Provena
 
 The cross-cutting model is ready to govern Release 1 PRDs. The foundation through #65, #66, #67 and #88 is delivered, and #141 delivers the separately approved conservative Shared Client tracer.
 
-One next slice may introduce the Company Director's bounded Client permissions and the approved shared fields while preserving server-side Company confidentiality. Every other assignment or permission bundle, consolidated view, duplicate union, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
+Issue #146 / PR #147 delivered the Company Director's bounded Client permissions, approved shared fields and server-side Company confidentiality. After #148 normalization, one next vertical slice may add governed duplicate resolution for a resolver who holds every affected Company scope. Every broader assignment or permission bundle, asynchronous multi-person approval, consolidated view, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
 
 ## 17. Evidence authority boundary
 

@@ -1,9 +1,9 @@
 # Consolidated Product Reconciliation and Decision Record
 
 **Product:** PRISMA-PRIM Suite  
-**Status:** Reconciliation complete — decisions `DEC-001` through `DEC-212` approved  
-**Record version:** 1.2  
-**Last updated:** 2026-08-16  
+**Status:** Reconciliation complete — decisions `DEC-001` through `DEC-213` approved  
+**Record version:** 1.3  
+**Last updated:** 2026-08-24  
 **Source discussion language:** French  
 **Repository language:** English
 
@@ -2823,13 +2823,23 @@ The Workspace-scoped `company.assignment.manage` permission authorizes grant and
 
 This reuses the canonical Role Assignment authorization path rather than introducing a parallel Company-membership relationship. It unlocks the generic assignment and revocation seam without inventing first-tenant roles or business permissions. The alternatives were to wait for the complete first-tenant permission matrix, which would unnecessarily block this reversible foundation, or to create a separate context-access relationship, which would contradict ADR 0006 and fragment authorization. Every broader role bundle, every other real assignment, consolidated view, deactivation policy and exceptional-access rule remains evidence-dependent.
 
+#### DEC-213 — Resolve Shared Client duplicates through reversible, scope-complete human authority
+
+Dan approves a conservative boundary: duplicate signals are advisory; only the same non-empty exactly normalized IDNO/tax identifier may enter human review in the first slice; names and supporting fields never establish identity; missing, conflicting, branch or distinct-legal-entity cases remain blocked. Candidate review, union and reversal require one resolver with complete current authority across the owning scope, and disagreement means no union.
+
+Union is non-destructive, history-preserving and reversible under the approved guards. It never auto-merges, silently discards Contacts or relationships, reuses a historically reserved identifier, expands a legacy assignment in place or exposes another Company's confidential activity. Email notifications, fuzzy matching, Document-backed identity evidence, asynchronous multi-person approval and complete branch/legal-entity modeling remain deferred.
+
+The [Shared Client PRD](release-1-shared-client-prd.md#11-governed-duplicate-resolution) solely owns candidate/reference behavior, identifier reservation, affected and review scope, comparison, canonical selection, Contact/relationship consequences, union and reversal. The [Tenant/Authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) solely owns versioned permission capture, migration and fail-closed authorization. The [Activity Log PRD](activity-log-accountability-prd.md#8-retention-correction-and-export) solely owns operation records, projections, redaction, attribution and restricted detail.
+
+This decision is Product Owner synthesis approved by Dan on 2026-08-24, not a direct Iurie answer or first-tenant evidence claim. It applies conservative and reversible product design to the already approved human-only, no-erasure duplicate boundary. The owning Shared Client, Tenant/Authorization and Activity Log PRDs define the observable contract; issue #81 comment 5398442293 preserves its provenance.
+
 ## 21. Normalization effects and remaining consequences
 
 These effects are applied through their owning authorities; this rationale records durable consequences and does not report current work status:
 
 - [The original MVP PRD](mvp-prd.md) is retained as a superseded historical pilot specification; current navigation uses the [Product Requirements Index](prd-index.md) and owning PRDs.
 - [The Access and Accountability PRD](access-and-accountability-prd.md) records the delivered Release 0 identity and accountability foundation; [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) supersedes the initial singleton and equal-permission assumptions for the current operational core.
-- `CONTEXT.md` defines the Workspace, Company, Internal User, Workspace Membership and Role Assignment foundation; the canonical Client Account, Client Legal Entity and Client–Company Relationship boundaries; and the stable Project term. Representative branch and natural-person party kinds and their internal classification, shared-versus-Company-specific fields and duplicate authority remain evidence dependencies owned by the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) and [Shared Client PRD](release-1-shared-client-prd.md). Observable Project/Task behaviour, first-release categories, exact Stage meanings, representative template contents, required Task sets, start-evidence gates and lifecycle exceptions remain owned by the [Project and Task PRD](release-1-project-task-prd.md).
+- `CONTEXT.md` defines the Workspace, Company, Internal User, Workspace Membership and Role Assignment foundation; the canonical Client Account, Client Legal Entity and Client–Company Relationship boundaries; and the stable Project term. Representative branch and natural-person party kinds and their internal classification remain evidence dependencies owned by the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) and [Shared Client PRD](release-1-shared-client-prd.md). Shared-versus-Company-specific fields are already normalized, and governed duplicate-resolution authority now follows DEC-213 and the owning PRDs. Observable Project/Task behaviour, first-release categories, exact Stage meanings, representative template contents, required Task sets, start-evidence gates and lifecycle exceptions remain owned by the [Project and Task PRD](release-1-project-task-prd.md).
 - [ADR-0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) captures Workspace tenancy, Company hierarchy, identity and membership scope, isolation strategy and migration constraints.
 - The [Product Vision PRD](product-vision-prd.md) and capability PRDs own observable product behaviour; the [Product Requirements Index](prd-index.md) owns navigation, while live GitHub issues own current work status.
 - Existing Access work should be extended rather than rewritten.
@@ -3492,7 +3502,7 @@ The sessions overlap but do not contradict each other. Session 60 refines sessio
 The following remain decisions or evidence requests, not inferred rules:
 
 1. exact initial permission bundles and “All Companies” interaction;
-2. shared-versus-Company-confidential Client fields and duplicate authority;
+2. remaining first-tenant Client Legal Entity and branch practice;
 3. first Release 1 Project categories, Tasks, evidence gates and lifecycle exceptions;
 4. representative Document families, confidentiality, officialization authority and Representation mechanism;
 5. the difference between general Project lifecycle and current workflow stage, plus complete Stage 1/Stage 2/S1/S2 examples;

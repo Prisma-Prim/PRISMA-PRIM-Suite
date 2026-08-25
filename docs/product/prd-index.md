@@ -14,12 +14,12 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 | Authority                                                                                | Purpose                                                                        |
 | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-212 and interview evidence map  |
+| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-213 and interview evidence map  |
 | [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                             |
 | [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets |
 | [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                          |
 | [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                     |
-| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Question-to-answer provenance, coverage states and unresolved arbitrations     |
+| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Pinned question-to-answer provenance and historical coverage states            |
 
 ## 3. Evidence and non-canonical reconciliation
 
@@ -31,6 +31,8 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                                                                           | Non-canonical source comparison, implementation evidence and unresolved conflicts                        |
 
 The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) records the rollover from 104 to 108 comments. Issue #144 adds immutable comments 109–112 and their semantic delta without reopening recovery of items 526–765. The coverage matrix owns semantic classifications and blocker deltas; immutable snapshots are evidence inputs.
+
+The pinned matrix preserves the duplicate matching/union-design blocker as it stood at the 2026-08-23 evidence snapshot. Later DEC-213 / #148 Product Owner synthesis by Dan resolves one conservative governed duplicate-resolution slice without changing Iurie evidence. General fuzzy matching, asynchronous multi-person approval and Client Legal Entity/branch modelling remain outside that slice. The decision record and owning PRDs resolve only the product-design blocker; live GitHub trackers continue to own current implementation readiness, blockers and delivery state.
 
 ## 4. Cross-cutting PRDs
 

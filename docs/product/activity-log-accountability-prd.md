@@ -1,9 +1,9 @@
 # PRD — Activity Log and Accountability
 
-**Status:** Draft — foundation delivered; later event families capability-owned  
-**Version:** 0.1  
+**Status:** Draft — foundation and Client correction delivered; duplicate-resolution events approved; later event families capability-owned  
+**Version:** 0.2  
 **Owner:** Dan Popescu  
-**Decisions:** DEC-028, DEC-041–DEC-045, DEC-067, DEC-073, DEC-087–DEC-089, DEC-096–DEC-097, DEC-122, DEC-128, DEC-183
+**Decisions:** DEC-028, DEC-041–DEC-045, DEC-067, DEC-073, DEC-087–DEC-089, DEC-096–DEC-097, DEC-122, DEC-128, DEC-183, DEC-213
 
 ## 1. Problem statement
 
@@ -80,14 +80,18 @@ Sensitive metadata is minimized and may require capability-specific permissions.
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
 
-Iurie's combined duplicate/correction answer requires both original records, all modifications, actor, date/time and union reason to remain reconstructable. Product normalization applies preservation of prior values, actor and server-authoritative date/time to an ordinary significant correction; preservation of both original records and the stated reason additionally applies when two records are united. The Shared Client PRD owns the exact command/event split; no union event is authorized until its separate destructive workflow is approved.
+Iurie's combined duplicate/correction answer requires both original records, all modifications, actor, date/time and union reason to remain reconstructable. Product normalization applies preservation of prior values, actor and server-authoritative date/time to an ordinary significant correction.
+
+DEC-213 and the Shared Client PRD now authorize two later logical event semantics: `client.union_confirmed` for one successful non-destructive union and `client.union_reversed` for one successful reversal. Both actions target one internal `client_union_operation` record under its server-generated internal operation identifier. That internal identifier is never returned in a redacted Company projection; each affected Company receives its own server-generated, unpredictable public projection reference for the stable `client_union_operation` target type. The restricted operation record preserves both original Clients, the canonical result or restored pair, the complete affected-Company set defined by the Shared Client PRD, verified identity basis, the original union reason and any later separate reversal reason; reading it requires current Client read authority plus an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every affected Company; the shared bundle label and legacy `v1` are insufficient. The first duplicate-resolution slice accepts no Document-derived identity basis, so its operation record and projections contain no Document identifier, metadata, content or derived match reason.
+
+A same-Company operation has one Company-scoped Activity Log projection. A cross-Company operation is materialized as exactly one immutable projection per affected Company, linked only server-side to the internal operation record; no Workspace-scoped copy is created. Each projection is also the independently authorized safe target representation of `client_union_operation` in its own Company scope and has a distinct unpredictable public projection reference that is never reused in another Company. An Activity Log reader in that server-validated Company may read only the action, that projection-specific reference, own Company identifier and a generic “authorized resolver” marker with no actor identifier, name, alias or membership reference. The redacted representation returns no action timestamp, time bucket, cross-scope ordering value or other time-derived join key; any Company-local list position is generated independently from the internal action time and is not comparable across Company scopes. It never returns the internal operation identifier, enumerates another original Client or affected Company, reveals the identity basis or written reason, or offers a restricted-detail link unless the complete resolver authorization passes. After that complete authorization passes, restricted detail may resolve the projection reference server-side and return the internal operation identifier, exact actor and server-authoritative action time. Event visibility is therefore no broader than the target representation visible under the same Company authorization. Failed, conflicted, unauthorized and idempotent replay attempts create no success projection.
 
 Retention and authorized export require a later policy based on business and legal evidence. Absence of a final retention period does not permit silent deletion.
 
 ## 9. UX
 
 - reverse chronological initial view;
-- clear actor, action, target and time;
+- clear actor, action, target and time for ordinarily authorized events; a redacted duplicate-resolution projection deliberately shows restricted actor/time placeholders and exposes exact attribution only through fully authorized restricted detail;
 - localized canonical action labels;
 - empty, loading, error and permission states;
 - later filters and export only through separate slices;
@@ -97,8 +101,9 @@ Retention and authorized export require a later policy based on business and leg
 
 - Accountability owns persistence, idempotency and serialization.
 - Owning business modules call its narrow public interface.
-- The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, `company_context_assignment.revoked`, `client.created`, and `client_company_relationship.established`.
-- Client target labels require `client.manage` in addition to the existing Activity Log visibility boundary. Client–Company Relationship events are returned only for the server-validated active Company; without an active Company, Client events are omitted.
+- The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, `company_context_assignment.revoked`, `company_director_client_assignment.granted`, `company_director_client_assignment.revoked`, `client.created`, `client_company_relationship.established`, and `client.corrected`.
+- The approved but not yet delivered duplicate-resolution actions are `client.union_confirmed` and `client.union_reversed`; one logical cross-Company action has one internal operation identifier plus one Company-scoped projection per affected Company, each with a different unpredictable public projection reference and no public cross-Company correlation key.
+- Client target labels require an applicable Client read permission in addition to the existing Activity Log visibility boundary. A duplicate-resolution projection uses its own redacted Company-scoped `client_union_operation` target representation; restricted detail additionally requires an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every affected Company; the shared bundle label and legacy `v1` are insufficient. Client–Company Relationship, correction and duplicate-resolution projections are returned only within the server-validated active Company scope; without an active Company, Company-scoped Client events are omitted.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
@@ -111,10 +116,12 @@ Retention and authorized export require a later policy based on business and leg
 - The #65 migration seam preserves existing event IDs, actor and target attribution, append-only history, `/activity-log` visibility, and exactly-once provisioning semantics while references become membership-aware.
 - The #66 public Company seam proves that one successful provider-Company registration creates one attributable event and failed, retried, or unauthorized attempts do not create false or duplicate success history.
 - The #141 Client REST seam proves one `client.created` event and one event for each newly established Client–Company Relationship; retries, concurrent attachment and rolled-back mutations do not duplicate or fabricate success history, and another Company's relationship event is not returned.
+- PR #147 proves attributable `client.corrected` history within the responsible Company scope.
+- The next duplicate-resolution slice must prove exactly one union or reversal projection per affected Company linked server-side to one internal operation, distinct unpredictable public projection references across Companies, no internal operation identifier, actor identity, exact/coarse action time or cross-scope ordering key in redacted reads, independently generated Company-local ordering, complete affected-Company authorization before shared correlation/actor/time is returned, and no success projection for blocked identifiers, disagreement, stale state, cancellation or replay.
 
 ## 12. Acceptance journey
 
-A fresh user is provisioned through Access and sees exactly one event. Reconnection and concurrent resolution create no duplicate. A failed provisioning leaves no success history. Later capability slices record canonical events through the same public interface, and unauthorized users cannot infer them.
+A fresh user is provisioned through Access and sees exactly one event. Reconnection and concurrent resolution create no duplicate. A failed provisioning leaves no success history. For duplicate resolution, one authorized union and one reversal each create one logical action with exactly one visible projection in every affected Company scope, while failed, partial-authority and replay attempts create none. Later capability slices record canonical events through the same public interface, and unauthorized users cannot infer them.
 
 ## 13. Evidence and dependencies
 
@@ -132,4 +139,4 @@ Technical dependencies:
 
 ## 14. Readiness
 
-Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds only the approved Company-context assignment grant and revocation events; and [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds only Client creation and Client–Company Relationship establishment. All other event families remain blocked until their owning capability PRD and permissions are ready.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds the approved Company-context assignment grant and revocation events; [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds Client creation and Client–Company Relationship establishment; and issue #146 / PR #147 adds Company Director Client assignment and Client correction events. After #148 normalization, one next vertical slice may deliver `client.union_confirmed` and `client.union_reversed`. Every other event family remains blocked until its owning capability PRD and permissions are ready.
