@@ -13,8 +13,7 @@ import { companyContextAccessCopy as copy } from './company-context-access.copy'
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle = 'company-context' | 'director-client';
 type AssignmentBundleLabel =
-  | 'Company Context Access'
-  | 'Company Director Client Access';
+  'Company Context Access' | 'Company Director Client Access';
 type AdministrationState = {
   members: Array<{
     workspaceMembershipId: string;
@@ -54,8 +53,9 @@ export function CompanyContextAccess({
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [bundle, setBundle] = useState<AssignmentBundle>('company-context');
-  const [administration, setAdministration] =
-    useState<AdministrationLoadState>({ status: 'loading' });
+  const [administration, setAdministration] = useState<AdministrationLoadState>(
+    { status: 'loading' },
+  );
   const [mutation, setMutation] = useState<MutationState>({ status: 'idle' });
   const retryCommand = useRef<
     | {
@@ -75,10 +75,7 @@ export function CompanyContextAccess({
   );
 
   const reloadAdministration = useCallback(
-    async (
-      request: AbortController,
-      showLoading = false,
-    ): Promise<boolean> => {
+    async (request: AbortController, showLoading = false): Promise<boolean> => {
       if (showLoading) setAdministration({ status: 'loading' });
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -303,7 +300,9 @@ export function CompanyContextAccess({
       {!hasSelectableTargets && <p>{copy.empty}</p>}
       {hasSelectableTargets && (
         <form noValidate onSubmit={(event) => void submit(event, 'grant')}>
-          <label htmlFor="context-access-member">{copy.workspaceMemberLabel}</label>
+          <label htmlFor="context-access-member">
+            {copy.workspaceMemberLabel}
+          </label>
           <select
             id="context-access-member"
             value={workspaceMembershipId}
