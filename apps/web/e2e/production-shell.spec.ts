@@ -777,7 +777,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await page.getByLabel('Workspace member').selectOption({
     label: `${member.displayName} — ${member.email}`,
   });
-  await page.getByLabel('Company').selectOption({ label: company.displayName });
+  await page
+    .getByLabel('Company', { exact: true })
+    .selectOption({ label: company.displayName });
   await page.getByRole('button', { name: 'Grant access' }).click();
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
@@ -805,7 +807,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await page.getByLabel('Workspace member').selectOption({
     label: `${member.displayName} — ${member.email}`,
   });
-  await page.getByLabel('Company').selectOption({ label: company.displayName });
+  await page
+    .getByLabel('Company', { exact: true })
+    .selectOption({ label: company.displayName });
   await page.getByRole('button', { name: 'Revoke access' }).click();
   await expect(
     page.getByText('Access revoked. Server state refreshed.'),
@@ -1367,7 +1371,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
     await page.getByLabel('Workspace member').selectOption({
       label: `${director.displayName} — ${director.email}`,
     });
-    await page.getByLabel('Company').selectOption({
+    await page.getByLabel('Company', { exact: true }).selectOption({
       label: director.company.displayName,
     });
     await Promise.all([
@@ -1439,7 +1443,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await page.getByLabel('Workspace member').selectOption({
     label: `${directors.a.displayName} — ${directors.a.email}`,
   });
-  await page.getByLabel('Company').selectOption({
+  await page.getByLabel('Company', { exact: true }).selectOption({
     label: directors.a.company.displayName,
   });
   await Promise.all([
