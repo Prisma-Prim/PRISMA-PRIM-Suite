@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -47,9 +53,11 @@ describe('CompanyContextAccess', () => {
   it('loads only human-readable member and Company choices without UUID entry fields', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(administration()), { status: 200 }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        ),
     );
 
     render(
@@ -59,7 +67,9 @@ describe('CompanyContextAccess', () => {
       />,
     );
 
-    expect(await screen.findByLabelText('Workspace member')).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('Workspace member'),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('option', { name: 'Ada Member — ada@example.test' }),
     ).toBeInTheDocument();
@@ -76,7 +86,9 @@ describe('CompanyContextAccess', () => {
       'Current server state: Not granted',
     );
     expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Revoke access' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Revoke access' }),
+    ).toBeDisabled();
   });
 
   it('grants Company Context Access and reloads the canonical server state before reporting success', async () => {
@@ -399,12 +411,14 @@ describe('CompanyContextAccess', () => {
   it('rejects the session when the administration read is unauthorized', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ message: 'Unauthorized', statusCode: 401 }),
-          { status: 401 },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ message: 'Unauthorized', statusCode: 401 }),
+            { status: 401 },
+          ),
         ),
-      ),
     );
     const rejectSession = vi.fn(async () => undefined);
     const identity = { ...deterministicBrowserIdentity(), rejectSession };
