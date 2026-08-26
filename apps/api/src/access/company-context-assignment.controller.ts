@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Headers,
   Param,
   Post,
@@ -13,12 +14,22 @@ import {
   type ActorContextRequest,
 } from './actor-context.adapter.js';
 import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
-import type { CompanyContextAssignmentRecord } from './company-context-assignment.types.js';
+import type {
+  CompanyAccessAdministrationState,
+  CompanyContextAssignmentRecord,
+} from './company-context-assignment.types.js';
 
 @Controller('company-context-assignments')
 @UseGuards(ActorContextAdapter)
 export class CompanyContextAssignmentController {
   constructor(private readonly assignments: CompanyContextAssignmentService) {}
+
+  @Get('administration')
+  readAdministrationState(
+    @Req() request: ActorContextRequest,
+  ): Promise<CompanyAccessAdministrationState> {
+    return this.assignments.readAdministrationState(request.actorContext!);
+  }
 
   @Post()
   grant(
