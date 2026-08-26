@@ -680,18 +680,46 @@ test('grants, selects, and revokes narrow Company context access', async ({
     id: 'company-unassigned',
     displayName: 'Unassigned Company',
   };
+  const member = {
+    workspaceMembershipId: 'member',
+    displayName: 'Assigned Member',
+    email: 'member@example.test',
+  };
   let identity: 'owner' | 'member' = 'owner';
   let assigned = false;
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/company-context-assignments/administration')) {
+      return route.fulfill({
+        json: {
+          members: [member],
+          companies: [company],
+          assignments: assigned
+            ? [
+                {
+                  id: 'assignment',
+                  workspaceMembershipId: member.workspaceMembershipId,
+                  companyId: company.id,
+                  bundle: 'Company Context Access',
+                  active: true,
+                },
+              ]
+            : [],
+        },
+      });
+    }
     if (url.pathname.endsWith('/company-context-assignments')) {
       expect(route.request().headers()['idempotency-key']).toBeTruthy();
+      expect(route.request().postDataJSON()).toEqual({
+        workspaceMembershipId: member.workspaceMembershipId,
+        companyId: company.id,
+      });
       assigned = true;
       return route.fulfill({
         status: 201,
         json: {
           id: 'assignment',
-          workspaceMembershipId: 'member',
+          workspaceMembershipId: member.workspaceMembershipId,
           companyId: company.id,
           bundle: 'Company Context Access',
           active: true,
@@ -704,7 +732,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
       return route.fulfill({
         json: {
           id: 'assignment',
-          workspaceMembershipId: 'member',
+          workspaceMembershipId: member.workspaceMembershipId,
           companyId: company.id,
           bundle: 'Company Context Access',
           active: false,
@@ -734,9 +762,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
             : {
                 ...actorContextFixture,
                 internalUserId: 'member-user',
-                workspaceMembershipId: 'member',
-                displayName: 'Assigned Member',
-                email: 'member@example.test',
+                workspaceMembershipId: member.workspaceMembershipId,
+                displayName: member.displayName,
+                email: member.email,
                 workspacePermissions: [],
                 ...(selected && assigned ? { activeCompany: company } : {}),
               },
@@ -746,16 +774,20 @@ test('grants, selects, and revokes narrow Company context access', async ({
   });
 
   await page.goto('/');
-  await page.getByLabel('Workspace membership ID').fill('member');
-  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByLabel('Workspace member').selectOption({
+    label: `${member.displayName} — ${member.email}`,
+  });
+  await page.getByLabel('Company').selectOption({ label: company.displayName });
   await page.getByRole('button', { name: 'Grant access' }).click();
-  await expect(page.getByRole('status')).toHaveText('Access granted.');
+  await expect(
+    page.getByText('Access granted. Server state refreshed.'),
+  ).toBeVisible();
 
   identity = 'member';
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Company Context Access' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Company access' })).toHaveCount(
+    0,
+  );
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
   await expect(
     page.getByRole('option', { name: unassignedCompany.displayName }),
@@ -770,10 +802,14 @@ test('grants, selects, and revokes narrow Company context access', async ({
 
   identity = 'owner';
   await page.reload();
-  await page.getByLabel('Workspace membership ID').fill('member');
-  await page.getByLabel('Company ID').fill(company.id);
+  await page.getByLabel('Workspace member').selectOption({
+    label: `${member.displayName} — ${member.email}`,
+  });
+  await page.getByLabel('Company').selectOption({ label: company.displayName });
   await page.getByRole('button', { name: 'Revoke access' }).click();
-  await expect(page.getByRole('status')).toHaveText('Access revoked.');
+  await expect(
+    page.getByText('Access revoked. Server state refreshed.'),
+  ).toBeVisible();
 
   identity = 'member';
   await page.reload();
@@ -1117,6 +1153,24 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   };
   const assignmentKey = (membershipId: string, companyId: string) =>
     `${membershipId}:${companyId}`;
+  const administrationState = () => ({
+    members: Object.values(directors).map((director) => ({
+      workspaceMembershipId: director.workspaceMembershipId,
+      displayName: director.displayName,
+      email: director.email,
+    })),
+    companies,
+    assignments: [...assignments].map((key, index) => {
+      const [workspaceMembershipId, companyId] = key.split(':');
+      return {
+        id: `director-assignment-${index}`,
+        workspaceMembershipId,
+        companyId,
+        bundle: 'Company Director Client Access',
+        active: true,
+      };
+    }),
+  });
 
   await page.route('**/api/access/current-actor', (route) => {
     const selectedCompanyId = route.request().headers()['x-company-context-id'];
@@ -1165,6 +1219,10 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   });
   await page.route('**/api/companies', (route) =>
     route.fulfill({ json: companies }),
+  );
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) => route.fulfill({ json: administrationState() }),
   );
   await page.route(
     /\/api\/company-director-client-assignments(?:\/.*)?$/,
@@ -1306,10 +1364,12 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   await page.goto('/');
   await page.getByLabel('Access bundle').selectOption('director-client');
   for (const director of [directors.a, directors.b]) {
-    await page
-      .getByLabel('Workspace membership ID')
-      .fill(director.workspaceMembershipId);
-    await page.getByLabel('Company ID').fill(director.company.id);
+    await page.getByLabel('Workspace member').selectOption({
+      label: `${director.displayName} — ${director.email}`,
+    });
+    await page.getByLabel('Company').selectOption({
+      label: director.company.displayName,
+    });
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -1318,7 +1378,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       ),
       page.getByRole('button', { name: 'Grant access' }).click(),
     ]);
-    await expect(page.getByRole('status')).toHaveText('Access granted.');
+    await expect(
+      page.getByText('Access granted. Server state refreshed.'),
+    ).toBeVisible();
   }
 
   identity = 'director-a';
@@ -1374,10 +1436,12 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   identity = 'owner';
   await page.reload();
   await page.getByLabel('Access bundle').selectOption('director-client');
-  await page
-    .getByLabel('Workspace membership ID')
-    .fill(directors.a.workspaceMembershipId);
-  await page.getByLabel('Company ID').fill(directors.a.company.id);
+  await page.getByLabel('Workspace member').selectOption({
+    label: `${directors.a.displayName} — ${directors.a.email}`,
+  });
+  await page.getByLabel('Company').selectOption({
+    label: directors.a.company.displayName,
+  });
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -1386,7 +1450,9 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
     ),
     page.getByRole('button', { name: 'Revoke access' }).click(),
   ]);
-  await expect(page.getByRole('status')).toHaveText('Access revoked.');
+  await expect(
+    page.getByText('Access revoked. Server state refreshed.'),
+  ).toBeVisible();
 
   identity = 'director-a';
   await page.reload();
