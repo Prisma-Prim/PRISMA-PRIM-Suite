@@ -109,7 +109,9 @@ test('administers both existing Company access bundles by member and Company nam
   await page.getByLabel('Workspace member').selectOption({
     label: 'Mila Popescu — mila@example.test',
   });
-  await page.getByLabel('Company').selectOption({ label: 'BIC' });
+  await page
+    .getByLabel('Company', { exact: true })
+    .selectOption({ label: 'BIC' });
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
