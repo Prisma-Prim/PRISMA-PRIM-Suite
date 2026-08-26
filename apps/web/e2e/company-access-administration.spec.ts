@@ -32,33 +32,43 @@ test('administers both existing Company access bundles by member and Company nam
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({ json: { events } }),
   );
-  await page.route('**/api/company-context-assignments**', async (route) => {
-    const request = route.request();
-    const pathname = new URL(request.url()).pathname;
-    if (pathname.endsWith('/administration')) {
-      return route.fulfill({ json: administrationState() });
-    }
-    if (request.method() === 'POST') {
-      expect(request.postDataJSON()).toEqual({
-        workspaceMembershipId: memberId,
-        companyId,
-      });
-      expect(request.headers()['idempotency-key']).toBeTruthy();
-      contextGranted = true;
-      recordEvent('company_context_assignment.granted', 'Company Context Access');
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) => route.fulfill({ json: administrationState() }),
+  );
+  await page.route(
+    /\/api\/company-context-assignments(?:\/[^/]+\/[^/]+)?$/,
+    async (route) => {
+      const request = route.request();
+      const pathname = new URL(request.url()).pathname;
+      if (request.method() === 'POST') {
+        expect(request.postDataJSON()).toEqual({
+          workspaceMembershipId: memberId,
+          companyId,
+        });
+        expect(request.headers()['idempotency-key']).toBeTruthy();
+        contextGranted = true;
+        recordEvent(
+          'company_context_assignment.granted',
+          'Company Context Access',
+        );
+        return route.fulfill({
+          status: 201,
+          json: assignment('Company Context Access', true),
+        });
+      }
+      expect(request.method()).toBe('DELETE');
+      expect(pathname).toContain(`/${memberId}/${companyId}`);
+      contextGranted = false;
+      recordEvent(
+        'company_context_assignment.revoked',
+        'Company Context Access',
+      );
       return route.fulfill({
-        status: 201,
-        json: assignment('Company Context Access', true),
+        json: assignment('Company Context Access', false),
       });
-    }
-    expect(request.method()).toBe('DELETE');
-    expect(pathname).toContain(`/${memberId}/${companyId}`);
-    contextGranted = false;
-    recordEvent('company_context_assignment.revoked', 'Company Context Access');
-    return route.fulfill({
-      json: assignment('Company Context Access', false),
-    });
-  });
+    },
+  );
   await page.route(
     '**/api/company-director-client-assignments**',
     async (route) => {
