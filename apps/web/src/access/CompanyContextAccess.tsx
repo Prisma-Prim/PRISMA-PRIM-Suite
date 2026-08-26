@@ -1,4 +1,10 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -68,6 +74,53 @@ export function CompanyContextAccess({
     'company.assignment.manage',
   );
 
+  const reloadAdministration = useCallback(
+    async (
+      request: AbortController,
+      showLoading = false,
+    ): Promise<boolean> => {
+      if (showLoading) setAdministration({ status: 'loading' });
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (request.signal.aborted) return false;
+        const result = await api.request<AdministrationState>(
+          '/company-context-assignments/administration',
+          { signal: request.signal },
+        );
+        if (request.signal.aborted) return false;
+        if (result.status === 'unauthorized') {
+          await identity.rejectSession();
+          return false;
+        }
+        if (result.status !== 'ok') {
+          setAdministration({ status: 'error' });
+          return false;
+        }
+        setAdministration({ status: 'ready', value: result.value });
+        setWorkspaceMembershipId((current) =>
+          result.value.members.some(
+            (member) => member.workspaceMembershipId === current,
+          )
+            ? current
+            : '',
+        );
+        setCompanyId((current) =>
+          result.value.companies.some((company) => company.id === current)
+            ? current
+            : '',
+        );
+        return true;
+      } catch (error) {
+        if (request.signal.aborted) return false;
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return false;
+        setAdministration({ status: 'error' });
+        return false;
+      }
+    },
+    [identity],
+  );
+
   useEffect(() => {
     pendingRequest.current?.abort();
     retryCommand.current = undefined;
@@ -85,57 +138,10 @@ export function CompanyContextAccess({
     actor.workspaceId,
     actor.workspaceMembershipId,
     canManageAssignments,
-    identity,
+    reloadAdministration,
   ]);
 
   if (!canManageAssignments) return null;
-
-  async function reloadAdministration(
-    request: AbortController,
-    showLoading = false,
-  ): Promise<boolean> {
-    if (showLoading) setAdministration({ status: 'loading' });
-    try {
-      const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted) return false;
-      const result = await api.request<AdministrationState>(
-        '/company-context-assignments/administration',
-        { signal: request.signal },
-      );
-      if (request.signal.aborted) return false;
-      if (result.status === 'unauthorized') {
-        await identity.rejectSession();
-        return false;
-      }
-      if (result.status !== 'ok') {
-        setAdministration({ status: 'error' });
-        return false;
-      }
-      setAdministration({ status: 'ready', value: result.value });
-      setWorkspaceMembershipId((current) =>
-        result.value.members.some(
-          (member) => member.workspaceMembershipId === current,
-        )
-          ? current
-          : '',
-      );
-      setCompanyId((current) =>
-        result.value.companies.some((company) => company.id === current)
-          ? current
-          : '',
-      );
-      return true;
-    } catch (error) {
-      if (request.signal.aborted) return false;
-      if (error instanceof DOMException && error.name === 'AbortError')
-        return false;
-      setAdministration({ status: 'error' });
-      return false;
-    } finally {
-      if (pendingRequest.current === request)
-        pendingRequest.current = undefined;
-    }
-  }
 
   async function submit(event: FormEvent, submission: Submission) {
     event.preventDefault();
@@ -191,6 +197,7 @@ export function CompanyContextAccess({
         return;
       }
 
+      let actorRevalidationSucceeded = true;
       if (
         result.status === 'ok' &&
         command.bundle === 'director-client' &&
@@ -211,14 +218,17 @@ export function CompanyContextAccess({
           await identity.rejectSession();
           return;
         }
-        if (revalidated.status === 'ok')
+        if (revalidated.status === 'ok') {
           await acceptRevalidatedActor.current(revalidated.value);
+        } else {
+          actorRevalidationSucceeded = false;
+        }
       }
 
       if (request.signal.aborted) return;
       const refreshed = await reloadAdministration(request);
       if (request.signal.aborted) return;
-      if (result.status === 'ok' && refreshed) {
+      if (result.status === 'ok' && refreshed && actorRevalidationSucceeded) {
         retryCommand.current = undefined;
         await onActivityRecorded();
         if (request.signal.aborted) return;
@@ -348,7 +358,7 @@ export function CompanyContextAccess({
 
           {workspaceMembershipId && companyId && (
             <p role="status">
-              {copy.currentStateLabel}: {' '}
+              {copy.currentStateLabel}:{' '}
               <strong>
                 {activeAssignment
                   ? copy.currentStateGranted
