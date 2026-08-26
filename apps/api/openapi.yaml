@@ -130,6 +130,23 @@ paths:
           description: The actor lacks Company visibility or the requested Company context is invalid.
         '404':
           description: No visible Company matches the identifier in the actor's Workspace.
+  /api/company-context-assignments/administration:
+    get:
+      operationId: readCompanyAccessAdministration
+      summary: List active human-readable targets and canonical Company access assignments
+      tags:
+        - Access
+      responses:
+        '200':
+          description: Active same-Workspace members and Companies plus current assignments for the two approved Company access bundles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyAccessAdministrationState'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Company-access administration authority.
   /api/company-context-assignments:
     post:
       operationId: grantCompanyContextAssignment
@@ -676,6 +693,81 @@ components:
           format: uuid
         companyDisplayName:
           type: string
+    CompanyAccessAdministrationMember:
+      type: object
+      additionalProperties: false
+      required:
+        - workspaceMembershipId
+        - displayName
+        - email
+      properties:
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+    CompanyAccessAdministrationCompany:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    CompanyAccessAdministrationAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          enum:
+            - Company Context Access
+            - Company Director Client Access
+        active:
+          type: boolean
+          const: true
+    CompanyAccessAdministrationState:
+      type: object
+      additionalProperties: false
+      required:
+        - members
+        - companies
+        - assignments
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyAccessAdministrationMember'
+        companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyAccessAdministrationCompany'
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyAccessAdministrationAssignment'
     GrantCompanyContextAssignmentInput:
       type: object
       additionalProperties: false
