@@ -787,9 +787,9 @@ test('grants, selects, and revokes narrow Company context access', async ({
 
   identity = 'member';
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Company access' })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole('heading', { name: 'Company access' }),
+  ).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
   await expect(
     page.getByRole('option', { name: unassignedCompany.displayName }),

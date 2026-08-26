@@ -26,9 +26,7 @@ test('administers both existing Company access bundles by member and Company nam
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({ json: ownerActor }),
   );
-  await page.route('**/api/companies', (route) =>
-    route.fulfill({ json: [] }),
-  );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({ json: { events } }),
   );
@@ -119,7 +117,9 @@ test('administers both existing Company access bundles by member and Company nam
   await expect(page.getByText(companyId)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Grant access' }).click();
-  await expect(page.getByText(/Current server state:/)).toContainText('Granted');
+  await expect(page.getByText(/Current server state:/)).toContainText(
+    'Granted',
+  );
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
@@ -143,7 +143,9 @@ test('administers both existing Company access bundles by member and Company nam
     'Not granted',
   );
   await page.getByRole('button', { name: 'Grant access' }).click();
-  await expect(page.getByText(/Current server state:/)).toContainText('Granted');
+  await expect(page.getByText(/Current server state:/)).toContainText(
+    'Granted',
+  );
   await expect(
     page.getByText('Ada Ionescu granted Company Director Client Access'),
   ).toBeVisible();
@@ -172,9 +174,7 @@ test('administers both existing Company access bundles by member and Company nam
       ],
       companies: [{ id: companyId, displayName: 'BIC' }],
       assignments: [
-        ...(contextGranted
-          ? [assignment('Company Context Access', true)]
-          : []),
+        ...(contextGranted ? [assignment('Company Context Access', true)] : []),
         ...(directorGranted
           ? [assignment('Company Director Client Access', true)]
           : []),
