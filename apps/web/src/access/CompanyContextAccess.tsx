@@ -6,7 +6,29 @@ import { companyContextAccessCopy as copy } from './company-context-access.copy'
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle = 'company-context' | 'director-client';
-type State =
+type AssignmentBundleLabel =
+  | 'Company Context Access'
+  | 'Company Director Client Access';
+type AdministrationState = {
+  members: Array<{
+    workspaceMembershipId: string;
+    displayName: string;
+    email: string;
+  }>;
+  companies: Array<{ id: string; displayName: string }>;
+  assignments: Array<{
+    id: string;
+    workspaceMembershipId: string;
+    companyId: string;
+    bundle: AssignmentBundleLabel;
+    active: boolean;
+  }>;
+};
+type AdministrationLoadState =
+  | { status: 'loading' }
+  | { status: 'ready'; value: AdministrationState }
+  | { status: 'error' };
+type MutationState =
   | { status: 'idle' }
   | { status: 'submitting'; submission: Submission }
   | { status: 'ready'; submission: Submission }
@@ -26,7 +48,9 @@ export function CompanyContextAccess({
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [bundle, setBundle] = useState<AssignmentBundle>('company-context');
-  const [state, setState] = useState<State>({ status: 'idle' });
+  const [administration, setAdministration] =
+    useState<AdministrationLoadState>({ status: 'loading' });
+  const [mutation, setMutation] = useState<MutationState>({ status: 'idle' });
   const retryCommand = useRef<
     | {
         submission: Submission;
@@ -43,11 +67,19 @@ export function CompanyContextAccess({
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
+
   useEffect(() => {
     pendingRequest.current?.abort();
     retryCommand.current = undefined;
-    setState({ status: 'idle' });
-    return () => pendingRequest.current?.abort();
+    setWorkspaceMembershipId('');
+    setCompanyId('');
+    setMutation({ status: 'idle' });
+    if (!canManageAssignments) return;
+    const request = new AbortController();
+    pendingRequest.current = request;
+    setAdministration({ status: 'loading' });
+    void reloadAdministration(request);
+    return () => request.abort();
   }, [
     actor.internalUserId,
     actor.workspaceId,
@@ -58,23 +90,68 @@ export function CompanyContextAccess({
 
   if (!canManageAssignments) return null;
 
+  async function reloadAdministration(
+    request: AbortController,
+    showLoading = false,
+  ): Promise<boolean> {
+    if (showLoading) setAdministration({ status: 'loading' });
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return false;
+      const result = await api.request<AdministrationState>(
+        '/company-context-assignments/administration',
+        { signal: request.signal },
+      );
+      if (request.signal.aborted) return false;
+      if (result.status === 'unauthorized') {
+        await identity.rejectSession();
+        return false;
+      }
+      if (result.status !== 'ok') {
+        setAdministration({ status: 'error' });
+        return false;
+      }
+      setAdministration({ status: 'ready', value: result.value });
+      setWorkspaceMembershipId((current) =>
+        result.value.members.some(
+          (member) => member.workspaceMembershipId === current,
+        )
+          ? current
+          : '',
+      );
+      setCompanyId((current) =>
+        result.value.companies.some((company) => company.id === current)
+          ? current
+          : '',
+      );
+      return true;
+    } catch (error) {
+      if (request.signal.aborted) return false;
+      if (error instanceof DOMException && error.name === 'AbortError')
+        return false;
+      setAdministration({ status: 'error' });
+      return false;
+    } finally {
+      if (pendingRequest.current === request)
+        pendingRequest.current = undefined;
+    }
+  }
+
   async function submit(event: FormEvent, submission: Submission) {
     event.preventDefault();
-    const member = workspaceMembershipId.trim();
-    const company = companyId.trim();
-    if (!member || !company) return setState({ status: 'error' });
-    setState({ status: 'submitting', submission });
+    if (!workspaceMembershipId || !companyId) return;
+    setMutation({ status: 'submitting', submission });
     const command =
       retryCommand.current?.submission === submission &&
       retryCommand.current.bundle === bundle &&
-      retryCommand.current.workspaceMembershipId === member &&
-      retryCommand.current.companyId === company
+      retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
+      retryCommand.current.companyId === companyId
         ? retryCommand.current
         : {
             submission,
             bundle,
-            workspaceMembershipId: member,
-            companyId: company,
+            workspaceMembershipId,
+            companyId,
             idempotencyKey: crypto.randomUUID(),
           };
     retryCommand.current = command;
@@ -91,7 +168,7 @@ export function CompanyContextAccess({
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
-          : `${assignmentPath}/${encodeURIComponent(member)}/${encodeURIComponent(company)}`,
+          : `${assignmentPath}/${encodeURIComponent(workspaceMembershipId)}/${encodeURIComponent(companyId)}`,
         submission === 'grant'
           ? {
               method: 'POST',
@@ -99,10 +176,7 @@ export function CompanyContextAccess({
                 'content-type': 'application/json',
                 'idempotency-key': command.idempotencyKey,
               },
-              body: JSON.stringify({
-                workspaceMembershipId: member,
-                companyId: company,
-              }),
+              body: JSON.stringify({ workspaceMembershipId, companyId }),
               signal: request.signal,
             }
           : {
@@ -112,8 +186,11 @@ export function CompanyContextAccess({
             },
       );
       if (request.signal.aborted) return;
-      if (result.status === 'unauthorized') await identity.rejectSession();
-      if (request.signal.aborted) return;
+      if (result.status === 'unauthorized') {
+        await identity.rejectSession();
+        return;
+      }
+
       if (
         result.status === 'ok' &&
         command.bundle === 'director-client' &&
@@ -134,83 +211,189 @@ export function CompanyContextAccess({
           await identity.rejectSession();
           return;
         }
-        if (revalidated.status !== 'ok') {
-          setState({ status: 'error' });
-          return;
-        }
-        await acceptRevalidatedActor.current(revalidated.value);
-        if (request.signal.aborted) return;
+        if (revalidated.status === 'ok')
+          await acceptRevalidatedActor.current(revalidated.value);
       }
-      if (result.status === 'ok') {
-        retryCommand.current = undefined;
-        void onActivityRecorded();
-      }
-      setState(
-        result.status === 'ok'
-          ? { status: 'ready', submission }
-          : { status: 'error' },
-      );
-    } catch {
+
       if (request.signal.aborted) return;
-      setState({ status: 'error' });
+      const refreshed = await reloadAdministration(request);
+      if (request.signal.aborted) return;
+      if (result.status === 'ok' && refreshed) {
+        retryCommand.current = undefined;
+        await onActivityRecorded();
+        if (request.signal.aborted) return;
+        setMutation({ status: 'ready', submission });
+      } else {
+        setMutation({ status: 'error' });
+      }
+    } catch (error) {
+      if (request.signal.aborted) return;
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setMutation({ status: 'error' });
     } finally {
       if (pendingRequest.current === request)
         pendingRequest.current = undefined;
     }
   }
 
-  const pending = state.status === 'submitting';
+  function resetCommand() {
+    retryCommand.current = undefined;
+    setMutation({ status: 'idle' });
+  }
+
+  function retryAdministration() {
+    pendingRequest.current?.abort();
+    const request = new AbortController();
+    pendingRequest.current = request;
+    setMutation({ status: 'idle' });
+    void reloadAdministration(request, true);
+  }
+
+  if (administration.status === 'loading') {
+    return (
+      <section aria-labelledby="company-context-access-title">
+        <p className="eyebrow">{copy.eyebrow}</p>
+        <h2 id="company-context-access-title">{copy.title}</h2>
+        <p role="status">{copy.loading}</p>
+      </section>
+    );
+  }
+
+  if (administration.status === 'error') {
+    return (
+      <section aria-labelledby="company-context-access-title">
+        <p className="eyebrow">{copy.eyebrow}</p>
+        <h2 id="company-context-access-title">{copy.title}</h2>
+        <p role="alert">{copy.error}</p>
+        <button type="button" onClick={retryAdministration}>
+          {copy.retry}
+        </button>
+      </section>
+    );
+  }
+
+  const data = administration.value;
+  const selectedBundleLabel = bundleLabel(bundle);
+  const activeAssignment = data.assignments.some(
+    (assignment) =>
+      assignment.active &&
+      assignment.workspaceMembershipId === workspaceMembershipId &&
+      assignment.companyId === companyId &&
+      assignment.bundle === selectedBundleLabel,
+  );
+  const hasSelectableTargets =
+    data.members.length > 0 && data.companies.length > 0;
+  const pending = mutation.status === 'submitting';
+
   return (
     <section aria-labelledby="company-context-access-title">
       <p className="eyebrow">{copy.eyebrow}</p>
       <h2 id="company-context-access-title">{copy.title}</h2>
       <p>{copy.description}</p>
-      <form noValidate onSubmit={(event) => void submit(event, 'grant')}>
-        <label htmlFor="context-access-bundle">{copy.bundleLabel}</label>
-        <select
-          id="context-access-bundle"
-          value={bundle}
-          disabled={pending}
-          onChange={(event) => {
-            retryCommand.current = undefined;
-            setState({ status: 'idle' });
-            setBundle(event.target.value as AssignmentBundle);
-          }}
-        >
-          <option value="company-context">{copy.companyContextBundle}</option>
-          <option value="director-client">{copy.directorClientBundle}</option>
-        </select>
-        <label htmlFor="context-access-membership">
-          {copy.workspaceMembershipLabel}
-        </label>
-        <input
-          id="context-access-membership"
-          value={workspaceMembershipId}
-          onChange={(event) => setWorkspaceMembershipId(event.target.value)}
-        />
-        <label htmlFor="context-access-company">{copy.companyLabel}</label>
-        <input
-          id="context-access-company"
-          value={companyId}
-          onChange={(event) => setCompanyId(event.target.value)}
-        />
-        <button type="submit" disabled={pending}>
-          {copy.grant}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={(event) => void submit(event, 'revoke')}
-        >
-          {copy.revoke}
-        </button>
-      </form>
-      {state.status === 'ready' && (
+      {!hasSelectableTargets && <p>{copy.empty}</p>}
+      {hasSelectableTargets && (
+        <form noValidate onSubmit={(event) => void submit(event, 'grant')}>
+          <label htmlFor="context-access-member">{copy.workspaceMemberLabel}</label>
+          <select
+            id="context-access-member"
+            value={workspaceMembershipId}
+            disabled={pending}
+            onChange={(event) => {
+              resetCommand();
+              setWorkspaceMembershipId(event.target.value);
+            }}
+          >
+            <option value="">{copy.selectMember}</option>
+            {data.members.map((member) => (
+              <option
+                key={member.workspaceMembershipId}
+                value={member.workspaceMembershipId}
+              >
+                {member.displayName} — {member.email}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="context-access-company">{copy.companyLabel}</label>
+          <select
+            id="context-access-company"
+            value={companyId}
+            disabled={pending}
+            onChange={(event) => {
+              resetCommand();
+              setCompanyId(event.target.value);
+            }}
+          >
+            <option value="">{copy.selectCompany}</option>
+            {data.companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.displayName}
+              </option>
+            ))}
+          </select>
+
+          <label htmlFor="context-access-bundle">{copy.bundleLabel}</label>
+          <select
+            id="context-access-bundle"
+            value={bundle}
+            disabled={pending}
+            onChange={(event) => {
+              resetCommand();
+              setBundle(event.target.value as AssignmentBundle);
+            }}
+          >
+            <option value="company-context">{copy.companyContextBundle}</option>
+            <option value="director-client">{copy.directorClientBundle}</option>
+          </select>
+
+          {workspaceMembershipId && companyId && (
+            <p role="status">
+              {copy.currentStateLabel}: {' '}
+              <strong>
+                {activeAssignment
+                  ? copy.currentStateGranted
+                  : copy.currentStateNotGranted}
+              </strong>
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={
+              pending ||
+              !workspaceMembershipId ||
+              !companyId ||
+              activeAssignment
+            }
+          >
+            {copy.grant}
+          </button>
+          <button
+            type="button"
+            disabled={
+              pending ||
+              !workspaceMembershipId ||
+              !companyId ||
+              !activeAssignment
+            }
+            onClick={(event) => void submit(event, 'revoke')}
+          >
+            {copy.revoke}
+          </button>
+        </form>
+      )}
+      {mutation.status === 'ready' && (
         <p role="status">
-          {state.submission === 'grant' ? copy.granted : copy.revoked}
+          {mutation.submission === 'grant' ? copy.granted : copy.revoked}
         </p>
       )}
-      {state.status === 'error' && <p role="alert">{copy.error}</p>}
+      {mutation.status === 'error' && <p role="alert">{copy.error}</p>}
     </section>
   );
+}
+
+function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
+  return bundle === 'director-client'
+    ? 'Company Director Client Access'
+    : 'Company Context Access';
 }
