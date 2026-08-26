@@ -55,7 +55,10 @@ describeWithPostgres('Company access administration REST API', () => {
   it('returns only active same-Workspace members, Companies and approved bundle assignments', async () => {
     const owner = await currentActor('workspace-owner', 'Workspace Owner');
     const activeMember = await currentActor('active-member', 'Ada Member');
-    const inactiveMember = await currentActor('inactive-member', 'Zed Inactive');
+    const inactiveMember = await currentActor(
+      'inactive-member',
+      'Zed Inactive',
+    );
     const activeCompany = await registerCompany('Alpha Company');
     const inactiveCompany = await registerCompany('Zeta Inactive Company');
 
