@@ -3,7 +3,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import {
   COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION,
@@ -28,6 +28,8 @@ import {
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from './company-permissions.js';
 import type {
+  CompanyAccessAdministrationState,
+  CompanyAssignmentBundleLabel,
   CompanyContextAssignmentRecord,
   GrantCompanyContextAssignmentCommand,
 } from './company-context-assignment.types.js';
@@ -50,6 +52,10 @@ const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
   value: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   label: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 };
+const ADMINISTRABLE_BUNDLES = [
+  COMPANY_CONTEXT_ACCESS_BUNDLE,
+  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+] as const;
 
 @Injectable()
 export class CompanyContextAssignmentService {
@@ -57,6 +63,111 @@ export class CompanyContextAssignmentService {
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
   ) {}
+
+  async readAdministrationState(
+    actor: ActorContext,
+  ): Promise<CompanyAccessAdministrationState> {
+    requireWorkspacePermission(actor, 'company.assignment.manage');
+    return this.databaseContext.transaction(async () => {
+      const database = this.databaseContext.connection;
+      const members = await database
+        .select({
+          workspaceMembershipId: workspaceMemberships.id,
+          displayName: internalUsers.displayName,
+          email: internalUsers.email,
+        })
+        .from(workspaceMemberships)
+        .innerJoin(
+          internalUsers,
+          and(
+            eq(internalUsers.id, workspaceMemberships.internalUserId),
+            eq(internalUsers.status, 'active'),
+          ),
+        )
+        .where(
+          and(
+            eq(workspaceMemberships.workspaceId, actor.workspaceId),
+            eq(workspaceMemberships.status, 'active'),
+          ),
+        )
+        .orderBy(
+          asc(internalUsers.displayName),
+          asc(internalUsers.email),
+          asc(workspaceMemberships.id),
+        );
+
+      const activeCompanies = await database
+        .select({ id: companies.id, displayName: companies.displayName })
+        .from(companies)
+        .where(
+          and(
+            eq(companies.workspaceId, actor.workspaceId),
+            eq(companies.status, 'active'),
+          ),
+        )
+        .orderBy(asc(companies.displayName), asc(companies.id));
+
+      const assignments = await database
+        .select({
+          id: companyRoleAssignments.id,
+          workspaceMembershipId: companyRoleAssignments.workspaceMembershipId,
+          companyId: companyRoleAssignments.companyId,
+          bundle: companyRoleAssignments.bundle,
+        })
+        .from(companyRoleAssignments)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(
+              workspaceMemberships.workspaceId,
+              companyRoleAssignments.workspaceId,
+            ),
+            eq(
+              workspaceMemberships.id,
+              companyRoleAssignments.workspaceMembershipId,
+            ),
+            eq(workspaceMemberships.status, 'active'),
+          ),
+        )
+        .innerJoin(
+          internalUsers,
+          and(
+            eq(internalUsers.id, workspaceMemberships.internalUserId),
+            eq(internalUsers.status, 'active'),
+          ),
+        )
+        .innerJoin(
+          companies,
+          and(
+            eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+            eq(companies.id, companyRoleAssignments.companyId),
+            eq(companies.status, 'active'),
+          ),
+        )
+        .where(
+          and(
+            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+            isNull(companyRoleAssignments.revokedAt),
+            inArray(companyRoleAssignments.bundle, ADMINISTRABLE_BUNDLES),
+          ),
+        )
+        .orderBy(
+          asc(companyRoleAssignments.workspaceMembershipId),
+          asc(companyRoleAssignments.companyId),
+          asc(companyRoleAssignments.bundle),
+        );
+
+      return {
+        members,
+        companies: activeCompanies,
+        assignments: assignments.map((assignment) => ({
+          ...assignment,
+          bundle: assignmentBundleLabel(assignment.bundle),
+          active: true,
+        })),
+      };
+    });
+  }
 
   async grant(
     actor: ActorContext,
@@ -386,6 +497,15 @@ function requireIdempotencyKey(value: string | undefined): string {
   if (!value?.trim())
     throw new BadRequestException('Idempotency-Key header is required.');
   return value.trim();
+}
+
+function assignmentBundleLabel(bundle: Bundle): CompanyAssignmentBundleLabel {
+  switch (bundle) {
+    case COMPANY_CONTEXT_ACCESS_BUNDLE:
+      return COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL;
+    case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
+      return COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
+  }
 }
 
 function assertSameCommand(
