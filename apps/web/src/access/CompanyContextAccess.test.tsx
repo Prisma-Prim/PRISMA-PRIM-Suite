@@ -448,6 +448,7 @@ describe('CompanyContextAccess', () => {
       <CompanyContextAccess actor={ownerActor} identity={firstIdentity} />,
     );
 
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     rerender(
       <CompanyContextAccess actor={ownerActor} identity={secondIdentity} />,
     );
