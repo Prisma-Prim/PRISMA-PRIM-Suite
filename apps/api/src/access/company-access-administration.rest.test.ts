@@ -102,7 +102,8 @@ describeWithPostgres('Company access administration REST API', () => {
     );
     await pool.query(
       `INSERT INTO workspace_memberships (workspace_id, internal_user_id)
-       VALUES ($1, $2)`,
+       VALUES ($1, $2)
+       ON CONFLICT (workspace_id, internal_user_id) DO NOTHING`,
       [foreignWorkspace.rows[0]!.id, foreignUser.rows[0]!.id],
     );
 
