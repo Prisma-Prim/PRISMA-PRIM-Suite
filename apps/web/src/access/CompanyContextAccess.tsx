@@ -49,7 +49,7 @@ export function CompanyContextAccess({
   actor: ActorContext;
   identity: BrowserIdentity;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
-  onCompanyContextRejected?: (companyId: string) => void;
+  onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
   onActivityRecorded?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
@@ -198,12 +198,8 @@ export function CompanyContextAccess({
         return;
       }
 
-      if (result.status === 'ok') {
-        await onActivityRecorded();
-        if (request.signal.aborted) return;
-      }
-
       let actorRevalidationFailed = false;
+      let activityRefreshedByRecovery = false;
       if (
         result.status === 'ok' &&
         command.bundle === 'director-client' &&
@@ -225,12 +221,18 @@ export function CompanyContextAccess({
           return;
         }
         if (revalidated.status === 'forbidden') {
-          rejectCompanyContext.current(command.companyId);
+          await rejectCompanyContext.current(command.companyId);
+          activityRefreshedByRecovery = true;
         } else if (revalidated.status === 'ok') {
           await acceptRevalidatedActor.current(revalidated.value);
         } else {
           actorRevalidationFailed = true;
         }
+      }
+
+      if (result.status === 'ok' && !activityRefreshedByRecovery) {
+        await onActivityRecorded();
+        if (request.signal.aborted) return;
       }
 
       if (request.signal.aborted) return;

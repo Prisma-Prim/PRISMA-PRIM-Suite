@@ -21,6 +21,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     shellContext: access,
     selectCompany,
     rejectCompanyContext,
+    rejectCompanyContextAndRefreshActivity,
     acceptRevalidatedActor,
     includeCompany,
     refreshActivityLog,
@@ -104,7 +105,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
+          onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
           onActivityRecorded={refreshActivityLog}
         />
       )}

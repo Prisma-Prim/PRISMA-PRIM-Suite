@@ -574,8 +574,9 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(revokedState), { status: 200 }),
         ),
     );
-    const rejectCompanyContext = vi.fn();
+    const rejectCompanyContext = vi.fn(async () => undefined);
     const acceptActor = vi.fn(async () => undefined);
+    const refreshActivity = vi.fn(async () => undefined);
 
     render(
       <CompanyContextAccess
@@ -583,6 +584,7 @@ describe('CompanyContextAccess', () => {
         identity={deterministicBrowserIdentity()}
         onCompanyContextRejected={rejectCompanyContext}
         onActorRevalidated={acceptActor}
+        onActivityRecorded={refreshActivity}
       />,
     );
     await screen.findByLabelText('Workspace member');
@@ -600,6 +602,7 @@ describe('CompanyContextAccess', () => {
     await screen.findByText('Access revoked. Server state refreshed.');
     expect(rejectCompanyContext).toHaveBeenCalledWith(companyId);
     expect(acceptActor).not.toHaveBeenCalled();
+    expect(refreshActivity).not.toHaveBeenCalled();
   });
 
   it('retries self-assignment actor revalidation with the same command key', async () => {

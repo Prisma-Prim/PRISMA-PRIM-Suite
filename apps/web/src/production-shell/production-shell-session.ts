@@ -37,6 +37,9 @@ export interface ProductionShellSessionSnapshot {
   readonly refreshActivityLog: () => Promise<void>;
   readonly acceptRevalidatedActor: (actor: ActorContext) => Promise<void>;
   readonly rejectCompanyContext: (companyId: string) => void;
+  readonly rejectCompanyContextAndRefreshActivity: (
+    companyId: string,
+  ) => Promise<void>;
   readonly includeCompany: (company: VisibleCompany) => void;
 }
 
@@ -96,6 +99,18 @@ export function createProductionShellSession({
           companyId,
           activityLog: 'preserve',
         });
+      },
+      rejectCompanyContextAndRefreshActivity: async (companyId) => {
+        if (!connected || !origin) return;
+        const previousContext = shellContext;
+        dispatch({
+          type: 'company-rejected',
+          origin,
+          companyId,
+          activityLog: 'preserve',
+        });
+        if (shellContext === previousContext) return;
+        await snapshot.refreshActivityLog();
       },
       includeCompany: (company) => {
         if (!connected || !origin) return;
