@@ -526,6 +526,82 @@ describe('CompanyContextAccess', () => {
     expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
   });
 
+  it('rejects the active Company after self-revocation removes its context access', async () => {
+    const selfActor: ActorContext = {
+      ...ownerActor,
+      workspacePermissions: ['company.assignment.manage'],
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    const state = {
+      members: [
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+      companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
+      assignments: [
+        {
+          id: 'assignment-1',
+          workspaceMembershipId: ownerMembershipId,
+          companyId,
+          bundle: 'Company Director Client Access',
+          active: true,
+        },
+      ],
+    };
+    const revokedState = { ...state, assignments: [] };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(state), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ ...state.assignments[0], active: false }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 403 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revokedState), { status: 200 }),
+        ),
+    );
+    const rejectCompanyContext = vi.fn();
+    const acceptActor = vi.fn(async () => undefined);
+
+    render(
+      <CompanyContextAccess
+        actor={selfActor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={rejectCompanyContext}
+        onActorRevalidated={acceptActor}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Workspace member'), {
+      target: { value: ownerMembershipId },
+    });
+    fireEvent.change(screen.getByLabelText('Company'), {
+      target: { value: companyId },
+    });
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(rejectCompanyContext).toHaveBeenCalledWith(companyId);
+    expect(acceptActor).not.toHaveBeenCalled();
+  });
+
   it('retries self-assignment actor revalidation with the same command key', async () => {
     const selfActor: ActorContext = {
       ...ownerActor,

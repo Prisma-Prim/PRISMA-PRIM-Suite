@@ -43,11 +43,13 @@ export function CompanyContextAccess({
   actor,
   identity,
   onActorRevalidated = () => undefined,
+  onCompanyContextRejected = () => undefined,
   onActivityRecorded = () => undefined,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onCompanyContextRejected?: (companyId: string) => void;
   onActivityRecorded?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
@@ -70,6 +72,8 @@ export function CompanyContextAccess({
   const pendingRequest = useRef<AbortController | undefined>(undefined);
   const acceptRevalidatedActor = useRef(onActorRevalidated);
   acceptRevalidatedActor.current = onActorRevalidated;
+  const rejectCompanyContext = useRef(onCompanyContextRejected);
+  rejectCompanyContext.current = onCompanyContextRejected;
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
@@ -220,7 +224,9 @@ export function CompanyContextAccess({
           await identity.rejectSession();
           return;
         }
-        if (revalidated.status === 'ok') {
+        if (revalidated.status === 'forbidden') {
+          rejectCompanyContext.current(command.companyId);
+        } else if (revalidated.status === 'ok') {
           await acceptRevalidatedActor.current(revalidated.value);
         } else {
           actorRevalidationFailed = true;
