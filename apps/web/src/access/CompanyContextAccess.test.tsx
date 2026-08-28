@@ -584,6 +584,7 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(assignment), { status: 201 }),
         )
         .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
         .mockResolvedValueOnce(
           new Response(JSON.stringify(grantedState), { status: 200 }),
         )
@@ -621,6 +622,8 @@ describe('CompanyContextAccess', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The access state could not be loaded or changed.',
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByLabelText('Workspace member');
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
       'Current server state: Granted',
     );
@@ -633,7 +636,7 @@ describe('CompanyContextAccess', () => {
       vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
     ).get('idempotency-key');
     const retryKey = new Headers(
-      vi.mocked(fetch).mock.calls[4]?.[1]?.headers,
+      vi.mocked(fetch).mock.calls[5]?.[1]?.headers,
     ).get('idempotency-key');
     expect(firstKey).toBeTruthy();
     expect(retryKey).toBe(firstKey);

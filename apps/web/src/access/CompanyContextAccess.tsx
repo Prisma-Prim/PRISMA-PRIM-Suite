@@ -255,7 +255,6 @@ export function CompanyContextAccess({
     pendingRequest.current?.abort();
     const request = new AbortController();
     pendingRequest.current = request;
-    setMutation({ status: 'idle' });
     void reloadAdministration(request, true);
   }
 
