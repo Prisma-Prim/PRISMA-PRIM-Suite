@@ -74,6 +74,59 @@ describe('production shell session', () => {
     observed.unsubscribe();
   });
 
+  it('refreshes workspace activity after rejecting an invalid active Company', async () => {
+    const loadActivityLog = vi.fn(
+      async ({ companyId }: { companyId?: string }) =>
+        activitySuccess(companyId),
+    );
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? selectedActor(companyId) : baseActor,
+          };
+        },
+        async loadCompanies() {
+          return { status: 'ok', value: [companies[0]!] };
+        },
+        loadActivityLog,
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext).toMatchObject({
+        status: 'active',
+        actor: { activeCompany: { id: 'company-a' } },
+        activityLog: { status: 'ready' },
+      }),
+    );
+    loadActivityLog.mockClear();
+
+    const recovery = observed
+      .current()
+      .rejectCompanyContextAndRefreshActivity('company-a');
+
+    expect(observed.current().shellContext).toMatchObject({
+      status: 'active',
+      activityLog: { status: 'loading' },
+    });
+    await recovery;
+
+    expect(loadActivityLog).toHaveBeenCalledWith({
+      companyId: undefined,
+      signal: expect.any(AbortSignal),
+    });
+    const recovered = observed.current().shellContext;
+    expect(recovered).toMatchObject({
+      status: 'active',
+      activityLog: { status: 'ready', events: [] },
+    });
+    if (recovered.status !== 'active')
+      throw new Error('Expected an active production-shell session.');
+    expect(recovered.actor.activeCompany).toBeUndefined();
+    observed.unsubscribe();
+  });
+
   it.each([
     {
       label: 'empty',

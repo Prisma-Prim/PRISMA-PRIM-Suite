@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import { DATABASE } from './database.constants.js';
 
 @Injectable()
@@ -13,9 +14,14 @@ export class DatabaseContext {
     return this.transactions.getStore() ?? this.database;
   }
 
-  transaction<T>(work: () => Promise<T>): Promise<T> {
-    return this.database.transaction((transaction) =>
-      this.transactions.run(transaction as NodePgDatabase, work),
+  transaction<T>(
+    work: () => Promise<T>,
+    config?: PgTransactionConfig,
+  ): Promise<T> {
+    return this.database.transaction(
+      (transaction) =>
+        this.transactions.run(transaction as NodePgDatabase, work),
+      config,
     );
   }
 }

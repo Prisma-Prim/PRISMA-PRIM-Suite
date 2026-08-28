@@ -10,106 +10,191 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { CompanyContextAccess } from './CompanyContextAccess';
 
+const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const companyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+const administration = (bundle?: 'context' | 'director') => ({
+  members: [
+    {
+      workspaceMembershipId: memberId,
+      displayName: 'Ada Member',
+      email: 'ada@example.test',
+    },
+    {
+      workspaceMembershipId: ownerMembershipId,
+      displayName: 'Workspace Owner',
+      email: 'owner@example.test',
+    },
+  ],
+  companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
+  assignments: bundle
+    ? [
+        {
+          id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          workspaceMembershipId: memberId,
+          companyId,
+          bundle:
+            bundle === 'director'
+              ? 'Company Director Client Access'
+              : 'Company Context Access',
+          active: true,
+        },
+      ]
+    : [],
+});
+
 describe('CompanyContextAccess', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
-  it('grants and revokes access through the canonical endpoints', async () => {
+  it('loads only human-readable member and Company choices without UUID entry fields', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 'assignment-1',
-            workspaceMembershipId: 'member-1',
-            companyId: 'company-1',
-            bundle: 'Company Context Access',
-            active: true,
-          }),
-          { status: 201 },
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(administration()), { status: 200 }),
         ),
-      ),
     );
+
     render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-      target: { value: 'member-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Company ID'), {
-      target: { value: 'company-1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/company-context-assignments',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'idempotency-key': expect.any(String),
-          }),
-        }),
-      ),
+
+    expect(
+      await screen.findByLabelText('Workspace member'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Ada Member — ada@example.test' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'PRISMA-PRIM' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Workspace membership ID'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Company ID')).not.toBeInTheDocument();
+
+    chooseTargets();
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Not granted',
     );
-    const grantKey = new Headers(
-      vi.mocked(fetch).mock.calls[0]?.[1]?.headers,
-    ).get('idempotency-key');
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/company-context-assignments/member-1/company-1',
-        expect.objectContaining({
-          method: 'DELETE',
-          headers: expect.objectContaining({
-            'idempotency-key': expect.any(String),
-          }),
-        }),
-      ),
-    );
-    const revokeKey = new Headers(
-      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
-    ).get('idempotency-key');
-    expect(grantKey).toBeTruthy();
-    expect(revokeKey).toBeTruthy();
-    expect(revokeKey).not.toBe(grantKey);
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Revoke access' }),
+    ).toBeDisabled();
   });
 
-  it('grants and revokes the fixed Company Director Client Access bundle', async () => {
+  it('disambiguates duplicate member and Company labels with stable references', async () => {
+    const duplicateMemberId = '11111111-1111-4111-8111-111111111111';
+    const duplicateCompanyId = '22222222-2222-4222-8222-222222222222';
+    const state = {
+      members: [
+        {
+          workspaceMembershipId: memberId,
+          displayName: 'Ada Member',
+          email: 'ada@example.test',
+        },
+        {
+          workspaceMembershipId: duplicateMemberId,
+          displayName: 'Ada Member',
+          email: 'ada@example.test',
+        },
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+      companies: [
+        { id: companyId, displayName: 'PRISMA-PRIM' },
+        { id: duplicateCompanyId, displayName: 'PRISMA-PRIM' },
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          displayName: 'BIC',
+        },
+      ],
+      assignments: [],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(state), { status: 200 }),
+        ),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+
+    await screen.findByLabelText('Workspace member');
+    expect(
+      screen.getByRole('option', {
+        name: 'Ada Member — ada@example.test — Reference A3QMM1BZFR1YUM8AM42DIJIJU',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', {
+        name: 'Ada Member — ada@example.test — Reference 10DGNSXLJLXOXC3RMYV4E8SNL',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', {
+        name: 'Workspace Owner — owner@example.test',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', {
+        name: 'PRISMA-PRIM — Reference C4HJXN76IW6X20HATX7ZJHWB0',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', {
+        name: 'PRISMA-PRIM — Reference 20QXBLV736I61189QVFXEPZJ6',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'BIC' })).toBeInTheDocument();
+  });
+
+  it('grants Company Context Access and reloads the canonical server state before reporting success', async () => {
     const refreshActivity = vi.fn(async () => undefined);
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
         .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
               id: 'assignment-1',
-              workspaceMembershipId: 'member-1',
-              companyId: 'company-1',
-              bundle: 'Company Director Client Access',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Context Access',
               active: true,
             }),
             { status: 201 },
           ),
         )
         .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              id: 'assignment-1',
-              workspaceMembershipId: 'member-1',
-              companyId: 'company-1',
-              bundle: 'Company Director Client Access',
-              active: false,
-            }),
-            { status: 200 },
-          ),
+          new Response(JSON.stringify(administration('context')), {
+            status: 200,
+          }),
         ),
     );
+
     render(
       <CompanyContextAccess
         actor={ownerActor}
@@ -117,127 +202,235 @@ describe('CompanyContextAccess', () => {
         onActivityRecorded={refreshActivity}
       />,
     );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/company-context-assignments',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ workspaceMembershipId: memberId, companyId }),
+        headers: expect.objectContaining({
+          'idempotency-key': expect.any(String),
+        }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/company-context-assignments/administration',
+      expect.any(Object),
+    );
+    expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Granted',
+    );
+    expect(
+      screen.getByText('Access granted. Server state refreshed.'),
+    ).toBeInTheDocument();
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('revokes Company Director Client Access and reloads the canonical server state', async () => {
+    const refreshActivity = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration('director')), {
+            status: 200,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'assignment-1',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Director Client Access',
+              active: false,
+            }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        ),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
     fireEvent.change(screen.getByLabelText('Access bundle'), {
       target: { value: 'director-client' },
     });
-    fillAssignment();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/company-director-client-assignments',
-        expect.objectContaining({ method: 'POST' }),
-      ),
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Granted',
     );
-    await waitFor(() => expect(refreshActivity).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/company-director-client-assignments/member-1/company-1',
-        expect.objectContaining({ method: 'DELETE' }),
-      ),
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      `/api/company-director-client-assignments/${memberId}/${companyId}`,
+      expect.objectContaining({ method: 'DELETE' }),
     );
-    await waitFor(() => expect(refreshActivity).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Not granted',
+    );
+    expect(
+      screen.getByText('Access revoked. Server state refreshed.'),
+    ).toBeInTheDocument();
+    expect(refreshActivity).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    {
-      submission: 'grant',
-      buttonName: 'Grant access',
-      assignmentStatus: 201,
-      permissions: ['client.read', 'client.create', 'client.update'],
-    },
-    {
-      submission: 'revoke',
-      buttonName: 'Revoke access',
-      assignmentStatus: 200,
-      permissions: [],
-    },
-  ] as const)(
-    'revalidates the active actor after a self-$submission',
-    async ({ buttonName, assignmentStatus, permissions }) => {
-      const revalidatedActor: ActorContext = {
-        ...ownerActor,
-        activeCompany: {
-          id: 'company-1',
-          displayName: 'PRISMA-PRIM',
-          clientPermissions: [...permissions],
-        },
-      };
-      vi.stubGlobal(
-        'fetch',
-        vi
-          .fn()
-          .mockResolvedValueOnce(
-            new Response(
-              JSON.stringify({
-                id: 'self-assignment',
-                workspaceMembershipId: ownerActor.workspaceMembershipId,
-                companyId: 'company-1',
-                bundle: 'Company Director Client Access',
-                active: assignmentStatus === 201,
-              }),
-              { status: assignmentStatus },
-            ),
-          )
-          .mockResolvedValueOnce(
-            new Response(JSON.stringify(revalidatedActor), { status: 200 }),
-          ),
-      );
-      const acceptActor = vi.fn(async () => undefined);
-      const refreshActivity = vi.fn(async () => undefined);
-      render(
-        <CompanyContextAccess
-          actor={{
-            ...ownerActor,
-            activeCompany: {
-              id: 'company-1',
-              displayName: 'PRISMA-PRIM',
-              clientPermissions:
-                assignmentStatus === 201
-                  ? []
-                  : ['client.read', 'client.create', 'client.update'],
-            },
-          }}
-          identity={deterministicBrowserIdentity()}
-          onActorRevalidated={acceptActor}
-          onActivityRecorded={refreshActivity}
-        />,
-      );
-      fireEvent.change(screen.getByLabelText('Access bundle'), {
-        target: { value: 'director-client' },
-      });
-      fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-        target: { value: ownerActor.workspaceMembershipId },
-      });
-      fireEvent.change(screen.getByLabelText('Company ID'), {
-        target: { value: 'company-1' },
-      });
-
-      fireEvent.click(screen.getByRole('button', { name: buttonName }));
-
-      await waitFor(() =>
-        expect(fetch).toHaveBeenNthCalledWith(
-          2,
-          '/api/access/current-actor',
-          expect.objectContaining({
-            headers: expect.objectContaining({
-              'x-company-context-id': 'company-1',
+  it('refreshes Activity Log after a confirmed mutation when administration reload fails', async () => {
+    const refreshActivity = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'assignment-1',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Context Access',
+              active: true,
             }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 })),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('reloads state after a stale command denial instead of keeping the previous assignment state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration('context')), {
+            status: 200,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'Forbidden', statusCode: 403 }),
+            { status: 403 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        ),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Not granted',
+    );
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+  });
+
+  it('reuses the same idempotency key when a failed grant is retried and the server still reports it absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'assignment-1',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Context Access',
+              active: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration('context')), {
+            status: 200,
           }),
         ),
-      );
-      expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
-      expect(refreshActivity).toHaveBeenCalledOnce();
-    },
-  );
+    );
 
-  it('revalidates a self-assignment submitted with uppercase UUIDs', async () => {
-    const workspaceMembershipId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    const companyId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-    const actor: ActorContext = {
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+
+    const firstKey = new Headers(
+      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
+    ).get('idempotency-key');
+    const retryKey = new Headers(
+      vi.mocked(fetch).mock.calls[3]?.[1]?.headers,
+    ).get('idempotency-key');
+    expect(firstKey).toBeTruthy();
+    expect(retryKey).toBe(firstKey);
+  });
+
+  it('revalidates the active actor after a self Company Director Client assignment', async () => {
+    const selfActor: ActorContext = {
       ...ownerActor,
-      workspaceMembershipId,
       activeCompany: {
         id: companyId,
         displayName: 'PRISMA-PRIM',
@@ -245,22 +438,46 @@ describe('CompanyContextAccess', () => {
       },
     };
     const revalidatedActor: ActorContext = {
-      ...actor,
+      ...selfActor,
       activeCompany: {
-        id: companyId,
-        displayName: 'PRISMA-PRIM',
+        ...selfActor.activeCompany!,
         clientPermissions: ['client.read', 'client.create', 'client.update'],
       },
+    };
+    const state = {
+      ...administration(),
+      members: [
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+    };
+    const grantedState = {
+      ...state,
+      assignments: [
+        {
+          id: 'assignment-1',
+          workspaceMembershipId: ownerMembershipId,
+          companyId,
+          bundle: 'Company Director Client Access',
+          active: true,
+        },
+      ],
     };
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
         .mockResolvedValueOnce(
+          new Response(JSON.stringify(state), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
-              id: 'self-assignment',
-              workspaceMembershipId,
+              id: 'assignment-1',
+              workspaceMembershipId: ownerMembershipId,
               companyId,
               bundle: 'Company Director Client Access',
               active: true,
@@ -270,333 +487,393 @@ describe('CompanyContextAccess', () => {
         )
         .mockResolvedValueOnce(
           new Response(JSON.stringify(revalidatedActor), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(grantedState), { status: 200 }),
         ),
     );
     const acceptActor = vi.fn(async () => undefined);
+
     render(
       <CompanyContextAccess
-        actor={actor}
+        actor={selfActor}
         identity={deterministicBrowserIdentity()}
         onActorRevalidated={acceptActor}
       />,
     );
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Workspace member'), {
+      target: { value: ownerMembershipId },
+    });
+    fireEvent.change(screen.getByLabelText('Company'), {
+      target: { value: companyId },
+    });
     fireEvent.change(screen.getByLabelText('Access bundle'), {
       target: { value: 'director-client' },
     });
-    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-      target: { value: workspaceMembershipId.toUpperCase() },
-    });
-    fireEvent.change(screen.getByLabelText('Company ID'), {
-      target: { value: companyId.toUpperCase() },
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/access/current-actor',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-company-context-id': companyId,
+        }),
+      }),
+    );
     expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
   });
 
-  it('grants access through native keyboard form submission', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 'assignment-1',
-            workspaceMembershipId: 'member-1',
-            companyId: 'company-1',
-            bundle: 'Company Context Access',
-            active: true,
-          }),
-          { status: 201 },
-        ),
-      ),
-    );
-    render(
-      <CompanyContextAccess
-        actor={ownerActor}
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
-    fillAssignment();
-
-    fireEvent.submit(
-      screen.getByRole('button', { name: 'Grant access' }).closest('form')!,
-    );
-
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/company-context-assignments',
-        expect.objectContaining({ method: 'POST' }),
-      ),
-    );
-    expect(await screen.findByText('Access granted.')).toBeInTheDocument();
-  });
-
-  it('recovers when authentication fails before the request is created', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 'assignment-1',
-            workspaceMembershipId: 'member-1',
-            companyId: 'company-1',
-            bundle: 'Company Context Access',
-            active: true,
-          }),
-          { status: 201 },
-        ),
-      ),
-    );
-    const getToken = vi
-      .fn<() => Promise<string | null>>()
-      .mockRejectedValueOnce(new Error('token unavailable'))
-      .mockResolvedValue('verified-session-token');
-    const identity = { ...deterministicBrowserIdentity(), getToken };
-
-    render(<CompanyContextAccess actor={ownerActor} identity={identity} />);
-    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-      target: { value: 'member-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Company ID'), {
-      target: { value: 'company-1' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await screen.findByRole('alert');
-    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
-    expect(fetch).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await screen.findByText('Access granted.');
-    expect(getToken).toHaveBeenCalledTimes(2);
-    expect(fetch).toHaveBeenCalledOnce();
-  });
-
-  it('reuses the idempotency key when the same command is retried after a lost response', async () => {
+  it('rejects the active Company after self-revocation removes its context access', async () => {
+    const selfActor: ActorContext = {
+      ...ownerActor,
+      workspacePermissions: ['company.assignment.manage'],
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    const state = {
+      members: [
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+      companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
+      assignments: [
+        {
+          id: 'assignment-1',
+          workspaceMembershipId: ownerMembershipId,
+          companyId,
+          bundle: 'Company Director Client Access',
+          active: true,
+        },
+      ],
+    };
+    const revokedState = { ...state, assignments: [] };
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
-        .mockRejectedValueOnce(new TypeError('response lost'))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(state), { status: 200 }),
+        )
         .mockResolvedValueOnce(
           new Response(
-            JSON.stringify({
-              id: 'assignment-1',
-              workspaceMembershipId: 'member-1',
-              companyId: 'company-1',
-              bundle: 'Company Context Access',
-              active: true,
-            }),
-            { status: 201 },
+            JSON.stringify({ ...state.assignments[0], active: false }),
+            { status: 200 },
           ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 403 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revokedState), { status: 200 }),
         ),
     );
+    const rejectCompanyContext = vi.fn(async () => undefined);
+    const acceptActor = vi.fn(async () => undefined);
+    const refreshActivity = vi.fn(async () => undefined);
+
     render(
       <CompanyContextAccess
-        actor={ownerActor}
+        actor={selfActor}
         identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={rejectCompanyContext}
+        onActorRevalidated={acceptActor}
+        onActivityRecorded={refreshActivity}
       />,
     );
-    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-      target: { value: '  member-1  ' },
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Workspace member'), {
+      target: { value: ownerMembershipId },
     });
-    fireEvent.change(screen.getByLabelText('Company ID'), {
-      target: { value: ' company-1 ' },
+    fireEvent.change(screen.getByLabelText('Company'), {
+      target: { value: companyId },
     });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await screen.findByRole('alert');
-    fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-      target: { value: 'member-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Company ID'), {
-      target: { value: 'company-1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await screen.findByText('Access granted.');
-
-    const keys = vi
-      .mocked(fetch)
-      .mock.calls.map((call) =>
-        new Headers(call[1]?.headers).get('idempotency-key'),
-      );
-    expect(keys).toHaveLength(2);
-    expect(keys[0]).toBeTruthy();
-    expect(keys[1]).toBe(keys[0]);
-  });
-
-  it('does not send a grant after the identity changes while authentication is pending', async () => {
-    const token = deferred<string | null>();
-    const oldIdentity = {
-      ...deterministicBrowserIdentity(),
-      getToken: vi.fn(() => token.promise),
-    };
-    const newIdentity = deterministicBrowserIdentity({
-      'x-test-identity': 'new',
-    });
-    vi.stubGlobal('fetch', vi.fn());
-
-    const { rerender } = render(
-      <CompanyContextAccess actor={ownerActor} identity={oldIdentity} />,
-    );
-    fillAssignment();
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    expect(screen.getByRole('button', { name: 'Grant access' })).toBeDisabled();
-
-    rerender(
-      <CompanyContextAccess actor={ownerActor} identity={newIdentity} />,
-    );
-    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
-    await act(async () => {
-      token.resolve('old-session-token');
-      await token.promise;
-    });
-
-    expect(fetch).not.toHaveBeenCalled();
-    expect(screen.queryByText('Access granted.')).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ['grant', 'Grant access'],
-    ['revoke', 'Revoke access'],
-  ] as const)(
-    'aborts an in-flight %s when the actor changes',
-    async (_, buttonName) => {
-      let requestSignal: AbortSignal | undefined;
-      vi.stubGlobal(
-        'fetch',
-        vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-          requestSignal = init?.signal ?? undefined;
-          return new Promise<Response>((_resolve, reject) => {
-            requestSignal?.addEventListener('abort', () =>
-              reject(new DOMException('Aborted', 'AbortError')),
-            );
-          });
-        }),
-      );
-      const { rerender } = render(
-        <CompanyContextAccess
-          actor={ownerActor}
-          identity={deterministicBrowserIdentity()}
-        />,
-      );
-      fillAssignment();
-      fireEvent.click(screen.getByRole('button', { name: buttonName }));
-      await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
-
-      rerender(
-        <CompanyContextAccess
-          actor={{ ...ownerActor, internalUserId: 'replacement-owner' }}
-          identity={deterministicBrowserIdentity()}
-        />,
-      );
-
-      expect(requestSignal?.aborted).toBe(true);
-      expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    },
-  );
-
-  it('keeps a Workspace-scoped revocation alive while the active Company is restored', async () => {
-    const response = deferred<Response>();
-    let requestSignal: AbortSignal | undefined;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-        requestSignal = init?.signal ?? undefined;
-        return response.promise;
-      }),
-    );
-    const identity = deterministicBrowserIdentity();
-    const { rerender } = render(
-      <CompanyContextAccess actor={ownerActor} identity={identity} />,
-    );
     fireEvent.change(screen.getByLabelText('Access bundle'), {
       target: { value: 'director-client' },
     });
-    fillAssignment();
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
 
-    rerender(
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(rejectCompanyContext).toHaveBeenCalledWith(companyId);
+    expect(acceptActor).not.toHaveBeenCalled();
+    expect(refreshActivity).not.toHaveBeenCalled();
+  });
+
+  it('retries self-assignment actor revalidation with the same command key', async () => {
+    const selfActor: ActorContext = {
+      ...ownerActor,
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: [],
+      },
+    };
+    const revalidatedActor: ActorContext = {
+      ...selfActor,
+      activeCompany: {
+        id: companyId,
+        displayName: 'PRISMA-PRIM',
+        clientPermissions: ['client.read', 'client.create', 'client.update'],
+      },
+    };
+    const state = {
+      members: [
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+      companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
+      assignments: [],
+    };
+    const grantedState = {
+      ...state,
+      assignments: [
+        {
+          id: 'assignment-1',
+          workspaceMembershipId: ownerMembershipId,
+          companyId,
+          bundle: 'Company Director Client Access',
+          active: true,
+        },
+      ],
+    };
+    const assignment = {
+      id: 'assignment-1',
+      workspaceMembershipId: ownerMembershipId,
+      companyId,
+      bundle: 'Company Director Client Access',
+      active: true,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(state), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(assignment), { status: 201 }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(grantedState), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(assignment), { status: 201 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revalidatedActor), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(grantedState), { status: 200 }),
+        ),
+    );
+    const acceptActor = vi.fn(async () => undefined);
+
+    render(
       <CompanyContextAccess
-        actor={{
-          ...ownerActor,
-          activeCompany: { id: 'company-2', displayName: 'BIC' },
-        }}
-        identity={identity}
+        actor={selfActor}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={acceptActor}
       />,
     );
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Workspace member'), {
+      target: { value: ownerMembershipId },
+    });
+    fireEvent.change(screen.getByLabelText('Company'), {
+      target: { value: companyId },
+    });
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByLabelText('Workspace member');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Granted',
+    );
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+
+    const firstKey = new Headers(
+      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
+    ).get('idempotency-key');
+    const retryKey = new Headers(
+      vi.mocked(fetch).mock.calls[5]?.[1]?.headers,
+    ).get('idempotency-key');
+    expect(firstKey).toBeTruthy();
+    expect(retryKey).toBe(firstKey);
+    expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+  });
+
+  it('rejects the session when the administration read is unauthorized', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ message: 'Unauthorized', statusCode: 401 }),
+            { status: 401 },
+          ),
+        ),
+    );
+    const rejectSession = vi.fn(async () => undefined);
+    const identity = { ...deterministicBrowserIdentity(), rejectSession };
+
+    render(<CompanyContextAccess actor={ownerActor} identity={identity} />);
+
+    await waitFor(() => expect(rejectSession).toHaveBeenCalledOnce());
+  });
+
+  it('does not send a credential-delayed mutation after unmount', async () => {
+    const mutationToken = deferred<string | null>();
+    const getToken = vi
+      .fn()
+      .mockResolvedValueOnce('administration-token')
+      .mockImplementationOnce(() => mutationToken.promise);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        ),
+    );
+    const identity = {
+      ...deterministicBrowserIdentity(),
+      getToken,
+    };
+    const { unmount } = render(
+      <CompanyContextAccess actor={ownerActor} identity={identity} />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await waitFor(() => expect(getToken).toHaveBeenCalledTimes(2));
+
+    unmount();
     await act(async () => {
-      response.resolve(
+      mutationToken.resolve('mutation-token');
+      await mutationToken.promise;
+      await Promise.resolve();
+    });
+
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('does not publish a stale administration read after identity replacement', async () => {
+    const firstResponse = deferred<Response>();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementationOnce(() => firstResponse.promise)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              members: [
+                {
+                  workspaceMembershipId: memberId,
+                  displayName: 'New Session Member',
+                  email: 'new@example.test',
+                },
+              ],
+              companies: [{ id: companyId, displayName: 'New Company' }],
+              assignments: [],
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+    const firstIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'first',
+    });
+    const secondIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'second',
+    });
+    const { rerender } = render(
+      <CompanyContextAccess actor={ownerActor} identity={firstIdentity} />,
+    );
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    rerender(
+      <CompanyContextAccess actor={ownerActor} identity={secondIdentity} />,
+    );
+    expect(
+      await screen.findByText('New Session Member — new@example.test'),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      firstResponse.resolve(
         new Response(
           JSON.stringify({
-            workspaceMembershipId: 'member-1',
-            companyId: 'company-1',
-            bundle: 'Company Director Client Access',
-            active: false,
+            members: [
+              {
+                workspaceMembershipId: memberId,
+                displayName: 'Stale Member',
+                email: 'stale@example.test',
+              },
+            ],
+            companies: [{ id: companyId, displayName: 'Stale Company' }],
+            assignments: [],
           }),
           { status: 200 },
         ),
       );
-      await response.promise;
+      await firstResponse.promise;
     });
 
-    expect(requestSignal?.aborted).toBe(false);
-    expect(await screen.findByText('Access revoked.')).toBeInTheDocument();
-  });
-
-  it('aborts an in-flight mutation when unmounted', async () => {
-    let requestSignal: AbortSignal | undefined;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
-        requestSignal = init?.signal ?? undefined;
-        return new Promise<Response>(() => undefined);
-      }),
-    );
-    const { unmount } = render(
-      <CompanyContextAccess
-        actor={ownerActor}
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
-    fillAssignment();
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
-
-    unmount();
-
-    expect(requestSignal?.aborted).toBe(true);
+    expect(
+      screen.queryByText('Stale Member — stale@example.test'),
+    ).not.toBeInTheDocument();
   });
 });
 
-function fillAssignment() {
-  fireEvent.change(screen.getByLabelText('Workspace membership ID'), {
-    target: { value: 'member-1' },
+function chooseTargets() {
+  fireEvent.change(screen.getByLabelText('Workspace member'), {
+    target: { value: memberId },
   });
-  fireEvent.change(screen.getByLabelText('Company ID'), {
-    target: { value: 'company-1' },
+  fireEvent.change(screen.getByLabelText('Company'), {
+    target: { value: companyId },
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return { promise, resolve };
 }
 
 const ownerActor: ActorContext = {
-  internalUserId: 'owner',
-  workspaceMembershipId: 'owner-membership',
-  workspaceId: 'workspace',
-  workspaceName: 'Workspace',
-  displayName: 'Owner',
+  internalUserId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  workspaceMembershipId: ownerMembershipId,
+  workspaceId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+  workspaceName: 'PRISMA Workspace',
+  displayName: 'Workspace Owner',
   email: 'owner@example.test',
   active: true,
-  workspacePermissions: ['company.manage', 'company.assignment.manage'],
+  workspacePermissions: [
+    'company.manage',
+    'company.assignment.manage',
+    'client.manage',
+  ],
 };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolver) => {
+    resolve = resolver;
+  });
+  return { promise, resolve };
+}

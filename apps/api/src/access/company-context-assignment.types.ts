@@ -15,6 +15,23 @@ export interface CompanyContextAssignmentRecord {
   active: boolean;
 }
 
+export interface CompanyAccessAdministrationMember {
+  workspaceMembershipId: string;
+  displayName: string;
+  email: string;
+}
+
+export interface CompanyAccessAdministrationCompany {
+  id: string;
+  displayName: string;
+}
+
+export interface CompanyAccessAdministrationState {
+  members: CompanyAccessAdministrationMember[];
+  companies: CompanyAccessAdministrationCompany[];
+  assignments: CompanyContextAssignmentRecord[];
+}
+
 export interface GrantCompanyContextAssignmentCommand {
   workspaceMembershipId: unknown;
   companyId: unknown;
