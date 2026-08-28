@@ -68,7 +68,7 @@ test('administers both existing Company access bundles by member and Company nam
     },
   );
   await page.route(
-    '**/api/company-director-client-assignments**',
+    /\/api\/company-director-client-assignments(?:\/[^/]+\/[^/]+)?$/,
     async (route) => {
       const request = route.request();
       const pathname = new URL(request.url()).pathname;
