@@ -220,3 +220,241 @@ test('administers both existing Company access bundles by member and Company nam
     });
   }
 });
+
+test('confirms Workspace suspension and leaves active state after self-suspension', async ({
+  page,
+}, testInfo) => {
+  let memberActive = true;
+  let suspensionCommands = 0;
+  const events: Array<Record<string, unknown>> = [];
+
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({ json: ownerActor }),
+  );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events } }),
+  );
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) =>
+      route.fulfill({
+        json: {
+          members: [
+            {
+              workspaceMembershipId: ownerMembershipId,
+              displayName: 'Ada Ionescu',
+              email: 'ada@example.test',
+            },
+            ...(memberActive
+              ? [
+                  {
+                    workspaceMembershipId: memberId,
+                    displayName: 'Mila Popescu',
+                    email: 'mila@example.test',
+                  },
+                ]
+              : []),
+          ],
+          companies: [],
+          assignments: [],
+        },
+      }),
+  );
+  await page.route('**/api/workspace-membership-suspensions', async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe('POST');
+    expect(request.headers()['idempotency-key']).toBeTruthy();
+    const target = request.postDataJSON().workspaceMembershipId as string;
+    suspensionCommands += 1;
+    if (target === memberId) {
+      memberActive = false;
+      events.unshift({
+        id: '55555555-5555-4555-8555-555555555555',
+        action: 'workspace_membership.suspended',
+        occurredAt: '2026-08-28T22:30:00.000Z',
+        actor: {
+          internalUserId: ownerActor.internalUserId,
+          displayName: ownerActor.displayName,
+        },
+        target: {
+          type: 'workspace_membership',
+          workspaceMembershipId: memberId,
+          internalUserId: '66666666-6666-4666-8666-666666666666',
+          displayName: 'Mila Popescu',
+        },
+        metadata: {},
+      });
+    }
+    return route.fulfill({
+      status: 201,
+      json: { workspaceMembershipId: target, status: 'inactive' },
+    });
+  });
+
+  await page.goto('/');
+  await page
+    .getByLabel('Member to suspend')
+    .selectOption({ label: 'Mila Popescu — mila@example.test' });
+  await page.getByRole('button', { name: 'Review suspension' }).click();
+  await expect(
+    page.getByRole('region', {
+      name: 'Confirm Workspace access suspension',
+    }),
+  ).toContainText('Mila Popescu — mila@example.test');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  expect(suspensionCommands).toBe(0);
+
+  await page.getByRole('button', { name: 'Review suspension' }).click();
+  await page.getByRole('button', { name: 'Suspend access' }).click();
+  await expect(
+    page.getByText('Member suspended. Server state refreshed.'),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Ada Ionescu suspended Workspace access for'),
+  ).toBeVisible();
+  await expect(page.getByText('Target: Mila Popescu')).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Member to suspend')
+      .getByRole('option', { name: 'Mila Popescu — mila@example.test' }),
+  ).toHaveCount(0);
+  expect(suspensionCommands).toBe(1);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-membership-suspension-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+
+  await page
+    .getByLabel('Member to suspend')
+    .selectOption({ label: 'Ada Ionescu — ada@example.test' });
+  await page.getByRole('button', { name: 'Review suspension' }).click();
+  await page.getByRole('button', { name: 'Suspend access' }).click();
+  await expect(
+    page.getByRole('alert').filter({
+      hasText: 'Your access to this workspace is inactive.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Company access' }),
+  ).toHaveCount(0);
+  expect(suspensionCommands).toBe(2);
+});
+
+test('leaves an already-open shell when the next protected request confirms peer suspension', async ({
+  page,
+}, testInfo) => {
+  let actorRequests = 0;
+  await page.route('**/api/access/current-actor', (route) => {
+    actorRequests += 1;
+    return actorRequests === 1
+      ? route.fulfill({ json: ownerActor })
+      : route.fulfill({ status: 403, json: { message: 'Forbidden' } });
+  });
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) => route.fulfill({ status: 403, json: { message: 'Forbidden' } }),
+  );
+
+  await page.goto('/');
+
+  await expect(
+    page.getByRole('alert').filter({
+      hasText: 'Your access to this workspace is inactive.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Company access' }),
+  ).toHaveCount(0);
+  expect(actorRequests).toBe(2);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-membership-peer-suspension-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+});
+
+test('recovers from a stale suspension target without reporting success', async ({
+  page,
+}, testInfo) => {
+  let targetIsStale = false;
+  let administrationRequests = 0;
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({ json: ownerActor }),
+  );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) => {
+      administrationRequests += 1;
+      return route.fulfill({
+        json: {
+          members: [
+            {
+              workspaceMembershipId: ownerMembershipId,
+              displayName: 'Ada Ionescu',
+              email: 'ada@example.test',
+            },
+            ...(targetIsStale
+              ? []
+              : [
+                  {
+                    workspaceMembershipId: memberId,
+                    displayName: 'Mila Popescu',
+                    email: 'mila@example.test',
+                  },
+                ]),
+          ],
+          companies: [],
+          assignments: [],
+        },
+      });
+    },
+  );
+  await page.route('**/api/workspace-membership-suspensions', (route) => {
+    targetIsStale = true;
+    return route.fulfill({ status: 403, json: { message: 'Forbidden' } });
+  });
+
+  await page.goto('/');
+  await page
+    .getByLabel('Member to suspend')
+    .selectOption({ label: 'Mila Popescu — mila@example.test' });
+  await page.getByRole('button', { name: 'Review suspension' }).click();
+  await page.getByRole('button', { name: 'Suspend access' }).click();
+
+  await expect(
+    page.getByRole('alert').filter({
+      hasText:
+        'The suspension could not be completed. Server state was refreshed.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Member suspended. Server state refreshed.'),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByLabel('Member to suspend')
+      .getByRole('option', { name: 'Mila Popescu — mila@example.test' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { name: 'Company access' }),
+  ).toBeVisible();
+  expect(administrationRequests).toBe(2);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-membership-stale-suspension-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+});

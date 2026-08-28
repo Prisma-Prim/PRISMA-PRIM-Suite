@@ -55,12 +55,14 @@ export function ClientWorkspace({
   identity,
   onCompanyContextRejected,
   onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState('');
@@ -93,6 +95,8 @@ export function ClientWorkspace({
   rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
   acceptRevalidatedActor.current = onActorRevalidated;
+  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
+  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
   const activeCompany = actor.activeCompany;
   const clientPermissions = activeCompany?.clientPermissions ?? [];
   const canReadClients =
@@ -121,6 +125,7 @@ export function ClientWorkspace({
           rejectCompanyContext.current(rejectedCompanyId),
         onActorRevalidated: (revalidatedActor) =>
           acceptRevalidatedActor.current(revalidatedActor),
+        onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
         signal,
       });
       if (signal.aborted) return true;
@@ -562,6 +567,7 @@ export function ClientWorkspace({
           canUpdate={canUpdateClients}
           identity={identity}
           onCompanyContextRejected={onCompanyContextRejected}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
           onActivityRecorded={onActivityRecorded}
           onClientsChanged={() => loadClients(activeCompany.id)}

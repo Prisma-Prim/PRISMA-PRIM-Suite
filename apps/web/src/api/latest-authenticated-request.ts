@@ -48,6 +48,7 @@ export async function handleAuthenticatedAccessRejection({
   companyContextId,
   onCompanyContextRejected,
   onActorRevalidated,
+  onWorkspaceAccessRejected = () => undefined,
   signal,
 }: {
   result: ApiResult<unknown>;
@@ -55,6 +56,7 @@ export async function handleAuthenticatedAccessRejection({
   companyContextId: string | undefined;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
   signal?: AbortSignal;
 }): Promise<'unauthorized' | 'forbidden' | undefined> {
   if (result.status === 'unauthorized') {
@@ -62,26 +64,50 @@ export async function handleAuthenticatedAccessRejection({
     return 'unauthorized';
   }
   if (result.status !== 'forbidden') return undefined;
-  if (!companyContextId) return 'forbidden';
   const api = await createAuthenticatedApiClient(identity);
   if (signal?.aborted) return 'forbidden';
-  const context = await api.request<ActorContext>('/access/current-actor', {
-    companyContextId,
-    signal,
-  });
+  let selectedContextWasForbidden = false;
+  if (companyContextId) {
+    const selectedContext = await api.request<ActorContext>(
+      '/access/current-actor',
+      { companyContextId, signal },
+    );
+    if (signal?.aborted) return 'forbidden';
+    if (selectedContext.status === 'unauthorized') {
+      await identity.rejectSession();
+      return 'unauthorized';
+    }
+    if (selectedContext.status === 'ok') {
+      if (selectedContext.value.activeCompany?.id === companyContextId) {
+        await onActorRevalidated(selectedContext.value);
+        return 'forbidden';
+      }
+      onCompanyContextRejected(companyContextId);
+      await onActorRevalidated(selectedContext.value);
+      return 'forbidden';
+    }
+    selectedContextWasForbidden = selectedContext.status === 'forbidden';
+  }
+
+  const workspaceContext = await api.request<ActorContext>(
+    '/access/current-actor',
+    { signal },
+  );
   if (signal?.aborted) return 'forbidden';
-  if (context.status === 'unauthorized') {
+  if (workspaceContext.status === 'unauthorized') {
     await identity.rejectSession();
     return 'unauthorized';
   }
-  if (context.status === 'forbidden') {
-    onCompanyContextRejected(companyContextId);
+  if (workspaceContext.status === 'forbidden') {
+    await onWorkspaceAccessRejected();
+    return 'forbidden';
   }
-  if (context.status === 'ok') {
-    if (context.value.activeCompany?.id !== companyContextId) {
+  if (workspaceContext.status === 'ok') {
+    if (companyContextId && selectedContextWasForbidden) {
       onCompanyContextRejected(companyContextId);
-    } else {
-      await onActorRevalidated(context.value);
+      await onActorRevalidated(workspaceContext.value);
+    } else if (!companyContextId) {
+      await onActorRevalidated(workspaceContext.value);
     }
   }
   return 'forbidden';

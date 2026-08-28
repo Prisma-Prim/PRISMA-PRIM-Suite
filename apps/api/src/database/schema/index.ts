@@ -159,6 +159,45 @@ export const workspacePermissionGrants = pgTable(
   ],
 );
 
+export const workspaceMembershipSuspensionCommands = pgTable(
+  'workspace_membership_suspension_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    targetWorkspaceMembershipId: uuid(
+      'target_workspace_membership_id',
+    ).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_membership_suspension_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'workspace_membership_suspension_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'workspace_membership_suspension_commands_target_fk',
+      columns: [table.workspaceId, table.targetWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+  ],
+);
+
 export const companies = pgTable(
   'companies',
   {
@@ -568,6 +607,7 @@ export const clientAccountCorrectionCommands = pgTable(
 
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
+  'workspace_membership.suspended',
   'company.registered',
   'company_context_assignment.granted',
   'company_context_assignment.revoked',
@@ -580,6 +620,7 @@ export const activityLogAction = pgEnum('activity_log_action', [
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
   'internal_user',
+  'workspace_membership',
   'company',
   'company_role_assignment',
   'client_account',
@@ -694,6 +735,14 @@ export const activityLogEvents = pgTable(
       'activity_log_events_target_shape_check',
       sql`(
         (${table.targetType}::text = 'internal_user'
+          AND ${table.targetInternalUserId} IS NOT NULL
+          AND ${table.targetWorkspaceMembershipId} IS NOT NULL
+          AND ${table.targetCompanyId} IS NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
+        OR
+        (${table.targetType}::text = 'workspace_membership'
           AND ${table.targetInternalUserId} IS NOT NULL
           AND ${table.targetWorkspaceMembershipId} IS NOT NULL
           AND ${table.targetCompanyId} IS NULL

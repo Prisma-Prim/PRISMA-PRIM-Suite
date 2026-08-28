@@ -35,12 +35,14 @@ export function CompanyRegistration({
   identity,
   onCompanyContextRejected,
   onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
   onCompanyRegistered,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
   onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
   const [displayName, setDisplayName] = useState('');
@@ -80,6 +82,7 @@ export function CompanyRegistration({
       companyContextId: requestCompanyContextId,
       onCompanyContextRejected,
       onActorRevalidated,
+      onWorkspaceAccessRejected,
       signal,
     });
     if (signal.aborted) return true;

@@ -110,6 +110,9 @@ describe('latest authenticated request', () => {
           new Response(JSON.stringify({ message: 'Forbidden' }), {
             status: 403,
           }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(revalidatedActor), { status: 200 }),
         ),
     );
     const identity = deterministicBrowserIdentity();
@@ -138,8 +141,105 @@ describe('latest authenticated request', () => {
       }),
     ).resolves.toBe('forbidden');
     expect(rejectCompany).toHaveBeenCalledWith('company-a');
-    expect(acceptActor).toHaveBeenCalledOnce();
+    expect(acceptActor).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects Workspace access after both Company and base actor revalidation are forbidden', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'Forbidden' }), {
+            status: 403,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'Forbidden' }), {
+            status: 403,
+          }),
+        ),
+    );
+    const rejectWorkspace = vi.fn();
+
+    await expect(
+      handleAuthenticatedAccessRejection({
+        result: { status: 'forbidden' },
+        identity: deterministicBrowserIdentity(),
+        companyContextId: 'company-a',
+        onCompanyContextRejected: vi.fn(),
+        onActorRevalidated: vi.fn(),
+        onWorkspaceAccessRejected: rejectWorkspace,
+      }),
+    ).resolves.toBe('forbidden');
+
+    expect(rejectWorkspace).toHaveBeenCalledOnce();
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves Company context when selected-context revalidation fails transiently', async () => {
+    const workspaceActor: ActorContext = {
+      internalUserId: 'user-a',
+      workspaceMembershipId: 'membership-a',
+      workspaceId: 'workspace-a',
+      workspaceName: 'Workspace A',
+      displayName: 'Ada',
+      email: 'ada@example.test',
+      active: true,
+      workspacePermissions: [],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(workspaceActor), { status: 200 }),
+        ),
+    );
+    const rejectCompany = vi.fn();
+    const acceptActor = vi.fn();
+
+    await expect(
+      handleAuthenticatedAccessRejection({
+        result: { status: 'forbidden' },
+        identity: deterministicBrowserIdentity(),
+        companyContextId: 'company-a',
+        onCompanyContextRejected: rejectCompany,
+        onActorRevalidated: acceptActor,
+      }),
+    ).resolves.toBe('forbidden');
+
+    expect(rejectCompany).not.toHaveBeenCalled();
+    expect(acceptActor).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects Workspace access when a base-scoped protected request is forbidden', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Forbidden' }), {
+          status: 403,
+        }),
+      ),
+    );
+    const rejectWorkspace = vi.fn();
+
+    await expect(
+      handleAuthenticatedAccessRejection({
+        result: { status: 'forbidden' },
+        identity: deterministicBrowserIdentity(),
+        companyContextId: undefined,
+        onCompanyContextRejected: vi.fn(),
+        onActorRevalidated: vi.fn(),
+        onWorkspaceAccessRejected: rejectWorkspace,
+      }),
+    ).resolves.toBe('forbidden');
+
+    expect(rejectWorkspace).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });
 

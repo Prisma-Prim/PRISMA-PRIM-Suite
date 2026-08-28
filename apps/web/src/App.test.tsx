@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
+import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
 
 describe('App', () => {
   beforeEach(() => {
@@ -392,7 +393,7 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps Company Context assignment Activity Log labels in the copy resource', () => {
+  it('keeps access-administration Activity Log labels in copy resources', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
@@ -400,6 +401,9 @@ describe('App', () => {
         'granted Company Director Client Access',
       'company_director_client_assignment.revoked':
         'revoked Company Director Client Access',
+    });
+    expect(workspaceMembershipSuspensionCopy.activityActionLabels).toEqual({
+      'workspace_membership.suspended': 'suspended Workspace access for',
     });
   });
 

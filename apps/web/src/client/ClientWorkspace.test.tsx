@@ -641,18 +641,20 @@ describe('ClientWorkspace', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a forbidden Company context through the shell interface', async () => {
+  it('rejects revoked Workspace access through the shell interface', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(null, { status: 403 })),
     );
     const rejectCompany = vi.fn();
+    const rejectWorkspace = vi.fn();
 
     render(
       <ClientWorkspace
         actor={actor}
         identity={deterministicBrowserIdentity()}
         onCompanyContextRejected={rejectCompany}
+        onWorkspaceAccessRejected={rejectWorkspace}
         onActivityRecorded={vi.fn(async () => undefined)}
       />,
     );
@@ -660,7 +662,8 @@ describe('ClientWorkspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'You do not have permission to manage Clients.',
     );
-    expect(rejectCompany).toHaveBeenCalledWith('company-a');
+    expect(rejectWorkspace).toHaveBeenCalledOnce();
+    expect(rejectCompany).not.toHaveBeenCalled();
   });
 
   it('keeps a valid Company context when only the Client resource is forbidden', async () => {

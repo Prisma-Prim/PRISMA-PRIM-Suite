@@ -125,14 +125,26 @@ export class AccountabilityService {
               visibleClientForCompany,
             )
         : sql<boolean>`false`;
+    const canAdministerWorkspaceAccess = actor.workspacePermissions.includes(
+      'company.assignment.manage',
+    );
+    const isWorkspaceMembershipTarget = sql<boolean>`
+      ${activityLogEvents.targetType}::text = 'workspace_membership'
+    `;
     const visibleEvents = actor.workspacePermissions.includes('company.manage')
       ? and(
           eq(activityLogEvents.workspaceId, actor.workspaceId),
           or(
-            notInArray(activityLogEvents.targetType, [
-              'client_account',
-              'client_company_relationship',
-            ]),
+            and(
+              notInArray(activityLogEvents.targetType, [
+                'client_account',
+                'client_company_relationship',
+              ]),
+              sql<boolean>`${activityLogEvents.targetType}::text <> 'workspace_membership'`,
+            ),
+            canAdministerWorkspaceAccess
+              ? isWorkspaceMembershipTarget
+              : sql<boolean>`false`,
             visibleClientEventsForCompanyManager,
           ),
         )
@@ -140,6 +152,9 @@ export class AccountabilityService {
           eq(activityLogEvents.workspaceId, actor.workspaceId),
           or(
             eq(activityLogEvents.targetType, 'internal_user'),
+            canAdministerWorkspaceAccess
+              ? isWorkspaceMembershipTarget
+              : sql<boolean>`false`,
             canReadClients && actor.activeCompany
               ? and(
                   or(
@@ -270,6 +285,17 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.internalUserId}`,
       };
+    case 'workspace_membership.suspended':
+      return {
+        targetType: event.target.type,
+        targetInternalUserId: event.target.internalUserId,
+        targetWorkspaceMembershipId: event.target.workspaceMembershipId,
+        targetCompanyId: null,
+        targetCompanyRoleAssignmentId: null,
+        targetClientAccountId: null,
+        targetClientCompanyRelationshipId: null,
+        idempotencyKey: `${event.action}:${event.target.workspaceMembershipId}:${event.transitionId}`,
+      };
     case 'company.registered':
       return {
         targetType: event.target.type,
@@ -336,6 +362,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
 interface PersistedActivityTarget {
   targetType:
     | 'internal_user'
+    | 'workspace_membership'
     | 'company'
     | 'company_role_assignment'
     | 'client_account'
@@ -356,6 +383,22 @@ function canonicalTarget(event: PersistedActivityTarget) {
     case 'internal_user':
       return {
         type: event.targetType,
+        internalUserId: required(
+          event.targetInternalUserId,
+          'Internal User id',
+        ),
+        displayName: required(
+          event.targetInternalUserDisplayName,
+          'Internal User display name',
+        ),
+      };
+    case 'workspace_membership':
+      return {
+        type: event.targetType,
+        workspaceMembershipId: required(
+          event.targetWorkspaceMembershipId,
+          'Workspace Membership id',
+        ),
         internalUserId: required(
           event.targetInternalUserId,
           'Internal User id',

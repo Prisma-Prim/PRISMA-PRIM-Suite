@@ -36,6 +36,18 @@ const companies = [
 describe('production shell session', () => {
   beforeEach(() => localStorage.clear());
 
+  it('leaves active business state immediately after self-suspension is confirmed', async () => {
+    const observed = observeSession({ transport: transportWith() });
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext.status).toBe('active'),
+    );
+
+    observed.current().rejectWorkspaceAccess();
+
+    expect(observed.current().shellContext).toEqual({ status: 'forbidden' });
+    observed.unsubscribe();
+  });
+
   it('restores one visible Company and resolves its Activity Log', async () => {
     const transport = transportWith({
       async loadActor({ companyId }) {
@@ -569,6 +581,56 @@ describe('production shell session', () => {
     if (rejected.status !== 'active')
       throw new Error('Expected an active production-shell session.');
     expect(rejected.actor.activeCompany).toBeUndefined();
+    observed.unsubscribe();
+  });
+
+  it('leaves an active shell when Activity Log denial confirms peer suspension', async () => {
+    let baseActorRequests = 0;
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          if (companyId)
+            return { status: 'ok', value: selectedActor(companyId) };
+          baseActorRequests += 1;
+          return baseActorRequests === 1
+            ? { status: 'ok', value: baseActor }
+            : { status: 'forbidden' };
+        },
+        async loadCompanies() {
+          return { status: 'ok', value: [companies[0]!] };
+        },
+        async loadActivityLog() {
+          return { status: 'forbidden' };
+        },
+      }),
+    });
+
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext).toEqual({ status: 'forbidden' }),
+    );
+    expect(baseActorRequests).toBe(2);
+    observed.unsubscribe();
+  });
+
+  it('leaves an active shell when Company selection denial confirms peer suspension', async () => {
+    let baseActorRequests = 0;
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          if (companyId) return { status: 'forbidden' };
+          baseActorRequests += 1;
+          return baseActorRequests === 1
+            ? { status: 'ok', value: baseActor }
+            : { status: 'forbidden' };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+
+    await observed.current().selectCompany('company-b');
+
+    expect(observed.current().shellContext).toEqual({ status: 'forbidden' });
+    expect(baseActorRequests).toBe(2);
     observed.unsubscribe();
   });
 

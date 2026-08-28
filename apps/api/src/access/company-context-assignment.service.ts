@@ -19,6 +19,10 @@ import {
   internalUsers,
   workspaceMemberships,
 } from '../database/schema/index.js';
+import {
+  requireIdempotencyKey,
+  requireUuid,
+} from './access-command-validation.js';
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
@@ -485,24 +489,6 @@ export class CompanyContextAssignmentService {
       .limit(1);
     return assignment;
   }
-}
-
-function requireUuid(value: unknown): string {
-  if (
-    typeof value !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-      value,
-    )
-  ) {
-    throw new BadRequestException('A valid UUID is required.');
-  }
-  return value.toLowerCase();
-}
-
-function requireIdempotencyKey(value: string | undefined): string {
-  if (!value?.trim())
-    throw new BadRequestException('Idempotency-Key header is required.');
-  return value.trim();
 }
 
 function assignmentBundleLabel(bundle: Bundle): CompanyAssignmentBundleLabel {

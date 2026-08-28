@@ -6,6 +6,8 @@ import type {
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
+export const WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION =
+  'workspace_membership.suspended' as const;
 export const COMPANY_REGISTERED_ACTION = 'company.registered' as const;
 export const COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION =
   'company_context_assignment.granted' as const;
@@ -26,6 +28,17 @@ export type ClientCorrectionChanges = Record<
 >;
 
 export type CanonicalActivityEvent =
+  | {
+      actor: ActorContext;
+      action: typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION;
+      target: {
+        type: 'workspace_membership';
+        workspaceMembershipId: string;
+        internalUserId: string;
+      };
+      metadata: Record<string, never>;
+      transitionId: string;
+    }
   | {
       actor: ActorContext;
       action: typeof INTERNAL_USER_PROVISIONED_ACTION;
@@ -103,6 +116,7 @@ export interface ActivityLogEvent {
   id: string;
   action:
     | typeof INTERNAL_USER_PROVISIONED_ACTION
+    | typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION
     | typeof COMPANY_REGISTERED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
@@ -119,6 +133,12 @@ export interface ActivityLogEvent {
   target:
     | {
         type: 'internal_user';
+        internalUserId: string;
+        displayName: string;
+      }
+    | {
+        type: 'workspace_membership';
+        workspaceMembershipId: string;
         internalUserId: string;
         displayName: string;
       }

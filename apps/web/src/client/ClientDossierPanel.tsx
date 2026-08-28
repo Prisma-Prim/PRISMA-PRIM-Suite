@@ -59,6 +59,7 @@ export function ClientDossierPanel({
   identity,
   onCompanyContextRejected,
   onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
   onClientsChanged,
 }: {
@@ -68,6 +69,7 @@ export function ClientDossierPanel({
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
 }) {
@@ -85,6 +87,8 @@ export function ClientDossierPanel({
   rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
   acceptRevalidatedActor.current = onActorRevalidated;
+  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
+  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
 
   const loadDossier = useCallback(
     async (selectedClientId: string): Promise<void> => {
@@ -109,6 +113,7 @@ export function ClientDossierPanel({
               rejectCompanyContext.current(rejectedCompanyId),
             onActorRevalidated: (revalidatedActor) =>
               acceptRevalidatedActor.current(revalidatedActor),
+            onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
             signal,
           });
           if (signal.aborted) return;
@@ -212,6 +217,7 @@ export function ClientDossierPanel({
             rejectCompanyContext.current(rejectedCompanyId),
           onActorRevalidated: (revalidatedActor) =>
             acceptRevalidatedActor.current(revalidatedActor),
+          onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
           signal,
         });
         if (signal.aborted) return;

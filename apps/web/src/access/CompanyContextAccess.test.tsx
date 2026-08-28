@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -71,7 +72,9 @@ describe('CompanyContextAccess', () => {
       await screen.findByLabelText('Workspace member'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('option', { name: 'Ada Member — ada@example.test' }),
+      within(screen.getByLabelText('Workspace member')).getByRole('option', {
+        name: 'Ada Member — ada@example.test',
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('option', { name: 'PRISMA-PRIM' }),
@@ -89,6 +92,253 @@ describe('CompanyContextAccess', () => {
     expect(
       screen.getByRole('button', { name: 'Revoke access' }),
     ).toBeDisabled();
+  });
+
+  it('requires a named confirmation before suspending a Workspace member and reloads canonical state', async () => {
+    const afterSuspension = {
+      ...administration(),
+      members: administration().members.filter(
+        (member) => member.workspaceMembershipId !== memberId,
+      ),
+    };
+    const refreshActivity = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              workspaceMembershipId: memberId,
+              status: 'inactive',
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(afterSuspension), { status: 200 }),
+        ),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: 'Confirm Workspace access suspension',
+        }),
+      ).getByText('Ada Member — ada@example.test'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Their application access will stop. Their identity, assignments, and history will be preserved.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/workspace-membership-suspensions',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ workspaceMembershipId: memberId }),
+        headers: expect.objectContaining({
+          'idempotency-key': expect.any(String),
+        }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/company-context-assignments/administration',
+      expect.any(Object),
+    );
+    expect(
+      await screen.findByText('Member suspended. Server state refreshed.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Ada Member — ada@example.test' }),
+    ).not.toBeInTheDocument();
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('cancels a reviewed suspension without making a command request', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        ),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+
+    await screen.findByLabelText('Member to suspend');
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByRole('region', {
+        name: 'Confirm Workspace access suspension',
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('leaves the active shell immediately when the actor suspends their own Membership', async () => {
+    const rejectWorkspaceAccess = vi.fn(async () => undefined);
+    const refreshActivity = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              workspaceMembershipId: ownerMembershipId,
+              status: 'inactive',
+            }),
+            { status: 201 },
+          ),
+        ),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />,
+    );
+
+    await screen.findByLabelText('Member to suspend');
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: ownerMembershipId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
+
+    await waitFor(() => expect(rejectWorkspaceAccess).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(refreshActivity).not.toHaveBeenCalled();
+  });
+
+  it('recovers from a stale suspension denial with refreshed server state and no false success', async () => {
+    const afterStaleDenial = {
+      ...administration(),
+      members: administration().members.filter(
+        (member) => member.workspaceMembershipId !== memberId,
+      ),
+    };
+    const refreshActivity = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(administration()), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'Forbidden', statusCode: 403 }),
+            { status: 403 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(afterStaleDenial), { status: 200 }),
+        ),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+
+    await screen.findByLabelText('Member to suspend');
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The suspension could not be completed. Server state was refreshed.',
+    );
+    expect(
+      screen.queryByText('Member suspended. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Member to suspend')).queryByRole('option', {
+        name: 'Ada Member — ada@example.test',
+      }),
+    ).not.toBeInTheDocument();
+    expect(refreshActivity).not.toHaveBeenCalled();
+  });
+
+  it('leaves active business state when a peer-suspended actor gets a forbidden administration response', async () => {
+    const rejectWorkspaceAccess = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'Forbidden', statusCode: 403 }),
+            { status: 403 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'Forbidden', statusCode: 403 }),
+            { status: 403 },
+          ),
+        ),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />,
+    );
+
+    await waitFor(() => expect(rejectWorkspaceAccess).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/access/current-actor',
+      expect.any(Object),
+    );
   });
 
   it('disambiguates duplicate member and Company labels with stable references', async () => {
@@ -139,18 +389,19 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Workspace member');
+    const memberOptions = within(screen.getByLabelText('Workspace member'));
     expect(
-      screen.getByRole('option', {
+      memberOptions.getByRole('option', {
         name: 'Ada Member — ada@example.test — Reference A3QMM1BZFR1YUM8AM42DIJIJU',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('option', {
+      memberOptions.getByRole('option', {
         name: 'Ada Member — ada@example.test — Reference 10DGNSXLJLXOXC3RMYV4E8SNL',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('option', {
+      memberOptions.getByRole('option', {
         name: 'Workspace Owner — owner@example.test',
       }),
     ).toBeInTheDocument();
@@ -816,9 +1067,13 @@ describe('CompanyContextAccess', () => {
     rerender(
       <CompanyContextAccess actor={ownerActor} identity={secondIdentity} />,
     );
-    expect(
-      await screen.findByText('New Session Member — new@example.test'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(screen.getByLabelText('Workspace member')).getByRole('option', {
+          name: 'New Session Member — new@example.test',
+        }),
+      ).toBeInTheDocument(),
+    );
 
     await act(async () => {
       firstResponse.resolve(
