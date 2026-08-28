@@ -164,7 +164,7 @@ export type CompanyContextTransition =
       type: 'company-rejected';
       origin: CompanyContextOrigin;
       companyId: string;
-      activityLog: 'preserve' | 'error';
+      activityLog: 'preserve' | 'loading' | 'error';
     }
   | {
       type: 'company-included';
@@ -329,7 +329,9 @@ export function transitionCompanyContext(
         activityLog:
           transition.activityLog === 'error'
             ? { status: 'error' }
-            : current.activityLog,
+            : transition.activityLog === 'loading'
+              ? { status: 'loading' }
+              : current.activityLog,
       };
     }
     case 'company-included': {

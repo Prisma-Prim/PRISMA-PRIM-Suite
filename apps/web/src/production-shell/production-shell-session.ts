@@ -107,7 +107,7 @@ export function createProductionShellSession({
           type: 'company-rejected',
           origin,
           companyId,
-          activityLog: 'preserve',
+          activityLog: 'loading',
         });
         if (shellContext === previousContext) return;
         await snapshot.refreshActivityLog();

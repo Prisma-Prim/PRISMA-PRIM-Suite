@@ -102,9 +102,15 @@ describe('production shell session', () => {
     );
     loadActivityLog.mockClear();
 
-    await observed
+    const recovery = observed
       .current()
       .rejectCompanyContextAndRefreshActivity('company-a');
+
+    expect(observed.current().shellContext).toMatchObject({
+      status: 'active',
+      activityLog: { status: 'loading' },
+    });
+    await recovery;
 
     expect(loadActivityLog).toHaveBeenCalledWith({
       companyId: undefined,
