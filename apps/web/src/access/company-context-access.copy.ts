@@ -10,6 +10,7 @@ export const companyContextAccessCopy = {
   companyLabel: 'Company',
   selectMember: 'Select a member',
   selectCompany: 'Select a Company',
+  referenceLabel: 'Reference',
   grant: 'Grant access',
   revoke: 'Revoke access',
   granted: 'Access granted. Server state refreshed.',

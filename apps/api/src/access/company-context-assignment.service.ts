@@ -68,105 +68,111 @@ export class CompanyContextAssignmentService {
     actor: ActorContext,
   ): Promise<CompanyAccessAdministrationState> {
     requireWorkspacePermission(actor, 'company.assignment.manage');
-    return this.databaseContext.transaction(async () => {
-      const database = this.databaseContext.connection;
-      const members = await database
-        .select({
-          workspaceMembershipId: workspaceMemberships.id,
-          displayName: internalUsers.displayName,
-          email: internalUsers.email,
-        })
-        .from(workspaceMemberships)
-        .innerJoin(
-          internalUsers,
-          and(
-            eq(internalUsers.id, workspaceMemberships.internalUserId),
-            eq(internalUsers.status, 'active'),
-          ),
-        )
-        .where(
-          and(
-            eq(workspaceMemberships.workspaceId, actor.workspaceId),
-            eq(workspaceMemberships.status, 'active'),
-          ),
-        )
-        .orderBy(
-          asc(internalUsers.displayName),
-          asc(internalUsers.email),
-          asc(workspaceMemberships.id),
-        );
-
-      const activeCompanies = await database
-        .select({ id: companies.id, displayName: companies.displayName })
-        .from(companies)
-        .where(
-          and(
-            eq(companies.workspaceId, actor.workspaceId),
-            eq(companies.status, 'active'),
-          ),
-        )
-        .orderBy(asc(companies.displayName), asc(companies.id));
-
-      const assignments = await database
-        .select({
-          id: companyRoleAssignments.id,
-          workspaceMembershipId: companyRoleAssignments.workspaceMembershipId,
-          companyId: companyRoleAssignments.companyId,
-          bundle: companyRoleAssignments.bundle,
-        })
-        .from(companyRoleAssignments)
-        .innerJoin(
-          workspaceMemberships,
-          and(
-            eq(
-              workspaceMemberships.workspaceId,
-              companyRoleAssignments.workspaceId,
+    return this.databaseContext.transaction(
+      async () => {
+        const database = this.databaseContext.connection;
+        const members = await database
+          .select({
+            workspaceMembershipId: workspaceMemberships.id,
+            displayName: internalUsers.displayName,
+            email: internalUsers.email,
+          })
+          .from(workspaceMemberships)
+          .innerJoin(
+            internalUsers,
+            and(
+              eq(internalUsers.id, workspaceMemberships.internalUserId),
+              eq(internalUsers.status, 'active'),
             ),
-            eq(
-              workspaceMemberships.id,
-              companyRoleAssignments.workspaceMembershipId,
+          )
+          .where(
+            and(
+              eq(workspaceMemberships.workspaceId, actor.workspaceId),
+              eq(workspaceMemberships.status, 'active'),
             ),
-            eq(workspaceMemberships.status, 'active'),
-          ),
-        )
-        .innerJoin(
-          internalUsers,
-          and(
-            eq(internalUsers.id, workspaceMemberships.internalUserId),
-            eq(internalUsers.status, 'active'),
-          ),
-        )
-        .innerJoin(
-          companies,
-          and(
-            eq(companies.workspaceId, companyRoleAssignments.workspaceId),
-            eq(companies.id, companyRoleAssignments.companyId),
-            eq(companies.status, 'active'),
-          ),
-        )
-        .where(
-          and(
-            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-            isNull(companyRoleAssignments.revokedAt),
-            inArray(companyRoleAssignments.bundle, ADMINISTRABLE_BUNDLES),
-          ),
-        )
-        .orderBy(
-          asc(companyRoleAssignments.workspaceMembershipId),
-          asc(companyRoleAssignments.companyId),
-          asc(companyRoleAssignments.bundle),
-        );
+          )
+          .orderBy(
+            asc(internalUsers.displayName),
+            asc(internalUsers.email),
+            asc(workspaceMemberships.id),
+          );
 
-      return {
-        members,
-        companies: activeCompanies,
-        assignments: assignments.map((assignment) => ({
-          ...assignment,
-          bundle: assignmentBundleLabel(assignment.bundle),
-          active: true,
-        })),
-      };
-    });
+        const activeCompanies = await database
+          .select({ id: companies.id, displayName: companies.displayName })
+          .from(companies)
+          .where(
+            and(
+              eq(companies.workspaceId, actor.workspaceId),
+              eq(companies.status, 'active'),
+            ),
+          )
+          .orderBy(asc(companies.displayName), asc(companies.id));
+
+        const assignments = await database
+          .select({
+            id: companyRoleAssignments.id,
+            workspaceMembershipId: companyRoleAssignments.workspaceMembershipId,
+            companyId: companyRoleAssignments.companyId,
+            bundle: companyRoleAssignments.bundle,
+          })
+          .from(companyRoleAssignments)
+          .innerJoin(
+            workspaceMemberships,
+            and(
+              eq(
+                workspaceMemberships.workspaceId,
+                companyRoleAssignments.workspaceId,
+              ),
+              eq(
+                workspaceMemberships.id,
+                companyRoleAssignments.workspaceMembershipId,
+              ),
+              eq(workspaceMemberships.status, 'active'),
+            ),
+          )
+          .innerJoin(
+            internalUsers,
+            and(
+              eq(internalUsers.id, workspaceMemberships.internalUserId),
+              eq(internalUsers.status, 'active'),
+            ),
+          )
+          .innerJoin(
+            companies,
+            and(
+              eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+              eq(companies.id, companyRoleAssignments.companyId),
+              eq(companies.status, 'active'),
+            ),
+          )
+          .where(
+            and(
+              eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+              isNull(companyRoleAssignments.revokedAt),
+              inArray(companyRoleAssignments.bundle, ADMINISTRABLE_BUNDLES),
+            ),
+          )
+          .orderBy(
+            asc(companyRoleAssignments.workspaceMembershipId),
+            asc(companyRoleAssignments.companyId),
+            asc(companyRoleAssignments.bundle),
+          );
+
+        return {
+          members,
+          companies: activeCompanies,
+          assignments: assignments.map((assignment) => ({
+            ...assignment,
+            bundle: assignmentBundleLabel(assignment.bundle),
+            active: true,
+          })),
+        };
+      },
+      {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      },
+    );
   }
 
   async grant(

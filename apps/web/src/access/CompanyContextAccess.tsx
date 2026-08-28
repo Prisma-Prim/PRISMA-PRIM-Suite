@@ -129,7 +129,7 @@ export function CompanyContextAccess({
     pendingRequest.current = request;
     setAdministration({ status: 'loading' });
     void reloadAdministration(request);
-    return () => request.abort();
+    return () => pendingRequest.current?.abort();
   }, [
     actor.internalUserId,
     actor.workspaceId,
@@ -194,7 +194,12 @@ export function CompanyContextAccess({
         return;
       }
 
-      let actorRevalidationSucceeded = true;
+      if (result.status === 'ok') {
+        await onActivityRecorded();
+        if (request.signal.aborted) return;
+      }
+
+      let actorRevalidationFailed = false;
       if (
         result.status === 'ok' &&
         command.bundle === 'director-client' &&
@@ -218,17 +223,15 @@ export function CompanyContextAccess({
         if (revalidated.status === 'ok') {
           await acceptRevalidatedActor.current(revalidated.value);
         } else {
-          actorRevalidationSucceeded = false;
+          actorRevalidationFailed = true;
         }
       }
 
       if (request.signal.aborted) return;
       const refreshed = await reloadAdministration(request);
       if (request.signal.aborted) return;
-      if (result.status === 'ok' && refreshed && actorRevalidationSucceeded) {
+      if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
         retryCommand.current = undefined;
-        await onActivityRecorded();
-        if (request.signal.aborted) return;
         setMutation({ status: 'ready', submission });
       } else {
         setMutation({ status: 'error' });
@@ -280,6 +283,10 @@ export function CompanyContextAccess({
   }
 
   const data = administration.value;
+  const duplicateMemberLabels = duplicatedLabels(data.members.map(memberLabel));
+  const duplicateCompanyLabels = duplicatedLabels(
+    data.companies.map((company) => company.displayName),
+  );
   const selectedBundleLabel = bundleLabel(bundle);
   const activeAssignment = data.assignments.some(
     (assignment) =>
@@ -291,6 +298,13 @@ export function CompanyContextAccess({
   const hasSelectableTargets =
     data.members.length > 0 && data.companies.length > 0;
   const pending = mutation.status === 'submitting';
+  const retrySubmission =
+    mutation.status === 'error' &&
+    retryCommand.current?.bundle === bundle &&
+    retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
+    retryCommand.current.companyId === companyId
+      ? retryCommand.current.submission
+      : undefined;
 
   return (
     <section aria-labelledby="company-context-access-title">
@@ -318,7 +332,11 @@ export function CompanyContextAccess({
                 key={member.workspaceMembershipId}
                 value={member.workspaceMembershipId}
               >
-                {member.displayName} — {member.email}
+                {disambiguatedLabel(
+                  memberLabel(member),
+                  member.workspaceMembershipId,
+                  duplicateMemberLabels,
+                )}
               </option>
             ))}
           </select>
@@ -336,7 +354,11 @@ export function CompanyContextAccess({
             <option value="">{copy.selectCompany}</option>
             {data.companies.map((company) => (
               <option key={company.id} value={company.id}>
-                {company.displayName}
+                {disambiguatedLabel(
+                  company.displayName,
+                  company.id,
+                  duplicateCompanyLabels,
+                )}
               </option>
             ))}
           </select>
@@ -372,7 +394,7 @@ export function CompanyContextAccess({
               pending ||
               !workspaceMembershipId ||
               !companyId ||
-              activeAssignment
+              (activeAssignment && retrySubmission !== 'grant')
             }
           >
             {copy.grant}
@@ -383,7 +405,7 @@ export function CompanyContextAccess({
               pending ||
               !workspaceMembershipId ||
               !companyId ||
-              !activeAssignment
+              (!activeAssignment && retrySubmission !== 'revoke')
             }
             onClick={(event) => void submit(event, 'revoke')}
           >
@@ -405,4 +427,33 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   return bundle === 'director-client'
     ? 'Company Director Client Access'
     : 'Company Context Access';
+}
+
+function memberLabel(member: AdministrationState['members'][number]): string {
+  return `${member.displayName} — ${member.email}`;
+}
+
+function duplicatedLabels(labels: string[]): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const label of labels) {
+    if (seen.has(label)) duplicates.add(label);
+    seen.add(label);
+  }
+  return duplicates;
+}
+
+function disambiguatedLabel(
+  label: string,
+  id: string,
+  duplicates: ReadonlySet<string>,
+): string {
+  if (!duplicates.has(label)) return label;
+  return `${label} — ${copy.referenceLabel} ${stableReference(id)}`;
+}
+
+function stableReference(id: string): string {
+  return BigInt(`0x${id.replaceAll('-', '')}`)
+    .toString(36)
+    .toUpperCase();
 }
