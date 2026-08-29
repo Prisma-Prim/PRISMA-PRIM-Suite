@@ -20,6 +20,8 @@ export const clientWorkspaceCopy = {
   permissionDenied: 'You do not have permission to manage Clients.',
   displayNameRequired: 'Client display name is required.',
   retryableError: 'We could not load Clients. Please try again.',
+  possibleDuplicate:
+    'This Client may already exist. No Client was created or changed. An authorized reviewer can compare the records safely.',
   searchLabel: 'Find a shared Client',
   search: 'Search Clients',
   searching: 'Searching…',
@@ -48,6 +50,28 @@ export const clientWorkspaceCopy = {
   savingCorrection: 'Saving…',
   correctionSaved: 'Client correction saved with attributable history.',
   correctionRetry: 'The correction could not be saved. Retry safely.',
+  duplicateReviewTitle: 'Possible duplicate reviews',
+  duplicateReviewDescription:
+    'Only reviews covered by your complete current Company authority appear here.',
+  loadingDuplicateReviews: 'Loading possible duplicate reviews…',
+  loadingDuplicateReview: 'Loading the duplicate comparison…',
+  noDuplicateReviews: 'No possible duplicate review is currently available.',
+  duplicateReviewRetry: 'The duplicate review could not be loaded safely.',
+  duplicateReviewUnavailable:
+    'This review is no longer available. Its data or authority may have changed.',
+  openDuplicateReview: (position: number) =>
+    `Review possible duplicate ${position}`,
+  multipleDuplicateCandidates:
+    'Several existing Clients use this identifier. Data remediation is required before comparison can continue.',
+  duplicateComparisonTitle: 'Compare the proposed and existing Client',
+  duplicateFieldColumn: 'Field',
+  duplicateProposalColumn: 'Proposed value',
+  duplicateCandidateColumn: 'Existing Client',
+  notApplicable: 'Not applicable',
+  attachExistingDuplicate: 'Use this existing Client in the active Company',
+  attachingDuplicate: 'Adding existing Client…',
+  correctDuplicateProposal:
+    'Return to the dossier and submit a fresh ordinary correction after reviewing these values.',
   staleCorrection:
     'This dossier changed before your correction was saved. Reload the current version before retrying.',
   reloadDossier: 'Reload dossier',

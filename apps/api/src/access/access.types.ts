@@ -1,3 +1,8 @@
+import type {
+  CompanyClientPermission,
+  CompanyDirectorClientPermissionSetVersion,
+} from './company-permissions.js';
+
 export interface ExternalPrincipal {
   provider: string;
   subject: string;
@@ -8,14 +13,15 @@ export interface ExternalPrincipal {
 export type WorkspacePermission =
   'company.manage' | 'company.assignment.manage' | 'client.manage';
 
-export type CompanyClientPermission =
-  'client.read' | 'client.create' | 'client.update';
-
 export interface ActiveCompanyContext {
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];
+  clientPermissionAssignmentId?: string;
+  clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }
+
+export type { CompanyClientPermission } from './company-permissions.js';
 
 export interface ActorContext {
   internalUserId: string;

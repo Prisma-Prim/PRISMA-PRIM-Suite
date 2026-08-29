@@ -46,6 +46,7 @@ export function CompanyContextAccess({
   onActorRevalidated = () => undefined,
   onCompanyContextRejected = () => undefined,
   onActivityRecorded = () => undefined,
+  onClientAuthorityChanged = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
 }: {
   actor: ActorContext;
@@ -53,6 +54,7 @@ export function CompanyContextAccess({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
   onActivityRecorded?: () => Promise<void> | void;
+  onClientAuthorityChanged?: () => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
@@ -251,6 +253,16 @@ export function CompanyContextAccess({
 
       if (result.status === 'ok' && !activityRefreshedByRecovery) {
         await onActivityRecorded();
+        if (request.signal.aborted) return;
+      }
+
+      if (
+        result.status === 'ok' &&
+        command.bundle === 'director-client' &&
+        command.workspaceMembershipId.toLowerCase() ===
+          actor.workspaceMembershipId.toLowerCase()
+      ) {
+        await onClientAuthorityChanged();
         if (request.signal.aborted) return;
       }
 

@@ -458,6 +458,101 @@ describe('ClientWorkspace', () => {
     ).toHaveValue('+373 22 222 222');
   });
 
+  it('shows generic duplicate guidance instead of a stale-version correction error', async () => {
+    const dossier = {
+      id: 'client-duplicate-correction',
+      displayName: 'Correction Proposal',
+      relatedToActiveCompany: true,
+      taxId: 'ORIGINAL-ID',
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+      version: 1,
+      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: dossier.id,
+              displayName: dossier.displayName,
+              relatedToActiveCompany: true,
+            },
+          ]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(dossier), { status: 200 }),
+      )
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({
+              statusCode: 409,
+              error: 'Conflict',
+              code: 'possible_duplicate_review_required',
+              duplicate_review_reference:
+                '55555555-5555-4555-8555-555555555555',
+            }),
+            { status: 409 },
+          ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: dossier.displayName });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    const correctionForm = await screen.findByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correctionForm).getByLabelText('IDNO / tax code'), {
+      target: { value: 'DUPLICATE-ID' },
+    });
+    fireEvent.click(
+      within(correctionForm).getByRole('button', { name: 'Save correction' }),
+    );
+
+    expect(await screen.findByText(/may already exist/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Reload dossier' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('55555555-5555-4555-8555-555555555555'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(correctionForm).getByRole('button', { name: 'Save correction' }),
+    );
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH'),
+      ).toHaveLength(2);
+    });
+    const correctionRequests = fetchMock.mock.calls.filter(
+      ([, init]) => init?.method === 'PATCH',
+    );
+    const firstKey = new Headers(correctionRequests[0]?.[1]?.headers).get(
+      'idempotency-key',
+    );
+    const replayKey = new Headers(correctionRequests[1]?.[1]?.headers).get(
+      'idempotency-key',
+    );
+    expect(firstKey).toBeTruthy();
+    expect(replayKey).toBe(firstKey);
+  });
+
   it('supersedes an older Client list after a successful creation', async () => {
     const initialList = deferred<Response>();
     vi.stubGlobal(
@@ -1068,7 +1163,299 @@ describe('ClientWorkspace', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
     expect(refreshActivity).toHaveBeenCalledOnce();
   });
+
+  it('shows only generic copy when registration returns an opaque duplicate reference', async () => {
+    const reference = '11111111-1111-4111-8111-111111111111';
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              statusCode: 409,
+              error: 'Conflict',
+              code: 'possible_duplicate_review_required',
+              duplicate_review_reference: reference,
+            }),
+            { status: 409 },
+          ),
+        ),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Possible Duplicate' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    expect(await screen.findByText(/may already exist/i)).toBeInTheDocument();
+    expect(screen.queryByText(reference)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Possible duplicate reviews' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists and compares one authorized duplicate without displaying its reference', async () => {
+    const reference = '22222222-2222-4222-8222-222222222222';
+    let duplicateListLoads = 0;
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const path = String(input);
+        if (path === '/api/clients' && !init?.method) {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (path === '/api/client-duplicate-reviews') {
+          duplicateListLoads += 1;
+          return new Response(
+            JSON.stringify(
+              duplicateListLoads === 1
+                ? [{ duplicate_review_reference: reference }]
+                : [],
+            ),
+            { status: 200 },
+          );
+        }
+        if (path === `/api/client-duplicate-reviews/${reference}`) {
+          return new Response(
+            JSON.stringify({
+              outcome: 'comparison',
+              duplicate_review_reference: reference,
+              proposal: {
+                kind: 'registration',
+                fields: {
+                  displayName: 'Proposed Client',
+                  taxId: 'IDNO-158',
+                  address: null,
+                  telephone: null,
+                  generalEmail: null,
+                  contacts: [
+                    {
+                      name: 'Proposed Contact',
+                      email: 'proposed@example.test',
+                    },
+                  ],
+                  businessActivity: null,
+                },
+              },
+              candidate: {
+                id: 'candidate-1',
+                displayName: 'Existing Client',
+                taxId: 'IDNO-158',
+                address: 'Existing address',
+                telephone: null,
+                generalEmail: null,
+                contacts: [
+                  {
+                    name: 'Existing Contact',
+                    telephone: '+373 22 100 100',
+                  },
+                ],
+                businessActivity: null,
+                version: 1,
+                relatedToActiveCompany: false,
+                involvedCompanyDisplayNames: ['BIC'],
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        if (
+          path === '/api/clients/candidate-1/active-company-relationship' &&
+          init?.method === 'PUT'
+        ) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const refreshActivity = vi.fn(async () => undefined);
+
+    render(
+      <ClientWorkspace
+        actor={resolverActor('assignment-v2')}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Review possible duplicate 1',
+      }),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Compare the proposed and existing Client',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Proposed Client')).toBeInTheDocument();
+    expect(screen.getAllByText('Existing Client')).toHaveLength(2);
+    expect(
+      screen.getByText('Proposed Contact — proposed@example.test'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Existing Contact — +373 22 100 100'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(reference)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Use this existing Client in the active Company',
+      }),
+    );
+    expect(
+      await screen.findByText(/review is no longer available/i),
+    ).toBeInTheDocument();
+    expect(refreshActivity).toHaveBeenCalledOnce();
+    expect(duplicateListLoads).toBe(2);
+  });
+
+  it('shows only remediation guidance for an authorized multi-candidate review', async () => {
+    const reference = '33333333-3333-4333-8333-333333333333';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const path = String(input);
+        if (path === '/api/clients') {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (path === '/api/client-duplicate-reviews') {
+          return new Response(
+            JSON.stringify([{ duplicate_review_reference: reference }]),
+            { status: 200 },
+          );
+        }
+        if (path === `/api/client-duplicate-reviews/${reference}`) {
+          return new Response(
+            JSON.stringify({
+              outcome: 'multiple_duplicate_candidates_require_data_remediation',
+              duplicate_review_reference: reference,
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={resolverActor('assignment-multiple')}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Review possible duplicate 1',
+      }),
+    );
+    expect(
+      await screen.findByText(/Data remediation is required/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(reference)).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('aborts a pending duplicate list when the assignment generation changes', async () => {
+    const staleReviews = deferred<Response>();
+    let duplicateLoads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const path = String(input);
+        if (path === '/api/clients') {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (path === '/api/client-duplicate-reviews') {
+          duplicateLoads += 1;
+          return duplicateLoads === 1
+            ? staleReviews.promise
+            : new Response(JSON.stringify([]), { status: 200 });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    const { rerender } = render(
+      <ClientWorkspace
+        actor={resolverActor('assignment-before')}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    const staleSignal = vi
+      .mocked(fetch)
+      .mock.calls.find(([input]) =>
+        String(input).endsWith('/client-duplicate-reviews'),
+      )?.[1]?.signal;
+
+    rerender(
+      <ClientWorkspace
+        actor={resolverActor('assignment-after')}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    expect(staleSignal?.aborted).toBe(true);
+    expect(
+      await screen.findByText(
+        'No possible duplicate review is currently available.',
+      ),
+    ).toBeInTheDocument();
+
+    staleReviews.resolve(
+      new Response(
+        JSON.stringify([
+          {
+            duplicate_review_reference: '44444444-4444-4444-8444-444444444444',
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Review possible duplicate 1' }),
+    ).not.toBeInTheDocument();
+  });
 });
+
+function resolverActor(assignmentId: string): ActorContext {
+  const activeCompany = actor.activeCompany;
+  if (!activeCompany) throw new Error('The resolver fixture needs a Company.');
+  return {
+    ...actor,
+    activeCompany: {
+      ...activeCompany,
+      clientPermissions: [
+        'client.read',
+        'client.create',
+        'client.update',
+        'client.duplicate.resolve',
+      ],
+      clientPermissionAssignmentId: assignmentId,
+      clientPermissionSetVersion: 'v2',
+    },
+  };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

@@ -346,6 +346,12 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks Client authority or a valid active Company context.
+        '409':
+          description: An exact normalized identifier collision blocked the registration without creating a Client, relationship or success event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PossibleDuplicateReviewConflict'
   /api/clients/search:
     get:
       operationId: searchWorkspaceClients
@@ -440,7 +446,63 @@ paths:
         '404':
           description: No active Client related to the active Company is visible.
         '409':
-          description: The expected Client version is stale.
+          description: The expected Client version is stale, or an exact normalized identifier collision blocked the correction without changing the dossier or success history.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PossibleDuplicateReviewConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
+  /api/client-duplicate-reviews:
+    get:
+      operationId: listAuthorizedClientDuplicateReviews
+      summary: List opaque pending duplicate reviews covered by complete current v2 authority
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Only currently authorized, non-stale references for the active attempted Company. Partial authority returns an empty list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientDuplicateReviewListItem'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The selected Company context is invalid.
+  /api/client-duplicate-reviews/{duplicateReviewReference}:
+    get:
+      operationId: readAuthorizedClientDuplicateReview
+      summary: Compare one rejected proposal or return remediation-only after complete current v2 authority
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: duplicateReviewReference
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: One exact candidate comparison, or the bounded remediation-only outcome for multiple candidates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientDuplicateReviewDetail'
+        '400':
+          description: The opaque reference is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The selected Company context is invalid.
+        '404':
+          description: The reference is absent, stale, unavailable or not covered by complete current authority.
   /api/clients/{clientAccountId}/active-company-relationship:
     put:
       operationId: attachClientToActiveCompany
@@ -778,6 +840,7 @@ components:
         - workspaceMembershipId
         - companyId
         - bundle
+        - permissionSetVersion
         - active
       properties:
         id:
@@ -794,6 +857,14 @@ components:
           enum:
             - Company Context Access
             - Company Director Client Access
+        permissionSetVersion:
+          type:
+            - string
+            - 'null'
+          enum:
+            - v1
+            - v2
+            - null
         active:
           type: boolean
           const: true
@@ -860,6 +931,7 @@ components:
         - workspaceMembershipId
         - companyId
         - bundle
+        - permissionSetVersion
         - active
       properties:
         id:
@@ -874,6 +946,8 @@ components:
         bundle:
           type: string
           const: Company Context Access
+        permissionSetVersion:
+          type: 'null'
         active:
           type: boolean
     CompanyDirectorClientAssignment:
@@ -884,6 +958,7 @@ components:
         - workspaceMembershipId
         - companyId
         - bundle
+        - permissionSetVersion
         - active
       properties:
         id:
@@ -898,6 +973,11 @@ components:
         bundle:
           type: string
           const: Company Director Client Access
+        permissionSetVersion:
+          type: string
+          enum:
+            - v1
+            - v2
         active:
           type: boolean
     RegisterCompanyInput:
@@ -1133,6 +1213,188 @@ components:
           type: array
           items:
             type: string
+    PossibleDuplicateReviewConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - statusCode
+        - error
+        - code
+        - duplicate_review_reference
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        error:
+          type: string
+          const: Conflict
+        code:
+          type: string
+          const: possible_duplicate_review_required
+        duplicate_review_reference:
+          type: string
+          format: uuid
+          description: Unpredictable opaque reference containing no embedded Client or Company data.
+    GenericConflict:
+      type: object
+      description: A non-duplicate optimistic-concurrency conflict.
+    ClientDuplicateReviewListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - duplicate_review_reference
+      properties:
+        duplicate_review_reference:
+          type: string
+          format: uuid
+    NormalizedClientDossierFields:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+        - taxId
+        - address
+        - telephone
+        - generalEmail
+        - contacts
+        - businessActivity
+      properties:
+        displayName:
+          type: string
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+          format: email
+        contacts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+    ClientDuplicateReviewProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - fields
+      properties:
+        kind:
+          type: string
+          enum:
+            - registration
+            - correction
+        fields:
+          $ref: '#/components/schemas/NormalizedClientDossierFields'
+    ClientDuplicateReviewComparison:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - duplicate_review_reference
+        - proposal
+        - candidate
+      properties:
+        outcome:
+          type: string
+          const: comparison
+        duplicate_review_reference:
+          type: string
+          format: uuid
+        proposal:
+          $ref: '#/components/schemas/ClientDuplicateReviewProposal'
+        candidate:
+          $ref: '#/components/schemas/ClientDuplicateReviewCandidate'
+    ClientDuplicateReviewCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+        - relatedToActiveCompany
+        - taxId
+        - address
+        - telephone
+        - generalEmail
+        - contacts
+        - businessActivity
+        - version
+        - involvedCompanyDisplayNames
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        relatedToActiveCompany:
+          type: boolean
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+          format: email
+        contacts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+        involvedCompanyDisplayNames:
+          type: array
+          items:
+            type: string
+    ClientDuplicateReviewRemediation:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - duplicate_review_reference
+      properties:
+        outcome:
+          type: string
+          const: multiple_duplicate_candidates_require_data_remediation
+        duplicate_review_reference:
+          type: string
+          format: uuid
+    ClientDuplicateReviewDetail:
+      oneOf:
+        - $ref: '#/components/schemas/ClientDuplicateReviewComparison'
+        - $ref: '#/components/schemas/ClientDuplicateReviewRemediation'
     ActorContext:
       type: object
       additionalProperties: false
@@ -1198,3 +1460,12 @@ components:
               - client.read
               - client.create
               - client.update
+              - client.duplicate.resolve
+        clientPermissionAssignmentId:
+          type: string
+          format: uuid
+        clientPermissionSetVersion:
+          type: string
+          enum:
+            - v1
+            - v2

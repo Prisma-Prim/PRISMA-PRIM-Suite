@@ -49,7 +49,15 @@ type DossierState =
   | { status: 'ready'; dossier: ClientDossierView };
 
 type CorrectionState =
-  | { status: 'idle' | 'submitting' | 'success' | 'stale' | 'error' }
+  | {
+      status:
+        | 'idle'
+        | 'submitting'
+        | 'success'
+        | 'stale'
+        | 'possibleDuplicate'
+        | 'error';
+    }
   | { status: 'validation'; message: string };
 
 export function ClientDossierPanel({
@@ -62,6 +70,7 @@ export function ClientDossierPanel({
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
   onClientsChanged,
+  onDuplicateReviewRequired = () => undefined,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -72,6 +81,7 @@ export function ClientDossierPanel({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
+  onDuplicateReviewRequired?: () => void;
 }) {
   const [dossierState, setDossierState] = useState<DossierState>({
     status: 'idle',
@@ -226,8 +236,13 @@ export function ClientDossierPanel({
           return;
         }
         if (result.status === 'conflict') {
-          correctionRetryCommand.current = undefined;
-          setCorrectionState({ status: 'stale' });
+          if (result.reason === 'possibleDuplicateReviewRequired') {
+            setCorrectionState({ status: 'possibleDuplicate' });
+            onDuplicateReviewRequired();
+          } else {
+            correctionRetryCommand.current = undefined;
+            setCorrectionState({ status: 'stale' });
+          }
           return;
         }
         if (result.status === 'notFound') {
@@ -329,6 +344,9 @@ export function ClientDossierPanel({
       )}
       {correctionState.status === 'error' && (
         <p role="alert">{copy.correctionRetry}</p>
+      )}
+      {correctionState.status === 'possibleDuplicate' && (
+        <p role="alert">{copy.possibleDuplicate}</p>
       )}
       {correctionState.status === 'stale' && (
         <div role="alert">

@@ -3,7 +3,13 @@ import type { BrowserIdentity } from '../access-composition';
 export type ApiResult<T> =
   | { status: 'ok'; value: T }
   | {
+      status: 'conflict';
+      reason: 'possibleDuplicateReviewRequired';
+      duplicateReviewReference: string;
+    }
+  | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
+      reason?: undefined;
     }
   | { status: 'validation'; message?: string };
 
@@ -51,13 +57,22 @@ export async function createAuthenticatedApiClient(
         if (response.status === 401) return { status: 'unauthorized' };
         if (response.status === 403) return { status: 'forbidden' };
         if (response.status === 404) return { status: 'notFound' };
-        if (response.status === 409) return { status: 'conflict' };
+        if (response.status === 409) {
+          const body = await optionalJson(response);
+          if (isPossibleDuplicateConflict(body)) {
+            return {
+              status: 'conflict',
+              reason: 'possibleDuplicateReviewRequired',
+              duplicateReviewReference: body.duplicate_review_reference,
+            };
+          }
+          return { status: 'conflict' };
+        }
         if (response.status === 400) {
           const body = await optionalJson(response);
           return {
             status: 'validation',
-            message:
-              typeof body?.message === 'string' ? body.message : undefined,
+            message: messageFrom(body),
           };
         }
         if (!response.ok) return { status: 'error' };
@@ -90,12 +105,32 @@ function requestHeaders(
   };
 }
 
-async function optionalJson(
-  response: Response,
-): Promise<{ message?: unknown } | undefined> {
+async function optionalJson(response: Response): Promise<unknown> {
   try {
-    return (await response.json()) as { message?: unknown };
+    return await response.json();
   } catch {
     return undefined;
   }
+}
+
+function messageFrom(value: unknown): string | undefined {
+  return isRecord(value) && typeof value.message === 'string'
+    ? value.message
+    : undefined;
+}
+
+function isPossibleDuplicateConflict(value: unknown): value is {
+  code: 'possible_duplicate_review_required';
+  duplicate_review_reference: string;
+} {
+  return (
+    isRecord(value) &&
+    value.code === 'possible_duplicate_review_required' &&
+    typeof value.duplicate_review_reference === 'string' &&
+    value.duplicate_review_reference.length > 0
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

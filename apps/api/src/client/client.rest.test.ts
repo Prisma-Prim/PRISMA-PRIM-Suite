@@ -330,7 +330,12 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: ['company.manage'],
       activeCompany: {
         id: company.id,
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+        clientPermissions: [
+          'client.read',
+          'client.create',
+          'client.update',
+          'client.duplicate.resolve',
+        ],
       },
     });
     const clients = await fetch(`${origin}/api/clients`, { headers });
@@ -423,7 +428,12 @@ describeWithPostgres('Client REST API', () => {
     await expect(directorActor.json()).resolves.toMatchObject({
       activeCompany: {
         id: company.id,
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+        clientPermissions: [
+          'client.read',
+          'client.create',
+          'client.update',
+          'client.duplicate.resolve',
+        ],
       },
     });
 
@@ -880,7 +890,12 @@ describeWithPostgres('Client REST API', () => {
       workspacePermissions: [],
       activeCompany: {
         id: company.id,
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
+        clientPermissions: [
+          'client.read',
+          'client.create',
+          'client.update',
+          'client.duplicate.resolve',
+        ],
       },
     });
 
@@ -1384,6 +1399,661 @@ describeWithPostgres('Client REST API', () => {
     }
   });
 
+  it('returns one opaque exact-ID review reference and reveals it only with complete live v2 authority', async () => {
+    const companyA = await registerCompany('PRISMA-PRIM', 'duplicate-review-a');
+    const companyB = await registerCompany('BIC', 'duplicate-review-b');
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
+    const existingResponse = await fetch(`${origin}/api/clients`, {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(companyA.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-review-existing',
+      },
+      body: JSON.stringify({
+        displayName: 'Existing Exact Client',
+        taxId: '  IDNO-EXACT-158  ',
+        telephone: '+373 22 100 100',
+      }),
+    });
+    expect(existingResponse.status).toBe(201);
+    const existing = await existingResponse.json();
+
+    const rejectedRequest = {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(companyB.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-review-rejected',
+      },
+      body: JSON.stringify({
+        displayName: 'Proposed Exact Client',
+        taxId: 'IDNO-EXACT-158',
+        address: 'Proposed address',
+      }),
+    } as const;
+    const rejected = await fetch(`${origin}/api/clients`, rejectedRequest);
+    expect(rejected.status).toBe(409);
+    const conflict = await rejected.json();
+    expect(conflict).toEqual({
+      statusCode: 409,
+      error: 'Conflict',
+      code: 'possible_duplicate_review_required',
+      duplicate_review_reference: expect.any(String),
+    });
+    expect(JSON.stringify(conflict)).not.toContain(existing.id);
+    expect(JSON.stringify(conflict)).not.toContain(companyA.id);
+
+    const replay = await fetch(`${origin}/api/clients`, rejectedRequest);
+    expect(replay.status).toBe(409);
+    await expect(replay.json()).resolves.toEqual(conflict);
+    await expectPersistenceCounts({ clients: 1, relationships: 1 });
+    const rejectedSuccessEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text IN ('client.created', 'client.corrected',
+         'client_company_relationship.established')`,
+    );
+    expect(rejectedSuccessEvents.rows[0]).toEqual({ count: '2' });
+
+    const owner = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(companyB.id),
+    }).then((response) => response.json());
+    await revokeDirectorClientAccess(
+      owner.workspaceMembershipId,
+      companyA.id,
+      'duplicate-review-revoke-a',
+    );
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+
+    await revokeDirectorClientAccess(
+      owner.workspaceMembershipId,
+      companyB.id,
+      'duplicate-review-revoke-b',
+    );
+    await grantDirectorClientAccess(
+      owner.workspaceMembershipId,
+      companyA.id,
+      'duplicate-review-regrant-a',
+    );
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+
+    await grantDirectorClientAccess(
+      owner.workspaceMembershipId,
+      companyB.id,
+      'duplicate-review-regrant-b',
+    );
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([
+      {
+        duplicate_review_reference: conflict.duplicate_review_reference,
+      },
+    ]);
+    const detail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toEqual({
+      outcome: 'comparison',
+      duplicate_review_reference: conflict.duplicate_review_reference,
+      proposal: {
+        kind: 'registration',
+        fields: {
+          displayName: 'Proposed Exact Client',
+          taxId: 'IDNO-EXACT-158',
+          address: 'Proposed address',
+          telephone: null,
+          generalEmail: null,
+          contacts: [],
+          businessActivity: null,
+        },
+      },
+      candidate: {
+        id: existing.id,
+        displayName: 'Existing Exact Client',
+        taxId: 'IDNO-EXACT-158',
+        address: null,
+        telephone: '+373 22 100 100',
+        generalEmail: null,
+        contacts: [],
+        businessActivity: null,
+        version: 1,
+        relatedToActiveCompany: false,
+        involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+      },
+    });
+
+    const staleCandidate = await fetch(`${origin}/api/clients/${existing.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(companyA.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-review-stale-candidate',
+      },
+      body: JSON.stringify({ expectedVersion: 1, address: 'Changed address' }),
+    });
+    expect(staleCandidate.status).toBe(200);
+    const staleDetail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(staleDetail.status).toBe(404);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+  });
+
+  it('blocks an exact-ID correction without changing the dossier or success history', async () => {
+    const companyA = await registerCompany(
+      'Correction Source',
+      'duplicate-correction-a',
+    );
+    const companyB = await registerCompany(
+      'Correction Target',
+      'duplicate-correction-b',
+    );
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
+    const source = await registerEnrichedClient(
+      companyA.id,
+      'Correction Source Client',
+      'CORRECTION-ID-158',
+      'duplicate-correction-source',
+    );
+    const target = await registerEnrichedClient(
+      companyB.id,
+      'Correction Target Client',
+      'ORIGINAL-ID-158',
+      'duplicate-correction-target',
+    );
+
+    const correctionRequest = {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(companyB.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-correction-rejected',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        taxId: '  CORRECTION-ID-158 ',
+      }),
+    } as const;
+    const rejected = await fetch(
+      `${origin}/api/clients/${target.id}`,
+      correctionRequest,
+    );
+    expect(rejected.status).toBe(409);
+    const conflict = await rejected.json();
+    expect(conflict).toMatchObject({
+      code: 'possible_duplicate_review_required',
+      duplicate_review_reference: expect.any(String),
+    });
+    const replay = await fetch(
+      `${origin}/api/clients/${target.id}`,
+      correctionRequest,
+    );
+    expect(replay.status).toBe(409);
+    await expect(replay.json()).resolves.toEqual(conflict);
+
+    const persisted = await pool.query<{
+      tax_id: string;
+      version: number;
+      correction_events: string;
+    }>(
+      `SELECT tax_id, version,
+          (SELECT count(*) FROM activity_log_events
+           WHERE action::text = 'client.corrected') AS correction_events
+        FROM client_accounts WHERE id = $1`,
+      [target.id],
+    );
+    expect(persisted.rows[0]).toEqual({
+      tax_id: 'ORIGINAL-ID-158',
+      version: 1,
+      correction_events: '0',
+    });
+
+    const detail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toMatchObject({
+      outcome: 'comparison',
+      proposal: {
+        kind: 'correction',
+        fields: {
+          displayName: 'Correction Target Client',
+          taxId: 'CORRECTION-ID-158',
+        },
+      },
+      candidate: { id: source.id, taxId: 'CORRECTION-ID-158' },
+    });
+
+    await pool.query(
+      `UPDATE client_accounts SET version = version + 1 WHERE id = $1`,
+      [target.id],
+    );
+    const staleProposal = await fetch(
+      `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(staleProposal.status).toBe(404);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+  });
+
+  it('revalidates relationship, lifecycle, actor, Company and assignment state for every review read', async () => {
+    const companyA = await registerCompany(
+      'Stale Candidate Company',
+      'duplicate-stale-company-a',
+    );
+    const companyB = await registerCompany(
+      'Stale Attempt Company',
+      'duplicate-stale-company-b',
+    );
+    const companyC = await registerCompany(
+      'Stale Additional Company',
+      'duplicate-stale-company-c',
+    );
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
+    await grantOwnerDirectorClientAccess(companyC.id);
+    const owner = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(companyB.id),
+    }).then((response) => response.json());
+
+    const createReview = async (
+      suffix: string,
+      proposalHeaders = ownerHeaders(companyB.id),
+    ) => {
+      const taxId = `STALE-${suffix.toUpperCase()}-158`;
+      const candidate = await registerEnrichedClient(
+        companyA.id,
+        `Stale Candidate ${suffix}`,
+        taxId,
+        `duplicate-stale-candidate-${suffix}`,
+      );
+      const rejected = await fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...proposalHeaders,
+          'content-type': 'application/json',
+          'idempotency-key': `duplicate-stale-proposal-${suffix}`,
+        },
+        body: JSON.stringify({
+          displayName: `Stale Proposal ${suffix}`,
+          taxId,
+        }),
+      });
+      const conflict = await expectOpaqueDuplicateConflict(rejected);
+      const detail = await fetch(
+        `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+        { headers: ownerHeaders(companyB.id) },
+      );
+      expect(detail.status).toBe(200);
+      return {
+        candidate,
+        reference: conflict.duplicate_review_reference,
+      };
+    };
+    const expectUnavailable = async (reference: string) => {
+      const detail = await fetch(
+        `${origin}/api/client-duplicate-reviews/${reference}`,
+        { headers: ownerHeaders(companyB.id) },
+      );
+      expect(detail.status).toBe(404);
+      await expect(
+        listDuplicateReviews(companyB.id),
+      ).resolves.not.toContainEqual({ duplicate_review_reference: reference });
+    };
+
+    const switchedCompany = await createReview('company-switch');
+    const switchedDetail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${switchedCompany.reference}`,
+      { headers: ownerHeaders(companyC.id) },
+    );
+    expect(switchedDetail.status).toBe(404);
+
+    const relationshipLifecycle = await createReview('relationship-lifecycle');
+    await pool.query(
+      `UPDATE client_company_relationships SET status = 'archived'
+       WHERE client_account_id = $1 AND company_id = $2`,
+      [relationshipLifecycle.candidate.id, companyA.id],
+    );
+    await expectUnavailable(relationshipLifecycle.reference);
+
+    const relationshipSet = await createReview('relationship-set');
+    const attach = await fetch(
+      `${origin}/api/clients/${relationshipSet.candidate.id}/active-company-relationship`,
+      { method: 'PUT', headers: ownerHeaders(companyC.id) },
+    );
+    expect(attach.status).toBe(200);
+    await expectUnavailable(relationshipSet.reference);
+
+    const candidateLifecycle = await createReview('candidate-lifecycle');
+    await pool.query(
+      `UPDATE client_accounts SET status = 'archived' WHERE id = $1`,
+      [candidateLifecycle.candidate.id],
+    );
+    await expectUnavailable(candidateLifecycle.reference);
+
+    const proposalActor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: identityHeaders('workspace-member', 'Company Director'),
+    }).then((response) => response.json());
+    await grantDirectorClientAccess(
+      proposalActor.workspaceMembershipId,
+      companyB.id,
+      'duplicate-stale-proposal-actor-grant',
+    );
+    const actorLifecycle = await createReview('actor-lifecycle', {
+      ...identityHeaders('workspace-member', 'Company Director'),
+      'x-company-context-id': companyB.id,
+    });
+    await pool.query(
+      `UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1`,
+      [proposalActor.workspaceMembershipId],
+    );
+    await expectUnavailable(actorLifecycle.reference);
+
+    const assignmentVersion = await createReview('assignment-version');
+    await pool.query(
+      `UPDATE company_role_assignments SET permission_set_version = 'v1'
+       WHERE workspace_membership_id = $1 AND company_id = $2
+         AND bundle::text = 'company_director_client_access'
+         AND revoked_at IS NULL`,
+      [owner.workspaceMembershipId, companyA.id],
+    );
+    await expectUnavailable(assignmentVersion.reference);
+    await pool.query(
+      `UPDATE company_role_assignments SET permission_set_version = 'v2'
+       WHERE workspace_membership_id = $1 AND company_id = $2
+         AND bundle::text = 'company_director_client_access'
+         AND revoked_at IS NULL`,
+      [owner.workspaceMembershipId, companyA.id],
+    );
+
+    const attemptedCompanyLifecycle = await createReview(
+      'attempted-company-lifecycle',
+    );
+    await pool.query(`UPDATE companies SET status = 'inactive' WHERE id = $1`, [
+      companyB.id,
+    ]);
+    const inactiveCompanyDetail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${attemptedCompanyLifecycle.reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(inactiveCompanyDetail.status).toBe(403);
+    const inactiveCompanyList = await fetch(
+      `${origin}/api/client-duplicate-reviews`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(inactiveCompanyList.status).toBe(403);
+  });
+
+  it('serializes concurrent exact-ID registrations so only one Client commits', async () => {
+    const company = await registerCompany(
+      'Race Company',
+      'duplicate-race-company',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const register = (name: string, key: string) =>
+      fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify({ displayName: name, taxId: 'RACE-ID-158' }),
+      });
+
+    const responses = await Promise.all([
+      register('Race Client One', 'duplicate-race-one'),
+      register('Race Client Two', 'duplicate-race-two'),
+    ]);
+    expect(responses.map((response) => response.status).toSorted()).toEqual([
+      201, 409,
+    ]);
+    await expectOpaqueDuplicateConflict(
+      responses.find((response) => response.status === 409),
+    );
+    await expectPersistenceCounts({ clients: 1, relationships: 1 });
+    const successEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text IN ('client.created',
+         'client_company_relationship.established')`,
+    );
+    expect(successEvents.rows[0]).toEqual({ count: '2' });
+  });
+
+  it('serializes registration-correction and correction-correction exact-ID races', async () => {
+    const company = await registerCompany(
+      'Mixed Race Company',
+      'duplicate-mixed-race-company',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const firstTarget = await registerEnrichedClient(
+      company.id,
+      'Mixed Race Existing',
+      'MIXED-ORIGINAL-158',
+      'duplicate-mixed-existing',
+    );
+    const mixedEventsBefore = await clientSuccessEventCount();
+    const register = fetch(`${origin}/api/clients`, {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-mixed-registration',
+      },
+      body: JSON.stringify({
+        displayName: 'Mixed Race Registration',
+        taxId: 'MIXED-RACE-ID-158',
+      }),
+    });
+    const correct = fetch(`${origin}/api/clients/${firstTarget.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(company.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-mixed-correction',
+      },
+      body: JSON.stringify({
+        expectedVersion: 1,
+        taxId: 'MIXED-RACE-ID-158',
+      }),
+    });
+    const mixedResponses = await Promise.all([register, correct]);
+    expect(
+      mixedResponses.map((response) => response.status).toSorted(),
+    ).toEqual(expect.arrayContaining([409]));
+    expect(
+      mixedResponses.filter((response) => response.status === 409),
+    ).toHaveLength(1);
+    expect(
+      mixedResponses.filter((response) => [200, 201].includes(response.status)),
+    ).toHaveLength(1);
+    await expectOpaqueDuplicateConflict(
+      mixedResponses.find((response) => response.status === 409),
+    );
+    const mixedIdentifierOwners = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM client_accounts
+       WHERE tax_id = 'MIXED-RACE-ID-158' AND status = 'active'`,
+    );
+    expect(mixedIdentifierOwners.rows[0]).toEqual({ count: '1' });
+    const mixedTarget = await pool.query<{ version: number }>(
+      `SELECT version FROM client_accounts WHERE id = $1`,
+      [firstTarget.id],
+    );
+    expect(mixedTarget.rows[0]?.version).toBe(
+      mixedResponses[1]?.status === 200 ? 2 : 1,
+    );
+    expect((await clientSuccessEventCount()) - mixedEventsBefore).toBe(
+      mixedResponses[0]?.status === 201 ? 2 : 1,
+    );
+
+    const targetA = await registerEnrichedClient(
+      company.id,
+      'Correction Race A',
+      'CORRECTION-RACE-A-158',
+      'duplicate-correction-race-a',
+    );
+    const targetB = await registerEnrichedClient(
+      company.id,
+      'Correction Race B',
+      'CORRECTION-RACE-B-158',
+      'duplicate-correction-race-b',
+    );
+    const correctionEventsBefore = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text = 'client.corrected'`,
+    );
+    const correctionRace = (clientAccountId: string, key: string) =>
+      fetch(`${origin}/api/clients/${clientAccountId}`, {
+        method: 'PATCH',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          taxId: 'CORRECTION-RACE-SHARED-158',
+        }),
+      });
+    const correctionResponses = await Promise.all([
+      correctionRace(targetA.id, 'duplicate-correction-race-command-a'),
+      correctionRace(targetB.id, 'duplicate-correction-race-command-b'),
+    ]);
+    expect(
+      correctionResponses.map((response) => response.status).toSorted(),
+    ).toEqual([200, 409]);
+    await expectOpaqueDuplicateConflict(
+      correctionResponses.find((response) => response.status === 409),
+    );
+    const correctedRows = await pool.query<{
+      tax_id: string;
+      version: number;
+    }>(
+      `SELECT tax_id, version FROM client_accounts
+        WHERE id IN ($1, $2) ORDER BY id`,
+      [targetA.id, targetB.id],
+    );
+    expect(
+      correctedRows.rows.filter(
+        (row) => row.tax_id === 'CORRECTION-RACE-SHARED-158',
+      ),
+    ).toHaveLength(1);
+    expect(correctedRows.rows.map((row) => row.version).toSorted()).toEqual([
+      1, 2,
+    ]);
+    const correctionEventsAfter = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text = 'client.corrected'`,
+    );
+    expect(
+      Number(correctionEventsAfter.rows[0]?.count) -
+        Number(correctionEventsBefore.rows[0]?.count),
+    ).toBe(1);
+
+    const independentEventsBefore = await clientSuccessEventCount();
+    const independentResponses = await Promise.all([
+      fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'duplicate-independent-key-a',
+        },
+        body: JSON.stringify({
+          displayName: 'Independent Key A',
+          taxId: 'INDEPENDENT-ID-A-158',
+        }),
+      }),
+      fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': 'duplicate-independent-key-b',
+        },
+        body: JSON.stringify({
+          displayName: 'Independent Key B',
+          taxId: 'INDEPENDENT-ID-B-158',
+        }),
+      }),
+    ]);
+    expect(independentResponses.map((response) => response.status)).toEqual([
+      201, 201,
+    ]);
+    expect((await clientSuccessEventCount()) - independentEventsBefore).toBe(4);
+  });
+
+  it('returns remediation-only after complete authority for multiple exact-ID candidates', async () => {
+    const companyA = await registerCompany(
+      'Multiple Source',
+      'duplicate-multiple-a',
+    );
+    const companyB = await registerCompany(
+      'Multiple Attempt',
+      'duplicate-multiple-b',
+    );
+    await grantOwnerDirectorClientAccess(companyA.id);
+    await grantOwnerDirectorClientAccess(companyB.id);
+    const first = await registerEnrichedClient(
+      companyA.id,
+      'Multiple Candidate One',
+      'MULTIPLE-ID-158',
+      'duplicate-multiple-first',
+    );
+    const actor = await fetch(`${origin}/api/access/current-actor`, {
+      headers: ownerHeaders(companyA.id),
+    }).then((response) => response.json());
+    const legacy = await pool.query<{ id: string }>(
+      `WITH candidate AS (
+        INSERT INTO client_accounts (
+          workspace_id, display_name, tax_id, created_by_internal_user_id,
+          created_by_workspace_membership_id
+        ) VALUES ($1, 'Multiple Candidate Two', 'MULTIPLE-ID-158', $2, $3)
+        RETURNING id
+      )
+      INSERT INTO client_company_relationships (
+        workspace_id, client_account_id, company_id,
+        created_by_internal_user_id, created_by_workspace_membership_id
+      )
+      SELECT $1, id, $4, $2, $3 FROM candidate RETURNING client_account_id AS id`,
+      [
+        actor.workspaceId,
+        actor.internalUserId,
+        actor.workspaceMembershipId,
+        companyA.id,
+      ],
+    );
+    expect(legacy.rows[0]?.id).not.toBe(first.id);
+
+    const rejected = await fetch(`${origin}/api/clients`, {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(companyB.id),
+        'content-type': 'application/json',
+        'idempotency-key': 'duplicate-multiple-proposal',
+      },
+      body: JSON.stringify({
+        displayName: 'Multiple Candidate Proposal',
+        taxId: 'MULTIPLE-ID-158',
+      }),
+    });
+    expect(rejected.status).toBe(409);
+    const conflict = await rejected.json();
+    const detail = await fetch(
+      `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
+      { headers: ownerHeaders(companyB.id) },
+    );
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toEqual({
+      outcome: 'multiple_duplicate_candidates_require_data_remediation',
+      duplicate_review_reference: conflict.duplicate_review_reference,
+    });
+  });
+
   async function registerCompany(displayName: string, key: string) {
     const response = await fetch(`${origin}/api/companies`, {
       method: 'POST',
@@ -1513,6 +2183,7 @@ describeWithPostgres('Client REST API', () => {
   async function grantDirectorClientAccess(
     workspaceMembershipId: string,
     companyId: string,
+    commandKey = `director-${workspaceMembershipId}-${companyId}`,
   ) {
     const response = await fetch(
       `${origin}/api/company-director-client-assignments`,
@@ -1521,7 +2192,7 @@ describeWithPostgres('Client REST API', () => {
         headers: {
           ...identityHeaders('workspace-owner', 'Workspace Owner'),
           'content-type': 'application/json',
-          'idempotency-key': `director-${workspaceMembershipId}-${companyId}`,
+          'idempotency-key': commandKey,
         },
         body: JSON.stringify({ workspaceMembershipId, companyId }),
       },
@@ -1532,7 +2203,89 @@ describeWithPostgres('Client REST API', () => {
       companyId,
       bundle: 'Company Director Client Access',
       active: true,
+      permissionSetVersion: 'v2',
     });
+  }
+
+  async function revokeDirectorClientAccess(
+    workspaceMembershipId: string,
+    companyId: string,
+    commandKey: string,
+  ) {
+    const response = await fetch(
+      `${origin}/api/company-director-client-assignments/${workspaceMembershipId}/${companyId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': commandKey,
+        },
+      },
+    );
+    expect(response.status).toBe(200);
+  }
+
+  async function registerEnrichedClient(
+    companyId: string,
+    displayName: string,
+    taxId: string,
+    key: string,
+  ) {
+    const response = await fetch(`${origin}/api/clients`, {
+      method: 'POST',
+      headers: {
+        ...ownerHeaders(companyId),
+        'content-type': 'application/json',
+        'idempotency-key': key,
+      },
+      body: JSON.stringify({ displayName, taxId }),
+    });
+    expect(response.status).toBe(201);
+    return response.json();
+  }
+
+  async function listDuplicateReviews(companyId: string) {
+    const response = await fetch(`${origin}/api/client-duplicate-reviews`, {
+      headers: ownerHeaders(companyId),
+    });
+    expect(response.status).toBe(200);
+    return response.json();
+  }
+
+  async function expectOpaqueDuplicateConflict(
+    response: Response | undefined,
+  ): Promise<{ duplicate_review_reference: string }> {
+    if (!response) throw new Error('Expected one duplicate conflict response.');
+    expect(response.status).toBe(409);
+    const body: unknown = await response.json();
+    if (
+      !isRecord(body) ||
+      typeof body.duplicate_review_reference !== 'string'
+    ) {
+      throw new Error('Expected one opaque duplicate review reference.');
+    }
+    expect(body).toEqual({
+      statusCode: 409,
+      error: 'Conflict',
+      code: 'possible_duplicate_review_required',
+      duplicate_review_reference: expect.any(String),
+    });
+    expect(Object.keys(body).toSorted()).toEqual([
+      'code',
+      'duplicate_review_reference',
+      'error',
+      'statusCode',
+    ]);
+    return { duplicate_review_reference: body.duplicate_review_reference };
+  }
+
+  async function clientSuccessEventCount(): Promise<number> {
+    const result = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM activity_log_events
+       WHERE action::text IN ('client.created', 'client.corrected',
+         'client_company_relationship.established')`,
+    );
+    return Number(result.rows[0]?.count);
   }
 
   async function expectPersistenceCounts(expected: {
@@ -1574,3 +2327,7 @@ describeWithPostgres('Client REST API', () => {
     };
   }
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
