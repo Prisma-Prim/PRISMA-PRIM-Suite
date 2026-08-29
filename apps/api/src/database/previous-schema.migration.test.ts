@@ -504,7 +504,7 @@ describeWithPostgres('previous schema migration preflight', () => {
         await expect(migratedClientDossierResponse.json()).resolves.toEqual({
           id: '00000000-0000-4000-8000-000000001462',
           displayName: 'Previous Shared Client',
-          taxId: null,
+          taxId: 'PREVIOUS-ID-169',
           address: null,
           telephone: null,
           generalEmail: null,
