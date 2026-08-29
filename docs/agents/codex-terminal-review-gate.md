@@ -13,11 +13,13 @@ Standards, Spec, CI, and security checks.
 | `failure` | Codex reviewed the current head, but at least one Codex-authored, non-outdated review thread is unresolved. | Blocks.                                                      |
 | `success` | Codex produced a terminal signal for the current head and every current Codex thread is resolved.           | Allows this gate; every other required gate must still pass. |
 
-A terminal signal is either a Codex review whose `commit_id` equals the pull
-request head or a Codex no-findings comment whose `Reviewed commit` value
-identifies that head. A push changes the head, so an earlier success no longer
-applies and the new head returns to `pending`. The workflow never sleeps or
-guesses whether enough time has passed.
+A terminal signal is a Codex review whose `commit_id` equals the pull-request
+head, a legacy Codex no-findings comment whose `Reviewed commit` value identifies
+that head, or the bot-owned review-summary comment with a `Completed` Code Review
+row that identifies that head. Running, malformed, unmarked, and stale-head
+summaries are not terminal signals. A push changes the head, so an earlier
+success no longer applies and the new head returns to `pending`. The workflow
+never sleeps or guesses whether enough time has passed.
 
 The workflow re-evaluates on pull-request changes, Codex reviews, review
 comments, and pull-request conversation comments. GitHub Actions does not expose

@@ -43,6 +43,50 @@ test('accepts a no-findings terminal comment tied to the exact head', () => {
   });
 });
 
+test('accepts the completed bot review summary tied to the exact head', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexComments: [
+        {
+          body: `<!-- codex-pull-request-review-summary -->
+
+| Review | Status | Commit | Review trigger |
+| --- | --- | --- | --- |
+| 📝 **Code Review** | ✅ **Completed** today | \`e7473e1\` | New commits |`,
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.state, 'ready');
+});
+
+test('rejects running, stale, and unmarked completed review summaries', () => {
+  const summary = (status, commit, marker = true) => `${
+    marker ? '<!-- codex-pull-request-review-summary -->\n\n' : ''
+  }| Review | Status | Commit | Review trigger |
+| --- | --- | --- | --- |
+| 📝 **Code Review** | ${status} | \`${commit}\` | New commits |`;
+
+  for (const body of [
+    summary('🔄 **Running**', 'e7473e1'),
+    summary('✅ **Completed** today', '56c22cf'),
+    summary('✅ **Completed** today', 'e7473e1', false),
+    `<!-- codex-pull-request-review-summary -->
+
+| Review | Status | Commit | Review trigger |
+| --- | --- | --- | --- |
+| 📝 **Code Review** | ✅ **Completed** today
+| \`e7473e1\` | New commits |`,
+  ]) {
+    const result = evaluateCodexReviewGate(
+      snapshot({ codexComments: [{ body }] }),
+    );
+
+    assert.equal(result.state, 'pending');
+  }
+});
+
 test('invalidates a terminal signal after the PR head changes', () => {
   const result = evaluateCodexReviewGate(
     snapshot({
