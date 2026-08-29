@@ -1216,14 +1216,16 @@ describe('ClientWorkspace', () => {
         if (path === '/api/clients' && !init?.method) {
           return new Response(JSON.stringify([]), { status: 200 });
         }
-        if (path === '/api/client-duplicate-reviews') {
+        if (path === '/api/client-duplicate-reviews?page_size=20') {
           duplicateListLoads += 1;
           return new Response(
-            JSON.stringify(
-              duplicateListLoads === 1
-                ? [{ duplicate_review_reference: reference }]
-                : [],
-            ),
+            JSON.stringify({
+              items:
+                duplicateListLoads === 1
+                  ? [{ duplicate_review_reference: reference }]
+                  : [],
+              next_cursor: null,
+            }),
             { status: 200 },
           );
         }
@@ -1324,6 +1326,123 @@ describe('ClientWorkspace', () => {
     expect(duplicateListLoads).toBe(2);
   });
 
+  it('loads duplicate-review continuation only after the resolver requests it', async () => {
+    const firstReference = '55555555-5555-4555-8555-555555555555';
+    const secondReference = '66666666-6666-4666-8666-666666666666';
+    const cursor = '77777777-7777-4777-8777-777777777777';
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const path = String(input);
+      if (path === '/api/clients') {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (path === '/api/client-duplicate-reviews?page_size=20') {
+        return new Response(
+          JSON.stringify({
+            items: [{ duplicate_review_reference: firstReference }],
+            next_cursor: cursor,
+          }),
+          { status: 200 },
+        );
+      }
+      if (
+        path === `/api/client-duplicate-reviews?page_size=20&cursor=${cursor}`
+      ) {
+        return new Response(
+          JSON.stringify({
+            items: [{ duplicate_review_reference: secondReference }],
+            next_cursor: null,
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <ClientWorkspace
+        actor={resolverActor('assignment-pagination')}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Review possible duplicate 1',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Review possible duplicate 2',
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(cursor)).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Load more possible duplicate reviews',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Review possible duplicate 2',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Load more possible duplicate reviews',
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(firstReference)).not.toBeInTheDocument();
+    expect(screen.queryByText(secondReference)).not.toBeInTheDocument();
+    expect(screen.queryByText(cursor)).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects a malformed duplicate-review reference at the HTTP boundary', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL | Request) => {
+        const path = String(input);
+        if (path === '/api/clients') {
+          return new Response(JSON.stringify([]), { status: 200 });
+        }
+        if (path === '/api/client-duplicate-reviews?page_size=20') {
+          return new Response(
+            JSON.stringify({
+              items: [{ duplicate_review_reference: 'not-an-opaque-uuid' }],
+              next_cursor: null,
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+
+    render(
+      <ClientWorkspace
+        actor={resolverActor('assignment-malformed-page')}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        'The duplicate review could not be loaded safely.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Review possible duplicate/u }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows only remediation guidance for an authorized multi-candidate review', async () => {
     const reference = '33333333-3333-4333-8333-333333333333';
     vi.stubGlobal(
@@ -1333,9 +1452,12 @@ describe('ClientWorkspace', () => {
         if (path === '/api/clients') {
           return new Response(JSON.stringify([]), { status: 200 });
         }
-        if (path === '/api/client-duplicate-reviews') {
+        if (path === '/api/client-duplicate-reviews?page_size=20') {
           return new Response(
-            JSON.stringify([{ duplicate_review_reference: reference }]),
+            JSON.stringify({
+              items: [{ duplicate_review_reference: reference }],
+              next_cursor: null,
+            }),
             { status: 200 },
           );
         }
@@ -1382,11 +1504,13 @@ describe('ClientWorkspace', () => {
         if (path === '/api/clients') {
           return new Response(JSON.stringify([]), { status: 200 });
         }
-        if (path === '/api/client-duplicate-reviews') {
+        if (path === '/api/client-duplicate-reviews?page_size=20') {
           duplicateLoads += 1;
           return duplicateLoads === 1
             ? staleReviews.promise
-            : new Response(JSON.stringify([]), { status: 200 });
+            : new Response(JSON.stringify({ items: [], next_cursor: null }), {
+                status: 200,
+              });
         }
         throw new Error(`Unexpected request: ${path}`);
       }),
@@ -1404,7 +1528,7 @@ describe('ClientWorkspace', () => {
     const staleSignal = vi
       .mocked(fetch)
       .mock.calls.find(([input]) =>
-        String(input).endsWith('/client-duplicate-reviews'),
+        String(input).endsWith('/client-duplicate-reviews?page_size=20'),
       )?.[1]?.signal;
 
     rerender(
@@ -1424,11 +1548,15 @@ describe('ClientWorkspace', () => {
 
     staleReviews.resolve(
       new Response(
-        JSON.stringify([
-          {
-            duplicate_review_reference: '44444444-4444-4444-8444-444444444444',
-          },
-        ]),
+        JSON.stringify({
+          items: [
+            {
+              duplicate_review_reference:
+                '44444444-4444-4444-8444-444444444444',
+            },
+          ],
+          next_cursor: null,
+        }),
         { status: 200 },
       ),
     );

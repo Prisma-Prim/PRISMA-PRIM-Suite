@@ -54,9 +54,13 @@ export const clientWorkspaceCopy = {
   duplicateReviewDescription:
     'Only reviews covered by your complete current Company authority appear here.',
   loadingDuplicateReviews: 'Loading possible duplicate reviews…',
+  loadMoreDuplicateReviews: 'Load more possible duplicate reviews',
+  loadingMoreDuplicateReviews: 'Loading more possible duplicate reviews…',
   loadingDuplicateReview: 'Loading the duplicate comparison…',
   noDuplicateReviews: 'No possible duplicate review is currently available.',
   duplicateReviewRetry: 'The duplicate review could not be loaded safely.',
+  duplicateReviewContinuationRetry:
+    'More duplicate reviews could not be loaded safely. Try again.',
   duplicateReviewUnavailable:
     'This review is no longer available. Its data or authority may have changed.',
   openDuplicateReview: (position: number) =>
