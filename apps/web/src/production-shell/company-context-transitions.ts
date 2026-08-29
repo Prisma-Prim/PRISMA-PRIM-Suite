@@ -39,6 +39,7 @@ export interface ActivityLogEvent {
   id: string;
   action:
     | 'internal_user.provisioned'
+    | 'workspace_membership.suspended'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -52,6 +53,12 @@ export interface ActivityLogEvent {
   target:
     | {
         type: 'internal_user';
+        internalUserId: string;
+        displayName: string;
+      }
+    | {
+        type: 'workspace_membership';
+        workspaceMembershipId: string;
         internalUserId: string;
         displayName: string;
       }

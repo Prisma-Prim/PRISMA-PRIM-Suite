@@ -40,6 +40,7 @@ export interface ProductionShellSessionSnapshot {
   readonly rejectCompanyContextAndRefreshActivity: (
     companyId: string,
   ) => Promise<void>;
+  readonly rejectWorkspaceAccess: () => void;
   readonly includeCompany: (company: VisibleCompany) => void;
 }
 
@@ -111,6 +112,10 @@ export function createProductionShellSession({
         });
         if (shellContext === previousContext) return;
         await snapshot.refreshActivityLog();
+      },
+      rejectWorkspaceAccess: () => {
+        if (!connected || !origin || context.status !== 'active') return;
+        dispatch({ type: 'access-forbidden' });
       },
       includeCompany: (company) => {
         if (!connected || !origin) return;
@@ -189,6 +194,21 @@ export function createProductionShellSession({
     return true;
   }
 
+  async function rejectRevokedWorkspaceAccess(
+    transport: ProductionShellTransport,
+    candidate: RequestOperation,
+  ): Promise<boolean> {
+    const workspaceActor = await transport.loadActor({
+      signal: candidate.controller.signal,
+    });
+    if (!isCurrent(candidate)) return true;
+    if (await rejectUnauthorized(workspaceActor, candidate)) return true;
+    if (!isCurrent(candidate)) return true;
+    if (workspaceActor.status !== 'forbidden') return false;
+    dispatch({ type: 'access-forbidden' });
+    return true;
+  }
+
   async function loadActivityLog(
     transport: ProductionShellTransport,
     actor: ActorContext,
@@ -202,17 +222,19 @@ export function createProductionShellSession({
     if (!isCurrent(candidate)) return;
     if (await rejectUnauthorized(result, candidate)) return;
     if (!isCurrent(candidate)) return;
-    if (result.status === 'forbidden' && actor.activeCompany) {
-      dispatch({
-        type: 'company-rejected',
-        origin,
-        companyId: actor.activeCompany.id,
-        activityLog: 'error',
-      });
-      return;
-    }
     if (result.status === 'forbidden') {
-      dispatch({ type: 'access-forbidden' });
+      if (await rejectRevokedWorkspaceAccess(transport, candidate)) return;
+      if (!isCurrent(candidate)) return;
+      if (actor.activeCompany) {
+        dispatch({
+          type: 'company-rejected',
+          origin,
+          companyId: actor.activeCompany.id,
+          activityLog: 'error',
+        });
+      } else {
+        dispatch({ type: 'access-forbidden' });
+      }
       return;
     }
     dispatch({
@@ -294,6 +316,8 @@ export function createProductionShellSession({
       if (await rejectUnauthorized(selectedResult, candidate)) return;
       if (!isCurrent(candidate)) return;
       if (selectedResult.status === 'forbidden') {
+        if (await rejectRevokedWorkspaceAccess(transport, candidate)) return;
+        if (!isCurrent(candidate)) return;
         dispatch({ type: 'selection-denied', origin, companyId });
         return;
       }

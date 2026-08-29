@@ -8,7 +8,9 @@ import {
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { companyContextAccessCopy as copy } from './company-context-access.copy';
+import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle = 'company-context' | 'director-client';
@@ -38,19 +40,20 @@ type MutationState =
   | { status: 'submitting'; submission: Submission }
   | { status: 'ready'; submission: Submission }
   | { status: 'error' };
-
 export function CompanyContextAccess({
   actor,
   identity,
   onActorRevalidated = () => undefined,
   onCompanyContextRejected = () => undefined,
   onActivityRecorded = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
   onActivityRecorded?: () => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -59,6 +62,7 @@ export function CompanyContextAccess({
     { status: 'loading' },
   );
   const [mutation, setMutation] = useState<MutationState>({ status: 'idle' });
+  const [suspensionPending, setSuspensionPending] = useState(false);
   const retryCommand = useRef<
     | {
         submission: Submission;
@@ -74,6 +78,8 @@ export function CompanyContextAccess({
   acceptRevalidatedActor.current = onActorRevalidated;
   const rejectCompanyContext = useRef(onCompanyContextRejected);
   rejectCompanyContext.current = onCompanyContextRejected;
+  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
+  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
@@ -89,8 +95,20 @@ export function CompanyContextAccess({
           { signal: request.signal },
         );
         if (request.signal.aborted) return false;
-        if (result.status === 'unauthorized') {
-          await identity.rejectSession();
+        const rejection = await handleAuthenticatedAccessRejection({
+          result,
+          identity,
+          companyContextId: undefined,
+          onCompanyContextRejected: (companyId) =>
+            rejectCompanyContext.current(companyId),
+          onActorRevalidated: (revalidatedActor) =>
+            acceptRevalidatedActor.current(revalidatedActor),
+          onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
+          signal: request.signal,
+        });
+        if (rejection) {
+          if (request.signal.aborted) return false;
+          if (rejection === 'forbidden') setAdministration({ status: 'error' });
           return false;
         }
         if (result.status !== 'ok') {
@@ -128,6 +146,7 @@ export function CompanyContextAccess({
     setWorkspaceMembershipId('');
     setCompanyId('');
     setMutation({ status: 'idle' });
+    setSuspensionPending(false);
     if (!canManageAssignments) return;
     const request = new AbortController();
     pendingRequest.current = request;
@@ -305,6 +324,7 @@ export function CompanyContextAccess({
   const hasSelectableTargets =
     data.members.length > 0 && data.companies.length > 0;
   const pending = mutation.status === 'submitting';
+  const busy = pending || suspensionPending;
   const retrySubmission =
     mutation.status === 'error' &&
     retryCommand.current?.bundle === bundle &&
@@ -327,7 +347,7 @@ export function CompanyContextAccess({
           <select
             id="context-access-member"
             value={workspaceMembershipId}
-            disabled={pending}
+            disabled={busy}
             onChange={(event) => {
               resetCommand();
               setWorkspaceMembershipId(event.target.value);
@@ -352,7 +372,7 @@ export function CompanyContextAccess({
           <select
             id="context-access-company"
             value={companyId}
-            disabled={pending}
+            disabled={busy}
             onChange={(event) => {
               resetCommand();
               setCompanyId(event.target.value);
@@ -374,7 +394,7 @@ export function CompanyContextAccess({
           <select
             id="context-access-bundle"
             value={bundle}
-            disabled={pending}
+            disabled={busy}
             onChange={(event) => {
               resetCommand();
               setBundle(event.target.value as AssignmentBundle);
@@ -398,7 +418,7 @@ export function CompanyContextAccess({
           <button
             type="submit"
             disabled={
-              pending ||
+              busy ||
               !workspaceMembershipId ||
               !companyId ||
               (activeAssignment && retrySubmission !== 'grant')
@@ -409,7 +429,7 @@ export function CompanyContextAccess({
           <button
             type="button"
             disabled={
-              pending ||
+              busy ||
               !workspaceMembershipId ||
               !companyId ||
               (!activeAssignment && retrySubmission !== 'revoke')
@@ -426,6 +446,23 @@ export function CompanyContextAccess({
         </p>
       )}
       {mutation.status === 'error' && <p role="alert">{copy.error}</p>}
+      <WorkspaceMembershipSuspension
+        actor={actor}
+        identity={identity}
+        members={data.members.map((member) => ({
+          workspaceMembershipId: member.workspaceMembershipId,
+          label: disambiguatedLabel(
+            memberLabel(member),
+            member.workspaceMembershipId,
+            duplicateMemberLabels,
+          ),
+        }))}
+        disabled={pending}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={setSuspensionPending}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
     </section>
   );
 }

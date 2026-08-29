@@ -5,6 +5,7 @@ import {
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
+import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { ClientWorkspace } from './client/ClientWorkspace';
@@ -22,6 +23,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     selectCompany,
     rejectCompanyContext,
     rejectCompanyContextAndRefreshActivity,
+    rejectWorkspaceAccess,
     acceptRevalidatedActor,
     includeCompany,
     refreshActivityLog,
@@ -95,6 +97,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
           onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
         />
       )}
@@ -106,6 +109,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}
           onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
         />
       )}
@@ -116,6 +120,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
           onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onCompanyRegistered={includeCompany}
         />
       )}
@@ -164,6 +169,7 @@ function activityDescription(event: ActivityLogEvent): string {
     'internal_user.provisioned': 'was provisioned',
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
+    ...workspaceMembershipSuspensionCopy.activityActionLabels,
     ...clientWorkspaceCopy.activityActionLabels,
   };
   return `${event.actor.displayName} ${actionLabels[event.action]}`;
@@ -176,6 +182,7 @@ function activityTargetDescription(event: ActivityLogEvent): string {
     case 'client_company_relationship':
       return `${event.target.clientDisplayName} — ${event.target.companyDisplayName}`;
     case 'internal_user':
+    case 'workspace_membership':
     case 'company':
       return event.target.displayName;
     case 'client_account':

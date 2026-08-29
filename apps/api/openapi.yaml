@@ -147,6 +147,33 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks Company-access administration authority.
+  /api/workspace-membership-suspensions:
+    post:
+      operationId: suspendWorkspaceMembership
+      summary: Suspend one active Workspace Membership without deleting identity or history
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuspendWorkspaceMembershipInput'
+      responses:
+        '201':
+          description: The canonical inactive Workspace Membership result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMembershipSuspension'
+        '400':
+          description: The Membership identifier is malformed, the idempotency key is missing, or the key was used for another target.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks live access-administration authority, the target is not active in the current Workspace, or suspension would remove its last active authority holder.
   /api/company-context-assignments:
     post:
       operationId: grantCompanyContextAssignment
@@ -486,6 +513,7 @@ components:
           type: string
           enum:
             - internal_user.provisioned
+            - workspace_membership.suspended
             - company.registered
             - company_context_assignment.granted
             - company_context_assignment.revoked
@@ -502,6 +530,7 @@ components:
         target:
           oneOf:
             - $ref: '#/components/schemas/ActivityLogInternalUserTargetReference'
+            - $ref: '#/components/schemas/ActivityLogWorkspaceMembershipTargetReference'
             - $ref: '#/components/schemas/ActivityLogCompanyTargetReference'
             - $ref: '#/components/schemas/ActivityLogCompanyRoleAssignmentTargetReference'
             - $ref: '#/components/schemas/ActivityLogClientTargetReference'
@@ -552,6 +581,26 @@ components:
           type: string
           const: company
         companyId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    ActivityLogWorkspaceMembershipTargetReference:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - workspaceMembershipId
+        - internalUserId
+        - displayName
+      properties:
+        type:
+          type: string
+          const: workspace_membership
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        internalUserId:
           type: string
           format: uuid
         displayName:
@@ -781,6 +830,28 @@ components:
         companyId:
           type: string
           format: uuid
+    SuspendWorkspaceMembershipInput:
+      type: object
+      additionalProperties: false
+      required:
+        - workspaceMembershipId
+      properties:
+        workspaceMembershipId:
+          type: string
+          format: uuid
+    WorkspaceMembershipSuspension:
+      type: object
+      additionalProperties: false
+      required:
+        - workspaceMembershipId
+        - status
+      properties:
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: inactive
     CompanyContextAssignment:
       type: object
       additionalProperties: false

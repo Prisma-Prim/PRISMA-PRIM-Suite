@@ -133,6 +133,47 @@ describeWithPostgres('previous schema migration preflight', () => {
           INNER JOIN seeded_membership
             ON seeded_membership.workspace_id = seeded_client.workspace_id
         `);
+        await migrationPool.query(`
+          WITH seeded_membership AS (
+            SELECT membership.workspace_id, membership.id,
+              membership.internal_user_id
+            FROM workspace_memberships AS membership
+            INNER JOIN internal_users AS internal_user
+              ON internal_user.workspace_id = membership.workspace_id
+              AND internal_user.id = membership.internal_user_id
+            WHERE internal_user.external_provider = 'deterministic-test'
+              AND internal_user.external_subject = 'previous-schema-owner'
+          ), seeded_assignment AS (
+            INSERT INTO company_role_assignments (
+              id, workspace_id, company_id, workspace_membership_id, bundle
+            )
+            SELECT '00000000-0000-4000-8000-000000001464', workspace_id,
+              '00000000-0000-4000-8000-000000001461', id,
+              'company_context_access'
+            FROM seeded_membership
+            RETURNING id, workspace_id, company_id, workspace_membership_id
+          )
+          INSERT INTO activity_log_events (
+            id, workspace_id, actor_internal_user_id,
+            actor_workspace_membership_id, action, target_type,
+            target_internal_user_id, target_workspace_membership_id,
+            target_company_id, target_company_role_assignment_id,
+            occurred_at, metadata, idempotency_key
+          )
+          SELECT '00000000-0000-4000-8000-000000001465',
+            seeded_membership.workspace_id,
+            seeded_membership.internal_user_id, seeded_membership.id,
+            'company_context_assignment.granted', 'company_role_assignment',
+            seeded_membership.internal_user_id, seeded_membership.id,
+            seeded_assignment.company_id, seeded_assignment.id,
+            '2026-08-27T12:00:00.000Z',
+            '{"bundle":"Company Context Access"}'::jsonb,
+            'previous-schema-assignment-granted'
+          FROM seeded_membership
+          INNER JOIN seeded_assignment
+            ON seeded_assignment.workspace_id = seeded_membership.workspace_id
+            AND seeded_assignment.workspace_membership_id = seeded_membership.id
+        `);
         await migrate(database, { migrationsFolder: migrationsDirectory });
         const upgradedClient = await migrationPool.query<{
           id: string;
@@ -160,6 +201,47 @@ describeWithPostgres('previous schema migration preflight', () => {
             FROM workspace_permission_grants
             WHERE permission::text = 'client.manage'`);
         expect(grantsAfterMigration.rows[0]).toEqual({ count: '0' });
+        const suspensionMigrationState = await migrationPool.query<{
+          commands: string;
+          membership_status: string;
+          clients: string;
+          relationships: string;
+          assignment_id: string;
+          assignment_active: boolean;
+          activity_id: string;
+          activity_action: string;
+          activity_target_type: string;
+        }>(`SELECT
+              (SELECT count(*)
+                FROM workspace_membership_suspension_commands) AS commands,
+              membership.status AS membership_status,
+              (SELECT count(*) FROM client_accounts) AS clients,
+              (SELECT count(*) FROM client_company_relationships) AS relationships,
+              (SELECT id::text FROM company_role_assignments
+                WHERE id = '00000000-0000-4000-8000-000000001464') AS assignment_id,
+              (SELECT revoked_at IS NULL FROM company_role_assignments
+                WHERE id = '00000000-0000-4000-8000-000000001464') AS assignment_active,
+              (SELECT id::text FROM activity_log_events
+                WHERE id = '00000000-0000-4000-8000-000000001465') AS activity_id,
+              (SELECT action::text FROM activity_log_events
+                WHERE id = '00000000-0000-4000-8000-000000001465') AS activity_action,
+              (SELECT target_type::text FROM activity_log_events
+                WHERE id = '00000000-0000-4000-8000-000000001465') AS activity_target_type
+            FROM workspace_memberships AS membership
+            INNER JOIN internal_users AS internal_user
+              ON internal_user.id = membership.internal_user_id
+            WHERE internal_user.external_subject = 'previous-schema-owner'`);
+        expect(suspensionMigrationState.rows[0]).toEqual({
+          commands: '0',
+          membership_status: 'active',
+          clients: '1',
+          relationships: '1',
+          assignment_id: '00000000-0000-4000-8000-000000001464',
+          assignment_active: true,
+          activity_id: '00000000-0000-4000-8000-000000001465',
+          activity_action: 'company_context_assignment.granted',
+          activity_target_type: 'company_role_assignment',
+        });
 
         process.env.NODE_ENV = 'test';
         process.env.ACCESS_IDENTITY_MODE = 'test';
