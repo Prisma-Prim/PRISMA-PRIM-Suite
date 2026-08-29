@@ -34,6 +34,7 @@ export const clientDuplicateReviews = pgTable(
   'client_duplicate_reviews',
   {
     reference: uuid('reference').defaultRandom().primaryKey(),
+    paginationCursor: uuid('pagination_cursor').defaultRandom().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     proposalKind: text('proposal_kind').notNull(),
     proposalActorWorkspaceMembershipId: uuid(
@@ -53,6 +54,9 @@ export const clientDuplicateReviews = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('client_duplicate_reviews_pagination_cursor_unique').on(
+      table.paginationCursor,
+    ),
     index('client_duplicate_reviews_list_lookup').on(
       table.workspaceId,
       table.attemptedCompanyId,

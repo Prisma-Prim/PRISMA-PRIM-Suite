@@ -8,6 +8,16 @@ export interface ClientDuplicateReviewListItem {
   duplicate_review_reference: string;
 }
 
+export interface ClientDuplicateReviewPage {
+  items: ClientDuplicateReviewListItem[];
+  next_cursor: string | null;
+}
+
+export interface ClientDuplicateReviewPageRequest {
+  pageSize: number;
+  cursor: string | undefined;
+}
+
 export type ClientDuplicateReviewDetail =
   | {
       outcome: 'comparison';

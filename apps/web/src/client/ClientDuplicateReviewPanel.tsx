@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import type { ApiResult } from '../api/authenticated-api-client';
@@ -26,6 +33,9 @@ interface CandidateDossier extends DossierFields {
   involvedCompanyDisplayNames: string[];
 }
 
+const UUID_V4 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 type ReviewDetail =
   | {
       outcome: 'comparison';
@@ -43,7 +53,13 @@ type ReviewDetail =
 
 type ListState =
   | { status: 'loading' }
-  | { status: 'ready'; references: string[] }
+  | {
+      status: 'ready';
+      references: string[];
+      continuation:
+        | { status: 'complete' }
+        | { status: 'idle' | 'loading' | 'failed'; cursor: string };
+    }
   | { status: 'forbidden' | 'error' };
 
 type DetailState =
@@ -105,30 +121,64 @@ export function ClientDuplicateReviewPanel({
     [companyContextId, identity],
   );
 
-  const loadReviews = useCallback(async () => {
-    setListState({ status: 'loading' });
-    await runLatestAuthenticatedRequest({
-      pending: pendingList,
-      identity,
-      execute: (api, signal) =>
-        api.request<unknown>('/client-duplicate-reviews', {
-          companyContextId,
-          signal,
-        }),
-      async onResult(result, signal) {
-        if (await handleAccessRejection(result, signal)) return;
-        if (result.status !== 'ok') {
-          setListState({ status: 'error' });
-          return;
-        }
-        const references = duplicateReviewReferences(result.value);
-        setListState(
-          references ? { status: 'ready', references } : { status: 'error' },
+  const requestReviews = useCallback(
+    async (cursor: string | undefined) => {
+      const continuing = cursor !== undefined;
+      if (continuing) {
+        setListState((current) =>
+          current.status === 'ready'
+            ? {
+                ...current,
+                continuation: { status: 'loading', cursor },
+              }
+            : current,
         );
-      },
-      onError: () => setListState({ status: 'error' }),
-    });
-  }, [companyContextId, handleAccessRejection, identity]);
+      } else {
+        setListState({ status: 'loading' });
+      }
+      await runLatestAuthenticatedRequest({
+        pending: pendingList,
+        identity,
+        execute: (api, signal) =>
+          api.request<unknown>(duplicateReviewListPath(cursor), {
+            companyContextId,
+            signal,
+          }),
+        async onResult(result, signal) {
+          if (await handleAccessRejection(result, signal)) return;
+          if (result.status !== 'ok') {
+            setDuplicateReviewListFailure(cursor, setListState);
+            return;
+          }
+          const page = duplicateReviewPage(result.value);
+          if (!page) {
+            setDuplicateReviewListFailure(cursor, setListState);
+            return;
+          }
+          setListState((current) => {
+            const references =
+              continuing && current.status === 'ready'
+                ? uniqueReferences([...current.references, ...page.references])
+                : page.references;
+            return {
+              status: 'ready',
+              references,
+              continuation: page.nextCursor
+                ? { status: 'idle', cursor: page.nextCursor }
+                : { status: 'complete' },
+            };
+          });
+        },
+        onError: () => setDuplicateReviewListFailure(cursor, setListState),
+      });
+    },
+    [companyContextId, handleAccessRejection, identity],
+  );
+
+  const loadReviews = useCallback(
+    () => requestReviews(undefined),
+    [requestReviews],
+  );
 
   useEffect(() => {
     pendingList.current?.abort();
@@ -200,6 +250,11 @@ export function ClientDuplicateReviewPanel({
     });
   }
 
+  const availableContinuation =
+    listState.status === 'ready' && listState.continuation.status !== 'complete'
+      ? listState.continuation
+      : undefined;
+
   return (
     <section
       className="client-duplicate-review"
@@ -229,6 +284,20 @@ export function ClientDuplicateReviewPanel({
             </li>
           ))}
         </ol>
+      )}
+      {availableContinuation?.status === 'failed' && (
+        <p role="alert">{copy.duplicateReviewContinuationRetry}</p>
+      )}
+      {availableContinuation && (
+        <button
+          type="button"
+          disabled={availableContinuation.status === 'loading'}
+          onClick={() => void requestReviews(availableContinuation.cursor)}
+        >
+          {availableContinuation.status === 'loading'
+            ? copy.loadingMoreDuplicateReviews
+            : copy.loadMoreDuplicateReviews}
+        </button>
       )}
       {detailState.status === 'loading' && (
         <p role="status">{copy.loadingDuplicateReview}</p>
@@ -354,19 +423,59 @@ function DuplicateComparison({
   );
 }
 
-function duplicateReviewReferences(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
+function duplicateReviewPage(
+  value: unknown,
+): { references: string[]; nextCursor: string | null } | undefined {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !isNullableUuidV4(value.next_cursor)
+  ) {
+    return undefined;
+  }
   const references: string[] = [];
-  for (const item of value) {
-    if (
-      !isRecord(item) ||
-      typeof item.duplicate_review_reference !== 'string'
-    ) {
+  for (const item of value.items) {
+    if (!isRecord(item) || !isUuidV4(item.duplicate_review_reference)) {
       return undefined;
     }
     references.push(item.duplicate_review_reference);
   }
-  return references;
+  return {
+    references: uniqueReferences(references),
+    nextCursor: value.next_cursor,
+  };
+}
+
+function duplicateReviewListPath(cursor: string | undefined): string {
+  const query = new URLSearchParams({ page_size: '20' });
+  if (cursor) query.set('cursor', cursor);
+  return `/client-duplicate-reviews?${query.toString()}`;
+}
+
+function setDuplicateReviewListFailure(
+  cursor: string | undefined,
+  setListState: Dispatch<SetStateAction<ListState>>,
+): void {
+  setListState((current) =>
+    cursor && current.status === 'ready'
+      ? {
+          ...current,
+          continuation: { status: 'failed', cursor },
+        }
+      : { status: 'error' },
+  );
+}
+
+function uniqueReferences(references: readonly string[]): string[] {
+  return [...new Set(references)];
+}
+
+function isNullableUuidV4(value: unknown): value is string | null {
+  return value === null || isUuidV4(value);
+}
+
+function isUuidV4(value: unknown): value is string {
+  return typeof value === 'string' && UUID_V4.test(value);
 }
 
 function contactsSummary(contacts: readonly ClientContact[]): string {

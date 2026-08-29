@@ -166,18 +166,18 @@ describeWithPostgres('previous schema migration preflight', () => {
           ), seeded_legacy_director_assignments AS (
             INSERT INTO company_role_assignments (
               id, workspace_id, company_id, workspace_membership_id, bundle,
-              revoked_at
+              permission_set_version, revoked_at
             )
             SELECT '00000000-0000-4000-8000-000000001466'::uuid, workspace_id,
               '00000000-0000-4000-8000-000000001461'::uuid, id,
               'company_director_client_access'::company_role_bundle,
-              NULL::timestamptz
+              'v1'::text, NULL::timestamptz
             FROM seeded_membership
             UNION ALL
             SELECT '00000000-0000-4000-8000-000000001467'::uuid, workspace_id,
               '00000000-0000-4000-8000-000000001468'::uuid, id,
               'company_director_client_access'::company_role_bundle,
-              '2026-08-27T11:00:00.000Z'::timestamptz
+              'v1'::text, '2026-08-27T11:00:00.000Z'::timestamptz
             FROM seeded_membership
             RETURNING id
           )
@@ -202,7 +202,146 @@ describeWithPostgres('previous schema migration preflight', () => {
             ON seeded_assignment.workspace_id = seeded_membership.workspace_id
             AND seeded_assignment.workspace_membership_id = seeded_membership.id
         `);
+        await migrationPool.query(`
+          UPDATE client_accounts
+          SET tax_id = 'PREVIOUS-ID-169'
+          WHERE id = '00000000-0000-4000-8000-000000001462';
+
+          WITH seeded_context AS (
+            SELECT membership.workspace_id,
+              membership.id AS workspace_membership_id
+            FROM workspace_memberships AS membership
+            INNER JOIN internal_users AS internal_user
+              ON internal_user.id = membership.internal_user_id
+            WHERE internal_user.external_subject = 'previous-schema-owner'
+          )
+          INSERT INTO client_account_registration_commands (
+            id, workspace_id, actor_workspace_membership_id, idempotency_key,
+            display_name, tax_id, company_id
+          )
+          SELECT command.id, seeded_context.workspace_id,
+            seeded_context.workspace_membership_id, command.idempotency_key,
+            command.display_name, 'PREVIOUS-ID-169',
+            '00000000-0000-4000-8000-000000001461'
+          FROM seeded_context
+          CROSS JOIN (
+            VALUES
+              (
+                '00000000-0000-4000-8000-000000001692'::uuid,
+                'previous-duplicate-review-a',
+                'Previous Duplicate Proposal A'
+              ),
+              (
+                '00000000-0000-4000-8000-000000001693'::uuid,
+                'previous-duplicate-review-b',
+                'Previous Duplicate Proposal B'
+              )
+          ) AS command(id, idempotency_key, display_name);
+
+          WITH seeded_context AS (
+            SELECT membership.workspace_id,
+              membership.id AS workspace_membership_id
+            FROM workspace_memberships AS membership
+            INNER JOIN internal_users AS internal_user
+              ON internal_user.id = membership.internal_user_id
+            WHERE internal_user.external_subject = 'previous-schema-owner'
+          )
+          INSERT INTO client_duplicate_reviews (
+            reference, workspace_id, proposal_kind,
+            proposal_actor_workspace_membership_id, attempted_company_id,
+            registration_command_id, normalized_identifier, proposed_fields,
+            created_at
+          )
+          SELECT proposal.reference, seeded_context.workspace_id,
+            'registration', seeded_context.workspace_membership_id,
+            '00000000-0000-4000-8000-000000001461',
+            proposal.command_id, 'PREVIOUS-ID-169',
+            jsonb_build_object(
+              'displayName', proposal.display_name,
+              'taxId', 'PREVIOUS-ID-169',
+              'address', NULL,
+              'telephone', NULL,
+              'generalEmail', NULL,
+              'contacts', '[]'::jsonb,
+              'businessActivity', NULL
+            ),
+            '2026-08-29T12:00:00.000Z'
+          FROM seeded_context
+          CROSS JOIN (
+            VALUES
+              (
+                '00000000-0000-4000-8000-000000001694'::uuid,
+                '00000000-0000-4000-8000-000000001692'::uuid,
+                'Previous Duplicate Proposal A'
+              ),
+              (
+                '00000000-0000-4000-8000-000000001695'::uuid,
+                '00000000-0000-4000-8000-000000001693'::uuid,
+                'Previous Duplicate Proposal B'
+              )
+          ) AS proposal(reference, command_id, display_name);
+
+          INSERT INTO client_duplicate_review_candidates (
+            workspace_id, review_reference, client_account_id,
+            captured_version
+          )
+          SELECT review.workspace_id, review.reference,
+            '00000000-0000-4000-8000-000000001462', 1
+          FROM client_duplicate_reviews AS review
+          WHERE review.reference IN (
+            '00000000-0000-4000-8000-000000001694',
+            '00000000-0000-4000-8000-000000001695'
+          );
+
+          INSERT INTO client_duplicate_review_relationship_snapshots (
+            workspace_id, review_reference, participant_kind,
+            client_account_id, company_id, relationship_id
+          )
+          SELECT review.workspace_id, review.reference, 'candidate',
+            '00000000-0000-4000-8000-000000001462',
+            '00000000-0000-4000-8000-000000001461',
+            '00000000-0000-4000-8000-000000001463'
+          FROM client_duplicate_reviews AS review
+          WHERE review.reference IN (
+            '00000000-0000-4000-8000-000000001694',
+            '00000000-0000-4000-8000-000000001695'
+          );
+        `);
         await migrate(database, { migrationsFolder: migrationsDirectory });
+        const migratedReviewCursors = await migrationPool.query<{
+          reference: string;
+          pagination_cursor: string;
+          normalized_identifier: string;
+          display_name: string;
+        }>(`SELECT reference::text, pagination_cursor::text,
+              normalized_identifier,
+              proposed_fields ->> 'displayName' AS display_name
+            FROM client_duplicate_reviews
+            ORDER BY reference`);
+        expect(migratedReviewCursors.rows).toEqual([
+          {
+            reference: '00000000-0000-4000-8000-000000001694',
+            pagination_cursor: expect.any(String),
+            normalized_identifier: 'PREVIOUS-ID-169',
+            display_name: 'Previous Duplicate Proposal A',
+          },
+          {
+            reference: '00000000-0000-4000-8000-000000001695',
+            pagination_cursor: expect.any(String),
+            normalized_identifier: 'PREVIOUS-ID-169',
+            display_name: 'Previous Duplicate Proposal B',
+          },
+        ]);
+        const migratedCursorValues = migratedReviewCursors.rows.map(
+          (review) => review.pagination_cursor,
+        );
+        expect(new Set(migratedCursorValues).size).toBe(2);
+        expect(migratedCursorValues).not.toContain(
+          '00000000-0000-4000-8000-000000001694',
+        );
+        expect(migratedCursorValues).not.toContain(
+          '00000000-0000-4000-8000-000000001695',
+        );
         const upgradedClient = await migrationPool.query<{
           id: string;
           relationship_id: string;
@@ -365,7 +504,7 @@ describeWithPostgres('previous schema migration preflight', () => {
         await expect(migratedClientDossierResponse.json()).resolves.toEqual({
           id: '00000000-0000-4000-8000-000000001462',
           displayName: 'Previous Shared Client',
-          taxId: null,
+          taxId: 'PREVIOUS-ID-169',
           address: null,
           telephone: null,
           generalEmail: null,
