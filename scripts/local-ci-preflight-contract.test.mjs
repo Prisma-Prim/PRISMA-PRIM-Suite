@@ -79,6 +79,11 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
     /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/,
   );
   assert.match(earlyCi, /github\.event\.pull_request\.head\.sha/);
+  assert.match(
+    earlyCi,
+    /group: early-ci-\$\{\{ github\.event\.pull_request\.number \|\| github\.run_id \}\}-\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/,
+  );
+  assert.match(earlyCi, /cancel-in-progress: true/);
   assert.match(earlyCi, /checkout_ref:/);
   assert.match(earlyCi, /statuses:\s*write/);
   assert.match(earlyCi, /context='Early CI preflight'/);
