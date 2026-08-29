@@ -9,8 +9,7 @@ import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
 import { earlyCiHandoffProtocol } from './early-ci-handoff.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const earlyCiRecovery =
-  `If this harness cannot provide it, publish ${earlyCiHandoffProtocol.action.marker} in the same-repository pull request body for automatic exact-head verification.`;
+const earlyCiRecovery = `If this harness cannot provide it, publish ${earlyCiHandoffProtocol.action.marker} in the same-repository pull request body for automatic exact-head verification.`;
 
 function parseVersion(value) {
   const match = String(value)
@@ -448,11 +447,7 @@ function main() {
   process.stdout.write(
     `${
       json
-        ? JSON.stringify(
-            { profile, results, handoff: report.handoff },
-            null,
-            2,
-          )
+        ? JSON.stringify({ profile, results, handoff: report.handoff }, null, 2)
         : [formatResults(results), handoffText].filter(Boolean).join('\n')
     }\n`,
   );

@@ -140,10 +140,7 @@ test('offers exact-head Early CI when hosted integration prerequisites are absen
 });
 
 test('does not request a handoff when the selected profile is locally healthy', () => {
-  const report = evaluateEnvironmentReport(
-    healthyEnvironment,
-    'web-postgres',
-  );
+  const report = evaluateEnvironmentReport(healthyEnvironment, 'web-postgres');
 
   assert.deepEqual(report.handoff, {
     state: 'not-required',

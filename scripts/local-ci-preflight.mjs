@@ -9,8 +9,7 @@ import { earlyCiHandoffProtocol } from './early-ci-handoff.mjs';
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const earlyCiDelegation = {
-  connector:
-    'publish the Agent Doctor handoff marker in the pull request body',
+  connector: 'publish the Agent Doctor handoff marker in the pull request body',
   pullRequestMarker: earlyCiHandoffProtocol.action.marker,
   automaticTrigger: earlyCiHandoffProtocol.automaticTrigger,
   statusContext: earlyCiHandoffProtocol.completion.statusContext,
