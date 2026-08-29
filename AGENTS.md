@@ -36,6 +36,7 @@ Before creating or restructuring documentation, reconciliation artifacts, eviden
 - Keep user-facing copy ready for localization; do not scatter hard-coded multilingual strings.
 - Prefer explicit, readable code over abstractions created for hypothetical future needs.
 - Do not add dependencies unless the issue requires them.
+- Before reading or editing any `.ts` or `.tsx` file, read and apply the [mandatory TypeScript discipline](docs/agents/typescript-discipline.md). It is the repository default for every TypeScript implementation and pull-request review, whether or not a skill was named.
 - Do not bypass the shared TypeScript, ESLint, or Prettier configuration.
 - Every schema change requires a reviewed Drizzle migration committed to the repository.
 - Never use `drizzle-kit push` against production.

@@ -42,6 +42,7 @@ Every PR that is not eligible for the low-risk fast path uses the full verificat
 - Own exactly one issue. Do not start blocked or follow-on work.
 - Protect existing user changes. Use an isolated branch or worktree when the harness provides Git access.
 - Follow the repository `implement` and `tdd` workflows when behavior changes.
+- For any TypeScript implementation, apply the [mandatory TypeScript discipline](typescript-discipline.md) before reading or editing `.ts` or `.tsx` files and keep it active throughout the change.
 - Work red-green-refactor at the highest stable seam named by the issue.
 - Expose the smallest stable public interface and keep implementation details private.
 - Complete the narrow tracer bullet across all layers required by the issue.
@@ -57,8 +58,9 @@ Every PR that is not eligible for the low-risk fast path uses the full verificat
 3. For UI work, inspect the real journey at every named viewport and retain deterministic evidence.
 4. On the low-risk fast path, review the final diff once against both repository Standards and the originating issue or Spec.
 5. On the full path, review against repository Standards and then review again against the originating issue or Spec.
-6. On the low-risk fast path, correct blocking findings and disposition every nonblocking finding as described above; on the full path, correct every material finding. Rerun affected checks after corrections.
-7. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
+6. Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript.
+7. On the low-risk fast path, correct blocking findings and disposition every nonblocking finding as described above; on the full path, correct every material finding. Rerun affected checks after corrections.
+8. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
 
 Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
 
