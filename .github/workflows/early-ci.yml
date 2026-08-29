@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: early-ci-${{ github.event.pull_request.number || github.run_id }}-${{ github.event.pull_request.head.sha || github.sha }}
+  group: early-ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
