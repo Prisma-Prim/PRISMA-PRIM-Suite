@@ -461,15 +461,31 @@ paths:
         - Client
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: page_size
+          required: false
+          description: Maximum number of durable reviews revalidated in this page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - in: query
+          name: cursor
+          required: false
+          description: Server-owned opaque continuation cursor from the preceding page.
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
-          description: Only currently authorized, non-stale references for the active attempted Company. Partial authority returns an empty list.
+          description: A stable page of only currently authorized, non-stale references for the active attempted Company. A page can have no visible items and still provide a continuation cursor when its bounded durable window contained only stale or unauthorized reviews.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ClientDuplicateReviewListItem'
+                $ref: '#/components/schemas/ClientDuplicateReviewPage'
+        '400':
+          description: The page size or opaque cursor is malformed, unknown or outside the active Company scope.
         '401':
           description: No verified External Principal is available.
         '403':
@@ -1247,6 +1263,24 @@ components:
         duplicate_review_reference:
           type: string
           format: uuid
+    ClientDuplicateReviewPage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - next_cursor
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ClientDuplicateReviewListItem'
+        next_cursor:
+          type:
+            - string
+            - 'null'
+          format: uuid
+          description: Random server-owned continuation token that contains no embedded review, Client, Company or count data.
     NormalizedClientDossierFields:
       type: object
       additionalProperties: false

@@ -1494,6 +1494,7 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     createdByInternalUserId: actorContextFixture.internalUserId,
   }));
   const reference = '00000000-0000-4000-8000-000000001158';
+  const continuationCursor = '00000000-0000-4000-8000-000000001169';
   const candidateId = '00000000-0000-4000-8000-000000003158';
   let reviewPending = false;
   let candidateAttached = false;
@@ -1638,11 +1639,26 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
       });
     }
     if (url.pathname.endsWith('/client-duplicate-reviews')) {
+      expect(url.searchParams.get('page_size')).toBe('20');
+      const cursor = url.searchParams.get('cursor');
+      if (cursor !== null) expect(cursor).toBe(continuationCursor);
       return route.fulfill({
-        json:
-          reviewPending && candidateAuthority === 'v2' && !candidateAttached
-            ? [{ duplicate_review_reference: reference }]
-            : [],
+        json: {
+          items:
+            cursor === continuationCursor &&
+            reviewPending &&
+            candidateAuthority === 'v2' &&
+            !candidateAttached
+              ? [{ duplicate_review_reference: reference }]
+              : [],
+          next_cursor:
+            cursor === null &&
+            reviewPending &&
+            candidateAuthority === 'v2' &&
+            !candidateAttached
+              ? continuationCursor
+              : null,
+        },
       });
     }
     if (
@@ -1735,6 +1751,13 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Review possible duplicate 1' }),
+  ).toHaveCount(0);
+  await expect(page.getByText(continuationCursor)).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Load more possible duplicate reviews' })
+    .click();
 
   await page
     .getByRole('button', { name: 'Review possible duplicate 1' })

@@ -49,12 +49,12 @@ export class CompanyContextAuthorization {
     };
   }
 
-  async hasCompleteDuplicateReviewAuthority(
+  async duplicateReviewAuthorizedCompanyIds(
     actor: ActorContext,
     companyIds: readonly string[],
-  ): Promise<boolean> {
+  ): Promise<ReadonlySet<string>> {
     const requiredCompanyIds = [...new Set(companyIds)];
-    if (requiredCompanyIds.length === 0) return false;
+    if (requiredCompanyIds.length === 0) return new Set();
     const rows = await this.databaseContext.connection
       .select({ companyId: companyRoleAssignments.companyId })
       .from(companyRoleAssignments)
@@ -104,10 +104,7 @@ export class CompanyContextAuthorization {
           inArray(companyRoleAssignments.companyId, requiredCompanyIds),
         ),
       );
-    return (
-      new Set(rows.map((row) => row.companyId)).size ===
-      requiredCompanyIds.length
-    );
+    return new Set(rows.map((row) => row.companyId));
   }
 
   private async findActiveCompany(

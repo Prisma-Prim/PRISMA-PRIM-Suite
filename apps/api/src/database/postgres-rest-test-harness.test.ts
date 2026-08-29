@@ -13,18 +13,41 @@ const boundaries = vi.hoisted(() => {
     init: vi.fn(async () => undefined),
     listen: vi.fn(async () => undefined),
     getUrl: vi.fn(async () => 'http://127.0.0.1:4321'),
-    get: vi.fn(() => database),
     close: vi.fn(async () => undefined),
   };
   const moduleRef = {
     createNestApplication: vi.fn(() => app),
   };
   const compile = vi.fn(async () => moduleRef);
-  const createTestingModule = vi.fn(() => ({ compile }));
+  const testingModuleBuilder = {
+    overrideProvider: vi.fn(),
+    useValue: vi.fn(),
+    compile,
+  };
+  testingModuleBuilder.overrideProvider.mockReturnValue(testingModuleBuilder);
+  testingModuleBuilder.useValue.mockReturnValue(testingModuleBuilder);
+  const createTestingModule = vi.fn(() => testingModuleBuilder);
   const migrate = vi.fn(async () => undefined);
-  const Pool = vi.fn(function Pool() {
-    return rawPool;
-  });
+  let constructedPools = 0;
+  const Pool = vi.fn(
+    class Pool {
+      constructor() {
+        const pool = constructedPools === 0 ? applicationPool : rawPool;
+        constructedPools += 1;
+        return pool;
+      }
+    },
+  );
+  let applicationLogger:
+    { logQuery: (query: string, parameters: unknown[]) => void } | undefined;
+  const drizzle = vi.fn(
+    (options: {
+      logger: { logQuery: (query: string, parameters: unknown[]) => void };
+    }) => {
+      applicationLogger = options.logger;
+      return database;
+    },
+  );
 
   return {
     Pool,
@@ -33,9 +56,21 @@ const boundaries = vi.hoisted(() => {
     compile,
     createTestingModule,
     database,
+    drizzle,
     migrate,
     moduleRef,
     rawPool,
+    logApplicationQuery: (query: string) => {
+      if (!applicationLogger) {
+        throw new Error('Expected the application query logger.');
+      }
+      applicationLogger.logQuery(query, []);
+    },
+    resetPools: () => {
+      constructedPools = 0;
+      applicationLogger = undefined;
+    },
+    testingModuleBuilder,
   };
 });
 
@@ -45,6 +80,7 @@ vi.mock('@nestjs/testing', () => ({
 vi.mock('drizzle-orm/node-postgres/migrator', () => ({
   migrate: boundaries.migrate,
 }));
+vi.mock('drizzle-orm/node-postgres', () => ({ drizzle: boundaries.drizzle }));
 vi.mock('pg', () => ({ Pool: boundaries.Pool }));
 
 import { AppModule } from '../app.module.js';
@@ -58,6 +94,7 @@ describe('PostgreSQL REST test harness', () => {
   beforeEach(() => {
     previousEnvironmentValue = process.env[environmentKey];
     vi.clearAllMocks();
+    boundaries.resetPools();
   });
 
   afterEach(() => {
@@ -82,20 +119,38 @@ describe('PostgreSQL REST test harness', () => {
     expect(boundaries.createTestingModule).toHaveBeenCalledWith({
       imports: [AppModule],
     });
+    expect(
+      boundaries.testingModuleBuilder.overrideProvider,
+    ).toHaveBeenCalledWith(DATABASE);
+    expect(boundaries.testingModuleBuilder.useValue).toHaveBeenCalledWith(
+      boundaries.database,
+    );
     expect(boundaries.app.setGlobalPrefix).toHaveBeenCalledWith('api');
     expect(boundaries.app.init).toHaveBeenCalledOnce();
     expect(boundaries.app.listen).toHaveBeenCalledWith(0, '127.0.0.1');
-    expect(boundaries.app.get).toHaveBeenCalledWith(DATABASE);
     expect(boundaries.migrate).toHaveBeenCalledWith(boundaries.database, {
       migrationsFolder: './drizzle',
     });
-    expect(boundaries.Pool).toHaveBeenCalledWith({
+    expect(boundaries.Pool).toHaveBeenNthCalledWith(1, {
       connectionString: databaseUrl,
     });
-    expect(harness).toEqual({
+    expect(boundaries.Pool).toHaveBeenNthCalledWith(2, {
+      connectionString: databaseUrl,
+    });
+    expect(harness).toMatchObject({
       origin: 'http://127.0.0.1:4321',
       pool: boundaries.rawPool,
       close: expect.any(Function),
+      measureApplicationQueries: expect.any(Function),
+    });
+    const measurement = await harness.measureApplicationQueries(async () => {
+      boundaries.logApplicationQuery('select bounded_work');
+      return 'measured value';
+    });
+    expect(measurement).toEqual({
+      value: 'measured value',
+      queryCount: 1,
+      queries: ['select bounded_work'],
     });
 
     await harness.close();
@@ -155,7 +210,7 @@ describe('PostgreSQL REST test harness', () => {
       }),
     ).rejects.toBe(migrationFailure);
 
-    expect(boundaries.Pool).not.toHaveBeenCalled();
+    expect(boundaries.Pool).toHaveBeenCalledOnce();
     expect(boundaries.app.close).toHaveBeenCalledOnce();
     expect(boundaries.applicationPool.end).toHaveBeenCalledOnce();
   });

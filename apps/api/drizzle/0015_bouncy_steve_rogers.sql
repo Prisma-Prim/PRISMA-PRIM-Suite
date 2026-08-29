@@ -1,0 +1,2 @@
+ALTER TABLE "client_duplicate_reviews" ADD COLUMN "pagination_cursor" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "client_duplicate_reviews_pagination_cursor_unique" ON "client_duplicate_reviews" USING btree ("pagination_cursor");

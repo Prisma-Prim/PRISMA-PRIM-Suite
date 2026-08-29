@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Logger } from 'drizzle-orm/logger';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { AppModule } from '../app.module.js';
@@ -11,19 +12,39 @@ import {
 } from './owned-resource-cleanup.js';
 import { assertLocalTestDatabaseUrl } from './test-database-target.js';
 
-type PostgresRestTestDatabase = NodePgDatabase & {
-  readonly $client: Pool;
-};
-
 export interface PostgresRestTestHarness {
   readonly origin: string;
   readonly pool: Pool;
+  measureApplicationQueries<T>(
+    work: () => Promise<T>,
+  ): Promise<{ value: T; queryCount: number; queries: readonly string[] }>;
   close(): Promise<void>;
 }
 
 export interface CreatePostgresRestTestHarnessOptions {
   readonly databaseUrl: string;
   readonly environment: Readonly<Record<string, string>>;
+}
+
+class ApplicationQueryCounter implements Logger {
+  private readonly queries: string[] = [];
+
+  logQuery(query: string): void {
+    this.queries.push(query);
+  }
+
+  async measure<T>(
+    work: () => Promise<T>,
+  ): Promise<{ value: T; queryCount: number; queries: readonly string[] }> {
+    const countBefore = this.queries.length;
+    const value = await work();
+    const queries = this.queries.slice(countBefore);
+    return {
+      value,
+      queryCount: queries.length,
+      queries,
+    };
+  }
 }
 
 export async function createPostgresRestTestHarness({
@@ -35,18 +56,26 @@ export async function createPostgresRestTestHarness({
 
   const ownedResources: OwnedResource[] = [];
   try {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    const app = moduleRef.createNestApplication();
-    ownedResources.push({
-      name: 'Nest application',
-      cleanup: () => app.close(),
-    });
-    const database = app.get<PostgresRestTestDatabase>(DATABASE);
+    const applicationPool = new Pool({ connectionString: databaseUrl });
     ownedResources.push({
       name: 'application PostgreSQL pool',
-      cleanup: () => database.$client.end(),
+      cleanup: () => applicationPool.end(),
+    });
+    const queryCounter = new ApplicationQueryCounter();
+    const database = drizzle({
+      client: applicationPool,
+      logger: queryCounter,
+    });
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(DATABASE)
+      .useValue(database)
+      .compile();
+    const app = moduleRef.createNestApplication();
+    ownedResources.unshift({
+      name: 'Nest application',
+      cleanup: () => app.close(),
     });
 
     app.setGlobalPrefix('api');
@@ -70,6 +99,7 @@ export async function createPostgresRestTestHarness({
     return {
       origin,
       pool,
+      measureApplicationQueries: (work) => queryCounter.measure(work),
       close,
     };
   } catch (error) {

@@ -1399,6 +1399,233 @@ describeWithPostgres('Client REST API', () => {
     }
   });
 
+  it('paginates more than one durable duplicate-review page within a fixed query budget', async () => {
+    const company = await registerCompany(
+      'Pagination Company',
+      'duplicate-review-pagination',
+    );
+    const otherCompany = await registerCompany(
+      'Other Pagination Company',
+      'duplicate-review-pagination-other',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    await registerEnrichedClient(
+      company.id,
+      'Existing Pagination Client',
+      'PAGINATION-ID-169',
+      'duplicate-review-pagination-existing',
+    );
+
+    const references: string[] = [];
+    for (let index = 0; index < 21; index += 1) {
+      const response = await fetch(`${origin}/api/clients`, {
+        method: 'POST',
+        headers: {
+          ...ownerHeaders(company.id),
+          'content-type': 'application/json',
+          'idempotency-key': `duplicate-review-pagination-${index}`,
+        },
+        body: JSON.stringify({
+          displayName: `Rejected Pagination Client ${index}`,
+          taxId: 'PAGINATION-ID-169',
+        }),
+      });
+      const conflict = await expectOpaqueDuplicateConflict(response);
+      references.push(conflict.duplicate_review_reference);
+    }
+    await pool.query(
+      `UPDATE client_duplicate_reviews
+       SET created_at = '2026-08-29T12:00:00.000Z'
+       WHERE reference = ANY($1::uuid[])`,
+      [references],
+    );
+    const orderedReferences = references.toSorted();
+
+    const historicalScope = await pool.query<{
+      workspace_id: string;
+      workspace_membership_id: string;
+    }>(
+      `SELECT workspace_id::text,
+          created_by_workspace_membership_id::text AS workspace_membership_id
+       FROM companies WHERE id = $1`,
+      [company.id],
+    );
+    const scope = historicalScope.rows[0];
+    if (!scope) throw new Error('Expected one pagination test scope.');
+    await pool.query(
+      `WITH generated AS (
+         SELECT series,
+           md5('pagination-history-command-' || series)::uuid AS command_id,
+           md5('pagination-history-review-' || series)::uuid AS review_reference
+         FROM generate_series(1, 5000) AS series
+       ), inserted_commands AS (
+         INSERT INTO client_account_registration_commands (
+           id, workspace_id, actor_workspace_membership_id, idempotency_key,
+           display_name, tax_id, company_id
+         )
+         SELECT command_id, $1, $2, 'pagination-history-' || series,
+           'Historical Pagination Review ' || series,
+           'HISTORICAL-PAGINATION-' || series, $3
+         FROM generated
+         RETURNING id
+       )
+       INSERT INTO client_duplicate_reviews (
+         reference, workspace_id, proposal_kind,
+         proposal_actor_workspace_membership_id, attempted_company_id,
+         registration_command_id, normalized_identifier, proposed_fields,
+         created_at
+       )
+       SELECT generated.review_reference, $1, 'registration', $2, $3,
+         generated.command_id, 'HISTORICAL-PAGINATION-' || generated.series,
+         jsonb_build_object(
+           'displayName', 'Historical Pagination Review ' || generated.series,
+           'taxId', 'HISTORICAL-PAGINATION-' || generated.series,
+           'address', NULL, 'telephone', NULL, 'generalEmail', NULL,
+           'contacts', '[]'::jsonb, 'businessActivity', NULL
+         ),
+         '2026-08-29T11:00:00.000Z'
+       FROM generated
+       INNER JOIN inserted_commands
+         ON inserted_commands.id = generated.command_id`,
+      [scope.workspace_id, scope.workspace_membership_id, company.id],
+    );
+    await pool.query('ANALYZE client_duplicate_reviews');
+    const historicalAnchorResult = await pool.query<{
+      created_at: Date;
+      pagination_cursor: string;
+      reference: string;
+    }>(
+      `SELECT created_at, pagination_cursor::text, reference::text
+       FROM client_duplicate_reviews
+       WHERE workspace_id = $1 AND attempted_company_id = $2
+         AND created_at = '2026-08-29T11:00:00.000Z'
+       ORDER BY created_at DESC, reference DESC
+       LIMIT 1`,
+      [scope.workspace_id, company.id],
+    );
+    const historicalAnchor = historicalAnchorResult.rows[0];
+    if (!historicalAnchor) {
+      throw new Error('Expected one deep-history pagination anchor.');
+    }
+    const keysetPlan = await pool.query<{ 'QUERY PLAN': unknown }>(
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+       SELECT reference
+       FROM client_duplicate_reviews
+       WHERE workspace_id = $1 AND attempted_company_id = $2
+         AND (created_at, reference) > ($3::timestamptz, $4::uuid)
+       ORDER BY created_at ASC, reference ASC
+       LIMIT 21`,
+      [
+        scope.workspace_id,
+        company.id,
+        historicalAnchor.created_at,
+        historicalAnchor.reference,
+      ],
+    );
+    const keysetPlanDocument = keysetPlan.rows[0]?.['QUERY PLAN'];
+    const keysetPlanText = JSON.stringify(keysetPlanDocument);
+    if (keysetPlanText === undefined) {
+      throw new Error('Expected one analyzed keyset query plan.');
+    }
+    expect(keysetPlanText).toContain('client_duplicate_reviews_list_lookup');
+    expect(keysetPlanText).toContain('ROW(created_at, reference)');
+    expect(maximumNumericPlanProperty(keysetPlanDocument, 'Actual Rows')).toBe(
+      21,
+    );
+    expect(
+      maximumNumericPlanProperty(keysetPlanDocument, 'Rows Removed by Filter'),
+    ).toBe(0);
+
+    const firstMeasurement = await harness.measureApplicationQueries(() =>
+      fetch(
+        `${origin}/api/client-duplicate-reviews?page_size=20&cursor=${historicalAnchor.pagination_cursor}`,
+        { headers: ownerHeaders(company.id) },
+      ),
+    );
+    expect(firstMeasurement.value.status).toBe(200);
+    const firstPage: unknown = await firstMeasurement.value.json();
+    expect(firstPage).toEqual({
+      items: orderedReferences.slice(0, 20).map((reference) => ({
+        duplicate_review_reference: reference,
+      })),
+      next_cursor: expect.any(String),
+    });
+    expect(firstMeasurement.queryCount).toBeLessThanOrEqual(24);
+    const pageSelectionQuery = firstMeasurement.queries.find(
+      (query) =>
+        query.includes('from "client_duplicate_reviews"') &&
+        query.includes('order by "client_duplicate_reviews"."created_at" asc'),
+    );
+    expect(pageSelectionQuery).toMatch(
+      /\("client_duplicate_reviews"\."created_at",\s*"client_duplicate_reviews"\."reference"\)\s*>\s*\(\s*\$\d+::timestamptz,\s*\$\d+::uuid\s*\)/u,
+    );
+    if (!isRecord(firstPage) || typeof firstPage.next_cursor !== 'string') {
+      throw new Error('Expected one opaque duplicate-review page cursor.');
+    }
+    expect(references).not.toContain(firstPage.next_cursor);
+
+    const secondMeasurement = await harness.measureApplicationQueries(() =>
+      fetch(
+        `${origin}/api/client-duplicate-reviews?page_size=20&cursor=${firstPage.next_cursor}`,
+        { headers: ownerHeaders(company.id) },
+      ),
+    );
+    expect(secondMeasurement.value.status).toBe(200);
+    await expect(secondMeasurement.value.json()).resolves.toEqual({
+      items: [
+        {
+          duplicate_review_reference: orderedReferences[20],
+        },
+      ],
+      next_cursor: null,
+    });
+    expect(secondMeasurement.queryCount).toBeLessThanOrEqual(25);
+
+    await pool.query(
+      `UPDATE client_duplicate_review_candidates
+       SET captured_version = 999
+       WHERE review_reference = ANY($1::uuid[])`,
+      [orderedReferences.slice(0, 20)],
+    );
+    const emptyWindowResponse = await fetch(
+      `${origin}/api/client-duplicate-reviews?page_size=20&cursor=${historicalAnchor.pagination_cursor}`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(emptyWindowResponse.status).toBe(200);
+    const emptyWindow: unknown = await emptyWindowResponse.json();
+    expect(emptyWindow).toEqual({
+      items: [],
+      next_cursor: expect.any(String),
+    });
+    if (!isRecord(emptyWindow) || typeof emptyWindow.next_cursor !== 'string') {
+      throw new Error('Expected continuation after an empty visible page.');
+    }
+    const afterEmptyWindow = await fetch(
+      `${origin}/api/client-duplicate-reviews?page_size=20&cursor=${emptyWindow.next_cursor}`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(afterEmptyWindow.status).toBe(200);
+    await expect(afterEmptyWindow.json()).resolves.toEqual({
+      items: [
+        {
+          duplicate_review_reference: orderedReferences[20],
+        },
+      ],
+      next_cursor: null,
+    });
+
+    const wrongContext = await fetch(
+      `${origin}/api/client-duplicate-reviews?cursor=${firstPage.next_cursor}`,
+      { headers: ownerHeaders(otherCompany.id) },
+    );
+    expect(wrongContext.status).toBe(400);
+    const unknownCursor = await fetch(
+      `${origin}/api/client-duplicate-reviews?cursor=99999999-9999-4999-8999-999999999999`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(unknownCursor.status).toBe(400);
+  });
+
   it('returns one opaque exact-ID review reference and reveals it only with complete live v2 authority', async () => {
     const companyA = await registerCompany('PRISMA-PRIM', 'duplicate-review-a');
     const companyB = await registerCompany('BIC', 'duplicate-review-b');
@@ -1464,7 +1691,10 @@ describeWithPostgres('Client REST API', () => {
       companyA.id,
       'duplicate-review-revoke-a',
     );
-    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual({
+      items: [],
+      next_cursor: null,
+    });
 
     await revokeDirectorClientAccess(
       owner.workspaceMembershipId,
@@ -1476,18 +1706,24 @@ describeWithPostgres('Client REST API', () => {
       companyA.id,
       'duplicate-review-regrant-a',
     );
-    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual({
+      items: [],
+      next_cursor: null,
+    });
 
     await grantDirectorClientAccess(
       owner.workspaceMembershipId,
       companyB.id,
       'duplicate-review-regrant-b',
     );
-    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([
-      {
-        duplicate_review_reference: conflict.duplicate_review_reference,
-      },
-    ]);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual({
+      items: [
+        {
+          duplicate_review_reference: conflict.duplicate_review_reference,
+        },
+      ],
+      next_cursor: null,
+    });
     const detail = await fetch(
       `${origin}/api/client-duplicate-reviews/${conflict.duplicate_review_reference}`,
       { headers: ownerHeaders(companyB.id) },
@@ -1538,7 +1774,10 @@ describeWithPostgres('Client REST API', () => {
       { headers: ownerHeaders(companyB.id) },
     );
     expect(staleDetail.status).toBe(404);
-    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual({
+      items: [],
+      next_cursor: null,
+    });
   });
 
   it('blocks an exact-ID correction without changing the dossier or success history', async () => {
@@ -1637,7 +1876,10 @@ describeWithPostgres('Client REST API', () => {
       { headers: ownerHeaders(companyB.id) },
     );
     expect(staleProposal.status).toBe(404);
-    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual([]);
+    await expect(listDuplicateReviews(companyB.id)).resolves.toEqual({
+      items: [],
+      next_cursor: null,
+    });
   });
 
   it('revalidates relationship, lifecycle, actor, Company and assignment state for every review read', async () => {
@@ -1700,9 +1942,10 @@ describeWithPostgres('Client REST API', () => {
         { headers: ownerHeaders(companyB.id) },
       );
       expect(detail.status).toBe(404);
-      await expect(
-        listDuplicateReviews(companyB.id),
-      ).resolves.not.toContainEqual({ duplicate_review_reference: reference });
+      const page = await listDuplicateReviews(companyB.id);
+      expect(page.items).not.toContainEqual({
+        duplicate_review_reference: reference,
+      });
     };
 
     const switchedCompany = await createReview('company-switch');
@@ -2245,11 +2488,32 @@ describeWithPostgres('Client REST API', () => {
   }
 
   async function listDuplicateReviews(companyId: string) {
-    const response = await fetch(`${origin}/api/client-duplicate-reviews`, {
-      headers: ownerHeaders(companyId),
-    });
+    const response = await fetch(
+      `${origin}/api/client-duplicate-reviews?page_size=20`,
+      { headers: ownerHeaders(companyId) },
+    );
     expect(response.status).toBe(200);
-    return response.json();
+    const body: unknown = await response.json();
+    if (
+      !isRecord(body) ||
+      !Array.isArray(body.items) ||
+      (body.next_cursor !== null && typeof body.next_cursor !== 'string')
+    ) {
+      throw new Error('Expected one duplicate-review page.');
+    }
+    const items: Array<{ duplicate_review_reference: string }> = [];
+    for (const item of body.items) {
+      if (
+        !isRecord(item) ||
+        typeof item.duplicate_review_reference !== 'string'
+      ) {
+        throw new Error('Expected one opaque duplicate-review list item.');
+      }
+      items.push({
+        duplicate_review_reference: item.duplicate_review_reference,
+      });
+    }
+    return { items, next_cursor: body.next_cursor };
   }
 
   async function expectOpaqueDuplicateConflict(
@@ -2330,4 +2594,22 @@ describeWithPostgres('Client REST API', () => {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function maximumNumericPlanProperty(value: unknown, property: string): number {
+  if (Array.isArray(value)) {
+    return value.reduce(
+      (maximum, item) =>
+        Math.max(maximum, maximumNumericPlanProperty(item, property)),
+      0,
+    );
+  }
+  if (!isRecord(value)) return 0;
+  const propertyValue = value[property];
+  const ownValue = typeof propertyValue === 'number' ? propertyValue : 0;
+  return Object.values(value).reduce<number>(
+    (maximum, item) =>
+      Math.max(maximum, maximumNumericPlanProperty(item, property)),
+    ownValue,
+  );
 }

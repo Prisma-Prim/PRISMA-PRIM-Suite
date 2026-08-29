@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -22,12 +23,38 @@ import {
   POSSIBLE_DUPLICATE_REVIEW_REQUIRED,
   type ClientDuplicateReviewDetail,
   type ClientDuplicateReviewListItem,
+  type ClientDuplicateReviewPage,
+  type ClientDuplicateReviewPageRequest,
 } from './client-duplicate-review.types.js';
 
-type DuplicateCandidate = Pick<
+type DuplicateCandidateVersion = Pick<
   typeof clientAccounts.$inferSelect,
   'id' | 'version'
 >;
+
+type DuplicateReview = typeof clientDuplicateReviews.$inferSelect;
+type DuplicateReviewCandidate = typeof clientAccounts.$inferSelect;
+type DuplicateReviewCandidateSnapshot =
+  typeof clientDuplicateReviewCandidates.$inferSelect;
+type DuplicateReviewRelationshipSnapshot =
+  typeof clientDuplicateReviewRelationshipSnapshots.$inferSelect;
+type DuplicateReviewRelationship = {
+  id: string;
+  clientAccountId: string;
+  companyId: string;
+  companyDisplayName: string;
+  companyStatus: 'active' | 'inactive';
+};
+type AuthorizedDuplicateReview = {
+  proposalKind: 'registration' | 'correction';
+  proposedFields: DuplicateReview['proposedFields'];
+  candidates: DuplicateReviewCandidate[];
+  relationships: DuplicateReviewRelationship[];
+  attemptedCompanyRelatedClientIds: ReadonlySet<string>;
+};
+type DuplicateReviewPendingAuthorization = AuthorizedDuplicateReview & {
+  scope: readonly string[];
+};
 
 type ReviewProposal =
   | {
@@ -134,30 +161,65 @@ export class ClientDuplicateReviewService {
     });
   }
 
-  async list(actor: ActorContext): Promise<ClientDuplicateReviewListItem[]> {
+  async list(
+    actor: ActorContext,
+    request: ClientDuplicateReviewPageRequest,
+  ): Promise<ClientDuplicateReviewPage> {
     const attemptedCompanyId = actor.activeCompany?.id;
-    if (!attemptedCompanyId) return [];
+    if (!attemptedCompanyId) {
+      if (request.cursor) throw invalidDuplicateReviewCursor();
+      return { items: [], next_cursor: null };
+    }
     return this.databaseContext.transaction(async () => {
+      const anchor = request.cursor
+        ? await this.resolvePaginationAnchor(
+            actor.workspaceId,
+            attemptedCompanyId,
+            request.cursor,
+          )
+        : undefined;
+      const afterAnchor = anchor
+        ? sql<boolean>`(
+            ${clientDuplicateReviews.createdAt},
+            ${clientDuplicateReviews.reference}
+          ) > (
+            ${anchor.createdAt}::timestamptz,
+            ${anchor.reference}::uuid
+          )`
+        : undefined;
       const reviews = await this.databaseContext.connection
-        .select({ reference: clientDuplicateReviews.reference })
+        .select()
         .from(clientDuplicateReviews)
         .where(
           and(
             eq(clientDuplicateReviews.workspaceId, actor.workspaceId),
             eq(clientDuplicateReviews.attemptedCompanyId, attemptedCompanyId),
+            afterAnchor,
           ),
         )
         .orderBy(
           asc(clientDuplicateReviews.createdAt),
           asc(clientDuplicateReviews.reference),
-        );
-      const visible: ClientDuplicateReviewListItem[] = [];
-      for (const review of reviews) {
-        if (await this.resolveAuthorizedReview(actor, review.reference)) {
-          visible.push({ duplicate_review_reference: review.reference });
-        }
-      }
-      return visible;
+        )
+        .limit(request.pageSize + 1);
+      const pageReviews = reviews.slice(0, request.pageSize);
+      const authorized = await this.resolveAuthorizedReviews(
+        actor,
+        pageReviews,
+      );
+      const items: ClientDuplicateReviewListItem[] = pageReviews
+        .filter((review) => authorized.has(review.reference))
+        .map((review) => ({
+          duplicate_review_reference: review.reference,
+        }));
+      const lastScannedReview = pageReviews.at(-1);
+      return {
+        items,
+        next_cursor:
+          reviews.length > request.pageSize && lastScannedReview
+            ? lastScannedReview.paginationCursor
+            : null,
+      };
     }, DUPLICATE_REVIEW_READ_TRANSACTION);
   }
 
@@ -165,10 +227,22 @@ export class ClientDuplicateReviewService {
     actor: ActorContext,
     reference: string,
   ): Promise<ClientDuplicateReviewDetail> {
-    const resolved = await this.databaseContext.transaction(
-      () => this.resolveAuthorizedReview(actor, reference),
-      DUPLICATE_REVIEW_READ_TRANSACTION,
-    );
+    const resolved = await this.databaseContext.transaction(async () => {
+      const [review] = await this.databaseContext.connection
+        .select()
+        .from(clientDuplicateReviews)
+        .where(
+          and(
+            eq(clientDuplicateReviews.workspaceId, actor.workspaceId),
+            eq(clientDuplicateReviews.reference, reference),
+          ),
+        )
+        .limit(1);
+      if (!review) return undefined;
+      return (await this.resolveAuthorizedReviews(actor, [review])).get(
+        reference,
+      );
+    }, DUPLICATE_REVIEW_READ_TRANSACTION);
     if (!resolved) throw new NotFoundException();
     if (resolved.candidates.length > 1) {
       return {
@@ -213,7 +287,7 @@ export class ClientDuplicateReviewService {
     attemptedCompanyId: string;
     fields: NormalizedDossierFields;
     normalizedIdentifier: string;
-    candidates: DuplicateCandidate[];
+    candidates: DuplicateCandidateVersion[];
     proposal: ReviewProposal;
   }): Promise<string> {
     const [review] = await this.databaseContext.connection
@@ -289,27 +363,40 @@ export class ClientDuplicateReviewService {
     return review.reference;
   }
 
-  private async resolveAuthorizedReview(
-    actor: ActorContext,
-    reference: string,
-  ) {
-    const [review] = await this.databaseContext.connection
-      .select()
+  private async resolvePaginationAnchor(
+    workspaceId: string,
+    attemptedCompanyId: string,
+    cursor: string,
+  ): Promise<Pick<DuplicateReview, 'createdAt' | 'reference'>> {
+    const [anchor] = await this.databaseContext.connection
+      .select({
+        createdAt: clientDuplicateReviews.createdAt,
+        reference: clientDuplicateReviews.reference,
+      })
       .from(clientDuplicateReviews)
       .where(
         and(
-          eq(clientDuplicateReviews.workspaceId, actor.workspaceId),
-          eq(clientDuplicateReviews.reference, reference),
+          eq(clientDuplicateReviews.workspaceId, workspaceId),
+          eq(clientDuplicateReviews.attemptedCompanyId, attemptedCompanyId),
+          eq(clientDuplicateReviews.paginationCursor, cursor),
         ),
       )
       .limit(1);
-    if (!review || review.attemptedCompanyId !== actor.activeCompany?.id) {
-      return undefined;
-    }
-    const proposalKind = duplicateReviewProposalKind(review.proposalKind);
-    if (!proposalKind) return undefined;
+    if (!anchor) throw invalidDuplicateReviewCursor();
+    return anchor;
+  }
 
-    const [proposalActor] = await this.databaseContext.connection
+  private async resolveAuthorizedReviews(
+    actor: ActorContext,
+    reviews: readonly DuplicateReview[],
+  ): Promise<ReadonlyMap<string, AuthorizedDuplicateReview>> {
+    if (reviews.length === 0) return new Map();
+
+    const reviewReferences = reviews.map((review) => review.reference);
+    const proposalActorMembershipIds = uniqueStrings(
+      reviews.map((review) => review.proposalActorWorkspaceMembershipId),
+    );
+    const proposalActors = await this.databaseContext.connection
       .select({ membershipId: workspaceMemberships.id })
       .from(workspaceMemberships)
       .innerJoin(
@@ -322,74 +409,47 @@ export class ClientDuplicateReviewService {
       .where(
         and(
           eq(workspaceMemberships.workspaceId, actor.workspaceId),
-          eq(
-            workspaceMemberships.id,
-            review.proposalActorWorkspaceMembershipId,
-          ),
+          inArray(workspaceMemberships.id, proposalActorMembershipIds),
           eq(workspaceMemberships.status, 'active'),
         ),
-      )
-      .limit(1);
-    if (!proposalActor) return undefined;
+      );
+    const activeProposalActorIds = new Set(
+      proposalActors.map((proposalActor) => proposalActor.membershipId),
+    );
 
-    const [attemptedCompany] = await this.databaseContext.connection
+    const attemptedCompanies = await this.databaseContext.connection
       .select({ id: companies.id })
       .from(companies)
       .where(
         and(
           eq(companies.workspaceId, actor.workspaceId),
-          eq(companies.id, review.attemptedCompanyId),
+          inArray(
+            companies.id,
+            uniqueStrings(reviews.map((review) => review.attemptedCompanyId)),
+          ),
           eq(companies.status, 'active'),
         ),
-      )
-      .limit(1);
-    if (!attemptedCompany) return undefined;
+      );
+    const activeAttemptedCompanyIds = new Set(
+      attemptedCompanies.map((company) => company.id),
+    );
 
-    const snapshots = await this.databaseContext.connection
+    const candidateSnapshots = await this.databaseContext.connection
       .select()
       .from(clientDuplicateReviewCandidates)
       .where(
         and(
           eq(clientDuplicateReviewCandidates.workspaceId, actor.workspaceId),
-          eq(clientDuplicateReviewCandidates.reviewReference, reference),
+          inArray(
+            clientDuplicateReviewCandidates.reviewReference,
+            reviewReferences,
+          ),
         ),
       );
-    if (snapshots.length === 0) return undefined;
-    const candidateIds = snapshots.map((snapshot) => snapshot.clientAccountId);
-    const candidates = await this.databaseContext.connection
-      .select()
-      .from(clientAccounts)
-      .where(
-        and(
-          eq(clientAccounts.workspaceId, actor.workspaceId),
-          inArray(clientAccounts.id, candidateIds),
-          eq(clientAccounts.status, 'active'),
-          eq(clientAccounts.taxId, review.normalizedIdentifier),
-        ),
-      );
-    if (
-      candidates.length !== snapshots.length ||
-      candidates.some(
-        (candidate) =>
-          snapshots.find(
-            (snapshot) => snapshot.clientAccountId === candidate.id,
-          )?.capturedVersion !== candidate.version,
-      )
-    ) {
-      return undefined;
-    }
-    const currentGroup = await this.findCandidates(
-      actor.workspaceId,
-      review.normalizedIdentifier,
+    const candidateSnapshotsByReview = groupBy(
+      candidateSnapshots,
+      (snapshot) => snapshot.reviewReference,
     );
-    if (
-      !sameStringSets(
-        currentGroup.map((candidate) => candidate.id),
-        snapshots.map((snapshot) => snapshot.clientAccountId),
-      )
-    ) {
-      return undefined;
-    }
 
     const relationshipSnapshots = await this.databaseContext.connection
       .select()
@@ -400,106 +460,143 @@ export class ClientDuplicateReviewService {
             clientDuplicateReviewRelationshipSnapshots.workspaceId,
             actor.workspaceId,
           ),
-          eq(
+          inArray(
             clientDuplicateReviewRelationshipSnapshots.reviewReference,
-            reference,
+            reviewReferences,
           ),
         ),
       );
-    const participantIds = [...candidateIds];
-    if (proposalKind === 'correction') {
-      if (!review.proposalClientAccountId || !review.proposalVersion) {
-        return undefined;
-      }
-      participantIds.push(review.proposalClientAccountId);
-      const [proposalClient] = await this.databaseContext.connection
-        .select({ version: clientAccounts.version })
-        .from(clientAccounts)
-        .where(
-          and(
-            eq(clientAccounts.workspaceId, actor.workspaceId),
-            eq(clientAccounts.id, review.proposalClientAccountId),
-            eq(clientAccounts.status, 'active'),
-            eq(clientAccounts.version, review.proposalVersion),
-          ),
-        )
-        .limit(1);
-      if (!proposalClient) return undefined;
-    }
-    const relationships = await this.databaseContext.connection
-      .select({
-        id: clientCompanyRelationships.id,
-        clientAccountId: clientCompanyRelationships.clientAccountId,
-        companyId: clientCompanyRelationships.companyId,
-        companyDisplayName: companies.displayName,
-        companyStatus: companies.status,
-      })
-      .from(clientCompanyRelationships)
-      .innerJoin(
-        companies,
-        and(
-          eq(companies.workspaceId, clientCompanyRelationships.workspaceId),
-          eq(companies.id, clientCompanyRelationships.companyId),
-        ),
-      )
+    const relationshipSnapshotsByReview = groupBy(
+      relationshipSnapshots,
+      (snapshot) => snapshot.reviewReference,
+    );
+
+    const participantIds = uniqueStrings([
+      ...candidateSnapshots.map((snapshot) => snapshot.clientAccountId),
+      ...reviews.flatMap((review) =>
+        review.proposalClientAccountId ? [review.proposalClientAccountId] : [],
+      ),
+    ]);
+    const participantAccounts =
+      participantIds.length === 0
+        ? []
+        : await this.databaseContext.connection
+            .select()
+            .from(clientAccounts)
+            .where(
+              and(
+                eq(clientAccounts.workspaceId, actor.workspaceId),
+                inArray(clientAccounts.id, participantIds),
+                eq(clientAccounts.status, 'active'),
+              ),
+            );
+    const participantAccountsById = new Map(
+      participantAccounts.map((account) => [account.id, account]),
+    );
+
+    const currentGroupAccounts = await this.databaseContext.connection
+      .select({ id: clientAccounts.id, taxId: clientAccounts.taxId })
+      .from(clientAccounts)
       .where(
         and(
-          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
-          inArray(clientCompanyRelationships.clientAccountId, participantIds),
-          eq(clientCompanyRelationships.status, 'active'),
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          inArray(
+            clientAccounts.taxId,
+            uniqueStrings(reviews.map((review) => review.normalizedIdentifier)),
+          ),
+          eq(clientAccounts.status, 'active'),
         ),
       );
-    if (
-      relationships.some(
-        (relationship) => relationship.companyStatus !== 'active',
-      ) ||
-      !sameStringSets(
-        relationships.map((relationship) => relationship.id),
-        relationshipSnapshots.map((snapshot) => snapshot.relationshipId),
-      )
-    ) {
-      return undefined;
-    }
-    for (const candidateId of candidateIds) {
-      if (
-        !relationships.some(
-          (relationship) => relationship.clientAccountId === candidateId,
-        )
-      ) {
-        return undefined;
-      }
+    const currentGroupIdsByIdentifier = groupByDefined(
+      currentGroupAccounts,
+      (account) => account.taxId,
+      (account) => account.id,
+    );
+
+    const relationships =
+      participantIds.length === 0
+        ? []
+        : await this.databaseContext.connection
+            .select({
+              id: clientCompanyRelationships.id,
+              clientAccountId: clientCompanyRelationships.clientAccountId,
+              companyId: clientCompanyRelationships.companyId,
+              companyDisplayName: companies.displayName,
+              companyStatus: companies.status,
+            })
+            .from(clientCompanyRelationships)
+            .innerJoin(
+              companies,
+              and(
+                eq(
+                  companies.workspaceId,
+                  clientCompanyRelationships.workspaceId,
+                ),
+                eq(companies.id, clientCompanyRelationships.companyId),
+              ),
+            )
+            .where(
+              and(
+                eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
+                inArray(
+                  clientCompanyRelationships.clientAccountId,
+                  participantIds,
+                ),
+                eq(clientCompanyRelationships.status, 'active'),
+              ),
+            );
+    const relationshipsByClientAccount = groupBy(
+      relationships,
+      (relationship) => relationship.clientAccountId,
+    );
+
+    const pendingAuthorization = new Map<
+      string,
+      DuplicateReviewPendingAuthorization
+    >();
+    for (const review of reviews) {
+      const resolved = resolveFreshDuplicateReview({
+        actor,
+        review,
+        activeProposalActorIds,
+        activeAttemptedCompanyIds,
+        candidateSnapshots:
+          candidateSnapshotsByReview.get(review.reference) ?? [],
+        relationshipSnapshots:
+          relationshipSnapshotsByReview.get(review.reference) ?? [],
+        participantAccountsById,
+        currentGroupIds:
+          currentGroupIdsByIdentifier.get(review.normalizedIdentifier) ?? [],
+        relationshipsByClientAccount,
+      });
+      if (resolved) pendingAuthorization.set(review.reference, resolved);
     }
 
-    const scope = [
-      review.attemptedCompanyId,
-      ...relationships
-        .filter((relationship) =>
-          candidateIds.includes(relationship.clientAccountId),
-        )
-        .map((relationship) => relationship.companyId),
-    ];
-    if (
-      !(await this.companyAuthorization.hasCompleteDuplicateReviewAuthority(
+    const allCompanyIds = uniqueStrings(
+      [...pendingAuthorization.values()].flatMap((review) => review.scope),
+    );
+    const authorizedCompanyIds =
+      await this.companyAuthorization.duplicateReviewAuthorizedCompanyIds(
         actor,
-        scope,
-      ))
-    ) {
-      return undefined;
+        allCompanyIds,
+      );
+    const authorized = new Map<string, AuthorizedDuplicateReview>();
+    for (const [reference, review] of pendingAuthorization) {
+      if (
+        !review.scope.every((companyId) => authorizedCompanyIds.has(companyId))
+      ) {
+        continue;
+      }
+      authorized.set(reference, {
+        proposalKind: review.proposalKind,
+        proposedFields: review.proposedFields,
+        candidates: review.candidates,
+        relationships: review.relationships,
+        attemptedCompanyRelatedClientIds:
+          review.attemptedCompanyRelatedClientIds,
+      });
     }
-    return {
-      proposalKind,
-      proposedFields: review.proposedFields,
-      candidates,
-      relationships,
-      attemptedCompanyRelatedClientIds: new Set(
-        relationships
-          .filter(
-            (relationship) =>
-              relationship.companyId === review.attemptedCompanyId,
-          )
-          .map((relationship) => relationship.clientAccountId),
-      ),
-    };
+    return authorized;
   }
 
   private async replayReference(
@@ -554,6 +651,169 @@ export function throwDuplicateReviewConflict(reference: string): never {
     code: POSSIBLE_DUPLICATE_REVIEW_REQUIRED,
     duplicate_review_reference: reference,
   });
+}
+
+function resolveFreshDuplicateReview(options: {
+  actor: ActorContext;
+  review: DuplicateReview;
+  activeProposalActorIds: ReadonlySet<string>;
+  activeAttemptedCompanyIds: ReadonlySet<string>;
+  candidateSnapshots: readonly DuplicateReviewCandidateSnapshot[];
+  relationshipSnapshots: readonly DuplicateReviewRelationshipSnapshot[];
+  participantAccountsById: ReadonlyMap<string, DuplicateReviewCandidate>;
+  currentGroupIds: readonly string[];
+  relationshipsByClientAccount: ReadonlyMap<
+    string,
+    readonly DuplicateReviewRelationship[]
+  >;
+}): DuplicateReviewPendingAuthorization | undefined {
+  const { review } = options;
+  if (review.attemptedCompanyId !== options.actor.activeCompany?.id) {
+    return undefined;
+  }
+  const proposalKind = duplicateReviewProposalKind(review.proposalKind);
+  if (
+    !proposalKind ||
+    !options.activeProposalActorIds.has(
+      review.proposalActorWorkspaceMembershipId,
+    ) ||
+    !options.activeAttemptedCompanyIds.has(review.attemptedCompanyId) ||
+    options.candidateSnapshots.length === 0
+  ) {
+    return undefined;
+  }
+
+  const sortedSnapshots = options.candidateSnapshots.toSorted((left, right) =>
+    left.clientAccountId.localeCompare(right.clientAccountId),
+  );
+  const candidates: DuplicateReviewCandidate[] = [];
+  for (const snapshot of sortedSnapshots) {
+    const candidate = options.participantAccountsById.get(
+      snapshot.clientAccountId,
+    );
+    if (
+      !candidate ||
+      candidate.taxId !== review.normalizedIdentifier ||
+      candidate.version !== snapshot.capturedVersion
+    ) {
+      return undefined;
+    }
+    candidates.push(candidate);
+  }
+  const candidateIds = sortedSnapshots.map(
+    (snapshot) => snapshot.clientAccountId,
+  );
+  if (!sameStringSets(options.currentGroupIds, candidateIds)) return undefined;
+
+  const participantIds = new Set(candidateIds);
+  if (proposalKind === 'correction') {
+    if (
+      review.proposalClientAccountId === null ||
+      review.proposalVersion === null
+    ) {
+      return undefined;
+    }
+    const proposalClient = options.participantAccountsById.get(
+      review.proposalClientAccountId,
+    );
+    if (!proposalClient || proposalClient.version !== review.proposalVersion) {
+      return undefined;
+    }
+    participantIds.add(review.proposalClientAccountId);
+  }
+
+  const relationshipsById = new Map<string, DuplicateReviewRelationship>();
+  for (const participantId of participantIds) {
+    for (const relationship of options.relationshipsByClientAccount.get(
+      participantId,
+    ) ?? []) {
+      relationshipsById.set(relationship.id, relationship);
+    }
+  }
+  const relationships = [...relationshipsById.values()];
+  if (
+    relationships.some(
+      (relationship) => relationship.companyStatus !== 'active',
+    ) ||
+    !sameStringSets(
+      relationships.map((relationship) => relationship.id),
+      options.relationshipSnapshots.map((snapshot) => snapshot.relationshipId),
+    )
+  ) {
+    return undefined;
+  }
+  for (const candidateId of candidateIds) {
+    if (
+      !relationships.some(
+        (relationship) => relationship.clientAccountId === candidateId,
+      )
+    ) {
+      return undefined;
+    }
+  }
+
+  const candidateIdSet = new Set(candidateIds);
+  const scope = uniqueStrings([
+    review.attemptedCompanyId,
+    ...relationships
+      .filter((relationship) =>
+        candidateIdSet.has(relationship.clientAccountId),
+      )
+      .map((relationship) => relationship.companyId),
+  ]);
+  return {
+    proposalKind,
+    proposedFields: review.proposedFields,
+    candidates,
+    relationships,
+    scope,
+    attemptedCompanyRelatedClientIds: new Set(
+      relationships
+        .filter(
+          (relationship) =>
+            relationship.companyId === review.attemptedCompanyId,
+        )
+        .map((relationship) => relationship.clientAccountId),
+    ),
+  };
+}
+
+function groupBy<Value>(
+  values: readonly Value[],
+  keyFor: (value: Value) => string,
+): Map<string, Value[]> {
+  const grouped = new Map<string, Value[]>();
+  for (const value of values) {
+    const key = keyFor(value);
+    const group = grouped.get(key) ?? [];
+    group.push(value);
+    grouped.set(key, group);
+  }
+  return grouped;
+}
+
+function groupByDefined<Value, Item>(
+  values: readonly Value[],
+  keyFor: (value: Value) => string | null,
+  itemFor: (value: Value) => Item,
+): Map<string, Item[]> {
+  const grouped = new Map<string, Item[]>();
+  for (const value of values) {
+    const key = keyFor(value);
+    if (key === null) continue;
+    const group = grouped.get(key) ?? [];
+    group.push(itemFor(value));
+    grouped.set(key, group);
+  }
+  return grouped;
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values)];
+}
+
+function invalidDuplicateReviewCursor(): BadRequestException {
+  return new BadRequestException('Invalid duplicate-review pagination query.');
 }
 
 function sameStringSets(
