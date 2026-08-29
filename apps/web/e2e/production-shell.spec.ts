@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test';
+import type { ActorContext } from '../src/access-types';
 import { actorContextFixture } from './actor-context.fixture';
 
 test('renders the production shell at the normal application entry point', async ({
@@ -1470,6 +1471,307 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
   await page.screenshot({
     path: testInfo.outputPath(`director-client-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+});
+
+test('upgrades complete authority before reviewing and attaching an exact-ID duplicate', async ({
+  page,
+}, testInfo) => {
+  const candidateCompany = {
+    id: '00000000-0000-4000-8000-000000000158',
+    displayName: 'Candidate Company A',
+  };
+  const attemptedCompany = {
+    id: '00000000-0000-4000-8000-000000000159',
+    displayName: 'Attempted Company B',
+  };
+  const companies = [candidateCompany, attemptedCompany].map((company) => ({
+    ...company,
+    workspaceId: actorContextFixture.workspaceId,
+    status: 'active',
+    createdAt: '2026-08-29T08:00:00.000Z',
+    createdByInternalUserId: actorContextFixture.internalUserId,
+  }));
+  const reference = '00000000-0000-4000-8000-000000001158';
+  const candidateId = '00000000-0000-4000-8000-000000003158';
+  let reviewPending = false;
+  let candidateAttached = false;
+  let candidateAuthority: 'legacy-v1' | 'revoked' | 'v2' = 'legacy-v1';
+  const resolverActor = {
+    ...actorContextFixture,
+    workspacePermissions: [
+      'company.manage',
+      'company.assignment.manage',
+      'client.manage',
+    ],
+    activeCompany: {
+      id: attemptedCompany.id,
+      displayName: attemptedCompany.displayName,
+      clientPermissions: [
+        'client.read',
+        'client.create',
+        'client.update',
+        'client.duplicate.resolve',
+      ],
+      clientPermissionAssignmentId: '00000000-0000-4000-8000-000000002158',
+      clientPermissionSetVersion: 'v2',
+    },
+  } satisfies ActorContext;
+
+  const administration = () => ({
+    members: [
+      {
+        workspaceMembershipId: resolverActor.workspaceMembershipId,
+        displayName: resolverActor.displayName,
+        email: resolverActor.email,
+      },
+    ],
+    companies: companies.map(({ id, displayName }) => ({ id, displayName })),
+    assignments: [
+      ...(candidateAuthority === 'revoked'
+        ? []
+        : [
+            {
+              id:
+                candidateAuthority === 'legacy-v1'
+                  ? '00000000-0000-4000-8000-000000004158'
+                  : '00000000-0000-4000-8000-000000005158',
+              workspaceMembershipId: resolverActor.workspaceMembershipId,
+              companyId: candidateCompany.id,
+              bundle: 'Company Director Client Access',
+              permissionSetVersion:
+                candidateAuthority === 'legacy-v1' ? 'v1' : 'v2',
+              active: true,
+            },
+          ]),
+      {
+        id: resolverActor.activeCompany.clientPermissionAssignmentId,
+        workspaceMembershipId: resolverActor.workspaceMembershipId,
+        companyId: attemptedCompany.id,
+        bundle: 'Company Director Client Access',
+        permissionSetVersion: 'v2',
+        active: true,
+      },
+    ],
+  });
+
+  await page.route('**/api/**', (route) => {
+    const url = new URL(route.request().url());
+    const request = route.request();
+    if (url.pathname.endsWith('/access/current-actor')) {
+      return route.fulfill({ json: resolverActor });
+    }
+    if (url.pathname.endsWith('/company-context-assignments/administration')) {
+      return route.fulfill({ json: administration() });
+    }
+    if (url.pathname.endsWith('/company-director-client-assignments')) {
+      expect(request.method()).toBe('POST');
+      expect(request.postDataJSON()).toEqual({
+        workspaceMembershipId: resolverActor.workspaceMembershipId,
+        companyId: candidateCompany.id,
+      });
+      candidateAuthority = 'v2';
+      return route.fulfill({
+        status: 201,
+        json: administration().assignments.find(
+          (assignment) => assignment.companyId === candidateCompany.id,
+        ),
+      });
+    }
+    if (url.pathname.includes('/company-director-client-assignments/')) {
+      expect(request.method()).toBe('DELETE');
+      expect(url.pathname).toContain(resolverActor.workspaceMembershipId);
+      expect(url.pathname).toContain(candidateCompany.id);
+      candidateAuthority = 'revoked';
+      return route.fulfill({
+        json: {
+          id: '00000000-0000-4000-8000-000000004158',
+          workspaceMembershipId: resolverActor.workspaceMembershipId,
+          companyId: candidateCompany.id,
+          bundle: 'Company Director Client Access',
+          permissionSetVersion: 'v1',
+          active: false,
+        },
+      });
+    }
+    if (url.pathname.endsWith('/companies')) {
+      return route.fulfill({ json: companies });
+    }
+    if (url.pathname.endsWith('/activity-log')) {
+      return route.fulfill({ json: { events: [] } });
+    }
+    if (url.pathname.endsWith(`/client-duplicate-reviews/${reference}`)) {
+      if (candidateAuthority !== 'v2' || candidateAttached) {
+        return route.fulfill({ status: 404 });
+      }
+      return route.fulfill({
+        json: {
+          outcome: 'comparison',
+          duplicate_review_reference: reference,
+          proposal: {
+            kind: 'registration',
+            fields: {
+              displayName: 'Proposed Duplicate Client',
+              taxId: 'IDNO-158',
+              address: 'Proposed address',
+              telephone: null,
+              generalEmail: null,
+              contacts: [],
+              businessActivity: null,
+            },
+          },
+          candidate: {
+            id: candidateId,
+            displayName: 'Existing Shared Client',
+            taxId: 'IDNO-158',
+            address: 'Existing address',
+            telephone: '+373 22 158 158',
+            generalEmail: null,
+            contacts: [],
+            businessActivity: 'Consulting',
+            version: 1,
+            relatedToActiveCompany: false,
+            involvedCompanyDisplayNames: [candidateCompany.displayName],
+          },
+        },
+      });
+    }
+    if (url.pathname.endsWith('/client-duplicate-reviews')) {
+      return route.fulfill({
+        json:
+          reviewPending && candidateAuthority === 'v2' && !candidateAttached
+            ? [{ duplicate_review_reference: reference }]
+            : [],
+      });
+    }
+    if (
+      url.pathname.endsWith(
+        `/clients/${candidateId}/active-company-relationship`,
+      )
+    ) {
+      expect(request.method()).toBe('PUT');
+      candidateAttached = true;
+      return route.fulfill({
+        json: {
+          id: candidateId,
+          displayName: 'Existing Shared Client',
+          relatedToActiveCompany: true,
+        },
+      });
+    }
+    if (url.pathname.endsWith('/clients')) {
+      if (request.method() === 'POST') {
+        reviewPending = true;
+        return route.fulfill({
+          status: 409,
+          json: {
+            statusCode: 409,
+            error: 'Conflict',
+            code: 'possible_duplicate_review_required',
+            duplicate_review_reference: reference,
+          },
+        });
+      }
+      return route.fulfill({
+        json: candidateAttached
+          ? [
+              {
+                id: candidateId,
+                displayName: 'Existing Shared Client',
+                relatedToActiveCompany: true,
+              },
+            ]
+          : [],
+      });
+    }
+    return route.fulfill({ status: 404 });
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Clients' })).toBeVisible();
+  await page
+    .getByLabel('Client display name')
+    .fill('Proposed Duplicate Client');
+  await page.getByLabel('IDNO / tax code').first().fill(' IDNO-158 ');
+  await page.getByRole('button', { name: 'Create Client' }).click();
+  await expect(page.getByText(/may already exist/i)).toBeVisible();
+  await expect(page.getByText(reference)).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Review possible duplicate 1' }),
+  ).toHaveCount(0);
+
+  await page.getByLabel('Access bundle').selectOption('director-client');
+  await page.getByLabel('Workspace member').selectOption({
+    label: `${resolverActor.displayName} — ${resolverActor.email}`,
+  });
+  await page.getByLabel('Company', { exact: true }).selectOption({
+    label: candidateCompany.displayName,
+  });
+  await expect(page.getByText(/Current server state:/)).toHaveText(/Granted/);
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/company-director-client-assignments/') &&
+        response.request().method() === 'DELETE',
+    ),
+    page.getByRole('button', { name: 'Revoke access' }).click(),
+  ]);
+  await expect(
+    page.getByText('Access revoked. Server state refreshed.'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Review possible duplicate 1' }),
+  ).toHaveCount(0);
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/company-director-client-assignments') &&
+        response.request().method() === 'POST',
+    ),
+    page.getByRole('button', { name: 'Grant access' }).click(),
+  ]);
+  await expect(
+    page.getByText('Access granted. Server state refreshed.'),
+  ).toBeVisible();
+
+  await page
+    .getByRole('button', { name: 'Review possible duplicate 1' })
+    .click();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Compare the proposed and existing Client',
+    }),
+  ).toBeVisible();
+  await expect(page.getByText('Proposed Duplicate Client')).toBeVisible();
+  await expect(page.getByText('Existing Shared Client')).toBeVisible();
+  await expect(page.getByText(reference)).toHaveCount(0);
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .endsWith(`/clients/${candidateId}/active-company-relationship`) &&
+        response.request().method() === 'PUT',
+    ),
+    page
+      .getByRole('button', {
+        name: 'Use this existing Client in the active Company',
+      })
+      .click(),
+  ]);
+  await expect(page.getByText(/review is no longer available/i)).toBeVisible();
+  expect(candidateAttached).toBe(true);
+
+  const geometry = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  await page.screenshot({
+    path: testInfo.outputPath(`duplicate-review-${testInfo.project.name}.png`),
     fullPage: true,
   });
 });

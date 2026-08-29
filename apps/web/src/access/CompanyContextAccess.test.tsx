@@ -485,6 +485,7 @@ describe('CompanyContextAccess', () => {
 
   it('revokes Company Director Client Access and reloads the canonical server state', async () => {
     const refreshActivity = vi.fn(async () => undefined);
+    const clientAuthorityChanged = vi.fn(async () => undefined);
     vi.stubGlobal(
       'fetch',
       vi
@@ -516,6 +517,7 @@ describe('CompanyContextAccess', () => {
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
         onActivityRecorded={refreshActivity}
+        onClientAuthorityChanged={clientAuthorityChanged}
       />,
     );
     await screen.findByLabelText('Workspace member');
@@ -541,6 +543,7 @@ describe('CompanyContextAccess', () => {
       screen.getByText('Access revoked. Server state refreshed.'),
     ).toBeInTheDocument();
     expect(refreshActivity).toHaveBeenCalledOnce();
+    expect(clientAuthorityChanged).not.toHaveBeenCalled();
   });
 
   it('refreshes Activity Log after a confirmed mutation when administration reload fails', async () => {
@@ -744,12 +747,14 @@ describe('CompanyContextAccess', () => {
         ),
     );
     const acceptActor = vi.fn(async () => undefined);
+    const clientAuthorityChanged = vi.fn(async () => undefined);
 
     render(
       <CompanyContextAccess
         actor={selfActor}
         identity={deterministicBrowserIdentity()}
         onActorRevalidated={acceptActor}
+        onClientAuthorityChanged={clientAuthorityChanged}
       />,
     );
     await screen.findByLabelText('Workspace member');
@@ -775,6 +780,92 @@ describe('CompanyContextAccess', () => {
       }),
     );
     expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+    expect(clientAuthorityChanged).toHaveBeenCalledOnce();
+  });
+
+  it('notifies Client authority changes for a self assignment outside the active Company', async () => {
+    const otherCompanyId = '11111111-1111-4111-8111-111111111111';
+    const selfActor: ActorContext = {
+      ...ownerActor,
+      activeCompany: {
+        id: companyId,
+        displayName: 'Active Company B',
+        clientPermissions: [
+          'client.read',
+          'client.create',
+          'client.update',
+          'client.duplicate.resolve',
+        ],
+      },
+    };
+    const state = {
+      members: [
+        {
+          workspaceMembershipId: ownerMembershipId,
+          displayName: 'Workspace Owner',
+          email: 'owner@example.test',
+        },
+      ],
+      companies: [
+        { id: otherCompanyId, displayName: 'Candidate Company A' },
+        { id: companyId, displayName: 'Active Company B' },
+      ],
+      assignments: [],
+    };
+    const grantedState = {
+      ...state,
+      assignments: [
+        {
+          id: 'assignment-other-company',
+          workspaceMembershipId: ownerMembershipId,
+          companyId: otherCompanyId,
+          bundle: 'Company Director Client Access',
+          active: true,
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(state), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(grantedState.assignments[0]), {
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(grantedState), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clientAuthorityChanged = vi.fn(async () => undefined);
+
+    render(
+      <CompanyContextAccess
+        actor={selfActor}
+        identity={deterministicBrowserIdentity()}
+        onClientAuthorityChanged={clientAuthorityChanged}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    fireEvent.change(screen.getByLabelText('Workspace member'), {
+      target: { value: ownerMembershipId },
+    });
+    fireEvent.change(screen.getByLabelText('Company'), {
+      target: { value: otherCompanyId },
+    });
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'director-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(
+      fetchMock.mock.calls.some(([path]) =>
+        String(path).endsWith('/access/current-actor'),
+      ),
+    ).toBe(false);
+    expect(clientAuthorityChanged).toHaveBeenCalledOnce();
   });
 
   it('rejects the active Company after self-revocation removes its context access', async () => {

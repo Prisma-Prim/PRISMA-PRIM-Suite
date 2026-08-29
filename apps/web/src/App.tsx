@@ -2,6 +2,7 @@ import {
   ApplicationContentSurface,
   ApplicationShell,
 } from './production-shell/ApplicationShell';
+import { useState } from 'react';
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
@@ -18,6 +19,7 @@ import {
 } from './production-shell/useProductionShellContext';
 
 export function App({ identity }: { identity: BrowserIdentity }) {
+  const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const {
     shellContext: access,
     selectCompany,
@@ -92,7 +94,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       />
       {canAccessClients && (
         <ClientWorkspace
-          key={`client:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${access.actor.activeCompany?.clientPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany?.clientPermissionSetVersion ?? 'no-version'}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
@@ -111,6 +113,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
+          onClientAuthorityChanged={() =>
+            setClientAuthorityGeneration((generation) => generation + 1)
+          }
         />
       )}
       {access.actor.workspacePermissions.includes('company.manage') && (

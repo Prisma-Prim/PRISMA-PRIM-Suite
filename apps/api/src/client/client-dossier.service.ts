@@ -23,6 +23,11 @@ import type {
   NormalizedDossierFields,
 } from './client-dossier-validation.js';
 import type { ClientDossierView } from './client.types.js';
+import {
+  ClientDuplicateReviewService,
+  throwDuplicateReviewConflict,
+} from './client-duplicate-review.service.js';
+import type { ClientMutationOutcome } from './client-duplicate-review.types.js';
 import { sameJsonValue } from './json-structural-equality.js';
 
 type ClientRow = Pick<
@@ -50,6 +55,7 @@ export class ClientDossierService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
+    private readonly duplicateReviews: ClientDuplicateReviewService,
   ) {}
 
   async read(
@@ -65,12 +71,14 @@ export class ClientDossierService {
     return this.toDossier(client, workspaceId);
   }
 
-  correct(
+  async correct(
     actor: ActorContext,
     companyId: string,
     command: CorrectClientDossierCommand,
   ): Promise<ClientDossierView> {
-    return this.databaseContext.transaction(async () => {
+    const outcome = await this.databaseContext.transaction<
+      ClientMutationOutcome<ClientDossierView>
+    >(async () => {
       const existingCommand = await this.findCorrectionCommand(
         actor,
         command.idempotencyKey,
@@ -78,6 +86,17 @@ export class ClientDossierService {
       if (existingCommand) {
         assertSameCorrection(existingCommand, companyId, command);
         if (!existingCommand.result) {
+          const duplicateReviewReference =
+            await this.duplicateReviews.correctionReplayReference(
+              actor,
+              existingCommand.id,
+            );
+          if (duplicateReviewReference) {
+            return {
+              kind: 'duplicate-review-required',
+              reference: duplicateReviewReference,
+            };
+          }
           throw new Error('The idempotent Client correction is incomplete.');
         }
         await this.requireRelatedClient(
@@ -85,7 +104,7 @@ export class ClientDossierService {
           companyId,
           command.clientAccountId,
         );
-        return existingCommand.result;
+        return { kind: 'completed', value: existingCommand.result };
       }
 
       const [reserved] = await this.databaseContext.connection
@@ -125,6 +144,28 @@ export class ClientDossierService {
         );
       }
 
+      if (
+        Object.hasOwn(command.changes, 'taxId') &&
+        command.changes.taxId !== current.taxId &&
+        command.changes.taxId !== null
+      ) {
+        const duplicateReviewReference =
+          await this.duplicateReviews.proposeCorrection({
+            actor,
+            attemptedCompanyId: companyId,
+            commandId: reserved.id,
+            clientAccountId: current.id,
+            version: current.version,
+            fields: applyCorrection(current, command.changes),
+          });
+        if (duplicateReviewReference) {
+          return {
+            kind: 'duplicate-review-required',
+            reference: duplicateReviewReference,
+          };
+        }
+      }
+
       const [updated] = await this.databaseContext.connection
         .update(clientAccounts)
         .set({
@@ -161,15 +202,19 @@ export class ClientDossierService {
         metadata: { changes: materialChanges },
         transitionId: reserved.id,
       });
-      return result;
+      return { kind: 'completed', value: result };
     });
+    if (outcome.kind === 'duplicate-review-required') {
+      throwDuplicateReviewConflict(outcome.reference);
+    }
+    return outcome.value;
   }
 
   private async resolveRacedCorrection(
     actor: ActorContext,
     companyId: string,
     command: CorrectClientDossierCommand,
-  ): Promise<ClientDossierView> {
+  ): Promise<ClientMutationOutcome<ClientDossierView>> {
     const racedCommand = await this.findCorrectionCommand(
       actor,
       command.idempotencyKey,
@@ -179,6 +224,17 @@ export class ClientDossierService {
     }
     assertSameCorrection(racedCommand, companyId, command);
     if (!racedCommand.result) {
+      const duplicateReviewReference =
+        await this.duplicateReviews.correctionReplayReference(
+          actor,
+          racedCommand.id,
+        );
+      if (duplicateReviewReference) {
+        return {
+          kind: 'duplicate-review-required',
+          reference: duplicateReviewReference,
+        };
+      }
       throw new ConflictException('The correction command is still pending.');
     }
     await this.requireRelatedClient(
@@ -186,7 +242,7 @@ export class ClientDossierService {
       companyId,
       command.clientAccountId,
     );
-    return racedCommand.result;
+    return { kind: 'completed', value: racedCommand.result };
   }
 
   private async requireRelatedClient(
@@ -333,6 +389,31 @@ function materialCorrectionChanges(
     if (!sameJsonValue(before, after)) changes[key] = { before, after };
   }
   return changes;
+}
+
+function applyCorrection(
+  current: ClientRow,
+  patch: CorrectionPatch,
+): NormalizedDossierFields {
+  return {
+    displayName: patch.displayName ?? current.displayName,
+    taxId: Object.hasOwn(patch, 'taxId')
+      ? (patch.taxId ?? null)
+      : current.taxId,
+    address: Object.hasOwn(patch, 'address')
+      ? (patch.address ?? null)
+      : current.address,
+    telephone: Object.hasOwn(patch, 'telephone')
+      ? (patch.telephone ?? null)
+      : current.telephone,
+    generalEmail: Object.hasOwn(patch, 'generalEmail')
+      ? (patch.generalEmail ?? null)
+      : current.generalEmail,
+    contacts: patch.contacts ?? current.contacts,
+    businessActivity: Object.hasOwn(patch, 'businessActivity')
+      ? (patch.businessActivity ?? null)
+      : current.businessActivity,
+  };
 }
 
 function dossierField(value: string): keyof NormalizedDossierFields {

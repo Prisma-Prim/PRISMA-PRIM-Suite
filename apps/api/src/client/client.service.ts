@@ -35,6 +35,11 @@ import {
   requireVersion,
 } from './client-dossier-validation.js';
 import { ClientDossierService } from './client-dossier.service.js';
+import {
+  ClientDuplicateReviewService,
+  throwDuplicateReviewConflict,
+} from './client-duplicate-review.service.js';
+import type { ClientMutationOutcome } from './client-duplicate-review.types.js';
 import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
@@ -45,6 +50,7 @@ export class ClientService {
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
     private readonly dossiers: ClientDossierService,
+    private readonly duplicateReviews: ClientDuplicateReviewService,
   ) {}
 
   async query(
@@ -211,13 +217,15 @@ export class ClientService {
     );
   }
 
-  private register(
+  private async register(
     actor: ActorContext,
     companyId: string,
     fields: NormalizedDossierFields,
     idempotencyKey: string,
   ): Promise<ClientAccountView> {
-    return this.databaseContext.transaction(async () => {
+    const outcome = await this.databaseContext.transaction<
+      ClientMutationOutcome<ClientAccountView>
+    >(async () => {
       const [insertedCommand] = await this.databaseContext.connection
         .insert(clientAccountRegistrationCommands)
         .values({
@@ -243,6 +251,20 @@ export class ClientService {
           fields,
           idempotencyKey,
         );
+      }
+
+      const duplicateReviewReference =
+        await this.duplicateReviews.proposeRegistration(
+          actor,
+          companyId,
+          insertedCommand.id,
+          fields,
+        );
+      if (duplicateReviewReference) {
+        return {
+          kind: 'duplicate-review-required',
+          reference: duplicateReviewReference,
+        };
       }
 
       const [client] = await this.databaseContext.connection
@@ -278,8 +300,12 @@ export class ClientService {
         metadata: {},
       });
       await this.recordRelationship(actor, relationship);
-      return toSummary(client, true);
+      return { kind: 'completed', value: toSummary(client, true) };
     });
+    if (outcome.kind === 'duplicate-review-required') {
+      throwDuplicateReviewConflict(outcome.reference);
+    }
+    return outcome.value;
   }
 
   private async resolveRegistrationReplay(
@@ -287,7 +313,7 @@ export class ClientService {
     companyId: string,
     fields: NormalizedDossierFields,
     idempotencyKey: string,
-  ): Promise<ClientAccountView> {
+  ): Promise<ClientMutationOutcome<ClientAccountView>> {
     const [persistedCommand] = await this.databaseContext.connection
       .select()
       .from(clientAccountRegistrationCommands)
@@ -312,6 +338,17 @@ export class ClientService {
       throw new BadRequestException(
         'Idempotency-Key was already used for another Client command.',
       );
+    }
+    const duplicateReviewReference =
+      await this.duplicateReviews.registrationReplayReference(
+        actor,
+        persistedCommand.id,
+      );
+    if (duplicateReviewReference) {
+      return {
+        kind: 'duplicate-review-required',
+        reference: duplicateReviewReference,
+      };
     }
     if (
       !persistedCommand.resultClientAccountId ||
@@ -351,9 +388,12 @@ export class ClientService {
     if (!client)
       throw new Error('The idempotent Client result is unavailable.');
     return {
-      id: client.id,
-      displayName: persistedCommand.displayName,
-      relatedToActiveCompany: true,
+      kind: 'completed',
+      value: {
+        id: client.id,
+        displayName: persistedCommand.displayName,
+        relatedToActiveCompany: true,
+      },
     };
   }
 

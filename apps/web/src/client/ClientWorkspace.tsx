@@ -13,6 +13,7 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { ClientDossierPanel } from './ClientDossierPanel';
+import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
 import {
   optionalProperty,
   resolveRetryCommand,
@@ -43,7 +44,7 @@ type CreateState =
       message: string;
       field?: 'displayName' | 'contacts';
     }
-  | { status: 'forbidden' | 'error' };
+  | { status: 'forbidden' | 'error' | 'possibleDuplicate' };
 
 type SearchState =
   | { status: 'idle' | 'submitting' }
@@ -86,6 +87,7 @@ export function ClientWorkspace({
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
     undefined,
   );
+  const [duplicateReviewRefreshKey, setDuplicateReviewRefreshKey] = useState(0);
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
@@ -108,6 +110,9 @@ export function ClientWorkspace({
   const canReadClientDossiers = clientPermissions.includes('client.read');
   const canCreateEnrichedClients = clientPermissions.includes('client.create');
   const canUpdateClients = clientPermissions.includes('client.update');
+  const canResolveDuplicateClients = clientPermissions.includes(
+    'client.duplicate.resolve',
+  );
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
   const handleAccessRejection = useCallback(
@@ -173,6 +178,7 @@ export function ClientWorkspace({
     setSearchState({ status: 'idle' });
     setAttachingClientId(undefined);
     setSelectedClientId(undefined);
+    setDuplicateReviewRefreshKey(0);
 
     if (!canReadClients || !activeCompany) return;
     const companyContextId = activeCompany.id;
@@ -192,6 +198,8 @@ export function ClientWorkspace({
     actor.workspaceMembershipId,
     canReadClients,
     canReadClientDossiers,
+    activeCompany?.clientPermissionAssignmentId,
+    activeCompany?.clientPermissionSetVersion,
     loadClients,
   ]);
 
@@ -263,6 +271,14 @@ export function ClientWorkspace({
             status: 'validation',
             message: result.message ?? copy.displayNameRequired,
           });
+          return;
+        }
+        if (
+          result.status === 'conflict' &&
+          result.reason === 'possibleDuplicateReviewRequired'
+        ) {
+          setCreateState({ status: 'possibleDuplicate' });
+          setDuplicateReviewRefreshKey((current) => current + 1);
           return;
         }
         if (result.status !== 'ok') {
@@ -474,6 +490,23 @@ export function ClientWorkspace({
       {createState.status === 'error' && (
         <p role="alert">{copy.retryableError}</p>
       )}
+      {createState.status === 'possibleDuplicate' && (
+        <p role="alert">{copy.possibleDuplicate}</p>
+      )}
+      {canResolveDuplicateClients && (
+        <ClientDuplicateReviewPanel
+          companyContextId={activeCompany.id}
+          identity={identity}
+          canAttach={canAttachClients}
+          refreshKey={duplicateReviewRefreshKey}
+          authorityGeneration={`${activeCompany.clientPermissionAssignmentId ?? 'no-assignment'}:${activeCompany.clientPermissionSetVersion ?? 'no-version'}`}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          onActorRevalidated={onActorRevalidated}
+          onActivityRecorded={onActivityRecorded}
+          onClientsChanged={() => loadClients(activeCompany.id)}
+        />
+      )}
       <form onSubmit={(event) => void searchClients(event)} noValidate>
         <label htmlFor="client-search">{copy.searchLabel}</label>
         <div>
@@ -571,6 +604,9 @@ export function ClientWorkspace({
           onActorRevalidated={onActorRevalidated}
           onActivityRecorded={onActivityRecorded}
           onClientsChanged={() => loadClients(activeCompany.id)}
+          onDuplicateReviewRequired={() =>
+            setDuplicateReviewRefreshKey((current) => current + 1)
+          }
         />
       )}
     </section>

@@ -13,7 +13,12 @@ export interface ActorContext {
     id: string;
     displayName: string;
     clientPermissions?: Array<
-      'client.read' | 'client.create' | 'client.update'
+      | 'client.read'
+      | 'client.create'
+      | 'client.update'
+      | 'client.duplicate.resolve'
     >;
+    clientPermissionAssignmentId?: string;
+    clientPermissionSetVersion?: 'v1' | 'v2';
   };
 }

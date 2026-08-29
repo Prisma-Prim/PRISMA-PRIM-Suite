@@ -137,12 +137,14 @@ describeWithPostgres('Company access administration REST API', () => {
         workspaceMembershipId: activeMember.workspaceMembershipId,
         companyId: activeCompany.id,
         bundle: 'Company Context Access',
+        permissionSetVersion: null,
         active: true,
       }),
       expect.objectContaining({
         workspaceMembershipId: activeMember.workspaceMembershipId,
         companyId: activeCompany.id,
         bundle: 'Company Director Client Access',
+        permissionSetVersion: 'v2',
         active: true,
       }),
     ]);
@@ -195,6 +197,149 @@ describeWithPostgres('Company access administration REST API', () => {
     expect(revoke.status).toBe(200);
     const revoked = await administrationState();
     expect(revoked.assignments).toEqual([]);
+  });
+
+  it('creates a fresh v2 Director assignment only after explicit revoke and grant', async () => {
+    await currentActor('workspace-owner', 'Workspace Owner');
+    const member = await currentActor('active-member', 'Ada Member');
+    const company = await registerCompany('Versioned Director Company');
+
+    const firstGrant = await grant(
+      '/api/company-director-client-assignments',
+      member.workspaceMembershipId,
+      company.id,
+      'director-version-one',
+    );
+    expect(firstGrant.status).toBe(201);
+    const firstAssignment = await firstGrant.json();
+    expect(firstAssignment).toMatchObject({ permissionSetVersion: 'v2' });
+
+    const revoke = await fetch(
+      `${origin}/api/company-director-client-assignments/${member.workspaceMembershipId}/${company.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          ...identityHeaders('workspace-owner', 'Workspace Owner'),
+          'idempotency-key': 'director-version-revoke',
+        },
+      },
+    );
+    expect(revoke.status).toBe(200);
+
+    const secondGrant = await grant(
+      '/api/company-director-client-assignments',
+      member.workspaceMembershipId,
+      company.id,
+      'director-version-two',
+    );
+    expect(secondGrant.status).toBe(201);
+    const secondAssignment = await secondGrant.json();
+    expect(secondAssignment).toMatchObject({ permissionSetVersion: 'v2' });
+    expect(secondAssignment.id).not.toBe(firstAssignment.id);
+
+    const generations = await pool.query<{
+      id: string;
+      permission_set_version: string;
+      active: boolean;
+    }>(
+      `SELECT id::text, permission_set_version, revoked_at IS NULL AS active
+        FROM company_role_assignments
+        WHERE workspace_membership_id = $1 AND company_id = $2
+          AND bundle::text = 'company_director_client_access'
+        ORDER BY created_at, id`,
+      [member.workspaceMembershipId, company.id],
+    );
+    expect(generations.rows).toEqual([
+      {
+        id: firstAssignment.id,
+        permission_set_version: 'v2',
+        active: false,
+      },
+      {
+        id: secondAssignment.id,
+        permission_set_version: 'v2',
+        active: true,
+      },
+    ]);
+  });
+
+  it('does not promote an active legacy v1 assignment in place', async () => {
+    await currentActor('workspace-owner', 'Workspace Owner');
+    const member = await currentActor('active-member', 'Legacy Member');
+    const company = await registerCompany('Legacy Director Company');
+    const legacy = await pool.query<{ id: string }>(
+      `INSERT INTO company_role_assignments (
+         workspace_id, company_id, workspace_membership_id, bundle,
+         permission_set_version
+       )
+       SELECT workspace_id, $1, id, 'company_director_client_access', 'v1'
+       FROM workspace_memberships WHERE id = $2
+       RETURNING id::text`,
+      [company.id, member.workspaceMembershipId],
+    );
+
+    const replayedGrant = await grant(
+      '/api/company-director-client-assignments',
+      member.workspaceMembershipId,
+      company.id,
+      'legacy-active-grant',
+    );
+    expect(replayedGrant.status).toBe(201);
+    await expect(replayedGrant.json()).resolves.toMatchObject({
+      id: legacy.rows[0]?.id,
+      permissionSetVersion: 'v1',
+      active: true,
+    });
+
+    const generations = await pool.query<{
+      id: string;
+      permission_set_version: string;
+    }>(
+      `SELECT id::text, permission_set_version
+       FROM company_role_assignments
+       WHERE workspace_membership_id = $1 AND company_id = $2
+         AND bundle::text = 'company_director_client_access'`,
+      [member.workspaceMembershipId, company.id],
+    );
+    expect(generations.rows).toEqual([
+      { id: legacy.rows[0]?.id, permission_set_version: 'v1' },
+    ]);
+  });
+
+  it('converges concurrent fresh Director grants on one immutable generation', async () => {
+    await currentActor('workspace-owner', 'Workspace Owner');
+    const member = await currentActor('active-member', 'Concurrent Member');
+    const company = await registerCompany('Concurrent Director Company');
+
+    const responses = await Promise.all([
+      grant(
+        '/api/company-director-client-assignments',
+        member.workspaceMembershipId,
+        company.id,
+        'director-concurrent-one',
+      ),
+      grant(
+        '/api/company-director-client-assignments',
+        member.workspaceMembershipId,
+        company.id,
+        'director-concurrent-two',
+      ),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    const results = await Promise.all(
+      responses.map((response) => response.json()),
+    );
+    expect(new Set(results.map((result) => result.id)).size).toBe(1);
+    expect(results[0]).toMatchObject({ permissionSetVersion: 'v2' });
+
+    const assignments = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM company_role_assignments
+       WHERE workspace_membership_id = $1 AND company_id = $2
+         AND bundle::text = 'company_director_client_access'
+         AND revoked_at IS NULL`,
+      [member.workspaceMembershipId, company.id],
+    );
+    expect(assignments.rows[0]).toEqual({ count: '1' });
   });
 
   async function currentActor(subject: string, displayName: string) {

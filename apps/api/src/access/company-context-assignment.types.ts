@@ -2,18 +2,28 @@ import type {
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from './company-permissions.js';
+import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
 
-export interface CompanyContextAssignmentRecord {
+interface CompanyContextAssignmentRecordBase {
   id: string;
   workspaceMembershipId: string;
   companyId: string;
-  bundle: CompanyAssignmentBundleLabel;
   active: boolean;
 }
+
+export type CompanyContextAssignmentRecord =
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL;
+      permissionSetVersion: null;
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
+      permissionSetVersion: CompanyDirectorClientPermissionSetVersion;
+    });
 
 export interface CompanyAccessAdministrationMember {
   workspaceMembershipId: string;

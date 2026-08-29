@@ -143,6 +143,17 @@ describeWithPostgres('previous schema migration preflight', () => {
               AND internal_user.id = membership.internal_user_id
             WHERE internal_user.external_provider = 'deterministic-test'
               AND internal_user.external_subject = 'previous-schema-owner'
+          ), seeded_revoked_company AS (
+            INSERT INTO companies (
+              id, workspace_id, display_name, created_by_internal_user_id,
+              created_by_workspace_membership_id,
+              registration_idempotency_key, status
+            )
+            SELECT '00000000-0000-4000-8000-000000001468', workspace_id,
+              'Previous Revoked Provider', internal_user_id, id,
+              'previous-revoked-provider-registration', 'inactive'
+            FROM seeded_membership
+            RETURNING id
           ), seeded_assignment AS (
             INSERT INTO company_role_assignments (
               id, workspace_id, company_id, workspace_membership_id, bundle
@@ -152,6 +163,23 @@ describeWithPostgres('previous schema migration preflight', () => {
               'company_context_access'
             FROM seeded_membership
             RETURNING id, workspace_id, company_id, workspace_membership_id
+          ), seeded_legacy_director_assignments AS (
+            INSERT INTO company_role_assignments (
+              id, workspace_id, company_id, workspace_membership_id, bundle,
+              revoked_at
+            )
+            SELECT '00000000-0000-4000-8000-000000001466'::uuid, workspace_id,
+              '00000000-0000-4000-8000-000000001461'::uuid, id,
+              'company_director_client_access'::company_role_bundle,
+              NULL::timestamptz
+            FROM seeded_membership
+            UNION ALL
+            SELECT '00000000-0000-4000-8000-000000001467'::uuid, workspace_id,
+              '00000000-0000-4000-8000-000000001468'::uuid, id,
+              'company_director_client_access'::company_role_bundle,
+              '2026-08-27T11:00:00.000Z'::timestamptz
+            FROM seeded_membership
+            RETURNING id
           )
           INSERT INTO activity_log_events (
             id, workspace_id, actor_internal_user_id,
@@ -195,6 +223,32 @@ describeWithPostgres('previous schema migration preflight', () => {
             contacts: [],
           },
         ]);
+        const migratedDirectorAssignments = await migrationPool.query<{
+          id: string;
+          permission_set_version: string;
+          active: boolean;
+        }>(`SELECT id::text, permission_set_version,
+              revoked_at IS NULL AS active
+            FROM company_role_assignments
+            WHERE bundle::text = 'company_director_client_access'
+            ORDER BY id`);
+        expect(migratedDirectorAssignments.rows).toEqual([
+          {
+            id: '00000000-0000-4000-8000-000000001466',
+            permission_set_version: 'v1',
+            active: true,
+          },
+          {
+            id: '00000000-0000-4000-8000-000000001467',
+            permission_set_version: 'v1',
+            active: false,
+          },
+        ]);
+        await expect(
+          migrationPool.query(`UPDATE company_role_assignments
+            SET permission_set_version = NULL
+            WHERE id = '00000000-0000-4000-8000-000000001466'`),
+        ).rejects.toMatchObject({ code: '23514' });
         const grantsAfterMigration = await migrationPool.query<{
           count: string;
         }>(`SELECT count(*)
@@ -307,7 +361,20 @@ describeWithPostgres('previous schema migration preflight', () => {
           `${applicationUrl}/api/clients/00000000-0000-4000-8000-000000001462`,
           { headers: legacyClientHeaders },
         );
-        expect(migratedClientDossierResponse.status).toBe(403);
+        expect(migratedClientDossierResponse.status).toBe(200);
+        await expect(migratedClientDossierResponse.json()).resolves.toEqual({
+          id: '00000000-0000-4000-8000-000000001462',
+          displayName: 'Previous Shared Client',
+          taxId: null,
+          address: null,
+          telephone: null,
+          generalEmail: null,
+          contacts: [],
+          businessActivity: null,
+          version: 1,
+          relatedToActiveCompany: true,
+          involvedCompanyDisplayNames: ['Previous Provider'],
+        });
 
         const response = await fetch(`${applicationUrl}/api/health`);
         expect(response.status).toBe(200);

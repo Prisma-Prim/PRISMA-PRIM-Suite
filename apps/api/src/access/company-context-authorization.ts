@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
-import { companies, companyRoleAssignments } from '../database/schema/index.js';
-import type {
-  ActiveCompanyContext,
-  ActorContext,
-  CompanyClientPermission,
-} from './access.types.js';
+import {
+  companies,
+  companyRoleAssignments,
+  internalUsers,
+  workspaceMemberships,
+} from '../database/schema/index.js';
+import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-  COMPANY_DIRECTOR_CLIENT_PERMISSIONS,
+  companyDirectorClientPermissionsFor,
 } from './company-permissions.js';
 
 @Injectable()
@@ -27,16 +28,9 @@ export class CompanyContextAuthorization {
         companyId,
       );
       if (!company) return undefined;
-      const assignedPermissions = (
-        await this.findAssignedActiveCompanies(actor, companyId)
-      )[0]?.clientPermissions;
-      const effectivePermissions = new Set<CompanyClientPermission>([
-        ...(assignedPermissions ?? []),
-      ]);
-      const clientPermissions = COMPANY_DIRECTOR_CLIENT_PERMISSIONS.filter(
-        (permission) => effectivePermissions.has(permission),
+      return (
+        (await this.findAssignedActiveCompanies(actor, companyId))[0] ?? company
       );
-      return { ...company, clientPermissions };
     }
     return (await this.findAssignedActiveCompanies(actor, companyId))[0];
   }
@@ -53,6 +47,67 @@ export class CompanyContextAuthorization {
         (company) => company.id,
       ),
     };
+  }
+
+  async hasCompleteDuplicateReviewAuthority(
+    actor: ActorContext,
+    companyIds: readonly string[],
+  ): Promise<boolean> {
+    const requiredCompanyIds = [...new Set(companyIds)];
+    if (requiredCompanyIds.length === 0) return false;
+    const rows = await this.databaseContext.connection
+      .select({ companyId: companyRoleAssignments.companyId })
+      .from(companyRoleAssignments)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            companyRoleAssignments.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            companyRoleAssignments.workspaceMembershipId,
+          ),
+          eq(workspaceMemberships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        and(
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+          eq(internalUsers.id, actor.internalUserId),
+          eq(internalUsers.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        companies,
+        and(
+          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+          eq(companies.id, companyRoleAssignments.companyId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(
+            companyRoleAssignments.bundle,
+            COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+          ),
+          eq(companyRoleAssignments.permissionSetVersion, 'v2'),
+          isNull(companyRoleAssignments.revokedAt),
+          inArray(companyRoleAssignments.companyId, requiredCompanyIds),
+        ),
+      );
+    return (
+      new Set(rows.map((row) => row.companyId)).size ===
+      requiredCompanyIds.length
+    );
   }
 
   private async findActiveCompany(
@@ -95,6 +150,8 @@ export class CompanyContextAuthorization {
         id: companies.id,
         displayName: companies.displayName,
         bundle: companyRoleAssignments.bundle,
+        assignmentId: companyRoleAssignments.id,
+        permissionSetVersion: companyRoleAssignments.permissionSetVersion,
       })
       .from(companyRoleAssignments)
       .innerJoin(
@@ -107,13 +164,25 @@ export class CompanyContextAuthorization {
       .where(and(...conditions));
     const companiesById = new Map<string, ActiveCompanyContext>();
     for (const row of rows) {
-      const company = companiesById.get(row.id) ?? {
+      const existing = companiesById.get(row.id);
+      const company = existing ?? {
         id: row.id,
         displayName: row.displayName,
         clientPermissions: [],
       };
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
-        company.clientPermissions = [...COMPANY_DIRECTOR_CLIENT_PERMISSIONS];
+        if (
+          row.permissionSetVersion !== 'v1' &&
+          row.permissionSetVersion !== 'v2'
+        ) {
+          continue;
+        }
+        const clientPermissions = companyDirectorClientPermissionsFor(
+          row.permissionSetVersion,
+        );
+        company.clientPermissions = [...clientPermissions];
+        company.clientPermissionAssignmentId = row.assignmentId;
+        company.clientPermissionSetVersion = row.permissionSetVersion;
       }
       companiesById.set(row.id, company);
     }
