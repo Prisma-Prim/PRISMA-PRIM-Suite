@@ -166,18 +166,18 @@ describeWithPostgres('previous schema migration preflight', () => {
           ), seeded_legacy_director_assignments AS (
             INSERT INTO company_role_assignments (
               id, workspace_id, company_id, workspace_membership_id, bundle,
-              revoked_at
+              permission_set_version, revoked_at
             )
             SELECT '00000000-0000-4000-8000-000000001466'::uuid, workspace_id,
               '00000000-0000-4000-8000-000000001461'::uuid, id,
               'company_director_client_access'::company_role_bundle,
-              NULL::timestamptz
+              'v1'::text, NULL::timestamptz
             FROM seeded_membership
             UNION ALL
             SELECT '00000000-0000-4000-8000-000000001467'::uuid, workspace_id,
               '00000000-0000-4000-8000-000000001468'::uuid, id,
               'company_director_client_access'::company_role_bundle,
-              '2026-08-27T11:00:00.000Z'::timestamptz
+              'v1'::text, '2026-08-27T11:00:00.000Z'::timestamptz
             FROM seeded_membership
             RETURNING id
           )
