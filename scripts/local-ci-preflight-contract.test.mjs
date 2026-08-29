@@ -64,13 +64,26 @@ test('local and early CI preflight share the canonical PostgreSQL and Playwright
   );
   assert.match(earlyCi, /mode: preflight/);
   assert.match(earlyCi, /pull_request_target:/);
-  assert.match(earlyCi, /types:\s*\[labeled\]/);
+  assert.match(
+    earlyCi,
+    /types:\s*\[opened, reopened, synchronize, edited, labeled\]/,
+  );
   assert.match(earlyCi, /github\.event\.label\.name == 'early-ci'/);
+  assert.match(earlyCi, /github\.event\.action != 'labeled'/);
+  assert.match(
+    earlyCi,
+    /contains\(github\.event\.pull_request\.body, '<!-- agent-doctor-early-ci: required -->'\)/,
+  );
   assert.match(
     earlyCi,
     /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/,
   );
   assert.match(earlyCi, /github\.event\.pull_request\.head\.sha/);
+  assert.match(
+    earlyCi,
+    /group: early-ci-\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/,
+  );
+  assert.match(earlyCi, /cancel-in-progress: true/);
   assert.match(earlyCi, /checkout_ref:/);
   assert.match(earlyCi, /statuses:\s*write/);
   assert.match(earlyCi, /context='Early CI preflight'/);
@@ -135,4 +148,23 @@ test('the destructive migration preflight is serial and excluded from the parall
     apiPackage.scripts['test:preflight:postgres-smoke'],
     /src\/company\/company\.rest\.test\.ts/,
   );
+});
+
+test('Work mode publication consumes and waits for the Agent Doctor handoff', async () => {
+  const issueExecution = await readFile(
+    new URL('../docs/agents/issue-execution.md', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(issueExecution, /handoff\.state.*required/);
+  assert.match(
+    issueExecution,
+    /same create or update\s+pull-request operation/,
+  );
+  assert.match(issueExecution, /exact PR head SHA/);
+  assert.match(
+    issueExecution,
+    /handoff\.completion\.statusContext[\s\S]*success/,
+  );
+  assert.match(issueExecution, /without asking a human/u);
 });

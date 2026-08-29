@@ -62,6 +62,16 @@ Every PR that is not eligible for the low-risk fast path uses the full verificat
 
 Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
 
+When a matching Agent Doctor report has `handoff.state` equal to `required`,
+the publishing harness consumes `handoff.action` without asking a human. With
+push and pull-request access, add its marker in the same create or update
+pull-request operation that publishes the exact candidate. Then resolve the
+exact PR head SHA and monitor the named `handoff.completion.statusContext` on
+that SHA until `handoff.completion.requiredState` is `success`. Triggering the
+handoff is not verification, and delivery remains blocked until that exact-head
+result succeeds. A harness without the required publication or CI visibility
+follows the capability boundary below instead of claiming delegated evidence.
+
 After terminal feedback, apply the severity gate from the selected path. Collect all blocking findings before changing the branch and publish at most one grouped correction. If another blocking wave appears, stop editing and return the issue to process diagnosis or preflight. Do not continue a one-finding/one-commit loop.
 
 For a slice that crosses PostgreSQL, migrations, or browser behavior, run the

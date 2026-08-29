@@ -4,12 +4,15 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { inspectEnvironment } from './agent-doctor.mjs';
+import { earlyCiHandoffProtocol } from './early-ci-handoff.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const earlyCiDelegation = {
-  connector: 'apply the early-ci label to the open pull request',
-  statusContext: 'Early CI preflight',
+  connector: 'publish the Agent Doctor handoff marker in the pull request body',
+  pullRequestMarker: earlyCiHandoffProtocol.action.marker,
+  automaticTrigger: earlyCiHandoffProtocol.automaticTrigger,
+  statusContext: earlyCiHandoffProtocol.completion.statusContext,
   githubUi: 'run Early CI preflight for the exact branch from Actions',
   gh: 'gh workflow run early-ci.yml --ref <branch>',
 };
@@ -206,7 +209,7 @@ function formatPreflightReport(plan) {
     lines.push(`${label(seam.localStatus)} ${seam.id}: ${seam.reason}`);
     if (seam.authority === 'delegated-to-early-ci') {
       lines.push(
-        `${label(seam.authority)} ${seam.id}: ${plan.earlyCiDelegation.connector}; watch ${plan.earlyCiDelegation.statusContext}. UI fallback: ${plan.earlyCiDelegation.githubUi}. gh fallback: ${plan.earlyCiDelegation.gh}`,
+        `${label(seam.authority)} ${seam.id}: ${plan.earlyCiDelegation.connector} (${plan.earlyCiDelegation.pullRequestMarker}); ${plan.earlyCiDelegation.automaticTrigger} starts exact-head verification. Watch ${plan.earlyCiDelegation.statusContext}. UI fallback: ${plan.earlyCiDelegation.githubUi}. gh fallback: ${plan.earlyCiDelegation.gh}`,
       );
     } else if (seam.authority === 'blocked-without-ci-recovery') {
       lines.push(`${label(seam.authority)} ${seam.id}: ${seam.reason}`);

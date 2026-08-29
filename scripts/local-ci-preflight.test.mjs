@@ -102,7 +102,8 @@ test('accepts exact-head CI delegation for a recoverable check-only blocker', ()
   assert.deepEqual(stderr, []);
   assert.match(stdout.join(''), /Chromium is missing/);
   assert.match(stdout.join(''), /DELEGATED TO EARLY CI playwright-narrow/);
-  assert.match(stdout.join(''), /apply the early-ci label/u);
+  assert.match(stdout.join(''), /agent-doctor-early-ci: required/u);
+  assert.match(stdout.join(''), /starts exact-head verification/u);
   assert.match(stdout.join(''), /Early CI preflight/u);
   assert.match(stdout.join(''), /gh workflow run early-ci\.yml --ref <branch>/);
 });
@@ -294,7 +295,11 @@ test('emits a valid plan as the only JSON check-only output', () => {
     ],
   );
   assert.deepEqual(plan.earlyCiDelegation, {
-    connector: 'apply the early-ci label to the open pull request',
+    connector:
+      'publish the Agent Doctor handoff marker in the pull request body',
+    pullRequestMarker: '<!-- agent-doctor-early-ci: required -->',
+    automaticTrigger:
+      'opening, reopening, editing, or synchronizing the pull request',
     statusContext: 'Early CI preflight',
     githubUi: 'run Early CI preflight for the exact branch from Actions',
     gh: 'gh workflow run early-ci.yml --ref <branch>',
