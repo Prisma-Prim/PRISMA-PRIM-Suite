@@ -86,12 +86,24 @@ private `.pnpm-home/` directory. The first recovery therefore needs package
 network access during setup or maintenance. It never runs `corepack enable`,
 activates a system-global version, or installs a global npm package.
 
-Work mode does not promise local PostgreSQL or Chromium. If the matching Doctor
-profile reports either capability unavailable, open or update a same-repository
-pull request and apply the `early-ci` label. The `Early CI preflight` status on
-the exact PR head is the supported PostgreSQL, migration, and browser evidence;
-the absence of local executables does not justify installing system packages in
-the agent phase.
+Work mode does not promise local PostgreSQL or Chromium. Run the matching Doctor
+profile with `--json` when either capability may be unavailable. A recoverable
+report publishes `handoff.state` as `required` and provides this
+`handoff.action.marker`:
+
+```html
+<!-- agent-doctor-early-ci: required -->
+```
+
+Consume that action through the
+[automatic handoff publication invariant](issue-execution.md#verification-and-review).
+Opening, reopening, editing, or synchronizing the marked pull request starts
+`Early CI preflight` automatically. The workflow resolves the current PR head
+SHA and publishes its pending and final commit status on that exact SHA. The
+`early-ci` label remains the explicit retry path. A successful exact-head status
+is the supported PostgreSQL, migration, and browser evidence; the absence of
+local executables does not justify installing system packages in the agent
+phase.
 
 ### Optional PostgreSQL environment
 

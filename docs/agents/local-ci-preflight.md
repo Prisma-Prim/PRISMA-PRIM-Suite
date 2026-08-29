@@ -51,13 +51,14 @@ The full local suite remains available separately; the preflight is intentionall
 small and does not duplicate lint, formatting, every unit test, every browser
 journey, or production builds.
 
-## Connector-compatible Early CI delegation
+## Automatic Work mode and connector-compatible Early CI delegation
 
-Push the branch and open or update its pull request, then apply the `early-ci`
-label. Connected GitHub interfaces can add that label without a local `gh`
-executable. The default-branch workflow accepts only an open, same-repository
-pull request, resolves its exact head SHA, and publishes the `Early CI preflight`
-commit status on that SHA. Remove and reapply the label to request another run.
+When Agent Doctor or this preflight delegates a seam, follow the canonical
+[Work mode handoff path](environment.md#chatgpt-work-mode-pnpm-bootstrap).
+Preserve the reported `handoff.action.marker` in the same-repository pull request
+body. Connected GitHub interfaces can update that body without a local `gh`
+executable. Apply the `early-ci` label to request an explicit retry; remove and
+reapply it for another label-triggered run.
 
 The GitHub Actions interface remains a fallback: run **Early CI preflight** for
 the exact branch. With authenticated GitHub CLI access, the equivalent command

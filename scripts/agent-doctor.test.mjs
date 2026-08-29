@@ -134,9 +134,69 @@ test('offers exact-head Early CI when hosted integration prerequisites are absen
   for (const id of ['chromium', 'database-variables']) {
     assert.match(
       results.find((check) => check.id === id).remediation,
-      /apply the early-ci label.*exact-head/u,
+      /agent-doctor-early-ci: required.*automatic exact-head/u,
     );
   }
+});
+
+test('does not request a handoff when the selected profile is locally healthy', () => {
+  const report = evaluateEnvironmentReport(
+    healthyEnvironment,
+    'web-postgres',
+  );
+
+  assert.deepEqual(report.handoff, {
+    state: 'not-required',
+    profile: 'web-postgres',
+  });
+});
+
+test('publishes an automatic exact-head handoff for recoverable web-postgres blockers', () => {
+  const report = evaluateEnvironmentReport(
+    {
+      ...healthyEnvironment,
+      chromiumAvailable: false,
+      databaseUrl: '',
+      testDatabaseUrl: '',
+      postgresProbe: { state: 'not-run' },
+    },
+    'web-postgres',
+  );
+
+  assert.deepEqual(report.handoff, {
+    state: 'required',
+    profile: 'web-postgres',
+    reasonCheckIds: ['chromium', 'database-variables'],
+    action: {
+      kind: 'github-pull-request-body-marker',
+      marker: '<!-- agent-doctor-early-ci: required -->',
+      timing: 'same-publication-write',
+    },
+    completion: {
+      statusContext: 'Early CI preflight',
+      headBinding: 'pull-request-head-sha',
+      requiredState: 'success',
+    },
+  });
+});
+
+test('does not delegate an intrinsic repository defect to Early CI', () => {
+  const report = evaluateEnvironmentReport(
+    {
+      ...healthyEnvironment,
+      nodeRange: '^24.0.0',
+      databaseUrl: '',
+      testDatabaseUrl: '',
+      postgresProbe: { state: 'not-run' },
+    },
+    'postgres',
+  );
+
+  assert.deepEqual(report.handoff, {
+    state: 'blocked',
+    profile: 'postgres',
+    reasonCheckIds: ['node'],
+  });
 });
 
 test('certifies only distinct numeric-loopback PostgreSQL targets', () => {

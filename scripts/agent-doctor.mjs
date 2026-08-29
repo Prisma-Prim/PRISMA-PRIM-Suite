@@ -6,10 +6,11 @@ import {
   parsePostgresDatabaseTarget,
 } from '../apps/api/test-support/postgres-database-target.mjs';
 import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
+import { earlyCiHandoffProtocol } from './early-ci-handoff.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const earlyCiRecovery =
-  'If this harness cannot provide it, apply the early-ci label to an open pull request for exact-head verification.';
+  `If this harness cannot provide it, publish ${earlyCiHandoffProtocol.action.marker} in the same-repository pull request body for automatic exact-head verification.`;
 
 function parseVersion(value) {
   const match = String(value)
@@ -233,6 +234,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     capabilities: {
       postgres: snapshot.postgresProbe ?? { state: 'not-run' },
     },
+    handoff: createEarlyCiHandoff(profile, checks),
   };
 }
 
@@ -366,6 +368,37 @@ function evaluatePostgres(
   }
 }
 
+function createEarlyCiHandoff(profile, checks) {
+  if (!requiresChromium(profile) && !requiresPostgres(profile)) {
+    return { state: 'not-required', profile };
+  }
+
+  const failures = checks.filter((check) => check.status === 'FAIL');
+  const intrinsicFailures = failures.filter(
+    (check) => check.ciRecoverable !== true,
+  );
+
+  if (intrinsicFailures.length > 0) {
+    return {
+      state: 'blocked',
+      profile,
+      reasonCheckIds: intrinsicFailures.map((check) => check.id),
+    };
+  }
+
+  if (failures.length === 0) {
+    return { state: 'not-required', profile };
+  }
+
+  return {
+    state: 'required',
+    profile,
+    reasonCheckIds: failures.map((check) => check.id),
+    action: earlyCiHandoffProtocol.action,
+    completion: earlyCiHandoffProtocol.completion,
+  };
+}
+
 export function inspectEnvironment(profile = 'base') {
   const snapshot = collectEnvironmentSnapshot({
     needsChromium: requiresChromium(profile),
@@ -387,6 +420,15 @@ function formatResults(results) {
     .join('\n');
 }
 
+function formatHandoff(handoff) {
+  if (handoff.state !== 'required') return '';
+
+  return [
+    `HANDOFF REQUIRED: publish ${handoff.action.marker} in the same-repository pull request body.`,
+    `Opening, reopening, editing, or synchronizing that pull request automatically runs ${handoff.completion.statusContext} against its exact head SHA; wait for ${handoff.completion.requiredState}.`,
+  ].join('\n');
+}
+
 function main() {
   const profileIndex = process.argv.indexOf('--profile');
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
@@ -400,9 +442,19 @@ function main() {
     return;
   }
 
-  const results = inspectEnvironment(profile).checks;
+  const report = inspectEnvironment(profile);
+  const results = report.checks;
+  const handoffText = formatHandoff(report.handoff);
   process.stdout.write(
-    `${json ? JSON.stringify({ profile, results }, null, 2) : formatResults(results)}\n`,
+    `${
+      json
+        ? JSON.stringify(
+            { profile, results, handoff: report.handoff },
+            null,
+            2,
+          )
+        : [formatResults(results), handoffText].filter(Boolean).join('\n')
+    }\n`,
   );
 
   if (results.some((check) => check.status === 'FAIL')) {
