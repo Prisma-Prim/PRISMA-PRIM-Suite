@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { CompanyContextAccess } from './CompanyContextAccess';
+import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -208,6 +209,218 @@ describe('CompanyContextAccess', () => {
         name: 'Confirm Workspace access suspension',
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it('resets a reviewed suspension only after the actor changes', async () => {
+    const identity = deterministicBrowserIdentity();
+    const members = [
+      {
+        workspaceMembershipId: memberId,
+        label: 'Ada Member — ada@example.test',
+      },
+    ];
+    const reloadAdministration = vi.fn(async () => true);
+    const onPendingChange = vi.fn();
+    const onActivityRecorded = vi.fn(async () => undefined);
+    const onWorkspaceAccessRejected = vi.fn(async () => undefined);
+    const { rerender } = render(
+      <WorkspaceMembershipSuspension
+        actor={ownerActor}
+        identity={identity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    expect(onPendingChange).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    expect(
+      screen.getByRole('region', {
+        name: 'Confirm Workspace access suspension',
+      }),
+    ).toBeInTheDocument();
+
+    const replacementActor: ActorContext = {
+      ...ownerActor,
+      internalUserId: '11111111-1111-4111-8111-111111111111',
+      workspaceMembershipId: '22222222-2222-4222-8222-222222222222',
+    };
+    rerender(
+      <WorkspaceMembershipSuspension
+        actor={replacementActor}
+        identity={identity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', {
+          name: 'Confirm Workspace access suspension',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Member to suspend')).toHaveValue('');
+    expect(onPendingChange).toHaveBeenCalledOnce();
+    expect(onPendingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('resets a reviewed suspension only after BrowserIdentity changes', async () => {
+    const firstIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'first',
+    });
+    const secondIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'second',
+    });
+    const members = [
+      {
+        workspaceMembershipId: memberId,
+        label: 'Ada Member — ada@example.test',
+      },
+    ];
+    const reloadAdministration = vi.fn(async () => true);
+    const onPendingChange = vi.fn();
+    const onActivityRecorded = vi.fn(async () => undefined);
+    const onWorkspaceAccessRejected = vi.fn(async () => undefined);
+    const { rerender } = render(
+      <WorkspaceMembershipSuspension
+        actor={ownerActor}
+        identity={firstIdentity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    expect(onPendingChange).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    expect(
+      screen.getByRole('region', {
+        name: 'Confirm Workspace access suspension',
+      }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <WorkspaceMembershipSuspension
+        actor={ownerActor}
+        identity={secondIdentity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', {
+          name: 'Confirm Workspace access suspension',
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Member to suspend')).toHaveValue('');
+    expect(onPendingChange).toHaveBeenCalledOnce();
+    expect(onPendingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('does not publish a stale suspension response after identity replacement', async () => {
+    const suspensionResponse = deferred<Response>();
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => suspensionResponse.promise);
+    vi.stubGlobal('fetch', fetchMock);
+    const firstIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'first',
+    });
+    const secondIdentity = deterministicBrowserIdentity({
+      'x-test-identity': 'second',
+    });
+    const members = [
+      {
+        workspaceMembershipId: memberId,
+        label: 'Ada Member — ada@example.test',
+      },
+    ];
+    const reloadAdministration = vi.fn(async () => true);
+    const onPendingChange = vi.fn();
+    const onActivityRecorded = vi.fn(async () => undefined);
+    const onWorkspaceAccessRejected = vi.fn(async () => undefined);
+    const { rerender } = render(
+      <WorkspaceMembershipSuspension
+        actor={ownerActor}
+        identity={firstIdentity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Member to suspend'), {
+      target: { value: memberId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+    const pendingSignal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
+    rerender(
+      <WorkspaceMembershipSuspension
+        actor={ownerActor}
+        identity={secondIdentity}
+        members={members}
+        disabled={false}
+        reloadAdministration={reloadAdministration}
+        onPendingChange={onPendingChange}
+        onActivityRecorded={onActivityRecorded}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+
+    await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
+    await act(async () => {
+      suspensionResponse.resolve(
+        new Response(
+          JSON.stringify({
+            workspaceMembershipId: memberId,
+            status: 'inactive',
+          }),
+          { status: 201 },
+        ),
+      );
+      await suspensionResponse.promise;
+      await Promise.resolve();
+    });
+
+    expect(onActivityRecorded).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+    expect(reloadAdministration).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText('Member suspended. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Member to suspend')).toHaveValue('');
   });
 
   it('leaves the active shell immediately when the actor suspends their own Membership', async () => {
