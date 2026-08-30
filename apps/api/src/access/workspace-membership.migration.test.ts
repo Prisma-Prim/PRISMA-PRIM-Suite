@@ -102,7 +102,7 @@ describeWithPostgres('Workspace Membership migration', () => {
     await isolatedDatabase?.close();
   });
 
-  it('keeps legacy and current Access and Activity Log routes compatible through expand/backfill', async () => {
+  it('preserves membership authority and public reads through expand, backfill, and contract', async () => {
     await applyMigration('0000_ordinary_stephen_strange.sql');
     await applyMigration('0001_fat_kylun.sql');
 
@@ -212,6 +212,13 @@ describeWithPostgres('Workspace Membership migration', () => {
     await applyMigration('0008_backfill_company_assignment_authority.sql');
     await applyMigration('0008_backfill_company_assignment_authority.sql');
     await applyMigration('0009_open_night_thrasher.sql');
+    await applyMigration('0010_brave_doctor_strange.sql');
+    await applyMigration('0011_military_silk_fever.sql');
+    await applyMigration('0012_amusing_misty_knight.sql');
+    await applyMigration('0013_wise_chimera.sql');
+    await applyMigration('0014_wooden_patriot.sql');
+    await applyMigration('0015_bouncy_steve_rogers.sql');
+    await applyMigration('0016_sharp_master_chief.sql');
 
     const upgradedOwnerPermissions = await migrationPool.query<{
       permission: string;
@@ -256,14 +263,13 @@ describeWithPostgres('Workspace Membership migration', () => {
       actor_membership_id: string;
       target_membership_id: string;
     }>(
-      `SELECT internal_user.workspace_id, membership.internal_user_id,
+      `SELECT membership.workspace_id, membership.internal_user_id,
         event.id AS event_id,
         event.actor_workspace_membership_id AS actor_membership_id,
         event.target_workspace_membership_id AS target_membership_id
       FROM internal_users AS internal_user
       INNER JOIN workspace_memberships AS membership
-        ON membership.workspace_id = internal_user.workspace_id
-        AND membership.internal_user_id = internal_user.id
+        ON membership.internal_user_id = internal_user.id
       INNER JOIN activity_log_events AS event
         ON event.workspace_id = membership.workspace_id
         AND event.actor_internal_user_id = membership.internal_user_id
@@ -292,6 +298,64 @@ describeWithPostgres('Workspace Membership migration', () => {
         (SELECT count(*) FROM activity_log_events) AS events`,
     );
     expect(counts.rows[0]).toEqual({ users: '4', events: '3' });
+    const contracted = await migrationPool.query<{
+      internal_user_workspace_column_absent: boolean;
+      internal_user_workspace_index_absent: boolean;
+      workspace_key_column_absent: boolean;
+      workspace_key_index_absent: boolean;
+      internal_user_insert_trigger_absent: boolean;
+      internal_user_status_trigger_absent: boolean;
+      activity_event_trigger_absent: boolean;
+      internal_user_function_absent: boolean;
+      activity_event_function_absent: boolean;
+    }>(`
+      SELECT
+        NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'internal_users'
+            AND column_name = 'workspace_id'
+        ) AS internal_user_workspace_column_absent,
+        to_regclass('public.internal_users_workspace_id_id_unique') IS NULL
+          AS internal_user_workspace_index_absent,
+        NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'workspaces'
+            AND column_name = 'singleton_key'
+        ) AS workspace_key_column_absent,
+        to_regclass('public.workspaces_singleton_key_unique') IS NULL
+          AS workspace_key_index_absent,
+        NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'internal_users_legacy_membership_insert'
+            AND NOT tgisinternal
+        ) AS internal_user_insert_trigger_absent,
+        NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'internal_users_legacy_membership_status_update'
+            AND NOT tgisinternal
+        ) AS internal_user_status_trigger_absent,
+        NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'activity_log_events_legacy_membership_references'
+            AND NOT tgisinternal
+        ) AS activity_event_trigger_absent,
+        to_regprocedure('public.maintain_membership_for_legacy_internal_user()')
+          IS NULL AS internal_user_function_absent,
+        to_regprocedure(
+          'public.maintain_membership_references_for_legacy_activity_event()'
+        ) IS NULL AS activity_event_function_absent
+    `);
+    expect(contracted.rows[0]).toEqual({
+      internal_user_workspace_column_absent: true,
+      internal_user_workspace_index_absent: true,
+      workspace_key_column_absent: true,
+      workspace_key_index_absent: true,
+      internal_user_insert_trigger_absent: true,
+      internal_user_status_trigger_absent: true,
+      activity_event_trigger_absent: true,
+      internal_user_function_absent: true,
+      activity_event_function_absent: true,
+    });
   });
 
   async function startLegacyApp() {
@@ -311,6 +375,7 @@ describeWithPostgres('Workspace Membership migration', () => {
     process.env.DATABASE_URL = targetUrl;
     delete process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER;
     delete process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT;
+    delete process.env.ACCESS_BOOTSTRAP_WORKSPACE_ID;
     delete process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY;
     delete process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME;
     delete process.env.ACCESS_ACCEPTED_INVITATIONS_JSON;

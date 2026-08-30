@@ -66,8 +66,6 @@ export class AccessService {
         const [insertedInternalUser] = await database
           .insert(internalUsers)
           .values({
-            // Compatibility for old binaries during expand/backfill only.
-            workspaceId: admissionWorkspace.id,
             externalProvider: principal.provider,
             externalSubject: principal.subject,
             displayName: principal.displayName,
@@ -190,11 +188,11 @@ export class AccessService {
       const [workspace] = await database
         .insert(workspaces)
         .values({
-          singletonKey: decision.workspaceKey,
+          id: decision.workspaceId,
           name: decision.workspaceName,
         })
         .onConflictDoUpdate({
-          target: workspaces.singletonKey,
+          target: workspaces.id,
           set: { name: sql`excluded.name` },
         })
         .returning();
@@ -203,7 +201,7 @@ export class AccessService {
     const [workspace] = await database
       .select()
       .from(workspaces)
-      .where(eq(workspaces.singletonKey, decision.workspaceKey))
+      .where(eq(workspaces.id, decision.workspaceId))
       .limit(1);
     if (!workspace) throw new ForbiddenException();
     return workspace;

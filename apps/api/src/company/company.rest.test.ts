@@ -12,6 +12,7 @@ if (process.env.REQUIRE_COMPANY_POSTGRES === 'true' && !databaseUrl) {
   );
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
+const WORKSPACE_ID = '00000000-0000-4000-8000-000000000131';
 
 describeWithPostgres('Company REST API', () => {
   let harness: PostgresRestTestHarness;
@@ -29,13 +30,13 @@ describeWithPostgres('Company REST API', () => {
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
-        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'company-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Company Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
           {
             provider: 'deterministic-test',
             subject: 'workspace-member',
-            workspaceKey: 'company-workspace',
+            workspaceId: WORKSPACE_ID,
           },
         ]),
       },
@@ -149,15 +150,19 @@ describeWithPostgres('Company REST API', () => {
 
     const foreignCompanyId = '00000000-0000-4000-8000-000000000067';
     await pool.query(`
-      INSERT INTO workspaces (id, singleton_key, name)
-      VALUES ('00000000-0000-4000-8000-000000000061', 'foreign-context-workspace', 'Foreign Context Workspace');
+      INSERT INTO workspaces (id, name)
+      VALUES ('00000000-0000-4000-8000-000000000061', 'Foreign Context Workspace');
       INSERT INTO internal_users (
-        id, workspace_id, external_provider, external_subject, display_name, email
+        id, external_provider, external_subject, display_name, email
       ) VALUES (
         '00000000-0000-4000-8000-000000000062',
-        '00000000-0000-4000-8000-000000000061',
         'deterministic-test', 'foreign-context-owner', 'Foreign Owner',
         'foreign-context-owner@example.test'
+      );
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      VALUES (
+        '00000000-0000-4000-8000-000000000061',
+        '00000000-0000-4000-8000-000000000062'
       );
       INSERT INTO companies (
         id, workspace_id, display_name, created_by_internal_user_id,
@@ -451,8 +456,8 @@ describeWithPostgres('Company REST API', () => {
 
   it('uses only the actor Workspace when a request supplies another Workspace id', async () => {
     const hidden = await pool.query<{ id: string }>(`
-      INSERT INTO workspaces (singleton_key, name)
-      VALUES ('hidden-company-workspace', 'Hidden Company Workspace')
+      INSERT INTO workspaces (id, name)
+      VALUES ('00000000-0000-4000-8000-000000000132', 'Hidden Company Workspace')
       RETURNING id
     `);
 
@@ -590,16 +595,20 @@ describeWithPostgres('Company REST API', () => {
     }).then((response) => response.json());
     await pool.query(`
       WITH hidden_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('hidden-read-workspace', 'Hidden Read Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000133', 'Hidden Read Workspace')
         RETURNING id
-      )
+      ), hidden_user AS (
       INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
+        external_provider, external_subject, display_name, email
       )
-      SELECT id, 'deterministic-test', 'hidden-company-owner',
-        'Hidden Company Owner', 'hidden-company-owner@example.test'
-      FROM hidden_workspace
+      VALUES ('deterministic-test', 'hidden-company-owner',
+        'Hidden Company Owner', 'hidden-company-owner@example.test')
+      RETURNING id
+      )
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT hidden_workspace.id, hidden_user.id
+      FROM hidden_workspace, hidden_user
     `);
     const hidden = await pool.query<{ company_id: string }>(`
       INSERT INTO companies (
@@ -633,16 +642,20 @@ describeWithPostgres('Company REST API', () => {
     }).then((response) => response.json());
     await pool.query(`
       WITH hidden_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('constraint-workspace', 'Constraint Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000134', 'Constraint Workspace')
         RETURNING id
-      )
+      ), hidden_user AS (
       INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
+        external_provider, external_subject, display_name, email
       )
-      SELECT id, 'deterministic-test', 'constraint-user',
-        'Constraint User', 'constraint-user@example.test'
-      FROM hidden_workspace
+      VALUES ('deterministic-test', 'constraint-user',
+        'Constraint User', 'constraint-user@example.test')
+      RETURNING id
+      )
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT hidden_workspace.id, hidden_user.id
+      FROM hidden_workspace, hidden_user
     `);
     const hiddenMembership = await pool.query<{
       workspace_id: string;

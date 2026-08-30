@@ -22,6 +22,9 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
           ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: configuration.get(
             'ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT',
           ),
+          ACCESS_BOOTSTRAP_WORKSPACE_ID: configuration.get(
+            'ACCESS_BOOTSTRAP_WORKSPACE_ID',
+          ),
           ACCESS_BOOTSTRAP_WORKSPACE_KEY: configuration.get(
             'ACCESS_BOOTSTRAP_WORKSPACE_KEY',
           ),

@@ -20,6 +20,36 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 if (databaseUrl) assertLocalTestDatabaseUrl(databaseUrl);
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 const previousSchemaMigrationTestTimeoutMs = 15_000;
+const PREVIOUS_WORKSPACE_ID = '00000000-0000-4000-8000-000000001460';
+
+interface AuthoritativeState {
+  workspace_ids: string[];
+  internal_user_ids: string[];
+  membership_ids: string[];
+  company_ids: string[];
+  assignment_ids: string[];
+  client_ids: string[];
+  relationship_ids: string[];
+  activity_event_ids: string[];
+  suspension_command_ids: string[];
+  duplicate_review_ids: string[];
+}
+
+const authoritativeStateQuery = `SELECT
+  ARRAY(SELECT id::text FROM workspaces ORDER BY id) AS workspace_ids,
+  ARRAY(SELECT id::text FROM internal_users ORDER BY id) AS internal_user_ids,
+  ARRAY(SELECT id::text FROM workspace_memberships ORDER BY id) AS membership_ids,
+  ARRAY(SELECT id::text FROM companies ORDER BY id) AS company_ids,
+  ARRAY(SELECT id::text FROM company_role_assignments ORDER BY id) AS assignment_ids,
+  ARRAY(SELECT id::text FROM client_accounts ORDER BY id) AS client_ids,
+  ARRAY(SELECT id::text FROM client_company_relationships ORDER BY id)
+    AS relationship_ids,
+  ARRAY(SELECT id::text FROM activity_log_events ORDER BY id)
+    AS activity_event_ids,
+  ARRAY(SELECT id::text FROM workspace_membership_suspension_commands ORDER BY id)
+    AS suspension_command_ids,
+  ARRAY(SELECT reference::text FROM client_duplicate_reviews ORDER BY reference)
+    AS duplicate_review_ids`;
 
 describeWithPostgres('previous schema migration preflight', () => {
   it(
@@ -74,8 +104,9 @@ describeWithPostgres('previous schema migration preflight', () => {
         });
         await migrationPool.query(`
           WITH seeded_workspace AS (
-            INSERT INTO workspaces (singleton_key, name)
-            VALUES ('previous-schema-workspace', 'Previous Schema Workspace')
+            INSERT INTO workspaces (id, singleton_key, name)
+            VALUES ('${PREVIOUS_WORKSPACE_ID}', 'previous-schema-workspace',
+              'Previous Schema Workspace')
             RETURNING id
           )
           INSERT INTO internal_users (
@@ -307,7 +338,75 @@ describeWithPostgres('previous schema migration preflight', () => {
             '00000000-0000-4000-8000-000000001695'
           );
         `);
+        const authorityBeforeContract =
+          await migrationPool.query<AuthoritativeState>(
+            authoritativeStateQuery,
+          );
         await migrate(database, { migrationsFolder: migrationsDirectory });
+        const authorityAfterContract =
+          await migrationPool.query<AuthoritativeState>(
+            authoritativeStateQuery,
+          );
+        expect(authorityAfterContract.rows).toEqual(
+          authorityBeforeContract.rows,
+        );
+        const compatibilityObjects = await migrationPool.query<{
+          internal_user_workspace_column: string | null;
+          internal_user_workspace_index: string | null;
+          workspace_key_column: string | null;
+          workspace_key_index: string | null;
+          internal_user_insert_trigger: string | null;
+          internal_user_status_trigger: string | null;
+          activity_event_trigger: string | null;
+          internal_user_function: string | null;
+          activity_event_function: string | null;
+        }>(`SELECT
+          (
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'internal_users'
+              AND column_name = 'workspace_id'
+          ) AS internal_user_workspace_column,
+          to_regclass('public.internal_users_workspace_id_id_unique')::text
+            AS internal_user_workspace_index,
+          (
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'workspaces'
+              AND column_name = 'singleton_key'
+          ) AS workspace_key_column,
+          to_regclass('public.workspaces_singleton_key_unique')::text
+            AS workspace_key_index,
+          (
+            SELECT tgname FROM pg_trigger
+            WHERE tgname = 'internal_users_legacy_membership_insert'
+              AND NOT tgisinternal
+          ) AS internal_user_insert_trigger,
+          (
+            SELECT tgname FROM pg_trigger
+            WHERE tgname = 'internal_users_legacy_membership_status_update'
+              AND NOT tgisinternal
+          ) AS internal_user_status_trigger,
+          (
+            SELECT tgname FROM pg_trigger
+            WHERE tgname = 'activity_log_events_legacy_membership_references'
+              AND NOT tgisinternal
+          ) AS activity_event_trigger,
+          to_regprocedure(
+            'public.maintain_membership_for_legacy_internal_user()'
+          )::text AS internal_user_function,
+          to_regprocedure(
+            'public.maintain_membership_references_for_legacy_activity_event()'
+          )::text AS activity_event_function`);
+        expect(compatibilityObjects.rows[0]).toEqual({
+          internal_user_workspace_column: null,
+          internal_user_workspace_index: null,
+          workspace_key_column: null,
+          workspace_key_index: null,
+          internal_user_insert_trigger: null,
+          internal_user_status_trigger: null,
+          activity_event_trigger: null,
+          internal_user_function: null,
+          activity_event_function: null,
+        });
         const migratedReviewCursors = await migrationPool.query<{
           reference: string;
           pagination_cursor: string;
@@ -441,8 +540,8 @@ describeWithPostgres('previous schema migration preflight', () => {
         process.env.DATABASE_URL = targetUrl;
         process.env.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER = 'deterministic-test';
         process.env.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT = 'previous-schema-owner';
-        process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY =
-          'previous-schema-workspace';
+        process.env.ACCESS_BOOTSTRAP_WORKSPACE_ID = PREVIOUS_WORKSPACE_ID;
+        delete process.env.ACCESS_BOOTSTRAP_WORKSPACE_KEY;
         process.env.ACCESS_BOOTSTRAP_WORKSPACE_NAME =
           'Previous Schema Workspace';
         const moduleRef = await Test.createTestingModule({
@@ -475,6 +574,13 @@ describeWithPostgres('previous schema migration preflight', () => {
             FROM workspace_permission_grants
             WHERE permission::text = 'client.manage'`);
         expect(grantsAfterBootstrapResolution.rows[0]).toEqual({ count: '1' });
+        const authorityAfterBootstrapResolution =
+          await migrationPool.query<AuthoritativeState>(
+            authoritativeStateQuery,
+          );
+        expect(authorityAfterBootstrapResolution.rows).toEqual(
+          authorityAfterContract.rows,
+        );
 
         const legacyClientHeaders = {
           'x-test-external-provider': 'deterministic-test',

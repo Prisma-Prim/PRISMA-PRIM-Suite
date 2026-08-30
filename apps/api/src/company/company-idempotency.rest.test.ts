@@ -29,7 +29,7 @@ describeWithPostgres('Company registration idempotency REST API', () => {
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
-        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'company-idempotency-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: '00000000-0000-4000-8000-000000000121',
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Company Idempotency Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: '[]',
       },

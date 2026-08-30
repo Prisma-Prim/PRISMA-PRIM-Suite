@@ -7,6 +7,7 @@ import {
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
+const WORKSPACE_ID = '00000000-0000-4000-8000-000000000101';
 
 describeWithPostgres('Workspace Membership suspension REST API', () => {
   let harness: PostgresRestTestHarness;
@@ -25,18 +26,18 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
-        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'suspension-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Suspension Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
           {
             provider: 'deterministic-test',
             subject: 'workspace-member',
-            workspaceKey: 'suspension-workspace',
+            workspaceId: WORKSPACE_ID,
           },
           {
             provider: 'deterministic-test',
             subject: 'workspace-company-manager',
-            workspaceKey: 'suspension-workspace',
+            workspaceId: WORKSPACE_ID,
           },
         ]),
       },
@@ -419,21 +420,22 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
     );
 
     const foreignWorkspace = await pool.query<{ id: string }>(
-      `INSERT INTO workspaces (singleton_key, name)
-       VALUES ('foreign-suspension-workspace', 'Foreign Workspace')
+      `INSERT INTO workspaces (id, name)
+       VALUES ('00000000-0000-4000-8000-000000000102', 'Foreign Workspace')
        RETURNING id`,
     );
     const foreignUser = await pool.query<{ id: string }>(
       `INSERT INTO internal_users (
-         workspace_id, external_provider, external_subject, display_name, email
-       ) VALUES ($1, 'deterministic-test', 'foreign-suspension-member',
+         external_provider, external_subject, display_name, email
+       ) VALUES ('deterministic-test', 'foreign-suspension-member',
          'Foreign Member', 'foreign-member@example.test')
        RETURNING id`,
-      [foreignWorkspace.rows[0]!.id],
     );
     const foreignMembership = await pool.query<{ id: string }>(
-      'SELECT id FROM workspace_memberships WHERE internal_user_id = $1',
-      [foreignUser.rows[0]!.id],
+      `INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+       VALUES ($1, $2)
+       RETURNING id`,
+      [foreignWorkspace.rows[0]!.id, foreignUser.rows[0]!.id],
     );
     await expectForbidden(
       await suspendAs(
