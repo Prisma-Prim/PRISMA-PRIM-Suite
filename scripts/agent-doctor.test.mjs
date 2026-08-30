@@ -19,7 +19,7 @@ const healthyEnvironment = {
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev',
   testDatabaseUrl:
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test',
-  postgresProbe: { state: 'available' },
+  postgresProbe: { state: 'available', serverVersionNumber: 170011 },
 };
 
 function evaluateEnvironment(snapshot, profile) {
@@ -39,7 +39,7 @@ test('publishes ordered checks and PostgreSQL capabilities in one report', () =>
       ...healthyEnvironment,
       postgresProbe: {
         state: 'available',
-        serverVersionNumber: 170000,
+        serverVersionNumber: 170011,
         canCreateDatabase: true,
       },
     },
@@ -62,7 +62,7 @@ test('publishes ordered checks and PostgreSQL capabilities in one report', () =>
   );
   assert.deepEqual(report.capabilities.postgres, {
     state: 'available',
-    serverVersionNumber: 170000,
+    serverVersionNumber: 170011,
     canCreateDatabase: true,
   });
 });
