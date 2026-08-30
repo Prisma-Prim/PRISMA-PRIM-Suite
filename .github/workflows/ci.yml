@@ -72,6 +72,9 @@ jobs:
       - name: Set up repository verification
         uses: ./.github/actions/setup-verification
 
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:web-postgres
+
       - name: Verify preflight prerequisites
         run: pnpm preflight:local --check-only
 

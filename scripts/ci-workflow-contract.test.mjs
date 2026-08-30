@@ -29,6 +29,7 @@ test('CI preserves every verification seam and fails formatting first', async ()
     'Check out exact requested head',
     'Verify exact requested head',
     'Set up repository verification',
+    'Verify supported agent environment',
     'Verify preflight prerequisites',
     'Run canonical PostgreSQL smoke preflight',
     'Run canonical previous-schema migration preflight',
@@ -57,4 +58,19 @@ test('CI preserves every verification seam and fails formatting first', async ()
       `formatting must run before ${expensiveStep}`,
     );
   }
+
+  const setup = workflow.indexOf('- name: Set up repository verification');
+  const strictDoctor = workflow.indexOf(
+    '- name: Verify supported agent environment',
+  );
+  const preflight = workflow.indexOf('- name: Verify preflight prerequisites');
+  const strictDoctorStep = workflow.slice(strictDoctor, preflight);
+
+  assert.ok(setup < strictDoctor, 'setup must run before the strict Doctor');
+  assert.ok(
+    strictDoctor < preflight,
+    'the strict Doctor must run before the delegable preflight check',
+  );
+  assert.match(strictDoctorStep, /run: pnpm agent:doctor:web-postgres/);
+  assert.doesNotMatch(strictDoctorStep, /if:/);
 });
