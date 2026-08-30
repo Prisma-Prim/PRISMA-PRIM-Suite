@@ -41,18 +41,37 @@ export function WorkspaceMembershipSuspension({
     { workspaceMembershipId: string; idempotencyKey: string } | undefined
   >(undefined);
   const pendingRequest = useRef<AbortController | undefined>(undefined);
+  const resetBoundary = useRef({
+    internalUserId: actor.internalUserId,
+    workspaceId: actor.workspaceId,
+    workspaceMembershipId: actor.workspaceMembershipId,
+    identity,
+  });
   const pending = state.status === 'submitting';
   const selectedMember = members.find(
     (member) => member.workspaceMembershipId === workspaceMembershipId,
   );
 
   useEffect(() => {
+    const previous = resetBoundary.current;
+    const replacement =
+      previous.internalUserId !== actor.internalUserId ||
+      previous.workspaceId !== actor.workspaceId ||
+      previous.workspaceMembershipId !== actor.workspaceMembershipId ||
+      previous.identity !== identity;
+    resetBoundary.current = {
+      internalUserId: actor.internalUserId,
+      workspaceId: actor.workspaceId,
+      workspaceMembershipId: actor.workspaceMembershipId,
+      identity,
+    };
+    if (!replacement) return;
+
     pendingRequest.current?.abort();
     retryCommand.current = undefined;
     setWorkspaceMembershipId('');
     setState({ status: 'idle' });
     onPendingChange(false);
-    return () => pendingRequest.current?.abort();
   }, [
     actor.internalUserId,
     actor.workspaceId,
@@ -60,6 +79,8 @@ export function WorkspaceMembershipSuspension({
     identity,
     onPendingChange,
   ]);
+
+  useEffect(() => () => pendingRequest.current?.abort(), []);
 
   useEffect(() => {
     if (
