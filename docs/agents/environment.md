@@ -67,6 +67,46 @@ bash scripts/codex-cloud-maintenance.sh
 
 Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, and reruns the base doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
 
+### Codex Cloud publication handoff
+
+Native branch and pull-request publication remains the first choice. If a Cloud task can commit locally but has no GitHub write path, capture its starting SHA before editing and export the final clean commit with:
+
+```bash
+node scripts/codex-cloud-handoff.mjs export \
+  --base "$BASE_COMMIT_SHA" \
+  --verification /tmp/codex-cloud-verification.json
+```
+
+The authenticated Work supervisor validates the returned fence with `inspect`. A clean checkout at the exact reported base can reproduce the tree without semantic editing:
+
+```bash
+node scripts/codex-cloud-handoff.mjs inspect \
+  --input /tmp/codex-cloud-handoff.md \
+  --expected-base "$CURRENT_MAIN_SHA" \
+  --expected-base-tree "$CURRENT_MAIN_TREE_SHA"
+node scripts/codex-cloud-handoff.mjs extract \
+  --input /tmp/codex-cloud-handoff.md \
+  --expected-base "$CURRENT_MAIN_SHA" \
+  --expected-base-tree "$CURRENT_MAIN_TREE_SHA" \
+  --output /tmp/codex-cloud-connector-manifest.json
+node scripts/codex-cloud-handoff.mjs materialize \
+  --input /tmp/codex-cloud-handoff.md
+```
+
+Both `CURRENT_MAIN_SHA` and `CURRENT_MAIN_TREE_SHA` come from the same
+authenticated GitHub `main` read; do not substitute a local ref for either
+identity.
+
+The v1 fallback is intentionally bounded. Export rejects path bytes that do not
+round-trip through strict UTF-8, backslashes/control characters, unsafe path
+components, gitlinks, and unsupported modes. Local materialization also rejects
+every sparse checkout and any assume-unchanged or skip-worktree index entry,
+then verifies affected base blobs and modes before mutation. Treat its target
+as disposable: validation is non-mutating, while interruption after the apply
+phase begins requires a fresh exact-base checkout before retry.
+
+The [capability-aware publication contract](issue-execution.md#codex-cloud-to-work-publication-handoff) owns the manifest shape, the executable `scripts/codex-cloud-publication.mjs` connector sequence, mismatch failures, and review and CI gates. The bundle does not grant GitHub access. Its author must keep credentials and other secrets out of the verification manifest; the validator rejects common credential patterns as an additional guard.
+
 ### ChatGPT Work mode pnpm bootstrap
 
 Some Work mode images expose a fallback pnpm that ignores the repository's
