@@ -5,10 +5,10 @@ export const ACCESS_ADMISSION = Symbol('ACCESS_ADMISSION');
 export type AccessAdmissionDecision =
   | {
       kind: 'bootstrap';
-      workspaceKey: string;
+      workspaceId: string;
       workspaceName: string;
     }
-  | { kind: 'invitation'; workspaceKey: string };
+  | { kind: 'invitation'; workspaceId: string };
 
 export interface AccessAdmission {
   resolve(principal: ExternalPrincipal): AccessAdmissionDecision | undefined;
@@ -17,7 +17,7 @@ export interface AccessAdmission {
 interface AcceptedInvitation {
   provider: string;
   subject: string;
-  workspaceKey: string;
+  workspaceId: string;
 }
 
 interface BootstrapAdmission extends AcceptedInvitation {
@@ -27,10 +27,12 @@ interface BootstrapAdmission extends AcceptedInvitation {
 export function configuredAccessAdmission(
   environment: Record<string, string | undefined>,
 ): AccessAdmission {
+  if (environment.ACCESS_BOOTSTRAP_WORKSPACE_KEY !== undefined)
+    invalidConfiguration();
   const bootstrapValues = [
     environment.ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER,
     environment.ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT,
-    environment.ACCESS_BOOTSTRAP_WORKSPACE_KEY,
+    environment.ACCESS_BOOTSTRAP_WORKSPACE_ID,
     environment.ACCESS_BOOTSTRAP_WORKSPACE_NAME,
   ];
   const hasBootstrapValue = bootstrapValues.some(
@@ -57,7 +59,7 @@ export function configuredAccessAdmission(
       ) {
         return {
           kind: 'bootstrap',
-          workspaceKey: bootstrap.workspaceKey,
+          workspaceId: bootstrap.workspaceId,
           workspaceName: bootstrap.workspaceName,
         };
       }
@@ -67,19 +69,24 @@ export function configuredAccessAdmission(
           entry.subject === principal.subject,
       );
       return invitation
-        ? { kind: 'invitation', workspaceKey: invitation.workspaceKey }
+        ? { kind: 'invitation', workspaceId: invitation.workspaceId }
         : undefined;
     },
   };
 }
 
 function parseBootstrap(values: Array<string | undefined>): BootstrapAdmission {
-  const [provider, subject, workspaceKey, workspaceName] = values.map((value) =>
+  const [provider, subject, workspaceId, workspaceName] = values.map((value) =>
     value?.trim(),
   );
-  if (!provider || !subject || !workspaceKey || !workspaceName)
+  if (!provider || !subject || !workspaceId || !workspaceName)
     return invalidConfiguration();
-  return { provider, subject, workspaceKey, workspaceName };
+  return {
+    provider,
+    subject,
+    workspaceId: requiredUuid(workspaceId),
+    workspaceName,
+  };
 }
 
 function parseInvitations(value: string | undefined): AcceptedInvitation[] {
@@ -93,16 +100,24 @@ function parseInvitations(value: string | undefined): AcceptedInvitation[] {
   if (!Array.isArray(parsed)) return invalidConfiguration();
   return parsed.map((entry) => {
     if (!isRecord(entry)) return invalidConfiguration();
+    if (Object.hasOwn(entry, 'workspaceKey')) return invalidConfiguration();
     const provider = requiredString(entry.provider);
     const subject = requiredString(entry.subject);
-    const workspaceKey = requiredString(entry.workspaceKey);
-    return { provider, subject, workspaceKey };
+    const workspaceId = requiredUuid(entry.workspaceId);
+    return { provider, subject, workspaceId };
   });
 }
 
 function requiredString(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return invalidConfiguration();
   return value.trim();
+}
+
+function requiredUuid(value: unknown): string {
+  const candidate = requiredString(value);
+  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(candidate))
+    return invalidConfiguration();
+  return candidate;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

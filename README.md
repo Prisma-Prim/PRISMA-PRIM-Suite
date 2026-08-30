@@ -89,7 +89,7 @@ The local-demo mode is restricted to `NODE_ENV=development`. A normal production
 The four `ACCESS_BOOTSTRAP_*` values configure the only verified principal that
 may idempotently create the initial Workspace, Internal User, and Workspace
 Membership. `ACCESS_ACCEPTED_INVITATIONS_JSON` is a provider-neutral JSON array
-of `{ "provider", "subject", "workspaceKey" }` entries. Each entry admits that
+of `{ "provider", "subject", "workspaceId" }` entries. Each entry admits that
 exact verified principal into an already existing Workspace. Missing complete
 bootstrap configuration fails closed; partial or malformed admission
 configuration prevents API startup. Every other unknown principal is denied
@@ -110,7 +110,7 @@ curl -i http://localhost:3000/api/access/current-actor \
 
 # Persisted Workspace, Internal User, and explicit Workspace Membership
 docker compose exec postgres psql -U prisma_prim -d prisma_prim \
-  -c 'SELECT id, singleton_key, name FROM workspaces;' \
+  -c 'SELECT id, name FROM workspaces;' \
   -c 'SELECT id, external_provider, external_subject, display_name, email, status FROM internal_users;' \
   -c 'SELECT id, workspace_id, internal_user_id, status FROM workspace_memberships;'
 
@@ -119,17 +119,13 @@ docker compose exec postgres psql -U prisma_prim -d prisma_prim \
   -c "UPDATE internal_users SET status = 'inactive' WHERE external_subject = 'local-demonstration-user';"
 ```
 
-## Deferred Workspace Membership contract migration
+## Workspace Membership authority
 
-Migration `0002` intentionally stops after expand and backfill so the previous
-Access binary can continue reading and writing during a rolling deployment.
-`internal_users.workspace_id`, `workspaces.singleton_key`, and the compatibility
-triggers are not authority for current code. The legacy Activity Log columns
-remain writable, while membership references are required and derived for old
-binaries by the insert trigger. A separate reviewed contract issue must remove
-the remaining compatibility fields and triggers only after all deployed
-consumers use Workspace Membership and an upgrade test proves the old binary is
-no longer required.
+Workspace Membership is the only relationship between a global Internal User
+and a Workspace. Migration `0016` removes the completed expand/backfill
+compatibility surfaces. Admission uses stable Workspace UUIDs: bootstrap may
+create or resolve the exact configured ID, while accepted invitations require
+their configured Workspace ID to exist already.
 
 ## Quality commands
 

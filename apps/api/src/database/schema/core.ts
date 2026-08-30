@@ -48,29 +48,18 @@ export const clientCompanyRelationshipStatus = pgEnum(
   ['active', 'archived'],
 );
 
-export const workspaces = pgTable(
-  'workspaces',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    singletonKey: text('singleton_key').notNull(),
-    name: text('name').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('workspaces_singleton_key_unique').on(table.singletonKey),
-  ],
-);
+export const workspaces = pgTable('workspaces', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
 export const internalUsers = pgTable(
   'internal_users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    // Expand/backfill compatibility only. Access authority comes from Workspace Membership.
-    workspaceId: uuid('workspace_id')
-      .notNull()
-      .references(() => workspaces.id),
     externalProvider: text('external_provider').notNull(),
     externalSubject: text('external_subject').notNull(),
     displayName: text('display_name').notNull(),
@@ -87,10 +76,6 @@ export const internalUsers = pgTable(
     uniqueIndex('internal_users_external_identity_unique').on(
       table.externalProvider,
       table.externalSubject,
-    ),
-    uniqueIndex('internal_users_workspace_id_id_unique').on(
-      table.workspaceId,
-      table.id,
     ),
   ],
 );

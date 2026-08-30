@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { configuredAccessAdmission } from './access-admission.js';
 
+const FIRST_WORKSPACE_ID = '00000000-0000-4000-8000-000000000071';
+
 describe('Access admission configuration', () => {
   it('fails closed when no admission is configured', () => {
     const admission = configuredAccessAdmission({});
@@ -19,13 +21,13 @@ describe('Access admission configuration', () => {
     const admission = configuredAccessAdmission({
       ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'clerk',
       ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'bootstrap-subject',
-      ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'first-workspace',
+      ACCESS_BOOTSTRAP_WORKSPACE_ID: FIRST_WORKSPACE_ID,
       ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'First Workspace',
       ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
         {
           provider: 'clerk',
           subject: 'invited-subject',
-          workspaceKey: 'first-workspace',
+          workspaceId: FIRST_WORKSPACE_ID,
         },
       ]),
     });
@@ -39,7 +41,7 @@ describe('Access admission configuration', () => {
       }),
     ).toEqual({
       kind: 'bootstrap',
-      workspaceKey: 'first-workspace',
+      workspaceId: FIRST_WORKSPACE_ID,
       workspaceName: 'First Workspace',
     });
     expect(
@@ -49,7 +51,7 @@ describe('Access admission configuration', () => {
         displayName: 'Invited User',
         email: 'invited@example.test',
       }),
-    ).toEqual({ kind: 'invitation', workspaceKey: 'first-workspace' });
+    ).toEqual({ kind: 'invitation', workspaceId: FIRST_WORKSPACE_ID });
     expect(
       admission.resolve({
         provider: 'clerk',
@@ -65,11 +67,43 @@ describe('Access admission configuration', () => {
       ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'clerk',
     },
     {
+      ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'clerk',
+      ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'bootstrap-subject',
+      ACCESS_BOOTSTRAP_WORKSPACE_ID: 'not-a-uuid',
+      ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'First Workspace',
+    },
+    {
+      ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'clerk',
+      ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'bootstrap-subject',
+      ACCESS_BOOTSTRAP_WORKSPACE_ID: FIRST_WORKSPACE_ID,
+      ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'first-workspace',
+      ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'First Workspace',
+    },
+    {
       ACCESS_ACCEPTED_INVITATIONS_JSON: 'not-json',
     },
     {
       ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
         { provider: 'clerk', subject: '', workspaceKey: 'workspace' },
+      ]),
+    },
+    {
+      ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+        {
+          provider: 'clerk',
+          subject: 'invited-subject',
+          workspaceId: 'not-a-uuid',
+        },
+      ]),
+    },
+    {
+      ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+        {
+          provider: 'clerk',
+          subject: 'invited-subject',
+          workspaceId: FIRST_WORKSPACE_ID,
+          workspaceKey: 'first-workspace',
+        },
       ]),
     },
   ])('rejects incomplete or invalid admission configuration', (environment) => {

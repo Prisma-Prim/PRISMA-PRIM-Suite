@@ -12,6 +12,7 @@ if (process.env.REQUIRE_CLIENT_POSTGRES === 'true' && !databaseUrl) {
   );
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
+const WORKSPACE_ID = '00000000-0000-4000-8000-000000000111';
 
 describeWithPostgres('Client REST API', () => {
   let harness: PostgresRestTestHarness;
@@ -29,13 +30,13 @@ describeWithPostgres('Client REST API', () => {
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
-        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'client-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Client Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
           {
             provider: 'deterministic-test',
             subject: 'workspace-member',
-            workspaceKey: 'client-workspace',
+            workspaceId: WORKSPACE_ID,
           },
         ]),
       },
@@ -569,28 +570,29 @@ describeWithPostgres('Client REST API', () => {
     const foreignClientId = '00000000-0000-4000-8000-000000001419';
     await pool.query(`
       WITH foreign_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('foreign-client-workspace', 'Foreign Client Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000001418', 'Foreign Client Workspace')
         RETURNING id
       ), foreign_user AS (
         INSERT INTO internal_users (
-          workspace_id, external_provider, external_subject, display_name, email
+          external_provider, external_subject, display_name, email
         )
-        SELECT id, 'deterministic-test', 'foreign-client-owner',
-          'Foreign Owner', 'foreign@example.test'
-        FROM foreign_workspace
-        RETURNING workspace_id, id
+        VALUES ('deterministic-test', 'foreign-client-owner',
+          'Foreign Owner', 'foreign@example.test')
+        RETURNING id
+      ), foreign_membership AS (
+        INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+        SELECT foreign_workspace.id, foreign_user.id
+        FROM foreign_workspace, foreign_user
+        RETURNING workspace_id, internal_user_id, id
       )
       INSERT INTO client_accounts (
         id, workspace_id, display_name, created_by_internal_user_id,
         created_by_workspace_membership_id
       )
-      SELECT '${foreignClientId}', foreign_user.workspace_id, 'Hidden Client',
-        foreign_user.id, membership.id
-      FROM foreign_user
-      INNER JOIN workspace_memberships AS membership
-        ON membership.workspace_id = foreign_user.workspace_id
-        AND membership.internal_user_id = foreign_user.id
+      SELECT '${foreignClientId}', foreign_membership.workspace_id, 'Hidden Client',
+        foreign_membership.internal_user_id, foreign_membership.id
+      FROM foreign_membership
     `);
 
     const response = await fetch(
@@ -2350,21 +2352,24 @@ describeWithPostgres('Client REST API', () => {
       internal_user_id: string;
     }>(
       `WITH foreign_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
+        INSERT INTO workspaces (id, name)
         VALUES ($1, 'Foreign Client Workspace')
         RETURNING id
       ), foreign_user AS (
         INSERT INTO internal_users (
-          workspace_id, external_provider, external_subject,
-          display_name, email
+          external_provider, external_subject, display_name, email
         )
-        SELECT id, 'deterministic-test', $2,
-          'Foreign Owner', 'foreign@example.test'
-        FROM foreign_workspace
-        RETURNING workspace_id, id
+        VALUES ('deterministic-test', $2, 'Foreign Owner',
+          'foreign@example.test')
+        RETURNING id
+      ), foreign_membership AS (
+        INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+        SELECT foreign_workspace.id, foreign_user.id
+        FROM foreign_workspace, foreign_user
+        RETURNING workspace_id, internal_user_id
       )
-      SELECT workspace_id, id AS internal_user_id FROM foreign_user`,
-      [`foreign-client-${clientAccountId}`, `foreign-owner-${clientAccountId}`],
+      SELECT workspace_id, internal_user_id FROM foreign_membership`,
+      [clientAccountId, `foreign-owner-${clientAccountId}`],
     );
     const actor = foreignActor.rows[0]!;
     const membership = await pool.query<{ membership_id: string }>(

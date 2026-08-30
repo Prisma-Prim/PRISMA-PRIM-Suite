@@ -12,6 +12,9 @@ if (process.env.REQUIRE_ACCESS_POSTGRES === 'true' && !databaseUrl) {
   );
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
+const BOOTSTRAP_WORKSPACE_ID = '00000000-0000-4000-8000-000000000071';
+const MISSING_WORKSPACE_ID = '00000000-0000-4000-8000-000000000072';
+const INVITATION_TARGET_WORKSPACE_ID = '00000000-0000-4000-8000-000000000073';
 
 describeWithPostgres('Access REST API', () => {
   let harness: PostgresRestTestHarness;
@@ -29,23 +32,23 @@ describeWithPostgres('Access REST API', () => {
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'subject-20',
-        ACCESS_BOOTSTRAP_WORKSPACE_KEY: 'pilot-workspace',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: BOOTSTRAP_WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'PRISMA Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
           {
             provider: 'deterministic-test',
             subject: 'invited-subject',
-            workspaceKey: 'pilot-workspace',
+            workspaceId: BOOTSTRAP_WORKSPACE_ID,
           },
           {
             provider: 'deterministic-test',
             subject: 'invited-to-missing-workspace',
-            workspaceKey: 'missing-workspace',
+            workspaceId: MISSING_WORKSPACE_ID,
           },
           {
             provider: 'deterministic-test',
             subject: 'invited-existing-subject',
-            workspaceKey: 'invitation-target-workspace',
+            workspaceId: INVITATION_TARGET_WORKSPACE_ID,
           },
         ]),
       },
@@ -130,6 +133,7 @@ describeWithPostgres('Access REST API', () => {
     expect(actors[0]).toMatchObject({
       displayName: 'Ada Ionescu',
       email: 'ada@example.test',
+      workspaceId: BOOTSTRAP_WORKSPACE_ID,
       workspaceName: 'PRISMA Workspace',
     });
 
@@ -139,6 +143,16 @@ describeWithPostgres('Access REST API', () => {
       workspaceMemberships: '1',
       workspaces: '1',
     });
+    const grants = await pool.query<{ permission: string }>(
+      `SELECT permission::text AS permission
+       FROM workspace_permission_grants
+       ORDER BY permission::text`,
+    );
+    expect(grants.rows).toEqual([
+      { permission: 'client.manage' },
+      { permission: 'company.assignment.manage' },
+      { permission: 'company.manage' },
+    ]);
   });
 
   it('denies a verified principal that is not the configured bootstrap actor without creating state', async () => {
@@ -200,21 +214,25 @@ describeWithPostgres('Access REST API', () => {
   it('resolves an existing global Internal User through the explicitly invited Workspace Membership', async () => {
     const existing = await pool.query<{ user_id: string }>(`
       WITH existing_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('existing-workspace', 'Existing Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000074', 'Existing Workspace')
         RETURNING id
-      )
+      ), existing_user AS (
       INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
+        external_provider, external_subject, display_name, email
       )
-      SELECT id, 'deterministic-test', 'invited-existing-subject',
-        'Existing User', 'existing@example.test'
-      FROM existing_workspace
-      RETURNING id AS user_id
+      VALUES ('deterministic-test', 'invited-existing-subject',
+        'Existing User', 'existing@example.test')
+      RETURNING id
+      )
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT existing_workspace.id, existing_user.id
+      FROM existing_workspace, existing_user
+      RETURNING internal_user_id AS user_id
     `);
     const target = await pool.query<{ workspace_id: string }>(`
-      INSERT INTO workspaces (singleton_key, name)
-      VALUES ('invitation-target-workspace', 'Invitation Target Workspace')
+      INSERT INTO workspaces (id, name)
+      VALUES ('${INVITATION_TARGET_WORKSPACE_ID}', 'Invitation Target Workspace')
       RETURNING id AS workspace_id
     `);
 
@@ -295,23 +313,13 @@ describeWithPostgres('Access REST API', () => {
 
   it('denies an Internal User without an active Workspace Membership without leaking Workspace metadata', async () => {
     await pool.query(`
-      WITH memberless_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('memberless-workspace', 'Hidden Memberless Workspace')
-        RETURNING id
-      )
+      INSERT INTO workspaces (id, name)
+      VALUES ('00000000-0000-4000-8000-000000000075', 'Hidden Memberless Workspace');
       INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
+        external_provider, external_subject, display_name, email
       )
-      SELECT id, 'deterministic-test', 'memberless-subject', 'Memberless User',
-        'memberless@example.test'
-      FROM memberless_workspace
-    `);
-    await pool.query(`
-      DELETE FROM workspace_memberships AS membership
-      USING internal_users AS internal_user
-      WHERE membership.internal_user_id = internal_user.id
-        AND internal_user.external_subject = 'memberless-subject'
+      VALUES ('deterministic-test', 'memberless-subject', 'Memberless User',
+        'memberless@example.test')
     `);
 
     const response = await fetch(`${origin}/api/access/current-actor`, {
@@ -411,9 +419,15 @@ describeWithPostgres('Access REST API', () => {
       'x-test-email': 'bogdan@example.test',
     });
     await pool.query(
-      `INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
-      ) VALUES ($1, 'deterministic-test', 'subject-bogdan', 'Bogdan Matei', 'bogdan@example.test')`,
+      `WITH inserted_user AS (
+        INSERT INTO internal_users (
+          external_provider, external_subject, display_name, email
+        ) VALUES ('deterministic-test', 'subject-bogdan', 'Bogdan Matei',
+          'bogdan@example.test')
+        RETURNING id
+      )
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT $1, id FROM inserted_user`,
       [ada.workspaceId],
     );
     await pool.query(
@@ -446,18 +460,20 @@ describeWithPostgres('Access REST API', () => {
     );
     await pool.query(`
       WITH hidden_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('hidden-workspace', 'Hidden Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000076', 'Hidden Workspace')
         RETURNING id
       ), hidden_user AS (
         INSERT INTO internal_users (
-          workspace_id, external_provider, external_subject, display_name, email
+          external_provider, external_subject, display_name, email
         )
-        SELECT id, 'deterministic-test', 'hidden-subject', 'Hidden User', 'hidden@example.test'
-        FROM hidden_workspace
+        VALUES ('deterministic-test', 'hidden-subject', 'Hidden User',
+          'hidden@example.test')
         RETURNING id
       )
-      SELECT id FROM hidden_user
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT hidden_workspace.id, hidden_user.id
+      FROM hidden_workspace, hidden_user
     `);
     await pool.query(`
       INSERT INTO activity_log_events (
@@ -498,15 +514,20 @@ describeWithPostgres('Access REST API', () => {
     }).then((response) => response.json());
     await pool.query(`
       WITH hidden_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('cross-workspace', 'Cross Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000077', 'Cross Workspace')
         RETURNING id
-      )
+      ), hidden_user AS (
       INSERT INTO internal_users (
-        workspace_id, external_provider, external_subject, display_name, email
+        external_provider, external_subject, display_name, email
       )
-      SELECT id, 'deterministic-test', 'cross-subject', 'Cross User', 'cross@example.test'
-      FROM hidden_workspace
+      VALUES ('deterministic-test', 'cross-subject', 'Cross User',
+        'cross@example.test')
+      RETURNING id
+      )
+      INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+      SELECT hidden_workspace.id, hidden_user.id
+      FROM hidden_workspace, hidden_user
     `);
     const hidden = await pool.query<{
       workspace_id: string;
@@ -567,7 +588,7 @@ describeWithPostgres('Access REST API', () => {
     expect(JSON.stringify(activity)).not.toContain(hiddenUser.user_id);
   });
 
-  it('rejects a legacy Activity Log insert when no Workspace Membership can be resolved', async () => {
+  it('rejects an Activity Log insert without required Workspace Membership references', async () => {
     const actor = await fetch(`${origin}/api/access/current-actor`, {
       headers: identityHeaders(),
     }).then((response) => response.json());
@@ -592,7 +613,7 @@ describeWithPostgres('Access REST API', () => {
           '{"identityProvider":"deterministic-test"}'::jsonb, 'missing-membership')`,
         [actor.workspaceId, actor.internalUserId],
       ),
-    ).rejects.toMatchObject({ code: '23503' });
+    ).rejects.toMatchObject({ code: '23502' });
     const events = await pool.query(
       `SELECT id FROM activity_log_events
        WHERE idempotency_key = 'missing-membership'`,
@@ -706,8 +727,8 @@ describeWithPostgres('Access REST API', () => {
     }).then((response) => response.json());
     await pool.query(
       `WITH second_workspace AS (
-        INSERT INTO workspaces (singleton_key, name)
-        VALUES ('second-workspace', 'Second Workspace')
+        INSERT INTO workspaces (id, name)
+        VALUES ('00000000-0000-4000-8000-000000000078', 'Second Workspace')
         RETURNING id
       )
       INSERT INTO workspace_memberships (
