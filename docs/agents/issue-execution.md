@@ -93,14 +93,78 @@ For browser evidence:
 
 Harness capabilities and user authorization determine publication actions. A task prompt never grants capabilities or permissions the harness does not have.
 
-| Capability                                                              | Required behavior                                                                             |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| No Git or GitHub write access                                           | Produce a tested patch or diff and report the exact publication blocker.                      |
-| Git branch and commit access                                            | Create one focused English commit on an isolated issue branch.                                |
-| Push and PR access                                                      | Push the branch and open one PR targeting `main`.                                             |
-| CI visibility                                                           | Monitor CI and fix failures caused by the PR.                                                 |
-| Merge access without task-specific or standing repository authorization | Stop after a green, reviewable PR. Do not merge.                                              |
-| Merge access with task-specific or standing repository authorization    | Squash-merge only after reviews and green CI, then clean the issue branch/worktree when safe. |
+| Capability                                                              | Required behavior                                                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| No local Git commit access                                              | Produce a tested patch or diff and report the exact publication blocker.                         |
+| Local Git commit access without GitHub write access                     | Export the exact committed tree through the Cloud-to-Work handoff below.                         |
+| Push and PR access                                                      | Push the branch and open one PR targeting `main`.                                                |
+| CI visibility                                                           | Monitor CI and fix failures caused by the PR.                                                    |
+| Merge access without task-specific or standing repository authorization | Stop after a green, reviewable PR. Do not merge.                                                 |
+| Merge access with task-specific or standing repository authorization    | Squash-merge only after reviews and green CI, then clean the issue branch or worktree when safe. |
+
+### Codex Cloud-to-Work publication handoff
+
+Native publication remains preferred whenever Codex Cloud exposes a branch or pull-request action. When Cloud can create a local Git commit but cannot write to GitHub, the lossless fallback is the versioned `prisma-prim-codex-handoff/v1` bundle; a prose summary or reconstructed patch is not an equivalent artifact.
+
+Before editing, record the exact starting commit as `BASE_COMMIT_SHA`. After the complete diff, checks, reviews, and one focused commit, create a temporary verification JSON file outside the checkout with this bounded shape:
+
+```json
+{
+  "environment": {
+    "harness": "Codex Cloud",
+    "nodeVersion": "v24.0.0",
+    "pnpmVersion": "11.20.0",
+    "postgresVersion": "17.6"
+  },
+  "checks": [
+    {
+      "command": "pnpm test:unit",
+      "status": "passed",
+      "summary": "All unit suites passed."
+    }
+  ]
+}
+```
+
+Omit environment fields that do not apply. Each check status is `passed`, `failed`, or `skipped`. The exporter rejects common credential patterns, but the task author remains responsible for keeping summaries free of credentials, connection strings, Client data, and other secrets. Export only from the clean committed checkout:
+
+```bash
+node scripts/codex-cloud-handoff.mjs export \
+  --base "$BASE_COMMIT_SHA" \
+  --verification /tmp/codex-cloud-verification.json
+```
+
+Paste the command's complete fenced output into the final task result and state why native publication was unavailable. The bundle binds its SHA-256 envelope, base commit and tree, source commit and tree, commit message, exact changed Git blobs and modes, deletions, and verification manifest. If the command reports the issue-comment transport limit, narrow the issue or use native publication; do not split or manually rewrite the bundle.
+
+The authenticated Work supervisor saves the exact fence outside the checkout and runs:
+
+```bash
+node scripts/codex-cloud-handoff.mjs inspect \
+  --input /tmp/codex-cloud-handoff.md \
+  --expected-base "$CURRENT_MAIN_SHA"
+```
+
+`CURRENT_MAIN_SHA` comes from the authenticated GitHub target branch, not a potentially stale local ref. The command fails explicitly if that head moved. Work also confirms the authenticated base commit's tree equals `baseTreeSha`.
+
+For connector publication, extract the already validated machine-readable payload into a new private temporary file:
+
+```bash
+node scripts/codex-cloud-handoff.mjs extract \
+  --input /tmp/codex-cloud-handoff.md \
+  --expected-base "$CURRENT_MAIN_SHA" \
+  --output /tmp/codex-cloud-connector-manifest.json
+```
+
+The manifest contains the source commit message and every addition's mode, type, expected blob SHA, and base64 content. Deletions include the exact base blob identity. Work creates each added blob and rejects any returned SHA that differs, creates one tree from those identities and deletions on `baseTreeSha`, and rejects a returned tree that differs from `sourceTreeSha`.
+
+Alternatively, a clean checkout detached at the exact base can materialize the same tree locally:
+
+```bash
+node scripts/codex-cloud-handoff.mjs materialize \
+  --input /tmp/codex-cloud-handoff.md
+```
+
+Before creating the branch and pull request, the staged or connector-created tree must equal `sourceTreeSha`. Work creates one remote commit without editing the materialized content, records both the Cloud `sourceCommitSha` and the published commit SHA, and retains exact-head review and CI as merge authority. Any digest, blob, path, dirty-checkout, stale-base, non-canonical delta, or tree mismatch is a hard failure; do not repair the artifact semantically.
 
 If `AGENTS.md` records standing repository authorization, it satisfies the authorization requirement for every conformant PR until explicitly revoked. Do not pause to request per-PR confirmation. Readiness remains mandatory: all required checks must be green, Standards and Spec reviews complete, scope conformant, and blocking feedback resolved.
 
