@@ -126,21 +126,57 @@ test('executes the complete client lifecycle table', async () => {
   }
 });
 
-test('preserves connect failure when cleanup also fails', async () => {
-  const calls = counts();
-  const Client = fakeClient('development:connect', calls);
-  Client.prototype.end = async function () {
-    calls[this.target][3]++;
-    throw { code: 'EPIPE' };
-  };
-  const result = await probePostgresTargets({
-    databaseUrl: 'development',
-    testDatabaseUrl: 'test',
-    Client,
-    operationTimeout: 100,
-  });
-  assert.equal(result.development.phase, 'connect');
-  assert.equal(calls.development[3], 1);
+test('preserves primary failures when cleanup also fails', async () => {
+  for (const target of ['development', 'test']) {
+    for (const [phase, code, state, expectedCalls] of [
+      ['connect', 'ECONNREFUSED', 'service-unavailable', [1, 1, 0, 1]],
+      ['query', 'ETIMEDOUT', 'unreachable', [1, 1, 1, 1]],
+    ]) {
+      const calls = counts();
+      class Client {
+        constructor({ connectionString }) {
+          this.target = connectionString;
+          calls[this.target][0]++;
+        }
+        async connect() {
+          calls[this.target][1]++;
+          if (this.target === target && phase === 'connect') throw { code };
+        }
+        async query() {
+          calls[this.target][2]++;
+          if (this.target === target && phase === 'query') throw { code };
+          return {
+            rows: [
+              {
+                server_version_number: 170_011,
+                can_create_database: true,
+              },
+            ],
+          };
+        }
+        async end() {
+          calls[this.target][3]++;
+          if (this.target === target) throw { code: 'EPIPE' };
+        }
+      }
+      const result = await probePostgresTargets({
+        databaseUrl: 'development',
+        testDatabaseUrl: 'test',
+        Client,
+        operationTimeout: 100,
+      });
+      assert.deepEqual(result[target], {
+        state,
+        target,
+        phase,
+        code,
+      });
+      assert.deepEqual(calls[target], expectedCalls);
+      const other = target === 'development' ? 'test' : 'development';
+      assert.deepEqual(result[other], available());
+      assert.deepEqual(calls[other], [1, 1, 1, 1]);
+    }
+  }
 });
 
 test('starts both targets concurrently at a logical barrier', async () => {
@@ -250,6 +286,21 @@ test('contains generated dynamic-import rejection without leaking diagnostics', 
     ],
     [
       'null',
+      { phase: 'bootstrap', state: 'tooling-missing', code: 'EIO' },
+      { state: 'tooling-missing', detail: 'probe-bootstrap' },
+    ],
+    [
+      "Object.assign(new Error('eperm-secret'),{code:'EPERM'})",
+      { phase: 'bootstrap', state: 'sandbox-denied', code: 'EPERM' },
+      { state: 'sandbox-denied', detail: 'EPERM' },
+    ],
+    [
+      "({code:'TOKEN',password:'bootstrap-object-secret'})",
+      { phase: 'bootstrap', state: 'tooling-missing', code: 'EIO' },
+      { state: 'tooling-missing', detail: 'probe-bootstrap' },
+    ],
+    [
+      '12345n',
       { phase: 'bootstrap', state: 'tooling-missing', code: 'EIO' },
       { state: 'tooling-missing', detail: 'probe-bootstrap' },
     ],
@@ -785,6 +836,15 @@ test('preserves no-runner, ENOENT, and timeout contracts', () => {
     }),
     { state: 'tooling-missing' },
   );
+  assert.deepEqual(
+    probePostgres('development', 'test', () => ({
+      error: { code: 'ETIMEDOUT' },
+      stdout: '',
+      status: null,
+      signal: null,
+    })),
+    { state: 'unreachable', phase: 'subprocess', detail: 'ETIMEDOUT' },
+  );
   let calls = 0;
   assert.deepEqual(
     probePostgres('', 'test', () => calls++),
@@ -806,6 +866,66 @@ test('preserves no-runner, ENOENT, and timeout contracts', () => {
     return { stdout: '', status: 1, signal: null, error: null };
   });
   assert.deepEqual([generic, postgres], [10_000, 15_000]);
+});
+
+test('canonicalizes hostile outer subprocess errors without disclosure', () => {
+  const cases = [
+    ['EACCES', { state: 'sandbox-denied', detail: 'EACCES' }],
+    ['EPERM', { state: 'sandbox-denied', detail: 'EPERM' }],
+    ['UNKNOWN_SECRET_CODE'],
+    ['TOKEN'],
+    ['12345'],
+    ['postgres://user:password@host/database'],
+    ['X'.repeat(20_000)],
+    [{ password: 'object-secret' }],
+    [12345n],
+    [null],
+    [undefined],
+  ];
+  const circular = { password: 'circular-secret' };
+  circular.self = circular;
+  cases.push([circular]);
+
+  for (const [
+    code,
+    expected = { state: 'tooling-missing', detail: 'probe-bootstrap' },
+  ] of cases) {
+    const result = probePostgres('development', 'test', () => ({
+      error: { code },
+      stdout: '',
+      status: null,
+      signal: null,
+    }));
+    assert.deepEqual(result, expected);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /TOKEN|12345|password|UNKNOWN_SECRET_CODE|XXXXX|object-secret|circular-secret/,
+    );
+  }
+
+  for (const mode of ['alternating', 'throwing']) {
+    let reads = 0;
+    const error = {};
+    Object.defineProperty(error, 'code', {
+      get() {
+        reads++;
+        if (mode === 'throwing') throw new Error('outer-getter-secret');
+        return reads === 1 ? 'TOKEN' : 'EACCES';
+      },
+    });
+    const result = probePostgres('development', 'test', () => ({
+      error,
+      stdout: '',
+      status: null,
+      signal: null,
+    }));
+    assert.deepEqual(result, {
+      state: 'tooling-missing',
+      detail: 'probe-bootstrap',
+    });
+    assert.equal(reads, 1, mode);
+    assert.doesNotMatch(JSON.stringify(result), /TOKEN|outer-getter-secret/);
+  }
 });
 
 function postgresStatus(development, testTarget) {
@@ -836,7 +956,519 @@ test('evaluates both target version directions', () => {
     [160_000, 170_011],
     [170_011, 160_000],
     [180_000, 170_011],
+    [170_011, 180_000],
   ])
     assert.equal(postgresStatus(...pair), 'FAIL');
   assert.equal(postgresStatus(170_011, 170_099), 'PASS');
 });
+
+const hostileCodeCases = [
+  ['token', "'TOKEN'", 'TOKEN'],
+  ['pin', "'12345'", '12345'],
+  ['url', "'postgres://user:password@host/database'", 'password'],
+  ['long', "'X'.repeat(20000)", 'XXXXX'],
+  ['object', "({password:'object-secret'})", 'object-secret'],
+  ['bigint', '12345n', '12345'],
+  [
+    'circular',
+    "(()=>{const value={password:'circular-secret'};value.self=value;return value})()",
+    'circular-secret',
+  ],
+  [
+    'alternating',
+    "(()=>{let reads=0;return Object.defineProperty({},'code',{get(){return ++reads===1?'TOKEN':'EACCES'}})})()",
+    'TOKEN',
+  ],
+  [
+    'throwing',
+    "Object.defineProperty({},'code',{get(){throw new Error('getter-secret')}})",
+    'getter-secret',
+  ],
+  ['null', 'null', 'null'],
+  ['undefined', 'undefined', 'undefined'],
+];
+
+async function executeHostileChild({
+  phase,
+  codeSource,
+  target = 'development',
+}) {
+  const directory = await mkdtemp(join(tmpdir(), 'doctor-hostile-child-'));
+  const modulePath = join(directory, 'fake-pg.mjs');
+  const log = join(directory, 'calls.log');
+  const adapterUrl = new URL(
+    './agent-doctor-system-adapter.mjs',
+    import.meta.url,
+  ).href;
+  const failure =
+    phase === 'bootstrap'
+      ? `throw ${codeSource};`
+      : `
+import{appendFileSync}from'node:fs';
+const log=(target,operation)=>appendFileSync(process.env.LOG,target+':'+operation+'\\n');
+const hostile=()=>${codeSource};
+export class Client{
+ constructor({connectionString}){this.target=connectionString;log(this.target,'constructor');if(this.target===process.env.FAIL_TARGET&&process.env.PHASE==='constructor')throw hostile()}
+ async connect(){log(this.target,'connect');if(this.target===process.env.FAIL_TARGET&&process.env.PHASE==='connect')throw hostile()}
+ async query(){log(this.target,'query');if(this.target===process.env.FAIL_TARGET&&process.env.PHASE==='query')throw hostile();return{rows:[{server_version_number:170011,can_create_database:true}]}}
+ async end(){log(this.target,'cleanup');if(this.target===process.env.FAIL_TARGET&&process.env.PHASE==='cleanup')throw hostile()}
+}
+export default{Client};`;
+  try {
+    await writeFile(modulePath, failure);
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        createPostgresChildSource({
+          adapterUrl,
+          pgSpecifier: pathToFileURL(modulePath).href,
+        }),
+      ],
+      {
+        encoding: 'utf8',
+        timeout: 2_000,
+        env: {
+          ...process.env,
+          DATABASE_URL: 'development',
+          TEST_DATABASE_URL: 'test',
+          LOG: log,
+          PHASE: phase,
+          FAIL_TARGET: target,
+        },
+      },
+    );
+    let calls = '';
+    try {
+      calls = await readFile(log, 'utf8');
+    } catch {
+      // Bootstrap and constructor failures can occur before the log is created.
+    }
+    return { ...result, calls };
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+test(
+  'sanitizes hostile generated-child failures at every phase',
+  { timeout: 60_000 },
+  async () => {
+    for (const phase of [
+      'bootstrap',
+      'constructor',
+      'connect',
+      'query',
+      'cleanup',
+    ]) {
+      for (const [label, codeSource, forbidden] of hostileCodeCases) {
+        const result = await executeHostileChild({ phase, codeSource });
+        assert.equal(result.status, 1, `${phase}/${label} exit status`);
+        assert.equal(result.signal, null, `${phase}/${label} signal`);
+        assert.equal(result.stderr, '', `${phase}/${label} stderr`);
+        assert.equal(
+          result.stdout.split(SENTINEL).length - 1,
+          1,
+          `${phase}/${label} sentinel count`,
+        );
+        const expected =
+          phase === 'bootstrap'
+            ? { state: 'tooling-missing', detail: 'probe-bootstrap' }
+            : {
+                state: 'connection-failed',
+                target: 'development',
+                phase,
+                detail: 'EIO',
+              };
+        const publicResult = classifyPostgresCommand(result);
+        assert.deepEqual(publicResult, expected, `${phase}/${label} result`);
+        const observable = `${result.stdout}\n${result.stderr}\n${JSON.stringify(publicResult)}`;
+        assert.doesNotMatch(observable, /password|stack|Error:| at /i);
+        if (!['null', 'undefined'].includes(label))
+          assert.doesNotMatch(observable, new RegExp(forbidden));
+        if (phase !== 'bootstrap') {
+          const lines = result.calls.trim().split('\n');
+          assert.equal(
+            lines.filter((line) => line === 'test:cleanup').length,
+            1,
+          );
+          assert.equal(
+            lines.filter((line) => line === 'development:cleanup').length,
+            phase === 'constructor' ? 0 : 1,
+          );
+          assert.ok(lines.includes('test:query'));
+        }
+      }
+    }
+  },
+);
+
+test(
+  'classifies generated-child failures from the test target',
+  { timeout: 10_000 },
+  async () => {
+    for (const phase of ['constructor', 'connect', 'query', 'cleanup']) {
+      const result = await executeHostileChild({
+        phase,
+        codeSource: "'TOKEN'",
+        target: 'test',
+      });
+      assert.equal(result.status, 1, `${phase} exit status`);
+      assert.equal(result.signal, null, `${phase} signal`);
+      assert.equal(result.stderr, '', `${phase} stderr`);
+      assert.equal(result.stdout.split(SENTINEL).length - 1, 1);
+      assert.deepEqual(classifyPostgresCommand(result), {
+        state: 'connection-failed',
+        target: 'test',
+        phase,
+        detail: 'EIO',
+      });
+      const lines = result.calls.trim().split('\n');
+      assert.equal(
+        lines.filter((line) => line === 'development:cleanup').length,
+        1,
+      );
+      assert.equal(
+        lines.filter((line) => line === 'test:cleanup').length,
+        phase === 'constructor' ? 0 : 1,
+      );
+      assert.ok(lines.includes('development:query'));
+      assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /TOKEN/);
+    }
+  },
+);
+
+test('rejects the complete malformed sentinel and target-record matrix', () => {
+  const validLine = `${SENTINEL}${JSON.stringify(envelope())}\n`;
+  const malformedStdout = [
+    '',
+    `${SENTINEL}{`,
+    `${SENTINEL}null\n`,
+    `${SENTINEL}[]\n`,
+    `WRONG_${validLine}`,
+    validLine + validLine,
+  ];
+  for (const stdout of malformedStdout)
+    assert.deepEqual(
+      classifyPostgresCommand({ status: 0, signal: null, error: null, stdout }),
+      { state: 'tooling-missing', detail: 'probe-bootstrap' },
+    );
+
+  const badRecords = [
+    null,
+    [],
+    {},
+    { ...available(), state: 'wrong' },
+    { ...available(), serverVersionNumber: '170011' },
+    { ...available(), canCreateDatabase: 1 },
+    { ...available(), extra: true },
+    {
+      state: 'connection-failed',
+      target: 'development',
+      phase: 'wrong',
+      code: 'EIO',
+    },
+    {
+      state: 'connection-failed',
+      target: 'test',
+      phase: 'connect',
+      code: 'EIO',
+    },
+    {
+      state: 'connection-failed',
+      target: 'development',
+      phase: 'connect',
+      code: 'TOKEN',
+    },
+  ];
+  for (const development of badRecords)
+    assert.deepEqual(classifyPostgresCommand(command(envelope(development))), {
+      state: 'tooling-missing',
+      detail: 'probe-bootstrap',
+    });
+
+  const testFailure = {
+    state: 'service-unavailable',
+    target: 'test',
+    phase: 'connect',
+    code: 'ECONNREFUSED',
+  };
+  assert.deepEqual(
+    classifyPostgresCommand(command(envelope(available(), testFailure))),
+    {
+      state: 'service-unavailable',
+      target: 'test',
+      phase: 'connect',
+      detail: 'ECONNREFUSED',
+    },
+  );
+
+  assert.deepEqual(
+    classifyPostgresCommand({
+      status: 0,
+      signal: null,
+      error: null,
+      stdout: `pnpm banner\n${validLine}pnpm trailer\n`,
+    }),
+    {
+      state: 'available',
+      serverVersionNumber: 170_011,
+      canCreateDatabase: true,
+      allTargetsCanCreateDatabase: true,
+      targets: { development: available(), test: available() },
+    },
+  );
+});
+
+test('snapshots every hostile command property exactly once', () => {
+  const expectedAvailable = {
+    state: 'available',
+    serverVersionNumber: 170_011,
+    canCreateDatabase: true,
+    allTargetsCanCreateDatabase: true,
+    targets: { development: available(), test: available() },
+  };
+  for (const property of ['error', 'stdout', 'status', 'signal']) {
+    for (const mode of ['stable', 'alternating', 'throwing']) {
+      let reads = 0;
+      const values = command(envelope());
+      Object.defineProperty(values, property, {
+        get() {
+          reads++;
+          if (mode === 'throwing') throw new Error('getter-secret');
+          if (mode === 'alternating' && reads > 1)
+            throw new Error('second-read-secret');
+          return command(envelope())[property];
+        },
+      });
+      const result = classifyPostgresCommand(values);
+      assert.deepEqual(
+        result,
+        mode === 'throwing'
+          ? { state: 'tooling-missing', detail: 'probe-bootstrap' }
+          : expectedAvailable,
+        `${property}/${mode} result`,
+      );
+      assert.equal(reads, 1, `${property}/${mode}`);
+      assert.doesNotMatch(JSON.stringify(result), /getter-secret|second-read/);
+    }
+  }
+});
+
+test('fails closed for hostile nested protocol objects', () => {
+  const hostileTargets = [
+    Object.create(null),
+    new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('secret');
+        },
+      },
+    ),
+    new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new Error('secret');
+        },
+      },
+    ),
+  ];
+  const originalParse = JSON.parse;
+  try {
+    for (const targets of hostileTargets) {
+      JSON.parse = () => ({ phase: 'targets', targets });
+      assert.doesNotThrow(() =>
+        assert.deepEqual(classifyPostgresCommand(command(envelope())), {
+          state: 'tooling-missing',
+          detail: 'probe-bootstrap',
+        }),
+      );
+    }
+    const payload = envelope();
+    Object.defineProperty(payload.targets.development, 'state', {
+      get() {
+        throw new Error('nested-secret');
+      },
+    });
+    JSON.parse = () => payload;
+    const result = classifyPostgresCommand(command(envelope()));
+    assert.deepEqual(result, {
+      state: 'tooling-missing',
+      detail: 'probe-bootstrap',
+    });
+    assert.doesNotMatch(JSON.stringify(result), /nested-secret/);
+  } finally {
+    JSON.parse = originalParse;
+  }
+});
+
+test('rejects hostile query response getters and value types', async () => {
+  const assertQueryFailures = (targets) => {
+    for (const target of ['development', 'test']) {
+      assert.deepEqual(targets[target], {
+        state: 'connection-failed',
+        target,
+        phase: 'query',
+        code: 'EIO',
+      });
+      assert.deepEqual(Reflect.ownKeys(targets[target]).sort(), [
+        'code',
+        'phase',
+        'state',
+        'target',
+      ]);
+    }
+    assert.doesNotMatch(JSON.stringify(targets), /secret/i);
+  };
+  const hostileRows = [
+    null,
+    undefined,
+    {},
+    12345n,
+    Symbol('secret'),
+    [],
+    [{ server_version_number: '170011', can_create_database: true }],
+    [{ server_version_number: 170_011, can_create_database: 1 }],
+  ];
+  for (const rows of hostileRows) {
+    const calls = counts();
+    class Client {
+      constructor({ connectionString }) {
+        this.target = connectionString;
+        calls[this.target][0]++;
+      }
+      async connect() {
+        calls[this.target][1]++;
+      }
+      async query() {
+        calls[this.target][2]++;
+        return { rows };
+      }
+      async end() {
+        calls[this.target][3]++;
+      }
+    }
+    const targets = await probePostgresTargets({
+      databaseUrl: 'development',
+      testDatabaseUrl: 'test',
+      Client,
+      operationTimeout: 100,
+    });
+    assertQueryFailures(targets);
+    assert.deepEqual(calls.development, [1, 1, 1, 1]);
+    assert.deepEqual(calls.test, [1, 1, 1, 1]);
+  }
+  for (const hostile of [
+    {
+      get rows() {
+        throw new Error('rows-secret');
+      },
+    },
+    {
+      rows: [
+        {
+          get server_version_number() {
+            throw new Error('row-secret');
+          },
+        },
+      ],
+    },
+    {
+      rows: [
+        {
+          server_version_number: 170_011,
+          get can_create_database() {
+            throw new Error('capability-secret');
+          },
+        },
+      ],
+    },
+  ]) {
+    const calls = counts();
+    class Client {
+      constructor({ connectionString }) {
+        this.target = connectionString;
+        calls[this.target][0]++;
+      }
+      async connect() {
+        calls[this.target][1]++;
+      }
+      async query() {
+        calls[this.target][2]++;
+        return hostile;
+      }
+      async end() {
+        calls[this.target][3]++;
+      }
+    }
+    const targets = await probePostgresTargets({
+      databaseUrl: 'development',
+      testDatabaseUrl: 'test',
+      Client,
+      operationTimeout: 100,
+    });
+    assertQueryFailures(targets);
+    assert.deepEqual(calls.development, [1, 1, 1, 1]);
+    assert.deepEqual(calls.test, [1, 1, 1, 1]);
+  }
+});
+
+test(
+  'standalone generated child times out and exits without a live handle',
+  { timeout: 10_000 },
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'doctor-timeout-child-'));
+    const modulePath = join(directory, 'pending-pg.mjs');
+    const log = join(directory, 'calls.log');
+    try {
+      await writeFile(
+        modulePath,
+        `import{appendFileSync}from'node:fs';export class Client{constructor({connectionString}){this.t=connectionString}connect(){return new Promise(()=>{})}async end(){appendFileSync(process.env.LOG,this.t+'\\n')}}export default{Client}`,
+      );
+      const result = spawnSync(
+        process.execPath,
+        [
+          '--input-type=module',
+          '--eval',
+          createPostgresChildSource({
+            adapterUrl: new URL(
+              './agent-doctor-system-adapter.mjs',
+              import.meta.url,
+            ).href,
+            pgSpecifier: pathToFileURL(modulePath).href,
+          }),
+        ],
+        {
+          encoding: 'utf8',
+          timeout: 8_000,
+          env: {
+            ...process.env,
+            DATABASE_URL: 'development',
+            TEST_DATABASE_URL: 'test',
+            LOG: log,
+          },
+        },
+      );
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, 1);
+      assert.equal(result.signal, null);
+      assert.equal(result.stderr, '');
+      assert.equal(result.stdout.split(SENTINEL).length - 1, 1);
+      assert.deepEqual(classifyPostgresCommand(result), {
+        state: 'unreachable',
+        target: 'development',
+        phase: 'connect',
+        detail: 'ETIMEDOUT',
+      });
+      assert.deepEqual(
+        (await readFile(log, 'utf8')).trim().split('\n').sort(),
+        ['development', 'test'],
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
