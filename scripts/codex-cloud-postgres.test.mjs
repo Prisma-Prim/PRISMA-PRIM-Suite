@@ -298,6 +298,8 @@ test('enforces least privilege and exact socket plus TCP identities', () => {
     script,
     /LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS/,
   );
+  assert.match(script, /CREATE ROLE .* PASSWORD/);
+  assert.doesNotMatch(script, /ALTER ROLE/);
   assert.match(script, /--auth-local=peer/);
   assert.match(script, /--auth-host=scram-sha-256/);
   assert.match(script, /--data-checksums/);
@@ -1078,11 +1080,15 @@ case "$name" in
       if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_dev" ]]; then echo 1; fi
     elif [[ "$query" == *"datname = 'prisma_prim_test'"* ]]; then
       if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_test" ]]; then echo 1; fi
-    elif [[ "$query" == ALTER\ ROLE* ]]; then
-      [[ "\${FAKE_FAIL_OPERATION:-}" != 'alter-role' ]] || exit 53
+    elif [[ "$query" == CREATE\ ROLE* ]]; then
+      [[ "\${FAKE_FAIL_OPERATION:-}" != 'create-role' ]] || exit 53
       : >"\${FAKE_STATE_ROOT}/role.exists"
       : >"\${FAKE_STATE_ROOT}/role.configured"
-      echo alter-role >>"\${FAKE_LOG}/mutations"
+      echo create-role >>"\${FAKE_LOG}/mutations"
+      if [[ "\${FAKE_SIGNAL_AFTER_CREATE_ROLE:-false}" == 'true' ]]; then
+        /usr/bin/kill -TERM "$PPID"
+        exit 0
+      fi
     elif [[ "$query" == ALTER\ DATABASE\ prisma_prim_dev* ]]; then
       [[ "\${FAKE_FAIL_OPERATION:-}" != 'alter-database' ]] || exit 54
       : >"\${FAKE_STATE_ROOT}/database.prisma_prim_dev"
@@ -1344,11 +1350,33 @@ test('resumes application provisioning on an owned server after interruption', a
   ).slice(mutationsBefore.length);
   assert.match(
     resumedMutations,
-    /createuser[\s\S]*alter-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
+    /create-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
   );
   assert.equal(
     (await readFile(join(fixture.logRoot, 'pg_ctl'), 'utf8')).trim(),
     'start',
+  );
+});
+
+test('recovers after an atomic role commit interrupted before database creation', async (t) => {
+  const fixture = await createFixture(t);
+  const interrupted = runScript({
+    env: { ...fixture.env, FAKE_SIGNAL_AFTER_CREATE_ROLE: 'true' },
+  });
+  assert.equal(interrupted.signal, null);
+  assert.equal(interrupted.status, 143, interrupted.stderr);
+  assert.doesNotMatch(interrupted.stdout, /Local PostgreSQL .* is ready/);
+  assert.ok((await lstat(join(fixture.stateRoot, 'role.exists'))).isFile());
+  assert.ok((await lstat(join(fixture.stateRoot, 'role.configured'))).isFile());
+  await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_dev'));
+  await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
+
+  assertSuccess(runScript({ env: fixture.env }));
+  const mutations = await readFile(join(fixture.logRoot, 'mutations'), 'utf8');
+  assert.equal((mutations.match(/^create-role$/gm) ?? []).length, 1);
+  assert.match(
+    mutations,
+    /create-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
   );
 });
 
@@ -2459,22 +2487,16 @@ test('fails closed when readiness is exhausted and never prints ready', async (t
 });
 
 for (const [phase, env, expectedMutation, forbiddenMutation] of [
-  ['initdb', { FAKE_INITDB_FAIL: 'true' }, null, /createuser|createdb|alter/],
-  ['start', { FAKE_START_FAIL: 'true' }, null, /createuser|createdb|alter/],
+  ['initdb', { FAKE_INITDB_FAIL: 'true' }, null, /create-role|createdb/],
+  ['start', { FAKE_START_FAIL: 'true' }, null, /create-role|createdb/],
   [
     'initial SQL',
     { FAKE_FAIL_OPERATION: 'psql' },
     null,
-    /createuser|createdb|alter/,
+    /create-role|createdb/,
   ],
-  ['createuser', { FAKE_FAIL_OPERATION: 'createuser' }, null, /createdb|alter/],
-  [
-    'ALTER ROLE',
-    { FAKE_FAIL_OPERATION: 'alter-role' },
-    /createuser/,
-    /createdb|alter-database/,
-  ],
-  ['createdb', { FAKE_FAIL_OPERATION: 'createdb' }, /alter-role/, /createdb/],
+  ['CREATE ROLE', { FAKE_FAIL_OPERATION: 'create-role' }, null, /createdb/],
+  ['createdb', { FAKE_FAIL_OPERATION: 'createdb' }, /create-role/, /createdb/],
   [
     'second createdb',
     { FAKE_FAIL_CREATEDB_DATABASE: 'prisma_prim_test' },

@@ -1706,21 +1706,8 @@ else
 fi
 
 if [[ "${role_catalog_state}" == 'absent' ]]; then
-  service_pg_command \
-    timeout 10s \
-    "${install_root}/bin/createuser" \
-    --host "${socket_root}" \
-    --port "${postgres_port}" \
-    --username "${service_user}" \
-    --login \
-    --createdb \
-    --no-superuser \
-    --no-createrole \
-    --no-replication \
-    --no-bypassrls \
-    "${database_user}"
   admin_psql --command \
-    "ALTER ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'" \
+    "CREATE ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'" \
     >/dev/null
 fi
 
