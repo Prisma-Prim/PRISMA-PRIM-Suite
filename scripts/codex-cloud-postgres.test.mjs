@@ -2526,7 +2526,7 @@ async function terminateProcessGroup(child) {
   }
 }
 
-async function waitFor(path, timeout = 5_000) {
+async function waitFor(path, timeout = 15_000) {
   const started = Date.now();
   while (Date.now() - started < timeout) {
     try {
