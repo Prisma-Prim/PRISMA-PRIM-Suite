@@ -66,7 +66,7 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function runScript({ args = [], env = {}, timeout = 10_000 } = {}) {
+function runScript({ args = [], env = {}, timeout = 60_000 } = {}) {
   assert.match(env.PATH ?? '', /prisma-prim-tools-test-/);
   return spawnSync('bash', [scriptPath, ...args], {
     encoding: 'utf8',
@@ -275,8 +275,14 @@ test('requires all trusted server binaries and supported versions', () => {
   for (const binary of requiredBinaries) {
     assert.match(script, new RegExp(`^  ${binary}$`, 'm'));
   }
-  assert.match(script, /is_canonical_integer_in_range "\$\{major\}" 17 17/);
-  assert.match(script, /is_canonical_integer_in_range "\$\{minor\}" 11 999999/);
+  assert.match(
+    script,
+    /"\$\{output\}" == "\$\{binary\} \(PostgreSQL\) \$\{postgres_version\}"/,
+  );
+  assert.match(
+    script,
+    /"\$\{version\}" "\$\{postgres_version_number\}" "\$\{postgres_version_number\}"/,
+  );
   assert.match(script, /07022/);
 });
 
@@ -301,7 +307,7 @@ test('enforces least privilege and exact socket plus TCP identities', () => {
   assert.doesNotMatch(script, /pg_ctl[^\n]*-o/);
 });
 
-test('selects only online conflicting non-17 Debian clusters and rejects malformed fields', async (t) => {
+test('selects every online Debian cluster on the chosen port and rejects malformed fields', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const parser = [
     shellFunction('fail'),
@@ -326,7 +332,7 @@ test('selects only online conflicting non-17 Debian clusters and rejects malform
     },
   );
   assert.equal(selected.status, 0, selected.stderr);
-  assert.equal(selected.stdout, '16|legacy\n');
+  assert.equal(selected.stdout, '16|legacy\n17|current\n');
 
   const malformed = spawnSync(
     '/usr/bin/bash',
@@ -969,7 +975,58 @@ case "$name" in
       [[ "\${FAKE_SERVICE_BOUNDARY:-false}" == 'true' ]] || exit 89
     fi
     [[ "\${FAKE_FAIL_OPERATION:-}" != 'psql' ]] || exit 50
-    if [[ "$query" == *'rolcanlogin'* ]]; then
+    if [[ "\${FAKE_REJECT_APP_PASSWORD:-false}" == 'true' && "$host" == '127.0.0.1' && "$username" == 'prisma_prim' ]]; then
+      exit 59
+    fi
+    if [[ "$query" == *'SELECT 1 FROM pg_roles'* || "$query" == *'SELECT 1 FROM pg_database'* ]]; then
+      probe_count_file="\${FAKE_STATE_ROOT}/catalog-probe-count"
+      probe_count=0
+      if [[ -f "$probe_count_file" ]]; then
+        probe_count="$(<"$probe_count_file")"
+      fi
+      ((probe_count += 1))
+      printf '%s\n' "$probe_count" >"$probe_count_file"
+      if [[ "\${FAKE_FAIL_CATALOG_PROBE_NUMBER:-}" == "$probe_count" ]]; then
+        exit 57
+      fi
+      if [[ "\${FAKE_MALFORMED_CATALOG_PROBE_NUMBER:-}" == "$probe_count" ]]; then
+        printf '1\n1\n'
+        exit 0
+      fi
+    fi
+    if [[ "$query" == *'rolcanlogin'* && "$query" != *'pg_get_userbyid'* ]]; then
+      [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
+      data="\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}"
+      port="\${FAKE_IDENTITY_PORT:-\${FAKE_PORT}}"
+      socket="\${FAKE_IDENTITY_SOCKET:-\${FAKE_SOCKET_ROOT}}"
+      listen="\${FAKE_IDENTITY_LISTEN:-127.0.0.1}"
+      version="\${FAKE_IDENTITY_VERSION:-170011}"
+      checksums="\${FAKE_IDENTITY_CHECKSUMS:-on}"
+      login="\${FAKE_ROLE_LOGIN:-t}"
+      createdb="\${FAKE_ROLE_CREATEDB:-t}"
+      superuser="\${FAKE_ROLE_SUPERUSER:-f}"
+      createrole="\${FAKE_ROLE_CREATEROLE:-f}"
+      replication="\${FAKE_ROLE_REPLICATION:-f}"
+      bypassrls="\${FAKE_ROLE_BYPASSRLS:-f}"
+      sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
+      reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
+      reported_user="\${FAKE_IDENTITY_USER:-$username}"
+      if [[ "$host" == '127.0.0.1' ]]; then
+        data="\${FAKE_TCP_IDENTITY_DATA:-$data}"
+        port="\${FAKE_TCP_IDENTITY_PORT:-$port}"
+        socket="\${FAKE_TCP_IDENTITY_SOCKET:-$socket}"
+        listen="\${FAKE_TCP_IDENTITY_LISTEN:-$listen}"
+        version="\${FAKE_TCP_IDENTITY_VERSION:-$version}"
+        reported_database="\${FAKE_TCP_IDENTITY_DATABASE:-$reported_database}"
+        reported_user="\${FAKE_TCP_IDENTITY_USER:-$reported_user}"
+        sentinel="\${FAKE_TCP_IDENTITY_SENTINEL:-$sentinel}"
+      fi
+      printf 'role-identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
+      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
+        "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
+        "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
+        "$bypassrls" "$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+    elif [[ "$query" == *'rolcanlogin'* ]]; then
       [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
       [[ -e "\${FAKE_STATE_ROOT}/database.$database" ]] || exit 52
       data="\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}"
@@ -990,7 +1047,7 @@ case "$name" in
       reported_user="\${FAKE_IDENTITY_USER:-$username}"
       if [[ "$host" == '127.0.0.1' ]]; then
         data="\${FAKE_TCP_IDENTITY_DATA:-$data}"
-        port="\${FAKE_TCP_IDENTITY_PORT:-$port}"
+        port="\${FAKE_TCP_APP_IDENTITY_PORT:-\${FAKE_TCP_IDENTITY_PORT:-$port}}"
         socket="\${FAKE_TCP_IDENTITY_SOCKET:-$socket}"
         listen="\${FAKE_TCP_IDENTITY_LISTEN:-$listen}"
         version="\${FAKE_TCP_IDENTITY_VERSION:-$version}"
@@ -1016,11 +1073,11 @@ case "$name" in
     elif [[ "$query" == 'SHOW server_version' ]]; then
       echo "\${FAKE_SERVER_VERSION:-17.11}"
     elif [[ "$query" == *'SELECT 1 FROM pg_roles'* ]]; then
-      [[ -e "\${FAKE_STATE_ROOT}/role.exists" ]] && echo 1
+      if [[ -e "\${FAKE_STATE_ROOT}/role.exists" ]]; then echo 1; fi
     elif [[ "$query" == *"datname = 'prisma_prim_dev'"* ]]; then
-      [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_dev" ]] && echo 1
+      if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_dev" ]]; then echo 1; fi
     elif [[ "$query" == *"datname = 'prisma_prim_test'"* ]]; then
-      [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_test" ]] && echo 1
+      if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_test" ]]; then echo 1; fi
     elif [[ "$query" == ALTER\ ROLE* ]]; then
       [[ "\${FAKE_FAIL_OPERATION:-}" != 'alter-role' ]] || exit 53
       : >"\${FAKE_STATE_ROOT}/role.exists"
@@ -1042,8 +1099,9 @@ case "$name" in
     echo createuser >>"\${FAKE_LOG}/mutations"
     ;;
   createdb)
-    [[ "\${FAKE_FAIL_OPERATION:-}" != 'createdb' ]] || exit 56
     database="\${!#}"
+    [[ "\${FAKE_FAIL_OPERATION:-}" != 'createdb' ]] || exit 56
+    [[ "\${FAKE_FAIL_CREATEDB_DATABASE:-}" != "$database" ]] || exit 56
     : >"\${FAKE_STATE_ROOT}/database.$database"
     echo "createdb-$database" >>"\${FAKE_LOG}/mutations"
     ;;
@@ -1266,6 +1324,68 @@ test('executes the real lifecycle successfully and reuses its exact state', asyn
   assert.ok((await lstat(join(fixture.logRoot, 'initdb'))).isFile());
 });
 
+test('resumes application provisioning on an owned server after interruption', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  await Promise.all([
+    rm(join(fixture.stateRoot, 'role.exists'), { force: true }),
+    rm(join(fixture.stateRoot, 'role.configured'), { force: true }),
+    rm(join(fixture.stateRoot, 'database.prisma_prim_dev'), { force: true }),
+    rm(join(fixture.stateRoot, 'database.prisma_prim_test'), { force: true }),
+  ]);
+
+  const resumed = runScript({ env: fixture.env });
+  assertSuccess(resumed);
+  const resumedMutations = (
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8')
+  ).slice(mutationsBefore.length);
+  assert.match(
+    resumedMutations,
+    /createuser[\s\S]*alter-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
+  );
+  assert.equal(
+    (await readFile(join(fixture.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
+  );
+});
+
+test('creates only a database proven absent from an otherwise valid catalog', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
+
+  assertSuccess(runScript({ env: fixture.env }));
+  const resumedMutations = (
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8')
+  ).slice(mutationsBefore.length);
+  assert.equal(resumedMutations, 'createdb-prisma_prim_test\n');
+});
+
+test('rejects existing databases without the required role before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  await Promise.all([
+    rm(join(fixture.stateRoot, 'role.exists')),
+    rm(join(fixture.stateRoot, 'role.configured')),
+  ]);
+
+  const result = runScript({ env: fixture.env });
+  assertOrdinaryFailure(result, /exists without the required application role/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+});
+
 for (const binary of requiredBinaries) {
   test(`rejects an unsupported ${binary} before service mutation`, async (t) => {
     const fixture = await createFixture(t);
@@ -1425,7 +1545,8 @@ test('rejects foreign cache ownership and a timed-out version probe', async (t) 
 });
 
 for (const [version, succeeds] of [
-  ['17.12', true],
+  ['17.11', true],
+  ['17.12', false],
   ['17.10', false],
   ['17.18446744073709551627', false],
   ['18.0', false],
@@ -2353,17 +2474,12 @@ for (const [phase, env, expectedMutation, forbiddenMutation] of [
     /createuser/,
     /createdb|alter-database/,
   ],
+  ['createdb', { FAKE_FAIL_OPERATION: 'createdb' }, /alter-role/, /createdb/],
   [
-    'createdb',
-    { FAKE_FAIL_OPERATION: 'createdb' },
-    /alter-role/,
-    /alter-database/,
-  ],
-  [
-    'ALTER DATABASE',
-    { FAKE_FAIL_OPERATION: 'alter-database' },
-    /createdb/,
-    /alter-database/,
+    'second createdb',
+    { FAKE_FAIL_CREATEDB_DATABASE: 'prisma_prim_test' },
+    /createdb-prisma_prim_dev/,
+    /createdb-prisma_prim_test/,
   ],
 ]) {
   test(`fails closed at the ${phase} boundary and stops a started server`, async (t) => {
@@ -2395,6 +2511,7 @@ test('rejects every live identity, version, privilege, owner, and sentinel misma
     ],
     ['listen address', { FAKE_IDENTITY_LISTEN: '*' }],
     ['old server version', { FAKE_IDENTITY_VERSION: '170010' }],
+    ['newer server version', { FAKE_IDENTITY_VERSION: '170012' }],
     [
       'overflowing server version',
       { FAKE_IDENTITY_VERSION: '18446744073709721627' },
@@ -2423,6 +2540,59 @@ test('rejects every live identity, version, privilege, owner, and sentinel misma
     );
   }
 });
+
+test('does not mutate valid existing objects when incomplete catalog identities are unsafe', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const cases = [
+    ['role privilege', { FAKE_ROLE_SUPERUSER: 't' }],
+    ['role password', { FAKE_REJECT_APP_PASSWORD: 'true' }],
+    ['database owner', { FAKE_DATABASE_OWNER: 'postgres' }],
+    ['TCP identity', { FAKE_TCP_IDENTITY_PORT: '6543' }],
+  ];
+
+  for (const [name, mismatch] of cases) {
+    const result = runScript({ env: { ...fixture.env, ...mismatch } });
+    assertOrdinaryFailure(result, /identity verification failed/);
+    assert.equal(
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+      mutationsBefore,
+      `${name} mismatch performed SQL mutation`,
+    );
+    await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
+  }
+});
+
+for (const [name, env, pattern] of [
+  ['failed', { FAKE_FAIL_CATALOG_PROBE_NUMBER: '2' }, /catalog probe failed/],
+  [
+    'malformed',
+    { FAKE_MALFORMED_CATALOG_PROBE_NUMBER: '3' },
+    /catalog probe returned unexpected output/,
+  ],
+]) {
+  test(`rejects a ${name} catalog probe without mutation`, async (t) => {
+    const fixture = await establishRunningFixture(t);
+    await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
+    await rm(join(fixture.stateRoot, 'catalog-probe-count'), { force: true });
+    const mutationsBefore = await readFile(
+      join(fixture.logRoot, 'mutations'),
+      'utf8',
+    );
+
+    const result = runScript({ env: { ...fixture.env, ...env } });
+    assertOrdinaryFailure(result, pattern);
+    assert.equal(
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+      mutationsBefore,
+    );
+    await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
+  });
+}
 
 test('runs the same application identity query on both transports and rejects TCP-only mismatch', async (t) => {
   const fixture = await establishRunningFixture(t);
@@ -2456,7 +2626,7 @@ test('runs the same application identity query on both transports and rejects TC
     'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_TCP_IDENTITY_PORT: '6543' },
+    env: { ...fixture.env, FAKE_TCP_APP_IDENTITY_PORT: '6543' },
   });
   assertOrdinaryFailure(result, /existing TCP identity verification failed/);
   assert.equal(
@@ -2471,6 +2641,14 @@ test('rejects a role that gains superuser authority', async (t) => {
     env: { ...fixture.env, FAKE_ROLE_SUPERUSER: 'true' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
+});
+
+test('rejects a final server version other than exactly 17.11', async (t) => {
+  const fixture = await createFixture(t);
+  const result = runScript({
+    env: { ...fixture.env, FAKE_SERVER_VERSION: '17.12' },
+  });
+  assertOrdinaryFailure(result, /not exactly PostgreSQL 17\.11/);
 });
 
 test('preserves an unmarked data directory instead of adopting it', async (t) => {

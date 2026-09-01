@@ -566,14 +566,7 @@ validate_marker \
 postgres_version_is_supported() {
   local binary="$1"
   local output="$2"
-  local major minor
-  if [[ ! "${output}" =~ ^${binary}[[:space:]]\(PostgreSQL\)[[:space:]]([0-9]+)\.([0-9]+)(\.[0-9]+)?[[:space:]]*$ ]]; then
-    return 1
-  fi
-  major="${BASH_REMATCH[1]}"
-  minor="${BASH_REMATCH[2]}"
-  is_canonical_integer_in_range "${major}" 17 17 &&
-    is_canonical_integer_in_range "${minor}" 11 999999
+  [[ "${output}" == "${binary} (PostgreSQL) ${postgres_version}" ]]
 }
 
 validate_install_payload() {
@@ -975,7 +968,7 @@ select_conflicting_debian_clusters() {
       fail 'pg_lsclusters returned an unsafe owner.'
     [[ "${data_directory}" == /* && "${log_file}" == /* ]] ||
       fail 'pg_lsclusters returned unsafe non-absolute paths.'
-    if [[ "${status}" == 'online' && "${port}" == "${postgres_port}" && "${version}" != '17' ]]; then
+    if [[ "${status}" == 'online' && "${port}" == "${postgres_port}" ]]; then
       printf '%s|%s\n' "${version}" "${cluster}"
     fi
   done <<<"${clusters_output}"
@@ -1499,7 +1492,7 @@ verify_base_identity() {
   [[ "${socket}" == "${socket_root}" ]] || return 1
   [[ "${listen}" == '127.0.0.1' ]] || return 1
   is_canonical_integer_in_range \
-    "${version}" "${postgres_version_number}" 179999 || return 1
+    "${version}" "${postgres_version_number}" "${postgres_version_number}" || return 1
   [[ "${database}" == 'postgres' ]] || return 1
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
@@ -1507,6 +1500,57 @@ verify_base_identity() {
 }
 
 app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+
+verify_role_identity() {
+  local transport="$1"
+  local output
+  if [[ "${transport}" == 'socket' ]]; then
+    output="$(admin_query postgres "${role_identity_query}")" || return 1
+  else
+    output="$(
+      PGPASSWORD="${database_password}" \
+        pg_command timeout 10s \
+        "${install_root}/bin/psql" \
+        --no-psqlrc \
+        --set ON_ERROR_STOP=1 \
+        --tuples-only \
+        --no-align \
+        --field-separator '|' \
+        --host 127.0.0.1 \
+        --port "${postgres_port}" \
+        --username "${database_user}" \
+        --dbname postgres \
+        --command "${role_identity_query}"
+    )" || return 1
+  fi
+
+  local data port socket listen version database user checksums
+  local can_login can_create_db superuser create_role replication bypass_rls sentinel extra
+  IFS='|' read -r \
+    data port socket listen version database user checksums \
+    can_login can_create_db superuser create_role replication bypass_rls sentinel extra \
+    <<<"${output}"
+  [[ -z "${extra:-}" ]] || return 1
+  [[ "${data}" == "${data_root}" ]] || return 1
+  [[ "${port}" == "${postgres_port}" ]] || return 1
+  [[ "${socket}" == "${socket_root}" ]] || return 1
+  [[ "${listen}" == '127.0.0.1' ]] || return 1
+  is_canonical_integer_in_range \
+    "${version}" "${postgres_version_number}" "${postgres_version_number}" || return 1
+  [[ "${database}" == 'postgres' ]] || return 1
+  if [[ "${transport}" == 'socket' ]]; then
+    [[ "${user}" == "${service_user}" ]] || return 1
+  else
+    [[ "${user}" == "${database_user}" ]] || return 1
+  fi
+  [[ "${checksums}" == 'on' ]] || return 1
+  [[ "${can_login}" == 't' && "${can_create_db}" == 't' ]] || return 1
+  [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
+  [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
+  [[ "${sentinel}" == 'prisma-prim-ok' ]]
+}
 
 verify_database_identity() {
   local database_name="$1"
@@ -1544,7 +1588,7 @@ verify_database_identity() {
   [[ "${socket}" == "${socket_root}" ]] || return 1
   [[ "${listen}" == '127.0.0.1' ]] || return 1
   is_canonical_integer_in_range \
-    "${version}" "${postgres_version_number}" 179999 || return 1
+    "${version}" "${postgres_version_number}" "${postgres_version_number}" || return 1
   [[ "${database}" == "${database_name}" ]] || return 1
   if [[ "${transport}" == 'socket' ]]; then
     [[ "${user}" == "${service_user}" ]] || return 1
@@ -1564,7 +1608,6 @@ if tcp_port_is_open || pg_ready_tcp || pg_ready_socket; then
   listener_present=true
 fi
 
-existing_listener=false
 if [[ "${listener_present}" == 'true' ]]; then
   validate_data_root ||
     fail 'a foreign listener is using the selected port or socket.'
@@ -1574,13 +1617,6 @@ if [[ "${listener_present}" == 'true' ]]; then
   fi
   verify_base_identity ||
     fail 'an existing listener does not match the owned server identity.'
-  for database_name in "${development_database}" "${test_database}"; do
-    verify_database_identity "${database_name}" socket ||
-      fail "existing socket identity verification failed for ${database_name}."
-    verify_database_identity "${database_name}" tcp ||
-      fail "existing TCP identity verification failed for ${database_name}."
-  done
-  existing_listener=true
 else
   ensure_socket_root true
   initialize_data_root
@@ -1622,41 +1658,84 @@ admin_psql() {
     "$@"
 }
 
-if [[ "${existing_listener}" == 'false' ]]; then
-  if [[ "$(admin_query postgres "SELECT 1 FROM pg_roles WHERE rolname = '${database_user}'")" != '1' ]]; then
-    service_pg_command \
-      timeout 10s \
-      "${install_root}/bin/createuser" \
-      --host "${socket_root}" \
-      --port "${postgres_port}" \
-      --username "${service_user}" \
-      --login \
-      --createdb \
-      --no-superuser \
-      --no-createrole \
-      --no-replication \
-      --no-bypassrls \
-      "${database_user}"
+catalog_state=''
+read_catalog_presence() {
+  local description="$1"
+  local query="$2"
+  local output
+  if ! output="$(admin_query postgres "${query}")"; then
+    fail "the ${description} catalog probe failed."
   fi
+  case "${output}" in
+    1) catalog_state='present' ;;
+    '') catalog_state='absent' ;;
+    *) fail "the ${description} catalog probe returned unexpected output." ;;
+  esac
+}
+
+read_catalog_presence \
+  'application role' \
+  "SELECT 1 FROM pg_roles WHERE rolname = '${database_user}'"
+role_catalog_state="${catalog_state}"
+declare -A database_catalog_states=()
+for database_name in "${development_database}" "${test_database}"; do
+  read_catalog_presence \
+    "${database_name} database" \
+    "SELECT 1 FROM pg_database WHERE datname = '${database_name}'"
+  database_catalog_states["${database_name}"]="${catalog_state}"
+done
+
+if [[ "${role_catalog_state}" == 'absent' ]]; then
+  for database_name in "${development_database}" "${test_database}"; do
+    [[ "${database_catalog_states[${database_name}]}" == 'absent' ]] ||
+      fail "${database_name} exists without the required application role."
+  done
+else
+  verify_role_identity socket ||
+    fail 'existing socket role identity verification failed.'
+  verify_role_identity tcp ||
+    fail 'existing TCP role identity verification failed.'
+  for database_name in "${development_database}" "${test_database}"; do
+    if [[ "${database_catalog_states[${database_name}]}" == 'present' ]]; then
+      verify_database_identity "${database_name}" socket ||
+        fail "existing socket identity verification failed for ${database_name}."
+      verify_database_identity "${database_name}" tcp ||
+        fail "existing TCP identity verification failed for ${database_name}."
+    fi
+  done
+fi
+
+if [[ "${role_catalog_state}" == 'absent' ]]; then
+  service_pg_command \
+    timeout 10s \
+    "${install_root}/bin/createuser" \
+    --host "${socket_root}" \
+    --port "${postgres_port}" \
+    --username "${service_user}" \
+    --login \
+    --createdb \
+    --no-superuser \
+    --no-createrole \
+    --no-replication \
+    --no-bypassrls \
+    "${database_user}"
   admin_psql --command \
     "ALTER ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'" \
     >/dev/null
-
-  for database_name in "${development_database}" "${test_database}"; do
-    if [[ "$(admin_query postgres "SELECT 1 FROM pg_database WHERE datname = '${database_name}'")" != '1' ]]; then
-      service_pg_command \
-        timeout 10s \
-        "${install_root}/bin/createdb" \
-        --host "${socket_root}" \
-        --port "${postgres_port}" \
-        --username "${service_user}" \
-        --owner "${database_user}" \
-        "${database_name}"
-    fi
-    admin_psql --command \
-      "ALTER DATABASE ${database_name} OWNER TO ${database_user}" >/dev/null
-  done
 fi
+
+for database_name in "${development_database}" "${test_database}"; do
+  if [[ "${database_catalog_states[${database_name}]}" == 'absent' ]]; then
+    service_pg_command \
+      timeout 10s \
+      "${install_root}/bin/createdb" \
+      --host "${socket_root}" \
+      --port "${postgres_port}" \
+      --username "${service_user}" \
+      --owner "${database_user}" \
+      "${database_name}"
+  fi
+done
 
 for database_name in "${development_database}" "${test_database}"; do
   verify_database_identity "${database_name}" socket ||
@@ -1667,8 +1746,8 @@ done
 
 verify_base_identity || fail 'final server identity verification failed.'
 server_version="$(admin_query postgres 'SHOW server_version')"
-[[ "${server_version}" =~ ^17\.[0-9]+(\.[0-9]+)?$ ]] ||
-  fail 'the final server version is not a canonical PostgreSQL 17 release.'
+[[ "${server_version}" == "${postgres_version}" ]] ||
+  fail 'the final server version is not exactly PostgreSQL 17.11.'
 validate_marker \
   "${runtime_lock}" \
   "${caller_uid}" \
