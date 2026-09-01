@@ -309,7 +309,7 @@ test('enforces least privilege and exact socket plus TCP identities', () => {
   assert.doesNotMatch(script, /pg_ctl[^\n]*-o/);
 });
 
-test('selects every online Debian cluster on the chosen port and rejects malformed fields', async (t) => {
+test('selects every online Debian cluster, including recovery, and rejects malformed fields', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const parser = [
     shellFunction('fail'),
@@ -322,8 +322,10 @@ test('selects every online Debian cluster on the chosen port and rejects malform
   const clusters = [
     '16 legacy 5432 online postgres /var/lib/postgresql/16/legacy /var/log/postgresql/legacy.log',
     '17 current 5432 online postgres /var/lib/postgresql/17/current /var/log/postgresql/current.log',
+    '15 recovery 5432 online,recovery postgres /var/lib/postgresql/15/recovery /var/log/postgresql/recovery.log',
     '16 other-port 5544 online postgres /var/lib/postgresql/16/other /var/log/postgresql/other.log',
     '16 stopped 5432 down postgres /var/lib/postgresql/16/stopped /var/log/postgresql/stopped.log',
+    '15 stopped-recovery 5432 down,recovery postgres /var/lib/postgresql/15/stopped-recovery /var/log/postgresql/stopped-recovery.log',
   ].join('\n');
   const selected = spawnSync(
     '/usr/bin/bash',
@@ -334,7 +336,7 @@ test('selects every online Debian cluster on the chosen port and rejects malform
     },
   );
   assert.equal(selected.status, 0, selected.stderr);
-  assert.equal(selected.stdout, '16|legacy\n17|current\n');
+  assert.equal(selected.stdout, '16|legacy\n17|current\n15|recovery\n');
 
   const malformed = spawnSync(
     '/usr/bin/bash',
@@ -348,6 +350,19 @@ test('selects every online Debian cluster on the chosen port and rejects malform
   );
   assert.notEqual(malformed.status, 0);
   assert.match(malformed.stderr, /unsafe non-absolute paths/);
+
+  const malformedStatus = spawnSync(
+    '/usr/bin/bash',
+    [
+      '-c',
+      parser,
+      'bash',
+      '16 bad 5432 online,foreign postgres /var/lib/postgresql/16/bad /var/log/postgresql/bad.log',
+    ],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
+  );
+  assert.notEqual(malformedStatus.status, 0);
+  assert.match(malformedStatus.stderr, /unsafe status/);
   assert.match(
     script,
     /\/usr\/bin\/pg_ctlcluster "\$\{version\}" "\$\{cluster\}" stop/,

@@ -955,6 +955,7 @@ pg_ready_socket() {
 select_conflicting_debian_clusters() {
   local clusters_output="$1"
   local version cluster port status owner data_directory log_file extra
+  local status_is_online
   while read -r version cluster port status owner data_directory log_file extra; do
     [[ -n "${version}" ]] || continue
     [[ -z "${extra:-}" ]] || fail 'pg_lsclusters returned an unsafe field count.'
@@ -962,13 +963,16 @@ select_conflicting_debian_clusters() {
     [[ "${cluster}" =~ ^[A-Za-z0-9_-]+$ ]] ||
       fail 'pg_lsclusters returned an unsafe cluster name.'
     canonical_integer 'pg_lsclusters port' "${port}" 1 65535
-    [[ "${status}" == 'online' || "${status}" == 'down' ]] ||
-      fail 'pg_lsclusters returned an unsafe status.'
+    case "${status}" in
+      online | online,recovery) status_is_online=true ;;
+      down | down,recovery) status_is_online=false ;;
+      *) fail 'pg_lsclusters returned an unsafe status.' ;;
+    esac
     [[ "${owner}" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] ||
       fail 'pg_lsclusters returned an unsafe owner.'
     [[ "${data_directory}" == /* && "${log_file}" == /* ]] ||
       fail 'pg_lsclusters returned unsafe non-absolute paths.'
-    if [[ "${status}" == 'online' && "${port}" == "${postgres_port}" ]]; then
+    if [[ "${status_is_online}" == 'true' && "${port}" == "${postgres_port}" ]]; then
       printf '%s|%s\n' "${version}" "${cluster}"
     fi
   done <<<"${clusters_output}"
