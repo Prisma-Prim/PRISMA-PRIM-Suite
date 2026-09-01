@@ -413,6 +413,11 @@ resolved="$path"
 if [[ "$path" == /proc/*/fd/* ]]; then
   resolved="$(/usr/bin/readlink -f -- "$path")"
 fi
+if [[ -n "\${FAKE_STAT_PROBE_PATH:-}" &&
+  "$resolved" == "\${FAKE_STAT_PROBE_PATH}" &&
+  -n "\${FAKE_STAT_PROBE_ENTERED:-}" ]]; then
+  : >"\${FAKE_STAT_PROBE_ENTERED}"
+fi
 uid="$(/usr/bin/stat -Lc '%u' -- "$resolved")"
 gid="$(/usr/bin/stat -Lc '%g' -- "$resolved")"
 if [[ "$format" == '%d:%i' && "$path" == "\${FAKE_RUNTIME_ROOT}" &&
@@ -1459,14 +1464,28 @@ test('does not execute cache binaries before exact marker validation', async (t)
 test('rejects a FIFO marker without blocking or probing cache executables', async (t) => {
   const fixture = await createFixture(t);
   const marker = join(fixture.installRoot, '.prisma-prim-install-v1');
+  const probeEntered = join(fixture.logRoot, 'fifo-marker-probe-entered');
   await rm(marker);
   const mkfifo = spawnSync('/usr/bin/mkfifo', [marker], { encoding: 'utf8' });
   assert.equal(mkfifo.status, 0, mkfifo.stderr);
   await chmod(marker, 0o600);
-  const started = Date.now();
-  const result = runScript({ env: fixture.env, timeout: 3_000 });
+  const child = spawn('bash', [scriptPath], {
+    detached: true,
+    env: cleanEnvironment({
+      ...fixture.env,
+      FAKE_STAT_PROBE_PATH: marker,
+      FAKE_STAT_PROBE_ENTERED: probeEntered,
+    }),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(() => terminateProcessGroup(child));
+  const resultPromise = collect(child);
+  await waitFor(probeEntered);
+  const result = await settleAfterCoordination(
+    resultPromise,
+    'for FIFO marker rejection after its metadata probe began',
+  );
   assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
-  assert.ok(Date.now() - started < 2_000, 'FIFO validation blocked');
   assert.doesNotMatch(
     await readOptional(join(fixture.logRoot, 'operations')),
     /version\|/,
@@ -2739,6 +2758,23 @@ async function waitFor(path, timeout = 15_000) {
   assert.fail(`Timed out waiting for ${path}`);
 }
 
+async function settleAfterCoordination(resultPromise, description) {
+  let timer;
+  try {
+    return await Promise.race([
+      resultPromise,
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Timed out ${description}`)),
+          15_000,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 test('rejects lifecycle lock inode replacement after open and before service mutation', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
@@ -2755,16 +2791,26 @@ for (const [lockName, injection] of [
 ]) {
   test(`rejects a ${lockName} FIFO substitution before open without blocking`, async (t) => {
     const fixture = await createFixture(t);
-    const started = Date.now();
-    const result = runScript({
-      env: { ...fixture.env, [injection]: 'true' },
-      timeout: 3_000,
+    const child = spawn('bash', [scriptPath], {
+      detached: true,
+      env: cleanEnvironment({ ...fixture.env, [injection]: 'true' }),
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+    t.after(() => terminateProcessGroup(child));
+    const resultPromise = collect(child);
+    const substitutionMarker = join(
+      fixture.logRoot,
+      `${lockName === 'lifecycle' ? 'runtime' : 'build'}-lock-fifo`,
+    );
+    await waitFor(substitutionMarker);
+    const result = await settleAfterCoordination(
+      resultPromise,
+      `for the ${lockName} lock rejection after FIFO substitution`,
+    );
     assertOrdinaryFailure(
       result,
       new RegExp(`the ${lockName} lock did not open`),
     );
-    assert.ok(Date.now() - started < 3_000);
     await assertAbsent(join(fixture.logRoot, 'initdb'));
     await assertAbsent(fixture.dataRoot);
   });
