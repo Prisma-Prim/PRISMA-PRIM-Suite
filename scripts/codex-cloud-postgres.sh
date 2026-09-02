@@ -1770,7 +1770,7 @@ admin_query() {
     --command "${query}"
 }
 
-base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), current_setting('max_connections'), current_setting('reserved_connections'), current_setting('superuser_reserved_connections'), pg_backend_pid(), 'prisma-prim-ok'"
+base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), current_setting('fsync'), current_setting('max_connections'), current_setting('reserved_connections'), current_setting('superuser_reserved_connections'), pg_backend_pid(), 'prisma-prim-ok'"
 
 backend_executable_identity() {
   local requested_pid="$1"
@@ -1815,7 +1815,7 @@ backend_executable_identity() {
 }
 
 verify_base_identity() {
-  local output data port socket listen version database user checksums read_only
+  local output data port socket listen version database user checksums read_only fsync
   local max_connections reserved_connections superuser_reserved_connections
   local backend_pid sentinel extra
   local probe_pid probe_read_fd probe_write_fd expected_executable backend_executable
@@ -1847,7 +1847,7 @@ verify_base_identity() {
   fi
   if [[ "${probe_ok}" == 'true' ]]; then
     IFS='|' read -r \
-      data port socket listen version database user checksums read_only \
+      data port socket listen version database user checksums read_only fsync \
       max_connections reserved_connections superuser_reserved_connections \
       backend_pid sentinel extra \
       <<<"${output}"
@@ -1880,6 +1880,7 @@ verify_base_identity() {
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
   [[ "${read_only}" == 'off' ]] || return 1
+  [[ "${fsync}" == 'on' ]] || return 1
   [[ "${max_connections}" == '50' ]] || return 1
   [[ "${reserved_connections}" == '0' ]] || return 1
   [[ "${superuser_reserved_connections}" == '3' ]] || return 1
@@ -1887,7 +1888,7 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, d.datlocprovider, (d.datlocale IS NULL), (d.daticurules IS NULL), pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, d.datlocprovider, (d.datlocale IS NULL), (d.daticurules IS NULL), t.spcname, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() JOIN pg_tablespace t ON t.oid = d.dattablespace WHERE r.rolname = '${database_user}'"
 
 role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
@@ -1997,14 +1998,14 @@ verify_database_identity() {
   local valid_until_is_null database_connection_limit database_acl_is_null
   local database_encoding database_collation database_ctype
   local database_locale_provider database_provider_locale_is_null database_icu_rules_is_null
-  local memberships persistent_role_settings persistent_database_settings sentinel extra
+  local database_tablespace memberships persistent_role_settings persistent_database_settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
     can_login can_create_db superuser create_role replication bypass_rls connection_limit \
     valid_until_is_null database_connection_limit database_acl_is_null \
     database_encoding database_collation database_ctype \
-    database_locale_provider database_provider_locale_is_null database_icu_rules_is_null owner \
-    memberships persistent_role_settings persistent_database_settings sentinel extra \
+    database_locale_provider database_provider_locale_is_null database_icu_rules_is_null \
+    database_tablespace owner memberships persistent_role_settings persistent_database_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -2033,6 +2034,7 @@ verify_database_identity() {
   [[ "${database_locale_provider}" == 'c' ]] || return 1
   [[ "${database_provider_locale_is_null}" == 't' ]] || return 1
   [[ "${database_icu_rules_is_null}" == 't' ]] || return 1
+  [[ "${database_tablespace}" == 'pg_default' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${persistent_role_settings}" == '0' ]] || return 1
@@ -2160,6 +2162,10 @@ for database_name in "${development_database}" "${test_database}"; do
       --port "${postgres_port}" \
       --username "${service_user}" \
       --owner "${database_user}" \
+      --template=template0 \
+      --encoding=UTF8 \
+      --locale-provider=libc \
+      --locale=C \
       "${database_name}"
   fi
 done

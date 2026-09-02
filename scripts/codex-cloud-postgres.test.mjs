@@ -386,12 +386,18 @@ test('enforces least privilege and exact socket plus TCP identities', () => {
   assert.match(script, /pg_ready_socket && pg_ready_tcp/);
   assert.match(script, /current_setting\('data_directory'\)/);
   assert.match(script, /server_version_num/);
+  assert.match(script, /current_setting\('fsync'\)/);
   assert.match(script, /current_setting\('max_connections'\)/);
   assert.match(script, /current_setting\('reserved_connections'\)/);
   assert.match(script, /current_setting\('superuser_reserved_connections'\)/);
   assert.match(
     script,
-    /d\.datlocprovider.+d\.datlocale IS NULL.+d\.daticurules IS NULL/,
+    /d\.datlocprovider.+d\.datlocale IS NULL.+d\.daticurules IS NULL.+t\.spcname/,
+  );
+  assert.match(script, /JOIN pg_tablespace t ON t\.oid = d\.dattablespace/);
+  assert.match(
+    script,
+    /createdb[\s\S]*--template=template0[\s\S]*--encoding=UTF8[\s\S]*--locale-provider=libc[\s\S]*--locale=C/,
   );
   assert.doesNotMatch(script, /pg_ctl[^\n]*-o/);
 });
@@ -1324,12 +1330,16 @@ case "$name" in
       if [[ "$query" == *'d.daticurules IS NULL'* ]]; then
         database_icu_rules_is_null_prefix="\${FAKE_DATABASE_ICU_RULES_IS_NULL:-t}|"
       fi
+      database_tablespace_prefix=''
+      if [[ "$query" == *'t.spcname'* ]]; then
+        database_tablespace_prefix="\${FAKE_DATABASE_TABLESPACE:-pg_default}|"
+      fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
         "$bypassrls" "$connection_limit" \
-        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$database_locale_provider_prefix$database_provider_locale_is_null_prefix$database_icu_rules_is_null_prefix$owner" \
+        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$database_locale_provider_prefix$database_provider_locale_is_null_prefix$database_icu_rules_is_null_prefix$database_tablespace_prefix$owner" \
         "$membership_prefix$role_setting_prefix$database_setting_prefix$sentinel" \
         "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
@@ -1337,7 +1347,7 @@ case "$name" in
       if [[ "$query" == *'pg_backend_pid()'* ]]; then
         backend_pid_prefix="\${FAKE_BACKEND_PID:-$$}|"
       fi
-      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s|%s|%s|%s%s\n' \
+      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
         "\${FAKE_IDENTITY_PORT:-\${FAKE_PORT}}" \
         "\${FAKE_IDENTITY_SOCKET:-\${FAKE_SOCKET_ROOT}}" \
@@ -1346,6 +1356,7 @@ case "$name" in
         "$username" \
         "\${FAKE_IDENTITY_CHECKSUMS:-on}" \
         "\${FAKE_DEFAULT_TRANSACTION_READ_ONLY:-off}" \
+        "\${FAKE_FSYNC:-on}" \
         "\${FAKE_MAX_CONNECTIONS:-50}" \
         "\${FAKE_RESERVED_CONNECTIONS:-0}" \
         "\${FAKE_SUPERUSER_RESERVED_CONNECTIONS:-3}" \
@@ -1397,6 +1408,12 @@ case "$name" in
     ;;
   createdb)
     database="\${!#}"
+    if [[ "\${FAKE_REQUIRE_EXACT_DATABASE_CREATION:-false}" == 'true' ]]; then
+      [[ " $* " == *' --template=template0 '* ]] || exit 61
+      [[ " $* " == *' --encoding=UTF8 '* ]] || exit 61
+      [[ " $* " == *' --locale-provider=libc '* ]] || exit 61
+      [[ " $* " == *' --locale=C '* ]] || exit 61
+    fi
     [[ "\${FAKE_FAIL_OPERATION:-}" != 'createdb' ]] || exit 56
     [[ "\${FAKE_FAIL_CREATEDB_DATABASE:-}" != "$database" ]] || exit 56
     : >"\${FAKE_STATE_ROOT}/database.$database"
@@ -1769,6 +1786,18 @@ test('recovers after an atomic role commit interrupted before database creation'
   assert.match(
     mutations,
     /create-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
+  );
+});
+
+test('creates application databases from an explicit template0 identity', async (t) => {
+  const fixture = await createFixture(t);
+  assertSuccess(
+    runScript({
+      env: {
+        ...fixture.env,
+        FAKE_REQUIRE_EXACT_DATABASE_CREATION: 'true',
+      },
+    }),
   );
 });
 
@@ -3372,6 +3401,7 @@ test('rejects every live identity, version, privilege, owner, and sentinel misma
     ],
     ['future server version', { FAKE_IDENTITY_VERSION: '180000' }],
     ['checksums', { FAKE_IDENTITY_CHECKSUMS: 'off' }],
+    ['fsync', { FAKE_FSYNC: 'off' }],
     ['max connections', { FAKE_MAX_CONNECTIONS: '4' }],
     ['reserved connections', { FAKE_RESERVED_CONNECTIONS: '1' }],
     [
@@ -3618,6 +3648,7 @@ test('rejects non-UTF8 or non-C application database locale identities before mu
     { FAKE_DATABASE_LOCALE_PROVIDER: 'i' },
     { FAKE_DATABASE_PROVIDER_LOCALE_IS_NULL: 'f' },
     { FAKE_DATABASE_ICU_RULES_IS_NULL: 'f' },
+    { FAKE_DATABASE_TABLESPACE: 'foreign_tablespace' },
   ]) {
     const result = runScript({ env: { ...fixture.env, ...env } });
     assertOrdinaryFailure(result, /identity verification failed/);
