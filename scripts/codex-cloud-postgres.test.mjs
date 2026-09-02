@@ -310,6 +310,14 @@ test('pins immutable PostgreSQL 17.11 source provenance and bounded build steps'
   assert.doesNotMatch(script, /docker/);
 });
 
+test('hard-bounds every source build step after a TERM grace period', () => {
+  const build = shellFunction('build_postgres');
+  assert.match(
+    build,
+    /timeout --kill-after=30s 180s \.\/configure[\s\S]*timeout --kill-after=30s 900s make[\s\S]*timeout --kill-after=30s 300s make DESTDIR=/,
+  );
+});
+
 test('requires service traversal through every cache ancestor', () => {
   const functionSource = shellFunction('validate_service_cache_ancestors');
   const command = `${functionSource}
@@ -1271,12 +1279,24 @@ case "$name" in
       if [[ "$query" == *'datacl IS NULL'* ]]; then
         database_acl_prefix="\${FAKE_DATABASE_ACL_IS_NULL:-t}|"
       fi
+      database_encoding_prefix=''
+      if [[ "$query" == *'pg_encoding_to_char(d.encoding)'* ]]; then
+        database_encoding_prefix="\${FAKE_DATABASE_ENCODING:-UTF8}|"
+      fi
+      database_collation_prefix=''
+      if [[ "$query" == *'d.datcollate'* ]]; then
+        database_collation_prefix="\${FAKE_DATABASE_COLLATION:-C}|"
+      fi
+      database_ctype_prefix=''
+      if [[ "$query" == *'d.datctype'* ]]; then
+        database_ctype_prefix="\${FAKE_DATABASE_CTYPE:-C}|"
+      fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
         "$bypassrls" "$connection_limit" \
-        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$owner" \
+        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$owner" \
         "$membership_prefix$role_setting_prefix$database_setting_prefix$sentinel" \
         "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
@@ -3496,6 +3516,26 @@ test('rejects direct application-database grants before mutation', async (t) => 
     mutationsBefore,
   );
   assert.match(script, /d\.datacl IS NULL/);
+});
+
+test('rejects non-UTF8 or non-C application database locale identities before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  for (const env of [
+    { FAKE_DATABASE_ENCODING: 'LATIN1' },
+    { FAKE_DATABASE_COLLATION: 'en_US.UTF-8' },
+    { FAKE_DATABASE_CTYPE: 'en_US.UTF-8' },
+  ]) {
+    const result = runScript({ env: { ...fixture.env, ...env } });
+    assertOrdinaryFailure(result, /identity verification failed/);
+    assert.equal(
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+      mutationsBefore,
+    );
+  }
 });
 
 test('rejects TCP trust authentication before mutation', async (t) => {

@@ -1092,12 +1092,12 @@ build_postgres() {
 
   (
     cd "${source_root}"
-    timeout 180s ./configure \
+    timeout --kill-after=30s 180s ./configure \
       --prefix="${install_root}" \
       --with-readline \
       --with-zlib
-    timeout 900s make -j"${build_jobs}"
-    timeout 300s make DESTDIR="${stage_root}" install
+    timeout --kill-after=30s 900s make -j"${build_jobs}"
+    timeout --kill-after=30s 300s make DESTDIR="${stage_root}" install
   )
 
   local staged_install="${stage_root}${install_root}"
@@ -1799,7 +1799,7 @@ verify_pinned_backend_executable() {
   [[ "${executable}" == "${install_root}/bin/postgres" ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
 role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
@@ -1906,11 +1906,13 @@ verify_database_identity() {
   local data port socket listen version database user checksums
   local can_login can_create_db superuser create_role replication bypass_rls connection_limit owner
   local valid_until_is_null database_connection_limit database_acl_is_null
+  local database_encoding database_collation database_ctype
   local memberships persistent_role_settings persistent_database_settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
     can_login can_create_db superuser create_role replication bypass_rls connection_limit \
-    valid_until_is_null database_connection_limit database_acl_is_null owner \
+    valid_until_is_null database_connection_limit database_acl_is_null \
+    database_encoding database_collation database_ctype owner \
     memberships persistent_role_settings persistent_database_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
@@ -1934,6 +1936,9 @@ verify_database_identity() {
   [[ "${valid_until_is_null}" == 't' ]] || return 1
   [[ "${database_connection_limit}" == '-1' ]] || return 1
   [[ "${database_acl_is_null}" == 't' ]] || return 1
+  [[ "${database_encoding}" == 'UTF8' ]] || return 1
+  [[ "${database_collation}" == 'C' ]] || return 1
+  [[ "${database_ctype}" == 'C' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${persistent_role_settings}" == '0' ]] || return 1
