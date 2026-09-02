@@ -359,31 +359,42 @@ validate_service_cache_ancestors`;
   assert.equal(traversable.status, 0, traversable.stderr);
 });
 
-test('falls back from a default workspace cache parent without service traversal', async (t) => {
+test('falls back from a default workspace cache without service traversal', async (t) => {
   const parent = await mkdtemp(
     join(tmpdir(), 'prisma-prim-cache-parent-test-'),
   );
   t.after(() => rm(parent, { recursive: true, force: true }));
   const functionSource = shellFunction('cache_parent_is_usable');
-  const runCheck = (callerUid) =>
+  const runCheck = (callerUid, workspaceMode) =>
     spawnSync(
       '/usr/bin/bash',
       [
         '-c',
-        `${functionSource}\ncaller_uid="$1"\ncache_parent_is_usable "$2"`,
+        `${functionSource}
+caller_uid="$1"
+workspace_mode="$3"
+stat() {
+  case "\${!#}" in
+    /workspace) printf '%s\n' "\${workspace_mode}" ;;
+    *) /usr/bin/stat "$@" ;;
+  esac
+}
+cache_parent_is_usable "$2"`,
         'bash',
         callerUid,
         parent,
+        workspaceMode,
       ],
       { encoding: 'utf8' },
     );
 
   await chmod(parent, 0o700);
-  assert.notEqual(runCheck('0').status, 0);
-  assert.equal(runCheck('1000').status, 0);
+  assert.notEqual(runCheck('0', '755').status, 0);
+  assert.equal(runCheck('1000', '700').status, 0);
 
   await chmod(parent, 0o701);
-  const traversable = runCheck('0');
+  assert.notEqual(runCheck('0', '700').status, 0);
+  const traversable = runCheck('0', '755');
   assert.equal(traversable.status, 0, traversable.stderr);
   assert.match(
     script,

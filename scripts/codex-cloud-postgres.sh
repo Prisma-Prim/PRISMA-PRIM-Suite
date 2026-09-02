@@ -159,10 +159,12 @@ cache_parent_is_usable() {
   [[ -d "${parent}" && -w "${parent}" ]] || return 1
   [[ "${caller_uid}" == '0' ]] || return 0
 
-  local mode_value
-  mode_value="$(stat -c '%a' -- "${parent}" 2>/dev/null)" || return 1
-  [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
-  (( (10#${mode_value: -1} & 1) != 0 ))
+  local current mode_value
+  for current in /workspace "${parent}"; do
+    mode_value="$(stat -c '%a' -- "${current}" 2>/dev/null)" || return 1
+    [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (8#${mode_value} & 0001) != 0 )) || return 1
+  done
 }
 
 default_cache_parent='/tmp'
