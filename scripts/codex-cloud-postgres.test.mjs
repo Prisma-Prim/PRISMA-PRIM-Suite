@@ -647,6 +647,7 @@ case "$format" in
       "$(/usr/bin/stat -c '%d:%i' -- "$resolved")" \
       "$(/usr/bin/stat -c '%s' -- "$resolved")"
     ;;
+  '%d:%i') /usr/bin/stat -Lc '%d:%i' -- "$resolved" ;;
   *) exec /usr/bin/stat "$@" ;;
 esac
 `;
@@ -1357,7 +1358,7 @@ case "$name" in
     fi
     if [[ "$interactive" == 'true' ]]; then
       IFS= read -r quit || true
-      [[ "$quit" == '\\q' ]] || {
+      [[ "$quit" == '\q' ]] || {
         printf 'missing interactive quit command\n' >&2
         exit 1
       }
