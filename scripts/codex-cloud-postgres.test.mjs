@@ -1086,6 +1086,11 @@ case "$name" in
     if [[ "\${FAKE_REJECT_APP_PASSWORD:-false}" == 'true' && "$host" == '127.0.0.1' && "$username" == 'prisma_prim' ]]; then
       exit 59
     fi
+    if [[ "$host" == '127.0.0.1' && "$username" == 'prisma_prim' &&
+      "\${PGPASSWORD:-}" != 'prisma_prim' &&
+      "\${FAKE_ACCEPT_WRONG_APP_PASSWORD:-false}" != 'true' ]]; then
+      exit 59
+    fi
     if [[ "$query" == *'SELECT 1 FROM pg_roles'* || "$query" == *'SELECT 1 FROM pg_database'* ]]; then
       probe_count_file="\${FAKE_STATE_ROOT}/catalog-probe-count"
       probe_count=0
@@ -1171,6 +1176,10 @@ case "$name" in
       if [[ "$query" == *'d.datconnlimit'* ]]; then
         database_connection_limit_prefix="\${FAKE_DATABASE_CONNECTION_LIMIT:--1}|"
       fi
+      database_acl_default_prefix=''
+      if [[ "$query" == *'d.datacl IS NULL'* ]]; then
+        database_acl_default_prefix="\${FAKE_DATABASE_ACL_DEFAULT:-t}|"
+      fi
       owner="\${FAKE_DATABASE_OWNER:-prisma_prim}"
       sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
       reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
@@ -1197,7 +1206,7 @@ case "$name" in
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$connection_limit" "$valid_until_prefix$database_connection_limit_prefix$owner" \
+        "$bypassrls" "$connection_limit" "$valid_until_prefix$database_connection_limit_prefix$database_acl_default_prefix$owner" \
         "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
@@ -2019,6 +2028,52 @@ test('recovers a verified replacement after SIGKILL creates a publication gap', 
     join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
   );
 });
+
+for (const [name, interruptionEnv] of [
+  ['completed replacement', { FAKE_SIGNAL_ON_DESTINATION: 'install-root' }],
+  ['publication gap', { FAKE_SIGNAL_ON_BACKUP: 'true' }],
+]) {
+  test(`restores the prior cache when TERM interrupts ${name} recovery after intent removal`, async (t) => {
+    const fixture = await createFixture(t);
+    await executable(
+      join(fixture.installRoot, 'bin', 'postgres'),
+      '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
+    );
+
+    const firstEnv = {
+      ...fixture.env,
+      FAKE_SIGNAL_NAME: 'KILL',
+      ...interruptionEnv,
+    };
+    if (firstEnv.FAKE_SIGNAL_ON_DESTINATION === 'install-root') {
+      firstEnv.FAKE_SIGNAL_ON_DESTINATION = fixture.installRoot;
+    }
+    const firstInterruption = runScript({
+      args: ['--install'],
+      env: firstEnv,
+    });
+    assert.equal(firstInterruption.status, null, firstInterruption.stderr);
+    assert.equal(firstInterruption.signal, 'SIGKILL', firstInterruption.stderr);
+
+    const recoveryInterruption = runScript({
+      env: {
+        ...fixture.env,
+        FAKE_SIGNAL_NAME: 'TERM',
+        FAKE_SIGNAL_AFTER_RM_BASENAME:
+          '.prisma-prim-install-publication-intent-v1',
+      },
+    });
+    assert.equal(recoveryInterruption.signal, null);
+    assert.equal(recoveryInterruption.status, 143, recoveryInterruption.stderr);
+    const restored = spawnSync(
+      join(fixture.installRoot, 'bin', 'postgres'),
+      ['--version'],
+      { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
+    );
+    assert.equal(restored.status, 0, restored.stderr);
+    assert.match(restored.stdout, /16\.9/);
+  });
+}
 
 test('recovers after SIGKILL immediately moves the staged install', async (t) => {
   const fixture = await createFixture(t);
@@ -3236,6 +3291,40 @@ test('rejects an application database connection limit before mutation', async (
     mutationsBefore,
   );
   assert.match(script, /d\.datconnlimit/);
+});
+
+test('rejects direct grants on an application database before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_DATABASE_ACL_DEFAULT: 'f' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /d\.datacl IS NULL/);
+});
+
+test('rejects TCP trust authentication before reporting readiness', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_ACCEPT_WRONG_APP_PASSWORD: 'true' },
+  });
+  assertOrdinaryFailure(result, /TCP role identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /tcp_password_is_enforced/);
 });
 
 test('rejects expiring application credentials before mutation', async (t) => {

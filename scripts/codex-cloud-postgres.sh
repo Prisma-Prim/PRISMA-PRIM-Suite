@@ -814,6 +814,7 @@ recover_interrupted_install_publication() {
   )"
   validate_marker \
     "${intent}" "${caller_uid}" "${caller_gid}" "${expected}" || return 1
+  install_publication_intent_text="${expected}"
 
   local interrupted_new="${cache_root}/.install-new-${publication_id}"
   local interrupted_backup="${cache_root}/.install-backup-${publication_id}"
@@ -841,8 +842,6 @@ recover_interrupted_install_publication() {
     else
       path_exists "${interrupted_backup}" && return 1
     fi
-    rm -f -- "${intent}" || return 1
-    ! path_exists "${intent}" || return 1
     if [[ "${has_prior}" == 'true' ]]; then
       backup_install="${interrupted_backup}"
       failed_install="${interrupted_failed}"
@@ -850,6 +849,7 @@ recover_interrupted_install_publication() {
       replacement_install_identity="$(stat -c '%d:%i' -- "${install_root}")"
       rollback_armed=true
     fi
+    clear_install_publication_intent || return 1
     return 0
   fi
 
@@ -876,8 +876,6 @@ recover_interrupted_install_publication() {
   fi
   rename_no_replace "${interrupted_new}" "${install_root}" || return 1
   validate_install "${install_root}" || return 1
-  rm -f -- "${intent}" || return 1
-  ! path_exists "${intent}" || return 1
   if [[ "${has_prior}" == 'true' ]]; then
     backup_install="${interrupted_backup}"
     failed_install="${interrupted_failed}"
@@ -885,6 +883,7 @@ recover_interrupted_install_publication() {
     replacement_install_identity="$(stat -c '%d:%i' -- "${install_root}")"
     rollback_armed=true
   fi
+  clear_install_publication_intent || return 1
 }
 
 restore_install() {
@@ -1785,9 +1784,28 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, r.rolvaliduntil, d.datconnlimit, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, r.rolvaliduntil, d.datconnlimit, d.datacl IS NULL, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
 role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, r.rolvaliduntil, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+
+tcp_password_is_enforced() {
+  local database_name="$1"
+  if PGPASSWORD="${database_password}-known-wrong" \
+    pg_command timeout 10s \
+      "${install_root}/bin/psql" \
+      --no-psqlrc \
+      --set ON_ERROR_STOP=1 \
+      --tuples-only \
+      --no-align \
+      --host 127.0.0.1 \
+      --port "${postgres_port}" \
+      --username "${database_user}" \
+      --dbname "${database_name}" \
+      --command 'SELECT 1' \
+      >/dev/null 2>&1; then
+    return 1
+  fi
+}
 
 verify_role_identity() {
   local transport="$1"
@@ -1795,6 +1813,7 @@ verify_role_identity() {
   if [[ "${transport}" == 'socket' ]]; then
     output="$(admin_query postgres "${role_identity_query}")" || return 1
   else
+    tcp_password_is_enforced postgres || return 1
     output="$(
       PGPASSWORD="${database_password}" \
         pg_command timeout 10s \
@@ -1849,6 +1868,7 @@ verify_database_identity() {
   if [[ "${transport}" == 'socket' ]]; then
     output="$(admin_query "${database_name}" "${app_identity_query}")" || return 1
   else
+    tcp_password_is_enforced "${database_name}" || return 1
     output="$(
       PGPASSWORD="${database_password}" \
         pg_command timeout 10s \
@@ -1867,10 +1887,10 @@ verify_database_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit owner memberships settings sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit acl_default owner memberships settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit owner memberships settings sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit acl_default owner memberships settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1892,6 +1912,7 @@ verify_database_identity() {
   [[ "${connection_limit}" == '-1' ]] || return 1
   [[ -z "${valid_until}" ]] || return 1
   [[ "${database_connection_limit}" == '-1' ]] || return 1
+  [[ "${acl_default}" == 't' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${settings}" == '0' ]] || return 1
