@@ -1814,10 +1814,9 @@ verify_base_identity() {
       stat -Lc '%d:%i' -- "/proc/${backend_pid}/exe" 2>/dev/null
     )" || probe_ok=false
   fi
-  (
-    trap '' PIPE
-    printf '\\q\n' >&"${probe_write_fd}" 2>/dev/null
-  ) || probe_ok=false
+  trap '' PIPE
+  printf '\\q\n' >&"${probe_write_fd}" 2>/dev/null || probe_ok=false
+  trap - PIPE
   exec {probe_write_fd}>&-
   exec {probe_read_fd}<&-
   wait "${probe_pid}" || probe_ok=false
