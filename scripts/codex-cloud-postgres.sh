@@ -195,6 +195,13 @@ cache_parent_is_usable() {
     return
   fi
 
+  local current mode_value
+  for current in /workspace "${parent}"; do
+    mode_value="$(file_mode "${current}" 2>/dev/null)" || return 1
+    [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (10#${mode_value: -1} & 1) != 0 )) || return 1
+  done
+
   timeout 5s getent passwd postgres >/dev/null 2>&1 || return 1
   local runuser_probe test_probe
   runuser_probe="$(trusted_root_command runuser)" || return 1

@@ -396,14 +396,29 @@ esac
 `,
   );
   const functionSource = shellFunction('cache_parent_is_usable');
-  const runCheck = (callerUid, deniedPath = '') =>
+  const runCheck = (
+    callerUid,
+    deniedPath = '',
+    workspaceMode = '755',
+    parentMode = '701',
+  ) =>
     spawnSync(
       '/usr/bin/bash',
       [
         '-c',
         `${functionSource}
 caller_uid="$1"
+cache_parent="$2"
 probe_runuser="$3"
+workspace_mode="$4"
+parent_mode="$5"
+file_mode() {
+  case "$1" in
+    /workspace) printf '%s\n' "\${workspace_mode}" ;;
+    "\${cache_parent}") printf '%s\n' "\${parent_mode}" ;;
+    *) return 1 ;;
+  esac
+}
 trusted_root_command() {
   case "$1" in
     runuser) printf '%s\n' "\${probe_runuser}" ;;
@@ -418,6 +433,8 @@ cache_parent_is_usable "$2"`,
         callerUid,
         parent,
         fakeRunuser,
+        workspaceMode,
+        parentMode,
       ],
       {
         encoding: 'utf8',
@@ -435,7 +452,9 @@ cache_parent_is_usable "$2"`,
   await chmod(parent, 0o701);
   assert.notEqual(runCheck('0', '/workspace').status, 0);
   assert.notEqual(runCheck('0', parent).status, 0);
-  const traversable = runCheck('0');
+  assert.notEqual(runCheck('0', '', '710', '701').status, 0);
+  assert.notEqual(runCheck('0', '', '711', '710').status, 0);
+  const traversable = runCheck('0', '', '711', '711');
   assert.equal(traversable.status, 0, traversable.stderr);
   assert.match(
     script,
