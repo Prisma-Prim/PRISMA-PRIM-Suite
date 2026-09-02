@@ -154,17 +154,53 @@ if [[ "${caller_uid}" == '0' ]]; then
 fi
 readonly cache_mode install_mode runtime_mode
 
+file_type() {
+  stat -c '%F' -- "$1"
+}
+
+file_owner() {
+  stat -c '%u' -- "$1"
+}
+
+file_group() {
+  stat -c '%g' -- "$1"
+}
+
+file_mode() {
+  stat -c '%a' -- "$1"
+}
+
+has_group_or_world_write() {
+  local mode_value
+  mode_value="$(file_mode "$1")"
+  [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 0
+  (( (8#${mode_value} & 0022) != 0 ))
+}
+
+trusted_root_command() {
+  local command_name="$1"
+  local path
+  path="$(command -v "${command_name}" 2>/dev/null)" || return 1
+  [[ "${path}" == /* && -f "${path}" && ! -L "${path}" ]] || return 1
+  [[ "$(file_owner "${path}")" == '0' ]] || return 1
+  has_group_or_world_write "${path}" && return 1
+  printf '%s\n' "${path}"
+}
+
 cache_parent_is_usable() {
   local parent="$1"
   [[ -d "${parent}" && -w "${parent}" ]] || return 1
-  [[ "${caller_uid}" == '0' ]] || return 0
+  if [[ "${caller_uid}" != '0' ]]; then
+    [[ -x /workspace && -x "${parent}" ]]
+    return
+  fi
 
-  local current mode_value
-  for current in /workspace "${parent}"; do
-    mode_value="$(stat -c '%a' -- "${current}" 2>/dev/null)" || return 1
-    [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
-    (( (8#${mode_value} & 0001) != 0 )) || return 1
-  done
+  timeout 5s getent passwd postgres >/dev/null 2>&1 || return 1
+  local runuser_probe test_probe
+  runuser_probe="$(trusted_root_command runuser)" || return 1
+  test_probe="$(trusted_root_command /usr/bin/test)" || return 1
+  "${runuser_probe}" -u postgres -- "${test_probe}" -x /workspace &&
+    "${runuser_probe}" -u postgres -- "${test_probe}" -x "${parent}"
 }
 
 default_cache_parent='/tmp'
@@ -209,29 +245,6 @@ rename_no_replace() {
   path_exists "${destination}" && return 1
   mv -T -n -- "${source}" "${destination}" || return 1
   ! path_exists "${source}" && path_exists "${destination}"
-}
-
-file_type() {
-  stat -c '%F' -- "$1"
-}
-
-file_owner() {
-  stat -c '%u' -- "$1"
-}
-
-file_group() {
-  stat -c '%g' -- "$1"
-}
-
-file_mode() {
-  stat -c '%a' -- "$1"
-}
-
-has_group_or_world_write() {
-  local mode_value
-  mode_value="$(file_mode "$1")"
-  [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 0
-  (( (8#${mode_value} & 0022) != 0 ))
 }
 
 validate_safe_install_tree_directory() {
@@ -974,16 +987,6 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-trusted_root_command() {
-  local command_name="$1"
-  local path
-  path="$(command -v "${command_name}" 2>/dev/null)" || return 1
-  [[ "${path}" == /* && -f "${path}" && ! -L "${path}" ]] || return 1
-  [[ "$(file_owner "${path}")" == '0' ]] || return 1
-  has_group_or_world_write "${path}" && return 1
-  printf '%s\n' "${path}"
-}
-
 run_as_root() {
   local timeout_path='/usr/bin/timeout'
   [[ -x "${timeout_path}" ]] &&
@@ -1356,6 +1359,8 @@ validate_service_cache_ancestors() {
     if (( (10#${mode_value: -1} & 1) == 0 )); then
       fail "cache ancestor ${current} does not permit service traversal."
     fi
+    run_as_service /usr/bin/test -x "${current}" ||
+      fail "cache ancestor ${current} denies service traversal."
     [[ "${current}" == '/' ]] && break
     current="${current%/*}"
     [[ -n "${current}" ]] || current='/'

@@ -352,11 +352,26 @@ cache_root=/workspace/.cache/prisma-prim-postgres-cache-0
 caller_uid=0
 service_uid=71
 file_mode() { printf '%s\n' 755; }
+run_as_service() { return 0; }
 validate_service_cache_ancestors`;
   const traversable = spawnSync('/usr/bin/bash', ['-c', traversableCommand], {
     encoding: 'utf8',
   });
   assert.equal(traversable.status, 0, traversable.stderr);
+
+  const aclBlockedCommand = `${functionSource}
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+cache_root=/workspace/.cache/prisma-prim-postgres-cache-0
+caller_uid=0
+service_uid=71
+file_mode() { printf '%s\n' 755; }
+run_as_service() { [[ "\${!#}" != '/workspace/.cache' ]]; }
+validate_service_cache_ancestors`;
+  const aclBlocked = spawnSync('/usr/bin/bash', ['-c', aclBlockedCommand], {
+    encoding: 'utf8',
+  });
+  assert.notEqual(aclBlocked.status, 0);
+  assert.match(aclBlocked.stderr, /denies service traversal/);
 });
 
 test('falls back from a default workspace cache without service traversal', async (t) => {
@@ -364,37 +379,60 @@ test('falls back from a default workspace cache without service traversal', asyn
     join(tmpdir(), 'prisma-prim-cache-parent-test-'),
   );
   t.after(() => rm(parent, { recursive: true, force: true }));
+  const fakeRunuser = join(parent, 'runuser');
+  await executable(
+    fakeRunuser,
+    `#!/bin/bash
+set -euo pipefail
+[[ "\${1:-}" == '-u' && "\${2:-}" == 'postgres' && "\${3:-}" == '--' ]]
+shift 3
+[[ "\${1:-}" == '/usr/bin/test' && "\${2:-}" == '-x' && -n "\${3:-}" ]]
+[[ "\${3}" != "\${FAKE_DENY_SERVICE_TRAVERSAL_PATH:-}" ]] || exit 1
+mode="$(/usr/bin/stat -c '%a' -- "\${3}")"
+(( (10#\${mode: -1} & 1) != 0 ))
+`,
+  );
   const functionSource = shellFunction('cache_parent_is_usable');
-  const runCheck = (callerUid, workspaceMode) =>
+  const runCheck = (callerUid, deniedPath = '') =>
     spawnSync(
       '/usr/bin/bash',
       [
         '-c',
         `${functionSource}
 caller_uid="$1"
-workspace_mode="$3"
-stat() {
-  case "\${!#}" in
-    /workspace) printf '%s\n' "\${workspace_mode}" ;;
-    *) /usr/bin/stat "$@" ;;
+probe_runuser="$3"
+trusted_root_command() {
+  case "$1" in
+    runuser) printf '%s\n' "\${probe_runuser}" ;;
+    /usr/bin/test) printf '%s\n' /usr/bin/test ;;
+    *) return 1 ;;
   esac
 }
+timeout() { shift; "$@"; }
+getent() { return 0; }
 cache_parent_is_usable "$2"`,
         'bash',
         callerUid,
         parent,
-        workspaceMode,
+        fakeRunuser,
       ],
-      { encoding: 'utf8' },
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          FAKE_DENY_SERVICE_TRAVERSAL_PATH: deniedPath,
+        },
+      },
     );
 
   await chmod(parent, 0o700);
-  assert.notEqual(runCheck('0', '755').status, 0);
-  assert.equal(runCheck('1000', '700').status, 0);
+  assert.notEqual(runCheck('0').status, 0);
+  assert.equal(runCheck('1000').status, 0);
 
   await chmod(parent, 0o701);
-  assert.notEqual(runCheck('0', '700').status, 0);
-  const traversable = runCheck('0', '755');
+  assert.notEqual(runCheck('0', '/workspace').status, 0);
+  assert.notEqual(runCheck('0', parent).status, 0);
+  const traversable = runCheck('0');
   assert.equal(traversable.status, 0, traversable.stderr);
   assert.match(
     script,
