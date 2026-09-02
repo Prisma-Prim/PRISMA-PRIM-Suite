@@ -33,10 +33,6 @@ const requiredBinaries = [
   'createdb',
   'createuser',
 ];
-const requiredShareFiles = [
-  'share/postgres.bki',
-  'share/postgresql.conf.sample',
-];
 const hostUid = String(process.getuid?.() ?? 1000);
 const hostGid = String(process.getgid?.() ?? 1000);
 
