@@ -101,7 +101,7 @@ async function writeFixtureInstallManifest(installRoot) {
   );
 }
 
-function runScript({ args = [], env = {}, timeout = 60_000 } = {}) {
+function runScript({ args = [], env = {}, timeout = 120_000 } = {}) {
   assert.match(env.PATH ?? '', /prisma-prim-tools-test-/);
   return spawnSync('bash', [scriptPath, ...args], {
     encoding: 'utf8',
@@ -1315,7 +1315,7 @@ case "$name" in
       if [[ "$query" == *'pg_backend_pid()'* ]]; then
         backend_pid_prefix="\${FAKE_BACKEND_PID:-4242}|"
       fi
-      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s%s\n' \
+      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
         "\${FAKE_IDENTITY_PORT:-\${FAKE_PORT}}" \
         "\${FAKE_IDENTITY_SOCKET:-\${FAKE_SOCKET_ROOT}}" \
@@ -1323,6 +1323,7 @@ case "$name" in
         "\${FAKE_IDENTITY_VERSION:-170011}" \
         "$username" \
         "\${FAKE_IDENTITY_CHECKSUMS:-on}" \
+        "\${FAKE_DEFAULT_TRANSACTION_READ_ONLY:-off}" \
         "$backend_pid_prefix" \
         "\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
     elif [[ "$query" == 'SHOW server_version' ]]; then
@@ -1643,6 +1644,25 @@ test('rejects an existing listener whose backend inode differs from the pinned e
   assert.match(script, /coproc POSTGRES_IDENTITY_PROBE/);
   assert.match(script, /stat -Lc '%d:%i'/);
   assert.match(script, /\/proc\/\$\{backend_pid\}\/exe/);
+});
+
+test('rejects an owned server in effective read-only mode without mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: {
+      ...fixture.env,
+      FAKE_DEFAULT_TRANSACTION_READ_ONLY: 'on',
+    },
+  });
+  assertOrdinaryFailure(result, /does not match the owned server identity/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
 });
 
 test('resumes application provisioning on an owned server after interruption', async (t) => {

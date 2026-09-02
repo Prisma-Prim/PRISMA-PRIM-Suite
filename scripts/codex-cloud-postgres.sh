@@ -1769,10 +1769,10 @@ admin_query() {
     --command "${query}"
 }
 
-base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), pg_backend_pid(), 'prisma-prim-ok'"
+base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), pg_backend_pid(), 'prisma-prim-ok'"
 
 verify_base_identity() {
-  local output data port socket listen version database user checksums backend_pid sentinel extra
+  local output data port socket listen version database user checksums read_only backend_pid sentinel extra
   local probe_pid probe_read_fd probe_write_fd expected_executable backend_executable
   local probe_ok=true
 
@@ -1802,7 +1802,7 @@ verify_base_identity() {
   fi
   if [[ "${probe_ok}" == 'true' ]]; then
     IFS='|' read -r \
-      data port socket listen version database user checksums backend_pid sentinel extra \
+      data port socket listen version database user checksums read_only backend_pid sentinel extra \
       <<<"${output}"
     is_canonical_integer_in_range "${backend_pid}" 1 4194304 || probe_ok=false
   fi
@@ -1814,7 +1814,10 @@ verify_base_identity() {
       stat -Lc '%d:%i' -- "/proc/${backend_pid}/exe" 2>/dev/null
     )" || probe_ok=false
   fi
-  printf '\\q\n' >&"${probe_write_fd}" || probe_ok=false
+  (
+    trap '' PIPE
+    printf '\\q\n' >&"${probe_write_fd}" 2>/dev/null
+  ) || probe_ok=false
   exec {probe_write_fd}>&-
   exec {probe_read_fd}<&-
   wait "${probe_pid}" || probe_ok=false
@@ -1830,6 +1833,7 @@ verify_base_identity() {
   [[ "${database}" == 'postgres' ]] || return 1
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
+  [[ "${read_only}" == 'off' ]] || return 1
   [[ "${backend_executable}" == "${expected_executable}" ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
