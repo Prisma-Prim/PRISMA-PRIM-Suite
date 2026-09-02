@@ -500,6 +500,14 @@ resolved="$path"
 if [[ "$path" == /proc/*/fd/* ]]; then
   resolved="$(/usr/bin/readlink -f -- "$path")"
 fi
+if [[ -n "\${FAKE_STAT_PAUSE_PATH:-}" &&
+  "$resolved" == "\${FAKE_STAT_PAUSE_PATH}" &&
+  ! -e "\${FAKE_STAT_PAUSE_ENTERED}" ]]; then
+  : >"\${FAKE_STAT_PAUSE_ENTERED}"
+  while [[ ! -e "\${FAKE_STAT_PAUSE_RELEASE}" ]]; do
+    /usr/bin/sleep 0.02
+  done
+fi
 if [[ -n "\${FAKE_STAT_PROBE_PATH:-}" &&
   "$resolved" == "\${FAKE_STAT_PROBE_PATH}" &&
   -n "\${FAKE_STAT_PROBE_ENTERED:-}" ]]; then
@@ -2085,6 +2093,115 @@ test('retains fresh recovery state when TERM interrupts publication', async (t) 
   await assertAbsent(
     join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
   );
+  assert.equal(
+    (await readdir(fixture.cacheRoot)).filter((name) =>
+      name.startsWith('.build-'),
+    ).length,
+    0,
+  );
+});
+
+test('retains a fresh staged build when TERM arrives before intent activation', async (t) => {
+  const fixture = await createFixture(t, { withCache: false });
+  const intent = join(
+    fixture.cacheRoot,
+    '.prisma-prim-install-publication-intent-v1',
+  );
+  const entered = join(fixture.logRoot, 'intent-stat-entered');
+  const release = join(fixture.logRoot, 'intent-stat-release');
+  const child = spawn('bash', [scriptPath, '--install'], {
+    detached: true,
+    env: cleanEnvironment({
+      ...fixture.env,
+      FAKE_STAT_PAUSE_PATH: intent,
+      FAKE_STAT_PAUSE_ENTERED: entered,
+      FAKE_STAT_PAUSE_RELEASE: release,
+    }),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    await writeFile(release, '').catch(() => {});
+    await terminateProcessGroup(child);
+  });
+  const resultPromise = collect(child);
+  await waitFor(entered, 60_000);
+  process.kill(-child.pid, 'SIGTERM');
+  const interrupted = await resultPromise;
+
+  assert.equal(interrupted.signal, null, interrupted.stderr);
+  assert.equal(interrupted.status, 143, interrupted.stderr);
+  assert.ok((await lstat(intent)).isFile());
+  assert.equal(
+    (await readdir(fixture.cacheRoot)).filter((name) =>
+      name.startsWith('.build-'),
+    ).length,
+    1,
+  );
+  const operationsBefore = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+
+  assertSuccess(runScript({ env: fixture.env }));
+  const operationsAfter = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+  assert.equal(
+    (operationsAfter.match(/^make\|/gm) ?? []).length,
+    (operationsBefore.match(/^make\|/gm) ?? []).length,
+  );
+  await assertAbsent(intent);
+});
+
+test('retains a fresh staged build when TERM interrupts recovery', async (t) => {
+  const fixture = await createFixture(t, { withCache: false });
+  const intent = join(
+    fixture.cacheRoot,
+    '.prisma-prim-install-publication-intent-v1',
+  );
+  const first = runScript({
+    args: ['--install'],
+    env: {
+      ...fixture.env,
+      FAKE_SIGNAL_NAME: 'KILL',
+      FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
+    },
+  });
+  assert.equal(first.status, null, first.stderr);
+  assert.equal(first.signal, 'SIGKILL', first.stderr);
+  const operationsBefore = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+
+  const second = runScript({
+    env: {
+      ...fixture.env,
+      FAKE_SIGNAL_NAME: 'TERM',
+      FAKE_SIGNAL_ON_DESTINATION: fixture.installRoot,
+    },
+  });
+  assert.equal(second.signal, null, second.stderr);
+  assert.equal(second.status, 143, second.stderr);
+  assert.ok((await lstat(intent)).isFile());
+  assert.equal(
+    (await readdir(fixture.cacheRoot)).filter((name) =>
+      name.startsWith('.build-'),
+    ).length,
+    1,
+  );
+
+  assertSuccess(runScript({ env: fixture.env }));
+  const operationsAfter = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+  assert.equal(
+    (operationsAfter.match(/^make\|/gm) ?? []).length,
+    (operationsBefore.match(/^make\|/gm) ?? []).length,
+  );
+  await assertAbsent(intent);
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
       name.startsWith('.build-'),

@@ -697,7 +697,14 @@ success_ready_message=''
 
 remove_owned_build() {
   [[ -n "${build_root}" ]] || return 0
-  [[ -z "${install_publication_intent_text}" ]] || return 0
+  if [[ -n "${install_publication_intent_text}" ]] &&
+    validate_marker \
+      "${cache_root}/${install_publication_intent_name}" \
+      "${caller_uid}" \
+      "${caller_gid}" \
+      "${install_publication_intent_text}"; then
+    return 0
+  fi
   if validate_directory "${build_root}" "${caller_uid}" "${caller_gid}" 700 &&
     validate_marker \
       "${build_root}/${build_marker_name}" \
@@ -781,6 +788,7 @@ recover_interrupted_install_publication() {
   )"
   validate_marker \
     "${intent}" "${caller_uid}" "${caller_gid}" "${expected}" || return 1
+  install_publication_intent_text="${expected}"
 
   local interrupted_new="${cache_root}/.install-new-${publication_id}"
   local interrupted_backup="${cache_root}/.install-backup-${publication_id}"
@@ -808,8 +816,7 @@ recover_interrupted_install_publication() {
     else
       path_exists "${interrupted_backup}" && return 1
     fi
-    rm -f -- "${intent}" || return 1
-    ! path_exists "${intent}" || return 1
+    clear_install_publication_intent || return 1
     if [[ "${has_prior}" == 'true' ]]; then
       backup_install="${interrupted_backup}"
       failed_install="${interrupted_failed}"
@@ -843,8 +850,7 @@ recover_interrupted_install_publication() {
   fi
   rename_no_replace "${interrupted_new}" "${install_root}" || return 1
   validate_install "${install_root}" || return 1
-  rm -f -- "${intent}" || return 1
-  ! path_exists "${intent}" || return 1
+  clear_install_publication_intent || return 1
   if [[ "${has_prior}" == 'true' ]]; then
     backup_install="${interrupted_backup}"
     failed_install="${interrupted_failed}"
@@ -1114,6 +1120,7 @@ build_postgres() {
   local publication_intent="${cache_root}/${install_publication_intent_name}"
   path_exists "${publication_intent}" &&
     fail 'an install publication intent already exists.'
+  install_publication_intent_text="${publication_intent_text}"
   create_regular_marker \
     "${publication_intent}" \
     "${publication_intent_text}"
@@ -1123,8 +1130,6 @@ build_postgres() {
     "${caller_gid}" \
     "${publication_intent_text}" ||
     fail 'the install publication intent changed during creation.'
-  install_publication_intent_text="${publication_intent_text}"
-
   rename_no_replace "${staged_install}" "${new_install}" ||
     fail 'the new install destination appeared during atomic publication.'
   validate_install "${new_install}" || fail 'the moved staged install changed.'
