@@ -23,6 +23,7 @@ readonly runtime_marker_name='.prisma-prim-runtime-v1'
 readonly cache_marker_name='.prisma-prim-cache-v1'
 readonly install_marker_name='.prisma-prim-install-v1'
 readonly install_manifest_name='.prisma-prim-install-manifest-v1'
+readonly install_publication_intent_name='.prisma-prim-install-publication-intent-v1'
 readonly socket_marker_name='.prisma-prim-socket-v1'
 readonly socket_intent_name='.prisma-prim-socket-intent-v1'
 readonly data_marker_name='.prisma-prim-data-v1'
@@ -237,11 +238,19 @@ validate_safe_install_tree_directory() {
       'directory')
         [[ ! -L "${child}" && "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
         (( (8#${mode_value} & 07022) == 0 )) || return 1
+        if [[ "${caller_uid}" == '0' ]]; then
+          (( (8#${mode_value} & 0005) == 0005 )) || return 1
+        fi
         validate_safe_install_tree_directory "${tree_root}" "${child}" || return 1
         ;;
       'regular file' | 'regular empty file')
         [[ ! -L "${child}" && "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
         (( (8#${mode_value} & 07022) == 0 )) || return 1
+        if [[ "${caller_uid}" == '0' &&
+          "${child}" != "${tree_root}/${install_marker_name}" &&
+          "${child}" != "${tree_root}/${install_manifest_name}" ]]; then
+          (( (8#${mode_value} & 0004) == 0004 )) || return 1
+        fi
         ;;
       'symbolic link')
         target="$(readlink -- "${child}")" || return 1
@@ -257,6 +266,9 @@ validate_safe_install_tree_directory() {
           return 1
         [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
         (( (8#${mode_value} & 07022) == 0 )) || return 1
+        if [[ "${caller_uid}" == '0' ]]; then
+          (( (8#${mode_value} & 0004) == 0004 )) || return 1
+        fi
         ;;
       *) return 1 ;;
     esac
@@ -678,6 +690,7 @@ backup_install=''
 failed_install=''
 prior_install_identity=''
 replacement_install_identity=''
+install_publication_intent_text=''
 rollback_armed=false
 stop_server_on_exit=false
 success_ready_message=''
@@ -695,12 +708,9 @@ remove_owned_build() {
   return 0
 }
 
-prior_install_is_at() {
+repairable_install_is_at() {
   local path="$1"
-  [[ -n "${prior_install_identity}" ]] || return 1
   validate_directory "${path}" "${caller_uid}" "${caller_gid}" "${install_mode}" ||
-    return 1
-  [[ "$(stat -c '%d:%i' -- "${path}")" == "${prior_install_identity}" ]] ||
     return 1
   validate_marker \
     "${path}/${install_marker_name}" \
@@ -708,6 +718,13 @@ prior_install_is_at() {
     "${caller_gid}" \
     "${install_marker_text}" || return 1
   validate_safe_install_tree "${path}"
+}
+
+prior_install_is_at() {
+  local path="$1"
+  [[ -n "${prior_install_identity}" ]] || return 1
+  repairable_install_is_at "${path}" || return 1
+  [[ "$(stat -c '%d:%i' -- "${path}")" == "${prior_install_identity}" ]]
 }
 
 replacement_install_is_at() {
@@ -718,9 +735,106 @@ replacement_install_is_at() {
   validate_install "${path}"
 }
 
+install_publication_intent_contents() {
+  local publication_id="$1"
+  local has_prior="$2"
+  printf '%s\n' \
+    'prisma-prim-postgres-install-publication-intent-v1' \
+    "id=${publication_id}" \
+    "prior=${has_prior}"
+}
+
+clear_install_publication_intent() {
+  [[ -n "${install_publication_intent_text}" ]] || return 0
+  local intent="${cache_root}/${install_publication_intent_name}"
+  validate_marker \
+    "${intent}" \
+    "${caller_uid}" \
+    "${caller_gid}" \
+    "${install_publication_intent_text}" || return 1
+  rm -f -- "${intent}" || return 1
+  ! path_exists "${intent}" || return 1
+  install_publication_intent_text=''
+}
+
+recover_interrupted_install_publication() {
+  local intent="${cache_root}/${install_publication_intent_name}"
+  path_exists "${intent}" || return 0
+
+  local contents publication_id has_prior expected
+  contents="$(
+    read_regular_file "${intent}" "${caller_uid}" "${caller_gid}" 600
+  )" || return 1
+  local -a lines=()
+  mapfile -t lines <<<"${contents}"
+  [[ "${#lines[@]}" == '3' ]] || return 1
+  [[ "${lines[0]}" == 'prisma-prim-postgres-install-publication-intent-v1' ]] ||
+    return 1
+  [[ "${lines[1]}" == id=* && "${lines[2]}" == prior=* ]] || return 1
+  publication_id="${lines[1]#id=}"
+  has_prior="${lines[2]#prior=}"
+  is_canonical_integer_in_range "${publication_id}" 1 4194304 || return 1
+  [[ "${has_prior}" == 'true' || "${has_prior}" == 'false' ]] || return 1
+  expected="$(
+    install_publication_intent_contents "${publication_id}" "${has_prior}"
+  )"
+  validate_marker \
+    "${intent}" "${caller_uid}" "${caller_gid}" "${expected}" || return 1
+
+  local interrupted_new="${cache_root}/.install-new-${publication_id}"
+  local interrupted_backup="${cache_root}/.install-backup-${publication_id}"
+  local interrupted_failed="${cache_root}/.install-failed-${publication_id}"
+  path_exists "${interrupted_failed}" && return 1
+
+  if validate_install "${install_root}"; then
+    path_exists "${interrupted_new}" && return 1
+    if [[ "${has_prior}" == 'true' ]]; then
+      repairable_install_is_at "${interrupted_backup}" || return 1
+    else
+      path_exists "${interrupted_backup}" && return 1
+    fi
+    rm -f -- "${intent}" || return 1
+    ! path_exists "${intent}" || return 1
+    if [[ "${has_prior}" == 'true' ]]; then
+      backup_install="${interrupted_backup}"
+      failed_install="${interrupted_failed}"
+      prior_install_identity="$(stat -c '%d:%i' -- "${backup_install}")"
+      replacement_install_identity="$(stat -c '%d:%i' -- "${install_root}")"
+      rollback_armed=true
+    fi
+    return 0
+  fi
+
+  if path_exists "${install_root}"; then
+    [[ "${has_prior}" == 'true' ]] || return 1
+    repairable_install_is_at "${install_root}" || return 1
+    path_exists "${interrupted_backup}" && return 1
+    rename_no_replace "${install_root}" "${interrupted_backup}" || return 1
+  fi
+
+  if [[ "${has_prior}" == 'true' ]]; then
+    repairable_install_is_at "${interrupted_backup}" || return 1
+  else
+    path_exists "${interrupted_backup}" && return 1
+  fi
+  validate_install "${interrupted_new}" || return 1
+  rename_no_replace "${interrupted_new}" "${install_root}" || return 1
+  validate_install "${install_root}" || return 1
+  rm -f -- "${intent}" || return 1
+  ! path_exists "${intent}" || return 1
+  if [[ "${has_prior}" == 'true' ]]; then
+    backup_install="${interrupted_backup}"
+    failed_install="${interrupted_failed}"
+    prior_install_identity="$(stat -c '%d:%i' -- "${backup_install}")"
+    replacement_install_identity="$(stat -c '%d:%i' -- "${install_root}")"
+    rollback_armed=true
+  fi
+}
+
 restore_install() {
   [[ "${rollback_armed}" == 'true' ]] || return 0
   if prior_install_is_at "${install_root}"; then
+    clear_install_publication_intent || return 1
     rollback_armed=false
     return 0
   fi
@@ -733,6 +847,7 @@ restore_install() {
   fi
   rename_no_replace "${backup_install}" "${install_root}" || return 1
   prior_install_is_at "${install_root}" || return 1
+  clear_install_publication_intent || return 1
   rollback_armed=false
 }
 
@@ -931,6 +1046,8 @@ build_postgres() {
   local staged_install="${stage_root}${install_root}"
   [[ -d "${staged_install}" && ! -L "${staged_install}" ]] ||
     fail 'the staged PostgreSQL install is missing.'
+  /usr/bin/find "${staged_install}" -mindepth 1 -type d \
+    -exec /usr/bin/chmod 755 -- '{}' +
   chmod "${install_mode}" -- "${staged_install}"
   create_regular_marker \
     "${staged_install}/${install_marker_name}" \
@@ -946,6 +1063,7 @@ build_postgres() {
   validate_install "${new_install}" || fail 'the moved staged install changed.'
   replacement_install_identity="$(stat -c '%d:%i' -- "${new_install}")"
 
+  local publication_has_prior=false
   if path_exists "${install_root}"; then
     validate_directory \
       "${install_root}" \
@@ -967,6 +1085,28 @@ build_postgres() {
     path_exists "${failed_install}" && fail 'the failed-install rollback destination already exists.'
     prior_install_identity="$(stat -c '%d:%i' -- "${install_root}")"
     rollback_armed=true
+    publication_has_prior=true
+  fi
+
+  local publication_intent_text
+  publication_intent_text="$(
+    install_publication_intent_contents "$$" "${publication_has_prior}"
+  )"
+  local publication_intent="${cache_root}/${install_publication_intent_name}"
+  path_exists "${publication_intent}" &&
+    fail 'an install publication intent already exists.'
+  create_regular_marker \
+    "${publication_intent}" \
+    "${publication_intent_text}"
+  validate_marker \
+    "${publication_intent}" \
+    "${caller_uid}" \
+    "${caller_gid}" \
+    "${publication_intent_text}" ||
+    fail 'the install publication intent changed during creation.'
+  install_publication_intent_text="${publication_intent_text}"
+
+  if [[ "${publication_has_prior}" == 'true' ]]; then
     rename_no_replace "${install_root}" "${backup_install}" ||
       fail 'the install backup destination appeared during atomic publication.'
     prior_install_is_at "${backup_install}" ||
@@ -977,9 +1117,13 @@ build_postgres() {
     fail 'the final install destination appeared during atomic publication.'
   validate_install "${install_root}" ||
     fail 'the published PostgreSQL install failed final validation.'
+  clear_install_publication_intent ||
+    fail 'the completed install publication intent could not be cleared.'
   new_install=''
 }
 
+recover_interrupted_install_publication ||
+  fail 'an interrupted install publication is not exactly owned and recoverable.'
 if ! validate_install "${install_root}"; then
   build_postgres
 fi
@@ -1565,9 +1709,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
