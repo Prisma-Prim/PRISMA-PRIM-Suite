@@ -697,6 +697,7 @@ success_ready_message=''
 
 remove_owned_build() {
   [[ -n "${build_root}" ]] || return 0
+  [[ -z "${install_publication_intent_text}" ]] || return 0
   if validate_directory "${build_root}" "${caller_uid}" "${caller_gid}" 700 &&
     validate_marker \
       "${build_root}/${build_marker_name}" \
