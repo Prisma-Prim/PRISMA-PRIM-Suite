@@ -973,19 +973,19 @@ run_as_root() {
     [[ "$(trusted_root_command "${timeout_path}")" == "${timeout_path}" ]] ||
     fail 'root commands require trusted fixed /usr/bin/timeout.'
   if [[ "${caller_uid}" == '0' ]]; then
-    "${timeout_path}" 900s "$@"
+    "${timeout_path}" --kill-after=30s 900s "$@"
     return
   fi
   local sudo_path='/usr/bin/sudo'
   [[ -x "${sudo_path}" ]] &&
     [[ "$(trusted_root_command "${sudo_path}")" == "${sudo_path}" ]] ||
     fail 'root access requires trusted fixed /usr/bin/sudo.'
-  "${timeout_path}" 900s "${sudo_path}" -n -- "$@"
+  "${timeout_path}" --kill-after=30s 900s "${sudo_path}" -n -- "$@"
 }
 
 build_prerequisites_are_ready() {
   local command_name
-  for command_name in curl make flex bison cc tar gzip sha256sum; do
+  for command_name in curl make cc tar gzip sha256sum; do
     command -v "${command_name}" >/dev/null 2>&1 || return 1
   done
 
@@ -1029,8 +1029,6 @@ install_build_prerequisites() {
     build-essential \
     ca-certificates \
     curl \
-    flex \
-    bison \
     libreadline-dev \
     zlib1g-dev
   build_prerequisites_are_ready ||

@@ -476,29 +476,42 @@ test('uses only fixed trusted timeout and sudo paths at the root-command boundar
   assert.match(script, /local sudo_path='\/usr\/bin\/sudo'/);
 });
 
-test('gives slow root package installation a bounded fifteen-minute window', async (t) => {
+test('hard-kills a root package command that ignores its bounded deadline', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const timeoutPath = join(fixture.toolRoot, 'root-timeout');
   await executable(
     timeoutPath,
-    '#!/bin/bash\nprintf \'%s\\n\' "$1" >"$FAKE_LOG/root-timeout"\nshift\nexec "$@"\n',
+    '#!/bin/bash\nprintf \'%s\\n\' "$*" >"$FAKE_LOG/root-timeout"\nexec /usr/bin/timeout "$@"\n',
   );
-  const functionSource = shellFunction('run_as_root').replaceAll(
-    '/usr/bin/timeout',
-    timeoutPath,
-  );
+  const functionSource = shellFunction('run_as_root')
+    .replaceAll('/usr/bin/timeout', timeoutPath)
+    .replaceAll('900s', '1s')
+    .replaceAll('30s', '1s');
+  const startedAt = Date.now();
   const result = spawnSync(
     '/usr/bin/bash',
     [
       '-c',
-      `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nrun_as_root /usr/bin/true`,
+      `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nrun_as_root /usr/bin/bash -c 'trap "" TERM; while :; do /usr/bin/sleep 0.1; done'`,
     ],
     { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(
+  assert.notEqual(result.status, 0);
+  assert.ok(Date.now() - startedAt < 4_000);
+  assert.match(
     await readFile(join(fixture.logRoot, 'root-timeout'), 'utf8'),
-    '900s\n',
+    /^--kill-after=1s 1s /,
+  );
+});
+
+test('does not require parser generators for the pinned release archive', () => {
+  assert.doesNotMatch(
+    shellFunction('build_prerequisites_are_ready'),
+    /flex|bison/,
+  );
+  assert.doesNotMatch(
+    shellFunction('install_build_prerequisites'),
+    /flex|bison/,
   );
 });
 
