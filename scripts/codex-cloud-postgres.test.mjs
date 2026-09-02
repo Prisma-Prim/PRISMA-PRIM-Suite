@@ -504,15 +504,15 @@ test('hard-kills a root package command that ignores its bounded deadline', asyn
   );
 });
 
-test('does not require parser generators for the pinned release archive', () => {
-  assert.doesNotMatch(
-    shellFunction('build_prerequisites_are_ready'),
-    /flex|bison/,
-  );
-  assert.doesNotMatch(
-    shellFunction('install_build_prerequisites'),
-    /flex|bison/,
-  );
+test('installs required parser generators without refreshing or upgrading packages', () => {
+  assert.match(shellFunction('build_prerequisites_are_ready'), /flex/);
+  assert.match(shellFunction('build_prerequisites_are_ready'), /bison/);
+
+  const installer = shellFunction('install_build_prerequisites');
+  assert.match(installer, /flex/);
+  assert.match(installer, /bison/);
+  assert.match(installer, /--no-upgrade/);
+  assert.doesNotMatch(installer, /\"\$\{apt_get\}\" update/);
 });
 
 async function executable(path, content) {
