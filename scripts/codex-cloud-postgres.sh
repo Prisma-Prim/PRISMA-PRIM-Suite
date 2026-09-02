@@ -1105,6 +1105,8 @@ build_postgres() {
     fail 'the staged PostgreSQL install is missing.'
   /usr/bin/find "${staged_install}" -mindepth 1 -type d \
     -exec /usr/bin/chmod 755 -- '{}' +
+  /usr/bin/find "${staged_install}" -mindepth 1 -type f \
+    -exec /usr/bin/chmod a+r,go-w -- '{}' +
   chmod "${install_mode}" -- "${staged_install}"
   create_regular_marker \
     "${staged_install}/${install_marker_name}" \
@@ -1769,13 +1771,55 @@ admin_query() {
 
 base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), pg_backend_pid(), 'prisma-prim-ok'"
 
-verified_backend_pid=''
-
 verify_base_identity() {
   local output data port socket listen version database user checksums backend_pid sentinel extra
-  verified_backend_pid=''
-  output="$(admin_query postgres "${base_identity_query}")" || return 1
-  IFS='|' read -r data port socket listen version database user checksums backend_pid sentinel extra <<<"${output}"
+  local probe_pid probe_read_fd probe_write_fd expected_executable backend_executable
+  local probe_ok=true
+
+  coproc POSTGRES_IDENTITY_PROBE {
+    service_pg_command \
+      timeout 10s \
+      "${install_root}/bin/psql" \
+      --no-psqlrc \
+      --quiet \
+      --set ON_ERROR_STOP=1 \
+      --tuples-only \
+      --no-align \
+      --field-separator '|' \
+      --host "${socket_root}" \
+      --port "${postgres_port}" \
+      --username "${service_user}" \
+      --dbname postgres \
+      8>&- 9>&-
+  }
+  probe_pid="${POSTGRES_IDENTITY_PROBE_PID}"
+  probe_read_fd="${POSTGRES_IDENTITY_PROBE[0]}"
+  probe_write_fd="${POSTGRES_IDENTITY_PROBE[1]}"
+
+  printf '%s;\n' "${base_identity_query}" >&"${probe_write_fd}" || probe_ok=false
+  if [[ "${probe_ok}" == 'true' ]]; then
+    IFS= read -r output <&"${probe_read_fd}" || probe_ok=false
+  fi
+  if [[ "${probe_ok}" == 'true' ]]; then
+    IFS='|' read -r \
+      data port socket listen version database user checksums backend_pid sentinel extra \
+      <<<"${output}"
+    is_canonical_integer_in_range "${backend_pid}" 1 4194304 || probe_ok=false
+  fi
+  if [[ "${probe_ok}" == 'true' ]]; then
+    expected_executable="$(
+      stat -Lc '%d:%i' -- "${install_root}/bin/postgres" 2>/dev/null
+    )" || probe_ok=false
+    backend_executable="$(
+      stat -Lc '%d:%i' -- "/proc/${backend_pid}/exe" 2>/dev/null
+    )" || probe_ok=false
+  fi
+  printf '\\q\n' >&"${probe_write_fd}" || probe_ok=false
+  exec {probe_write_fd}>&-
+  exec {probe_read_fd}<&-
+  wait "${probe_pid}" || probe_ok=false
+
+  [[ "${probe_ok}" == 'true' ]] || return 1
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
   [[ "${port}" == "${postgres_port}" ]] || return 1
@@ -1786,17 +1830,8 @@ verify_base_identity() {
   [[ "${database}" == 'postgres' ]] || return 1
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
-  is_canonical_integer_in_range "${backend_pid}" 1 4194304 || return 1
-  [[ "${sentinel}" == 'prisma-prim-ok' ]] || return 1
-  verified_backend_pid="${backend_pid}"
-}
-
-verify_pinned_backend_executable() {
-  local backend_pid="$1"
-  local executable
-  is_canonical_integer_in_range "${backend_pid}" 1 4194304 || return 1
-  executable="$(readlink -f -- "/proc/${backend_pid}/exe" 2>/dev/null)" || return 1
-  [[ "${executable}" == "${install_root}/bin/postgres" ]]
+  [[ "${backend_executable}" == "${expected_executable}" ]] || return 1
+  [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
 app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
@@ -1960,8 +1995,6 @@ if [[ "${listener_present}" == 'true' ]]; then
   fi
   verify_base_identity ||
     fail 'an existing listener does not match the owned server identity.'
-  verify_pinned_backend_executable "${verified_backend_pid}" ||
-    fail 'an existing listener does not use the pinned PostgreSQL executable.'
 else
   ensure_socket_root true
   initialize_data_root
@@ -1988,8 +2021,6 @@ else
   [[ "${ready}" == 'true' ]] ||
     fail 'the owned PostgreSQL server did not become ready on socket and TCP.'
   verify_base_identity || fail 'the started PostgreSQL server identity is invalid.'
-  verify_pinned_backend_executable "${verified_backend_pid}" ||
-    fail 'the started PostgreSQL server does not use the pinned PostgreSQL executable.'
 fi
 
 admin_psql() {
@@ -2082,8 +2113,6 @@ for database_name in "${development_database}" "${test_database}"; do
 done
 
 verify_base_identity || fail 'final server identity verification failed.'
-verify_pinned_backend_executable "${verified_backend_pid}" ||
-  fail 'the final server does not use the pinned PostgreSQL executable.'
 server_version="$(admin_query postgres 'SHOW server_version')"
 [[ "${server_version}" == "${postgres_version}" ]] ||
   fail 'the final server version is not exactly PostgreSQL 17.11.'

@@ -553,7 +553,9 @@ for argument in "$@"; do
 done
 path="\${!#}"
 resolved="$path"
-if [[ "$path" == /proc/*/fd/* ]]; then
+if [[ "$path" == /proc/*/exe ]]; then
+  resolved="\${FAKE_BACKEND_EXECUTABLE:-\${FAKE_INSTALL_ROOT}/bin/postgres}"
+elif [[ "$path" == /proc/*/fd/* ]]; then
   resolved="$(/usr/bin/readlink -f -- "$path")"
 fi
 if [[ "\${FAKE_FAIL_INSTALL_INTENT_VALIDATION_ONCE:-false}" == 'true' &&
@@ -1033,6 +1035,8 @@ case "$name" in
       printf 'fake postgres catalog\n' >"$staged/share/postgres.bki"
       printf 'fake postgres configuration\n' >"$staged/share/postgresql.conf.sample"
       /usr/bin/chmod 644 "$staged/share/postgres.bki" "$staged/share/postgresql.conf.sample"
+      printf 'generated fixture\n' >"$staged/lib/restrictive-generated"
+      /usr/bin/chmod 600 "$staged/lib/restrictive-generated"
     fi
     ;;
   flex|bison|gzip)
@@ -1141,6 +1145,7 @@ case "$name" in
     username="\${FAKE_CALLER_USER}"
     host=''
     query=''
+    interactive=false
     while (( $# > 0 )); do
       case "$1" in
         --dbname) database="$2"; shift 2 ;;
@@ -1150,6 +1155,11 @@ case "$name" in
         *) shift ;;
       esac
     done
+    if [[ -z "$query" && ! -t 0 ]]; then
+      IFS= read -r query || true
+      query="\${query%;}"
+      interactive=true
+    fi
     if [[ "\${FAKE_CALLER_UID}" == '0' && "$host" == "\${FAKE_SOCKET_ROOT}" ]]; then
       [[ "\${FAKE_SERVICE_BOUNDARY:-false}" == 'true' ]] || exit 89
     fi
@@ -1344,6 +1354,13 @@ case "$name" in
       [[ "\${FAKE_FAIL_OPERATION:-}" != 'alter-database' ]] || exit 54
       : >"\${FAKE_STATE_ROOT}/database.prisma_prim_test"
       echo alter-database-test >>"\${FAKE_LOG}/mutations"
+    fi
+    if [[ "$interactive" == 'true' ]]; then
+      IFS= read -r quit || true
+      [[ "$quit" == '\\q' ]] || {
+        printf 'missing interactive quit command\n' >&2
+        exit 1
+      }
     fi
     ;;
   createuser)
@@ -1604,7 +1621,7 @@ test('executes the real lifecycle successfully and reuses its exact state', asyn
   assert.ok((await lstat(join(fixture.logRoot, 'initdb'))).isFile());
 });
 
-test('rejects an existing listener whose backend does not use the pinned executable', async (t) => {
+test('rejects an existing listener whose backend inode differs from the pinned executable', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
     join(fixture.logRoot, 'mutations'),
@@ -1618,13 +1635,15 @@ test('rejects an existing listener whose backend does not use the pinned executa
   });
   assertOrdinaryFailure(
     result,
-    /does not use the pinned PostgreSQL executable/,
+    /does not match the owned server identity/,
   );
   assert.equal(
     await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(script, /pg_backend_pid\(\)/);
+  assert.match(script, /coproc POSTGRES_IDENTITY_PROBE/);
+  assert.match(script, /stat -Lc '%d:%i'/);
   assert.match(script, /\/proc\/\$\{backend_pid\}\/exe/);
 });
 
@@ -2027,6 +2046,11 @@ test('builds the exact pinned source through checksum, configure, make, DESTDIR,
     (
       await lstat(join(fixture.installRoot, '.prisma-prim-install-v1'))
     ).isFile(),
+  );
+  assert.equal(
+    (await lstat(join(fixture.installRoot, 'lib/restrictive-generated'))).mode &
+      0o777,
+    0o644,
   );
 });
 
