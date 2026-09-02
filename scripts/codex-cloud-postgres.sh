@@ -973,14 +973,14 @@ run_as_root() {
     [[ "$(trusted_root_command "${timeout_path}")" == "${timeout_path}" ]] ||
     fail 'root commands require trusted fixed /usr/bin/timeout.'
   if [[ "${caller_uid}" == '0' ]]; then
-    "${timeout_path}" 300s "$@"
+    "${timeout_path}" 900s "$@"
     return
   fi
   local sudo_path='/usr/bin/sudo'
   [[ -x "${sudo_path}" ]] &&
     [[ "$(trusted_root_command "${sudo_path}")" == "${sudo_path}" ]] ||
     fail 'root access requires trusted fixed /usr/bin/sudo.'
-  "${timeout_path}" 300s "${sudo_path}" -n -- "$@"
+  "${timeout_path}" 900s "${sudo_path}" -n -- "$@"
 }
 
 build_prerequisites_are_ready() {

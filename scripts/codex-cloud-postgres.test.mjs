@@ -476,6 +476,32 @@ test('uses only fixed trusted timeout and sudo paths at the root-command boundar
   assert.match(script, /local sudo_path='\/usr\/bin\/sudo'/);
 });
 
+test('gives slow root package installation a bounded fifteen-minute window', async (t) => {
+  const fixture = await createFixture(t, { withCache: false });
+  const timeoutPath = join(fixture.toolRoot, 'root-timeout');
+  await executable(
+    timeoutPath,
+    '#!/bin/bash\nprintf \'%s\\n\' "$1" >"$FAKE_LOG/root-timeout"\nshift\nexec "$@"\n',
+  );
+  const functionSource = shellFunction('run_as_root').replaceAll(
+    '/usr/bin/timeout',
+    timeoutPath,
+  );
+  const result = spawnSync(
+    '/usr/bin/bash',
+    [
+      '-c',
+      `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nrun_as_root /usr/bin/true`,
+    ],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'root-timeout'), 'utf8'),
+    '900s\n',
+  );
+});
+
 async function executable(path, content) {
   await writeFile(path, content, { mode: 0o755 });
   await chmod(path, 0o755);
