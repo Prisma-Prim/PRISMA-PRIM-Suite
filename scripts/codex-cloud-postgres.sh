@@ -22,6 +22,7 @@ sha256=${postgres_source_sha256}"
 readonly runtime_marker_name='.prisma-prim-runtime-v1'
 readonly cache_marker_name='.prisma-prim-cache-v1'
 readonly install_marker_name='.prisma-prim-install-v1'
+readonly install_manifest_name='.prisma-prim-install-manifest-v1'
 readonly socket_marker_name='.prisma-prim-socket-v1'
 readonly socket_intent_name='.prisma-prim-socket-intent-v1'
 readonly data_marker_name='.prisma-prim-data-v1'
@@ -35,6 +36,10 @@ readonly -a required_postgres_binaries=(
   psql
   createdb
   createuser
+)
+readonly -a required_postgres_share_files=(
+  postgres.bki
+  postgresql.conf.sample
 )
 
 usage() {
@@ -569,6 +574,61 @@ postgres_version_is_supported() {
   [[ "${output}" == "${binary} (PostgreSQL) ${postgres_version}" ]]
 }
 
+generate_install_manifest() {
+  local root="$1"
+  (
+    cd "${root}"
+    /usr/bin/find . -mindepth 1 \
+      \( -type f -o -type l \) \
+      ! -path "./${install_marker_name}" \
+      ! -path "./${install_manifest_name}" \
+      -print0 |
+      LC_ALL=C /usr/bin/sort -z |
+      /usr/bin/xargs -0 -r /usr/bin/sha256sum
+  )
+}
+
+create_install_manifest() {
+  local root="$1"
+  local manifest="${root}/${install_manifest_name}"
+  path_exists "${manifest}" &&
+    fail 'the install manifest destination already exists.'
+  if ! (
+    set -o noclobber
+    generate_install_manifest "${root}" >"${manifest}"
+  ); then
+    fail 'the install manifest could not be created.'
+  fi
+  chmod 600 -- "${manifest}"
+  validate_regular_file \
+    "${manifest}" "${caller_uid}" "${caller_gid}" 600 ||
+    fail 'the install manifest changed during creation.'
+}
+
+validate_install_manifest() {
+  local root="$1"
+  local manifest="${root}/${install_manifest_name}"
+  validate_regular_file \
+    "${manifest}" "${caller_uid}" "${caller_gid}" 600 || return 1
+  validate_directory "${root}/share" "${caller_uid}" "${caller_gid}" 755 ||
+    return 1
+
+  local share_file share_path before after
+  for share_file in "${required_postgres_share_files[@]}"; do
+    share_path="${root}/share/${share_file}"
+    validate_regular_file \
+      "${share_path}" "${caller_uid}" "${caller_gid}" 644 || return 1
+  done
+
+  before="$(stat -c '%F|%u|%g|%a|%d:%i|%s' -- "${manifest}" 2>/dev/null)" ||
+    return 1
+  /usr/bin/cmp --silent -- \
+    "${manifest}" <(generate_install_manifest "${root}") || return 1
+  after="$(stat -c '%F|%u|%g|%a|%d:%i|%s' -- "${manifest}" 2>/dev/null)" ||
+    return 1
+  [[ "${after}" == "${before}" ]]
+}
+
 validate_install_payload() {
   local root="$1"
   validate_directory "${root}" "${caller_uid}" "${caller_gid}" "${install_mode}" ||
@@ -576,6 +636,7 @@ validate_install_payload() {
   validate_directory "${root}/bin" "${caller_uid}" "${caller_gid}" 755 || return 1
   validate_directory "${root}/lib" "${caller_uid}" "${caller_gid}" 755 || return 1
   validate_safe_install_tree "${root}" || return 1
+  validate_install_manifest "${root}" || return 1
 
   local binary binary_path output mode_value
   for binary in "${required_postgres_binaries[@]}"; do
@@ -874,6 +935,7 @@ build_postgres() {
   create_regular_marker \
     "${staged_install}/${install_marker_name}" \
     "${install_marker_text}"
+  create_install_manifest "${staged_install}"
   validate_install "${staged_install}" ||
     fail 'the staged PostgreSQL install failed provenance or version checks.'
 
@@ -1503,9 +1565,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
@@ -1531,10 +1593,10 @@ verify_role_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls memberships sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls memberships sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1553,6 +1615,7 @@ verify_role_identity() {
   [[ "${can_login}" == 't' && "${can_create_db}" == 't' ]] || return 1
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
+  [[ "${memberships}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
@@ -1581,10 +1644,10 @@ verify_database_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls owner sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls owner memberships sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls owner sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls owner memberships sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1604,6 +1667,7 @@ verify_database_identity() {
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
+  [[ "${memberships}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 

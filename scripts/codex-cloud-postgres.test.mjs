@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const scriptPath = fileURLToPath(
   new URL('./codex-cloud-postgres.sh', import.meta.url),
@@ -32,6 +32,10 @@ const requiredBinaries = [
   'psql',
   'createdb',
   'createuser',
+];
+const requiredShareFiles = [
+  'share/postgres.bki',
+  'share/postgresql.conf.sample',
 ];
 const hostUid = String(process.getuid?.() ?? 1000);
 const hostGid = String(process.getgid?.() ?? 1000);
@@ -64,6 +68,26 @@ function cleanEnvironment(overrides = {}) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function writeFixtureInstallManifest(installRoot) {
+  const paths = [
+    ...requiredBinaries.map((binary) => `bin/${binary}`),
+    ...requiredShareFiles,
+  ].sort();
+  const lines = await Promise.all(
+    paths.map(async (path) => {
+      const digest = createHash('sha256')
+        .update(await readFile(join(installRoot, path)))
+        .digest('hex');
+      return `${digest}  ./${path}`;
+    }),
+  );
+  await writeFile(
+    join(installRoot, '.prisma-prim-install-manifest-v1'),
+    `${lines.join('\n')}\n`,
+    { mode: 0o600 },
+  );
 }
 
 function runScript({ args = [], env = {}, timeout = 60_000 } = {}) {
@@ -869,13 +893,16 @@ case "$name" in
     done
     if [[ -n "$destination" && " $* " == *' install '* ]]; then
       staged="\${destination}\${FAKE_INSTALL_ROOT}"
-      /usr/bin/mkdir -p -- "$staged/bin" "$staged/lib"
+      /usr/bin/mkdir -p -- "$staged/bin" "$staged/lib" "$staged/share"
       /usr/bin/chmod "\${FAKE_INSTALL_MODE}" "$staged"
-      /usr/bin/chmod 755 "$staged/bin" "$staged/lib"
+      /usr/bin/chmod 755 "$staged/bin" "$staged/lib" "$staged/share"
       for binary in postgres pg_ctl initdb pg_isready psql createdb createuser; do
         /usr/bin/cp -- "\${FAKE_POSTGRES_TEMPLATE}" "$staged/bin/$binary"
         /usr/bin/chmod 755 "$staged/bin/$binary"
       done
+      printf 'fake postgres catalog\n' >"$staged/share/postgres.bki"
+      printf 'fake postgres configuration\n' >"$staged/share/postgresql.conf.sample"
+      /usr/bin/chmod 644 "$staged/share/postgres.bki" "$staged/share/postgresql.conf.sample"
     fi
     ;;
   flex|bison|gzip)
@@ -1043,11 +1070,15 @@ case "$name" in
         reported_user="\${FAKE_TCP_IDENTITY_USER:-$reported_user}"
         sentinel="\${FAKE_TCP_IDENTITY_SENTINEL:-$sentinel}"
       fi
+      membership_prefix=''
+      if [[ "$query" == *'pg_auth_members'* ]]; then
+        membership_prefix="\${FAKE_ROLE_MEMBERSHIP_COUNT:-0}|"
+      fi
       printf 'role-identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$membership_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *'rolcanlogin'* ]]; then
       [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
       [[ -e "\${FAKE_STATE_ROOT}/database.$database" ]] || exit 52
@@ -1077,11 +1108,15 @@ case "$name" in
         reported_user="\${FAKE_TCP_IDENTITY_USER:-$reported_user}"
         sentinel="\${FAKE_TCP_IDENTITY_SENTINEL:-$sentinel}"
       fi
+      membership_prefix=''
+      if [[ "$query" == *'pg_auth_members'* ]]; then
+        membership_prefix="\${FAKE_ROLE_MEMBERSHIP_COUNT:-0}|"
+      fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$owner" "$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$owner" "$membership_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
@@ -1166,10 +1201,22 @@ async function createFixture(
   if (withCache) {
     await mkdir(binRoot, { recursive: true, mode: 0o755 });
     await mkdir(join(installRoot, 'lib'), { mode: 0o755 });
+    await mkdir(join(installRoot, 'share'), { mode: 0o755 });
+    await writeFile(
+      join(installRoot, 'share', 'postgres.bki'),
+      'fake postgres catalog\n',
+      { mode: 0o644 },
+    );
+    await writeFile(
+      join(installRoot, 'share', 'postgresql.conf.sample'),
+      'fake postgres configuration\n',
+      { mode: 0o644 },
+    );
     await chmod(cacheRoot, cacheMode);
     await chmod(installRoot, installMode);
     await chmod(binRoot, 0o755);
     await chmod(join(installRoot, 'lib'), 0o755);
+    await chmod(join(installRoot, 'share'), 0o755);
 
     await writeFile(
       join(cacheRoot, '.prisma-prim-cache-v1'),
@@ -1233,6 +1280,7 @@ sha256=${sourceSha256}
     for (const binary of requiredBinaries) {
       await executable(join(binRoot, binary), fakePostgres);
     }
+    await writeFixtureInstallManifest(installRoot);
   }
 
   const dataRoot = join(runtimeRoot, 'data');
@@ -1302,6 +1350,15 @@ async function createValidForeignInstall(path, fixture) {
   const binRoot = join(path, 'bin');
   await mkdir(binRoot, { recursive: true, mode: 0o755 });
   await mkdir(join(path, 'lib'), { mode: 0o755 });
+  await mkdir(join(path, 'share'), { mode: 0o755 });
+  await writeFile(join(path, 'share', 'postgres.bki'), 'fake postgres catalog\n', {
+    mode: 0o644,
+  });
+  await writeFile(
+    join(path, 'share', 'postgresql.conf.sample'),
+    'fake postgres configuration\n',
+    { mode: 0o644 },
+  );
   await chmod(path, Number.parseInt(fixture.env.FAKE_INSTALL_MODE, 8));
   await writeFile(
     join(path, '.prisma-prim-install-v1'),
@@ -1315,6 +1372,7 @@ sha256=${sourceSha256}
   for (const binary of requiredBinaries) {
     await executable(join(binRoot, binary), fakePostgres);
   }
+  await writeFixtureInstallManifest(path);
 }
 
 async function assertAbsent(path) {
@@ -1451,6 +1509,34 @@ for (const binary of requiredBinaries) {
   test(`rejects a missing ${binary} without probing any cache executable`, async (t) => {
     const fixture = await createFixture(t);
     await rm(join(fixture.installRoot, 'bin', binary));
+    const result = runScript({ env: fixture.env });
+    assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
+    assert.doesNotMatch(
+      await readOptional(join(fixture.logRoot, 'operations')),
+      /version\|/,
+    );
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
+  });
+}
+
+for (const [name, mutate] of [
+  [
+    'missing postgres.bki',
+    (fixture) => rm(join(fixture.installRoot, 'share', 'postgres.bki')),
+  ],
+  [
+    'corrupted postgresql.conf.sample',
+    (fixture) =>
+      writeFile(
+        join(fixture.installRoot, 'share', 'postgresql.conf.sample'),
+        'substituted configuration\n',
+        { mode: 0o644 },
+      ),
+  ],
+]) {
+  test(`rejects a ${name} cache payload before service mutation`, async (t) => {
+    const fixture = await createFixture(t);
+    await mutate(fixture);
     const result = runScript({ env: fixture.env });
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.doesNotMatch(
@@ -1973,7 +2059,7 @@ test('makes the final ready commit non-interruptible while retaining the prior c
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const resultPromise = collect(child);
-  await waitFor(entered);
+  await waitFor(entered, 60_000);
   assert.equal(child.kill('SIGTERM'), true);
   await writeFile(release, '');
   assertSuccess(await resultPromise);
@@ -2699,6 +2785,29 @@ test('rejects a role that gains superuser authority', async (t) => {
   assertOrdinaryFailure(result, /identity verification failed/);
 });
 
+test('rejects a role with inherited authority before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_ROLE_MEMBERSHIP_COUNT: '1' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+});
+
+test('queries database ownership before role memberships to match the identity parser', () => {
+  assert.match(
+    script,
+    /app_identity_query=.*pg_get_userbyid\(d\.datdba\).+pg_auth_members/,
+  );
+});
+
 test('rejects a final server version other than exactly 17.11', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
@@ -2897,6 +3006,7 @@ test('serializes distinct caches sharing one runtime and does not leak FD8', asy
   const firstChild = spawn('bash', [scriptPath], {
     env: cleanEnvironment({
       ...first.env,
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_FLOCK_DIRECTORY: flockDirectory,
       FAKE_INSTANCE: 'a',
       FAKE_INITDB_ENTERED: entered,
@@ -2912,6 +3022,7 @@ test('serializes distinct caches sharing one runtime and does not leak FD8', asy
   const secondChild = spawn('bash', [scriptPath], {
     env: cleanEnvironment({
       ...second.env,
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_SERVICE_MARKER_LOG: first.logRoot,
       FAKE_FLOCK_DIRECTORY: flockDirectory,
       FAKE_INSTANCE: 'b',
@@ -2982,6 +3093,7 @@ test('holds the shared cache lock through a late rollback before another runtime
     detached: true,
     env: cleanEnvironment({
       ...first.env,
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_BUILD_FLOCK_DIRECTORY: coordination,
       FAKE_INSTANCE: 'a',
       FAKE_INITDB_ENTERED: entered,
@@ -2992,13 +3104,14 @@ test('holds the shared cache lock through a late rollback before another runtime
   });
   children.push(firstChild);
   const firstResult = collect(firstChild);
-  await waitFor(entered);
+  await waitFor(entered, 60_000);
   assert.ok((await lstat(join(coordination, 'a.build-acquired'))).isFile());
 
   const secondChild = spawn('bash', [scriptPath, '--install'], {
     detached: true,
     env: cleanEnvironment({
       ...second.env,
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_BUILD_FLOCK_DIRECTORY: coordination,
       FAKE_INSTANCE: 'b',
     }),
