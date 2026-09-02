@@ -1801,10 +1801,12 @@ backend_executable_identity() {
     [[ "${innermost_pid}" == "${requested_pid}" ]] || continue
 
     proc_path="${status_path%/status}"
-    candidate_namespace="$(readlink -- "${proc_path}/ns/pid" 2>/dev/null)" || continue
+    candidate_namespace="$(
+      run_as_service readlink -- "${proc_path}/ns/pid" 2>/dev/null
+    )" || continue
     [[ "${candidate_namespace}" == "${current_namespace}" ]] || continue
     candidate_identity="$(
-      stat -Lc '%d:%i' -- "${proc_path}/exe" 2>/dev/null
+      run_as_service stat -Lc '%d:%i' -- "${proc_path}/exe" 2>/dev/null
     )" || continue
     [[ -z "${match_identity}" ]] || return 1
     match_identity="${candidate_identity}"

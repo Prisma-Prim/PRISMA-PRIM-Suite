@@ -575,6 +575,10 @@ done
 path="\${!#}"
 resolved="$path"
 if [[ "$path" == /proc/*/exe ]]; then
+  if [[ "\${FAKE_REQUIRE_SERVICE_PROC_INSPECTION:-false}" == 'true' &&
+    "\${FAKE_SERVICE_BOUNDARY:-false}" != 'true' ]]; then
+    exit 97
+  fi
   resolved="\${FAKE_BACKEND_EXECUTABLE:-\${FAKE_INSTALL_ROOT}/bin/postgres}"
 elif [[ "$path" == /proc/*/fd/* ]]; then
   resolved="$(/usr/bin/readlink -f -- "$path")"
@@ -761,6 +765,11 @@ case "$name" in
     exec "/usr/bin/$name" "$@"
     ;;
   readlink)
+    if [[ "\${!#}" == /proc/[0-9]*/ns/pid &&
+      "\${FAKE_REQUIRE_SERVICE_PROC_INSPECTION:-false}" == 'true' &&
+      "\${FAKE_SERVICE_BOUNDARY:-false}" != 'true' ]]; then
+      exit 98
+    fi
     if [[ "\${!#}" == "/proc/\${FAKE_BACKEND_PID:-4242}/exe" ]]; then
       printf '%s\n' "\${FAKE_BACKEND_EXECUTABLE:-\${FAKE_INSTALL_ROOT}/bin/postgres}"
       exit 0
@@ -1694,6 +1703,17 @@ test('rejects an existing listener whose backend inode differs from the pinned e
   assert.match(script, /coproc POSTGRES_IDENTITY_PROBE/);
   assert.match(script, /stat -Lc '%d:%i'/);
   assert.match(script, /backend_executable_identity "\$\{backend_pid\}"/);
+});
+
+test('inspects the live backend proc links as the PostgreSQL service account', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const result = runScript({
+    env: {
+      ...fixture.env,
+      FAKE_REQUIRE_SERVICE_PROC_INSPECTION: 'true',
+    },
+  });
+  assertSuccess(result);
 });
 
 test('maps the SQL namespace PID through the matching proc PID namespace', () => {
