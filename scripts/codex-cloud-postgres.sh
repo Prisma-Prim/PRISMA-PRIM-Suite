@@ -784,10 +784,24 @@ recover_interrupted_install_publication() {
   local interrupted_new="${cache_root}/.install-new-${publication_id}"
   local interrupted_backup="${cache_root}/.install-backup-${publication_id}"
   local interrupted_failed="${cache_root}/.install-failed-${publication_id}"
+  local interrupted_build="${cache_root}/.build-${publication_id}"
+  local interrupted_staged="${interrupted_build}/stage${install_root}"
   path_exists "${interrupted_failed}" && return 1
+  validate_directory \
+    "${interrupted_build}" \
+    "${caller_uid}" \
+    "${caller_gid}" \
+    700 || return 1
+  validate_marker \
+    "${interrupted_build}/${build_marker_name}" \
+    "${caller_uid}" \
+    "${caller_gid}" \
+    'prisma-prim-postgres-build-v1' || return 1
+  build_root="${interrupted_build}"
 
   if validate_install "${install_root}"; then
     path_exists "${interrupted_new}" && return 1
+    path_exists "${interrupted_staged}" && return 1
     if [[ "${has_prior}" == 'true' ]]; then
       repairable_install_is_at "${interrupted_backup}" || return 1
     else
@@ -805,6 +819,15 @@ recover_interrupted_install_publication() {
     return 0
   fi
 
+  if path_exists "${interrupted_new}"; then
+    path_exists "${interrupted_staged}" && return 1
+    validate_install "${interrupted_new}" || return 1
+  else
+    validate_install "${interrupted_staged}" || return 1
+    rename_no_replace "${interrupted_staged}" "${interrupted_new}" || return 1
+    validate_install "${interrupted_new}" || return 1
+  fi
+
   if path_exists "${install_root}"; then
     [[ "${has_prior}" == 'true' ]] || return 1
     repairable_install_is_at "${install_root}" || return 1
@@ -817,7 +840,6 @@ recover_interrupted_install_publication() {
   else
     path_exists "${interrupted_backup}" && return 1
   fi
-  validate_install "${interrupted_new}" || return 1
   rename_no_replace "${interrupted_new}" "${install_root}" || return 1
   validate_install "${install_root}" || return 1
   rm -f -- "${intent}" || return 1
@@ -1058,10 +1080,6 @@ build_postgres() {
 
   new_install="${cache_root}/.install-new-$$"
   path_exists "${new_install}" && fail 'the new install destination already exists.'
-  rename_no_replace "${staged_install}" "${new_install}" ||
-    fail 'the new install destination appeared during atomic publication.'
-  validate_install "${new_install}" || fail 'the moved staged install changed.'
-  replacement_install_identity="$(stat -c '%d:%i' -- "${new_install}")"
 
   local publication_has_prior=false
   if path_exists "${install_root}"; then
@@ -1105,6 +1123,11 @@ build_postgres() {
     "${publication_intent_text}" ||
     fail 'the install publication intent changed during creation.'
   install_publication_intent_text="${publication_intent_text}"
+
+  rename_no_replace "${staged_install}" "${new_install}" ||
+    fail 'the new install destination appeared during atomic publication.'
+  validate_install "${new_install}" || fail 'the moved staged install changed.'
+  replacement_install_identity="$(stat -c '%d:%i' -- "${new_install}")"
 
   if [[ "${publication_has_prior}" == 'true' ]]; then
     rename_no_replace "${install_root}" "${backup_install}" ||
@@ -1270,6 +1293,24 @@ prepare_service_identity() {
   readonly service_user service_uid service_gid runuser_path
 }
 
+validate_service_cache_ancestors() {
+  [[ "${service_uid}" != "${caller_uid}" ]] || return 0
+  local current="${cache_root%/*}"
+  local mode_value
+  while :; do
+    mode_value="$(file_mode "${current}")" ||
+      fail "cache ancestor ${current} mode could not be read."
+    [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] ||
+      fail "cache ancestor ${current} mode is invalid."
+    if (( (10#${mode_value: -1} & 1) == 0 )); then
+      fail "cache ancestor ${current} does not permit service traversal."
+    fi
+    [[ "${current}" == '/' ]] && break
+    current="${current%/*}"
+    [[ -n "${current}" ]] || current='/'
+  done
+}
+
 run_as_service() {
   if [[ "${caller_uid}" == '0' ]]; then
     "${runuser_path}" -u postgres -- "$@"
@@ -1279,6 +1320,7 @@ run_as_service() {
 }
 
 prepare_service_identity
+validate_service_cache_ancestors
 
 stop_conflicting_debian_clusters
 

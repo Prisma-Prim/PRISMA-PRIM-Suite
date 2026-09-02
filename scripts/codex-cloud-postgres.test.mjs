@@ -310,6 +310,39 @@ test('pins immutable PostgreSQL 17.11 source provenance and bounded build steps'
   assert.doesNotMatch(script, /docker/);
 });
 
+test('requires service traversal through every cache ancestor', () => {
+  const functionSource = shellFunction('validate_service_cache_ancestors');
+  const command = `${functionSource}
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+cache_root=/workspace/.cache/prisma-prim-postgres-cache-0
+caller_uid=0
+service_uid=71
+file_mode() {
+  case "$1" in
+    /workspace/.cache) printf '%s\n' 700 ;;
+    *) printf '%s\n' 755 ;;
+  esac
+}
+validate_service_cache_ancestors`;
+  const blocked = spawnSync('/usr/bin/bash', ['-c', command], {
+    encoding: 'utf8',
+  });
+  assert.notEqual(blocked.status, 0);
+  assert.match(blocked.stderr, /cache ancestor .*service traversal/);
+
+  const traversableCommand = `${functionSource}
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+cache_root=/workspace/.cache/prisma-prim-postgres-cache-0
+caller_uid=0
+service_uid=71
+file_mode() { printf '%s\n' 755; }
+validate_service_cache_ancestors`;
+  const traversable = spawnSync('/usr/bin/bash', ['-c', traversableCommand], {
+    encoding: 'utf8',
+  });
+  assert.equal(traversable.status, 0, traversable.stderr);
+});
+
 test('requires all trusted server binaries and supported versions', () => {
   for (const binary of requiredBinaries) {
     assert.match(script, new RegExp(`^  ${binary}$`, 'm'));
@@ -693,6 +726,12 @@ case "$name" in
     if [[ "\${FAKE_SIGNAL_ON_BACKUP:-false}" == 'true' &&
       "$source" == "\${FAKE_INSTALL_ROOT}" &&
       "$destination" == "\${FAKE_CACHE_ROOT}/.install-backup-"* ]]; then
+      /usr/bin/mv "$@"
+      /usr/bin/kill "-\${FAKE_SIGNAL_NAME:-TERM}" "$PPID"
+      exit 0
+    fi
+    if [[ "\${FAKE_SIGNAL_ON_NEW_INSTALL:-false}" == 'true' &&
+      "$destination" == "\${FAKE_CACHE_ROOT}/.install-new-"* ]]; then
       /usr/bin/mv "$@"
       /usr/bin/kill "-\${FAKE_SIGNAL_NAME:-TERM}" "$PPID"
       exit 0
@@ -1920,6 +1959,56 @@ test('recovers a verified replacement after SIGKILL creates a publication gap', 
   assert.equal(interrupted.status, null, interrupted.stderr);
   assert.equal(interrupted.signal, 'SIGKILL', interrupted.stderr);
   await assertAbsent(fixture.installRoot);
+  assert.ok(
+    (
+      await lstat(
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+      )
+    ).isFile(),
+  );
+  const operationsBefore = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+
+  assertSuccess(runScript({ env: fixture.env }));
+  const operationsAfter = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
+  );
+  assert.equal(
+    (operationsAfter.match(/^make\|/gm) ?? []).length,
+    (operationsBefore.match(/^make\|/gm) ?? []).length,
+  );
+  const current = spawnSync(
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
+  );
+  assert.match(current.stdout, /17\.11/);
+  await assertAbsent(
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+  );
+});
+
+test('recovers after SIGKILL immediately moves the staged install', async (t) => {
+  const fixture = await createFixture(t);
+  await executable(
+    join(fixture.installRoot, 'bin', 'postgres'),
+    '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
+  );
+
+  const interrupted = runScript({
+    args: ['--install'],
+    env: {
+      ...fixture.env,
+      FAKE_SIGNAL_NAME: 'KILL',
+      FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
+    },
+  });
+
+  assert.equal(interrupted.status, null, interrupted.stderr);
+  assert.equal(interrupted.signal, 'SIGKILL', interrupted.stderr);
   assert.ok(
     (
       await lstat(
