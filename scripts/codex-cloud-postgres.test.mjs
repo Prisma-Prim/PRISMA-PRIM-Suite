@@ -1706,7 +1706,10 @@ test('rejects an existing listener whose backend inode differs from the pinned e
 });
 
 test('inspects the live backend proc links as the PostgreSQL service account', async (t) => {
-  const fixture = await establishRunningFixture(t);
+  const fixture = await establishRunningFixture(t, {
+    callerUid: '0',
+    callerGid: '0',
+  });
   const result = runScript({
     env: {
       ...fixture.env,
