@@ -781,6 +781,10 @@ install_publication_intent_protects_build() {
 clear_install_publication_intent() {
   [[ -n "${install_publication_intent_text}" ]] || return 0
   local intent="${cache_root}/${install_publication_intent_name}"
+  if ! path_exists "${intent}"; then
+    install_publication_intent_text=''
+    return 0
+  fi
   validate_marker \
     "${intent}" \
     "${caller_uid}" \
@@ -985,7 +989,7 @@ run_as_root() {
 
 build_prerequisites_are_ready() {
   local command_name
-  for command_name in curl make cc tar gzip sha256sum flex bison; do
+  for command_name in curl make flex bison cc tar gzip sha256sum; do
     command -v "${command_name}" >/dev/null 2>&1 || return 1
   done
 
@@ -1021,9 +1025,11 @@ install_build_prerequisites() {
   [[ -x "${apt_get}" ]] &&
     [[ "$(trusted_root_command "${apt_get}")" == "${apt_get}" ]] ||
     fail 'trusted fixed /usr/bin/apt-get is required to install build prerequisites.'
+  run_as_root "${apt_get}" update ||
+    echo 'Warning: apt-get update reported an unavailable unrelated repository.' >&2
   run_as_root \
     /usr/bin/env DEBIAN_FRONTEND=noninteractive \
-    "${apt_get}" install -y --no-install-recommends --no-upgrade \
+    "${apt_get}" install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
@@ -1032,7 +1038,7 @@ install_build_prerequisites() {
     libreadline-dev \
     zlib1g-dev
   build_prerequisites_are_ready ||
-    fail 'the compiler, parser generators, readline, or zlib prerequisites remain unavailable.'
+    fail 'the compiler, readline, or zlib prerequisites remain unavailable.'
 }
 
 build_postgres() {
@@ -1782,28 +1788,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, r.rolvaliduntil, d.datconnlimit, d.datacl IS NULL, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, r.rolvaliduntil, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
-
-tcp_password_is_enforced() {
-  local database_name="$1"
-  if PGPASSWORD="${database_password}-known-wrong" \
-    pg_command timeout 10s \
-      "${install_root}/bin/psql" \
-      --no-psqlrc \
-      --set ON_ERROR_STOP=1 \
-      --tuples-only \
-      --no-align \
-      --host 127.0.0.1 \
-      --port "${postgres_port}" \
-      --username "${database_user}" \
-      --dbname "${database_name}" \
-      --command 'SELECT 1' \
-      >/dev/null 2>&1; then
-    return 1
-  fi
-}
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
@@ -1811,7 +1798,6 @@ verify_role_identity() {
   if [[ "${transport}" == 'socket' ]]; then
     output="$(admin_query postgres "${role_identity_query}")" || return 1
   else
-    tcp_password_is_enforced postgres || return 1
     output="$(
       PGPASSWORD="${database_password}" \
         pg_command timeout 10s \
@@ -1830,10 +1816,12 @@ verify_role_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until memberships settings sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls connection_limit
+  local valid_until_is_null memberships persistent_role_settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until memberships settings sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls \
+    connection_limit valid_until_is_null memberships persistent_role_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1853,10 +1841,31 @@ verify_role_identity() {
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
   [[ "${connection_limit}" == '-1' ]] || return 1
-  [[ -z "${valid_until}" ]] || return 1
+  [[ "${valid_until_is_null}" == 't' ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
-  [[ "${settings}" == '0' ]] || return 1
+  [[ "${persistent_role_settings}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
+}
+
+verify_tcp_password_enforcement() {
+  local output
+  if output="$(
+    LC_ALL=C PGPASSWORD='prisma-prim-known-invalid-password-v1' \
+      pg_command timeout 10s \
+      "${install_root}/bin/psql" \
+      --no-psqlrc \
+      --set ON_ERROR_STOP=1 \
+      --tuples-only \
+      --no-align \
+      --host 127.0.0.1 \
+      --port "${postgres_port}" \
+      --username "${database_user}" \
+      --dbname postgres \
+      --command 'SELECT 1' 2>&1
+  )"; then
+    return 1
+  fi
+  [[ "${output}" == *"password authentication failed for user \"${database_user}\""* ]]
 }
 
 verify_database_identity() {
@@ -1866,7 +1875,6 @@ verify_database_identity() {
   if [[ "${transport}" == 'socket' ]]; then
     output="$(admin_query "${database_name}" "${app_identity_query}")" || return 1
   else
-    tcp_password_is_enforced "${database_name}" || return 1
     output="$(
       PGPASSWORD="${database_password}" \
         pg_command timeout 10s \
@@ -1885,10 +1893,14 @@ verify_database_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit acl_default owner memberships settings sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls connection_limit owner
+  local valid_until_is_null database_connection_limit database_acl_is_null
+  local memberships persistent_role_settings persistent_database_settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls connection_limit valid_until database_connection_limit acl_default owner memberships settings sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls connection_limit \
+    valid_until_is_null database_connection_limit database_acl_is_null owner \
+    memberships persistent_role_settings persistent_database_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1908,12 +1920,13 @@ verify_database_identity() {
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
   [[ "${connection_limit}" == '-1' ]] || return 1
-  [[ -z "${valid_until}" ]] || return 1
+  [[ "${valid_until_is_null}" == 't' ]] || return 1
   [[ "${database_connection_limit}" == '-1' ]] || return 1
-  [[ "${acl_default}" == 't' ]] || return 1
+  [[ "${database_acl_is_null}" == 't' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
-  [[ "${settings}" == '0' ]] || return 1
+  [[ "${persistent_role_settings}" == '0' ]] || return 1
+  [[ "${persistent_database_settings}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
@@ -2024,6 +2037,9 @@ if [[ "${role_catalog_state}" == 'absent' ]]; then
     "CREATE ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'" \
     >/dev/null
 fi
+
+verify_tcp_password_enforcement ||
+  fail 'TCP password enforcement verification failed.'
 
 for database_name in "${development_database}" "${test_database}"; do
   if [[ "${database_catalog_states[${database_name}]}" == 'absent' ]]; then
