@@ -1785,9 +1785,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
@@ -1813,10 +1813,10 @@ verify_role_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls memberships settings sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls connection_limit memberships settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls memberships settings sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls connection_limit memberships settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1835,6 +1835,7 @@ verify_role_identity() {
   [[ "${can_login}" == 't' && "${can_create_db}" == 't' ]] || return 1
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
+  [[ "${connection_limit}" == '-1' ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${settings}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
@@ -1865,10 +1866,10 @@ verify_database_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls owner memberships settings sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls connection_limit owner memberships settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls owner memberships settings sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls connection_limit owner memberships settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1887,6 +1888,7 @@ verify_database_identity() {
   [[ "${can_login}" == 't' && "${can_create_db}" == 't' ]] || return 1
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
+  [[ "${connection_limit}" == '-1' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${settings}" == '0' ]] || return 1

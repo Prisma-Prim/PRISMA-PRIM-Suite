@@ -1116,6 +1116,7 @@ case "$name" in
       createrole="\${FAKE_ROLE_CREATEROLE:-f}"
       replication="\${FAKE_ROLE_REPLICATION:-f}"
       bypassrls="\${FAKE_ROLE_BYPASSRLS:-f}"
+      connection_limit="\${FAKE_ROLE_CONNECTION_LIMIT:--1}"
       sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
       reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
       reported_user="\${FAKE_IDENTITY_USER:-$username}"
@@ -1138,10 +1139,10 @@ case "$name" in
         setting_prefix="\${FAKE_ROLE_SETTING_COUNT:-0}|"
       fi
       printf 'role-identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
-      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
+      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$connection_limit" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *'rolcanlogin'* ]]; then
       [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
       [[ -e "\${FAKE_STATE_ROOT}/database.$database" ]] || exit 52
@@ -1157,6 +1158,7 @@ case "$name" in
       createrole="\${FAKE_ROLE_CREATEROLE:-f}"
       replication="\${FAKE_ROLE_REPLICATION:-f}"
       bypassrls="\${FAKE_ROLE_BYPASSRLS:-f}"
+      connection_limit="\${FAKE_ROLE_CONNECTION_LIMIT:--1}"
       owner="\${FAKE_DATABASE_OWNER:-prisma_prim}"
       sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
       reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
@@ -1180,10 +1182,10 @@ case "$name" in
         setting_prefix="\${FAKE_DATABASE_SETTING_COUNT:-0}|"
       fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
-      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
+      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$owner" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$connection_limit" "$owner" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
@@ -3187,6 +3189,23 @@ test('rejects grants of the application role to another identity before mutation
     script,
     /pg_auth_members m WHERE m\.member = r\.oid OR m\.roleid = r\.oid/,
   );
+});
+
+test('rejects an application role connection limit before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_ROLE_CONNECTION_LIMIT: '1' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /r\.rolconnlimit/);
 });
 
 test('rejects persistent application-role settings before mutation', async (t) => {
