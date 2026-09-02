@@ -1351,9 +1351,13 @@ async function createValidForeignInstall(path, fixture) {
   await mkdir(binRoot, { recursive: true, mode: 0o755 });
   await mkdir(join(path, 'lib'), { mode: 0o755 });
   await mkdir(join(path, 'share'), { mode: 0o755 });
-  await writeFile(join(path, 'share', 'postgres.bki'), 'fake postgres catalog\n', {
-    mode: 0o644,
-  });
+  await writeFile(
+    join(path, 'share', 'postgres.bki'),
+    'fake postgres catalog\n',
+    {
+      mode: 0o644,
+    },
+  );
   await writeFile(
     join(path, 'share', 'postgresql.conf.sample'),
     'fake postgres configuration\n',
@@ -2801,15 +2805,12 @@ test('rejects a role with inherited authority before mutation', async (t) => {
   );
 });
 
-test(
-  'queries database ownership before role memberships to match the identity parser',
-  () => {
-    assert.match(
-      script,
-      /app_identity_query=.*pg_get_userbyid\(d\.datdba\).+pg_auth_members/,
-    );
-  },
-);
+test('queries database ownership before role memberships to match the identity parser', () => {
+  assert.match(
+    script,
+    /app_identity_query=.*pg_get_userbyid\(d\.datdba\).+pg_auth_members/,
+  );
+});
 
 test('rejects a final server version other than exactly 17.11', async (t) => {
   const fixture = await createFixture(t);
