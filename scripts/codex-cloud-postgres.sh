@@ -1767,12 +1767,15 @@ admin_query() {
     --command "${query}"
 }
 
-base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), 'prisma-prim-ok'"
+base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), pg_backend_pid(), 'prisma-prim-ok'"
+
+verified_backend_pid=''
 
 verify_base_identity() {
-  local output data port socket listen version database user checksums sentinel extra
+  local output data port socket listen version database user checksums backend_pid sentinel extra
+  verified_backend_pid=''
   output="$(admin_query postgres "${base_identity_query}")" || return 1
-  IFS='|' read -r data port socket listen version database user checksums sentinel extra <<<"${output}"
+  IFS='|' read -r data port socket listen version database user checksums backend_pid sentinel extra <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
   [[ "${port}" == "${postgres_port}" ]] || return 1
@@ -1783,7 +1786,17 @@ verify_base_identity() {
   [[ "${database}" == 'postgres' ]] || return 1
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
-  [[ "${sentinel}" == 'prisma-prim-ok' ]]
+  is_canonical_integer_in_range "${backend_pid}" 1 4194304 || return 1
+  [[ "${sentinel}" == 'prisma-prim-ok' ]] || return 1
+  verified_backend_pid="${backend_pid}"
+}
+
+verify_pinned_backend_executable() {
+  local backend_pid="$1"
+  local executable
+  is_canonical_integer_in_range "${backend_pid}" 1 4194304 || return 1
+  executable="$(readlink -f -- "/proc/${backend_pid}/exe" 2>/dev/null)" || return 1
+  [[ "${executable}" == "${install_root}/bin/postgres" ]]
 }
 
 app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
@@ -1942,6 +1955,8 @@ if [[ "${listener_present}" == 'true' ]]; then
   fi
   verify_base_identity ||
     fail 'an existing listener does not match the owned server identity.'
+  verify_pinned_backend_executable "${verified_backend_pid}" ||
+    fail 'an existing listener does not use the pinned PostgreSQL executable.'
 else
   ensure_socket_root true
   initialize_data_root
@@ -1968,6 +1983,8 @@ else
   [[ "${ready}" == 'true' ]] ||
     fail 'the owned PostgreSQL server did not become ready on socket and TCP.'
   verify_base_identity || fail 'the started PostgreSQL server identity is invalid.'
+  verify_pinned_backend_executable "${verified_backend_pid}" ||
+    fail 'the started PostgreSQL server does not use the pinned PostgreSQL executable.'
 fi
 
 admin_psql() {
@@ -2032,7 +2049,7 @@ fi
 
 if [[ "${role_catalog_state}" == 'absent' ]]; then
   admin_psql --command \
-    "CREATE ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'" \
+    "BEGIN; SET LOCAL password_encryption = 'scram-sha-256'; CREATE ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'; COMMIT" \
     >/dev/null
 fi
 
@@ -2060,6 +2077,8 @@ for database_name in "${development_database}" "${test_database}"; do
 done
 
 verify_base_identity || fail 'final server identity verification failed.'
+verify_pinned_backend_executable "${verified_backend_pid}" ||
+  fail 'the final server does not use the pinned PostgreSQL executable.'
 server_version="$(admin_query postgres 'SHOW server_version')"
 [[ "${server_version}" == "${postgres_version}" ]] ||
   fail 'the final server version is not exactly PostgreSQL 17.11.'

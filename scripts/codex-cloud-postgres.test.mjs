@@ -725,8 +725,15 @@ case "$name" in
     fi
     exec /usr/bin/bash "$@"
     ;;
-  awk|chmod|env|readlink|sleep|touch)
+  awk|chmod|env|sleep|touch)
     exec "/usr/bin/$name" "$@"
+    ;;
+  readlink)
+    if [[ "\${!#}" == "/proc/\${FAKE_BACKEND_PID:-4242}/exe" ]]; then
+      printf '%s\n' "\${FAKE_BACKEND_EXECUTABLE:-\${FAKE_INSTALL_ROOT}/bin/postgres}"
+      exit 0
+    fi
+    exec /usr/bin/readlink "$@"
     ;;
   mkdir)
     target="\${!#}"
@@ -1273,7 +1280,11 @@ case "$name" in
         "$membership_prefix$role_setting_prefix$database_setting_prefix$sentinel" \
         "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
-      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
+      backend_pid_prefix=''
+      if [[ "$query" == *'pg_backend_pid()'* ]]; then
+        backend_pid_prefix="\${FAKE_BACKEND_PID:-4242}|"
+      fi
+      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
         "\${FAKE_IDENTITY_PORT:-\${FAKE_PORT}}" \
         "\${FAKE_IDENTITY_SOCKET:-\${FAKE_SOCKET_ROOT}}" \
@@ -1281,6 +1292,7 @@ case "$name" in
         "\${FAKE_IDENTITY_VERSION:-170011}" \
         "$username" \
         "\${FAKE_IDENTITY_CHECKSUMS:-on}" \
+        "$backend_pid_prefix" \
         "\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
     elif [[ "$query" == 'SHOW server_version' ]]; then
       echo "\${FAKE_SERVER_VERSION:-17.11}"
@@ -1290,8 +1302,13 @@ case "$name" in
       if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_dev" ]]; then echo 1; fi
     elif [[ "$query" == *"datname = 'prisma_prim_test'"* ]]; then
       if [[ -e "\${FAKE_STATE_ROOT}/database.prisma_prim_test" ]]; then echo 1; fi
-    elif [[ "$query" == CREATE\ ROLE* ]]; then
+    elif [[ "$query" == *'CREATE ROLE '* ]]; then
       [[ "\${FAKE_FAIL_OPERATION:-}" != 'create-role' ]] || exit 53
+      if [[ "\${FAKE_REQUIRE_SCRAM_CREATE:-false}" == 'true' ]]; then
+        [[ "$query" == *"BEGIN; SET LOCAL password_encryption = 'scram-sha-256'; CREATE ROLE "* ]] ||
+          exit 60
+        [[ "$query" == *'; COMMIT' ]] || exit 60
+      fi
       : >"\${FAKE_STATE_ROOT}/role.exists"
       : >"\${FAKE_STATE_ROOT}/role.configured"
       echo create-role >>"\${FAKE_LOG}/mutations"
@@ -1567,6 +1584,30 @@ test('executes the real lifecycle successfully and reuses its exact state', asyn
   assert.ok((await lstat(join(fixture.logRoot, 'initdb'))).isFile());
 });
 
+test('rejects an existing listener whose backend does not use the pinned executable', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: {
+      ...fixture.env,
+      FAKE_BACKEND_EXECUTABLE: join(fixture.toolRoot, 'postgres-template'),
+    },
+  });
+  assertOrdinaryFailure(
+    result,
+    /does not use the pinned PostgreSQL executable/,
+  );
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /pg_backend_pid\(\)/);
+  assert.match(script, /\/proc\/\$\{backend_pid\}\/exe/);
+});
+
 test('resumes application provisioning on an owned server after interruption', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
@@ -1592,6 +1633,24 @@ test('resumes application provisioning on an owned server after interruption', a
   assert.equal(
     (await readFile(join(fixture.logRoot, 'pg_ctl'), 'utf8')).trim(),
     'start',
+  );
+});
+
+test('forces SCRAM transaction-locally when creating the application role', async (t) => {
+  const fixture = await createFixture(t);
+  const result = runScript({
+    env: {
+      ...fixture.env,
+      PGOPTIONS: '-c password_encryption=md5',
+      FAKE_REQUIRE_SCRAM_CREATE: 'true',
+    },
+  });
+  assertSuccess(result);
+  assert.equal(
+    (await readFile(join(fixture.logRoot, 'mutations'), 'utf8')).match(
+      /^create-role$/gm,
+    )?.length,
+    1,
   );
 });
 
