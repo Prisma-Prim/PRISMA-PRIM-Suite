@@ -386,6 +386,13 @@ test('enforces least privilege and exact socket plus TCP identities', () => {
   assert.match(script, /pg_ready_socket && pg_ready_tcp/);
   assert.match(script, /current_setting\('data_directory'\)/);
   assert.match(script, /server_version_num/);
+  assert.match(script, /current_setting\('max_connections'\)/);
+  assert.match(script, /current_setting\('reserved_connections'\)/);
+  assert.match(script, /current_setting\('superuser_reserved_connections'\)/);
+  assert.match(
+    script,
+    /d\.datlocprovider.+d\.datlocale IS NULL.+d\.daticurules IS NULL/,
+  );
   assert.doesNotMatch(script, /pg_ctl[^\n]*-o/);
 });
 
@@ -445,7 +452,7 @@ test('selects every online Debian cluster, including recovery, and rejects malfo
   assert.match(malformedStatus.stderr, /unsafe status/);
   assert.match(
     script,
-    /\/usr\/bin\/pg_ctlcluster "\$\{version\}" "\$\{cluster\}" stop/,
+    /"\$\{timeout_path\}" --kill-after=30s 45s \\\n\s+\/usr\/bin\/pg_ctlcluster "\$\{version\}" "\$\{cluster\}" stop/,
   );
 });
 
@@ -1171,7 +1178,10 @@ case "$name" in
     if [[ "$host" == '127.0.0.1' && "$username" == 'prisma_prim' &&
       "\${PGPASSWORD:-}" == 'prisma-prim-known-invalid-password-v1' ]]; then
       printf 'psql: FATAL: password authentication failed for user "prisma_prim"\n' >&2
-      [[ "\${FAKE_TCP_TRUST_AUTH:-false}" == 'true' ]] || exit 59
+      if [[ "\${FAKE_TCP_TRUST_AUTH:-false}" != 'true' &&
+        "\${FAKE_TCP_TRUST_DATABASE:-}" != "$database" ]]; then
+        exit 59
+      fi
     fi
     if [[ "$query" == *'SELECT 1 FROM pg_roles'* || "$query" == *'SELECT 1 FROM pg_database'* ]]; then
       probe_count_file="\${FAKE_STATE_ROOT}/catalog-probe-count"
@@ -1302,12 +1312,24 @@ case "$name" in
       if [[ "$query" == *'d.datctype'* ]]; then
         database_ctype_prefix="\${FAKE_DATABASE_CTYPE:-C}|"
       fi
+      database_locale_provider_prefix=''
+      if [[ "$query" == *'d.datlocprovider'* ]]; then
+        database_locale_provider_prefix="\${FAKE_DATABASE_LOCALE_PROVIDER:-c}|"
+      fi
+      database_provider_locale_is_null_prefix=''
+      if [[ "$query" == *'d.datlocale IS NULL'* ]]; then
+        database_provider_locale_is_null_prefix="\${FAKE_DATABASE_PROVIDER_LOCALE_IS_NULL:-t}|"
+      fi
+      database_icu_rules_is_null_prefix=''
+      if [[ "$query" == *'d.daticurules IS NULL'* ]]; then
+        database_icu_rules_is_null_prefix="\${FAKE_DATABASE_ICU_RULES_IS_NULL:-t}|"
+      fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
         "$bypassrls" "$connection_limit" \
-        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$owner" \
+        "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$database_locale_provider_prefix$database_provider_locale_is_null_prefix$database_icu_rules_is_null_prefix$owner" \
         "$membership_prefix$role_setting_prefix$database_setting_prefix$sentinel" \
         "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
@@ -1315,7 +1337,7 @@ case "$name" in
       if [[ "$query" == *'pg_backend_pid()'* ]]; then
         backend_pid_prefix="\${FAKE_BACKEND_PID:-$$}|"
       fi
-      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s%s\n' \
+      printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
         "\${FAKE_IDENTITY_PORT:-\${FAKE_PORT}}" \
         "\${FAKE_IDENTITY_SOCKET:-\${FAKE_SOCKET_ROOT}}" \
@@ -1324,6 +1346,9 @@ case "$name" in
         "$username" \
         "\${FAKE_IDENTITY_CHECKSUMS:-on}" \
         "\${FAKE_DEFAULT_TRANSACTION_READ_ONLY:-off}" \
+        "\${FAKE_MAX_CONNECTIONS:-50}" \
+        "\${FAKE_RESERVED_CONNECTIONS:-0}" \
+        "\${FAKE_SUPERUSER_RESERVED_CONNECTIONS:-3}" \
         "$backend_pid_prefix" \
         "\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
     elif [[ "$query" == 'SHOW server_version' ]]; then
@@ -3347,6 +3372,12 @@ test('rejects every live identity, version, privilege, owner, and sentinel misma
     ],
     ['future server version', { FAKE_IDENTITY_VERSION: '180000' }],
     ['checksums', { FAKE_IDENTITY_CHECKSUMS: 'off' }],
+    ['max connections', { FAKE_MAX_CONNECTIONS: '4' }],
+    ['reserved connections', { FAKE_RESERVED_CONNECTIONS: '1' }],
+    [
+      'superuser reserved connections',
+      { FAKE_SUPERUSER_RESERVED_CONNECTIONS: '4' },
+    ],
     ['database', { FAKE_IDENTITY_DATABASE: 'postgres' }],
     ['user', { FAKE_IDENTITY_USER: 'foreign' }],
     ['LOGIN', { FAKE_ROLE_LOGIN: 'f' }],
@@ -3584,6 +3615,9 @@ test('rejects non-UTF8 or non-C application database locale identities before mu
     { FAKE_DATABASE_ENCODING: 'LATIN1' },
     { FAKE_DATABASE_COLLATION: 'en_US.UTF-8' },
     { FAKE_DATABASE_CTYPE: 'en_US.UTF-8' },
+    { FAKE_DATABASE_LOCALE_PROVIDER: 'i' },
+    { FAKE_DATABASE_PROVIDER_LOCALE_IS_NULL: 'f' },
+    { FAKE_DATABASE_ICU_RULES_IS_NULL: 'f' },
   ]) {
     const result = runScript({ env: { ...fixture.env, ...env } });
     assertOrdinaryFailure(result, /identity verification failed/);
@@ -3601,7 +3635,10 @@ test('rejects TCP trust authentication before mutation', async (t) => {
     'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_TCP_TRUST_AUTH: 'true' },
+    env: {
+      ...fixture.env,
+      FAKE_TCP_TRUST_DATABASE: 'prisma_prim_dev',
+    },
   });
   assertOrdinaryFailure(result, /password enforcement verification failed/);
   assert.equal(
@@ -3609,6 +3646,7 @@ test('rejects TCP trust authentication before mutation', async (t) => {
     mutationsBefore,
   );
   assert.match(script, /prisma-prim-known-invalid-password-v1/);
+  assert.match(script, /verify_tcp_password_enforcement "\$\{database_name\}"/);
 });
 
 test('rejects persistent application-role settings before mutation', async (t) => {

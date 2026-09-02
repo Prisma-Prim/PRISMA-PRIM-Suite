@@ -1276,7 +1276,8 @@ stop_conflicting_debian_clusters() {
   while IFS='|' read -r version cluster extra; do
     [[ -n "${version}" ]] || continue
     [[ -z "${extra:-}" ]] || fail 'the Debian cluster stop plan is malformed.'
-    "${timeout_path}" 45s /usr/bin/pg_ctlcluster "${version}" "${cluster}" stop
+    "${timeout_path}" --kill-after=30s 45s \
+      /usr/bin/pg_ctlcluster "${version}" "${cluster}" stop
   done <<<"${selected_clusters}"
 }
 
@@ -1769,7 +1770,7 @@ admin_query() {
     --command "${query}"
 }
 
-base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), pg_backend_pid(), 'prisma-prim-ok'"
+base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), current_setting('max_connections'), current_setting('reserved_connections'), current_setting('superuser_reserved_connections'), pg_backend_pid(), 'prisma-prim-ok'"
 
 backend_executable_identity() {
   local requested_pid="$1"
@@ -1814,7 +1815,9 @@ backend_executable_identity() {
 }
 
 verify_base_identity() {
-  local output data port socket listen version database user checksums read_only backend_pid sentinel extra
+  local output data port socket listen version database user checksums read_only
+  local max_connections reserved_connections superuser_reserved_connections
+  local backend_pid sentinel extra
   local probe_pid probe_read_fd probe_write_fd expected_executable backend_executable
   local probe_ok=true
 
@@ -1844,7 +1847,9 @@ verify_base_identity() {
   fi
   if [[ "${probe_ok}" == 'true' ]]; then
     IFS='|' read -r \
-      data port socket listen version database user checksums read_only backend_pid sentinel extra \
+      data port socket listen version database user checksums read_only \
+      max_connections reserved_connections superuser_reserved_connections \
+      backend_pid sentinel extra \
       <<<"${output}"
     is_canonical_integer_in_range "${backend_pid}" 1 4194304 || probe_ok=false
   fi
@@ -1875,11 +1880,14 @@ verify_base_identity() {
   [[ "${user}" == "${service_user}" ]] || return 1
   [[ "${checksums}" == 'on' ]] || return 1
   [[ "${read_only}" == 'off' ]] || return 1
+  [[ "${max_connections}" == '50' ]] || return 1
+  [[ "${reserved_connections}" == '0' ]] || return 1
+  [[ "${superuser_reserved_connections}" == '3' ]] || return 1
   [[ "${backend_executable}" == "${expected_executable}" ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, d.datlocprovider, (d.datlocale IS NULL), (d.daticurules IS NULL), pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
 role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
@@ -1939,6 +1947,7 @@ verify_role_identity() {
 }
 
 verify_tcp_password_enforcement() {
+  local database_name="$1"
   local output
   if output="$(
     LC_ALL=C PGPASSWORD='prisma-prim-known-invalid-password-v1' \
@@ -1951,7 +1960,7 @@ verify_tcp_password_enforcement() {
       --host 127.0.0.1 \
       --port "${postgres_port}" \
       --username "${database_user}" \
-      --dbname postgres \
+      --dbname "${database_name}" \
       --command 'SELECT 1' 2>&1
   )"; then
     return 1
@@ -1987,12 +1996,14 @@ verify_database_identity() {
   local can_login can_create_db superuser create_role replication bypass_rls connection_limit owner
   local valid_until_is_null database_connection_limit database_acl_is_null
   local database_encoding database_collation database_ctype
+  local database_locale_provider database_provider_locale_is_null database_icu_rules_is_null
   local memberships persistent_role_settings persistent_database_settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
     can_login can_create_db superuser create_role replication bypass_rls connection_limit \
     valid_until_is_null database_connection_limit database_acl_is_null \
-    database_encoding database_collation database_ctype owner \
+    database_encoding database_collation database_ctype \
+    database_locale_provider database_provider_locale_is_null database_icu_rules_is_null owner \
     memberships persistent_role_settings persistent_database_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
@@ -2019,6 +2030,9 @@ verify_database_identity() {
   [[ "${database_encoding}" == 'UTF8' ]] || return 1
   [[ "${database_collation}" == 'C' ]] || return 1
   [[ "${database_ctype}" == 'C' ]] || return 1
+  [[ "${database_locale_provider}" == 'c' ]] || return 1
+  [[ "${database_provider_locale_is_null}" == 't' ]] || return 1
+  [[ "${database_icu_rules_is_null}" == 't' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
   [[ "${persistent_role_settings}" == '0' ]] || return 1
@@ -2134,7 +2148,7 @@ if [[ "${role_catalog_state}" == 'absent' ]]; then
     >/dev/null
 fi
 
-verify_tcp_password_enforcement ||
+verify_tcp_password_enforcement postgres ||
   fail 'TCP password enforcement verification failed.'
 
 for database_name in "${development_database}" "${test_database}"; do
@@ -2151,6 +2165,8 @@ for database_name in "${development_database}" "${test_database}"; do
 done
 
 for database_name in "${development_database}" "${test_database}"; do
+  verify_tcp_password_enforcement "${database_name}" ||
+    fail "TCP password enforcement verification failed for ${database_name}."
   verify_database_identity "${database_name}" socket ||
     fail "socket identity verification failed for ${database_name}."
   verify_database_identity "${database_name}" tcp ||
