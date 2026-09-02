@@ -154,8 +154,19 @@ if [[ "${caller_uid}" == '0' ]]; then
 fi
 readonly cache_mode install_mode runtime_mode
 
+cache_parent_is_usable() {
+  local parent="$1"
+  [[ -d "${parent}" && -w "${parent}" ]] || return 1
+  [[ "${caller_uid}" == '0' ]] || return 0
+
+  local mode_value
+  mode_value="$(stat -c '%a' -- "${parent}" 2>/dev/null)" || return 1
+  [[ "${mode_value}" =~ ^[0-7]{3,4}$ ]] || return 1
+  (( (10#${mode_value: -1} & 1) != 0 ))
+}
+
 default_cache_parent='/tmp'
-if [[ -d /workspace/.cache && -w /workspace/.cache ]]; then
+if cache_parent_is_usable '/workspace/.cache'; then
   default_cache_parent='/workspace/.cache'
 fi
 readonly cache_root="${PRISMA_PRIM_POSTGRES_CACHE_ROOT:-${default_cache_parent}/prisma-prim-postgres-cache-${caller_uid}}"

@@ -359,6 +359,38 @@ validate_service_cache_ancestors`;
   assert.equal(traversable.status, 0, traversable.stderr);
 });
 
+test('falls back from a default workspace cache parent without service traversal', async (t) => {
+  const parent = await mkdtemp(
+    join(tmpdir(), 'prisma-prim-cache-parent-test-'),
+  );
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const functionSource = shellFunction('cache_parent_is_usable');
+  const runCheck = (callerUid) =>
+    spawnSync(
+      '/usr/bin/bash',
+      [
+        '-c',
+        `${functionSource}\ncaller_uid="$1"\ncache_parent_is_usable "$2"`,
+        'bash',
+        callerUid,
+        parent,
+      ],
+      { encoding: 'utf8' },
+    );
+
+  await chmod(parent, 0o700);
+  assert.notEqual(runCheck('0').status, 0);
+  assert.equal(runCheck('1000').status, 0);
+
+  await chmod(parent, 0o701);
+  const traversable = runCheck('0');
+  assert.equal(traversable.status, 0, traversable.stderr);
+  assert.match(
+    script,
+    /if cache_parent_is_usable '\/workspace\/\.cache'; then/,
+  );
+});
+
 test('requires all trusted server binaries and supported versions', () => {
   for (const binary of requiredBinaries) {
     assert.match(script, new RegExp(`^  ${binary}$`, 'm'));
