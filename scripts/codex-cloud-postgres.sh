@@ -191,7 +191,7 @@ cache_parent_is_usable() {
   local parent="$1"
   [[ -d "${parent}" && -w "${parent}" ]] || return 1
   if [[ "${caller_uid}" != '0' ]]; then
-    [[ -x /workspace && -x "${parent}" ]]
+    [[ -x "${parent}" ]]
     return
   fi
 
