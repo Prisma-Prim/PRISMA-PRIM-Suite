@@ -1633,10 +1633,7 @@ test('rejects an existing listener whose backend inode differs from the pinned e
       FAKE_BACKEND_EXECUTABLE: join(fixture.toolRoot, 'postgres-template'),
     },
   });
-  assertOrdinaryFailure(
-    result,
-    /does not match the owned server identity/,
-  );
+  assertOrdinaryFailure(result, /does not match the owned server identity/);
   assert.equal(
     await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
