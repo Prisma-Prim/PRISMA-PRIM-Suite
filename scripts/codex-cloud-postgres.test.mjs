@@ -1313,7 +1313,7 @@ case "$name" in
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       backend_pid_prefix=''
       if [[ "$query" == *'pg_backend_pid()'* ]]; then
-        backend_pid_prefix="\${FAKE_BACKEND_PID:-4242}|"
+        backend_pid_prefix="\${FAKE_BACKEND_PID:-$$}|"
       fi
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s|%s%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
@@ -1643,7 +1643,21 @@ test('rejects an existing listener whose backend inode differs from the pinned e
   assert.match(script, /pg_backend_pid\(\)/);
   assert.match(script, /coproc POSTGRES_IDENTITY_PROBE/);
   assert.match(script, /stat -Lc '%d:%i'/);
-  assert.match(script, /\/proc\/\$\{backend_pid\}\/exe/);
+  assert.match(script, /backend_executable_identity "\$\{backend_pid\}"/);
+});
+
+test('maps the SQL namespace PID through the matching proc PID namespace', () => {
+  const resolver = shellFunction('backend_executable_identity');
+  assert.match(resolver, /\/proc\/self\/ns\/pid/);
+  assert.match(resolver, /\/proc\/\[0-9\]\*\/status/);
+  assert.match(resolver, /NSpid:/);
+  assert.match(resolver, /innermost_pid/);
+  assert.match(resolver, /candidate_namespace/);
+  assert.match(resolver, /\$\{proc_path\}\/exe/);
+  assert.doesNotMatch(
+    shellFunction('verify_base_identity'),
+    /\/proc\/\$\{backend_pid\}\/exe/,
+  );
 });
 
 test('rejects an owned server in effective read-only mode without mutation', async (t) => {

@@ -1771,6 +1771,48 @@ admin_query() {
 
 base_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), current_setting('default_transaction_read_only'), pg_backend_pid(), 'prisma-prim-ok'"
 
+backend_executable_identity() {
+  local requested_pid="$1"
+  local current_namespace status_path proc_path key pid_chain_text
+  local candidate_namespace candidate_identity match_identity=''
+  local innermost_pid
+  local -a pid_chain=()
+
+  is_canonical_integer_in_range "${requested_pid}" 1 4194304 || return 1
+  current_namespace="$(readlink -- /proc/self/ns/pid 2>/dev/null)" || return 1
+  [[ "${current_namespace}" =~ ^pid:\[[1-9][0-9]*\]$ ]] || return 1
+
+  for status_path in /proc/[0-9]*/status; do
+    [[ -r "${status_path}" ]] || continue
+    pid_chain_text=''
+    while IFS=$' \t' read -r key pid_chain_text; do
+      if [[ "${key}" == 'NSpid:' ]]; then
+        break
+      fi
+      pid_chain_text=''
+    done <"${status_path}" || continue
+    [[ -n "${pid_chain_text}" ]] || continue
+
+    read -r -a pid_chain <<<"${pid_chain_text}"
+    ((${#pid_chain[@]} > 0)) || continue
+    innermost_pid="${pid_chain[${#pid_chain[@]} - 1]}"
+    is_canonical_integer_in_range "${innermost_pid}" 1 4194304 || continue
+    [[ "${innermost_pid}" == "${requested_pid}" ]] || continue
+
+    proc_path="${status_path%/status}"
+    candidate_namespace="$(readlink -- "${proc_path}/ns/pid" 2>/dev/null)" || continue
+    [[ "${candidate_namespace}" == "${current_namespace}" ]] || continue
+    candidate_identity="$(
+      stat -Lc '%d:%i' -- "${proc_path}/exe" 2>/dev/null
+    )" || continue
+    [[ -z "${match_identity}" ]] || return 1
+    match_identity="${candidate_identity}"
+  done
+
+  [[ -n "${match_identity}" ]] || return 1
+  printf '%s\n' "${match_identity}"
+}
+
 verify_base_identity() {
   local output data port socket listen version database user checksums read_only backend_pid sentinel extra
   local probe_pid probe_read_fd probe_write_fd expected_executable backend_executable
@@ -1811,7 +1853,7 @@ verify_base_identity() {
       stat -Lc '%d:%i' -- "${install_root}/bin/postgres" 2>/dev/null
     )" || probe_ok=false
     backend_executable="$(
-      stat -Lc '%d:%i' -- "/proc/${backend_pid}/exe" 2>/dev/null
+      backend_executable_identity "${backend_pid}"
     )" || probe_ok=false
   fi
   trap '' PIPE
