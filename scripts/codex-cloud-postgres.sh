@@ -989,7 +989,7 @@ run_as_root() {
 
 build_prerequisites_are_ready() {
   local command_name
-  for command_name in curl make flex bison cc tar gzip sha256sum; do
+  for command_name in curl make cc tar gzip sha256sum flex bison; do
     command -v "${command_name}" >/dev/null 2>&1 || return 1
   done
 
@@ -1025,11 +1025,9 @@ install_build_prerequisites() {
   [[ -x "${apt_get}" ]] &&
     [[ "$(trusted_root_command "${apt_get}")" == "${apt_get}" ]] ||
     fail 'trusted fixed /usr/bin/apt-get is required to install build prerequisites.'
-  run_as_root "${apt_get}" update ||
-    echo 'Warning: apt-get update reported an unavailable unrelated repository.' >&2
   run_as_root \
     /usr/bin/env DEBIAN_FRONTEND=noninteractive \
-    "${apt_get}" install -y --no-install-recommends \
+    "${apt_get}" install -y --no-install-recommends --no-upgrade \
     build-essential \
     ca-certificates \
     curl \
@@ -1038,7 +1036,7 @@ install_build_prerequisites() {
     libreadline-dev \
     zlib1g-dev
   build_prerequisites_are_ready ||
-    fail 'the compiler, readline, or zlib prerequisites remain unavailable.'
+    fail 'the compiler, parser generators, readline, or zlib prerequisites remain unavailable.'
 }
 
 build_postgres() {
