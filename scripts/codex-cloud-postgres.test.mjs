@@ -388,7 +388,10 @@ set -euo pipefail
 shift 3
 [[ "\${1:-}" == '/usr/bin/test' && "\${2:-}" == '-x' && -n "\${3:-}" ]]
 [[ "\${3}" != "\${FAKE_DENY_SERVICE_TRAVERSAL_PATH:-}" ]] || exit 1
-mode="$(/usr/bin/stat -c '%a' -- "\${3}")"
+case "\${3}" in
+  /workspace) mode=755 ;;
+  *) mode="$(/usr/bin/stat -c '%a' -- "\${3}")" ;;
+esac
 (( (10#\${mode: -1} & 1) != 0 ))
 `,
   );
