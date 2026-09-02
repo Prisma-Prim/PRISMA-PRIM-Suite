@@ -478,30 +478,39 @@ test('uses only fixed trusted timeout and sudo paths at the root-command boundar
 
 test('hard-kills a root package command that ignores its bounded deadline', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
-  const timeoutPath = join(fixture.toolRoot, 'root-timeout');
-  await executable(
-    timeoutPath,
-    '#!/bin/bash\nprintf \'%s\\n\' "$*" >"$FAKE_LOG/root-timeout"\nexec /usr/bin/timeout "$@"\n',
-  );
+  const completionMarker = join(fixture.logRoot, 'root-timeout-status');
+  const childPidMarker = join(fixture.logRoot, 'root-timeout-child-pid');
+  t.after(async () => {
+    const childPid = (await readOptional(childPidMarker)).trim();
+    if (!/^\d+$/.test(childPid)) return;
+    try {
+      process.kill(Number(childPid), 'SIGKILL');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  });
   const functionSource = shellFunction('run_as_root')
-    .replaceAll('/usr/bin/timeout', timeoutPath)
-    .replaceAll('900s', '1s')
-    .replaceAll('30s', '1s');
-  const startedAt = Date.now();
+    .replaceAll('--kill-after=30s', '--kill-after=0.05s')
+    .replaceAll('900s', '0.05s');
   const result = spawnSync(
-    '/usr/bin/bash',
+    '/usr/bin/timeout',
     [
+      '--kill-after=0.5s',
+      '2s',
+      '/usr/bin/bash',
       '-c',
-      `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nrun_as_root /usr/bin/bash -c 'trap "" TERM; while :; do /usr/bin/sleep 0.1; done'`,
+      `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nset +e\nrun_as_root /usr/bin/bash -c 'trap "" TERM; printf "%s\\n" "$$" >"$ROOT_TIMEOUT_CHILD_PID"; while :; do :; done' >/dev/null 2>&1\nprintf '%s\\n' "$?" >"${completionMarker}"`,
     ],
-    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
+    {
+      encoding: 'utf8',
+      env: {
+        ...cleanEnvironment(fixture.env),
+        ROOT_TIMEOUT_CHILD_PID: childPidMarker,
+      },
+    },
   );
-  assert.notEqual(result.status, 0);
-  assert.ok(Date.now() - startedAt < 4_000);
-  assert.match(
-    await readFile(join(fixture.logRoot, 'root-timeout'), 'utf8'),
-    /^--kill-after=1s 1s /,
-  );
+  assert.equal(result.status, 0, result.stderr || result.signal || 'timeout');
+  assert.equal(await readFile(completionMarker, 'utf8'), '137\n');
 });
 
 test('installs required parser generators without refreshing or upgrading packages', () => {
