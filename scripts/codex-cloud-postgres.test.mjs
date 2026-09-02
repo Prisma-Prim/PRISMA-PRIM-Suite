@@ -512,7 +512,7 @@ test('installs required parser generators without refreshing or upgrading packag
   assert.match(installer, /flex/);
   assert.match(installer, /bison/);
   assert.match(installer, /--no-upgrade/);
-  assert.doesNotMatch(installer, /\"\$\{apt_get\}\" update/);
+  assert.doesNotMatch(installer, /"\$\{apt_get\}" update/);
 });
 
 async function executable(path, content) {
