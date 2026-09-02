@@ -1117,6 +1117,10 @@ case "$name" in
       replication="\${FAKE_ROLE_REPLICATION:-f}"
       bypassrls="\${FAKE_ROLE_BYPASSRLS:-f}"
       connection_limit="\${FAKE_ROLE_CONNECTION_LIMIT:--1}"
+      valid_until_prefix=''
+      if [[ "$query" == *'r.rolvaliduntil'* ]]; then
+        valid_until_prefix="\${FAKE_ROLE_VALID_UNTIL:-}|"
+      fi
       sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
       reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
       reported_user="\${FAKE_IDENTITY_USER:-$username}"
@@ -1142,7 +1146,7 @@ case "$name" in
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$connection_limit" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$connection_limit" "$valid_until_prefix$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *'rolcanlogin'* ]]; then
       [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
       [[ -e "\${FAKE_STATE_ROOT}/database.$database" ]] || exit 52
@@ -1159,6 +1163,14 @@ case "$name" in
       replication="\${FAKE_ROLE_REPLICATION:-f}"
       bypassrls="\${FAKE_ROLE_BYPASSRLS:-f}"
       connection_limit="\${FAKE_ROLE_CONNECTION_LIMIT:--1}"
+      valid_until_prefix=''
+      if [[ "$query" == *'r.rolvaliduntil'* ]]; then
+        valid_until_prefix="\${FAKE_ROLE_VALID_UNTIL:-}|"
+      fi
+      database_connection_limit_prefix=''
+      if [[ "$query" == *'d.datconnlimit'* ]]; then
+        database_connection_limit_prefix="\${FAKE_DATABASE_CONNECTION_LIMIT:--1}|"
+      fi
       owner="\${FAKE_DATABASE_OWNER:-prisma_prim}"
       sentinel="\${FAKE_IDENTITY_SENTINEL:-prisma-prim-ok}"
       reported_database="\${FAKE_IDENTITY_DATABASE:-$database}"
@@ -1185,7 +1197,8 @@ case "$name" in
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$connection_limit" "$owner" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$connection_limit" "$valid_until_prefix$database_connection_limit_prefix$owner" \
+        "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
@@ -3206,6 +3219,40 @@ test('rejects an application role connection limit before mutation', async (t) =
     mutationsBefore,
   );
   assert.match(script, /r\.rolconnlimit/);
+});
+
+test('rejects an application database connection limit before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_DATABASE_CONNECTION_LIMIT: '1' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /d\.datconnlimit/);
+});
+
+test('rejects expiring application credentials before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_ROLE_VALID_UNTIL: '2030-01-01 00:00:00+00' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /r\.rolvaliduntil/);
 });
 
 test('rejects persistent application-role settings before mutation', async (t) => {
