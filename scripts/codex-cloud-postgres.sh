@@ -697,14 +697,12 @@ success_ready_message=''
 
 remove_owned_build() {
   [[ -n "${build_root}" ]] || return 0
-  if [[ -n "${install_publication_intent_text}" ]] &&
-    validate_marker \
-      "${cache_root}/${install_publication_intent_name}" \
-      "${caller_uid}" \
-      "${caller_gid}" \
-      "${install_publication_intent_text}"; then
+  local intent="${cache_root}/${install_publication_intent_name}"
+  if path_exists "${intent}"; then
+    install_publication_intent_protects_build || return 1
     return 0
   fi
+  [[ -z "${install_publication_intent_text}" ]] || return 1
   if validate_directory "${build_root}" "${caller_uid}" "${caller_gid}" 700 &&
     validate_marker \
       "${build_root}/${build_marker_name}" \
@@ -752,6 +750,34 @@ install_publication_intent_contents() {
     "prior=${has_prior}"
 }
 
+install_publication_intent_protects_build() {
+  local intent="${cache_root}/${install_publication_intent_name}"
+  local build_prefix="${cache_root}/.build-"
+  [[ "${build_root}" == "${build_prefix}"* ]] || return 1
+
+  local publication_id="${build_root#"${build_prefix}"}"
+  is_canonical_integer_in_range "${publication_id}" 1 4194304 || return 1
+
+  local contents has_prior expected
+  contents="$(
+    read_regular_file "${intent}" "${caller_uid}" "${caller_gid}" 600
+  )" || return 1
+  for has_prior in true false; do
+    expected="$(
+      install_publication_intent_contents "${publication_id}" "${has_prior}"
+    )"
+    if [[ "${contents}" == "${expected}" ]] &&
+      validate_marker \
+        "${intent}" \
+        "${caller_uid}" \
+        "${caller_gid}" \
+        "${expected}"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 clear_install_publication_intent() {
   [[ -n "${install_publication_intent_text}" ]] || return 0
   local intent="${cache_root}/${install_publication_intent_name}"
@@ -788,7 +814,6 @@ recover_interrupted_install_publication() {
   )"
   validate_marker \
     "${intent}" "${caller_uid}" "${caller_gid}" "${expected}" || return 1
-  install_publication_intent_text="${expected}"
 
   local interrupted_new="${cache_root}/.install-new-${publication_id}"
   local interrupted_backup="${cache_root}/.install-backup-${publication_id}"
@@ -816,7 +841,8 @@ recover_interrupted_install_publication() {
     else
       path_exists "${interrupted_backup}" && return 1
     fi
-    clear_install_publication_intent || return 1
+    rm -f -- "${intent}" || return 1
+    ! path_exists "${intent}" || return 1
     if [[ "${has_prior}" == 'true' ]]; then
       backup_install="${interrupted_backup}"
       failed_install="${interrupted_failed}"
@@ -850,7 +876,8 @@ recover_interrupted_install_publication() {
   fi
   rename_no_replace "${interrupted_new}" "${install_root}" || return 1
   validate_install "${install_root}" || return 1
-  clear_install_publication_intent || return 1
+  rm -f -- "${intent}" || return 1
+  ! path_exists "${intent}" || return 1
   if [[ "${has_prior}" == 'true' ]]; then
     backup_install="${interrupted_backup}"
     failed_install="${interrupted_failed}"
@@ -1120,7 +1147,6 @@ build_postgres() {
   local publication_intent="${cache_root}/${install_publication_intent_name}"
   path_exists "${publication_intent}" &&
     fail 'an install publication intent already exists.'
-  install_publication_intent_text="${publication_intent_text}"
   create_regular_marker \
     "${publication_intent}" \
     "${publication_intent_text}"
@@ -1130,6 +1156,8 @@ build_postgres() {
     "${caller_gid}" \
     "${publication_intent_text}" ||
     fail 'the install publication intent changed during creation.'
+  install_publication_intent_text="${publication_intent_text}"
+
   rename_no_replace "${staged_install}" "${new_install}" ||
     fail 'the new install destination appeared during atomic publication.'
   validate_install "${new_install}" || fail 'the moved staged install changed.'
@@ -1757,9 +1785,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
@@ -1785,10 +1813,10 @@ verify_role_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls memberships sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls memberships settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls memberships sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls memberships settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1808,6 +1836,7 @@ verify_role_identity() {
   [[ "${superuser}" == 'f' && "${create_role}" == 'f' ]] || return 1
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
+  [[ "${settings}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
@@ -1836,10 +1865,10 @@ verify_database_identity() {
   fi
 
   local data port socket listen version database user checksums
-  local can_login can_create_db superuser create_role replication bypass_rls owner memberships sentinel extra
+  local can_login can_create_db superuser create_role replication bypass_rls owner memberships settings sentinel extra
   IFS='|' read -r \
     data port socket listen version database user checksums \
-    can_login can_create_db superuser create_role replication bypass_rls owner memberships sentinel extra \
+    can_login can_create_db superuser create_role replication bypass_rls owner memberships settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
   [[ "${data}" == "${data_root}" ]] || return 1
@@ -1860,6 +1889,7 @@ verify_database_identity() {
   [[ "${replication}" == 'f' && "${bypass_rls}" == 'f' ]] || return 1
   [[ "${owner}" == "${database_user}" ]] || return 1
   [[ "${memberships}" == '0' ]] || return 1
+  [[ "${settings}" == '0' ]] || return 1
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 

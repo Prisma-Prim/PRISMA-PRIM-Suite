@@ -500,13 +500,11 @@ resolved="$path"
 if [[ "$path" == /proc/*/fd/* ]]; then
   resolved="$(/usr/bin/readlink -f -- "$path")"
 fi
-if [[ -n "\${FAKE_STAT_PAUSE_PATH:-}" &&
-  "$resolved" == "\${FAKE_STAT_PAUSE_PATH}" &&
-  ! -e "\${FAKE_STAT_PAUSE_ENTERED}" ]]; then
-  : >"\${FAKE_STAT_PAUSE_ENTERED}"
-  while [[ ! -e "\${FAKE_STAT_PAUSE_RELEASE}" ]]; do
-    /usr/bin/sleep 0.02
-  done
+if [[ "\${FAKE_FAIL_INSTALL_INTENT_VALIDATION_ONCE:-false}" == 'true' &&
+  "$resolved" == "\${FAKE_CACHE_ROOT}/.prisma-prim-install-publication-intent-v1" &&
+  ! -e "\${FAKE_LOG}/install-intent-validation-failed" ]]; then
+  : >"\${FAKE_LOG}/install-intent-validation-failed"
+  exit 96
 fi
 if [[ -n "\${FAKE_STAT_PROBE_PATH:-}" &&
   "$resolved" == "\${FAKE_STAT_PROBE_PATH}" &&
@@ -1135,11 +1133,15 @@ case "$name" in
       if [[ "$query" == *'pg_auth_members'* ]]; then
         membership_prefix="\${FAKE_ROLE_RELATION_COUNT:-\${FAKE_ROLE_MEMBERSHIP_COUNT:-0}}|"
       fi
+      setting_prefix=''
+      if [[ "$query" == *'pg_db_role_setting'* ]]; then
+        setting_prefix="\${FAKE_ROLE_SETTING_COUNT:-0}|"
+      fi
       printf 'role-identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$membership_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *'rolcanlogin'* ]]; then
       [[ -e "\${FAKE_STATE_ROOT}/role.configured" ]] || exit 51
       [[ -e "\${FAKE_STATE_ROOT}/database.$database" ]] || exit 52
@@ -1173,11 +1175,15 @@ case "$name" in
       if [[ "$query" == *'pg_auth_members'* ]]; then
         membership_prefix="\${FAKE_ROLE_RELATION_COUNT:-\${FAKE_ROLE_MEMBERSHIP_COUNT:-0}}|"
       fi
+      setting_prefix=''
+      if [[ "$query" == *'pg_db_role_setting'* ]]; then
+        setting_prefix="\${FAKE_DATABASE_SETTING_COUNT:-0}|"
+      fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
       printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
         "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
-        "$bypassrls" "$owner" "$membership_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
+        "$bypassrls" "$owner" "$membership_prefix$setting_prefix$sentinel" "\${FAKE_IDENTITY_EXTRA:-}"
     elif [[ "$query" == *"current_setting('data_directory')"* ]]; then
       printf '%s|%s|%s|%s|%s|postgres|%s|%s|%s\n' \
         "\${FAKE_IDENTITY_DATA:-\${FAKE_DATA_ROOT}}" \
@@ -2101,36 +2107,25 @@ test('retains fresh recovery state when TERM interrupts publication', async (t) 
   );
 });
 
-test('retains a fresh staged build when TERM arrives before intent activation', async (t) => {
+test('retains the marked build when intent validation fails before in-memory activation', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
-  const intent = join(
-    fixture.cacheRoot,
-    '.prisma-prim-install-publication-intent-v1',
-  );
-  const entered = join(fixture.logRoot, 'intent-stat-entered');
-  const release = join(fixture.logRoot, 'intent-stat-release');
-  const child = spawn('bash', [scriptPath, '--install'], {
-    detached: true,
-    env: cleanEnvironment({
-      ...fixture.env,
-      FAKE_STAT_PAUSE_PATH: intent,
-      FAKE_STAT_PAUSE_ENTERED: entered,
-      FAKE_STAT_PAUSE_RELEASE: release,
-    }),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  t.after(async () => {
-    await writeFile(release, '').catch(() => {});
-    await terminateProcessGroup(child);
-  });
-  const resultPromise = collect(child);
-  await waitFor(entered, 60_000);
-  process.kill(-child.pid, 'SIGTERM');
-  const interrupted = await resultPromise;
 
-  assert.equal(interrupted.signal, null, interrupted.stderr);
-  assert.equal(interrupted.status, 143, interrupted.stderr);
-  assert.ok((await lstat(intent)).isFile());
+  const interrupted = runScript({
+    args: ['--install'],
+    env: {
+      ...fixture.env,
+      FAKE_FAIL_INSTALL_INTENT_VALIDATION_ONCE: 'true',
+    },
+  });
+
+  assertOrdinaryFailure(interrupted, /intent changed during creation/);
+  assert.ok(
+    (
+      await lstat(
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+      )
+    ).isFile(),
+  );
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
       name.startsWith('.build-'),
@@ -2151,16 +2146,15 @@ test('retains a fresh staged build when TERM arrives before intent activation', 
     (operationsAfter.match(/^make\|/gm) ?? []).length,
     (operationsBefore.match(/^make\|/gm) ?? []).length,
   );
-  await assertAbsent(intent);
+  await assertAbsent(
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+  );
 });
 
-test('retains a fresh staged build when TERM interrupts recovery', async (t) => {
+test('retains the marked build when TERM interrupts recovery before intent removal', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
-  const intent = join(
-    fixture.cacheRoot,
-    '.prisma-prim-install-publication-intent-v1',
-  );
-  const first = runScript({
+
+  const firstInterruption = runScript({
     args: ['--install'],
     env: {
       ...fixture.env,
@@ -2168,28 +2162,34 @@ test('retains a fresh staged build when TERM interrupts recovery', async (t) => 
       FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
     },
   });
-  assert.equal(first.status, null, first.stderr);
-  assert.equal(first.signal, 'SIGKILL', first.stderr);
-  const operationsBefore = await readFile(
-    join(fixture.logRoot, 'operations'),
-    'utf8',
-  );
+  assert.equal(firstInterruption.status, null, firstInterruption.stderr);
+  assert.equal(firstInterruption.signal, 'SIGKILL', firstInterruption.stderr);
 
-  const second = runScript({
+  const recoveryInterruption = runScript({
     env: {
       ...fixture.env,
       FAKE_SIGNAL_NAME: 'TERM',
       FAKE_SIGNAL_ON_DESTINATION: fixture.installRoot,
     },
   });
-  assert.equal(second.signal, null, second.stderr);
-  assert.equal(second.status, 143, second.stderr);
-  assert.ok((await lstat(intent)).isFile());
+  assert.equal(recoveryInterruption.signal, null);
+  assert.equal(recoveryInterruption.status, 143, recoveryInterruption.stderr);
+  assert.ok(
+    (
+      await lstat(
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+      )
+    ).isFile(),
+  );
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
       name.startsWith('.build-'),
     ).length,
     1,
+  );
+  const operationsBefore = await readFile(
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
@@ -2201,7 +2201,9 @@ test('retains a fresh staged build when TERM interrupts recovery', async (t) => 
     (operationsAfter.match(/^make\|/gm) ?? []).length,
     (operationsBefore.match(/^make\|/gm) ?? []).length,
   );
-  await assertAbsent(intent);
+  await assertAbsent(
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
+  );
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
       name.startsWith('.build-'),
@@ -3185,6 +3187,40 @@ test('rejects grants of the application role to another identity before mutation
     script,
     /pg_auth_members m WHERE m\.member = r\.oid OR m\.roleid = r\.oid/,
   );
+});
+
+test('rejects persistent application-role settings before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_ROLE_SETTING_COUNT: '1' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /pg_db_role_setting s WHERE s\.setrole = r\.oid/);
+});
+
+test('rejects persistent application-database settings before mutation', async (t) => {
+  const fixture = await establishRunningFixture(t);
+  const mutationsBefore = await readFile(
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
+  );
+  const result = runScript({
+    env: { ...fixture.env, FAKE_DATABASE_SETTING_COUNT: '1' },
+  });
+  assertOrdinaryFailure(result, /identity verification failed/);
+  assert.equal(
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
+    mutationsBefore,
+  );
+  assert.match(script, /pg_db_role_setting s WHERE s\.setdatabase = d\.oid/);
 });
 
 test('queries database ownership before role memberships to match the identity parser', () => {
