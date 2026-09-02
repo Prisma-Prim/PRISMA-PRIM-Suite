@@ -318,6 +318,14 @@ test('hard-bounds every source build step after a TERM grace period', () => {
   );
 });
 
+test('hard-bounds service-account creation after a TERM grace period', () => {
+  const identity = shellFunction('prepare_service_identity');
+  assert.match(
+    identity,
+    /\/usr\/bin\/timeout --kill-after=30s 30s "\$\{useradd_path\}"/,
+  );
+});
+
 test('requires service traversal through every cache ancestor', () => {
   const functionSource = shellFunction('validate_service_cache_ancestors');
   const command = `${functionSource}

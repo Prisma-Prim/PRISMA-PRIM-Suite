@@ -1300,7 +1300,7 @@ prepare_service_identity() {
     local useradd_path
     useradd_path="$(trusted_root_command useradd)" ||
       fail 'a trusted useradd executable is required in install mode.'
-    timeout 30s "${useradd_path}" \
+    /usr/bin/timeout --kill-after=30s 30s "${useradd_path}" \
       --system \
       --user-group \
       --home-dir "${runtime_root}/service-home" \
