@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import assert from 'node:assert/strict';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   chmod,
   lstat,
@@ -10,35 +10,35 @@ import {
   rm,
   symlink,
   writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import test from "node:test";
-import { createHash, randomUUID } from "node:crypto";
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import { createHash, randomUUID } from 'node:crypto';
 
 const scriptPath = fileURLToPath(
-  new URL("./codex-cloud-postgres.sh", import.meta.url),
+  new URL('./codex-cloud-postgres.sh', import.meta.url),
 );
-const script = await readFile(scriptPath, "utf8");
-const sourceCommit = "083ac033419f690758508e08c1736089384bbee8";
+const script = await readFile(scriptPath, 'utf8');
+const sourceCommit = '083ac033419f690758508e08c1736089384bbee8';
 const sourceSha256 =
-  "d2b729db7d1f57a34b7d5906f4b4635cca6c9a04ddbd19333ef2ae35a4b25ac2";
+  'd2b729db7d1f57a34b7d5906f4b4635cca6c9a04ddbd19333ef2ae35a4b25ac2';
 const requiredBinaries = [
-  "postgres",
-  "pg_ctl",
-  "initdb",
-  "pg_isready",
-  "psql",
-  "createdb",
-  "createuser",
+  'postgres',
+  'pg_ctl',
+  'initdb',
+  'pg_isready',
+  'psql',
+  'createdb',
+  'createuser',
 ];
 const hostUid = String(process.getuid?.() ?? 1000);
 const hostGid = String(process.getgid?.() ?? 1000);
 
 function shellFunction(name) {
   const match = script.match(
-    new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?^\\}\\n`, "m"),
+    new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?^\\}\\n`, 'm'),
   );
   assert.ok(match, `Missing shell function ${name}`);
   return match[0];
@@ -47,15 +47,15 @@ function shellFunction(name) {
 function cleanEnvironment(overrides = {}) {
   const environment = { ...process.env, ...overrides };
   for (const key of [
-    "DATABASE_URL",
-    "TEST_DATABASE_URL",
-    "PRISMA_PRIM_POSTGRES_PORT",
-    "PRISMA_PRIM_POSTGRES_BUILD_JOBS",
-    "PRISMA_PRIM_POSTGRES_READY_ATTEMPTS",
-    "PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER",
-    "PRISMA_PRIM_POSTGRES_LOCK_SECONDS",
-    "PRISMA_PRIM_POSTGRES_CACHE_ROOT",
-    "PRISMA_PRIM_POSTGRES_RUNTIME_ROOT",
+    'DATABASE_URL',
+    'TEST_DATABASE_URL',
+    'PRISMA_PRIM_POSTGRES_PORT',
+    'PRISMA_PRIM_POSTGRES_BUILD_JOBS',
+    'PRISMA_PRIM_POSTGRES_READY_ATTEMPTS',
+    'PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER',
+    'PRISMA_PRIM_POSTGRES_LOCK_SECONDS',
+    'PRISMA_PRIM_POSTGRES_CACHE_ROOT',
+    'PRISMA_PRIM_POSTGRES_RUNTIME_ROOT',
   ]) {
     if (!(key in overrides)) delete environment[key];
   }
@@ -63,17 +63,17 @@ function cleanEnvironment(overrides = {}) {
 }
 
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 async function writeFixtureInstallManifest(installRoot) {
   const paths = [];
-  async function collect(directory, relative = "") {
+  async function collect(directory, relative = '') {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = relative ? `${relative}/${entry.name}` : entry.name;
       if (
-        path === ".prisma-prim-install-v1" ||
-        path === ".prisma-prim-install-manifest-v1"
+        path === '.prisma-prim-install-v1' ||
+        path === '.prisma-prim-install-manifest-v1'
       ) {
         continue;
       }
@@ -88,23 +88,23 @@ async function writeFixtureInstallManifest(installRoot) {
   paths.sort();
   const lines = await Promise.all(
     paths.map(async (path) => {
-      const digest = createHash("sha256")
+      const digest = createHash('sha256')
         .update(await readFile(join(installRoot, path)))
-        .digest("hex");
+        .digest('hex');
       return `${digest}  ./${path}`;
     }),
   );
   await writeFile(
-    join(installRoot, ".prisma-prim-install-manifest-v1"),
-    `${lines.join("\n")}\n`,
+    join(installRoot, '.prisma-prim-install-manifest-v1'),
+    `${lines.join('\n')}\n`,
     { mode: 0o600 },
   );
 }
 
 function runScript({ args = [], env = {}, timeout = 60_000 } = {}) {
-  assert.match(env.PATH ?? "", /prisma-prim-tools-test-/);
-  return spawnSync("bash", [scriptPath, ...args], {
-    encoding: "utf8",
+  assert.match(env.PATH ?? '', /prisma-prim-tools-test-/);
+  return spawnSync('bash', [scriptPath, ...args], {
+    encoding: 'utf8',
     env: cleanEnvironment(env),
     timeout,
   });
@@ -112,23 +112,23 @@ function runScript({ args = [], env = {}, timeout = 60_000 } = {}) {
 
 function assertOrdinaryFailure(result, pattern) {
   assert.equal(result.signal, null);
-  assert.equal(typeof result.status, "number");
+  assert.equal(typeof result.status, 'number');
   assert.notEqual(result.status, 0);
   assert.doesNotMatch(result.stdout, /Local PostgreSQL .* is ready/);
   if (pattern) assert.match(result.stderr, pattern);
 }
 
-test("rejects unsupported modes and extra arguments", async (t) => {
+test('rejects unsupported modes and extra arguments', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const invalidMode = runScript({
-    args: ["--unknown"],
+    args: ['--unknown'],
     env: fixture.env,
   });
   assert.equal(invalidMode.status, 2);
   assert.match(invalidMode.stderr, /Usage:/);
 
   const extraArgument = runScript({
-    args: ["--start", "extra"],
+    args: ['--start', 'extra'],
     env: fixture.env,
   });
   assert.equal(extraArgument.status, 2);
@@ -136,29 +136,29 @@ test("rejects unsupported modes and extra arguments", async (t) => {
 });
 
 for (const [name, value, pattern] of [
-  ["PRISMA_PRIM_POSTGRES_PORT", "0", /canonical integer/],
-  ["PRISMA_PRIM_POSTGRES_PORT", "06543", /canonical integer/],
-  ["PRISMA_PRIM_POSTGRES_PORT", "65536", /canonical integer/],
-  ["PRISMA_PRIM_POSTGRES_PORT", "18446744073709557048", /canonical integer/],
-  ["PRISMA_PRIM_POSTGRES_BUILD_JOBS", "9", /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_PORT', '0', /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_PORT', '06543', /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_PORT', '65536', /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_PORT', '18446744073709557048', /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_BUILD_JOBS', '9', /canonical integer/],
   [
-    "PRISMA_PRIM_POSTGRES_BUILD_JOBS",
-    "18446744073709551618",
+    'PRISMA_PRIM_POSTGRES_BUILD_JOBS',
+    '18446744073709551618',
     /canonical integer/,
   ],
-  ["PRISMA_PRIM_POSTGRES_READY_ATTEMPTS", "-1", /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_READY_ATTEMPTS', '-1', /canonical integer/],
   [
-    "PRISMA_PRIM_POSTGRES_READY_ATTEMPTS",
-    "18446744073709551736",
+    'PRISMA_PRIM_POSTGRES_READY_ATTEMPTS',
+    '18446744073709551736',
     /canonical integer/,
   ],
-  ["PRISMA_PRIM_POSTGRES_LOCK_SECONDS", "301", /canonical integer/],
+  ['PRISMA_PRIM_POSTGRES_LOCK_SECONDS', '301', /canonical integer/],
   [
-    "PRISMA_PRIM_POSTGRES_LOCK_SECONDS",
-    "18446744073709551916",
+    'PRISMA_PRIM_POSTGRES_LOCK_SECONDS',
+    '18446744073709551916',
     /canonical integer/,
   ],
-  ["PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER", "yes", /true or false/],
+  ['PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER', 'yes', /true or false/],
 ]) {
   test(`rejects invalid ${name}=${value}`, async (t) => {
     const fixture = await createFixture(t, { withCache: false });
@@ -167,13 +167,13 @@ for (const [name, value, pattern] of [
   });
 }
 
-test("rejects inherited database targets outside the exact isolated pair", async (t) => {
+test('rejects inherited database targets outside the exact isolated pair', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const development = runScript({
     env: {
       ...fixture.env,
       DATABASE_URL:
-        "postgresql://prisma_prim:prisma_prim@database.example/prisma_prim_dev",
+        'postgresql://prisma_prim:prisma_prim@database.example/prisma_prim_dev',
     },
   });
   assertOrdinaryFailure(development, /DATABASE_URL must equal/);
@@ -182,23 +182,23 @@ test("rejects inherited database targets outside the exact isolated pair", async
     env: {
       ...fixture.env,
       TEST_DATABASE_URL:
-        "postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/shared",
+        'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/shared',
     },
   });
   assertOrdinaryFailure(testTarget, /TEST_DATABASE_URL must equal/);
 });
 
 for (const unsafeRoot of [
-  "/",
-  "/etc",
-  "/tmp",
-  "/tmp/prisma-prim-safe/nested",
-  "/tmp/prisma-prim-../escape",
-  "/tmp/prisma-prim-bad value",
-  "/tmp/prisma-prim-$HOME",
-  "/tmp/prisma-prim-semi;colon",
-  "/tmp/prisma-prim-star*",
-  "/workspace/.cache/other",
+  '/',
+  '/etc',
+  '/tmp',
+  '/tmp/prisma-prim-safe/nested',
+  '/tmp/prisma-prim-../escape',
+  '/tmp/prisma-prim-bad value',
+  '/tmp/prisma-prim-$HOME',
+  '/tmp/prisma-prim-semi;colon',
+  '/tmp/prisma-prim-star*',
+  '/workspace/.cache/other',
 ]) {
   test(`rejects unsafe root ${unsafeRoot}`, async (t) => {
     const fixture = await createFixture(t, { withCache: false });
@@ -212,9 +212,9 @@ for (const unsafeRoot of [
   });
 }
 
-test("rejects a root symlink without changing its target metadata", async (t) => {
+test('rejects a root symlink without changing its target metadata', async (t) => {
   const token = randomUUID();
-  const target = await mkdtemp(join(tmpdir(), "prisma-prim-target-"));
+  const target = await mkdtemp(join(tmpdir(), 'prisma-prim-target-'));
   const root = join(tmpdir(), `prisma-prim-symlink-${token}`);
   await chmod(target, 0o700);
   await symlink(target, root);
@@ -235,44 +235,44 @@ test("rejects a root symlink without changing its target metadata", async (t) =>
   assert.equal(after.gid, before.gid);
 });
 
-test("rejects a symlink swapped into atomic root staging without touching its target", async (t) => {
+test('rejects a symlink swapped into atomic root staging without touching its target', async (t) => {
   const fixture = await createFixture(t);
-  const target = await mkdtemp(join(tmpdir(), "prisma-prim-swap-target-"));
-  const sentinel = join(target, "sentinel");
-  await writeFile(sentinel, "unchanged", { mode: 0o600 });
+  const target = await mkdtemp(join(tmpdir(), 'prisma-prim-swap-target-'));
+  const sentinel = join(target, 'sentinel');
+  await writeFile(sentinel, 'unchanged', { mode: 0o600 });
   const before = await lstat(target);
   t.after(() => rm(target, { recursive: true, force: true }));
 
   const result = runScript({
     env: {
       ...fixture.env,
-      FAKE_SWAP_RUNTIME_CREATE: "true",
+      FAKE_SWAP_RUNTIME_CREATE: 'true',
       FAKE_SWAP_DIRECTORY_TARGET: target,
     },
   });
   assertOrdinaryFailure(result, /root staging path .* changed during creation/);
   const swappedPath = (
-    await readFile(join(fixture.logRoot, "swapped-path"), "utf8")
+    await readFile(join(fixture.logRoot, 'swapped-path'), 'utf8')
   ).trim();
   t.after(() => rm(swappedPath, { force: true }));
   const after = await lstat(target);
-  assert.equal(await readFile(sentinel, "utf8"), "unchanged");
+  assert.equal(await readFile(sentinel, 'utf8'), 'unchanged');
   assert.equal(after.mode, before.mode);
   assert.equal(after.uid, before.uid);
   assert.equal(after.gid, before.gid);
 });
 
-for (const component of ["build", "source", "stage"]) {
+for (const component of ['build', 'source', 'stage']) {
   test(`rejects a symlink swapped into private ${component} staging`, async (t) => {
     const fixture = await createFixture(t, { withCache: false });
     const target = join(fixture.logRoot, `foreign-${component}-target`);
-    const sentinel = join(target, "sentinel");
+    const sentinel = join(target, 'sentinel');
     await mkdir(target, { mode: 0o700 });
-    await writeFile(sentinel, "unchanged", { mode: 0o600 });
+    await writeFile(sentinel, 'unchanged', { mode: 0o600 });
     const before = await lstat(target);
 
     const result = runScript({
-      args: ["--install"],
+      args: ['--install'],
       env: {
         ...fixture.env,
         FAKE_SWAP_BUILD_COMPONENT: component,
@@ -281,18 +281,18 @@ for (const component of ["build", "source", "stage"]) {
     });
     assertOrdinaryFailure(result, /staging directory|build root/);
     const after = await lstat(target);
-    assert.equal(await readFile(sentinel, "utf8"), "unchanged");
+    assert.equal(await readFile(sentinel, 'utf8'), 'unchanged');
     assert.equal(after.mode, before.mode);
     assert.equal(after.uid, before.uid);
     assert.equal(after.gid, before.gid);
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /curl\||tar\||make\|/,
     );
   });
 }
 
-test("pins immutable PostgreSQL 17.11 source provenance and bounded build steps", () => {
+test('pins immutable PostgreSQL 17.11 source provenance and bounded build steps', () => {
   assert.match(script, new RegExp(sourceCommit));
   assert.match(script, new RegExp(sourceSha256));
   assert.match(script, /curl[\s\S]*--retry 3[\s\S]*--max-time 170/);
@@ -310,8 +310,8 @@ test("pins immutable PostgreSQL 17.11 source provenance and bounded build steps"
   assert.doesNotMatch(script, /docker/);
 });
 
-test("requires service traversal through every cache ancestor", () => {
-  const functionSource = shellFunction("validate_service_cache_ancestors");
+test('requires service traversal through every cache ancestor', () => {
+  const functionSource = shellFunction('validate_service_cache_ancestors');
   const command = `${functionSource}
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 cache_root=/workspace/.cache/prisma-prim-postgres-cache-0
@@ -324,8 +324,8 @@ file_mode() {
   esac
 }
 validate_service_cache_ancestors`;
-  const blocked = spawnSync("/usr/bin/bash", ["-c", command], {
-    encoding: "utf8",
+  const blocked = spawnSync('/usr/bin/bash', ['-c', command], {
+    encoding: 'utf8',
   });
   assert.notEqual(blocked.status, 0);
   assert.match(blocked.stderr, /cache ancestor .*service traversal/);
@@ -337,15 +337,15 @@ caller_uid=0
 service_uid=71
 file_mode() { printf '%s\n' 755; }
 validate_service_cache_ancestors`;
-  const traversable = spawnSync("/usr/bin/bash", ["-c", traversableCommand], {
-    encoding: "utf8",
+  const traversable = spawnSync('/usr/bin/bash', ['-c', traversableCommand], {
+    encoding: 'utf8',
   });
   assert.equal(traversable.status, 0, traversable.stderr);
 });
 
-test("requires all trusted server binaries and supported versions", () => {
+test('requires all trusted server binaries and supported versions', () => {
   for (const binary of requiredBinaries) {
-    assert.match(script, new RegExp(`^  ${binary}$`, "m"));
+    assert.match(script, new RegExp(`^  ${binary}$`, 'm'));
   }
   assert.match(
     script,
@@ -358,14 +358,14 @@ test("requires all trusted server binaries and supported versions", () => {
   assert.match(script, /07022/);
 });
 
-test("binds the lifecycle lock to runtime and closes FD8 only for daemon start", () => {
+test('binds the lifecycle lock to runtime and closes FD8 only for daemon start', () => {
   assert.match(script, /runtime_root.*lifecycle\.lock/);
   assert.match(script, /flock -w .* 8/);
   assert.match(script, /pg_ctl[\s\S]*start \\\n\s+8>&-/);
   assert.doesNotMatch(script, /mv .*runtime_root/);
 });
 
-test("enforces least privilege and exact socket plus TCP identities", () => {
+test('enforces least privilege and exact socket plus TCP identities', () => {
   assert.match(
     script,
     /LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS/,
@@ -381,57 +381,57 @@ test("enforces least privilege and exact socket plus TCP identities", () => {
   assert.doesNotMatch(script, /pg_ctl[^\n]*-o/);
 });
 
-test("selects every online Debian cluster, including recovery, and rejects malformed fields", async (t) => {
+test('selects every online Debian cluster, including recovery, and rejects malformed fields', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const parser = [
-    shellFunction("fail"),
-    shellFunction("is_canonical_integer_in_range"),
-    shellFunction("canonical_integer"),
-    shellFunction("select_conflicting_debian_clusters"),
-    "postgres_port=5432",
+    shellFunction('fail'),
+    shellFunction('is_canonical_integer_in_range'),
+    shellFunction('canonical_integer'),
+    shellFunction('select_conflicting_debian_clusters'),
+    'postgres_port=5432',
     'select_conflicting_debian_clusters "$1"',
-  ].join("\n");
+  ].join('\n');
   const clusters = [
-    "16 legacy 5432 online postgres /var/lib/postgresql/16/legacy /var/log/postgresql/legacy.log",
-    "17 current 5432 online postgres /var/lib/postgresql/17/current /var/log/postgresql/current.log",
-    "15 recovery 5432 online,recovery postgres /var/lib/postgresql/15/recovery /var/log/postgresql/recovery.log",
-    "16 other-port 5544 online postgres /var/lib/postgresql/16/other /var/log/postgresql/other.log",
-    "16 stopped 5432 down postgres /var/lib/postgresql/16/stopped /var/log/postgresql/stopped.log",
-    "15 stopped-recovery 5432 down,recovery postgres /var/lib/postgresql/15/stopped-recovery /var/log/postgresql/stopped-recovery.log",
-  ].join("\n");
+    '16 legacy 5432 online postgres /var/lib/postgresql/16/legacy /var/log/postgresql/legacy.log',
+    '17 current 5432 online postgres /var/lib/postgresql/17/current /var/log/postgresql/current.log',
+    '15 recovery 5432 online,recovery postgres /var/lib/postgresql/15/recovery /var/log/postgresql/recovery.log',
+    '16 other-port 5544 online postgres /var/lib/postgresql/16/other /var/log/postgresql/other.log',
+    '16 stopped 5432 down postgres /var/lib/postgresql/16/stopped /var/log/postgresql/stopped.log',
+    '15 stopped-recovery 5432 down,recovery postgres /var/lib/postgresql/15/stopped-recovery /var/log/postgresql/stopped-recovery.log',
+  ].join('\n');
   const selected = spawnSync(
-    "/usr/bin/bash",
-    ["-c", parser, "bash", clusters],
+    '/usr/bin/bash',
+    ['-c', parser, 'bash', clusters],
     {
-      encoding: "utf8",
+      encoding: 'utf8',
       env: cleanEnvironment(fixture.env),
     },
   );
   assert.equal(selected.status, 0, selected.stderr);
-  assert.equal(selected.stdout, "16|legacy\n17|current\n15|recovery\n");
+  assert.equal(selected.stdout, '16|legacy\n17|current\n15|recovery\n');
 
   const malformed = spawnSync(
-    "/usr/bin/bash",
+    '/usr/bin/bash',
     [
-      "-c",
+      '-c',
       parser,
-      "bash",
-      "16 bad 5432 online postgres relative-data /var/log/postgresql/bad.log",
+      'bash',
+      '16 bad 5432 online postgres relative-data /var/log/postgresql/bad.log',
     ],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.notEqual(malformed.status, 0);
   assert.match(malformed.stderr, /unsafe non-absolute paths/);
 
   const malformedStatus = spawnSync(
-    "/usr/bin/bash",
+    '/usr/bin/bash',
     [
-      "-c",
+      '-c',
       parser,
-      "bash",
-      "16 bad 5432 online,foreign postgres /var/lib/postgresql/16/bad /var/log/postgresql/bad.log",
+      'bash',
+      '16 bad 5432 online,foreign postgres /var/lib/postgresql/16/bad /var/log/postgresql/bad.log',
     ],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.notEqual(malformedStatus.status, 0);
   assert.match(malformedStatus.stderr, /unsafe status/);
@@ -441,83 +441,83 @@ test("selects every online Debian cluster, including recovery, and rejects malfo
   );
 });
 
-test("uses only fixed trusted timeout and sudo paths at the root-command boundary", async (t) => {
+test('uses only fixed trusted timeout and sudo paths at the root-command boundary', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   await executable(
-    join(fixture.toolRoot, "timeout"),
+    join(fixture.toolRoot, 'timeout'),
     '#!/bin/bash\n: >"$FAKE_LOG/path-timeout-used"\nexit 77\n',
   );
-  const functionSource = shellFunction("run_as_root");
+  const functionSource = shellFunction('run_as_root');
   const root = spawnSync(
-    "/usr/bin/bash",
+    '/usr/bin/bash',
     [
-      "-c",
+      '-c',
       `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nrun_as_root /usr/bin/true`,
     ],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.equal(root.status, 0, root.stderr);
-  await assertAbsent(join(fixture.logRoot, "path-timeout-used"));
+  await assertAbsent(join(fixture.logRoot, 'path-timeout-used'));
 
   const nonRoot = spawnSync(
-    "/usr/bin/bash",
+    '/usr/bin/bash',
     [
-      "-c",
+      '-c',
       `${functionSource}\ntrusted_root_command(){ [[ "$1" == /usr/bin/timeout ]] && printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=1001\nrun_as_root /usr/bin/true`,
     ],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.notEqual(nonRoot.status, 0);
   assert.doesNotMatch(
-    await readOptional(join(fixture.logRoot, "operations")),
+    await readOptional(join(fixture.logRoot, 'operations')),
     /forbidden\|sudo/,
   );
   assert.match(script, /local timeout_path='\/usr\/bin\/timeout'/);
   assert.match(script, /local sudo_path='\/usr\/bin\/sudo'/);
 });
 
-test("hard-kills a root package command that ignores its bounded deadline", async (t) => {
+test('hard-kills a root package command that ignores its bounded deadline', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
-  const completionMarker = join(fixture.logRoot, "root-timeout-status");
-  const childPidMarker = join(fixture.logRoot, "root-timeout-child-pid");
+  const completionMarker = join(fixture.logRoot, 'root-timeout-status');
+  const childPidMarker = join(fixture.logRoot, 'root-timeout-child-pid');
   t.after(async () => {
     const childPid = (await readOptional(childPidMarker)).trim();
     if (!/^\d+$/.test(childPid)) return;
     try {
-      process.kill(Number(childPid), "SIGKILL");
+      process.kill(Number(childPid), 'SIGKILL');
     } catch (error) {
-      if (error.code !== "ESRCH") throw error;
+      if (error.code !== 'ESRCH') throw error;
     }
   });
-  const functionSource = shellFunction("run_as_root")
-    .replaceAll("--kill-after=30s", "--kill-after=0.05s")
-    .replaceAll("900s", "0.05s");
+  const functionSource = shellFunction('run_as_root')
+    .replaceAll('--kill-after=30s', '--kill-after=0.05s')
+    .replaceAll('900s', '0.05s');
   const result = spawnSync(
-    "/usr/bin/timeout",
+    '/usr/bin/timeout',
     [
-      "--kill-after=0.5s",
-      "2s",
-      "/usr/bin/bash",
-      "-c",
+      '--kill-after=0.5s',
+      '2s',
+      '/usr/bin/bash',
+      '-c',
       `${functionSource}\ntrusted_root_command(){ printf '%s\\n' "$1"; }\nfail(){ exit 1; }\ncaller_uid=0\nset +e\nrun_as_root /usr/bin/bash -c 'trap "" TERM; printf "%s\\n" "$$" >"$ROOT_TIMEOUT_CHILD_PID"; while :; do :; done' >/dev/null 2>&1\nprintf '%s\\n' "$?" >"${completionMarker}"`,
     ],
     {
-      encoding: "utf8",
+      encoding: 'utf8',
       env: {
         ...cleanEnvironment(fixture.env),
         ROOT_TIMEOUT_CHILD_PID: childPidMarker,
       },
     },
   );
-  assert.equal(result.status, 0, result.stderr || result.signal || "timeout");
-  assert.equal(await readFile(completionMarker, "utf8"), "137\n");
+  assert.equal(result.status, 0, result.stderr || result.signal || 'timeout');
+  assert.equal(await readFile(completionMarker, 'utf8'), '137\n');
 });
 
-test("installs required parser generators without refreshing or upgrading packages", () => {
-  assert.match(shellFunction("build_prerequisites_are_ready"), /flex/);
-  assert.match(shellFunction("build_prerequisites_are_ready"), /bison/);
+test('installs required parser generators without refreshing or upgrading packages', () => {
+  assert.match(shellFunction('build_prerequisites_are_ready'), /flex/);
+  assert.match(shellFunction('build_prerequisites_are_ready'), /bison/);
 
-  const installer = shellFunction("install_build_prerequisites");
+  const installer = shellFunction('install_build_prerequisites');
   assert.match(installer, /flex/);
   assert.match(installer, /bison/);
   assert.match(installer, /--no-upgrade/);
@@ -530,7 +530,7 @@ async function executable(path, content) {
 }
 
 function shellFixture(strings, ...values) {
-  return String.raw(strings, ...values).replaceAll("\\${", "${");
+  return String.raw(strings, ...values).replaceAll('\\${', '${');
 }
 
 const fakeStat = shellFixture`#!/bin/bash
@@ -1333,9 +1333,9 @@ async function createFixture(
     port = String(40_000 + Math.floor(Math.random() * 10_000)),
     callerUid = hostUid,
     callerGid = hostGid,
-    callerUser = callerUid === "0" ? "root" : "tester",
-    postgresUid = callerUid === "0" ? "71" : callerUid,
-    postgresGid = callerUid === "0" ? "71" : callerGid,
+    callerUser = callerUid === '0' ? 'root' : 'tester',
+    postgresUid = callerUid === '0' ? '71' : callerUid,
+    postgresGid = callerUid === '0' ? '71' : callerGid,
     postgresGroups = postgresGid,
     stateRoot,
     withCache = true,
@@ -1343,38 +1343,38 @@ async function createFixture(
 ) {
   const logRoot = join(tmpdir(), `prisma-prim-log-test-${randomUUID()}`);
   const serverStateRoot = stateRoot ?? logRoot;
-  const installRoot = join(cacheRoot, "install");
-  const binRoot = join(installRoot, "bin");
+  const installRoot = join(cacheRoot, 'install');
+  const binRoot = join(installRoot, 'bin');
   await mkdir(toolRoot, { mode: 0o700 });
   await mkdir(logRoot, { mode: 0o700 });
   if (serverStateRoot !== logRoot) {
     await mkdir(serverStateRoot, { recursive: true, mode: 0o700 });
   }
-  const installMode = callerUid === "0" ? 0o711 : 0o700;
-  const cacheMode = callerUid === "0" ? 0o711 : 0o700;
+  const installMode = callerUid === '0' ? 0o711 : 0o700;
+  const cacheMode = callerUid === '0' ? 0o711 : 0o700;
 
   if (withCache) {
     await mkdir(binRoot, { recursive: true, mode: 0o755 });
-    await mkdir(join(installRoot, "lib"), { mode: 0o755 });
-    await mkdir(join(installRoot, "share"), { mode: 0o755 });
+    await mkdir(join(installRoot, 'lib'), { mode: 0o755 });
+    await mkdir(join(installRoot, 'share'), { mode: 0o755 });
     await writeFile(
-      join(installRoot, "share", "postgres.bki"),
-      "fake postgres catalog\n",
+      join(installRoot, 'share', 'postgres.bki'),
+      'fake postgres catalog\n',
       { mode: 0o644 },
     );
     await writeFile(
-      join(installRoot, "share", "postgresql.conf.sample"),
-      "fake postgres configuration\n",
+      join(installRoot, 'share', 'postgresql.conf.sample'),
+      'fake postgres configuration\n',
       { mode: 0o644 },
     );
     await chmod(cacheRoot, cacheMode);
     await chmod(installRoot, installMode);
     await chmod(binRoot, 0o755);
-    await chmod(join(installRoot, "lib"), 0o755);
-    await chmod(join(installRoot, "share"), 0o755);
+    await chmod(join(installRoot, 'lib'), 0o755);
+    await chmod(join(installRoot, 'share'), 0o755);
 
     await writeFile(
-      join(cacheRoot, ".prisma-prim-cache-v1"),
+      join(cacheRoot, '.prisma-prim-cache-v1'),
       `prisma-prim-postgres-cache-v1
 version=17.11
 commit=${sourceCommit}
@@ -1383,7 +1383,7 @@ sha256=${sourceSha256}
       { mode: 0o600 },
     );
     await writeFile(
-      join(installRoot, ".prisma-prim-install-v1"),
+      join(installRoot, '.prisma-prim-install-v1'),
       `prisma-prim-postgres-install-v1
 version=17.11
 commit=${sourceCommit}
@@ -1393,43 +1393,43 @@ sha256=${sourceSha256}
     );
   }
 
-  await executable(join(toolRoot, "id"), fakeId);
-  await executable(join(toolRoot, "stat"), fakeStat);
-  await executable(join(toolRoot, "flock"), fakeFlock);
+  await executable(join(toolRoot, 'id'), fakeId);
+  await executable(join(toolRoot, 'stat'), fakeStat);
+  await executable(join(toolRoot, 'flock'), fakeFlock);
   const fakeCommands = [
-    "awk",
-    "bash",
-    "chmod",
-    "cc",
-    "curl",
-    "dd",
-    "env",
-    "getent",
-    "gzip",
-    "install",
-    "make",
-    "mkdir",
-    "mv",
-    "readlink",
-    "rm",
-    "rmdir",
-    "runuser",
-    "sha256sum",
-    "sleep",
-    "sudo",
-    "apt-get",
-    "bison",
-    "flex",
-    "tar",
-    "tee",
-    "timeout",
-    "touch",
-    "useradd",
+    'awk',
+    'bash',
+    'chmod',
+    'cc',
+    'curl',
+    'dd',
+    'env',
+    'getent',
+    'gzip',
+    'install',
+    'make',
+    'mkdir',
+    'mv',
+    'readlink',
+    'rm',
+    'rmdir',
+    'runuser',
+    'sha256sum',
+    'sleep',
+    'sudo',
+    'apt-get',
+    'bison',
+    'flex',
+    'tar',
+    'tee',
+    'timeout',
+    'touch',
+    'useradd',
   ];
   for (const command of fakeCommands) {
     await executable(join(toolRoot, command), fakeCommand);
   }
-  const postgresTemplate = join(toolRoot, "postgres-template");
+  const postgresTemplate = join(toolRoot, 'postgres-template');
   await executable(postgresTemplate, fakePostgres);
   if (withCache) {
     for (const binary of requiredBinaries) {
@@ -1438,9 +1438,9 @@ sha256=${sourceSha256}
     await writeFixtureInstallManifest(installRoot);
   }
 
-  const dataRoot = join(runtimeRoot, "data");
-  const socketRoot = join(runtimeRoot, "socket");
-  const serviceUser = callerUid === "0" ? "postgres" : callerUser;
+  const dataRoot = join(runtimeRoot, 'data');
+  const socketRoot = join(runtimeRoot, 'socket');
+  const serviceUser = callerUid === '0' ? 'postgres' : callerUser;
   const env = {
     PATH: toolRoot,
     DATABASE_URL: `postgresql://prisma_prim:prisma_prim@127.0.0.1:${port}/prisma_prim_dev`,
@@ -1448,9 +1448,9 @@ sha256=${sourceSha256}
     PRISMA_PRIM_POSTGRES_CACHE_ROOT: cacheRoot,
     PRISMA_PRIM_POSTGRES_RUNTIME_ROOT: runtimeRoot,
     PRISMA_PRIM_POSTGRES_PORT: port,
-    PRISMA_PRIM_POSTGRES_READY_ATTEMPTS: "2",
-    PRISMA_PRIM_POSTGRES_LOCK_SECONDS: "5",
-    PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER: "false",
+    PRISMA_PRIM_POSTGRES_READY_ATTEMPTS: '2',
+    PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '5',
+    PRISMA_PRIM_POSTGRES_STOP_CONFLICTING_CLUSTER: 'false',
     FAKE_DATA_ROOT: dataRoot,
     FAKE_SOCKET_ROOT: socketRoot,
     FAKE_RUNTIME_ROOT: runtimeRoot,
@@ -1494,33 +1494,33 @@ sha256=${sourceSha256}
 
 async function readOptional(path) {
   try {
-    return await readFile(path, "utf8");
+    return await readFile(path, 'utf8');
   } catch (error) {
-    if (error?.code === "ENOENT") return "";
+    if (error?.code === 'ENOENT') return '';
     throw error;
   }
 }
 
 async function createValidForeignInstall(path, fixture) {
-  const binRoot = join(path, "bin");
+  const binRoot = join(path, 'bin');
   await mkdir(binRoot, { recursive: true, mode: 0o755 });
-  await mkdir(join(path, "lib"), { mode: 0o755 });
-  await mkdir(join(path, "share"), { mode: 0o755 });
+  await mkdir(join(path, 'lib'), { mode: 0o755 });
+  await mkdir(join(path, 'share'), { mode: 0o755 });
   await writeFile(
-    join(path, "share", "postgres.bki"),
-    "fake postgres catalog\n",
+    join(path, 'share', 'postgres.bki'),
+    'fake postgres catalog\n',
     {
       mode: 0o644,
     },
   );
   await writeFile(
-    join(path, "share", "postgresql.conf.sample"),
-    "fake postgres configuration\n",
+    join(path, 'share', 'postgresql.conf.sample'),
+    'fake postgres configuration\n',
     { mode: 0o644 },
   );
   await chmod(path, Number.parseInt(fixture.env.FAKE_INSTALL_MODE, 8));
   await writeFile(
-    join(path, ".prisma-prim-install-v1"),
+    join(path, '.prisma-prim-install-v1'),
     `prisma-prim-postgres-install-v1
 version=17.11
 commit=${sourceCommit}
@@ -1535,7 +1535,7 @@ sha256=${sourceSha256}
 }
 
 async function assertAbsent(path) {
-  await assert.rejects(lstat(path), (error) => error?.code === "ENOENT");
+  await assert.rejects(lstat(path), (error) => error?.code === 'ENOENT');
 }
 
 function assertSuccess(result) {
@@ -1550,7 +1550,7 @@ async function establishRunningFixture(t, options = {}) {
   return fixture;
 }
 
-test("executes the real lifecycle successfully and reuses its exact state", async (t) => {
+test('executes the real lifecycle successfully and reuses its exact state', async (t) => {
   const fixture = await createFixture(t);
   const first = runScript({ env: fixture.env });
   assert.equal(first.status, 0, first.stderr);
@@ -1561,55 +1561,55 @@ test("executes the real lifecycle successfully and reuses its exact state", asyn
   assert.equal(second.status, 0, second.stderr);
   assert.match(second.stdout, /Local PostgreSQL 17\.11 is ready/);
   assert.equal(
-    (await readFile(join(fixture.logRoot, "pg_ctl"), "utf8")).trim(),
-    "start",
+    (await readFile(join(fixture.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
   );
-  assert.ok((await lstat(join(fixture.logRoot, "initdb"))).isFile());
+  assert.ok((await lstat(join(fixture.logRoot, 'initdb'))).isFile());
 });
 
-test("resumes application provisioning on an owned server after interruption", async (t) => {
+test('resumes application provisioning on an owned server after interruption', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   await Promise.all([
-    rm(join(fixture.stateRoot, "role.exists"), { force: true }),
-    rm(join(fixture.stateRoot, "role.configured"), { force: true }),
-    rm(join(fixture.stateRoot, "database.prisma_prim_dev"), { force: true }),
-    rm(join(fixture.stateRoot, "database.prisma_prim_test"), { force: true }),
+    rm(join(fixture.stateRoot, 'role.exists'), { force: true }),
+    rm(join(fixture.stateRoot, 'role.configured'), { force: true }),
+    rm(join(fixture.stateRoot, 'database.prisma_prim_dev'), { force: true }),
+    rm(join(fixture.stateRoot, 'database.prisma_prim_test'), { force: true }),
   ]);
 
   const resumed = runScript({ env: fixture.env });
   assertSuccess(resumed);
   const resumedMutations = (
-    await readFile(join(fixture.logRoot, "mutations"), "utf8")
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8')
   ).slice(mutationsBefore.length);
   assert.match(
     resumedMutations,
     /create-role[\s\S]*createdb-prisma_prim_dev[\s\S]*createdb-prisma_prim_test/,
   );
   assert.equal(
-    (await readFile(join(fixture.logRoot, "pg_ctl"), "utf8")).trim(),
-    "start",
+    (await readFile(join(fixture.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
   );
 });
 
-test("recovers after an atomic role commit interrupted before database creation", async (t) => {
+test('recovers after an atomic role commit interrupted before database creation', async (t) => {
   const fixture = await createFixture(t);
   const interrupted = runScript({
-    env: { ...fixture.env, FAKE_SIGNAL_AFTER_CREATE_ROLE: "true" },
+    env: { ...fixture.env, FAKE_SIGNAL_AFTER_CREATE_ROLE: 'true' },
   });
   assert.equal(interrupted.signal, null);
   assert.equal(interrupted.status, 143, interrupted.stderr);
   assert.doesNotMatch(interrupted.stdout, /Local PostgreSQL .* is ready/);
-  assert.ok((await lstat(join(fixture.stateRoot, "role.exists"))).isFile());
-  assert.ok((await lstat(join(fixture.stateRoot, "role.configured"))).isFile());
-  await assertAbsent(join(fixture.stateRoot, "database.prisma_prim_dev"));
-  await assertAbsent(join(fixture.stateRoot, "database.prisma_prim_test"));
+  assert.ok((await lstat(join(fixture.stateRoot, 'role.exists'))).isFile());
+  assert.ok((await lstat(join(fixture.stateRoot, 'role.configured'))).isFile());
+  await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_dev'));
+  await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
 
   assertSuccess(runScript({ env: fixture.env }));
-  const mutations = await readFile(join(fixture.logRoot, "mutations"), "utf8");
+  const mutations = await readFile(join(fixture.logRoot, 'mutations'), 'utf8');
   assert.equal((mutations.match(/^create-role$/gm) ?? []).length, 1);
   assert.match(
     mutations,
@@ -1617,36 +1617,36 @@ test("recovers after an atomic role commit interrupted before database creation"
   );
 });
 
-test("creates only a database proven absent from an otherwise valid catalog", async (t) => {
+test('creates only a database proven absent from an otherwise valid catalog', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
-  await rm(join(fixture.stateRoot, "database.prisma_prim_test"));
+  await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
 
   assertSuccess(runScript({ env: fixture.env }));
   const resumedMutations = (
-    await readFile(join(fixture.logRoot, "mutations"), "utf8")
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8')
   ).slice(mutationsBefore.length);
-  assert.equal(resumedMutations, "createdb-prisma_prim_test\n");
+  assert.equal(resumedMutations, 'createdb-prisma_prim_test\n');
 });
 
-test("rejects existing databases without the required role before mutation", async (t) => {
+test('rejects existing databases without the required role before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   await Promise.all([
-    rm(join(fixture.stateRoot, "role.exists")),
-    rm(join(fixture.stateRoot, "role.configured")),
+    rm(join(fixture.stateRoot, 'role.exists')),
+    rm(join(fixture.stateRoot, 'role.configured')),
   ]);
 
   const result = runScript({ env: fixture.env });
   assertOrdinaryFailure(result, /exists without the required application role/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
@@ -1659,7 +1659,7 @@ for (const binary of requiredBinaries) {
     });
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.ok((await lstat(fixture.runtimeRoot)).isDirectory());
-    await assert.rejects(lstat(join(fixture.logRoot, "initdb")));
+    await assert.rejects(lstat(join(fixture.logRoot, 'initdb')));
     await assert.rejects(lstat(fixture.dataRoot));
   });
 }
@@ -1667,28 +1667,28 @@ for (const binary of requiredBinaries) {
 for (const binary of requiredBinaries) {
   test(`rejects a missing ${binary} without probing any cache executable`, async (t) => {
     const fixture = await createFixture(t);
-    await rm(join(fixture.installRoot, "bin", binary));
+    await rm(join(fixture.installRoot, 'bin', binary));
     const result = runScript({ env: fixture.env });
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /version\|/,
     );
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
   });
 }
 
 for (const [name, mutate] of [
   [
-    "missing postgres.bki",
-    (fixture) => rm(join(fixture.installRoot, "share", "postgres.bki")),
+    'missing postgres.bki',
+    (fixture) => rm(join(fixture.installRoot, 'share', 'postgres.bki')),
   ],
   [
-    "corrupted postgresql.conf.sample",
+    'corrupted postgresql.conf.sample',
     (fixture) =>
       writeFile(
-        join(fixture.installRoot, "share", "postgresql.conf.sample"),
-        "substituted configuration\n",
+        join(fixture.installRoot, 'share', 'postgresql.conf.sample'),
+        'substituted configuration\n',
         { mode: 0o644 },
       ),
   ],
@@ -1699,37 +1699,37 @@ for (const [name, mutate] of [
     const result = runScript({ env: fixture.env });
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /version\|/,
     );
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
   });
 }
 
 for (const [name, mutate] of [
   [
-    "service-unreadable library",
+    'service-unreadable library',
     (fixture) =>
-      writeFile(join(fixture.installRoot, "lib", "libpq.so.5"), "library\n", {
+      writeFile(join(fixture.installRoot, 'lib', 'libpq.so.5'), 'library\n', {
         mode: 0o600,
       }),
   ],
   [
-    "service-untraversable share directory",
+    'service-untraversable share directory',
     async (fixture) => {
-      const directory = join(fixture.installRoot, "share", "timezone");
+      const directory = join(fixture.installRoot, 'share', 'timezone');
       await mkdir(directory, { mode: 0o700 });
-      await writeFile(join(directory, "UTC"), "timezone\n", { mode: 0o644 });
+      await writeFile(join(directory, 'UTC'), 'timezone\n', { mode: 0o644 });
     },
   ],
 ]) {
   test(`rejects a ${name} even when its content manifest matches`, async (t) => {
     const fixture = await createFixture(t, {
-      callerUid: "0",
-      callerGid: "0",
-      postgresUid: "71",
-      postgresGid: "72",
-      postgresGroups: "72",
+      callerUid: '0',
+      callerGid: '0',
+      postgresUid: '71',
+      postgresGid: '72',
+      postgresGroups: '72',
     });
     await mutate(fixture);
     await writeFixtureInstallManifest(fixture.installRoot);
@@ -1738,64 +1738,64 @@ for (const [name, mutate] of [
 
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /version\|/,
     );
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
   });
 }
 
-test("does not execute cache binaries before exact marker validation", async (t) => {
+test('does not execute cache binaries before exact marker validation', async (t) => {
   const fixture = await createFixture(t);
   await writeFile(
-    join(fixture.installRoot, ".prisma-prim-install-v1"),
-    "foreign install marker\n",
+    join(fixture.installRoot, '.prisma-prim-install-v1'),
+    'foreign install marker\n',
     { mode: 0o600 },
   );
   const result = runScript({ env: fixture.env });
   assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
   assert.doesNotMatch(
-    await readOptional(join(fixture.logRoot, "operations")),
+    await readOptional(join(fixture.logRoot, 'operations')),
     /version\|/,
   );
 });
 
-test("rejects a FIFO marker without blocking or probing cache executables", async (t) => {
+test('rejects a FIFO marker without blocking or probing cache executables', async (t) => {
   const fixture = await createFixture(t);
-  const marker = join(fixture.installRoot, ".prisma-prim-install-v1");
-  const probeEntered = join(fixture.logRoot, "fifo-marker-probe-entered");
+  const marker = join(fixture.installRoot, '.prisma-prim-install-v1');
+  const probeEntered = join(fixture.logRoot, 'fifo-marker-probe-entered');
   await rm(marker);
-  const mkfifo = spawnSync("/usr/bin/mkfifo", [marker], { encoding: "utf8" });
+  const mkfifo = spawnSync('/usr/bin/mkfifo', [marker], { encoding: 'utf8' });
   assert.equal(mkfifo.status, 0, mkfifo.stderr);
   await chmod(marker, 0o600);
-  const child = spawn("bash", [scriptPath], {
+  const child = spawn('bash', [scriptPath], {
     detached: true,
     env: cleanEnvironment({
       ...fixture.env,
       FAKE_STAT_PROBE_PATH: marker,
       FAKE_STAT_PROBE_ENTERED: probeEntered,
     }),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(() => terminateProcessGroup(child));
   const resultPromise = collect(child);
   await waitFor(probeEntered);
   const result = await settleAfterCoordination(
     resultPromise,
-    "for FIFO marker rejection after its metadata probe began",
+    'for FIFO marker rejection after its metadata probe began',
   );
   assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
   assert.doesNotMatch(
-    await readOptional(join(fixture.logRoot, "operations")),
+    await readOptional(join(fixture.logRoot, 'operations')),
     /version\|/,
   );
 });
 
-test("rejects a marker swapped to a symlink during no-follow read", async (t) => {
+test('rejects a marker swapped to a symlink during no-follow read', async (t) => {
   const fixture = await createFixture(t);
-  const marker = join(fixture.installRoot, ".prisma-prim-install-v1");
-  const target = join(fixture.logRoot, "read-swap-target");
-  await writeFile(target, "unchanged\n", { mode: 0o600 });
+  const marker = join(fixture.installRoot, '.prisma-prim-install-v1');
+  const target = join(fixture.logRoot, 'read-swap-target');
+  await writeFile(target, 'unchanged\n', { mode: 0o600 });
   const before = await lstat(target);
   const result = runScript({
     env: {
@@ -1806,51 +1806,51 @@ test("rejects a marker swapped to a symlink during no-follow read", async (t) =>
   });
   assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
   const after = await lstat(target);
-  assert.equal(await readFile(target, "utf8"), "unchanged\n");
+  assert.equal(await readFile(target, 'utf8'), 'unchanged\n');
   assert.equal(after.mode, before.mode);
   assert.equal(after.uid, before.uid);
   assert.equal(after.gid, before.gid);
   assert.ok((await lstat(marker)).isSymbolicLink());
   assert.doesNotMatch(
-    await readOptional(join(fixture.logRoot, "operations")),
+    await readOptional(join(fixture.logRoot, 'operations')),
     /version\|/,
   );
 });
 
 for (const [name, mutate] of [
   [
-    "group-writable executable",
-    (fixture) => chmod(join(fixture.installRoot, "bin", "postgres"), 0o775),
+    'group-writable executable',
+    (fixture) => chmod(join(fixture.installRoot, 'bin', 'postgres'), 0o775),
   ],
   [
-    "symlinked executable",
+    'symlinked executable',
     async (fixture) => {
-      const binary = join(fixture.installRoot, "bin", "postgres");
+      const binary = join(fixture.installRoot, 'bin', 'postgres');
       await rm(binary);
-      await symlink(join(fixture.toolRoot, "postgres-template"), binary);
+      await symlink(join(fixture.toolRoot, 'postgres-template'), binary);
     },
   ],
   [
-    "set-user-ID executable",
-    (fixture) => chmod(join(fixture.installRoot, "bin", "postgres"), 0o4755),
+    'set-user-ID executable',
+    (fixture) => chmod(join(fixture.installRoot, 'bin', 'postgres'), 0o4755),
   ],
   [
-    "group-writable library",
+    'group-writable library',
     async (fixture) => {
-      const library = join(fixture.installRoot, "lib", "libpq.so");
-      await writeFile(library, "untrusted library", { mode: 0o600 });
+      const library = join(fixture.installRoot, 'lib', 'libpq.so');
+      await writeFile(library, 'untrusted library', { mode: 0o600 });
       await chmod(library, 0o666);
     },
   ],
   [
-    "out-of-tree library symlink",
+    'out-of-tree library symlink',
     async (fixture) => {
-      const target = join(fixture.logRoot, "foreign-libpq.so");
-      await writeFile(target, "foreign library", { mode: 0o600 });
-      await symlink(target, join(fixture.installRoot, "lib", "libpq.so"));
+      const target = join(fixture.logRoot, 'foreign-libpq.so');
+      await writeFile(target, 'foreign library', { mode: 0o600 });
+      await symlink(target, join(fixture.installRoot, 'lib', 'libpq.so'));
     },
   ],
-  ["wrong install-root mode", (fixture) => chmod(fixture.installRoot, 0o777)],
+  ['wrong install-root mode', (fixture) => chmod(fixture.installRoot, 0o777)],
 ]) {
   test(`rejects a ${name} before service mutation`, async (t) => {
     const fixture = await createFixture(t);
@@ -1858,14 +1858,14 @@ for (const [name, mutate] of [
     const result = runScript({ env: fixture.env });
     assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /version\|/,
     );
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
   });
 }
 
-test("rejects foreign cache ownership and a timed-out version probe", async (t) => {
+test('rejects foreign cache ownership and a timed-out version probe', async (t) => {
   const foreign = await createFixture(t);
   const foreignResult = runScript({
     env: { ...foreign.env, FAKE_FOREIGN_PATH: foreign.installRoot },
@@ -1875,29 +1875,29 @@ test("rejects foreign cache ownership and a timed-out version probe", async (t) 
     /verified PostgreSQL 17\.11 cache is absent/,
   );
   assert.doesNotMatch(
-    await readOptional(join(foreign.logRoot, "operations")),
+    await readOptional(join(foreign.logRoot, 'operations')),
     /version\|/,
   );
 
   const timeoutFixture = await createFixture(t);
   const timeoutResult = runScript({
-    env: { ...timeoutFixture.env, FAKE_TIMEOUT_BINARY: "psql" },
+    env: { ...timeoutFixture.env, FAKE_TIMEOUT_BINARY: 'psql' },
   });
   assertOrdinaryFailure(
     timeoutResult,
     /verified PostgreSQL 17\.11 cache is absent/,
   );
-  await assertAbsent(join(timeoutFixture.logRoot, "initdb"));
+  await assertAbsent(join(timeoutFixture.logRoot, 'initdb'));
 });
 
 for (const [version, succeeds] of [
-  ["17.11", true],
-  ["17.12", false],
-  ["17.10", false],
-  ["17.18446744073709551627", false],
-  ["18.0", false],
+  ['17.11', true],
+  ['17.12', false],
+  ['17.10', false],
+  ['17.18446744073709551627', false],
+  ['18.0', false],
 ]) {
-  test(`${succeeds ? "accepts" : "rejects"} reported PostgreSQL ${version} cache tools`, async (t) => {
+  test(`${succeeds ? 'accepts' : 'rejects'} reported PostgreSQL ${version} cache tools`, async (t) => {
     const fixture = await createFixture(t);
     const result = runScript({
       env: { ...fixture.env, FAKE_BINARY_VERSION: version },
@@ -1911,28 +1911,28 @@ for (const [version, succeeds] of [
   });
 }
 
-test("rejects malformed version output even when it contains 17.11", async (t) => {
+test('rejects malformed version output even when it contains 17.11', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_MALFORMED_VERSION_BINARY: "postgres" },
+    env: { ...fixture.env, FAKE_MALFORMED_VERSION_BINARY: 'postgres' },
   });
   assertOrdinaryFailure(result, /verified PostgreSQL 17\.11 cache is absent/);
 });
 
-test("builds the exact pinned source through checksum, configure, make, DESTDIR, and publication", async (t) => {
+test('builds the exact pinned source through checksum, configure, make, DESTDIR, and publication', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const startOnly = runScript({ env: fixture.env });
   assertOrdinaryFailure(startOnly, /rerun with --install/);
   assert.doesNotMatch(
-    await readOptional(join(fixture.logRoot, "operations")),
+    await readOptional(join(fixture.logRoot, 'operations')),
     /curl\|/,
   );
 
-  const installed = runScript({ args: ["--install"], env: fixture.env });
+  const installed = runScript({ args: ['--install'], env: fixture.env });
   assertSuccess(installed);
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.match(operations, /cc\|.*-lreadline -lz/);
   assert.match(operations, new RegExp(`curl\\|.*${sourceCommit}\\.tar\\.gz`));
@@ -1946,37 +1946,37 @@ test("builds the exact pinned source through checksum, configure, make, DESTDIR,
   assert.doesNotMatch(operations, /forbidden\|(sudo|apt-get)/);
   assert.ok(
     (
-      await lstat(join(fixture.installRoot, ".prisma-prim-install-v1"))
+      await lstat(join(fixture.installRoot, '.prisma-prim-install-v1'))
     ).isFile(),
   );
 });
 
-test("fails closed before extraction when the pinned source checksum is wrong", async (t) => {
+test('fails closed before extraction when the pinned source checksum is wrong', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const result = runScript({
-    args: ["--install"],
-    env: { ...fixture.env, FAKE_BAD_CHECKSUM: "true" },
+    args: ['--install'],
+    env: { ...fixture.env, FAKE_BAD_CHECKSUM: 'true' },
   });
   assertOrdinaryFailure(result, /source checksum does not match/);
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.match(operations, /curl\|/);
   assert.doesNotMatch(operations, /tar\||configure\||make\|/);
   await assertAbsent(fixture.installRoot);
 });
 
-test("enforces the bounded archive size before checksum or extraction", async (t) => {
+test('enforces the bounded archive size before checksum or extraction', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const result = runScript({
-    args: ["--install"],
-    env: { ...fixture.env, FAKE_OVERSIZED_DOWNLOAD: "true" },
+    args: ['--install'],
+    env: { ...fixture.env, FAKE_OVERSIZED_DOWNLOAD: 'true' },
   });
   assertOrdinaryFailure(result);
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.match(operations, /curl-oversized\|67108864/);
   assert.doesNotMatch(operations, /checksum\||tar\||configure\||make\|/);
@@ -1984,24 +1984,24 @@ test("enforces the bounded archive size before checksum or extraction", async (t
 });
 
 for (const [failure, env, expectedBefore, forbiddenAfter] of [
-  ["download", { FAKE_CURL_FAIL: "true" }, /cc\|/, /checksum\||tar\||make\|/],
+  ['download', { FAKE_CURL_FAIL: 'true' }, /cc\|/, /checksum\||tar\||make\|/],
   [
-    "extraction",
-    { FAKE_TAR_FAIL: "true" },
+    'extraction',
+    { FAKE_TAR_FAIL: 'true' },
     /checksum\|ok/,
     /configure\||make\|/,
   ],
-  ["configure", { FAKE_CONFIGURE_FAIL: "true" }, /configure\|/, /make\|/],
-  ["make", { FAKE_MAKE_FAIL: "true" }, /configure\|/, /make\|DESTDIR=/],
+  ['configure', { FAKE_CONFIGURE_FAIL: 'true' }, /configure\|/, /make\|/],
+  ['make', { FAKE_MAKE_FAIL: 'true' }, /configure\|/, /make\|DESTDIR=/],
 ]) {
   test(`preserves fail-closed boundaries on source ${failure} failure`, async (t) => {
     const fixture = await createFixture(t, { withCache: false });
     const result = runScript({
-      args: ["--install"],
+      args: ['--install'],
       env: { ...fixture.env, ...env },
     });
     assertOrdinaryFailure(result);
-    const operations = await readOptional(join(fixture.logRoot, "operations"));
+    const operations = await readOptional(join(fixture.logRoot, 'operations'));
     assert.match(operations, expectedBefore);
     assert.doesNotMatch(operations, forbiddenAfter);
     await assertAbsent(fixture.installRoot);
@@ -2009,149 +2009,149 @@ for (const [failure, env, expectedBefore, forbiddenAfter] of [
 }
 
 for (const [signalName, status] of [
-  ["HUP", 129],
-  ["INT", 130],
-  ["TERM", 143],
+  ['HUP', 129],
+  ['INT', 130],
+  ['TERM', 143],
 ]) {
   test(`restores the prior marked cache when ${signalName} interrupts repair publication`, async (t) => {
     const fixture = await createFixture(t);
-    const oldPostgres = join(fixture.installRoot, "bin", "postgres");
+    const oldPostgres = join(fixture.installRoot, 'bin', 'postgres');
     await executable(
       oldPostgres,
       '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
     );
     const result = runScript({
-      args: ["--install"],
+      args: ['--install'],
       env: {
         ...fixture.env,
         FAKE_SIGNAL_NAME: signalName,
-        FAKE_SIGNAL_ON_BACKUP: "true",
+        FAKE_SIGNAL_ON_BACKUP: 'true',
       },
     });
     assert.equal(result.signal, null);
     assert.equal(result.status, status, result.stderr);
     assert.doesNotMatch(result.stdout, /Local PostgreSQL .* is ready/);
-    const probe = spawnSync(oldPostgres, ["--version"], { encoding: "utf8" });
+    const probe = spawnSync(oldPostgres, ['--version'], { encoding: 'utf8' });
     assert.equal(probe.status, 0);
     assert.match(probe.stdout, /16\.9/);
     assert.ok(
       (
-        await lstat(join(fixture.installRoot, ".prisma-prim-install-v1"))
+        await lstat(join(fixture.installRoot, '.prisma-prim-install-v1'))
       ).isFile(),
     );
   });
 }
 
-test("recovers a verified replacement after SIGKILL creates a publication gap", async (t) => {
+test('recovers a verified replacement after SIGKILL creates a publication gap', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
 
   const interrupted = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_NAME: "KILL",
-      FAKE_SIGNAL_ON_BACKUP: "true",
+      FAKE_SIGNAL_NAME: 'KILL',
+      FAKE_SIGNAL_ON_BACKUP: 'true',
     },
   });
 
   assert.equal(interrupted.status, null, interrupted.stderr);
-  assert.equal(interrupted.signal, "SIGKILL", interrupted.stderr);
+  assert.equal(interrupted.signal, 'SIGKILL', interrupted.stderr);
   await assertAbsent(fixture.installRoot);
   assert.ok(
     (
       await lstat(
-        join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
       )
     ).isFile(),
   );
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
     (operationsBefore.match(/^make\|/gm) ?? []).length,
   );
   const current = spawnSync(
-    join(fixture.installRoot, "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.match(current.stdout, /17\.11/);
   await assertAbsent(
-    join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
   );
 });
 
-test("recovers after SIGKILL immediately moves the staged install", async (t) => {
+test('recovers after SIGKILL immediately moves the staged install', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
 
   const interrupted = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_NAME: "KILL",
-      FAKE_SIGNAL_ON_NEW_INSTALL: "true",
+      FAKE_SIGNAL_NAME: 'KILL',
+      FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
     },
   });
 
   assert.equal(interrupted.status, null, interrupted.stderr);
-  assert.equal(interrupted.signal, "SIGKILL", interrupted.stderr);
+  assert.equal(interrupted.signal, 'SIGKILL', interrupted.stderr);
   assert.ok(
     (
       await lstat(
-        join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
       )
     ).isFile(),
   );
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
     (operationsBefore.match(/^make\|/gm) ?? []).length,
   );
   const current = spawnSync(
-    join(fixture.installRoot, "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   assert.match(current.stdout, /17\.11/);
   await assertAbsent(
-    join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
   );
 });
 
-test("retains fresh recovery state when TERM interrupts publication", async (t) => {
+test('retains fresh recovery state when TERM interrupts publication', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
 
   const interrupted = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_NAME: "TERM",
-      FAKE_SIGNAL_ON_NEW_INSTALL: "true",
+      FAKE_SIGNAL_NAME: 'TERM',
+      FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
     },
   });
 
@@ -2160,52 +2160,52 @@ test("retains fresh recovery state when TERM interrupts publication", async (t) 
   assert.ok(
     (
       await lstat(
-        join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+        join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
       )
     ).isFile(),
   );
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     1,
   );
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
     (operationsBefore.match(/^make\|/gm) ?? []).length,
   );
   await assertAbsent(
-    join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+    join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
   );
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     0,
   );
 });
 
-test("retains the marked build when intent validation fails before in-memory activation", async (t) => {
+test('retains the marked build when intent validation fails before in-memory activation', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const intent = join(
     fixture.cacheRoot,
-    ".prisma-prim-install-publication-intent-v1",
+    '.prisma-prim-install-publication-intent-v1',
   );
   const interrupted = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_FAIL_INSTALL_INTENT_VALIDATION_ONCE: "true",
+      FAKE_FAIL_INSTALL_INTENT_VALIDATION_ONCE: 'true',
     },
   });
 
@@ -2213,19 +2213,19 @@ test("retains the marked build when intent validation fails before in-memory act
   assert.ok((await lstat(intent)).isFile());
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     1,
   );
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
@@ -2234,15 +2234,15 @@ test("retains the marked build when intent validation fails before in-memory act
   await assertAbsent(intent);
 });
 
-test("retains a fresh staged build when TERM arrives before intent activation", async (t) => {
+test('retains a fresh staged build when TERM arrives before intent activation', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const intent = join(
     fixture.cacheRoot,
-    ".prisma-prim-install-publication-intent-v1",
+    '.prisma-prim-install-publication-intent-v1',
   );
-  const entered = join(fixture.logRoot, "intent-stat-entered");
-  const release = join(fixture.logRoot, "intent-stat-release");
-  const child = spawn("bash", [scriptPath, "--install"], {
+  const entered = join(fixture.logRoot, 'intent-stat-entered');
+  const release = join(fixture.logRoot, 'intent-stat-release');
+  const child = spawn('bash', [scriptPath, '--install'], {
     detached: true,
     env: cleanEnvironment({
       ...fixture.env,
@@ -2250,15 +2250,15 @@ test("retains a fresh staged build when TERM arrives before intent activation", 
       FAKE_STAT_PAUSE_ENTERED: entered,
       FAKE_STAT_PAUSE_RELEASE: release,
     }),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(async () => {
-    await writeFile(release, "").catch(() => {});
+    await writeFile(release, '').catch(() => {});
     await terminateProcessGroup(child);
   });
   const resultPromise = collect(child);
   await waitFor(entered, 60_000);
-  process.kill(-child.pid, "SIGTERM");
+  process.kill(-child.pid, 'SIGTERM');
   const interrupted = await resultPromise;
 
   assert.equal(interrupted.signal, null, interrupted.stderr);
@@ -2266,19 +2266,19 @@ test("retains a fresh staged build when TERM arrives before intent activation", 
   assert.ok((await lstat(intent)).isFile());
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     1,
   );
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
@@ -2287,31 +2287,31 @@ test("retains a fresh staged build when TERM arrives before intent activation", 
   await assertAbsent(intent);
 });
 
-test("retains a fresh staged build when TERM interrupts recovery", async (t) => {
+test('retains a fresh staged build when TERM interrupts recovery', async (t) => {
   const fixture = await createFixture(t, { withCache: false });
   const intent = join(
     fixture.cacheRoot,
-    ".prisma-prim-install-publication-intent-v1",
+    '.prisma-prim-install-publication-intent-v1',
   );
   const first = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_NAME: "KILL",
-      FAKE_SIGNAL_ON_NEW_INSTALL: "true",
+      FAKE_SIGNAL_NAME: 'KILL',
+      FAKE_SIGNAL_ON_NEW_INSTALL: 'true',
     },
   });
   assert.equal(first.status, null, first.stderr);
-  assert.equal(first.signal, "SIGKILL", first.stderr);
+  assert.equal(first.signal, 'SIGKILL', first.stderr);
   const operationsBefore = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
 
   const second = runScript({
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_NAME: "TERM",
+      FAKE_SIGNAL_NAME: 'TERM',
       FAKE_SIGNAL_ON_DESTINATION: fixture.installRoot,
     },
   });
@@ -2320,15 +2320,15 @@ test("retains a fresh staged build when TERM interrupts recovery", async (t) => 
   assert.ok((await lstat(intent)).isFile());
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     1,
   );
 
   assertSuccess(runScript({ env: fixture.env }));
   const operationsAfter = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.equal(
     (operationsAfter.match(/^make\|/gm) ?? []).length,
@@ -2337,21 +2337,21 @@ test("retains a fresh staged build when TERM interrupts recovery", async (t) => 
   await assertAbsent(intent);
   assert.equal(
     (await readdir(fixture.cacheRoot)).filter((name) =>
-      name.startsWith(".build-"),
+      name.startsWith('.build-'),
     ).length,
     0,
   );
 });
 
-test("restores the prior cache when interrupted after publishing the replacement", async (t) => {
+test('restores the prior cache when interrupted after publishing the replacement', async (t) => {
   const fixture = await createFixture(t);
-  const oldPostgres = join(fixture.installRoot, "bin", "postgres");
+  const oldPostgres = join(fixture.installRoot, 'bin', 'postgres');
   await executable(
     oldPostgres,
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const result = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
       FAKE_SIGNAL_ON_DESTINATION: fixture.installRoot,
@@ -2359,31 +2359,31 @@ test("restores the prior cache when interrupted after publishing the replacement
   });
   assert.equal(result.signal, null);
   assert.equal(result.status, 143, result.stderr);
-  const probe = spawnSync(oldPostgres, ["--version"], { encoding: "utf8" });
+  const probe = spawnSync(oldPostgres, ['--version'], { encoding: 'utf8' });
   assert.equal(probe.status, 0);
   assert.match(probe.stdout, /16\.9/);
 });
 
 for (const [recoveryState, interruption] of [
-  ["publication gap", { FAKE_SIGNAL_ON_BACKUP: "true" }],
-  ["published replacement", { FAKE_SIGNAL_ON_DESTINATION: "__INSTALL_ROOT__" }],
+  ['publication gap', { FAKE_SIGNAL_ON_BACKUP: 'true' }],
+  ['published replacement', { FAKE_SIGNAL_ON_DESTINATION: '__INSTALL_ROOT__' }],
 ]) {
   test(`restores the prior cache when TERM follows intent removal from a ${recoveryState}`, async (t) => {
     const fixture = await createFixture(t);
-    const oldPostgres = join(fixture.installRoot, "bin", "postgres");
+    const oldPostgres = join(fixture.installRoot, 'bin', 'postgres');
     await executable(
       oldPostgres,
       '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
     );
     const initialInterruption = runScript({
-      args: ["--install"],
+      args: ['--install'],
       env: {
         ...fixture.env,
-        FAKE_SIGNAL_NAME: "KILL",
+        FAKE_SIGNAL_NAME: 'KILL',
         ...Object.fromEntries(
           Object.entries(interruption).map(([name, value]) => [
             name,
-            value === "__INSTALL_ROOT__" ? fixture.installRoot : value,
+            value === '__INSTALL_ROOT__' ? fixture.installRoot : value,
           ]),
         ),
       },
@@ -2391,37 +2391,37 @@ for (const [recoveryState, interruption] of [
     assert.equal(initialInterruption.status, null, initialInterruption.stderr);
     assert.equal(
       initialInterruption.signal,
-      "SIGKILL",
+      'SIGKILL',
       initialInterruption.stderr,
     );
 
     const recovery = runScript({
       env: {
         ...fixture.env,
-        FAKE_SIGNAL_NAME: "TERM",
+        FAKE_SIGNAL_NAME: 'TERM',
         FAKE_SIGNAL_AFTER_RM_BASENAME:
-          ".prisma-prim-install-publication-intent-v1",
+          '.prisma-prim-install-publication-intent-v1',
       },
     });
     assert.equal(recovery.signal, null, recovery.stderr);
     assert.equal(recovery.status, 143, recovery.stderr);
-    const probe = spawnSync(oldPostgres, ["--version"], {
-      encoding: "utf8",
+    const probe = spawnSync(oldPostgres, ['--version'], {
+      encoding: 'utf8',
       env: cleanEnvironment(fixture.env),
     });
     assert.equal(probe.status, 0, probe.stderr);
     assert.match(probe.stdout, /16\.9/);
     await assertAbsent(
-      join(fixture.cacheRoot, ".prisma-prim-install-publication-intent-v1"),
+      join(fixture.cacheRoot, '.prisma-prim-install-publication-intent-v1'),
     );
   });
 }
 
-for (const collisionPhase of ["new", "backup", "final", "failed"]) {
+for (const collisionPhase of ['new', 'backup', 'final', 'failed']) {
   test(`never overwrites or adopts a foreign ${collisionPhase} publication destination`, async (t) => {
     const fixture = await createFixture(t);
     await executable(
-      join(fixture.installRoot, "bin", "postgres"),
+      join(fixture.installRoot, 'bin', 'postgres'),
       '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
     );
 
@@ -2429,24 +2429,24 @@ for (const collisionPhase of ["new", "backup", "final", "failed"]) {
       fixture.logRoot,
       `foreign-${collisionPhase}-install`,
     );
-    const directoryCollision = collisionPhase === "final";
+    const directoryCollision = collisionPhase === 'final';
     if (directoryCollision) {
       await createValidForeignInstall(collisionTarget, fixture);
     } else {
       await mkdir(collisionTarget, { mode: 0o700 });
     }
-    const sentinel = join(collisionTarget, "sentinel");
-    await writeFile(sentinel, "unchanged", { mode: 0o600 });
+    const sentinel = join(collisionTarget, 'sentinel');
+    await writeFile(sentinel, 'unchanged', { mode: 0o600 });
     const before = await lstat(collisionTarget);
 
     const result = runScript({
-      args: ["--install"],
+      args: ['--install'],
       env: {
         ...fixture.env,
         FAKE_COLLIDE_MOVE_PHASE: collisionPhase,
-        FAKE_MOVE_COLLISION_KIND: directoryCollision ? "directory" : "symlink",
+        FAKE_MOVE_COLLISION_KIND: directoryCollision ? 'directory' : 'symlink',
         FAKE_MOVE_COLLISION_TARGET: collisionTarget,
-        ...(collisionPhase === "failed" ? { FAKE_INITDB_FAIL: "true" } : {}),
+        ...(collisionPhase === 'failed' ? { FAKE_INITDB_FAIL: 'true' } : {}),
       },
     });
     assertOrdinaryFailure(result);
@@ -2454,14 +2454,14 @@ for (const collisionPhase of ["new", "backup", "final", "failed"]) {
     const collisionPath = (
       await readFile(
         join(fixture.logRoot, `move-collision-${collisionPhase}`),
-        "utf8",
+        'utf8',
       )
     ).trim();
     const foreignPath = directoryCollision ? collisionPath : collisionTarget;
     const after = await lstat(foreignPath);
     assert.equal(
-      await readFile(join(foreignPath, "sentinel"), "utf8"),
-      "unchanged",
+      await readFile(join(foreignPath, 'sentinel'), 'utf8'),
+      'unchanged',
     );
     assert.equal(after.ino, before.ino);
     assert.equal(after.mode, before.mode);
@@ -2473,236 +2473,236 @@ for (const collisionPhase of ["new", "backup", "final", "failed"]) {
 
     const entries = await readdir(fixture.cacheRoot);
     const backups = entries.filter((name) =>
-      name.startsWith(".install-backup-"),
+      name.startsWith('.install-backup-'),
     );
-    if (collisionPhase === "new" || collisionPhase === "backup") {
+    if (collisionPhase === 'new' || collisionPhase === 'backup') {
       const prior = spawnSync(
-        join(fixture.installRoot, "bin", "postgres"),
-        ["--version"],
-        { encoding: "utf8" },
+        join(fixture.installRoot, 'bin', 'postgres'),
+        ['--version'],
+        { encoding: 'utf8' },
       );
       assert.match(prior.stdout, /16\.9/);
     } else {
       assert.equal(backups.length, 1);
       const prior = spawnSync(
-        join(fixture.cacheRoot, backups[0], "bin", "postgres"),
-        ["--version"],
-        { encoding: "utf8" },
+        join(fixture.cacheRoot, backups[0], 'bin', 'postgres'),
+        ['--version'],
+        { encoding: 'utf8' },
       );
       assert.match(prior.stdout, /16\.9/);
     }
 
-    if (collisionPhase === "final") {
+    if (collisionPhase === 'final') {
       const replacements = entries.filter((name) =>
-        name.startsWith(".install-new-"),
+        name.startsWith('.install-new-'),
       );
       assert.equal(replacements.length, 1);
       const replacement = spawnSync(
-        join(fixture.cacheRoot, replacements[0], "bin", "postgres"),
-        ["--version"],
-        { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+        join(fixture.cacheRoot, replacements[0], 'bin', 'postgres'),
+        ['--version'],
+        { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
       );
       assert.match(replacement.stdout, /17\.11/);
     }
-    if (collisionPhase === "failed") {
+    if (collisionPhase === 'failed') {
       const replacement = spawnSync(
-        join(fixture.installRoot, "bin", "postgres"),
-        ["--version"],
-        { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+        join(fixture.installRoot, 'bin', 'postgres'),
+        ['--version'],
+        { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
       );
       assert.match(replacement.stdout, /17\.11/);
     }
   });
 }
 
-test("restores the prior cache when the repaired install later fails initdb", async (t) => {
+test('restores the prior cache when the repaired install later fails initdb', async (t) => {
   const fixture = await createFixture(t);
-  const oldPostgres = join(fixture.installRoot, "bin", "postgres");
+  const oldPostgres = join(fixture.installRoot, 'bin', 'postgres');
   await executable(
     oldPostgres,
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const result = runScript({
-    args: ["--install"],
-    env: { ...fixture.env, FAKE_INITDB_FAIL: "true" },
+    args: ['--install'],
+    env: { ...fixture.env, FAKE_INITDB_FAIL: 'true' },
   });
   assertOrdinaryFailure(result);
-  const probe = spawnSync(oldPostgres, ["--version"], { encoding: "utf8" });
+  const probe = spawnSync(oldPostgres, ['--version'], { encoding: 'utf8' });
   assert.equal(probe.status, 0);
   assert.match(probe.stdout, /16\.9/);
   assert.match(
-    await readFile(join(fixture.logRoot, "initdb"), "utf8"),
+    await readFile(join(fixture.logRoot, 'initdb'), 'utf8'),
     /initdb/,
   );
 });
 
-test("restores the prior cache when TERM arrives during post-repair initdb", async (t) => {
+test('restores the prior cache when TERM arrives during post-repair initdb', async (t) => {
   const fixture = await createFixture(t);
-  const oldPostgres = join(fixture.installRoot, "bin", "postgres");
+  const oldPostgres = join(fixture.installRoot, 'bin', 'postgres');
   await executable(
     oldPostgres,
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const result = runScript({
-    args: ["--install"],
-    env: { ...fixture.env, FAKE_SIGNAL_DURING_INITDB: "true" },
+    args: ['--install'],
+    env: { ...fixture.env, FAKE_SIGNAL_DURING_INITDB: 'true' },
   });
   assert.equal(result.signal, null);
   assert.equal(result.status, 143, result.stderr);
   assert.doesNotMatch(result.stdout, /Local PostgreSQL .* is ready/);
-  const probe = spawnSync(oldPostgres, ["--version"], { encoding: "utf8" });
+  const probe = spawnSync(oldPostgres, ['--version'], { encoding: 'utf8' });
   assert.equal(probe.status, 0);
   assert.match(probe.stdout, /16\.9/);
 });
 
-test("retains the prior owned cache after a successful repair commit", async (t) => {
+test('retains the prior owned cache after a successful repair commit', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
-  assertSuccess(runScript({ args: ["--install"], env: fixture.env }));
+  assertSuccess(runScript({ args: ['--install'], env: fixture.env }));
   const backups = (await readdir(fixture.cacheRoot)).filter((name) =>
-    name.startsWith(".install-backup-"),
+    name.startsWith('.install-backup-'),
   );
   assert.equal(backups.length, 1);
   const current = spawnSync(
-    join(fixture.installRoot, "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   const prior = spawnSync(
-    join(fixture.cacheRoot, backups[0], "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8" },
+    join(fixture.cacheRoot, backups[0], 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8' },
   );
   assert.match(current.stdout, /17\.11/);
   assert.match(prior.stdout, /16\.9/);
 });
 
-test("makes the final ready commit non-interruptible while retaining the prior cache", async (t) => {
+test('makes the final ready commit non-interruptible while retaining the prior cache', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const coordination = await mkdtemp(
-    join(tmpdir(), "prisma-prim-final-commit-test-"),
+    join(tmpdir(), 'prisma-prim-final-commit-test-'),
   );
-  const entered = join(coordination, "cleanup.entered");
-  const release = join(coordination, "cleanup.release");
+  const entered = join(coordination, 'cleanup.entered');
+  const release = join(coordination, 'cleanup.release');
   t.after(() => rm(coordination, { recursive: true, force: true }));
   let child;
   t.after(async () => {
     try {
-      await writeFile(release, "");
+      await writeFile(release, '');
     } catch {
       // Process-group termination below is the fallback if teardown ran first.
     }
     await terminateProcessGroup(child);
   });
-  child = spawn("bash", [scriptPath, "--install"], {
+  child = spawn('bash', [scriptPath, '--install'], {
     detached: true,
     env: cleanEnvironment({
       ...fixture.env,
       FAKE_FINAL_CLEANUP_ENTERED: entered,
       FAKE_FINAL_CLEANUP_RELEASE: release,
     }),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   const resultPromise = collect(child);
   await waitFor(entered, 60_000);
-  assert.equal(child.kill("SIGTERM"), true);
-  await writeFile(release, "");
+  assert.equal(child.kill('SIGTERM'), true);
+  await writeFile(release, '');
   assertSuccess(await resultPromise);
-  assert.ok((await lstat(join(fixture.stateRoot, "server.started"))).isFile());
+  assert.ok((await lstat(join(fixture.stateRoot, 'server.started'))).isFile());
   const backups = (await readdir(fixture.cacheRoot)).filter((name) =>
-    name.startsWith(".install-backup-"),
+    name.startsWith('.install-backup-'),
   );
   assert.equal(backups.length, 1);
 });
 
-test("does not restore over a replacement server that cleanup cannot stop", async (t) => {
+test('does not restore over a replacement server that cleanup cannot stop', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const result = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_FAIL_OPERATION: "psql",
-      FAKE_STOP_FAIL: "true",
+      FAKE_FAIL_OPERATION: 'psql',
+      FAKE_STOP_FAIL: 'true',
     },
   });
   assertOrdinaryFailure(result, /replacement server is still live/);
-  assert.ok((await lstat(join(fixture.stateRoot, "server.started"))).isFile());
+  assert.ok((await lstat(join(fixture.stateRoot, 'server.started'))).isFile());
   const backups = (await readdir(fixture.cacheRoot)).filter((name) =>
-    name.startsWith(".install-backup-"),
+    name.startsWith('.install-backup-'),
   );
   assert.equal(backups.length, 1);
   const current = spawnSync(
-    join(fixture.installRoot, "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   const prior = spawnSync(
-    join(fixture.cacheRoot, backups[0], "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8" },
+    join(fixture.cacheRoot, backups[0], 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8' },
   );
   assert.match(current.stdout, /17\.11/);
   assert.match(prior.stdout, /16\.9/);
 });
 
-test("requires a successful stop before rollback even when all probes are closed", async (t) => {
+test('requires a successful stop before rollback even when all probes are closed', async (t) => {
   const fixture = await createFixture(t);
   await executable(
-    join(fixture.installRoot, "bin", "postgres"),
+    join(fixture.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const result = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_FAIL_OPERATION: "psql",
-      FAKE_FORCE_PROBES_CLOSED: "true",
-      FAKE_STOP_FAIL: "true",
+      FAKE_FAIL_OPERATION: 'psql',
+      FAKE_FORCE_PROBES_CLOSED: 'true',
+      FAKE_STOP_FAIL: 'true',
     },
   });
   assertOrdinaryFailure(result, /could not be confirmed stopped/);
-  assert.ok((await lstat(join(fixture.stateRoot, "server.started"))).isFile());
+  assert.ok((await lstat(join(fixture.stateRoot, 'server.started'))).isFile());
   const backups = (await readdir(fixture.cacheRoot)).filter((name) =>
-    name.startsWith(".install-backup-"),
+    name.startsWith('.install-backup-'),
   );
   assert.equal(backups.length, 1);
   const current = spawnSync(
-    join(fixture.installRoot, "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8", env: cleanEnvironment(fixture.env) },
+    join(fixture.installRoot, 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8', env: cleanEnvironment(fixture.env) },
   );
   const prior = spawnSync(
-    join(fixture.cacheRoot, backups[0], "bin", "postgres"),
-    ["--version"],
-    { encoding: "utf8" },
+    join(fixture.cacheRoot, backups[0], 'bin', 'postgres'),
+    ['--version'],
+    { encoding: 'utf8' },
   );
   assert.match(current.stdout, /17\.11/);
   assert.match(prior.stdout, /16\.9/);
 });
 
-test("keeps root lifecycle mutations behind exact postgres runuser and install boundaries", async (t) => {
+test('keeps root lifecycle mutations behind exact postgres runuser and install boundaries', async (t) => {
   const fixture = await createFixture(t, {
-    callerUid: "0",
-    callerGid: "0",
-    postgresUid: "71",
-    postgresGid: "72",
-    postgresGroups: "72 73",
+    callerUid: '0',
+    callerGid: '0',
+    postgresUid: '71',
+    postgresGid: '72',
+    postgresGroups: '72 73',
   });
   assertSuccess(runScript({ env: fixture.env }));
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.match(
     operations,
@@ -2717,21 +2717,21 @@ test("keeps root lifecycle mutations behind exact postgres runuser and install b
   assert.doesNotMatch(operations, /forbidden\|(sudo|apt-get)/);
 });
 
-test("runs an isolated non-root lifecycle without privilege escalation", async (t) => {
+test('runs an isolated non-root lifecycle without privilege escalation', async (t) => {
   const fixture = await createFixture(t, {
-    callerUid: "1001",
-    callerGid: "1002",
-    postgresUid: "1001",
-    postgresGid: "1002",
-    postgresGroups: "1002",
+    callerUid: '1001',
+    callerGid: '1002',
+    postgresUid: '1001',
+    postgresGid: '1002',
+    postgresGroups: '1002',
   });
   assertSuccess(runScript({ env: fixture.env }));
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.doesNotMatch(operations, /runuser\||install\||forbidden\|/);
-  for (const database of ["prisma_prim_dev", "prisma_prim_test"]) {
+  for (const database of ['prisma_prim_dev', 'prisma_prim_test']) {
     assert.match(
       operations,
       new RegExp(
@@ -2741,11 +2741,11 @@ test("runs an isolated non-root lifecycle without privilege escalation", async (
   }
 });
 
-test("rejects a non-root OS account that collides with the application role before mutation", async (t) => {
+test('rejects a non-root OS account that collides with the application role before mutation', async (t) => {
   const fixture = await createFixture(t, {
-    callerUid: "1001",
-    callerGid: "1002",
-    callerUser: "prisma_prim",
+    callerUid: '1001',
+    callerGid: '1002',
+    callerUser: 'prisma_prim',
     withCache: false,
   });
   const result = runScript({ env: fixture.env });
@@ -2753,149 +2753,149 @@ test("rejects a non-root OS account that collides with the application role befo
     result,
     /must differ from the application database role/,
   );
-  assert.equal(await readOptional(join(fixture.logRoot, "operations")), "");
+  assert.equal(await readOptional(join(fixture.logRoot, 'operations')), '');
   await assertAbsent(fixture.cacheRoot);
   await assertAbsent(fixture.runtimeRoot);
 });
 
 for (const [name, identity] of [
-  ["UID zero", { postgresUid: "0", postgresGid: "71", postgresGroups: "71" }],
+  ['UID zero', { postgresUid: '0', postgresGid: '71', postgresGroups: '71' }],
   [
-    "primary GID zero",
-    { postgresUid: "71", postgresGid: "0", postgresGroups: "71" },
+    'primary GID zero',
+    { postgresUid: '71', postgresGid: '0', postgresGroups: '71' },
   ],
   [
-    "supplementary GID zero",
-    { postgresUid: "71", postgresGid: "72", postgresGroups: "72 0" },
+    'supplementary GID zero',
+    { postgresUid: '71', postgresGid: '72', postgresGroups: '72 0' },
   ],
 ]) {
   test(`rejects postgres ${name} before service mutation`, async (t) => {
     const fixture = await createFixture(t, {
-      callerUid: "0",
-      callerGid: "0",
+      callerUid: '0',
+      callerGid: '0',
       ...identity,
     });
     const result = runScript({ env: fixture.env });
     assertOrdinaryFailure(result, /must not be zero|must not belong/);
-    const operations = await readOptional(join(fixture.logRoot, "operations"));
+    const operations = await readOptional(join(fixture.logRoot, 'operations'));
     assert.doesNotMatch(operations, /install\||runuser\|/);
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
   });
 }
 
-test("creates a missing postgres account only in install mode and then revalidates it", async (t) => {
+test('creates a missing postgres account only in install mode and then revalidates it', async (t) => {
   const startFixture = await createFixture(t, {
-    callerUid: "0",
-    callerGid: "0",
+    callerUid: '0',
+    callerGid: '0',
   });
   const startResult = runScript({
-    env: { ...startFixture.env, FAKE_POSTGRES_ACCOUNT_MISSING: "true" },
+    env: { ...startFixture.env, FAKE_POSTGRES_ACCOUNT_MISSING: 'true' },
   });
   assertOrdinaryFailure(startResult, /account is missing/);
-  await assertAbsent(join(startFixture.logRoot, "useradd"));
+  await assertAbsent(join(startFixture.logRoot, 'useradd'));
 
   const installFixture = await createFixture(t, {
-    callerUid: "0",
-    callerGid: "0",
+    callerUid: '0',
+    callerGid: '0',
   });
   const installResult = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...installFixture.env,
-      FAKE_POSTGRES_ACCOUNT_MISSING: "true",
-      FAKE_ALLOW_USERADD: "true",
+      FAKE_POSTGRES_ACCOUNT_MISSING: 'true',
+      FAKE_ALLOW_USERADD: 'true',
     },
   });
   assertSuccess(installResult);
   assert.match(
-    await readFile(join(installFixture.logRoot, "useradd"), "utf8"),
+    await readFile(join(installFixture.logRoot, 'useradd'), 'utf8'),
     /--system --user-group .* --no-create-home .* postgres/,
   );
 });
 
-test("never creates a missing service account while a listener is present", async (t) => {
+test('never creates a missing service account while a listener is present', async (t) => {
   const fixture = await createFixture(t, {
-    callerUid: "0",
-    callerGid: "0",
+    callerUid: '0',
+    callerGid: '0',
   });
   const result = runScript({
-    args: ["--install"],
+    args: ['--install'],
     env: {
       ...fixture.env,
-      FAKE_POSTGRES_ACCOUNT_MISSING: "true",
-      FAKE_ALLOW_USERADD: "true",
-      FAKE_FOREIGN_TCP_LISTENER: "true",
+      FAKE_POSTGRES_ACCOUNT_MISSING: 'true',
+      FAKE_ALLOW_USERADD: 'true',
+      FAKE_FOREIGN_TCP_LISTENER: 'true',
     },
   });
   assertOrdinaryFailure(result, /foreign listener exists before/);
-  await assertAbsent(join(fixture.logRoot, "useradd"));
-  await assertAbsent(join(fixture.logRoot, "initdb"));
+  await assertAbsent(join(fixture.logRoot, 'useradd'));
+  await assertAbsent(join(fixture.logRoot, 'initdb'));
 });
 
-test("rejects a foreign listener before initializing data", async (t) => {
+test('rejects a foreign listener before initializing data', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_FOREIGN_LISTENER: "true" },
+    env: { ...fixture.env, FAKE_FOREIGN_LISTENER: 'true' },
   });
   assertOrdinaryFailure(result, /foreign listener/);
-  await assert.rejects(lstat(join(fixture.logRoot, "initdb")));
+  await assert.rejects(lstat(join(fixture.logRoot, 'initdb')));
 });
 
-test("treats a TCP-only listener as foreign without creating a socket or data directory", async (t) => {
+test('treats a TCP-only listener as foreign without creating a socket or data directory', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_FOREIGN_TCP_LISTENER: "true" },
+    env: { ...fixture.env, FAKE_FOREIGN_TCP_LISTENER: 'true' },
   });
   assertOrdinaryFailure(result, /foreign listener/);
-  await assertAbsent(join(fixture.runtimeRoot, "socket"));
+  await assertAbsent(join(fixture.runtimeRoot, 'socket'));
   await assertAbsent(fixture.dataRoot);
-  await assertAbsent(join(fixture.logRoot, "initdb"));
+  await assertAbsent(join(fixture.logRoot, 'initdb'));
 });
 
-test("does not create a missing socket when an existing TCP listener is observed", async (t) => {
+test('does not create a missing socket when an existing TCP listener is observed', async (t) => {
   const fixture = await establishRunningFixture(t);
-  await rm(join(fixture.runtimeRoot, "socket"), { recursive: true });
+  await rm(join(fixture.runtimeRoot, 'socket'), { recursive: true });
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({ env: fixture.env });
   assertOrdinaryFailure(result, /lacks an exact owned socket directory/);
-  await assertAbsent(join(fixture.runtimeRoot, "socket"));
+  await assertAbsent(join(fixture.runtimeRoot, 'socket'));
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects split readiness on an existing owned listener without provisioning", async (t) => {
+test('rejects split readiness on an existing owned listener without provisioning', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_SOCKET_NOT_READY: "true" },
+    env: { ...fixture.env, FAKE_SOCKET_NOT_READY: 'true' },
   });
   assertOrdinaryFailure(result, /does not expose both owned transports/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects changed data configuration content and mode while preserving it", async (t) => {
+test('rejects changed data configuration content and mode while preserving it', async (t) => {
   const fixture = await establishRunningFixture(t);
-  const config = join(fixture.dataRoot, "postgresql.conf");
-  const exact = await readFile(config, "utf8");
+  const config = join(fixture.dataRoot, 'postgresql.conf');
+  const exact = await readFile(config, 'utf8');
 
   await writeFile(config, `${exact}shared_preload_libraries = 'foreign'\n`, {
     mode: 0o600,
   });
-  const changedContent = await readFile(config, "utf8");
+  const changedContent = await readFile(config, 'utf8');
   const contentResult = runScript({ env: fixture.env });
   assertOrdinaryFailure(contentResult, /foreign listener/);
-  assert.equal(await readFile(config, "utf8"), changedContent);
+  assert.equal(await readFile(config, 'utf8'), changedContent);
 
   await writeFile(config, exact, { mode: 0o600 });
   await chmod(config, 0o644);
@@ -2904,27 +2904,27 @@ test("rejects changed data configuration content and mode while preserving it", 
   assert.equal((await lstat(config)).mode & 0o777, 0o644);
 });
 
-test("rejects changed or symlinked postgresql.auto.conf before restart", async (t) => {
+test('rejects changed or symlinked postgresql.auto.conf before restart', async (t) => {
   const changed = await establishRunningFixture(t);
-  await rm(join(changed.stateRoot, "server.started"));
-  const changedAuto = join(changed.dataRoot, "postgresql.auto.conf");
+  await rm(join(changed.stateRoot, 'server.started'));
+  const changedAuto = join(changed.dataRoot, 'postgresql.auto.conf');
   await writeFile(changedAuto, "listen_addresses = '*'\n", { mode: 0o600 });
   const changedResult = runScript({ env: changed.env });
   assertOrdinaryFailure(
     changedResult,
     /data directory is incomplete but lacks exact owned repair intent/,
   );
-  assert.equal(await readFile(changedAuto, "utf8"), "listen_addresses = '*'\n");
+  assert.equal(await readFile(changedAuto, 'utf8'), "listen_addresses = '*'\n");
   assert.equal(
-    (await readFile(join(changed.logRoot, "pg_ctl"), "utf8")).trim(),
-    "start",
+    (await readFile(join(changed.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
   );
 
   const linked = await establishRunningFixture(t);
-  await rm(join(linked.stateRoot, "server.started"));
-  const linkedAuto = join(linked.dataRoot, "postgresql.auto.conf");
-  const target = join(linked.logRoot, "foreign-auto-conf");
-  await writeFile(target, "unchanged\n", { mode: 0o600 });
+  await rm(join(linked.stateRoot, 'server.started'));
+  const linkedAuto = join(linked.dataRoot, 'postgresql.auto.conf');
+  const target = join(linked.logRoot, 'foreign-auto-conf');
+  await writeFile(target, 'unchanged\n', { mode: 0o600 });
   await rm(linkedAuto);
   await symlink(target, linkedAuto);
   const linkedResult = runScript({ env: linked.env });
@@ -2932,41 +2932,41 @@ test("rejects changed or symlinked postgresql.auto.conf before restart", async (
     linkedResult,
     /data directory is incomplete but lacks exact owned repair intent/,
   );
-  assert.equal(await readFile(target, "utf8"), "unchanged\n");
+  assert.equal(await readFile(target, 'utf8'), 'unchanged\n');
   assert.ok((await lstat(linkedAuto)).isSymbolicLink());
   assert.equal(
-    (await readFile(join(linked.logRoot, "pg_ctl"), "utf8")).trim(),
-    "start",
+    (await readFile(join(linked.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
   );
 });
 
-test("rejects changed PG_VERSION and socket completion markers without repair", async (t) => {
+test('rejects changed PG_VERSION and socket completion markers without repair', async (t) => {
   const fixture = await establishRunningFixture(t);
-  const pgVersion = join(fixture.dataRoot, "PG_VERSION");
-  await writeFile(pgVersion, "16\n", { mode: 0o600 });
+  const pgVersion = join(fixture.dataRoot, 'PG_VERSION');
+  await writeFile(pgVersion, '16\n', { mode: 0o600 });
   const versionResult = runScript({ env: fixture.env });
   assertOrdinaryFailure(versionResult, /foreign listener/);
-  assert.equal(await readFile(pgVersion, "utf8"), "16\n");
+  assert.equal(await readFile(pgVersion, 'utf8'), '16\n');
 
-  await writeFile(pgVersion, "17\n");
+  await writeFile(pgVersion, '17\n');
   await chmod(pgVersion, 0o600);
   const socketMarker = join(
     fixture.runtimeRoot,
-    "socket",
-    ".prisma-prim-socket-v1",
+    'socket',
+    '.prisma-prim-socket-v1',
   );
-  await writeFile(socketMarker, "foreign socket marker\n", { mode: 0o600 });
+  await writeFile(socketMarker, 'foreign socket marker\n', { mode: 0o600 });
   const markerResult = runScript({ env: fixture.env });
   assertOrdinaryFailure(markerResult, /socket directory is foreign/);
-  assert.equal(await readFile(socketMarker, "utf8"), "foreign socket marker\n");
+  assert.equal(await readFile(socketMarker, 'utf8'), 'foreign socket marker\n');
 });
 
-test("rejects a symlinked server log before restart without touching its target", async (t) => {
+test('rejects a symlinked server log before restart without touching its target', async (t) => {
   const fixture = await establishRunningFixture(t);
-  await rm(join(fixture.stateRoot, "server.started"));
-  const serverLog = join(fixture.dataRoot, "server.log");
-  const target = join(fixture.logRoot, "foreign-log-target");
-  await writeFile(target, "unchanged", { mode: 0o600 });
+  await rm(join(fixture.stateRoot, 'server.started'));
+  const serverLog = join(fixture.dataRoot, 'server.log');
+  const target = join(fixture.logRoot, 'foreign-log-target');
+  await writeFile(target, 'unchanged', { mode: 0o600 });
   await rm(serverLog);
   await symlink(target, serverLog);
   const result = runScript({ env: fixture.env });
@@ -2974,67 +2974,67 @@ test("rejects a symlinked server log before restart without touching its target"
     result,
     /data directory is incomplete but lacks exact owned repair intent/,
   );
-  assert.equal(await readFile(target, "utf8"), "unchanged");
+  assert.equal(await readFile(target, 'utf8'), 'unchanged');
   assert.ok((await lstat(serverLog)).isSymbolicLink());
-  await assertAbsent(join(fixture.stateRoot, "server.started"));
+  await assertAbsent(join(fixture.stateRoot, 'server.started'));
 });
 
-test("repairs exact interrupted socket and data initialization states", async (t) => {
+test('repairs exact interrupted socket and data initialization states', async (t) => {
   const socketFixture = await createFixture(t);
   const socketFailure = runScript({
     env: {
       ...socketFixture.env,
-      FAKE_FAIL_SERVICE_FILE: ".prisma-prim-socket-v1",
+      FAKE_FAIL_SERVICE_FILE: '.prisma-prim-socket-v1',
     },
   });
   assertOrdinaryFailure(socketFailure);
   assert.ok(
     (
-      await lstat(join(socketFixture.runtimeRoot, ".socket-incomplete"))
+      await lstat(join(socketFixture.runtimeRoot, '.socket-incomplete'))
     ).isDirectory(),
   );
   assertSuccess(runScript({ env: socketFixture.env }));
-  await assertAbsent(join(socketFixture.runtimeRoot, ".socket-incomplete"));
+  await assertAbsent(join(socketFixture.runtimeRoot, '.socket-incomplete'));
   await assertAbsent(
-    join(socketFixture.runtimeRoot, ".prisma-prim-socket-intent-v1"),
+    join(socketFixture.runtimeRoot, '.prisma-prim-socket-intent-v1'),
   );
 
   const dataFixture = await createFixture(t);
   const dataFailure = runScript({
-    env: { ...dataFixture.env, FAKE_INITDB_FAIL: "true" },
+    env: { ...dataFixture.env, FAKE_INITDB_FAIL: 'true' },
   });
   assertOrdinaryFailure(dataFailure);
   assert.ok(
     (
-      await lstat(join(dataFixture.runtimeRoot, ".data-incomplete"))
+      await lstat(join(dataFixture.runtimeRoot, '.data-incomplete'))
     ).isDirectory(),
   );
   assertSuccess(runScript({ env: dataFixture.env }));
   assert.equal(
-    (await readFile(join(dataFixture.logRoot, "initdb"), "utf8"))
+    (await readFile(join(dataFixture.logRoot, 'initdb'), 'utf8'))
       .trim()
-      .split("\n").length,
+      .split('\n').length,
     2,
   );
-  await assertAbsent(join(dataFixture.runtimeRoot, ".data-incomplete"));
+  await assertAbsent(join(dataFixture.runtimeRoot, '.data-incomplete'));
   await assertAbsent(
-    join(dataFixture.runtimeRoot, ".prisma-prim-data-intent-v1"),
+    join(dataFixture.runtimeRoot, '.prisma-prim-data-intent-v1'),
   );
 });
 
-test("preserves interrupted state when an authorized repair deletion fails", async (t) => {
+test('preserves interrupted state when an authorized repair deletion fails', async (t) => {
   const fixture = await createFixture(t);
   const first = runScript({
     env: {
       ...fixture.env,
-      FAKE_FAIL_SERVICE_FILE: ".prisma-prim-socket-v1",
+      FAKE_FAIL_SERVICE_FILE: '.prisma-prim-socket-v1',
     },
   });
   assertOrdinaryFailure(first);
-  const stage = join(fixture.runtimeRoot, ".socket-incomplete");
-  const intent = join(fixture.runtimeRoot, ".prisma-prim-socket-intent-v1");
-  const sentinel = join(stage, "repair-sentinel");
-  await writeFile(sentinel, "preserve\n", { mode: 0o600 });
+  const stage = join(fixture.runtimeRoot, '.socket-incomplete');
+  const intent = join(fixture.runtimeRoot, '.prisma-prim-socket-intent-v1');
+  const sentinel = join(stage, 'repair-sentinel');
+  await writeFile(sentinel, 'preserve\n', { mode: 0o600 });
 
   const result = runScript({
     env: { ...fixture.env, FAKE_FAIL_RM_PATH: stage },
@@ -3044,47 +3044,47 @@ test("preserves interrupted state when an authorized repair deletion fails", asy
     /interrupted socket state is not exactly owned and repairable/,
   );
   assert.ok((await lstat(intent)).isFile());
-  assert.equal(await readFile(sentinel, "utf8"), "preserve\n");
+  assert.equal(await readFile(sentinel, 'utf8'), 'preserve\n');
   assert.ok((await lstat(stage)).isDirectory());
 });
 
-test("recovers an empty owner stage after interruption between marker cleanup and rmdir", async (t) => {
+test('recovers an empty owner stage after interruption between marker cleanup and rmdir', async (t) => {
   const fixture = await createFixture(t, {
-    callerUid: "0",
-    callerGid: "0",
-    postgresUid: "71",
-    postgresGid: "72",
-    postgresGroups: "72",
+    callerUid: '0',
+    callerGid: '0',
+    postgresUid: '71',
+    postgresGid: '72',
+    postgresGroups: '72',
   });
   const result = runScript({
     env: {
       ...fixture.env,
-      FAKE_SIGNAL_AFTER_RM_BASENAME: ".prisma-prim-service-owner-v1",
+      FAKE_SIGNAL_AFTER_RM_BASENAME: '.prisma-prim-service-owner-v1',
     },
   });
   assert.equal(result.signal, null);
   assert.equal(result.status, 143, result.stderr);
   assert.doesNotMatch(result.stdout, /Local PostgreSQL .* is ready/);
-  const ownerStage = join(fixture.runtimeRoot, ".socket-owner-incomplete");
+  const ownerStage = join(fixture.runtimeRoot, '.socket-owner-incomplete');
   assert.deepEqual(await readdir(ownerStage), []);
   assert.ok(
     (
-      await lstat(join(fixture.runtimeRoot, ".prisma-prim-socket-intent-v1"))
+      await lstat(join(fixture.runtimeRoot, '.prisma-prim-socket-intent-v1'))
     ).isFile(),
   );
   assertSuccess(runScript({ env: fixture.env }));
   await assertAbsent(ownerStage);
 });
 
-test("does not follow a service-file symlink swapped in before atomic publication", async (t) => {
+test('does not follow a service-file symlink swapped in before atomic publication', async (t) => {
   const fixture = await createFixture(t);
   const destination = join(
     fixture.runtimeRoot,
-    ".socket-incomplete",
-    ".prisma-prim-socket-v1",
+    '.socket-incomplete',
+    '.prisma-prim-socket-v1',
   );
-  const target = join(fixture.logRoot, "service-write-target");
-  await writeFile(target, "unchanged\n", { mode: 0o600 });
+  const target = join(fixture.logRoot, 'service-write-target');
+  await writeFile(target, 'unchanged\n', { mode: 0o600 });
   const before = await lstat(target);
   const result = runScript({
     env: {
@@ -3095,7 +3095,7 @@ test("does not follow a service-file symlink swapped in before atomic publicatio
   });
   assertOrdinaryFailure(result, /appeared during atomic publication/);
   const after = await lstat(target);
-  assert.equal(await readFile(target, "utf8"), "unchanged\n");
+  assert.equal(await readFile(target, 'utf8'), 'unchanged\n');
   assert.equal(after.mode, before.mode);
   assert.equal(after.uid, before.uid);
   assert.equal(after.gid, before.gid);
@@ -3103,8 +3103,8 @@ test("does not follow a service-file symlink swapped in before atomic publicatio
 });
 
 for (const [phase, destination] of [
-  ["socket", "socket"],
-  ["data", "data"],
+  ['socket', 'socket'],
+  ['data', 'data'],
 ]) {
   test(`recovers a completed ${phase} publication interrupted before intent cleanup`, async (t) => {
     const fixture = await createFixture(t);
@@ -3124,54 +3124,54 @@ for (const [phase, destination] of [
   });
 }
 
-test("preserves interrupted socket state when its intent marker is foreign", async (t) => {
+test('preserves interrupted socket state when its intent marker is foreign', async (t) => {
   const fixture = await createFixture(t);
   const failed = runScript({
     env: {
       ...fixture.env,
-      FAKE_FAIL_SERVICE_FILE: ".prisma-prim-socket-v1",
+      FAKE_FAIL_SERVICE_FILE: '.prisma-prim-socket-v1',
     },
   });
   assertOrdinaryFailure(failed);
-  const stage = join(fixture.runtimeRoot, ".socket-incomplete");
-  const sentinel = join(stage, "foreign-sentinel");
-  await writeFile(sentinel, "keep", { mode: 0o600 });
+  const stage = join(fixture.runtimeRoot, '.socket-incomplete');
+  const sentinel = join(stage, 'foreign-sentinel');
+  await writeFile(sentinel, 'keep', { mode: 0o600 });
   await writeFile(
-    join(fixture.runtimeRoot, ".prisma-prim-socket-intent-v1"),
-    "foreign intent\n",
+    join(fixture.runtimeRoot, '.prisma-prim-socket-intent-v1'),
+    'foreign intent\n',
     { mode: 0o600 },
   );
   const result = runScript({ env: fixture.env });
   assertOrdinaryFailure(result, /not exactly owned and repairable/);
-  assert.equal(await readFile(sentinel, "utf8"), "keep");
+  assert.equal(await readFile(sentinel, 'utf8'), 'keep');
 });
 
-test("fails closed when readiness is exhausted and never prints ready", async (t) => {
+test('fails closed when readiness is exhausted and never prints ready', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
     env: {
       ...fixture.env,
-      FAKE_NOT_READY: "true",
-      PRISMA_PRIM_POSTGRES_READY_ATTEMPTS: "1",
+      FAKE_NOT_READY: 'true',
+      PRISMA_PRIM_POSTGRES_READY_ATTEMPTS: '1',
     },
   });
   assertOrdinaryFailure(result, /did not become ready/);
 });
 
 for (const [phase, env, expectedMutation, forbiddenMutation] of [
-  ["initdb", { FAKE_INITDB_FAIL: "true" }, null, /create-role|createdb/],
-  ["start", { FAKE_START_FAIL: "true" }, null, /create-role|createdb/],
+  ['initdb', { FAKE_INITDB_FAIL: 'true' }, null, /create-role|createdb/],
+  ['start', { FAKE_START_FAIL: 'true' }, null, /create-role|createdb/],
   [
-    "initial SQL",
-    { FAKE_FAIL_OPERATION: "psql" },
+    'initial SQL',
+    { FAKE_FAIL_OPERATION: 'psql' },
     null,
     /create-role|createdb/,
   ],
-  ["CREATE ROLE", { FAKE_FAIL_OPERATION: "create-role" }, null, /createdb/],
-  ["createdb", { FAKE_FAIL_OPERATION: "createdb" }, /create-role/, /createdb/],
+  ['CREATE ROLE', { FAKE_FAIL_OPERATION: 'create-role' }, null, /createdb/],
+  ['createdb', { FAKE_FAIL_OPERATION: 'createdb' }, /create-role/, /createdb/],
   [
-    "second createdb",
-    { FAKE_FAIL_CREATEDB_DATABASE: "prisma_prim_test" },
+    'second createdb',
+    { FAKE_FAIL_CREATEDB_DATABASE: 'prisma_prim_test' },
     /createdb-prisma_prim_dev/,
     /createdb-prisma_prim_test/,
   ],
@@ -3180,119 +3180,119 @@ for (const [phase, env, expectedMutation, forbiddenMutation] of [
     const fixture = await createFixture(t);
     const result = runScript({ env: { ...fixture.env, ...env } });
     assertOrdinaryFailure(result);
-    const mutations = await readOptional(join(fixture.logRoot, "mutations"));
+    const mutations = await readOptional(join(fixture.logRoot, 'mutations'));
     if (expectedMutation) assert.match(mutations, expectedMutation);
     assert.doesNotMatch(mutations, forbiddenMutation);
-    const pgCtl = await readOptional(join(fixture.logRoot, "pg_ctl"));
-    if (phase === "start") assert.match(pgCtl, /stop/);
-    else if (phase !== "initdb") assert.match(pgCtl, /start[\s\S]*stop/);
-    await assertAbsent(join(fixture.stateRoot, "server.started"));
+    const pgCtl = await readOptional(join(fixture.logRoot, 'pg_ctl'));
+    if (phase === 'start') assert.match(pgCtl, /stop/);
+    else if (phase !== 'initdb') assert.match(pgCtl, /start[\s\S]*stop/);
+    await assertAbsent(join(fixture.stateRoot, 'server.started'));
   });
 }
 
-test("rejects every live identity, version, privilege, owner, and sentinel mismatch", async (t) => {
+test('rejects every live identity, version, privilege, owner, and sentinel mismatch', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const cases = [
-    ["data directory", { FAKE_IDENTITY_DATA: `${fixture.dataRoot}-foreign` }],
-    ["port", { FAKE_IDENTITY_PORT: "6543" }],
+    ['data directory', { FAKE_IDENTITY_DATA: `${fixture.dataRoot}-foreign` }],
+    ['port', { FAKE_IDENTITY_PORT: '6543' }],
     [
-      "socket",
+      'socket',
       { FAKE_IDENTITY_SOCKET: `${fixture.runtimeRoot}/foreign-socket` },
     ],
-    ["listen address", { FAKE_IDENTITY_LISTEN: "*" }],
-    ["old server version", { FAKE_IDENTITY_VERSION: "170010" }],
-    ["newer server version", { FAKE_IDENTITY_VERSION: "170012" }],
+    ['listen address', { FAKE_IDENTITY_LISTEN: '*' }],
+    ['old server version', { FAKE_IDENTITY_VERSION: '170010' }],
+    ['newer server version', { FAKE_IDENTITY_VERSION: '170012' }],
     [
-      "overflowing server version",
-      { FAKE_IDENTITY_VERSION: "18446744073709721627" },
+      'overflowing server version',
+      { FAKE_IDENTITY_VERSION: '18446744073709721627' },
     ],
-    ["future server version", { FAKE_IDENTITY_VERSION: "180000" }],
-    ["checksums", { FAKE_IDENTITY_CHECKSUMS: "off" }],
-    ["database", { FAKE_IDENTITY_DATABASE: "postgres" }],
-    ["user", { FAKE_IDENTITY_USER: "foreign" }],
-    ["LOGIN", { FAKE_ROLE_LOGIN: "f" }],
-    ["CREATEDB", { FAKE_ROLE_CREATEDB: "f" }],
-    ["SUPERUSER", { FAKE_ROLE_SUPERUSER: "t" }],
-    ["CREATEROLE", { FAKE_ROLE_CREATEROLE: "t" }],
-    ["REPLICATION", { FAKE_ROLE_REPLICATION: "t" }],
-    ["BYPASSRLS", { FAKE_ROLE_BYPASSRLS: "t" }],
-    ["database owner", { FAKE_DATABASE_OWNER: "postgres" }],
-    ["sentinel", { FAKE_IDENTITY_SENTINEL: "foreign" }],
-    ["extra output field", { FAKE_IDENTITY_EXTRA: "|foreign" }],
+    ['future server version', { FAKE_IDENTITY_VERSION: '180000' }],
+    ['checksums', { FAKE_IDENTITY_CHECKSUMS: 'off' }],
+    ['database', { FAKE_IDENTITY_DATABASE: 'postgres' }],
+    ['user', { FAKE_IDENTITY_USER: 'foreign' }],
+    ['LOGIN', { FAKE_ROLE_LOGIN: 'f' }],
+    ['CREATEDB', { FAKE_ROLE_CREATEDB: 'f' }],
+    ['SUPERUSER', { FAKE_ROLE_SUPERUSER: 't' }],
+    ['CREATEROLE', { FAKE_ROLE_CREATEROLE: 't' }],
+    ['REPLICATION', { FAKE_ROLE_REPLICATION: 't' }],
+    ['BYPASSRLS', { FAKE_ROLE_BYPASSRLS: 't' }],
+    ['database owner', { FAKE_DATABASE_OWNER: 'postgres' }],
+    ['sentinel', { FAKE_IDENTITY_SENTINEL: 'foreign' }],
+    ['extra output field', { FAKE_IDENTITY_EXTRA: '|foreign' }],
   ];
   for (const [name, mismatch] of cases) {
     const result = runScript({ env: { ...fixture.env, ...mismatch } });
     assertOrdinaryFailure(result, /identity/);
     assert.equal(
-      await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
       mutationsBefore,
       `${name} mismatch performed SQL mutation`,
     );
   }
 });
 
-test("does not mutate valid existing objects when incomplete catalog identities are unsafe", async (t) => {
+test('does not mutate valid existing objects when incomplete catalog identities are unsafe', async (t) => {
   const fixture = await establishRunningFixture(t);
-  await rm(join(fixture.stateRoot, "database.prisma_prim_test"));
+  await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const cases = [
-    ["role privilege", { FAKE_ROLE_SUPERUSER: "t" }],
-    ["role password", { FAKE_REJECT_APP_PASSWORD: "true" }],
-    ["database owner", { FAKE_DATABASE_OWNER: "postgres" }],
-    ["TCP identity", { FAKE_TCP_IDENTITY_PORT: "6543" }],
+    ['role privilege', { FAKE_ROLE_SUPERUSER: 't' }],
+    ['role password', { FAKE_REJECT_APP_PASSWORD: 'true' }],
+    ['database owner', { FAKE_DATABASE_OWNER: 'postgres' }],
+    ['TCP identity', { FAKE_TCP_IDENTITY_PORT: '6543' }],
   ];
 
   for (const [name, mismatch] of cases) {
     const result = runScript({ env: { ...fixture.env, ...mismatch } });
     assertOrdinaryFailure(result, /identity verification failed/);
     assert.equal(
-      await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
       mutationsBefore,
       `${name} mismatch performed SQL mutation`,
     );
-    await assertAbsent(join(fixture.stateRoot, "database.prisma_prim_test"));
+    await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
   }
 });
 
 for (const [name, env, pattern] of [
-  ["failed", { FAKE_FAIL_CATALOG_PROBE_NUMBER: "2" }, /catalog probe failed/],
+  ['failed', { FAKE_FAIL_CATALOG_PROBE_NUMBER: '2' }, /catalog probe failed/],
   [
-    "malformed",
-    { FAKE_MALFORMED_CATALOG_PROBE_NUMBER: "3" },
+    'malformed',
+    { FAKE_MALFORMED_CATALOG_PROBE_NUMBER: '3' },
     /catalog probe returned unexpected output/,
   ],
 ]) {
   test(`rejects a ${name} catalog probe without mutation`, async (t) => {
     const fixture = await establishRunningFixture(t);
-    await rm(join(fixture.stateRoot, "database.prisma_prim_test"));
-    await rm(join(fixture.stateRoot, "catalog-probe-count"), { force: true });
+    await rm(join(fixture.stateRoot, 'database.prisma_prim_test'));
+    await rm(join(fixture.stateRoot, 'catalog-probe-count'), { force: true });
     const mutationsBefore = await readFile(
-      join(fixture.logRoot, "mutations"),
-      "utf8",
+      join(fixture.logRoot, 'mutations'),
+      'utf8',
     );
 
     const result = runScript({ env: { ...fixture.env, ...env } });
     assertOrdinaryFailure(result, pattern);
     assert.equal(
-      await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+      await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
       mutationsBefore,
     );
-    await assertAbsent(join(fixture.stateRoot, "database.prisma_prim_test"));
+    await assertAbsent(join(fixture.stateRoot, 'database.prisma_prim_test'));
   });
 }
 
-test("runs the same application identity query on both transports and rejects TCP-only mismatch", async (t) => {
+test('runs the same application identity query on both transports and rejects TCP-only mismatch', async (t) => {
   const fixture = await establishRunningFixture(t);
   const operations = await readFile(
-    join(fixture.logRoot, "operations"),
-    "utf8",
+    join(fixture.logRoot, 'operations'),
+    'utf8',
   );
   assert.match(
     operations,
@@ -3316,55 +3316,55 @@ test("runs the same application identity query on both transports and rejects TC
   );
 
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_TCP_APP_IDENTITY_PORT: "6543" },
+    env: { ...fixture.env, FAKE_TCP_APP_IDENTITY_PORT: '6543' },
   });
   assertOrdinaryFailure(result, /existing TCP identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects a role that gains superuser authority", async (t) => {
+test('rejects a role that gains superuser authority', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_SUPERUSER: "true" },
+    env: { ...fixture.env, FAKE_ROLE_SUPERUSER: 'true' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
 });
 
-test("rejects a role with inherited authority before mutation", async (t) => {
+test('rejects a role with inherited authority before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_MEMBERSHIP_COUNT: "1" },
+    env: { ...fixture.env, FAKE_ROLE_MEMBERSHIP_COUNT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects grants of the application role to another identity before mutation", async (t) => {
+test('rejects grants of the application role to another identity before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_RELATION_COUNT: "1" },
+    env: { ...fixture.env, FAKE_ROLE_RELATION_COUNT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(
@@ -3373,118 +3373,118 @@ test("rejects grants of the application role to another identity before mutation
   );
 });
 
-test("rejects an application role connection limit before mutation", async (t) => {
+test('rejects an application role connection limit before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_CONNECTION_LIMIT: "1" },
+    env: { ...fixture.env, FAKE_ROLE_CONNECTION_LIMIT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(script, /r\.rolconnlimit/);
 });
 
-test("rejects expiring application-role credentials before mutation", async (t) => {
+test('rejects expiring application-role credentials before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_VALID_UNTIL_IS_NULL: "f" },
+    env: { ...fixture.env, FAKE_ROLE_VALID_UNTIL_IS_NULL: 'f' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects an application database connection limit before mutation", async (t) => {
+test('rejects an application database connection limit before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_DATABASE_CONNECTION_LIMIT: "1" },
+    env: { ...fixture.env, FAKE_DATABASE_CONNECTION_LIMIT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
 });
 
-test("rejects direct application-database grants before mutation", async (t) => {
+test('rejects direct application-database grants before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_DATABASE_ACL_IS_NULL: "f" },
+    env: { ...fixture.env, FAKE_DATABASE_ACL_IS_NULL: 'f' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(script, /d\.datacl IS NULL/);
 });
 
-test("rejects TCP trust authentication before mutation", async (t) => {
+test('rejects TCP trust authentication before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_TCP_TRUST_AUTH: "true" },
+    env: { ...fixture.env, FAKE_TCP_TRUST_AUTH: 'true' },
   });
   assertOrdinaryFailure(result, /password enforcement verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(script, /prisma-prim-known-invalid-password-v1/);
 });
 
-test("rejects persistent application-role settings before mutation", async (t) => {
+test('rejects persistent application-role settings before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_ROLE_SETTING_COUNT: "1" },
+    env: { ...fixture.env, FAKE_ROLE_SETTING_COUNT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(script, /pg_db_role_setting s WHERE s\.setrole = r\.oid/);
 });
 
-test("rejects persistent application-database settings before mutation", async (t) => {
+test('rejects persistent application-database settings before mutation', async (t) => {
   const fixture = await establishRunningFixture(t);
   const mutationsBefore = await readFile(
-    join(fixture.logRoot, "mutations"),
-    "utf8",
+    join(fixture.logRoot, 'mutations'),
+    'utf8',
   );
   const result = runScript({
-    env: { ...fixture.env, FAKE_DATABASE_SETTING_COUNT: "1" },
+    env: { ...fixture.env, FAKE_DATABASE_SETTING_COUNT: '1' },
   });
   assertOrdinaryFailure(result, /identity verification failed/);
   assert.equal(
-    await readFile(join(fixture.logRoot, "mutations"), "utf8"),
+    await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
   assert.match(
@@ -3493,51 +3493,51 @@ test("rejects persistent application-database settings before mutation", async (
   );
 });
 
-test("queries database ownership before role memberships to match the identity parser", () => {
+test('queries database ownership before role memberships to match the identity parser', () => {
   assert.match(
     script,
     /app_identity_query=.*pg_get_userbyid\(d\.datdba\).+pg_auth_members/,
   );
 });
 
-test("rejects a final server version other than exactly 17.11", async (t) => {
+test('rejects a final server version other than exactly 17.11', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_SERVER_VERSION: "17.12" },
+    env: { ...fixture.env, FAKE_SERVER_VERSION: '17.12' },
   });
   assertOrdinaryFailure(result, /not exactly PostgreSQL 17\.11/);
 });
 
-test("preserves an unmarked data directory instead of adopting it", async (t) => {
+test('preserves an unmarked data directory instead of adopting it', async (t) => {
   const fixture = await createFixture(t);
-  await mkdir(fixture.runtimeRoot, { mode: hostUid === "0" ? 0o711 : 0o700 });
+  await mkdir(fixture.runtimeRoot, { mode: hostUid === '0' ? 0o711 : 0o700 });
   await writeFile(
-    join(fixture.runtimeRoot, ".prisma-prim-runtime-v1"),
+    join(fixture.runtimeRoot, '.prisma-prim-runtime-v1'),
     `prisma-prim-postgres-runtime-v1\nowner_uid=${hostUid}\nowner_gid=${hostGid}\n`,
     { mode: 0o600 },
   );
   await mkdir(fixture.dataRoot, { mode: 0o700 });
-  const sentinel = join(fixture.dataRoot, "foreign");
-  await writeFile(sentinel, "keep");
+  const sentinel = join(fixture.dataRoot, 'foreign');
+  await writeFile(sentinel, 'keep');
   const result = runScript({ env: fixture.env });
   assertOrdinaryFailure(result, /lacks exact owned repair intent/);
-  assert.equal(await readFile(sentinel, "utf8"), "keep");
+  assert.equal(await readFile(sentinel, 'utf8'), 'keep');
 });
 
 function collect(child) {
   return new Promise((resolve, reject) => {
-    let stdout = "";
-    let stderr = "";
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => {
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
       stdout += chunk;
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr.on('data', (chunk) => {
       stderr += chunk;
     });
-    child.on("error", reject);
-    child.on("close", (status, signal) =>
+    child.on('error', reject);
+    child.on('close', (status, signal) =>
       resolve({ status, signal, stderr, stdout }),
     );
   });
@@ -3545,12 +3545,12 @@ function collect(child) {
 
 async function terminateProcessGroup(child) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  const closed = new Promise((resolve) => child.once("close", resolve));
-  for (const signal of ["SIGTERM", "SIGKILL"]) {
+  const closed = new Promise((resolve) => child.once('close', resolve));
+  for (const signal of ['SIGTERM', 'SIGKILL']) {
     try {
       process.kill(-child.pid, signal);
     } catch (error) {
-      if (error?.code === "ESRCH") return;
+      if (error?.code === 'ESRCH') return;
       throw error;
     }
     const exited = await Promise.race([
@@ -3591,32 +3591,32 @@ async function settleAfterCoordination(resultPromise, description) {
   }
 }
 
-test("rejects lifecycle lock inode replacement after open and before service mutation", async (t) => {
+test('rejects lifecycle lock inode replacement after open and before service mutation', async (t) => {
   const fixture = await createFixture(t);
   const result = runScript({
-    env: { ...fixture.env, FAKE_SWAP_LOCK_AFTER_OPEN: "true" },
+    env: { ...fixture.env, FAKE_SWAP_LOCK_AFTER_OPEN: 'true' },
   });
   assertOrdinaryFailure(result, /lock inode changed after acquisition/);
-  await assertAbsent(join(fixture.logRoot, "initdb"));
+  await assertAbsent(join(fixture.logRoot, 'initdb'));
   await assertAbsent(fixture.dataRoot);
 });
 
 for (const [lockName, injection] of [
-  ["lifecycle", "FAKE_SWAP_RUNTIME_LOCK_TO_FIFO_BEFORE_OPEN"],
-  ["build", "FAKE_SWAP_BUILD_LOCK_TO_FIFO_BEFORE_OPEN"],
+  ['lifecycle', 'FAKE_SWAP_RUNTIME_LOCK_TO_FIFO_BEFORE_OPEN'],
+  ['build', 'FAKE_SWAP_BUILD_LOCK_TO_FIFO_BEFORE_OPEN'],
 ]) {
   test(`rejects a ${lockName} FIFO substitution before open without blocking`, async (t) => {
     const fixture = await createFixture(t);
-    const child = spawn("bash", [scriptPath], {
+    const child = spawn('bash', [scriptPath], {
       detached: true,
-      env: cleanEnvironment({ ...fixture.env, [injection]: "true" }),
-      stdio: ["ignore", "pipe", "pipe"],
+      env: cleanEnvironment({ ...fixture.env, [injection]: 'true' }),
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
     t.after(() => terminateProcessGroup(child));
     const resultPromise = collect(child);
     const substitutionMarker = join(
       fixture.logRoot,
-      `${lockName === "lifecycle" ? "runtime" : "build"}-lock-fifo`,
+      `${lockName === 'lifecycle' ? 'runtime' : 'build'}-lock-fifo`,
     );
     await waitFor(substitutionMarker);
     const result = await settleAfterCoordination(
@@ -3627,19 +3627,19 @@ for (const [lockName, injection] of [
       result,
       new RegExp(`the ${lockName} lock did not open`),
     );
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
     await assertAbsent(fixture.dataRoot);
   });
 }
 
-for (const swapKind of ["symlink", "directory"]) {
+for (const swapKind of ['symlink', 'directory']) {
   test(`rejects ${swapKind} cache-root replacement after opening its hard-linked lock`, async (t) => {
     const fixture = await createFixture(t);
     const movedCache = `${fixture.cacheRoot}.opened`;
     const foreignTarget = join(fixture.logRoot, `foreign-cache-${swapKind}`);
-    const sentinel = join(foreignTarget, "sentinel");
+    const sentinel = join(foreignTarget, 'sentinel');
     await mkdir(foreignTarget, { mode: 0o700 });
-    await writeFile(sentinel, "unchanged", { mode: 0o600 });
+    await writeFile(sentinel, 'unchanged', { mode: 0o600 });
     const before = await lstat(foreignTarget);
     t.after(() => rm(movedCache, { recursive: true, force: true }));
 
@@ -3653,14 +3653,14 @@ for (const swapKind of ["symlink", "directory"]) {
 
     assertOrdinaryFailure(result, /cache root (changed|inode changed)/);
     assert.ok((await lstat(movedCache)).isDirectory());
-    await assertAbsent(join(fixture.logRoot, "initdb"));
+    await assertAbsent(join(fixture.logRoot, 'initdb'));
     assert.doesNotMatch(
-      await readOptional(join(fixture.logRoot, "operations")),
+      await readOptional(join(fixture.logRoot, 'operations')),
       /curl\||make\|/,
     );
-    if (swapKind === "symlink") {
+    if (swapKind === 'symlink') {
       const after = await lstat(foreignTarget);
-      assert.equal(await readFile(sentinel, "utf8"), "unchanged");
+      assert.equal(await readFile(sentinel, 'utf8'), 'unchanged');
       assert.equal(after.mode, before.mode);
       assert.equal(after.uid, before.uid);
       assert.equal(after.gid, before.gid);
@@ -3668,7 +3668,7 @@ for (const swapKind of ["symlink", "directory"]) {
   });
 }
 
-test("serializes distinct caches sharing one runtime and does not leak FD8", async (t) => {
+test('serializes distinct caches sharing one runtime and does not leak FD8', async (t) => {
   const runtimeRoot = join(
     tmpdir(),
     `prisma-prim-runtime-concurrency-${randomUUID()}`,
@@ -3680,157 +3680,157 @@ test("serializes distinct caches sharing one runtime and does not leak FD8", asy
     stateRoot: first.stateRoot,
   });
   const flockDirectory = await mkdtemp(
-    join(tmpdir(), "prisma-prim-flock-test-"),
+    join(tmpdir(), 'prisma-prim-flock-test-'),
   );
-  const entered = join(flockDirectory, "initdb.entered");
-  const release = join(flockDirectory, "initdb.release");
+  const entered = join(flockDirectory, 'initdb.entered');
+  const release = join(flockDirectory, 'initdb.release');
   t.after(() => rm(flockDirectory, { recursive: true, force: true }));
   const children = [];
   t.after(async () => {
     try {
-      await writeFile(release, "");
+      await writeFile(release, '');
     } catch {
       // Process-group termination below is the fallback if teardown ran first.
     }
     await Promise.all(children.map(terminateProcessGroup));
   });
 
-  const firstChild = spawn("bash", [scriptPath], {
+  const firstChild = spawn('bash', [scriptPath], {
     env: cleanEnvironment({
       ...first.env,
-      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: "60",
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_FLOCK_DIRECTORY: flockDirectory,
-      FAKE_INSTANCE: "a",
+      FAKE_INSTANCE: 'a',
       FAKE_INITDB_ENTERED: entered,
       FAKE_INITDB_RELEASE: release,
     }),
     detached: true,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   children.push(firstChild);
   const firstResult = collect(firstChild);
   await waitFor(entered, 60_000);
 
-  const secondChild = spawn("bash", [scriptPath], {
+  const secondChild = spawn('bash', [scriptPath], {
     env: cleanEnvironment({
       ...second.env,
-      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: "60",
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_SERVICE_MARKER_LOG: first.logRoot,
       FAKE_FLOCK_DIRECTORY: flockDirectory,
-      FAKE_INSTANCE: "b",
+      FAKE_INSTANCE: 'b',
     }),
     detached: true,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   children.push(secondChild);
   const secondResult = collect(secondChild);
-  await waitFor(join(flockDirectory, "b.attempt"));
-  await assert.rejects(lstat(join(flockDirectory, "b.acquired")));
-  await assert.rejects(lstat(join(second.logRoot, "initdb")));
-  assert.equal(await readOptional(join(second.logRoot, "operations")), "");
+  await waitFor(join(flockDirectory, 'b.attempt'));
+  await assert.rejects(lstat(join(flockDirectory, 'b.acquired')));
+  await assert.rejects(lstat(join(second.logRoot, 'initdb')));
+  assert.equal(await readOptional(join(second.logRoot, 'operations')), '');
 
-  await writeFile(release, "");
+  await writeFile(release, '');
   const [a, b] = await Promise.all([firstResult, secondResult]);
   assert.equal(a.status, 0, a.stderr);
   assert.equal(b.status, 0, b.stderr);
-  await waitFor(join(flockDirectory, "b.acquired"));
-  assert.ok((await lstat(join(first.logRoot, "initdb"))).isFile());
-  await assert.rejects(lstat(join(second.logRoot, "initdb")));
+  await waitFor(join(flockDirectory, 'b.acquired'));
+  assert.ok((await lstat(join(first.logRoot, 'initdb'))).isFile());
+  await assert.rejects(lstat(join(second.logRoot, 'initdb')));
   assert.equal(
-    (await readFile(join(first.logRoot, "initdb"), "utf8")).trim(),
-    "initdb",
+    (await readFile(join(first.logRoot, 'initdb'), 'utf8')).trim(),
+    'initdb',
   );
   assert.equal(
-    (await readFile(join(first.logRoot, "pg_ctl"), "utf8")).trim(),
-    "start",
+    (await readFile(join(first.logRoot, 'pg_ctl'), 'utf8')).trim(),
+    'start',
   );
-  await assertAbsent(join(second.logRoot, "pg_ctl"));
+  await assertAbsent(join(second.logRoot, 'pg_ctl'));
 
   const lockAvailable = spawnSync(
-    "/usr/bin/flock",
-    ["--nonblock", join(runtimeRoot, "lifecycle.lock"), "-c", "true"],
-    { encoding: "utf8" },
+    '/usr/bin/flock',
+    ['--nonblock', join(runtimeRoot, 'lifecycle.lock'), '-c', 'true'],
+    { encoding: 'utf8' },
   );
   assert.equal(lockAvailable.status, 0, lockAvailable.stderr);
 });
 
-test("holds the shared cache lock through a late rollback before another runtime rebuilds", async (t) => {
+test('holds the shared cache lock through a late rollback before another runtime rebuilds', async (t) => {
   const cacheRoot = join(
     tmpdir(),
     `prisma-prim-cache-concurrency-${randomUUID()}`,
   );
   const first = await createFixture(t, { cacheRoot });
   await executable(
-    join(first.installRoot, "bin", "postgres"),
+    join(first.installRoot, 'bin', 'postgres'),
     '#!/bin/bash\necho "postgres (PostgreSQL) 16.9"\n',
   );
   const second = await createFixture(t, { cacheRoot, withCache: false });
   const coordination = await mkdtemp(
-    join(tmpdir(), "prisma-prim-build-flock-test-"),
+    join(tmpdir(), 'prisma-prim-build-flock-test-'),
   );
-  const entered = join(coordination, "initdb.entered");
-  const release = join(coordination, "initdb.release");
+  const entered = join(coordination, 'initdb.entered');
+  const release = join(coordination, 'initdb.release');
   t.after(() => rm(coordination, { recursive: true, force: true }));
   const children = [];
   t.after(async () => {
     try {
-      await writeFile(release, "");
+      await writeFile(release, '');
     } catch {
       // Process-group termination below is the fallback if teardown ran first.
     }
     await Promise.all(children.map(terminateProcessGroup));
   });
 
-  const firstChild = spawn("bash", [scriptPath, "--install"], {
+  const firstChild = spawn('bash', [scriptPath, '--install'], {
     detached: true,
     env: cleanEnvironment({
       ...first.env,
-      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: "60",
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_BUILD_FLOCK_DIRECTORY: coordination,
-      FAKE_INSTANCE: "a",
+      FAKE_INSTANCE: 'a',
       FAKE_INITDB_ENTERED: entered,
       FAKE_INITDB_RELEASE: release,
-      FAKE_FAIL_OPERATION: "psql",
+      FAKE_FAIL_OPERATION: 'psql',
     }),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   children.push(firstChild);
   const firstResult = collect(firstChild);
   await waitFor(entered, 60_000);
-  assert.ok((await lstat(join(coordination, "a.build-acquired"))).isFile());
+  assert.ok((await lstat(join(coordination, 'a.build-acquired'))).isFile());
 
-  const secondChild = spawn("bash", [scriptPath, "--install"], {
+  const secondChild = spawn('bash', [scriptPath, '--install'], {
     detached: true,
     env: cleanEnvironment({
       ...second.env,
-      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: "60",
+      PRISMA_PRIM_POSTGRES_LOCK_SECONDS: '60',
       FAKE_BUILD_FLOCK_DIRECTORY: coordination,
-      FAKE_INSTANCE: "b",
+      FAKE_INSTANCE: 'b',
     }),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   children.push(secondChild);
   const secondResult = collect(secondChild);
-  await waitFor(join(coordination, "b.build-attempt"));
-  await assertAbsent(join(coordination, "b.build-acquired"));
-  await assertAbsent(join(second.logRoot, "initdb"));
+  await waitFor(join(coordination, 'b.build-attempt'));
+  await assertAbsent(join(coordination, 'b.build-acquired'));
+  await assertAbsent(join(second.logRoot, 'initdb'));
 
-  await writeFile(release, "");
+  await writeFile(release, '');
   const [a, b] = await Promise.all([firstResult, secondResult]);
   assertOrdinaryFailure(a);
   assertSuccess(b);
-  await waitFor(join(coordination, "b.build-acquired"));
+  await waitFor(join(coordination, 'b.build-acquired'));
   assert.match(
-    await readFile(join(first.logRoot, "operations"), "utf8"),
+    await readFile(join(first.logRoot, 'operations'), 'utf8'),
     /make\|.*DESTDIR=/,
   );
   assert.match(
-    await readFile(join(second.logRoot, "operations"), "utf8"),
+    await readFile(join(second.logRoot, 'operations'), 'utf8'),
     /make\|.*DESTDIR=/,
   );
 });
 
-test("keeps the production scope free of credential and shared-database side effects", () => {
+test('keeps the production scope free of credential and shared-database side effects', () => {
   assert.doesNotMatch(script, /https?:\/\/[^'"\s]*@/);
   assert.doesNotMatch(script, /DROP DATABASE|DROP ROLE|rm -rf \/|chown -R/);
   assert.match(script, /127\.0\.0\.1/);
