@@ -1296,6 +1296,13 @@ case "$name" in
         exit 59
       fi
     fi
+    if [[ "\${FAKE_REJECT_RESTRICTED_APP_SETTINGS:-false}" == 'true' &&
+      "$host" == '127.0.0.1' && "$username" == 'prisma_prim' &&
+      ( "$query" == *"current_setting('data_directory')"* ||
+        "$query" == *"current_setting('unix_socket_directories')"* ) ]]; then
+      printf 'ERROR: permission denied to examine a restricted setting\n' >&2
+      exit 61
+    fi
     if [[ "$query" == *'SELECT 1 FROM pg_roles'* || "$query" == *'SELECT 1 FROM pg_database'* ]]; then
       probe_count_file="\${FAKE_STATE_ROOT}/catalog-probe-count"
       probe_count=0
@@ -1353,8 +1360,8 @@ case "$name" in
         valid_until_prefix="\${FAKE_ROLE_VALID_UNTIL_IS_NULL:-t}|"
       fi
       printf 'role-identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
-      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
-        "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
+      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
+        "$port" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
         "$bypassrls" "$connection_limit" \
         "$valid_until_prefix$membership_prefix$role_setting_prefix$sentinel" \
@@ -1442,8 +1449,8 @@ case "$name" in
         database_tablespace_prefix="\${FAKE_DATABASE_TABLESPACE:-pg_default}|"
       fi
       printf 'identity|%s|%s|%s\n' "$host" "$database" "$username" >>"\${FAKE_LOG}/operations"
-      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
-        "$data" "$port" "$socket" "$listen" "$version" "$reported_database" "$reported_user" \
+      printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s%s\n' \
+        "$port" "$listen" "$version" "$reported_database" "$reported_user" \
         "$checksums" "$login" "$createdb" "$superuser" "$createrole" "$replication" \
         "$bypassrls" "$connection_limit" \
         "$valid_until_prefix$database_connection_limit_prefix$database_acl_prefix$database_encoding_prefix$database_collation_prefix$database_ctype_prefix$database_locale_provider_prefix$database_provider_locale_is_null_prefix$database_icu_rules_is_null_prefix$database_tablespace_prefix$owner" \
@@ -3644,6 +3651,27 @@ test('runs the same application identity query on both transports and rejects TC
     await readFile(join(fixture.logRoot, 'mutations'), 'utf8'),
     mutationsBefore,
   );
+});
+
+test('keeps TCP application identity probes within least privilege', async (t) => {
+  for (const name of ['role_identity_query', 'app_identity_query']) {
+    const assignment = script.match(
+      new RegExp(`^${name}="([^"]*)"$`, 'm'),
+    );
+    assert.ok(assignment, `Missing shell assignment ${name}`);
+    assert.doesNotMatch(
+      assignment[1],
+      /current_setting\('(data_directory|unix_socket_directories)'\)/,
+    );
+  }
+  const fixture = await establishRunningFixture(t);
+  const result = runScript({
+    env: {
+      ...fixture.env,
+      FAKE_REJECT_RESTRICTED_APP_SETTINGS: 'true',
+    },
+  });
+  assertSuccess(result);
 });
 
 test('rejects a role that gains superuser authority', async (t) => {

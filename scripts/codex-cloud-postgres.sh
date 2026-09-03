@@ -1918,9 +1918,9 @@ verify_base_identity() {
   [[ "${sentinel}" == 'prisma-prim-ok' ]]
 }
 
-app_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, d.datlocprovider, (d.datlocale IS NULL), (d.daticurules IS NULL), t.spcname, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() JOIN pg_tablespace t ON t.oid = d.dattablespace WHERE r.rolname = '${database_user}'"
+app_identity_query="SELECT current_setting('port'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), d.datconnlimit, (d.datacl IS NULL), pg_encoding_to_char(d.encoding), d.datcollate, d.datctype, d.datlocprovider, (d.datlocale IS NULL), (d.daticurules IS NULL), t.spcname, pg_get_userbyid(d.datdba), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setdatabase = d.oid AND s.setrole = 0), 'prisma-prim-ok' FROM pg_roles r JOIN pg_database d ON d.datname = current_database() JOIN pg_tablespace t ON t.oid = d.dattablespace WHERE r.rolname = '${database_user}'"
 
-role_identity_query="SELECT current_setting('data_directory'), current_setting('port'), current_setting('unix_socket_directories'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
+role_identity_query="SELECT current_setting('port'), current_setting('listen_addresses'), current_setting('server_version_num'), current_database(), current_user, current_setting('data_checksums'), r.rolcanlogin, r.rolcreatedb, r.rolsuper, r.rolcreaterole, r.rolreplication, r.rolbypassrls, r.rolconnlimit, (r.rolvaliduntil IS NULL), (SELECT count(*) FROM pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid), (SELECT count(*) FROM pg_db_role_setting s WHERE s.setrole = r.oid), 'prisma-prim-ok' FROM pg_roles r WHERE r.rolname = '${database_user}'"
 
 verify_role_identity() {
   local transport="$1"
@@ -1945,18 +1945,16 @@ verify_role_identity() {
     )" || return 1
   fi
 
-  local data port socket listen version database user checksums
+  local port listen version database user checksums
   local can_login can_create_db superuser create_role replication bypass_rls connection_limit
   local valid_until_is_null memberships persistent_role_settings sentinel extra
   IFS='|' read -r \
-    data port socket listen version database user checksums \
+    port listen version database user checksums \
     can_login can_create_db superuser create_role replication bypass_rls \
     connection_limit valid_until_is_null memberships persistent_role_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
-  [[ "${data}" == "${data_root}" ]] || return 1
   [[ "${port}" == "${postgres_port}" ]] || return 1
-  [[ "${socket}" == "${socket_root}" ]] || return 1
   [[ "${listen}" == '127.0.0.1' ]] || return 1
   is_canonical_integer_in_range \
     "${version}" "${postgres_version_number}" "${postgres_version_number}" || return 1
@@ -2023,14 +2021,14 @@ verify_database_identity() {
     )" || return 1
   fi
 
-  local data port socket listen version database user checksums
+  local port listen version database user checksums
   local can_login can_create_db superuser create_role replication bypass_rls connection_limit owner
   local valid_until_is_null database_connection_limit database_acl_is_null
   local database_encoding database_collation database_ctype
   local database_locale_provider database_provider_locale_is_null database_icu_rules_is_null
   local database_tablespace memberships persistent_role_settings persistent_database_settings sentinel extra
   IFS='|' read -r \
-    data port socket listen version database user checksums \
+    port listen version database user checksums \
     can_login can_create_db superuser create_role replication bypass_rls connection_limit \
     valid_until_is_null database_connection_limit database_acl_is_null \
     database_encoding database_collation database_ctype \
@@ -2038,9 +2036,7 @@ verify_database_identity() {
     database_tablespace owner memberships persistent_role_settings persistent_database_settings sentinel extra \
     <<<"${output}"
   [[ -z "${extra:-}" ]] || return 1
-  [[ "${data}" == "${data_root}" ]] || return 1
   [[ "${port}" == "${postgres_port}" ]] || return 1
-  [[ "${socket}" == "${socket_root}" ]] || return 1
   [[ "${listen}" == '127.0.0.1' ]] || return 1
   is_canonical_integer_in_range \
     "${version}" "${postgres_version_number}" "${postgres_version_number}" || return 1
