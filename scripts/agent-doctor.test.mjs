@@ -119,8 +119,8 @@ test('the web-postgres profile requires safe local database targets and connecti
   assert.equal(healthy.find((check) => check.id === 'postgres').status, 'PASS');
 });
 
-test('offers exact-head Early CI when hosted integration prerequisites are absent', () => {
-  const results = evaluateEnvironment(
+test('reports missing hosted prerequisites without any delegation hint', () => {
+  const report = evaluateEnvironmentReport(
     {
       ...healthyEnvironment,
       chromiumAvailable: false,
@@ -131,69 +131,12 @@ test('offers exact-head Early CI when hosted integration prerequisites are absen
     'web-postgres',
   );
 
+  assert.deepEqual(Object.keys(report).sort(), ['capabilities', 'checks']);
   for (const id of ['chromium', 'database-variables']) {
-    assert.match(
-      results.find((check) => check.id === id).remediation,
-      /agent-doctor-early-ci: required.*automatic exact-head/u,
-    );
+    const check = report.checks.find((candidate) => candidate.id === id);
+    assert.equal(check.status, 'FAIL');
+    assert.doesNotMatch(check.remediation, /handoff|early-ci|exact-head/iu);
   }
-});
-
-test('does not request a handoff when the selected profile is locally healthy', () => {
-  const report = evaluateEnvironmentReport(healthyEnvironment, 'web-postgres');
-
-  assert.deepEqual(report.handoff, {
-    state: 'not-required',
-    profile: 'web-postgres',
-  });
-});
-
-test('publishes an automatic exact-head handoff for recoverable web-postgres blockers', () => {
-  const report = evaluateEnvironmentReport(
-    {
-      ...healthyEnvironment,
-      chromiumAvailable: false,
-      databaseUrl: '',
-      testDatabaseUrl: '',
-      postgresProbe: { state: 'not-run' },
-    },
-    'web-postgres',
-  );
-
-  assert.deepEqual(report.handoff, {
-    state: 'required',
-    profile: 'web-postgres',
-    reasonCheckIds: ['chromium', 'database-variables'],
-    action: {
-      kind: 'github-pull-request-body-marker',
-      marker: '<!-- agent-doctor-early-ci: required -->',
-      timing: 'same-publication-write',
-    },
-    completion: {
-      statusContext: 'Early CI preflight',
-      headBinding: 'pull-request-head-sha',
-      requiredState: 'success',
-    },
-  });
-});
-
-test('does not delegate an intrinsic repository defect to Early CI', () => {
-  const report = evaluateEnvironmentReport(
-    {
-      ...healthyEnvironment,
-      nodeRange: '^24.0.0',
-      databaseUrl: '',
-      testDatabaseUrl: '',
-      postgresProbe: { state: 'not-run' },
-    },
-    'postgres',
-  );
-
-  assert.deepEqual(report.handoff, {
-    state: 'blocked',
-    profile: 'postgres',
-    reasonCheckIds: ['node'],
-  });
 });
 
 test('certifies only distinct numeric-loopback PostgreSQL targets', () => {
@@ -378,7 +321,7 @@ test('reports probe tooling and sandbox failures without blaming PostgreSQL', ()
   );
 });
 
-test('delegates known dependency drift but not an unknown PostgreSQL bootstrap failure', () => {
+test('marks known dependency drift as host-recoverable but not an unknown PostgreSQL bootstrap failure', () => {
   const dependencies = evaluateEnvironment(
     {
       ...healthyEnvironment,
@@ -504,7 +447,7 @@ test('marks absent, nonnumeric, and partially numeric CI Node pins as intrinsic'
   }
 });
 
-test('does not delegate host drift when the CI Node pin is also incompatible', () => {
+test('does not mark host drift recoverable when the CI Node pin is also incompatible', () => {
   const results = evaluateEnvironment({
     ...healthyEnvironment,
     nodeVersion: 'v22.22.0',

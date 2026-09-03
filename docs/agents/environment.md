@@ -2,7 +2,7 @@
 
 This document is the canonical repository environment contract. Product-specific services, variables, and secrets still belong to their owning issue and must not be guessed or committed.
 
-Last validated: 2026-08-22.
+Last validated: 2026-09-03.
 
 ## Canonical baseline
 
@@ -39,6 +39,21 @@ node scripts/agent-doctor.mjs --profile web-postgres
 
 Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its read-only connectivity probe records the PostgreSQL server version and whether the current role is superuser or has `CREATEDB`; it never migrates, creates, drops, or truncates data.
 
+## Verification commands
+
+`pnpm verify` is the single pre-publication gate: formatting, lint, type-check, the unit and script suites, and the production build. PostgreSQL-backed API suites run inside it only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium.
+
+Narrow seams for targeted runs:
+
+```bash
+pnpm test:access:postgres          # Access, assignment, suspension, and membership REST suites
+pnpm test:company:postgres         # Company REST and idempotency suites
+pnpm test:client:postgres          # Client dossier REST suite
+pnpm test:preflight:postgres-smoke # one cross-Workspace REST smoke suite
+pnpm test:preflight:migration      # migration from the previous committed schema
+pnpm test:preflight:playwright     # one production-shell journey on desktop and narrow viewports
+```
+
 ## Codex Cloud environment
 
 Configure the repository environment in [Codex settings](https://chatgpt.com/codex/settings/environments).
@@ -67,83 +82,9 @@ bash scripts/codex-cloud-maintenance.sh
 
 Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compares a fingerprint of every workspace dependency manifest, runs `pnpm install` only when that fingerprint changed, and reruns the base doctor. The legacy `scripts/setup-codex-cloud.sh` and `scripts/maintain-codex-cloud.sh` names are compatibility wrappers only; do not configure new environments with them.
 
-### Codex Cloud publication handoff
+### pnpm launcher
 
-Native branch and pull-request publication remains the first choice. If a Cloud task can commit locally but has no GitHub write path, capture its starting SHA before editing and export the final clean commit with:
-
-```bash
-node scripts/codex-cloud-handoff.mjs export \
-  --base "$BASE_COMMIT_SHA" \
-  --verification /tmp/codex-cloud-verification.json
-```
-
-The authenticated Work supervisor validates the returned fence with `inspect`. A clean checkout at the exact reported base can reproduce the tree without semantic editing:
-
-```bash
-node scripts/codex-cloud-handoff.mjs inspect \
-  --input /tmp/codex-cloud-handoff.md \
-  --expected-base "$CURRENT_MAIN_SHA" \
-  --expected-base-tree "$CURRENT_MAIN_TREE_SHA"
-node scripts/codex-cloud-handoff.mjs extract \
-  --input /tmp/codex-cloud-handoff.md \
-  --expected-base "$CURRENT_MAIN_SHA" \
-  --expected-base-tree "$CURRENT_MAIN_TREE_SHA" \
-  --output /tmp/codex-cloud-connector-manifest.json
-node scripts/codex-cloud-handoff.mjs materialize \
-  --input /tmp/codex-cloud-handoff.md
-```
-
-Both `CURRENT_MAIN_SHA` and `CURRENT_MAIN_TREE_SHA` come from the same
-authenticated GitHub `main` read; do not substitute a local ref for either
-identity.
-
-The v1 fallback is intentionally bounded. Export rejects path bytes that do not
-round-trip through strict UTF-8, backslashes/control characters, unsafe path
-components, gitlinks, and unsupported modes. Local materialization also rejects
-every sparse checkout and any assume-unchanged or skip-worktree index entry,
-then verifies affected base blobs and modes before mutation. Treat its target
-as disposable: validation is non-mutating, while interruption after the apply
-phase begins requires a fresh exact-base checkout before retry.
-
-The [capability-aware publication contract](issue-execution.md#codex-cloud-to-work-publication-handoff) owns the manifest shape, the executable `scripts/codex-cloud-publication.mjs` connector sequence, mismatch failures, and review and CI gates. The bundle does not grant GitHub access. Its author must keep credentials and other secrets out of the verification manifest; the validator rejects common credential patterns as an additional guard.
-
-### ChatGPT Work mode pnpm bootstrap
-
-Some Work mode images expose a fallback pnpm that ignores the repository's
-`packageManager` version selection. When `pnpm --version` differs from the root
-pin, run repository commands through the versioned launcher:
-
-```bash
-bash scripts/agent-pnpm.sh --version
-bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs
-bash scripts/agent-pnpm.sh lint
-```
-
-The launcher gives an already exact pnpm a direct path. On drift, it uses
-pnpm's explicit `--pm-on-fail=download` mode, verifies the effective child
-package-manager identity, and keeps the downloaded version in the ignored,
-private `.pnpm-home/` directory. The first recovery therefore needs package
-network access during setup or maintenance. It never runs `corepack enable`,
-activates a system-global version, or installs a global npm package.
-
-Work mode does not promise local PostgreSQL or Chromium. Run the matching Doctor
-profile with `--json` when either capability may be unavailable. A recoverable
-report publishes `handoff.state` as `required` and provides this
-`handoff.action.marker`:
-
-```html
-<!-- agent-doctor-early-ci: required -->
-```
-
-Consume that action through the
-[automatic handoff publication invariant](issue-execution.md#verification-and-review).
-Opening, reopening, editing, or synchronizing the marked pull request starts
-`Early CI preflight` automatically. The workflow resolves the current PR head
-SHA and publishes its pending and final commit status on that exact SHA. The
-`early-ci` label remains the explicit retry path. A successful exact-head status
-is the supported PostgreSQL, migration, and browser evidence; the absence of
-local executables does not justify installing system packages in the agent
-phase.
+The Cloud lifecycle scripts run pnpm through `bash scripts/agent-pnpm.sh`. The launcher uses the exact `packageManager` version and, when the container launcher drifts, downloads that version into the ignored private `.pnpm-home/` directory. Use the same launcher in any other harness whose `pnpm --version` differs from the root pin; it never runs `corepack enable`, activates a system-global version, or installs a global npm package.
 
 ### Optional PostgreSQL environment
 
@@ -176,13 +117,13 @@ node scripts/managed-postgres.mjs -- corepack pnpm test:unit
 
 The runner creates uniquely named, labelled Docker network and volume resources outside the checkout, waits on container health, creates both local databases, applies the reviewed Drizzle migrations to a pristine development database, and injects safe temporary `DATABASE_URL` and `TEST_DATABASE_URL` values into the requested command. It keeps cache and temporary state outside the checkout, and removes the exact container, network, volume, and temporary directory on success, failure, or interruption. Safe descendant termination relies on POSIX process groups, so Windows users must use native PostgreSQL or a POSIX/Linux Docker harness. A Docker socket denied by the harness sandbox is a permission-policy failure; use the native path or a harness with Docker permission rather than weakening database verification.
 
-Some hosted command boundaries, including ChatGPT Work mode, virtualize spawned process identifiers and do not expose the detached child through `/proc` or deliver the normal child lifecycle events. The process-group integration tests run a capability probe first and skip only the real detached-child cases when those semantics are unavailable; deterministic injected tests still cover TERM-to-KILL escalation. GitHub Actions remains authoritative and retains real POSIX process-group coverage. A capability skip does not make the managed runner safe in that harness: use native PostgreSQL or exact-head GitHub Actions instead.
+Some hosted command boundaries virtualize spawned process identifiers and do not expose the detached child through `/proc` or deliver the normal child lifecycle events. The process-group integration tests run a capability probe first and skip only the real detached-child cases when those semantics are unavailable; deterministic injected tests still cover TERM-to-KILL escalation. GitHub Actions remains authoritative and retains real POSIX process-group coverage. A capability skip does not make the managed runner safe in that harness: use native PostgreSQL or GitHub Actions instead.
 
 ### Browser tests
 
-The standard Codex Cloud environment does not install Chromium. Its repository-wide verification uses `pnpm test:unit`, while GitHub Actions runs the complete `pnpm test` command including Playwright.
+The standard Codex Cloud environment does not install Chromium. Its repository-wide verification uses `pnpm verify`, while GitHub Actions runs the complete `pnpm test` command including Playwright.
 
-Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, use another harness where Chromium is already available, or apply the `early-ci` label to an open pull request for exact-head evidence. Keep that cost out of the standard environment.
+Do not try to download Chromium during the agent phase: agent Internet access is intentionally disabled. If repeated agent-side browser execution becomes necessary, create a separate browser-specific Codex environment whose setup phase installs Chromium, or use another harness where Chromium is already available. Pull-request CI always provides the browser evidence. Keep that cost out of the standard environment.
 
 ### Network and credentials
 
@@ -224,6 +165,8 @@ Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses tha
 | Claude Code     | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
 | Generic harness | Must be verified             | Must be verified             | Must be verified                | Must be verified             | Never assume                                            |
 
+A harness that cannot run `pnpm verify` may draft issues, documentation, and reviews; it must not publish code.
+
 ## Updating this contract
 
-Keep this file aligned with `package.json`, the versioned Codex scripts, and CI. Record observed drift in the PR retrospective. Changes to secrets, permissions, network policy, or hosted environments require a separate reviewed decision or `agent-friction` issue unless explicitly in scope.
+Keep this file aligned with `package.json`, the versioned Codex scripts, and CI. Record observed drift in the pull request's [environment friction note](environment-friction.md). Changes to secrets, permissions, network policy, or hosted environments require a separate reviewed decision or `agent-friction` issue unless explicitly in scope.

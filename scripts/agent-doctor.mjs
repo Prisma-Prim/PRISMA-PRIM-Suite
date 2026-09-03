@@ -6,10 +6,8 @@ import {
   parsePostgresDatabaseTarget,
 } from '../apps/api/test-support/postgres-database-target.mjs';
 import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
-import { earlyCiHandoffProtocol } from './early-ci-handoff.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const earlyCiRecovery = `If this harness cannot provide it, publish ${earlyCiHandoffProtocol.action.marker} in the same-repository pull request body for automatic exact-head verification.`;
 const minimumPostgresServerVersion = 170011;
 const maximumExclusivePostgresServerVersion = 180000;
 const supportedPostgresServerVersion = `>= ${minimumPostgresServerVersion} and < ${maximumExclusivePostgresServerVersion}`;
@@ -192,7 +190,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'Playwright Chromium is installed and executable.'
           : 'Playwright Chromium is missing or not executable.'
         : 'Playwright Chromium is not required by the selected profile.',
-      `Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium. ${earlyCiRecovery}`,
+      `Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium.`,
       { ciRecoverable: true },
     ),
     result(
@@ -203,7 +201,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.'
           : 'DATABASE_URL or TEST_DATABASE_URL is missing or invalid.'
         : 'Database variables are not required by the selected profile.',
-      `Configure both PostgreSQL URLs as documented isolated local targets. ${earlyCiRecovery}`,
+      `Configure both PostgreSQL URLs as documented isolated local targets.`,
       { ciRecoverable: true },
     ),
     result(
@@ -220,7 +218,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
             ? 'Development and test databases are distinct numeric-loopback targets; the test name ends in _test.'
             : 'Database targets must use numeric loopback addresses, remain distinct, and name the test database with a _test suffix.'
         : 'Database target safety is not required by the selected profile.',
-      `Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud. ${earlyCiRecovery}`,
+      `Use the isolated prisma_prim_dev and prisma_prim_test targets documented for Codex Cloud.`,
       { ciRecoverable: true },
     ),
     evaluatePostgres(
@@ -236,7 +234,6 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
     capabilities: {
       postgres: snapshot.postgresProbe ?? { state: 'not-run' },
     },
-    handoff: createEarlyCiHandoff(profile, checks),
   };
 }
 
@@ -323,7 +320,7 @@ function evaluatePostgres(
         'postgres',
         supportedVersion ? 'PASS' : 'FAIL',
         `The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num ${supportedPostgresServerVersion}, detected ${String(detectedVersion)}.`,
-        `Provision PostgreSQL 17.11+ within major 17, then retry the doctor. ${earlyCiRecovery}`,
+        `Provision PostgreSQL 17.11+ within major 17, then retry the doctor.`,
         { ciRecoverable: !supportedVersion },
       );
     }
@@ -332,7 +329,7 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         'The PostgreSQL connectivity probe tooling or bootstrap is missing or broken.',
-        `Restore repository dependencies and the expected pnpm version, then retry the doctor. ${earlyCiRecovery}`,
+        `Restore repository dependencies and the expected pnpm version, then retry the doctor.`,
         {
           ciRecoverable: ['dependencies', 'pnpm'].includes(probe.detail),
         },
@@ -342,7 +339,7 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         `The harness sandbox denied the PostgreSQL probe subprocess (${probe.detail ?? 'permission denied'}).`,
-        `Run the doctor in a harness that permits repository subprocesses or update the sandbox policy. ${earlyCiRecovery}`,
+        `Run the doctor in a harness that permits repository subprocesses or update the sandbox policy.`,
         { ciRecoverable: true },
       );
     case 'service-unavailable':
@@ -350,7 +347,7 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         `No PostgreSQL service is listening at the configured local target (${probe.detail ?? 'connection refused'}).`,
-        `Start native PostgreSQL and retry the doctor, or run node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile postgres. ${earlyCiRecovery}`,
+        `Start native PostgreSQL and retry the doctor, or run node scripts/managed-postgres.mjs -- node scripts/agent-doctor.mjs --profile postgres.`,
         { ciRecoverable: true },
       );
     case 'unreachable':
@@ -358,7 +355,7 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         `The configured PostgreSQL target is unreachable (${probe.detail ?? 'network failure'}).`,
-        `Check the local PostgreSQL host and port, then retry the doctor. ${earlyCiRecovery}`,
+        `Check the local PostgreSQL host and port, then retry the doctor.`,
         { ciRecoverable: true },
       );
     case 'connection-failed':
@@ -366,7 +363,7 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         `PostgreSQL rejected the connection (${probe.detail ?? 'connection failure'}).`,
-        `Check that the local role, password, and database exist, then retry the doctor. ${earlyCiRecovery}`,
+        `Check that the local role, password, and database exist, then retry the doctor.`,
         { ciRecoverable: true },
       );
     default:
@@ -374,40 +371,9 @@ function evaluatePostgres(
         'postgres',
         'FAIL',
         'The PostgreSQL connectivity probe did not produce a result.',
-        `Run the doctor again after pnpm and the local database configuration pass. ${earlyCiRecovery}`,
+        `Run the doctor again after pnpm and the local database configuration pass.`,
       );
   }
-}
-
-function createEarlyCiHandoff(profile, checks) {
-  if (!requiresChromium(profile) && !requiresPostgres(profile)) {
-    return { state: 'not-required', profile };
-  }
-
-  const failures = checks.filter((check) => check.status === 'FAIL');
-  const intrinsicFailures = failures.filter(
-    (check) => check.ciRecoverable !== true,
-  );
-
-  if (intrinsicFailures.length > 0) {
-    return {
-      state: 'blocked',
-      profile,
-      reasonCheckIds: intrinsicFailures.map((check) => check.id),
-    };
-  }
-
-  if (failures.length === 0) {
-    return { state: 'not-required', profile };
-  }
-
-  return {
-    state: 'required',
-    profile,
-    reasonCheckIds: failures.map((check) => check.id),
-    action: earlyCiHandoffProtocol.action,
-    completion: earlyCiHandoffProtocol.completion,
-  };
 }
 
 export function inspectEnvironment(profile = 'base') {
@@ -431,15 +397,6 @@ function formatResults(results) {
     .join('\n');
 }
 
-function formatHandoff(handoff) {
-  if (handoff.state !== 'required') return '';
-
-  return [
-    `HANDOFF REQUIRED: publish ${handoff.action.marker} in the same-repository pull request body.`,
-    `Opening, reopening, editing, or synchronizing that pull request automatically runs ${handoff.completion.statusContext} against its exact head SHA; wait for ${handoff.completion.requiredState}.`,
-  ].join('\n');
-}
-
 function main() {
   const profileIndex = process.argv.indexOf('--profile');
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
@@ -455,13 +412,8 @@ function main() {
 
   const report = inspectEnvironment(profile);
   const results = report.checks;
-  const handoffText = formatHandoff(report.handoff);
   process.stdout.write(
-    `${
-      json
-        ? JSON.stringify({ profile, results, handoff: report.handoff }, null, 2)
-        : [formatResults(results), handoffText].filter(Boolean).join('\n')
-    }\n`,
+    `${json ? JSON.stringify({ profile, results }, null, 2) : formatResults(results)}\n`,
   );
 
   if (results.some((check) => check.status === 'FAIL')) {

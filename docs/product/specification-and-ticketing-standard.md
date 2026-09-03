@@ -202,9 +202,9 @@ Implementation follows docs/agents/issue-execution.md:
 - confirm blockers before editing;
 - red-green-refactor at the named seam;
 - one focused branch and PR;
-- review through the selected issue-execution path: one combined final pass for eligible low-risk work, or separate Standards and Spec reviews on the full path;
+- `pnpm verify` and one self-review against Standards and the originating issue before publication;
 - complete verification and browser evidence where applicable;
-- mandatory Agent environment retrospective;
-- squash merge only after green checks and no blocking feedback.
+- at most one review round with the blocking-only triage rule;
+- squash merge only after green checks and the completed review round.
 
 The next issue starts only after the current frontier issue is merged.

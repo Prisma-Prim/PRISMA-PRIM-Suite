@@ -5,29 +5,12 @@ on:
   push:
     branches:
       - main
-  workflow_call:
-    inputs:
-      mode:
-        description: Run the narrow preflight or the full authoritative suite.
-        required: false
-        default: full
-        type: string
-      checkout_ref:
-        description: Exact commit to verify when invoked by Early CI.
-        required: false
-        default: ''
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: >-
-    ci-${{ inputs.mode || 'full' }}-${{
-      inputs.checkout_ref ||
-      github.event.pull_request.number ||
-      github.sha
-    }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -54,20 +37,8 @@ jobs:
       POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
 
     steps:
-      - name: Validate requested verification mode
-        if: ${{ inputs.mode != '' && inputs.mode != 'full' && inputs.mode != 'preflight' }}
-        run: exit 2
-
-      - name: Check out exact requested head
+      - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.checkout_ref || github.sha }}
-
-      - name: Verify exact requested head
-        if: ${{ inputs.checkout_ref != '' }}
-        env:
-          EXPECTED_HEAD: ${{ inputs.checkout_ref }}
-        run: test "$(git rev-parse HEAD)" = "${EXPECTED_HEAD}"
 
       - name: Set up repository verification
         uses: ./.github/actions/setup-verification
@@ -75,39 +46,20 @@ jobs:
       - name: Verify supported agent environment
         run: pnpm agent:doctor:web-postgres
 
-      - name: Verify preflight prerequisites
-        run: pnpm preflight:local --check-only
-
-      - name: Run canonical PostgreSQL smoke preflight
-        if: ${{ inputs.mode == 'preflight' }}
-        run: pnpm test:preflight:postgres-smoke
-
-      - name: Run canonical previous-schema migration preflight
-        if: ${{ inputs.mode == 'preflight' }}
-        run: pnpm test:preflight:migration
-
-      - name: Run canonical desktop and narrow Playwright preflight
-        if: ${{ inputs.mode == 'preflight' }}
-        run: pnpm test:preflight:playwright
-
       - name: Check formatting
-        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm format:check
 
       - name: Lint
-        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm lint
 
       - name: Type-check
-        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm typecheck
 
       - name: Test
-        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm test
 
       - name: Upload browser evidence
-        if: ${{ always() && inputs.mode != 'preflight' && github.event_name == 'pull_request' }}
+        if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-pr-${{ github.event.pull_request.number }}
@@ -116,5 +68,4 @@ jobs:
           retention-days: 14
 
       - name: Build
-        if: ${{ inputs.mode != 'preflight' }}
         run: pnpm build

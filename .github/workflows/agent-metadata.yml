@@ -47,7 +47,3 @@ jobs:
             'agent-friction' \
             'BFD4F2' \
             'Repeatable repository, environment, CI, or AI harness friction'
-          ensure_label \
-            'early-ci' \
-            '0E8A16' \
-            'Run exact-head PostgreSQL, migration, and browser preflight'
