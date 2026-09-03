@@ -105,7 +105,7 @@ bash scripts/codex-cloud-setup.sh --profile postgres
 bash scripts/codex-cloud-maintenance.sh --profile postgres
 ```
 
-The PostgreSQL setup installs the system packages, creates both databases idempotently, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages.
+The PostgreSQL setup installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI runs the current `postgres:17-alpine` image.
 
 ### Managed-harness PostgreSQL fallback
 
@@ -153,6 +153,20 @@ After changing the standard environment, launch a fresh issue task and require `
 4. Install Playwright Chromium when browser tests are required.
 5. Start an isolated local PostgreSQL instance and set explicit development and `_test` URLs when database tests are required.
 6. Run the matching doctor profile before implementation.
+
+On Ubuntu or WSL2 with systemd, the same PGDG package gives a local PostgreSQL 17 in a few minutes:
+
+```bash
+sudo install -d /usr/share/postgresql-common/pgdg
+sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt-get update && sudo apt-get install -y postgresql-17
+sudo systemctl enable --now postgresql
+sudo -u postgres psql -c "CREATE ROLE prisma_prim LOGIN PASSWORD 'prisma_prim' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE prisma_prim_dev OWNER prisma_prim;" -c "CREATE DATABASE prisma_prim_test OWNER prisma_prim;"
+```
+
+Then set `DATABASE_URL` and `TEST_DATABASE_URL` to the two `127.0.0.1` targets shown above and run `node scripts/agent-doctor.mjs --profile postgres`.
 
 Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses that discover neither file automatically must be explicitly prompted to read `AGENTS.md` and `docs/agents/issue-execution.md`.
 

@@ -35,11 +35,11 @@ function postgresCheck(serverVersionNumber) {
 }
 
 test('accepts supported integer PostgreSQL 17 server versions', () => {
-  for (const serverVersionNumber of [170011, 170012, 179999]) {
+  for (const serverVersionNumber of [170000, 170011, 179999]) {
     const { check, report } = postgresCheck(serverVersionNumber);
 
     assert.equal(check.status, 'PASS');
-    assert.match(check.summary, />= 170011 and < 180000/);
+    assert.match(check.summary, />= 170000 and < 180000/);
     assert.match(check.summary, new RegExp(`detected ${serverVersionNumber}`));
     assert.equal(check.remediation, null);
     assert.equal(check.ciRecoverable, false);
@@ -55,9 +55,9 @@ test('fails closed when the PostgreSQL server version is not a supported integer
     undefined,
     null,
     'not-a-number',
-    170011.5,
+    170000.5,
     160000,
-    170010,
+    169999,
     180000,
     180001,
   ];
@@ -66,12 +66,12 @@ test('fails closed when the PostgreSQL server version is not a supported integer
     const { check, report } = postgresCheck(serverVersionNumber);
 
     assert.equal(check.status, 'FAIL');
-    assert.match(check.summary, />= 170011 and < 180000/);
+    assert.match(check.summary, />= 170000 and < 180000/);
     assert.match(
       check.summary,
       new RegExp(`detected ${String(serverVersionNumber)}`),
     );
-    assert.match(check.remediation, /PostgreSQL 17\.11\+ within major 17/);
+    assert.match(check.remediation, /any PostgreSQL 17\.x release/);
     assert.equal(check.ciRecoverable, true);
     assert.deepEqual(report.capabilities.postgres, {
       state: 'available',

@@ -8,7 +8,7 @@ import {
 import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const minimumPostgresServerVersion = 170011;
+const minimumPostgresServerVersion = 170000;
 const maximumExclusivePostgresServerVersion = 180000;
 const supportedPostgresServerVersion = `>= ${minimumPostgresServerVersion} and < ${maximumExclusivePostgresServerVersion}`;
 
@@ -320,7 +320,7 @@ function evaluatePostgres(
         'postgres',
         supportedVersion ? 'PASS' : 'FAIL',
         `The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num ${supportedPostgresServerVersion}, detected ${String(detectedVersion)}.`,
-        `Provision PostgreSQL 17.11+ within major 17, then retry the doctor.`,
+        `Provision any PostgreSQL 17.x release, then retry the doctor.`,
         { ciRecoverable: !supportedVersion },
       );
     }
