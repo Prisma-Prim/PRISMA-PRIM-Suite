@@ -67,7 +67,13 @@ The compose service creates the development database `prisma_prim` and, on a fre
 docker compose exec -T postgres psql -U prisma_prim -d postgres -c "CREATE DATABASE prisma_prim_test OWNER prisma_prim;"
 ```
 
-With `.env` exported and the container running, `node scripts/agent-doctor.mjs --profile web-postgres` passes and `pnpm test` runs the PostgreSQL and Playwright suites locally.
+The browser journeys need Playwright's Chromium once per machine. The `--with-deps` flag installs the Linux system libraries and asks for `sudo`; omit it when those libraries are already present:
+
+```bash
+pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
+```
+
+With `.env` exported, the container running, and Chromium installed, `node scripts/agent-doctor.mjs --profile web-postgres` passes and `pnpm test` runs the PostgreSQL and Playwright suites locally.
 
 The repository now contains reviewed, versioned Drizzle migrations for persistent business data.
 
