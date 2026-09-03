@@ -61,6 +61,14 @@ pnpm dev
 
 The web application runs at `http://localhost:5173`. The API health endpoint is available at `http://localhost:3000/api/health`.
 
+The compose service creates the development database `prisma_prim` and, on a fresh volume, the isolated `prisma_prim_test` database that `TEST_DATABASE_URL` names. A volume created before that init script existed needs it once by hand:
+
+```bash
+docker compose exec -T postgres psql -U prisma_prim -d postgres -c "CREATE DATABASE prisma_prim_test OWNER prisma_prim;"
+```
+
+With `.env` exported and the container running, `node scripts/agent-doctor.mjs --profile web-postgres` passes and `pnpm test` runs the PostgreSQL and Playwright suites locally.
+
 The repository now contains reviewed, versioned Drizzle migrations for persistent business data.
 
 ## Local identity demonstration
