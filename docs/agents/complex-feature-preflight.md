@@ -25,6 +25,8 @@ Use the canonical values `authentication`, `authorization`, `permissions`, `work
 
 A full preflight is required when one of those boundaries applies. An isolated low-risk change is exempt. A narrow product-contract clarification may be exempt only when it has no high-risk boundary and receives Spec approval before code.
 
+Apply the [candidate and review circuit breakers](issue-execution.md#candidate-and-review-circuit-breakers) before accepting a low-risk exemption. They own the semantic agent-environment examples and the enforced planning limits.
+
 ## Exact issue markers
 
 Every issue closed by a PR contains exactly one disposition marker:
@@ -73,6 +75,6 @@ The Spec reviewer decides whether the content is sufficient and adds the exact a
 
 ## Review-cycle stop rule
 
-Complete formatting and the selected path's final review against the full diff before the first publication. After terminal feedback, apply the severity gate in [issue execution](issue-execution.md): the low-risk fast path collects blocking findings, defers all nonblocking feedback, and allows one grouped correction; the full path collects all material findings for its grouped correction. If a second blocking wave appears, stop editing and return the issue to process diagnosis or preflight.
+Complete formatting and the selected path's final review against the full diff before the first publication. After terminal feedback, apply the severity gate and [candidate and review circuit breakers](issue-execution.md#candidate-and-review-circuit-breakers): the low-risk fast path collects blocking findings and defers all nonblocking feedback; the full path collects all material findings. The [terminal gate](codex-terminal-review-gate.md#review-budget) owns finding-wave mechanics.
 
 After five merged PRs, use GitHub timelines and a short retrospective to compare late corrections, false-positive failures, and mechanical-PR completion time. Keep this gate only if it reduces rework without slowing the simple path; otherwise simplify or remove it.

@@ -109,6 +109,17 @@ test('accepts a Codex review submitted against the exact head as terminal', () =
   assert.equal(result.state, 'ready');
 });
 
+test('accepts a resolved changes-requested review as a terminal signal', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexReviews: [{ commitId: headSha, state: 'CHANGES_REQUESTED' }],
+      codexThreads: [{ isResolved: true, isOutdated: false }],
+    }),
+  );
+
+  assert.equal(result.state, 'ready');
+});
+
 test('does not accept a dismissed current-head review as terminal', () => {
   const result = evaluateCodexReviewGate(
     snapshot({ codexReviews: [{ commitId: headSha, state: 'DISMISSED' }] }),
@@ -153,6 +164,69 @@ test('ignores resolved and outdated review threads', () => {
         { isResolved: true, isOutdated: false },
         { isResolved: false, isOutdated: true },
       ],
+    }),
+  );
+
+  assert.equal(result.state, 'ready');
+});
+
+test('trips the circuit breaker after findings on two distinct heads', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexReviews: [
+        {
+          commitId: '56c22cfa8bd36872b9b189c161296dacad984c84',
+          state: 'COMMENTED',
+        },
+        { commitId: headSha, state: 'COMMENTED' },
+      ],
+      codexThreads: [
+        { isResolved: true, isOutdated: true },
+        { isResolved: true, isOutdated: false },
+      ],
+    }),
+  );
+
+  assert.deepEqual(result, {
+    state: 'blocked',
+    summary:
+      'Review budget exhausted: stop editing; diagnose or redesign, close this PR, then publish a fresh focused replacement.',
+  });
+  assert.ok(result.summary.length <= 140);
+});
+
+test('counts repeated reviews of the same head as one finding wave', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexReviews: [
+        { commitId: headSha, state: 'COMMENTED' },
+        { commitId: headSha, state: 'COMMENTED' },
+        {
+          commitId: '56c22cfa8bd36872b9b189c161296dacad984c84',
+          state: 'DISMISSED',
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.state, 'ready');
+});
+
+test('accepts one corrected no-findings head after the first finding wave', () => {
+  const result = evaluateCodexReviewGate(
+    snapshot({
+      codexReviews: [
+        {
+          commitId: '56c22cfa8bd36872b9b189c161296dacad984c84',
+          state: 'COMMENTED',
+        },
+      ],
+      codexComments: [
+        {
+          body: `Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${headSha}\``,
+        },
+      ],
+      codexThreads: [{ isResolved: true, isOutdated: true }],
     }),
   );
 

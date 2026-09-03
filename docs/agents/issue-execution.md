@@ -22,7 +22,7 @@ Use this path by default when the issue and planned PR are mechanical or documen
 - Publish **one focused commit**. Amend or replace it for a grouped correction; do not stack review-iteration commits.
 - Request the exact-head terminal review once after the complete diff is published.
 - **P0 and P1 findings are blocking.** A **P2 blocks only** when it directly violates the issue acceptance criteria or demonstrates a concrete security or correctness defect in the changed scope. For every nonblocking finding, record the deferred disposition, resolve its review thread without changing the branch, and trigger terminal-gate re-evaluation; **do not request another Codex review**.
-- If terminal feedback contains blocking findings, collect them before editing and allow one grouped correction plus one final exact-head confirmation. A second new blocking wave stops the PR for process or preflight diagnosis instead of continuing a correction loop.
+- If terminal feedback contains blocking findings, collect them before editing and allow one grouped correction plus one final exact-head confirmation. If the terminal gate reports an exhausted review budget, follow the circuit-breaker recovery below.
 - Merge immediately under standing authorization when CI, governance, and terminal review are green and no blocking feedback remains.
 
 Every PR that is not eligible for the low-risk fast path uses the full verification and separate-review path below. This includes product-contract changes, every implementation change, migrations, authorization, privacy, concurrency, transversal changes, and any other high-risk boundary. The fast path never waives their conditional evidence.
@@ -36,6 +36,12 @@ Every PR that is not eligible for the low-risk fast path uses the full verificat
 5. Inspect the current implementation and the highest stable public test seam.
 6. Restate the observable outcome, exclusions, authority owners, decisions that require escalation, public module boundary, and first failing test in a short execution note.
 7. Classify the issue and planned PR as `mechanical`, `product-contract`, or `implementation` using the [complex-feature preflight](complex-feature-preflight.md). Classify semantics rather than file types. For a triggered issue, complete or link the matrix and obtain the exact pre-code Spec approval marker before the first implementation edit. For a narrow low-risk issue, record the exemption marker and a concrete `- Exemption reason:` line. Every issue that a PR closes has exactly one disposition marker.
+
+### Candidate and review circuit breakers
+
+Agent-environment code is not low risk merely because it does not change the product. Root or service-account operations, process lifecycle, persistent cache publication, native compilation, and recovery are `transversal`; locks and interruption recovery also cross `concurrency`. An implementation that claims `exempt-low-risk` has a hard planning ceiling of 1,000 base-to-head additions plus deletions. Reduce a larger candidate or complete the full preflight before continuing.
+
+Keep every pull request to two commits at most: the initial candidate and one grouped correction. Replace or squash intermediate correction commits before continuing. The [Codex terminal review gate](codex-terminal-review-gate.md#review-budget) owns how finding waves are counted. When it reports an exhausted review budget, stop editing, return the issue to diagnosis or preflight redesign, close the exhausted PR, and publish one fresh focused replacement only after redesign.
 
 ### Implementation
 
@@ -62,6 +68,8 @@ Every PR that is not eligible for the low-risk fast path uses the full verificat
 7. On the low-risk fast path, correct blocking findings and disposition every nonblocking finding as described above; on the full path, correct every material finding. Rerun affected checks after corrections.
 8. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
 
+Run a fresh Cloud, device, or other expensive external acceptance proof only after the affected checks and selected final review path are stable. If that proof fails solely because of confirmed external infrastructure, retry it at most once against the identical head. If it exposes a code defect, return to diagnosis and the review circuit breaker; do not immediately stack another fix and launch another full proof. Require exact test counts or zero skips only for the issue's named acceptance seam. Expected skips in broader repository commands are reported, not promoted into invented failures.
+
 Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
 
 When a matching Agent Doctor report has `handoff.state` equal to `required`,
@@ -74,7 +82,7 @@ handoff is not verification, and delivery remains blocked until that exact-head
 result succeeds. A harness without the required publication or CI visibility
 follows the capability boundary below instead of claiming delegated evidence.
 
-After terminal feedback, apply the severity gate from the selected path. Collect all blocking findings before changing the branch and publish at most one grouped correction. If another blocking wave appears, stop editing and return the issue to process diagnosis or preflight. Do not continue a one-finding/one-commit loop.
+After terminal feedback, apply the severity gate from the selected path and collect all blocking findings before changing the branch. Then apply the [candidate and review circuit breakers](#candidate-and-review-circuit-breakers); do not continue a one-finding/one-commit loop.
 
 For a slice that crosses PostgreSQL, migrations, or browser behavior, run the
 [local PostgreSQL and browser preflight](local-ci-preflight.md) before deep
