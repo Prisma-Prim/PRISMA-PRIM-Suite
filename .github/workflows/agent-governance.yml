@@ -87,7 +87,13 @@ jobs:
               const sharedHeadPullRequests = pullRequests.filter(
                 (candidate) => candidate.head.sha === pullRequest.head.sha,
               );
-              if (sharedHeadPullRequests.length !== 1) {
+              if (sharedHeadPullRequests.length === 0) {
+                core.notice(
+                  `Skipped a stale open-PR snapshot for PR #${pullRequest.number}; its push event owns the new head.`,
+                );
+                continue;
+              }
+              if (sharedHeadPullRequests.length > 1) {
                 await github.rest.repos.createCommitStatus({
                   ...context.repo,
                   sha: pullRequest.head.sha,

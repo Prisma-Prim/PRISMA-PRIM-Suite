@@ -666,6 +666,10 @@ test('revalidates affected PR heads when an issue body changes', async () => {
   assert.match(workflow, /Closing issue could not be loaded\./);
   assert.match(workflow, /sharedHeadPullRequests/);
   assert.match(workflow, /must not share one head commit/i);
+  assert.match(
+    workflow,
+    /sharedHeadPullRequests\.length === 0[\s\S]*Skipped a stale open-PR snapshot[\s\S]*continue;/,
+  );
   assert.match(workflow, /refs\/pull\/\{0\}\/head/);
   assert.match(workflow, /persist-credentials: false/);
   assert.doesNotMatch(workflow, /reRunWorkflow/);
