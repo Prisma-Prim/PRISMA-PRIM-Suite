@@ -59,6 +59,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              otherOpenPullRequestsSharingHead,
               pullRequestGovernanceStats,
             } = await import(validatorUrl);
             const issueNumber = context.payload.issue.number;
@@ -83,17 +84,21 @@ jobs:
               if (closingIssueNumber(pullRequest.body ?? '') !== issueNumber) {
                 continue;
               }
+              if (pullRequest.state !== 'open') continue;
 
-              const sharedHeadPullRequests = pullRequests.filter(
-                (candidate) => candidate.head.sha === pullRequest.head.sha,
+              const listedCurrentHead = pullRequests.some(
+                (candidate) =>
+                  candidate.number === pullRequest.number &&
+                  candidate.head.sha === pullRequest.head.sha,
               );
-              if (sharedHeadPullRequests.length === 0) {
+              if (!listedCurrentHead) {
                 core.notice(
-                  `Skipped a stale open-PR snapshot for PR #${pullRequest.number}; its push event owns the new head.`,
+                  `Open-PR snapshot is stale for PR #${pullRequest.number}; dispatching authoritative issue revalidation.`,
                 );
-                continue;
               }
-              if (sharedHeadPullRequests.length > 1) {
+              const conflictingHeadPullRequests =
+                otherOpenPullRequestsSharingHead(pullRequests, pullRequest);
+              if (conflictingHeadPullRequests.length > 0) {
                 await github.rest.repos.createCommitStatus({
                   ...context.repo,
                   sha: pullRequest.head.sha,
@@ -362,6 +367,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              otherOpenPullRequestsSharingHead,
               pullRequestGovernanceStats,
               validatePullRequestGovernance,
             } = await import(validatorUrl);
@@ -382,18 +388,21 @@ jobs:
               );
               return;
             }
+            if (pullRequest.state !== 'open') {
+              core.notice(`PR #${pullRequestNumber} is no longer open.`);
+              return;
+            }
 
             const openPullRequests = await github.paginate(
               github.rest.pulls.list,
               { ...context.repo, state: 'open', per_page: 100 },
             );
-            const sharedHeadPullRequests = openPullRequests.filter(
-              (candidate) => candidate.head.sha === pullRequest.head.sha,
-            );
-            if (
-              sharedHeadPullRequests.length !== 1 ||
-              sharedHeadPullRequests[0].number !== pullRequest.number
-            ) {
+            const conflictingHeadPullRequests =
+              otherOpenPullRequestsSharingHead(
+                openPullRequests,
+                pullRequest,
+              );
+            if (conflictingHeadPullRequests.length > 0) {
               core.setFailed(
                 'Open PRs must not share one head commit during governance validation.',
               );
@@ -504,6 +513,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              otherOpenPullRequestsSharingHead,
               pullRequestGovernanceStats,
             } = await import(validatorUrl);
             const statusContext = 'Agent governance / pr-description';
@@ -532,11 +542,12 @@ jobs:
                 github.rest.pulls.list,
                 { ...context.repo, state: 'open', per_page: 100 },
               );
-              const sharedHeadPullRequests = openPullRequests.filter(
-                (candidate) =>
-                  candidate.head.sha === requestedPullRequest.head.sha,
-              );
               const pullRequest = requestedPullRequest;
+              const conflictingHeadPullRequests =
+                otherOpenPullRequestsSharingHead(
+                  openPullRequests,
+                  pullRequest,
+                );
               const issueNumber = closingIssueNumber(pullRequest.body ?? '');
               let issueBody = '';
               let issueLookupFailed = false;
@@ -557,7 +568,7 @@ jobs:
               }
               return {
                 pullRequest,
-                sharedHeadPullRequests,
+                conflictingHeadPullRequests,
                 issueNumber,
                 issueBody,
                 issueLookupFailed,
@@ -594,7 +605,11 @@ jobs:
             }
 
             const before = await loadCurrentRevision();
-            if (before.sharedHeadPullRequests.length > 1) {
+            if (before.pullRequest.state !== 'open') {
+              core.notice('The requested pull request is no longer open.');
+              return;
+            }
+            if (before.conflictingHeadPullRequests.length > 0) {
               await github.rest.repos.createCommitStatus({
                 ...context.repo,
                 sha: before.pullRequest.head.sha,
@@ -606,10 +621,6 @@ jobs:
               core.setFailed(
                 'Governance cannot publish a shared commit status for multiple open PRs.',
               );
-              return;
-            }
-            if (before.sharedHeadPullRequests.length === 0) {
-              core.notice('The requested head no longer belongs to an open PR.');
               return;
             }
             if (before.pullRequest.head.sha !== requestedHeadSha) {
@@ -660,7 +671,8 @@ jobs:
             });
 
             const after = await loadCurrentRevision();
-            if (after.sharedHeadPullRequests.length > 1) {
+            if (after.pullRequest.state !== 'open') return;
+            if (after.conflictingHeadPullRequests.length > 0) {
               await github.rest.repos.createCommitStatus({
                 ...context.repo,
                 sha: after.pullRequest.head.sha,
@@ -674,7 +686,6 @@ jobs:
               );
               return;
             }
-            if (after.sharedHeadPullRequests.length === 0) return;
             if (after.pullRequest.head.sha !== requestedHeadSha) return;
             if (after.issueLookupFailed) {
               await github.rest.repos.createCommitStatus({

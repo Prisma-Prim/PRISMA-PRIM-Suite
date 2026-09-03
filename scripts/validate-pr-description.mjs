@@ -40,6 +40,17 @@ export function pullRequestGovernanceStats(pullRequest) {
   };
 }
 
+export function otherOpenPullRequestsSharingHead(
+  openPullRequests,
+  pullRequest,
+) {
+  return openPullRequests.filter(
+    (candidate) =>
+      candidate.number !== pullRequest.number &&
+      candidate.head?.sha === pullRequest.head?.sha,
+  );
+}
+
 const requiredHeadings = [
   '## Outcome',
   '## Change classification',

@@ -14,6 +14,7 @@ import test from 'node:test';
 import {
   closingIssueNumber,
   governanceRevisionToken,
+  otherOpenPullRequestsSharingHead,
   stripHtmlComments,
   validatePullRequestBody,
   validatePullRequestGovernance,
@@ -120,6 +121,29 @@ function validateGovernanceFixture(input) {
 
 test('accepts the minimal mechanical classification', () => {
   assert.deepEqual(validatePullRequestBody(minimalMechanicalBody), []);
+});
+
+test('detects only other open pull requests that share the head', () => {
+  const pullRequest = { number: 24, head: { sha: 'head-sha' } };
+  const samePullRequest = { number: 24, head: { sha: 'head-sha' } };
+  const conflictingPullRequest = { number: 25, head: { sha: 'head-sha' } };
+  const unrelatedPullRequest = { number: 26, head: { sha: 'other-sha' } };
+
+  assert.deepEqual(otherOpenPullRequestsSharingHead([], pullRequest), []);
+  assert.deepEqual(
+    otherOpenPullRequestsSharingHead(
+      [samePullRequest, unrelatedPullRequest],
+      pullRequest,
+    ),
+    [],
+  );
+  assert.deepEqual(
+    otherOpenPullRequestsSharingHead(
+      [samePullRequest, conflictingPullRequest, unrelatedPullRequest],
+      pullRequest,
+    ),
+    [conflictingPullRequest],
+  );
 });
 
 test('does not accept declarations inside HTML code blocks', () => {
@@ -664,11 +688,18 @@ test('revalidates affected PR heads when an issue body changes', async () => {
   );
   assert.match(workflow, /issueLookupFailed/);
   assert.match(workflow, /Closing issue could not be loaded\./);
-  assert.match(workflow, /sharedHeadPullRequests/);
+  assert.match(workflow, /otherOpenPullRequestsSharingHead/);
+  assert.match(workflow, /conflictingHeadPullRequests/);
   assert.match(workflow, /must not share one head commit/i);
-  assert.match(
-    workflow,
-    /sharedHeadPullRequests\.length === 0[\s\S]*Skipped a stale open-PR snapshot[\s\S]*continue;/,
+  assert.match(workflow, /dispatching authoritative issue revalidation/i);
+  assert.doesNotMatch(workflow, /sharedHeadPullRequests\.length !== 1/);
+  assert.doesNotMatch(workflow, /sharedHeadPullRequests\.length === 0/);
+  assert.ok(
+    [...workflow.matchAll(/conflictingHeadPullRequests\.length > 0/gu)]
+      .length >= 4,
+  );
+  assert.ok(
+    [...workflow.matchAll(/pullRequest\.state !== 'open'/gu)].length >= 3,
   );
   assert.match(workflow, /refs\/pull\/\{0\}\/head/);
   assert.match(workflow, /persist-credentials: false/);
