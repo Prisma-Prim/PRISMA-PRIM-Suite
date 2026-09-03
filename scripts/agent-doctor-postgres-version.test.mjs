@@ -72,9 +72,7 @@ test('fails closed when the PostgreSQL server version is not a supported integer
       new RegExp(`detected ${String(serverVersionNumber)}`),
     );
     assert.match(check.remediation, /PostgreSQL 17\.11\+ within major 17/);
-    assert.match(check.remediation, /automatic exact-head verification/);
     assert.equal(check.ciRecoverable, true);
-    assert.equal(report.handoff.state, 'required');
     assert.deepEqual(report.capabilities.postgres, {
       state: 'available',
       serverVersionNumber,

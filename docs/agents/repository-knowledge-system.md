@@ -32,7 +32,7 @@ This document owns discovery, storage and external-deliverable rules. The [Speci
 | Work scope, blockers, acceptance and current delivery state | GitHub issue                                       |
 | Implemented behaviour                                       | Code through its stable public boundary            |
 | Verification                                                | Tests, CI and deterministic demonstration evidence |
-| Delivered diff, checks, risks and retrospective             | Pull request                                       |
+| Delivered diff, checks, review disposition and follow-ups   | Pull request                                       |
 | External email document                                     | Generated snapshot of named repository authorities |
 
 The environment is also an authority. Prefer package scripts, configuration and tool help over prose that merely copies discoverable commands or values.
@@ -97,6 +97,6 @@ Do not create:
 
 ## 8. Change and review rule
 
-Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the selected path in [AI agent issue execution](issue-execution.md): one combined Standards and originating-issue pass for eligible low-risk documentation, or the separate full-path reviews otherwise.
+Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the [review round](issue-execution.md#review-round) in AI agent issue execution: one self-review before publication and, for documentation, the repository owner's review instead of an automated review round.
 
 The minimum verification for a documentation-only change is the repository formatting check plus link and pointer inspection for every changed authority. Additional checks run when scripts, configuration or generated artifacts change.

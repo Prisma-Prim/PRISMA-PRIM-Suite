@@ -1,49 +1,23 @@
 # AI agent issue execution — one issue
 
-Use this workflow for Codex Cloud, Codex CLI, Claude Code, and other AI coding harnesses. Replace `FULL_ISSUE_URL` with the complete URL of the single issue on the execution frontier. Start with a fresh session whenever the harness supports it.
+Use this workflow for Codex Cloud, Codex CLI, Claude Code, and other AI coding harnesses. Own exactly one issue per fresh session and deliver it as one focused pull request.
 
-## Codex Cloud kickoff
+## Harness
 
-When a GitHub issue defines the implementation contract, launch Codex Cloud from an `@codex` comment on that originating issue. This is the default repository workflow because the task inherits the complete issue body and available comments without depending on agent-phase Internet access.
+- The default harness is Codex Cloud launched from an `@codex` comment on the originating issue, so the task inherits the complete issue body and comments. A manual task is acceptable only when its prompt or repository files contain the complete contract; an issue URL alone is insufficient.
+- A local harness with a shell, such as Codex CLI or Claude Code, is equivalent when it can run `pnpm verify` and, for PostgreSQL or browser slices, the matching doctor profile.
+- A harness that cannot execute the repository checks, such as a GitHub connector without a shell, must not publish code. It may draft issues, documentation, and reviews. Never publish one commit per file.
 
-Do not create a manual Codex Cloud task whose prompt contains only the issue URL. A manual task is acceptable only when its prompt contains the complete execution contract or when the work is fully specified by repository files available to the task.
-
-## Invariant workflow
-
-Every harness must follow these steps even when it cannot perform GitHub or local Git actions itself.
-
-### Low-risk fast path
-
-Use this path by default when the issue and planned PR are mechanical or documentation-only, set `Product contract changed` to `no`, declare `exempt-low-risk`, and cross no high-risk boundary.
-
-- Use a **15-minute execution target** measured after the required environment is ready. When the target is exceeded, finish the current safe check and diagnose the process or environment before adding more review cycles.
-- Complete the full narrow diff and affected checks before publication. Run repository-wide checks only when the issue or affected surface requires them.
-- Perform **one final review pass** covering both repository Standards and the originating issue or Spec.
-- Publish **one focused commit**. Amend or replace it for a grouped correction; do not stack review-iteration commits.
-- Request the exact-head terminal review once after the complete diff is published.
-- **P0 and P1 findings are blocking.** A **P2 blocks only** when it directly violates the issue acceptance criteria or demonstrates a concrete security or correctness defect in the changed scope. For every nonblocking finding, record the deferred disposition, resolve its review thread without changing the branch, and trigger terminal-gate re-evaluation; **do not request another Codex review**.
-- If terminal feedback contains blocking findings, collect them before editing and allow one grouped correction plus one final exact-head confirmation. If the terminal gate reports an exhausted review budget, follow the circuit-breaker recovery below.
-- Merge immediately under standing authorization when CI, governance, and terminal review are green and no blocking feedback remains.
-
-Every PR that is not eligible for the low-risk fast path uses the full verification and separate-review path below. This includes product-contract changes, every implementation change, migrations, authorization, privacy, concurrency, transversal changes, and any other high-risk boundary. The fast path never waives their conditional evidence.
-
-### Before changing anything
+## Before changing anything
 
 1. Read the complete issue body and all available comments.
 2. Confirm every issue listed under **Blocked by** is closed. Stop if a blocker remains open.
-3. Follow the [repository knowledge reading route](repository-knowledge-system.md#4-fresh-context-reading-route): read every applicable `AGENTS.md`, then use the issue pointers to load only the owning product documents, applicable ADRs, evidence and skills. Read `CONTEXT.md` when domain language or business boundaries are involved.
-4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Use the base profile only when neither PostgreSQL nor browser coverage is required. Fix safe setup drift before implementation and record unresolved failures in the final retrospective.
+3. Read every applicable `AGENTS.md`, then follow only the issue's pointers to its owning PRD, cross-cutting PRDs, decision record sections, ADRs, and evidence, as described in the [fresh-context reading route](repository-knowledge-system.md#4-fresh-context-reading-route). Read `CONTEXT.md` when domain language or business boundaries are involved.
+4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Fix safe setup drift before implementation and note anything that cannot run.
 5. Inspect the current implementation and the highest stable public test seam.
-6. Restate the observable outcome, exclusions, authority owners, decisions that require escalation, public module boundary, and first failing test in a short execution note.
-7. Classify the issue and planned PR as `mechanical`, `product-contract`, or `implementation` using the [complex-feature preflight](complex-feature-preflight.md). Classify semantics rather than file types. For a triggered issue, complete or link the matrix and obtain the exact pre-code Spec approval marker before the first implementation edit. For a narrow low-risk issue, record the exemption marker and a concrete `- Exemption reason:` line. Every issue that a PR closes has exactly one disposition marker.
+6. Restate the observable outcome, exclusions, decisions that require escalation, public module boundary, and first failing test in a short execution note.
 
-### Candidate and review circuit breakers
-
-Agent-environment code is not low risk merely because it does not change the product. Root or service-account operations, process lifecycle, persistent cache publication, native compilation, and recovery are `transversal`; locks and interruption recovery also cross `concurrency`. An implementation that claims `exempt-low-risk` has a hard planning ceiling of 1,000 base-to-head additions plus deletions. Reduce a larger candidate or complete the full preflight before continuing.
-
-Keep every pull request to two commits at most: the initial candidate and one grouped correction. Replace or squash intermediate correction commits before continuing. The [Codex terminal review gate](codex-terminal-review-gate.md#review-budget) owns how finding waves are counted. When it reports an exhausted review budget, stop editing, return the issue to diagnosis or preflight redesign, close the exhausted PR, and publish one fresh focused replacement only after redesign.
-
-### Implementation
+## Implementation
 
 - Own exactly one issue. Do not start blocked or follow-on work.
 - Protect existing user changes. Use an isolated branch or worktree when the harness provides Git access.
@@ -54,185 +28,46 @@ Keep every pull request to two commits at most: the initial candidate and one gr
 - Complete the narrow tracer bullet across all layers required by the issue.
 - Preserve `/ui-baseline` unless the issue explicitly authorizes a change.
 - Take reversible technical decisions autonomously without broadening scope.
-- Record valuable follow-up work instead of implementing it silently.
+- Record valuable follow-up work as a separate issue instead of implementing it silently.
 - Never commit secrets, tokens, real Client data, or production bypasses.
 
-### Verification and review
+## Verification before publication
 
-1. Run targeted tests while iterating.
-2. Run every command required by the issue.
-3. For UI work, inspect the real journey at every named viewport and retain deterministic evidence.
-4. On the low-risk fast path, review the final diff once against both repository Standards and the originating issue or Spec.
-5. On the full path, review against repository Standards and then review again against the originating issue or Spec.
-6. Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript.
-7. On the low-risk fast path, correct blocking findings and disposition every nonblocking finding as described above; on the full path, correct every material finding. Rerun affected checks after corrections.
-8. Complete the [agent environment retrospective](agent-environment-retrospective.md), including an explicit no-friction declaration when appropriate.
-
-Run a fresh Cloud, device, or other expensive external acceptance proof only after the affected checks and selected final review path are stable. If that proof fails solely because of confirmed external infrastructure, retry it at most once against the identical head. If it exposes a code defect, return to diagnosis and the review circuit breaker; do not immediately stack another fix and launch another full proof. Require exact test counts or zero skips only for the issue's named acceptance seam. Expected skips in broader repository commands are reported, not promoted into invented failures.
-
-Complete the whole diff, formatting, Standards review, and Spec review before the first push whenever the harness allows local staging. Publish one focused commit. A GitHub connector that writes one commit per file is not a staging interface: create the blobs, one tree, and one commit instead.
-
-When a matching Agent Doctor report has `handoff.state` equal to `required`,
-the publishing harness consumes `handoff.action` without asking a human. With
-push and pull-request access, add its marker in the same create or update
-pull-request operation that publishes the exact candidate. Then resolve the
-exact PR head SHA and monitor the named `handoff.completion.statusContext` on
-that SHA until `handoff.completion.requiredState` is `success`. Triggering the
-handoff is not verification, and delivery remains blocked until that exact-head
-result succeeds. A harness without the required publication or CI visibility
-follows the capability boundary below instead of claiming delegated evidence.
-
-After terminal feedback, apply the severity gate from the selected path and collect all blocking findings before changing the branch. Then apply the [candidate and review circuit breakers](#candidate-and-review-circuit-breakers); do not continue a one-finding/one-commit loop.
-
-For a slice that crosses PostgreSQL, migrations, or browser behavior, run the
-[local PostgreSQL and browser preflight](local-ci-preflight.md) before deep
-review. If it reports a local blocker, trigger the documented early CI workflow
-on the pushed draft branch and use that exact-head result as the early seam
-evidence. Normal pull-request CI remains authoritative.
-
-For browser evidence:
-
-- write generated screenshots through Playwright's `testInfo.outputPath(...)` or another ignored test-output path;
-- never commit generated screenshot binaries to the repository;
-- let pull-request CI upload `apps/web/test-results/**/*.png` as `browser-evidence-pr-N`;
-- link the successful CI run or its downloadable artifact in the PR body.
+1. Run targeted tests while iterating, then every command required by the issue.
+2. Run `pnpm verify`. It must pass before any push. When a safe local PostgreSQL `_test` database is configured, the PostgreSQL suites run inside it; when Chromium is installed, run `pnpm test` for the browser journeys as well. Name every check that could not run locally in the pull request; GitHub Actions remains the authoritative proof.
+3. For UI work, inspect the real journey at the desktop and narrow viewports. Write screenshots through Playwright's `testInfo.outputPath(...)`, never commit them, and let pull-request CI upload `apps/web/test-results/**/*.png` as `browser-evidence-pr-N`.
+4. Review the final diff once against repository Standards and once against the originating issue or Spec. The Standards review must report all material violations of the TypeScript discipline when the diff contains TypeScript. Fix what you find before publishing.
+5. Publish one focused commit. Squash intermediate commits before the first push.
 
 ## Capability-aware publication
 
 Harness capabilities and user authorization determine publication actions. A task prompt never grants capabilities or permissions the harness does not have.
 
-| Capability                                                              | Required behavior                                                                                |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| No local Git commit access                                              | Produce a tested patch or diff and report the exact publication blocker.                         |
-| Local Git commit access without GitHub write access                     | Export the exact committed tree through the Cloud-to-Work handoff below.                         |
-| Push and PR access                                                      | Push the branch and open one PR targeting `main`.                                                |
-| CI visibility                                                           | Monitor CI and fix failures caused by the PR.                                                    |
-| Merge access without task-specific or standing repository authorization | Stop after a green, reviewable PR. Do not merge.                                                 |
-| Merge access with task-specific or standing repository authorization    | Squash-merge only after reviews and green CI, then clean the issue branch or worktree when safe. |
+| Capability                                             | Required behavior                                                                 |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Cannot run `pnpm verify`                               | Do not publish code. Produce an issue draft, documentation, or a review instead.  |
+| Git commit access without GitHub write access          | Report the exact publication blocker together with the committed branch name.     |
+| Push and PR access                                     | Push the branch and open one PR targeting `main` using the pull request template. |
+| CI visibility                                          | Monitor CI and fix failures caused by the PR within the review round below.       |
+| Merge access without standing repository authorization | Stop after a green, reviewed PR. Do not merge.                                    |
+| Merge access with standing repository authorization    | Squash-merge after the review round, then delete the issue branch.                |
 
-### Codex Cloud-to-Work publication handoff
+The pull request body follows `.github/pull_request_template.md`: outcome and `Closes #N`, scope, verification evidence, review disposition, follow-ups, and an [environment friction](environment-friction.md) section only when friction occurred.
 
-Native publication remains preferred whenever Codex Cloud exposes a branch or pull-request action. When Cloud can create a local Git commit but cannot write to GitHub, the lossless fallback is the versioned `prisma-prim-codex-handoff/v1` bundle; a prose summary or reconstructed patch is not an equivalent artifact.
+## Review round
 
-Before editing, record the exact starting commit as `BASE_COMMIT_SHA`. After the complete diff, checks, reviews, and one focused commit, create a temporary verification JSON file outside the checkout with this bounded shape:
+Every pull request gets at most one review round. The rule exists because repeated review-and-fix cycles on a growing diff do not converge.
 
-```json
-{
-  "environment": {
-    "harness": "Codex Cloud",
-    "nodeVersion": "v24.0.0",
-    "pnpmVersion": "11.20.0",
-    "postgresVersion": "17.6"
-  },
-  "checks": [
-    {
-      "command": "pnpm test:unit",
-      "status": "passed",
-      "summary": "All unit suites passed."
-    }
-  ]
-}
-```
+1. Wait for green CI on the published head.
+2. Product code may receive one automated review, requested with an `@codex review` comment on the final head, or one review by the repository owner. Documentation and PRD pull requests are reviewed by the repository owner only; do not request an automated review on them.
+3. Triage every finding with one rule. A finding **blocks** only when it is a defect inside the changed scope that breaks an acceptance criterion, a security or data-integrity boundary, or a regression against `main`. Every other finding, including missing edge cases outside the acceptance criteria, style preferences, and hardening suggestions, is recorded under **Follow-ups** in the pull request body and does not change the branch.
+4. Apply all blocking findings in one correction commit, rerun `pnpm verify`, and let CI run. Do not request another review. One confirmation review is allowed only when the correction touched authorization, tenancy, migration, or Activity Log code; its findings follow the same triage and cannot lead to a third review.
+5. Stop when the correction would exceed a focused fix, when a confirmation review reports new blocking findings, or when CI fails twice on the same pull request for non-trivial reasons. Close the pull request, report the diagnosis and the recommended re-scope on the issue, and end the session. A fresh session starts only after the owner has re-scoped the issue.
+6. Merge under standing authorization when CI is green, the review round is complete, and the scope matches the issue.
 
-Omit environment fields that do not apply. Each check status is `passed`, `failed`, or `skipped`. The exporter rejects common credential patterns, but the task author remains responsible for keeping summaries free of credentials, connection strings, Client data, and other secrets. Export only from the clean committed checkout:
+## Environment and tooling work
 
-```bash
-node scripts/codex-cloud-handoff.mjs export \
-  --base "$BASE_COMMIT_SHA" \
-  --verification /tmp/codex-cloud-verification.json
-```
-
-Paste the command's complete fenced output into the final task result and state why native publication was unavailable. The bundle binds its SHA-256 envelope, base commit and tree, source commit and tree, commit message, exact changed Git blobs and modes, deletions, and verification manifest. If the command reports the issue-comment transport limit, narrow the issue or use native publication; do not split or manually rewrite the bundle.
-
-V1 transports only paths whose raw Git bytes decode as strict UTF-8 and encode
-back to the identical bytes. It applies no Unicode normalization. Paths remain
-relative slash-delimited names, use literal Git path semantics, and may contain
-spaces, leading dashes, Unicode, and pathspec metacharacters. Backslashes,
-NUL/C0/DEL controls, unsafe components, paths over 4,096 UTF-8 bytes,
-gitlinks, and unsupported modes fail explicitly before export. The v1 source
-commit message is nonempty, contains no NUL, occupies at most 10,000 UTF-8
-bytes, round-trips through strict UTF-8, and passes the bounded secret checks.
-All supported message bytes, including an initial UTF-8 BOM and trailing spaces
-or newlines, are preserved exactly.
-
-The authenticated Work supervisor saves the exact fence outside the checkout and runs:
-
-```bash
-node scripts/codex-cloud-handoff.mjs inspect \
-  --input /tmp/codex-cloud-handoff.md \
-  --expected-base "$CURRENT_MAIN_SHA" \
-  --expected-base-tree "$CURRENT_MAIN_TREE_SHA"
-```
-
-`CURRENT_MAIN_SHA` and `CURRENT_MAIN_TREE_SHA` come from the same authenticated GitHub target-branch read, not a potentially stale local ref. The command fails explicitly if either identity moved. Canonical-delta reconstruction needs the content-addressed base tree in the local object database, but it deliberately does not require the GitHub commit object: a Work checkout with a synthetic commit over the identical tree is supported.
-
-For connector publication, extract the already validated machine-readable payload into a new private temporary file:
-
-```bash
-node scripts/codex-cloud-handoff.mjs extract \
-  --input /tmp/codex-cloud-handoff.md \
-  --expected-base "$CURRENT_MAIN_SHA" \
-  --expected-base-tree "$CURRENT_MAIN_TREE_SHA" \
-  --output /tmp/codex-cloud-connector-manifest.json
-```
-
-The manifest contains the exact strict-UTF-8 source commit-message bytes and every addition's mode, type, expected blob SHA, and base64 content. Deletions include the exact base blob identity. Work creates each added blob and rejects any returned SHA that differs, creates one tree from those identities and deletions on `baseTreeSha`, and rejects a returned tree that differs from `sourceTreeSha`. GitHub's parsed commit-message field removes trailing whitespace even though the Git object preserves the submitted bytes; the connector adapter must therefore provide a cryptographically proven SHA-256 digest of the raw remote message. A comparison against the parsed REST message alone is not valid evidence.
-
-Use the deterministic controller in `scripts/codex-cloud-publication.mjs` as the connector orchestration contract. Its injected adapter maps the authenticated Work connector operations to `readMain`, object creation, reference and PR creation, remote identity reads including the raw-message digest proof, and compare-and-act cleanup. The controller performs the required repeated `main` reads, proves the publication branch absent immediately before creation, creates no reference when `main` movement is observed before that boundary, and verifies the published commit/tree/raw-message digest plus the branch head and the PR's full head SHA/ref/repository and base SHA/ref/repository. The adapter classifies every thrown create failure with `mutationOutcome: "not-created"` when the server definitively rejected the mutation or `mutationOutcome: "unknown"` when the response is ambiguous; an unclassified failure blocks without destructive reconciliation, and a resolved malformed response remains ambiguous.
-
-An absence pre-read plus a matching post-read does not prove which actor created an object. After an ambiguous branch create, `readBranch` is diagnostic only: authoritative absence proves that no cleanup is needed, while any observed branch is abandoned for manual recovery and is never deleted automatically, even at the expected SHA. After an ambiguous or semantically invalid PR create, `findPullRequest` receives only the expected immutable head/base refs and repositories and is also diagnostic only. It must prove absence or return one positive PR number with all six observed SHA/ref/repository identity fields; any found PR is abandoned, never closed, because endpoint identity cannot prove attempt-specific provenance. The branch is preserved whenever such a PR exists or lookup is incomplete. Only a validated successful create response binds a branch or positive PR number to this attempt and authorizes later compare-and-act cleanup. A changed mutable PR SHA still permits conditional closure of that returned number, while a ref or repository mismatch is abandoned and blocks cleanup. Failure to classify or reconcile a lookup, prove absence or closure, or complete conditional cleanup is blocking and preserves uncertain references for manual recovery. The controller's result records the distinct Cloud source and published commit identities and every authoritative `main` read.
-
-Remote publication keeps the Cloud and GitHub commit identities distinct. Work
-reads authenticated `main` before validation, re-reads it after creating the
-unreferenced blobs/tree and immediately before creating the remote commit, then
-re-reads it immediately before branch and pull-request creation. Every read
-must still equal `baseCommitSha`; observed movement creates no ref or pull
-request. The published commit uses that base as its parent, exactly
-`sourceTreeSha` as its tree, and the validated Cloud commit message. Its author
-and committer metadata may make its SHA differ from `sourceCommitSha`. Verify
-the raw remote message digest rather than GitHub's trailing-whitespace-normalized
-REST field, then record both commit identities, the common source/published
-tree, the branch head, and the pull request's complete head and base identity. If post-create
-verification detects the remaining narrow race, close the owned pull request
-through its immutable ref/repository identity even when its mutable SHA moved.
-After an ambiguous or malformed create response, probes establish only absence,
-not provenance. Never delete an observed ambiguous branch or close a PR found
-only by endpoint lookup; abandon the uncertain reference, preserve its branch,
-and require manual recovery. A definitive not-created response never authorizes
-deletion of a pre-existing ref, while an unclassified response is a blocking
-adapter failure. Never close a returned number whose observed ref or repository
-differs, and treat a failed conditional close as blocking incomplete cleanup
-rather than success. Delete the branch only after its own validated successful
-create response and when a conditional expected-head deletion or authoritative
-absence is confirmed. A valid different head is abandoned; an expected,
-missing, or malformed deletion result is blocking, as is any unresolved PR
-cleanup. Never merge that result,
-and restart from current `main` only after cleanup is proven complete.
-
-Alternatively, a clean checkout detached at the exact base can materialize the same tree locally:
-
-```bash
-node scripts/codex-cloud-handoff.mjs materialize \
-  --input /tmp/codex-cloud-handoff.md
-```
-
-Materialization requires a nonsparse checkout with no assume-unchanged or
-skip-worktree entry anywhere in its index. Before touching the checkout, it
-proves every affected tracked blob and mode still matches the bound base and
-rejects ignored, untracked, or unexpected directory contents. Validation uses
-an OS-temporary index/object store, so every validation failure leaves the real
-worktree, index, and repository object database unchanged. The apply phase
-writes and verifies files before one Git index transaction. A host signal or
-I/O failure after that phase begins can leave the disposable checkout partial;
-do not retry it in place. Recreate a clean checkout at `baseCommitSha` (or
-independently prove both worktree and index already equal `sourceTreeSha`) and
-restart validation.
-
-Before creating the branch and pull request, the staged or connector-created tree must equal `sourceTreeSha`. Work creates one remote commit without editing the materialized content, records both the Cloud `sourceCommitSha` and the published commit SHA, and retains exact-head review and CI as merge authority. Any digest, blob, path, dirty-checkout, stale-base, non-canonical delta, or tree mismatch is a hard failure; do not repair the artifact semantically.
-
-If `AGENTS.md` records standing repository authorization, it satisfies the authorization requirement for every conformant PR until explicitly revoked. Do not pause to request per-PR confirmation. Readiness remains mandatory: all required checks must be green, Standards and Spec reviews complete, scope conformant, and blocking feedback resolved.
-
-The PR body must include `Closes #N`, the three common classification fields, any applicable conditional evidence, the delivered outcome, affected-check evidence, blocking-feedback state, and the environment retrospective. Add browser evidence, consequential decisions, remaining limitations, deferred follow-up links, and separate Standards and Spec conclusions only when they apply; the full path records both conclusions. Pull-request governance fetches the closing issue and verifies that its preflight disposition and required approval marker match the PR; editing that issue dispatches a fresh check on every affected open PR head. Review-iteration metrics come from GitHub timelines during the five-PR retrospective; authors do not maintain a blocking counter.
+Environment, CI, and agent-tooling changes are separate issues prioritized by the repository owner; never fold them into a product issue. Use the simplest available mechanism, such as an operating-system package or an official container image, and time-box the attempt to one hour. If the simplest mechanism does not work within that budget, stop and report instead of building a custom installer or provisioning script.
 
 ## Genuine blockers
 
@@ -245,10 +80,9 @@ Always provide:
 - issue and PR links when available;
 - concise outcome and demo instructions;
 - public interfaces and migrations introduced;
-- exact checks and results;
-- desktop/mobile evidence paths when applicable;
+- exact checks and results, including checks that could not run;
+- desktop and narrow evidence paths when applicable;
 - decisions and deliberately deferred follow-ups;
-- the Agent environment retrospective;
 - publication state and any capability or authorization boundary;
 - confirmation that no next issue was started.
 

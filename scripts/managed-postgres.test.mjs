@@ -883,7 +883,7 @@ test('documents the direct managed runner while preserving native PostgreSQL', (
   );
   assert.match(
     environmentDocumentation,
-    /ChatGPT Work mode.*capability probe.*skip/i,
+    /hosted command boundaries.*capability probe.*skip/i,
   );
   assert.match(
     environmentDocumentation,

@@ -1,42 +1,32 @@
 ## Outcome
 
-<!-- State the observable result in one or two sentences. -->
+<!-- One or two sentences on the observable result. -->
 
 Closes #
 
-## Change classification
+## Scope
 
-<!-- Keep this block compact. Use canonical values from docs/agents/complex-feature-preflight.md. -->
-
-- Class: mechanical / product-contract / implementation
-- Product contract changed: yes / no
-- Preflight: exempt-low-risk / required / linked path/to/preflight.md
-
-<!-- Add only the lines that apply:
-- Exemption reason: concrete reason for exempt-low-risk
-- High-risk boundaries: authentication, authorization, permissions, workspace-isolation, migration, activity-log, privacy, async-identity, concurrency, transversal
-- Normative owner: docs/path/to/normative-document.md
-- Pre-code Spec review: approved
-
-Apply the candidate and review circuit breakers in
-docs/agents/issue-execution.md#candidate-and-review-circuit-breakers.
--->
+- Delivered:
+- Explicitly excluded:
+- Follow-up issues created:
 
 ## Verification
 
-- Evidence:
+<!-- Exact commands and results. Name every check that could not run locally and why; GitHub Actions remains the authoritative proof. -->
 
-<!-- List only affected checks and browser evidence that apply. -->
+- `node scripts/agent-doctor.mjs` (profile):
+- `pnpm verify`:
+- PostgreSQL or browser seams:
 
-## Review
+## Review round
 
-- Blocking feedback: none.
+<!-- See docs/agents/issue-execution.md#review-round. One round at most. -->
 
-<!-- Low risk: one final pass covering Standards and Spec. Full path: record both conclusions. Add consequential decisions, material limitations, and deferred follow-up links only when they exist. -->
+- Self-review against Standards and the originating issue: done.
+- Automated review: not applicable (documentation) / requested on `<sha>` / completed.
+- Blocking findings fixed in the correction commit:
+- Follow-ups (nonblocking findings recorded without changing the branch):
 
-## Agent environment retrospective
+## Environment friction
 
-- Harness:
-- Avoidable environment or repository friction: none observed.
-
-<!-- If friction occurred, replace the no-friction line with the full friction-case format in docs/agents/agent-environment-retrospective.md. -->
+<!-- Keep only when avoidable friction occurred; see docs/agents/environment-friction.md. Otherwise delete this section. -->

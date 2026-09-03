@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const workflowUrl = new URL('../.github/workflows/ci.yml', import.meta.url);
 
-test('CI cancels superseded work without colliding full and preflight runs', async () => {
+test('CI runs once per pull request head and cancels superseded runs', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
   const concurrencyStart = workflow.indexOf('\nconcurrency:\n');
   const jobsStart = workflow.indexOf('\njobs:\n');
@@ -17,23 +17,18 @@ test('CI cancels superseded work without colliding full and preflight runs', asy
     .replaceAll(/\s+/g, ' ');
   assert.match(
     concurrency,
-    /group: >- ci-\$\{\{ inputs\.mode \|\| 'full' \}\}-\$\{\{ inputs\.checkout_ref \|\| github\.event\.pull_request\.number \|\| github\.sha \}\}/,
+    /group: ci-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}/,
   );
   assert.match(concurrency, /cancel-in-progress: true/);
+  assert.doesNotMatch(workflow, /workflow_call|checkout_ref|preflight/);
 });
 
-test('CI preserves every verification seam and fails formatting first', async () => {
+test('CI preserves every verification seam in order and fails formatting first', async () => {
   const workflow = await readFile(workflowUrl, 'utf8');
   const requiredSteps = [
-    'Validate requested verification mode',
-    'Check out exact requested head',
-    'Verify exact requested head',
+    'Check out repository',
     'Set up repository verification',
     'Verify supported agent environment',
-    'Verify preflight prerequisites',
-    'Run canonical PostgreSQL smoke preflight',
-    'Run canonical previous-schema migration preflight',
-    'Run canonical desktop and narrow Playwright preflight',
     'Check formatting',
     'Lint',
     'Type-check',
@@ -41,36 +36,39 @@ test('CI preserves every verification seam and fails formatting first', async ()
     'Upload browser evidence',
     'Build',
   ];
+  const positions = requiredSteps.map((step) =>
+    workflow.indexOf(`- name: ${step}`),
+  );
 
-  for (const step of requiredSteps) {
-    assert.match(workflow, new RegExp(`- name: ${step}`));
+  for (const [index, step] of requiredSteps.entries()) {
+    assert.notEqual(positions[index], -1, `missing step ${step}`);
   }
+  assert.deepEqual(
+    [...positions].sort((left, right) => left - right),
+    positions,
+    'verification steps must keep their documented order',
+  );
 
-  const formatting = workflow.indexOf('- name: Check formatting');
-  const lint = workflow.indexOf('- name: Lint');
-  const formattingStep = workflow.slice(formatting, lint);
-  assert.match(formattingStep, /if: \$\{\{ inputs\.mode != 'preflight' \}\}/);
-  assert.match(formattingStep, /run: pnpm format:check/);
-
-  for (const expensiveStep of ['Lint', 'Type-check', 'Test', 'Build']) {
-    assert.ok(
-      formatting < workflow.indexOf(`- name: ${expensiveStep}`),
-      `formatting must run before ${expensiveStep}`,
+  const stepBody = (step, nextStep) =>
+    workflow.slice(
+      workflow.indexOf(`- name: ${step}`),
+      workflow.indexOf(`- name: ${nextStep}`),
     );
-  }
-
-  const setup = workflow.indexOf('- name: Set up repository verification');
-  const strictDoctor = workflow.indexOf(
-    '- name: Verify supported agent environment',
+  assert.match(
+    stepBody('Verify supported agent environment', 'Check formatting'),
+    /run: pnpm agent:doctor:web-postgres/,
   );
-  const preflight = workflow.indexOf('- name: Verify preflight prerequisites');
-  const strictDoctorStep = workflow.slice(strictDoctor, preflight);
-
-  assert.ok(setup < strictDoctor, 'setup must run before the strict Doctor');
-  assert.ok(
-    strictDoctor < preflight,
-    'the strict Doctor must run before the delegable preflight check',
+  assert.match(stepBody('Check formatting', 'Lint'), /run: pnpm format:check/);
+  assert.match(stepBody('Lint', 'Type-check'), /run: pnpm lint/);
+  assert.match(stepBody('Type-check', 'Test'), /run: pnpm typecheck/);
+  assert.match(stepBody('Test', 'Upload browser evidence'), /run: pnpm test\n/);
+  assert.match(
+    workflow.slice(workflow.indexOf('- name: Build')),
+    /run: pnpm build/,
   );
-  assert.match(strictDoctorStep, /run: pnpm agent:doctor:web-postgres/);
-  assert.doesNotMatch(strictDoctorStep, /if:/);
+  assert.doesNotMatch(
+    stepBody('Check formatting', 'Upload browser evidence'),
+    /\bif:/,
+    'formatting, lint, type-check, and test steps must be unconditional',
+  );
 });
