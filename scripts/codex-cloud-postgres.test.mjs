@@ -3655,9 +3655,7 @@ test('runs the same application identity query on both transports and rejects TC
 
 test('keeps TCP application identity probes within least privilege', async (t) => {
   for (const name of ['role_identity_query', 'app_identity_query']) {
-    const assignment = script.match(
-      new RegExp(`^${name}="([^"]*)"$`, 'm'),
-    );
+    const assignment = script.match(new RegExp(`^${name}="([^"]*)"$`, 'm'));
     assert.ok(assignment, `Missing shell assignment ${name}`);
     assert.doesNotMatch(
       assignment[1],
