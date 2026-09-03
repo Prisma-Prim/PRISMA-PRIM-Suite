@@ -35,6 +35,12 @@ as_root() {
   fi
 }
 
+apt_get() {
+  # sudo -n resets the environment, so the unattended frontend must travel
+  # inside the escalated command rather than as an exported variable.
+  as_root env DEBIAN_FRONTEND=noninteractive apt-get "$@"
+}
+
 as_postgres_sql() {
   as_root runuser -u postgres -- psql -X -q -v ON_ERROR_STOP=1 -d postgres "$@"
 }
@@ -53,9 +59,8 @@ install_packages() {
   keyring='/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc'
   source_list='/etc/apt/sources.list.d/pgdg.list'
 
-  export DEBIAN_FRONTEND=noninteractive
-  as_root apt-get update -qq
-  as_root apt-get install -y -qq --no-install-recommends curl ca-certificates
+  apt_get update -qq
+  apt_get install -y -qq --no-install-recommends curl ca-certificates
   as_root install -d /usr/share/postgresql-common/pgdg
   if ! as_root test -s "${keyring}"; then
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc |
@@ -63,8 +68,8 @@ install_packages() {
   fi
   printf 'deb [signed-by=%s] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' \
     "${keyring}" "${codename}" | as_root tee "${source_list}" >/dev/null
-  as_root apt-get update -qq
-  as_root apt-get install -y -qq --no-install-recommends \
+  apt_get update -qq
+  apt_get install -y -qq --no-install-recommends \
     "postgresql-${postgres_major}" "postgresql-client-${postgres_major}"
 }
 

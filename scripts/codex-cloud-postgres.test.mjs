@@ -26,13 +26,22 @@ test('installs PostgreSQL 17 from the PGDG apt repository without a source build
   assert.match(script, /apt\.postgresql\.org\/pub\/repos\/apt/);
   assert.match(
     script,
-    /apt-get install -y -qq --no-install-recommends[\s\S]*postgresql-\$\{postgres_major\}/,
+    /apt_get install -y -qq --no-install-recommends[\s\S]*postgresql-\$\{postgres_major\}/,
   );
   assert.doesNotMatch(
     script,
     /configure|make install|tar |curl [^\n]*github\.com/,
   );
   assert.doesNotMatch(script, /docker/);
+});
+
+test('keeps apt unattended inside the escalated command, not in the caller environment', () => {
+  assert.match(
+    script,
+    /as_root env DEBIAN_FRONTEND=noninteractive apt-get "\$@"/,
+  );
+  assert.doesNotMatch(script, /^\s*export DEBIAN_FRONTEND/m);
+  assert.doesNotMatch(script, /as_root apt-get/);
 });
 
 test('installs only in --install mode and restarts the Debian cluster on resume', () => {
