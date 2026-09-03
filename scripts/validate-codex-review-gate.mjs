@@ -4,6 +4,8 @@ const reviewSummaryMarkerPattern =
   /<!--\s*codex-pull-request-review-summary\s*-->/iu;
 const completedReviewSummaryRowPattern =
   /^\|\s*📝\s+\*\*Code Review\*\*\s*\|\s*✅\s+\*\*Completed\*\*[^\r\n|]*\|\s*`([0-9a-f]{7,40})`\s*\|/imu;
+const findingReviewStates = new Set(['CHANGES_REQUESTED', 'COMMENTED']);
+const terminalReviewStates = new Set(['APPROVED', ...findingReviewStates]);
 
 function identifiesHead(candidate, headSha) {
   return (
@@ -31,9 +33,24 @@ function completedReviewSummaryTargetsHead(comment, headSha) {
 
 export function evaluateCodexReviewGate(snapshot) {
   const headSha = snapshot.headSha.toLowerCase();
+  const findingReviewHeads = new Set(
+    snapshot.codexReviews
+      .filter((review) => findingReviewStates.has(review.state))
+      .map((review) => review.commitId?.toLowerCase())
+      .filter(Boolean),
+  );
+
+  if (findingReviewHeads.size >= 2) {
+    return {
+      state: 'blocked',
+      summary:
+        'Review budget exhausted: stop editing; diagnose or redesign, close this PR, then publish a fresh focused replacement.',
+    };
+  }
+
   const hasCurrentHeadReview = snapshot.codexReviews.some(
     (review) =>
-      ['APPROVED', 'COMMENTED'].includes(review.state) &&
+      terminalReviewStates.has(review.state) &&
       identifiesHead(review.commitId, headSha),
   );
   const hasCurrentHeadComment = snapshot.codexComments.some(

@@ -7,11 +7,11 @@ Standards, Spec, CI, and security checks.
 
 ## Lifecycle
 
-| State     | Meaning                                                                                                     | Merge effect when the status is required                     |
-| --------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `pending` | No terminal Codex review or no-findings comment identifies the current head SHA.                            | Blocks.                                                      |
-| `failure` | Codex reviewed the current head, but at least one Codex-authored, non-outdated review thread is unresolved. | Blocks.                                                      |
-| `success` | Codex produced a terminal signal for the current head and every current Codex thread is resolved.           | Allows this gate; every other required gate must still pass. |
+| State     | Meaning                                                                                                                    | Merge effect when the status is required                     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `pending` | No terminal Codex review or no-findings comment identifies the current head SHA.                                           | Blocks.                                                      |
+| `failure` | A current Codex thread is unresolved, or findings were submitted on two distinct PR heads and exhausted the review budget. | Blocks.                                                      |
+| `success` | Codex produced a terminal signal for the current head and every current Codex thread is resolved.                          | Allows this gate; every other required gate must still pass. |
 
 A terminal signal is a Codex review whose `commit_id` equals the pull-request
 head, a legacy Codex no-findings comment whose `Reviewed commit` value identifies
@@ -20,6 +20,16 @@ row that identifies that head. Running, malformed, unmarked, and stale-head
 summaries are not terminal signals. A push changes the head, so an earlier
 success no longer applies and the new head returns to `pending`. The workflow
 never sleeps or guesses whether enough time has passed.
+
+## Review budget
+
+A Codex `COMMENTED` or `CHANGES_REQUESTED` review records one finding wave
+for its exact `commit_id`. Retries on the same commit count once, dismissed
+reviews do not count, and a no-findings terminal comment does not add a wave.
+Two distinct finding heads trip the circuit breaker even when their threads are
+resolved or outdated. That PR stays blocked: stop patching, diagnose or redesign,
+close it, and publish a fresh focused replacement. There is no counter or
+author-provided reset marker.
 
 The workflow re-evaluates on pull-request changes, Codex reviews, review
 comments, and pull-request conversation comments. GitHub Actions does not expose

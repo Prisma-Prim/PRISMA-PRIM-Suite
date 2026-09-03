@@ -97,6 +97,27 @@ function highRiskImplementationBody() {
     );
 }
 
+function lowRiskImplementationBody() {
+  return minimalMechanicalBody.replace(
+    '- Class: mechanical',
+    '- Class: implementation',
+  );
+}
+
+const defaultPullRequestStats = Object.freeze({
+  baseSha: '1'.repeat(40),
+  additions: 10,
+  deletions: 2,
+  commits: 1,
+});
+
+function validateGovernanceFixture(input) {
+  return validatePullRequestGovernance({
+    pullRequestStats: defaultPullRequestStats,
+    ...input,
+  });
+}
+
 test('accepts the minimal mechanical classification', () => {
   assert.deepEqual(validatePullRequestBody(minimalMechanicalBody), []);
 });
@@ -215,7 +236,7 @@ test('requires the originating issue preflight to match the PR declaration', asy
   const issueBody = `<!-- complex-feature-preflight: exempt-low-risk -->
 - Exemption reason: incorrectly exempted.
 `;
-  const errors = await validatePullRequestGovernance({
+  const errors = await validateGovernanceFixture({
     body: highRiskImplementationBody(),
     issueBody,
     repositoryRoot: new URL('..', import.meta.url),
@@ -225,6 +246,118 @@ test('requires the originating issue preflight to match the PR declaration', asy
     errors.join('\n'),
     /PR declares required.*issue declares exempt-low-risk/i,
   );
+});
+
+test('stops oversized implementations from claiming the low-risk exemption', async () => {
+  const issueBody = `<!-- complex-feature-preflight: exempt-low-risk -->
+- Exemption reason: isolated implementation with no high-risk boundary.
+`;
+  const body = lowRiskImplementationBody().replace(
+    'isolated wording correction with no contract change.',
+    'isolated implementation with no high-risk boundary.',
+  );
+
+  const atBudget = await validateGovernanceFixture({
+    body,
+    issueBody,
+    pullRequestStats: {
+      ...defaultPullRequestStats,
+      additions: 900,
+      deletions: 100,
+    },
+    repositoryRoot: new URL('..', import.meta.url),
+  });
+  const overBudget = await validateGovernanceFixture({
+    body,
+    issueBody,
+    pullRequestStats: {
+      ...defaultPullRequestStats,
+      additions: 901,
+      deletions: 100,
+    },
+    repositoryRoot: new URL('..', import.meta.url),
+  });
+
+  assert.doesNotMatch(atBudget.join('\n'), /low-risk implementation budget/i);
+  assert.match(overBudget.join('\n'), /low-risk implementation budget/i);
+  assert.match(overBudget.join('\n'), /reduce.*scope.*full preflight/i);
+});
+
+test('allows a large implementation only after full preflight', async () => {
+  const errors = await validateGovernanceFixture({
+    body: highRiskImplementationBody(),
+    issueBody: `<!-- complex-feature-preflight: required -->
+<!-- pre-code-spec-review: approved -->
+### States and transitions
+Defined.
+### Actors and identities
+Defined.
+### Mutation contract
+Defined.
+### Data authority
+Defined.
+### Surfaces
+Defined.
+### Test matrix
+Defined.
+### Exclusions and unresolved decisions
+Defined.
+`,
+    pullRequestStats: {
+      ...defaultPullRequestStats,
+      additions: 4_000,
+      deletions: 500,
+    },
+    repositoryRoot: new URL('..', import.meta.url),
+  });
+
+  assert.doesNotMatch(errors.join('\n'), /low-risk implementation budget/i);
+});
+
+test('rejects stacked correction commits beyond the two-commit budget', async () => {
+  const issueBody = `<!-- complex-feature-preflight: exempt-low-risk -->
+- Exemption reason: isolated wording correction with no contract change.
+`;
+
+  const atBudget = await validateGovernanceFixture({
+    body: minimalMechanicalBody,
+    issueBody,
+    pullRequestStats: { ...defaultPullRequestStats, commits: 2 },
+    repositoryRoot: new URL('..', import.meta.url),
+  });
+  const overBudget = await validateGovernanceFixture({
+    body: minimalMechanicalBody,
+    issueBody,
+    pullRequestStats: { ...defaultPullRequestStats, commits: 3 },
+    repositoryRoot: new URL('..', import.meta.url),
+  });
+
+  assert.doesNotMatch(atBudget.join('\n'), /commit budget/i);
+  assert.match(overBudget.join('\n'), /commit budget/i);
+  assert.match(overBudget.join('\n'), /replace or squash/i);
+});
+
+test('fails closed when authoritative pull request stats are unavailable', async () => {
+  const issueBody = `<!-- complex-feature-preflight: exempt-low-risk -->
+- Exemption reason: isolated wording correction with no contract change.
+`;
+
+  for (const pullRequestStats of [
+    undefined,
+    { ...defaultPullRequestStats, baseSha: undefined },
+    { ...defaultPullRequestStats, additions: '10' },
+    { ...defaultPullRequestStats, deletions: -1 },
+    { ...defaultPullRequestStats, commits: 0 },
+  ]) {
+    const errors = await validatePullRequestGovernance({
+      body: minimalMechanicalBody,
+      issueBody,
+      pullRequestStats,
+      repositoryRoot: new URL('..', import.meta.url),
+    });
+
+    assert.match(errors.join('\n'), /authoritative pull request stats/i);
+  }
 });
 
 test('compares linked paths with repository case sensitivity', async (t) => {
@@ -259,7 +392,7 @@ Defined.
 
   assert.match(
     (
-      await validatePullRequestGovernance({
+      await validateGovernanceFixture({
         body,
         issueBody,
         repositoryRoot: root,
@@ -276,7 +409,7 @@ test('requires an exact issue-side Spec marker when the contract changes', async
 
   assert.match(
     (
-      await validatePullRequestGovernance({
+      await validateGovernanceFixture({
         body: productContractBody(),
         issueBody: `${exemption}\n## Spec review result\n- Result: approved before code\n`,
         repositoryRoot: new URL('..', import.meta.url),
@@ -286,7 +419,7 @@ test('requires an exact issue-side Spec marker when the contract changes', async
   );
 
   assert.deepEqual(
-    await validatePullRequestGovernance({
+    await validateGovernanceFixture({
       body: productContractBody(),
       issueBody: `${exemption}\n<!-- pre-code-spec-review: approved -->\n`,
       repositoryRoot: new URL('..', import.meta.url),
@@ -297,7 +430,7 @@ test('requires an exact issue-side Spec marker when the contract changes', async
 
 test('keeps a mechanical exemption reason-only issue valid', async () => {
   assert.deepEqual(
-    await validatePullRequestGovernance({
+    await validateGovernanceFixture({
       body: minimalMechanicalBody,
       issueBody: `<!-- complex-feature-preflight: exempt-low-risk -->
 - Exemption reason: isolated wording correction with no contract change.
@@ -309,7 +442,7 @@ test('keeps a mechanical exemption reason-only issue valid', async () => {
 });
 
 test('rejects a pull request as the originating issue', async () => {
-  const errors = await validatePullRequestGovernance({
+  const errors = await validateGovernanceFixture({
     body: minimalMechanicalBody,
     issueBody: `<!-- complex-feature-preflight: exempt-low-risk -->
 - Exemption reason: copied into a pull request body.
@@ -331,6 +464,7 @@ test('binds fresh governance results to the exact PR and issue revision', () => 
     pullRequestBody: minimalMechanicalBody,
     issueNumber: 24,
     issueBody: '<!-- complex-feature-preflight: exempt-low-risk -->',
+    pullRequestStats: defaultPullRequestStats,
   };
   const token = governanceRevisionToken(revision);
 
@@ -339,6 +473,24 @@ test('binds fresh governance results to the exact PR and issue revision', () => 
     { headSha: 'def456' },
     { pullRequestBody: `${minimalMechanicalBody}\nEdited.` },
     { issueBody: `${revision.issueBody}\nEdited.` },
+    {
+      pullRequestStats: {
+        ...defaultPullRequestStats,
+        baseSha: '2'.repeat(40),
+      },
+    },
+    {
+      pullRequestStats: {
+        ...defaultPullRequestStats,
+        additions: defaultPullRequestStats.additions + 1,
+      },
+    },
+    {
+      pullRequestStats: {
+        ...defaultPullRequestStats,
+        commits: defaultPullRequestStats.commits + 1,
+      },
+    },
   ]) {
     assert.notEqual(
       token,
@@ -490,6 +642,15 @@ test('revalidates affected PR heads when an issue body changes', async () => {
     /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/,
   );
   assert.match(workflow, /repositoryRoot: candidateRoot/);
+  assert.match(workflow, /pullRequestStats:/);
+  assert.match(workflow, /pullRequestGovernanceStats/);
+  assert.ok(
+    [
+      ...workflow.matchAll(
+        /pullRequestStats:\s*pullRequestGovernanceStats\(pullRequest\)/gu,
+      ),
+    ].length >= 4,
+  );
   assert.doesNotMatch(workflow, /Test candidate governance validators/);
   assert.match(workflow, /!process\.env\.VALIDATED_REVISION_TOKEN/);
   assert.match(workflow, /const requestedHeadSha =/);
@@ -505,6 +666,10 @@ test('revalidates affected PR heads when an issue body changes', async () => {
   assert.match(workflow, /Closing issue could not be loaded\./);
   assert.match(workflow, /sharedHeadPullRequests/);
   assert.match(workflow, /must not share one head commit/i);
+  assert.match(
+    workflow,
+    /sharedHeadPullRequests\.length === 0[\s\S]*Skipped a stale open-PR snapshot[\s\S]*continue;/,
+  );
   assert.match(workflow, /refs\/pull\/\{0\}\/head/);
   assert.match(workflow, /persist-credentials: false/);
   assert.doesNotMatch(workflow, /reRunWorkflow/);
@@ -593,6 +758,9 @@ test('makes the low-risk fast path the default PR process', async () => {
 
   assert.match(agents, /low-risk fast path/i);
   assert.match(agents, /docs\/agents\/issue-execution\.md/);
+  assert.match(agents, /candidate and review circuit breakers/i);
+  assert.doesNotMatch(agents, /1,000 base-to-head changed lines/i);
+  assert.doesNotMatch(agents, /second distinct Codex-reviewed head exhaust/i);
 
   assert.match(execution, /low-risk fast path/i);
   assert.match(execution, /P0 and P1.*blocking/is);
@@ -603,6 +771,9 @@ test('makes the low-risk fast path the default PR process', async () => {
   assert.match(execution, /one final review pass/i);
   assert.match(execution, /one focused commit/i);
   assert.match(execution, /15-minute execution target/i);
+  assert.match(execution, /1,000 base-to-head additions plus deletions/i);
+  assert.match(execution, /retry it at most once against the identical head/i);
+  assert.match(execution, /Expected skips.*reported.*not promoted/is);
   assert.match(
     execution,
     /every nonblocking finding.*record the deferred disposition.*resolve.*review thread.*terminal-gate re-evaluation/is,
@@ -623,6 +794,11 @@ test('makes the low-risk fast path the default PR process', async () => {
     /low-risk fast path.*blocking findings.*defers all nonblocking feedback/is,
   );
   assert.match(preflight, /full path.*all material findings/is);
+  assert.match(preflight, /candidate and review circuit breakers/i);
+  assert.doesNotMatch(
+    preflight,
+    /over 1,000 base-to-head additions plus deletions/i,
+  );
   assert.match(retrospective, /compact block is the complete required format/i);
   assert.match(
     retrospective,
@@ -633,6 +809,13 @@ test('makes the low-risk fast path the default PR process', async () => {
     terminalGate,
     /every nonblocking finding.*deferred and resolved.*without\s+requesting another Codex review/is,
   );
+  assert.match(
+    terminalGate,
+    /Two distinct finding heads trip the circuit breaker/i,
+  );
+  assert.match(template, /candidate and review circuit breakers/i);
+  assert.doesNotMatch(template, /1,000 changed lines/i);
+  assert.doesNotMatch(template, /one grouped correction/i);
   assert.match(
     knowledge,
     /one combined Standards.*originating-issue pass.*low-risk documentation.*separate full-path reviews/is,
