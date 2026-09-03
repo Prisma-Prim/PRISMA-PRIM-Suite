@@ -31,6 +31,23 @@ function completedReviewSummaryTargetsHead(comment, headSha) {
 
 export function evaluateCodexReviewGate(snapshot) {
   const headSha = snapshot.headSha.toLowerCase();
+  const findingReviewHeads = new Set(
+    snapshot.codexReviews
+      .filter((review) =>
+        ['CHANGES_REQUESTED', 'COMMENTED'].includes(review.state),
+      )
+      .map((review) => review.commitId?.toLowerCase())
+      .filter(Boolean),
+  );
+
+  if (findingReviewHeads.size >= 2) {
+    return {
+      state: 'blocked',
+      summary:
+        'Review budget exhausted: stop editing; diagnose or redesign, close this PR, then publish a fresh focused replacement.',
+    };
+  }
+
   const hasCurrentHeadReview = snapshot.codexReviews.some(
     (review) =>
       ['APPROVED', 'COMMENTED'].includes(review.state) &&

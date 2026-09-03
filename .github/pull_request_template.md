@@ -17,6 +17,9 @@ Closes #
 - High-risk boundaries: authentication, authorization, permissions, workspace-isolation, migration, activity-log, privacy, async-identity, concurrency, transversal
 - Normative owner: docs/path/to/normative-document.md
 - Pre-code Spec review: approved
+
+Apply the candidate and review circuit breakers in
+docs/agents/issue-execution.md#candidate-and-review-circuit-breakers.
 -->
 
 ## Verification

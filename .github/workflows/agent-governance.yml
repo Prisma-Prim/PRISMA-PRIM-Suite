@@ -59,6 +59,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              pullRequestGovernanceStats,
             } = await import(validatorUrl);
             const issueNumber = context.payload.issue.number;
             const issueBody = context.payload.issue.body ?? '';
@@ -68,7 +69,17 @@ jobs:
               { ...context.repo, state: 'open', per_page: 100 },
             );
 
-            for (const pullRequest of pullRequests) {
+            for (const listedPullRequest of pullRequests) {
+              if (
+                closingIssueNumber(listedPullRequest.body ?? '') !== issueNumber
+              ) {
+                continue;
+              }
+
+              const { data: pullRequest } = await github.rest.pulls.get({
+                ...context.repo,
+                pull_number: listedPullRequest.number,
+              });
               if (closingIssueNumber(pullRequest.body ?? '') !== issueNumber) {
                 continue;
               }
@@ -114,6 +125,8 @@ jobs:
                       pullRequestBody: pullRequest.body,
                       issueNumber,
                       issueBody,
+                      pullRequestStats:
+                        pullRequestGovernanceStats(pullRequest),
                     }),
                   },
                 });
@@ -167,6 +180,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              pullRequestGovernanceStats,
             } = await import(validatorUrl);
             const vacatedHead =
               context.payload.action === 'closed'
@@ -194,7 +208,11 @@ jobs:
               return;
             }
 
-            const pullRequest = survivors[0];
+            const { data: pullRequest } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: survivors[0].number,
+            });
+            if (pullRequest.head.sha !== vacatedHead) return;
             const issueNumber = closingIssueNumber(pullRequest.body ?? '');
             let issueBody = '';
             if (issueNumber !== null) {
@@ -210,6 +228,7 @@ jobs:
               pullRequestBody: pullRequest.body,
               issueNumber,
               issueBody,
+              pullRequestStats: pullRequestGovernanceStats(pullRequest),
             });
             await github.rest.repos.createCommitStatus({
               ...context.repo,
@@ -337,27 +356,25 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              pullRequestGovernanceStats,
               validatePullRequestGovernance,
             } = await import(validatorUrl);
 
-            let pullRequest = context.payload.pull_request;
-            if (dispatched) {
-              const pullRequestNumber = Number(
-                context.payload.inputs?.pull_request_number,
+            const pullRequestNumber = dispatched
+              ? Number(context.payload.inputs?.pull_request_number)
+              : context.payload.pull_request.number;
+            const { data: pullRequest } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: pullRequestNumber,
+            });
+            const requestedHeadSha = dispatched
+              ? context.payload.inputs?.head_sha
+              : context.payload.pull_request.head.sha;
+            if (pullRequest.head.sha !== requestedHeadSha) {
+              core.setFailed(
+                `PR #${pullRequestNumber} moved after governance validation was requested.`,
               );
-              const response = await github.rest.pulls.get({
-                ...context.repo,
-                pull_number: pullRequestNumber,
-              });
-              pullRequest = response.data;
-              if (
-                pullRequest.head.sha !== context.payload.inputs?.head_sha
-              ) {
-                core.setFailed(
-                  `PR #${pullRequestNumber} moved after revalidation was requested.`,
-                );
-                return;
-              }
+              return;
             }
 
             const openPullRequests = await github.paginate(
@@ -405,6 +422,7 @@ jobs:
               pullRequestBody: body,
               issueNumber,
               issueBody,
+              pullRequestStats: pullRequestGovernanceStats(pullRequest),
             });
             if (dispatched) {
               if (
@@ -427,6 +445,7 @@ jobs:
               body,
               issueBody,
               issueIsPullRequest,
+              pullRequestStats: pullRequestGovernanceStats(pullRequest),
               repositoryRoot: candidateRoot,
               issueSource:
                 issueNumber === null
@@ -479,6 +498,7 @@ jobs:
             const {
               closingIssueNumber,
               governanceRevisionToken,
+              pullRequestGovernanceStats,
             } = await import(validatorUrl);
             const statusContext = 'Agent governance / pr-description';
             const targetUrl =
@@ -510,10 +530,7 @@ jobs:
                 (candidate) =>
                   candidate.head.sha === requestedPullRequest.head.sha,
               );
-              const pullRequest =
-                sharedHeadPullRequests.length === 1
-                  ? sharedHeadPullRequests[0]
-                  : requestedPullRequest;
+              const pullRequest = requestedPullRequest;
               const issueNumber = closingIssueNumber(pullRequest.body ?? '');
               let issueBody = '';
               let issueLookupFailed = false;
@@ -544,6 +561,7 @@ jobs:
                   pullRequestBody: pullRequest.body,
                   issueNumber,
                   issueBody,
+                  pullRequestStats: pullRequestGovernanceStats(pullRequest),
                 }),
               };
             }

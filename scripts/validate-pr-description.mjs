@@ -12,6 +12,7 @@ export function governanceRevisionToken({
   pullRequestBody,
   issueNumber,
   issueBody,
+  pullRequestStats,
 }) {
   return createHash('sha256')
     .update(
@@ -21,9 +22,22 @@ export function governanceRevisionToken({
         pullRequestBody ?? '',
         issueNumber,
         issueBody ?? '',
+        pullRequestStats?.baseSha ?? null,
+        pullRequestStats?.additions ?? null,
+        pullRequestStats?.deletions ?? null,
+        pullRequestStats?.commits ?? null,
       ]),
     )
     .digest('hex');
+}
+
+export function pullRequestGovernanceStats(pullRequest) {
+  return {
+    baseSha: pullRequest?.base?.sha,
+    additions: pullRequest?.additions,
+    deletions: pullRequest?.deletions,
+    commits: pullRequest?.commits,
+  };
 }
 
 const requiredHeadings = [
@@ -66,6 +80,24 @@ const highRiskBoundaries = new Set([
   'concurrency',
   'transversal',
 ]);
+const maximumLowRiskImplementationChangedLines = 1_000;
+const maximumPullRequestCommits = 2;
+
+function hasAuthoritativePullRequestStats(pullRequestStats) {
+  return (
+    pullRequestStats !== null &&
+    typeof pullRequestStats === 'object' &&
+    !Array.isArray(pullRequestStats) &&
+    typeof pullRequestStats.baseSha === 'string' &&
+    /^[0-9a-f]{40}$/iu.test(pullRequestStats.baseSha) &&
+    Number.isSafeInteger(pullRequestStats.additions) &&
+    pullRequestStats.additions >= 0 &&
+    Number.isSafeInteger(pullRequestStats.deletions) &&
+    pullRequestStats.deletions >= 0 &&
+    Number.isSafeInteger(pullRequestStats.commits) &&
+    pullRequestStats.commits >= 1
+  );
+}
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
@@ -319,6 +351,7 @@ export async function validatePullRequestGovernance({
   body,
   issueBody,
   issueIsPullRequest = false,
+  pullRequestStats,
   repositoryRoot,
   issueSource = 'originating issue',
 }) {
@@ -326,8 +359,34 @@ export async function validatePullRequestGovernance({
   if (issueIsPullRequest) {
     errors.push('Closes #N must reference a GitHub issue, not a pull request.');
   }
+  const hasPullRequestStats =
+    hasAuthoritativePullRequestStats(pullRequestStats);
+  if (!hasPullRequestStats) {
+    errors.push(
+      'Authoritative pull request stats are required: base SHA, additions, deletions, and commit count.',
+    );
+  }
   const classification = getPullRequestClassification(body);
-  if (!classification) return errors;
+  if (!classification || !hasPullRequestStats) return errors;
+
+  const commitCount = pullRequestStats.commits;
+  if (commitCount > maximumPullRequestCommits) {
+    errors.push(
+      `Pull request commit budget exceeded (${commitCount}/${maximumPullRequestCommits}); replace or squash the candidate instead of stacking correction commits.`,
+    );
+  }
+
+  const changedLines = pullRequestStats.additions + pullRequestStats.deletions;
+  if (
+    classification.Class.toLowerCase() === 'implementation' &&
+    normalizePreflightDisposition(classification.Preflight) ===
+      'exempt-low-risk' &&
+    changedLines > maximumLowRiskImplementationChangedLines
+  ) {
+    errors.push(
+      `Low-risk implementation budget exceeded (${changedLines}/${maximumLowRiskImplementationChangedLines} changed lines); reduce the scope or require a full preflight before continuing.`,
+    );
+  }
 
   const issueDisposition = getComplexFeaturePreflightDisposition(
     issueBody ?? '',
