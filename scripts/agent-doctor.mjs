@@ -5,11 +5,15 @@ import {
   databaseTargetsAreSafe,
   parsePostgresDatabaseTarget,
 } from '../apps/api/test-support/postgres-database-target.mjs';
-import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
+import {
+  collectEnvironmentSnapshot,
+  SUPPORTED_POSTGRES_SERVER_VERSION,
+} from './agent-doctor-system-adapter.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const minimumPostgresServerVersion = 170011;
-const maximumExclusivePostgresServerVersion = 180000;
+const minimumPostgresServerVersion = SUPPORTED_POSTGRES_SERVER_VERSION.minimum;
+const maximumExclusivePostgresServerVersion =
+  SUPPORTED_POSTGRES_SERVER_VERSION.maximumExclusive;
 const supportedPostgresServerVersion = `>= ${minimumPostgresServerVersion} and < ${maximumExclusivePostgresServerVersion}`;
 
 function parseVersion(value) {
@@ -320,7 +324,7 @@ function evaluatePostgres(
         'postgres',
         supportedVersion ? 'PASS' : 'FAIL',
         `The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num ${supportedPostgresServerVersion}, detected ${String(detectedVersion)}.`,
-        `Provision PostgreSQL 17.11+ within major 17, then retry the doctor.`,
+        `Provision any PostgreSQL 17.x release, then retry the doctor.`,
         { ciRecoverable: !supportedVersion },
       );
     }

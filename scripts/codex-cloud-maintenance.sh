@@ -158,6 +158,9 @@ if [[ "${profile}" == "postgres" ]]; then
   else
     run_step "Restore local PostgreSQL" bash scripts/codex-cloud-postgres.sh --start
   fi
+  # The postgres profile provides its own isolated targets; see the installer.
+  # shellcheck source=/dev/null
+  source "${HOME}/.config/prisma-prim/postgres-runtime.sh"
 fi
 
 run_step "Verify the ${profile} Codex environment" bash scripts/agent-pnpm.sh exec node scripts/agent-doctor.mjs --profile "${profile}"

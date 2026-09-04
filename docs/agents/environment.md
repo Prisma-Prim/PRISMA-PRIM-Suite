@@ -64,7 +64,7 @@ Keep the `universal` image. The repository pins Node 24 through `.node-version` 
 
 ### Standard environment variables
 
-The standard Codex environment requires no database variables. Do not configure `DATABASE_URL` or `TEST_DATABASE_URL` there. If they remain from the former combined environment, remove them when applying this contract.
+No profile requires Codex environment variables. Do not configure `DATABASE_URL` or `TEST_DATABASE_URL` in the environment settings; the PostgreSQL profile below provides them. If they remain from an earlier configuration, remove them.
 
 ### Setup script
 
@@ -86,16 +86,9 @@ Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compar
 
 The Cloud lifecycle scripts run pnpm through `bash scripts/agent-pnpm.sh`. The launcher uses the exact `packageManager` version and, when the container launcher drifts, downloads that version into the ignored private `.pnpm-home/` directory. Use the same launcher in any other harness whose `pnpm --version` differs from the root pin; it never runs `corepack enable`, activates a system-global version, or installs a global npm package.
 
-### Optional PostgreSQL environment
+### PostgreSQL profile
 
-Create a separate Codex environment only when a task genuinely requires local PostgreSQL. Configure these ordinary environment variables in that DB-specific environment:
-
-```text
-DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
-TEST_DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
-```
-
-These credentials belong only to the isolated task container. Never replace either URL with a shared, remote, staging, or production database. Use the explicit PostgreSQL profile for both lifecycle scripts:
+Give the environment PostgreSQL by selecting the explicit profile on both lifecycle scripts. Do not add `DATABASE_URL` or `TEST_DATABASE_URL` as Codex environment variables: the profile exports both isolated local targets itself, into `~/.config/prisma-prim/postgres-runtime.sh` sourced by the agent shell, and on 2026-09-04 every environment variable defined in the Codex environment settings made the container fail before the setup script ran. The exported credentials belong only to the isolated task container; never replace either URL with a shared, remote, staging, or production database.
 
 ```bash
 # Setup
@@ -105,7 +98,7 @@ bash scripts/codex-cloud-setup.sh --profile postgres
 bash scripts/codex-cloud-maintenance.sh --profile postgres
 ```
 
-The PostgreSQL setup installs the system packages, creates both databases idempotently, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages.
+The PostgreSQL setup installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, exports the two targets for agent shells, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI runs the current `postgres:17-alpine` image.
 
 ### Managed-harness PostgreSQL fallback
 
@@ -153,6 +146,20 @@ After changing the standard environment, launch a fresh issue task and require `
 4. Install Playwright Chromium when browser tests are required.
 5. Start an isolated local PostgreSQL instance and set explicit development and `_test` URLs when database tests are required.
 6. Run the matching doctor profile before implementation.
+
+On Ubuntu or WSL2 with systemd, the same PGDG package gives a local PostgreSQL 17 in a few minutes:
+
+```bash
+sudo install -d /usr/share/postgresql-common/pgdg
+sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt-get update && sudo apt-get install -y postgresql-17
+sudo systemctl enable --now postgresql
+sudo -u postgres psql -c "CREATE ROLE prisma_prim LOGIN PASSWORD 'prisma_prim' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE prisma_prim_dev OWNER prisma_prim;" -c "CREATE DATABASE prisma_prim_test OWNER prisma_prim;"
+```
+
+Then set `DATABASE_URL` and `TEST_DATABASE_URL` to the two `127.0.0.1` targets shown above and run `node scripts/agent-doctor.mjs --profile postgres`.
 
 Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses that discover neither file automatically must be explicitly prompted to read `AGENTS.md` and `docs/agents/issue-execution.md`.
 

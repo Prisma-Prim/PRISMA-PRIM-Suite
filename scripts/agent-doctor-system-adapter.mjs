@@ -8,6 +8,11 @@ import { databaseTargetsAreSafe } from '../apps/api/test-support/postgres-databa
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(dirname(scriptPath), '..');
 const POSTGRES_SENTINEL = 'PRISMA_PRIM_POSTGRES_PROBE=';
+// One floor for every PostgreSQL version decision: any 17.x release.
+export const SUPPORTED_POSTGRES_SERVER_VERSION = Object.freeze({
+  minimum: 170_000,
+  maximumExclusive: 180_000,
+});
 const POSTGRES_TIMEOUT = 15_000;
 const OPERATION_TIMEOUT = 3_000;
 const FALLBACK_CODE = 'EIO';
@@ -430,7 +435,9 @@ export function classifyPostgresCommand(command) {
     if (failure) return publicFailure(failure);
     if (status.value === 0 && signal.value == null && error.value == null) {
       const { development, test } = envelope.targets;
-      const supported = (version) => version >= 170_011 && version < 180_000;
+      const supported = (version) =>
+        version >= SUPPORTED_POSTGRES_SERVER_VERSION.minimum &&
+        version < SUPPORTED_POSTGRES_SERVER_VERSION.maximumExclusive;
       const serverVersionNumber = !supported(development.serverVersionNumber)
         ? development.serverVersionNumber
         : !supported(test.serverVersionNumber)
