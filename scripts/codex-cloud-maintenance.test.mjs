@@ -31,6 +31,16 @@ test('keeps browser and PostgreSQL execution out of the standard Codex profile',
   );
 });
 
+test('sources the installer-provided database targets before the postgres doctor', () => {
+  const sourceLine = maintenanceScript.indexOf(
+    'source "${HOME}/.config/prisma-prim/postgres-runtime.sh"',
+  );
+  const doctor = maintenanceScript.indexOf('agent-doctor.mjs --profile');
+  assert.notEqual(sourceLine, -1);
+  assert.ok(sourceLine < doctor, 'targets must be exported before the doctor');
+  assert.doesNotMatch(maintenanceScript, /DATABASE_URL=/);
+});
+
 test('installs PostgreSQL only for the explicit setup profile', () => {
   assert.equal(
     setupScript.includes('if [[ "${profile}" == "postgres" ]]; then'),

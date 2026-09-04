@@ -84,6 +84,23 @@ test('proves the application connection over loopback TCP before reporting readi
   assert.match(script, /\^\$\{postgres_major\}\[0-9\]\{4\}\$/);
 });
 
+test('exports the isolated targets for agent shells instead of requiring Codex environment variables', () => {
+  assert.match(script, /postgres-runtime\.sh/);
+  assert.match(script, /printf 'export DATABASE_URL=%q\\n'/);
+  assert.match(script, /printf 'export TEST_DATABASE_URL=%q\\n'/);
+  assert.match(script, /\$\{development_database\}"\n/);
+  assert.match(script, /\$\{test_database\}"\n/);
+  assert.match(
+    script,
+    /for shell_file in "\$\{HOME\}\/\.bashrc" "\$\{HOME\}\/\.profile"/,
+  );
+  assert.match(
+    script,
+    /grep -Fqx "\$\{bashrc_source_line\}" "\$\{shell_file\}"/,
+  );
+  assert.match(script, /persist_application_targets\n$/);
+});
+
 test('escalates only through non-interactive sudo when not already root', () => {
   assert.match(script, /sudo -n -- "\$@"/);
   assert.doesNotMatch(script, /sudo(?! -n)/);
