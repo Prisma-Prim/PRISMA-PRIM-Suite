@@ -5,11 +5,15 @@ import {
   databaseTargetsAreSafe,
   parsePostgresDatabaseTarget,
 } from '../apps/api/test-support/postgres-database-target.mjs';
-import { collectEnvironmentSnapshot } from './agent-doctor-system-adapter.mjs';
+import {
+  collectEnvironmentSnapshot,
+  SUPPORTED_POSTGRES_SERVER_VERSION,
+} from './agent-doctor-system-adapter.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
-const minimumPostgresServerVersion = 170000;
-const maximumExclusivePostgresServerVersion = 180000;
+const minimumPostgresServerVersion = SUPPORTED_POSTGRES_SERVER_VERSION.minimum;
+const maximumExclusivePostgresServerVersion =
+  SUPPORTED_POSTGRES_SERVER_VERSION.maximumExclusive;
 const supportedPostgresServerVersion = `>= ${minimumPostgresServerVersion} and < ${maximumExclusivePostgresServerVersion}`;
 
 function parseVersion(value) {
