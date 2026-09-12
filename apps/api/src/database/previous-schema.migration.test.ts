@@ -77,7 +77,10 @@ describeWithPostgres('previous schema migration preflight', () => {
           ),
         );
         expect(journal.entries.length).toBeGreaterThan(1);
-        const previousEntries = journal.entries.slice(0, -1);
+        // This fixture proves the historical 0015 -> 0016 membership contract.
+        // Its legacy columns must not move when a new feature migration lands.
+        expect(journal.entries[15].tag).toBe('0015_bouncy_steve_rogers');
+        const previousEntries = journal.entries.slice(0, 16);
 
         previousMigrationsDirectory = await mkdtemp(
           join(tmpdir(), 'prisma-prim-previous-schema-'),
@@ -342,7 +345,34 @@ describeWithPostgres('previous schema migration preflight', () => {
           await migrationPool.query<AuthoritativeState>(
             authoritativeStateQuery,
           );
+        expect(journal.entries[16].tag).toBe('0016_sharp_master_chief');
+        await cp(
+          join(migrationsDirectory, '0016_sharp_master_chief.sql'),
+          join(previousMigrationsDirectory, '0016_sharp_master_chief.sql'),
+        );
+        await writeFile(
+          join(previousMigrationsDirectory, 'meta', '_journal.json'),
+          `${JSON.stringify({ ...journal, entries: journal.entries.slice(0, 17) }, null, 2)}\n`,
+        );
+        await migrate(database, {
+          migrationsFolder: previousMigrationsDirectory,
+        });
+        const preservedClientState = `SELECT
+          (SELECT jsonb_agg(to_jsonb(client) ORDER BY id) FROM client_accounts AS client) AS clients,
+          (SELECT jsonb_agg(to_jsonb(relationship) ORDER BY id) FROM client_company_relationships AS relationship) AS relationships`;
+        const beforeUnionMigration =
+          await migrationPool.query(preservedClientState);
         await migrate(database, { migrationsFolder: migrationsDirectory });
+        const afterUnionMigration =
+          await migrationPool.query(preservedClientState);
+        expect(afterUnionMigration.rows).toEqual(beforeUnionMigration.rows);
+        const unionTables = await migrationPool.query(`SELECT
+          (SELECT count(*) FROM client_union_operations)::integer AS operations,
+          (SELECT count(*) FROM client_union_projections)::integer AS projections,
+          (SELECT count(*) FROM client_identifier_reservations)::integer AS reservations`);
+        expect(unionTables.rows).toEqual([
+          { operations: 0, projections: 0, reservations: 0 },
+        ]);
         const authorityAfterContract =
           await migrationPool.query<AuthoritativeState>(
             authoritativeStateQuery,

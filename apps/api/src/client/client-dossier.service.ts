@@ -146,7 +146,8 @@ export class ClientDossierService {
 
       if (
         Object.hasOwn(command.changes, 'taxId') &&
-        command.changes.taxId !== current.taxId &&
+        (command.changes.taxId?.trim() ?? null) !==
+          (current.taxId?.trim() ?? null) &&
         command.changes.taxId !== null
       ) {
         const duplicateReviewReference =

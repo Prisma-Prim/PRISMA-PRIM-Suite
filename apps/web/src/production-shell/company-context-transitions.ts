@@ -35,7 +35,7 @@ export type CompanyContextState =
       companies: [VisibleCompany, VisibleCompany, ...VisibleCompany[]];
     });
 
-export interface ActivityLogEvent {
+export interface OrdinaryActivityLogEvent {
   id: string;
   action:
     | 'internal_user.provisioned'
@@ -95,6 +95,21 @@ export interface ActivityLogEvent {
     | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
 }
+
+export interface ClientUnionActivityLogEvent {
+  action: 'client.union_confirmed' | 'client.union_reversed';
+  projectionReference: string;
+  companyId: string;
+  actor: { kind: 'authorized_resolver' };
+  target: {
+    type: 'client_union_operation';
+    projectionReference: string;
+    companyId: string;
+  };
+}
+
+export type ActivityLogEvent =
+  OrdinaryActivityLogEvent | ClientUnionActivityLogEvent;
 
 export type ActivityLogState =
   | { status: 'loading' }

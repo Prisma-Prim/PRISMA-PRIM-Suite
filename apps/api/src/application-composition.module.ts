@@ -15,6 +15,7 @@ import { CompanyModule } from './company/company.module.js';
 import { ClientController } from './client/client.controller.js';
 import { ClientDuplicateReviewController } from './client/client-duplicate-review.controller.js';
 import { ClientModule } from './client/client.module.js';
+import { ClientUnionController } from './client/client-union.controller.js';
 import { DatabaseModule } from './database/database.module.js';
 
 @Module({
@@ -26,6 +27,7 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    ClientUnionController,
     AccessController,
     ActivityLogController,
     ClientDuplicateReviewController,

@@ -416,7 +416,8 @@ export class ClientService {
             eq(clientAccounts.status, 'active'),
           ),
         )
-        .limit(1);
+        .limit(1)
+        .for('update');
       if (!client) throw new NotFoundException();
 
       const [inserted] = await this.databaseContext.connection
