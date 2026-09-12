@@ -35,6 +35,36 @@ test('installs PostgreSQL 17 from the PGDG apt repository without a source build
   assert.doesNotMatch(script, /docker/);
 });
 
+test('survives apt sources the harness blocks and proves the PGDG index instead', () => {
+  assert.match(script, /^refresh_package_index\(\) \{$/m);
+  assert.match(
+    script,
+    /apt_get update -qq \|\|\n\s+echo '[^']*could not be refreshed/,
+  );
+  assert.match(
+    script,
+    /policy="\$\(apt-cache policy "postgresql-\$\{postgres_major\}" 2>\/dev\/null \|\| true\)"/,
+  );
+  assert.match(script, /\[\[ "\$\{policy\}" == \*apt\.postgresql\.org\* \]\]/);
+  // Reading apt-cache through `| grep -q` reports failure under
+  // `set -o pipefail`: the reader exits on the first match and apt-cache dies
+  // of SIGPIPE, so an available package was reported as missing.
+  assert.doesNotMatch(script, /apt-cache policy[^\n]*\|\s*grep/);
+  assert.match(
+    script,
+    /pgdg_candidate_is_available \|\|\n\s+fail "postgresql-\$\{postgres_major\} is not available from apt\.postgresql\.org/,
+  );
+  // A bare refresh would abort the installation on an unrelated blocked source.
+  assert.doesNotMatch(script, /^\s*apt_get update -qq$/m);
+});
+
+test('bootstraps curl only when the image does not already provide it', () => {
+  assert.match(
+    script,
+    /if ! command -v curl >\/dev\/null; then\n\s+apt_get install -y -qq --no-install-recommends curl ca-certificates \|\|/,
+  );
+});
+
 test('keeps apt unattended inside the escalated command, not in the caller environment', () => {
   assert.match(
     script,
