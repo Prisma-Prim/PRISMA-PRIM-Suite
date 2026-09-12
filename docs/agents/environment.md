@@ -88,7 +88,9 @@ The Cloud lifecycle scripts run pnpm through `bash scripts/agent-pnpm.sh`. The l
 
 ### PostgreSQL profile
 
-Give the environment PostgreSQL by selecting the explicit profile on both lifecycle scripts. Do not add `DATABASE_URL` or `TEST_DATABASE_URL` as Codex environment variables: the profile exports both isolated local targets itself, into `~/.config/prisma-prim/postgres-runtime.sh` sourced by the agent shell, and on 2026-09-04 every environment variable defined in the Codex environment settings made the container fail before the setup script ran. The exported credentials belong only to the isolated task container; never replace either URL with a shared, remote, staging, or production database.
+Do not select this profile in Codex Cloud. Provisioning succeeds there — the setup script installs PostgreSQL 17 and the `postgres` doctor passes entirely in about a minute — but the platform then holds the task until `Startup script timed out after 3600 seconds`, with container caching enabled and with it disabled. Issue #216 records the measurements and the hypotheses already eliminated; reopen that investigation before selecting the profile again. Codex Cloud environments run the base lifecycle scripts, and the PostgreSQL-backed suites are proven by the local Docker loop and by GitHub Actions.
+
+The profile is supported in a harness that can install and start a service itself, such as Codex CLI or Claude Code on Linux:
 
 ```bash
 # Setup
@@ -98,7 +100,9 @@ bash scripts/codex-cloud-setup.sh --profile postgres
 bash scripts/codex-cloud-maintenance.sh --profile postgres
 ```
 
-The PostgreSQL setup installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, exports the two targets for agent shells, and runs the `postgres` doctor. Cached resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI runs the current `postgres:17-alpine` image.
+It installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, exports the two targets for agent shells, and runs the `postgres` doctor. Resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI runs the current `postgres:17-alpine` image.
+
+The profile exports both isolated targets itself, into `~/.config/prisma-prim/postgres-runtime.sh` sourced by the agent shell. Never define `DATABASE_URL` or `TEST_DATABASE_URL` as Codex environment variables: on 2026-09-04 every environment variable defined in the Codex environment settings made the container fail before the setup script ran. The exported credentials belong only to the isolated task container; never replace either URL with a shared, remote, staging, or production database.
 
 ### Managed-harness PostgreSQL fallback
 
@@ -133,10 +137,9 @@ Use **Reset cache** only when:
 - maintenance reports missing cached dependencies;
 - a package-version change cannot be activated from the cached image;
 - repository changes add a new system-level prerequisite for the selected profile;
-- a DB-specific environment reports missing PostgreSQL packages or no cluster;
 - setup, maintenance, or environment values changed but automatic invalidation did not occur.
 
-After changing the standard environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs` to pass before implementation. Require `--profile postgres` only in the separate DB environment, and use `--profile web` or `--profile web-postgres` only in a browser-capable environment.
+After changing the standard environment, launch a fresh issue task and require `node scripts/agent-doctor.mjs` to pass before implementation. Keep the base profile on both Codex Cloud lifecycle scripts, and use `--profile postgres`, `--profile web`, or `--profile web-postgres` only in a harness that provides the corresponding service.
 
 ## Local and other harnesses
 
