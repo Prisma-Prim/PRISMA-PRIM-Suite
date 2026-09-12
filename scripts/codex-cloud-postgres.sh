@@ -54,6 +54,23 @@ cluster_installed() {
       '$1 == major && $2 == name { found = 1 } END { exit found ? 0 : 1 }'
 }
 
+refresh_package_index() {
+  # The container image bakes third-party apt sources that a hardened harness
+  # network can block: apt.llvm.org answers 403 through the Codex Cloud proxy.
+  # A partial refresh is therefore expected, and the one index this installer
+  # needs is proven separately by pgdg_candidate_is_available.
+  apt_get update -qq ||
+    echo 'Some apt sources could not be refreshed; continuing with the sources that succeeded.' >&2
+}
+
+pgdg_candidate_is_available() {
+  # No pipeline: under `set -o pipefail` a reader that exits early makes
+  # apt-cache receive SIGPIPE and the whole pipeline report failure.
+  local policy
+  policy="$(apt-cache policy "postgresql-${postgres_major}" 2>/dev/null || true)"
+  [[ "${policy}" == *apt.postgresql.org* ]]
+}
+
 install_packages() {
   local codename keyring source_list
   codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
@@ -61,8 +78,11 @@ install_packages() {
   keyring='/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc'
   source_list='/etc/apt/sources.list.d/pgdg.list'
 
-  apt_get update -qq
-  apt_get install -y -qq --no-install-recommends curl ca-certificates
+  refresh_package_index
+  if ! command -v curl >/dev/null; then
+    apt_get install -y -qq --no-install-recommends curl ca-certificates ||
+      fail 'curl is required to fetch the PostgreSQL repository signing key.'
+  fi
   as_root install -d /usr/share/postgresql-common/pgdg
   if ! as_root test -s "${keyring}"; then
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc |
@@ -70,7 +90,9 @@ install_packages() {
   fi
   printf 'deb [signed-by=%s] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' \
     "${keyring}" "${codename}" | as_root tee "${source_list}" >/dev/null
-  apt_get update -qq
+  refresh_package_index
+  pgdg_candidate_is_available ||
+    fail "postgresql-${postgres_major} is not available from apt.postgresql.org; the PGDG index could not be refreshed."
   apt_get install -y -qq --no-install-recommends \
     "postgresql-${postgres_major}" "postgresql-client-${postgres_major}"
 }
