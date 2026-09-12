@@ -612,7 +612,7 @@ describe('Company context transitions', () => {
     const next = transitionCompanyContext(active, {
       type: 'activity-resolved',
       origin: staleOrigin,
-      activityLog: { status: 'ready', events: [] },
+      activityLog: { status: 'ready', events: [], clientUnionOperations: [] },
     });
 
     expect(next).toBe(active);

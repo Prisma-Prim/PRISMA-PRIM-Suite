@@ -1,11 +1,29 @@
 import type { BrowserIdentity } from '../access-composition';
 
+/** The governed-union conflicts the server states explicitly. */
+export const CLIENT_UNION_CONFLICT_CODES = [
+  'client_union_comparison_stale',
+  'client_union_differences_require_review',
+  'client_union_contact_capacity_exceeded',
+  'client_union_blocked',
+  'client_union_reversal_blocked',
+  'client_union_changed_intent',
+] as const;
+
+export type ClientUnionConflictCode =
+  (typeof CLIENT_UNION_CONFLICT_CODES)[number];
+
 export type ApiResult<T> =
   | { status: 'ok'; value: T }
   | {
       status: 'conflict';
       reason: 'possibleDuplicateReviewRequired';
       duplicateReviewReference: string;
+    }
+  | {
+      status: 'conflict';
+      reason: 'clientUnionConflict';
+      code: ClientUnionConflictCode;
     }
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
@@ -66,6 +84,15 @@ export async function createAuthenticatedApiClient(
               duplicateReviewReference: body.duplicate_review_reference,
             };
           }
+          const unionConflictCode = clientUnionConflictCode(body);
+          if (unionConflictCode) {
+            return {
+              status: 'conflict',
+              reason: 'clientUnionConflict',
+              code: unionConflictCode,
+            };
+          }
+          // An unrecognized conflict stays generic rather than being guessed.
           return { status: 'conflict' };
         }
         if (response.status === 400) {
@@ -103,6 +130,14 @@ function requestHeaders(
       ? { 'x-company-context-id': companyContextId }
       : undefined),
   };
+}
+
+function clientUnionConflictCode(
+  body: unknown,
+): ClientUnionConflictCode | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const code: unknown = (body as { code?: unknown }).code;
+  return CLIENT_UNION_CONFLICT_CODES.find((candidate) => candidate === code);
 }
 
 async function optionalJson(response: Response): Promise<unknown> {

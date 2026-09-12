@@ -40,6 +40,7 @@ import {
   throwDuplicateReviewConflict,
 } from './client-duplicate-review.service.js';
 import type { ClientMutationOutcome } from './client-duplicate-review.types.js';
+import { notSupersededByOpenUnion } from './client-union-history.js';
 import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
@@ -169,6 +170,7 @@ export class ClientService {
           eq(clientCompanyRelationships.companyId, companyId),
           eq(clientCompanyRelationships.status, 'active'),
           eq(clientAccounts.status, 'active'),
+          notSupersededByOpenUnion(),
         ),
       )
       .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id));
@@ -204,6 +206,7 @@ export class ClientService {
         and(
           eq(clientAccounts.workspaceId, actor.workspaceId),
           eq(clientAccounts.status, 'active'),
+          notSupersededByOpenUnion(),
           sql`${clientAccounts.displayName} ILIKE ${pattern} ESCAPE ${'\\'}`,
           actor.workspacePermissions.includes('client.manage')
             ? undefined

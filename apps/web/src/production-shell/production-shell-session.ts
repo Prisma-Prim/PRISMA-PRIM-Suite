@@ -4,7 +4,7 @@ import { createCompanyContextPreferenceStore } from './company-context-preferenc
 import {
   captureCompanyContextOrigin,
   transitionCompanyContext,
-  type ActivityLogEvent,
+  type ActivityLogPageResponse,
   type CompanyContextOrigin,
   type LoadedCompanyContext,
   type ProductionShellContext,
@@ -28,7 +28,7 @@ export interface ProductionShellTransport {
   }): Promise<ApiResult<VisibleCompany[]>>;
   loadActivityLog(
     request: ActivityLogRequest,
-  ): Promise<ApiResult<{ events: ActivityLogEvent[] }>>;
+  ): Promise<ApiResult<ActivityLogPageResponse>>;
 }
 
 export interface ProductionShellSessionSnapshot {
@@ -242,7 +242,11 @@ export function createProductionShellSession({
       origin,
       activityLog:
         result.status === 'ok'
-          ? { status: 'ready', events: result.value.events }
+          ? {
+              status: 'ready',
+              events: result.value.events,
+              clientUnionOperations: result.value.clientUnionOperations ?? [],
+            }
           : { status: 'error' },
     });
   }

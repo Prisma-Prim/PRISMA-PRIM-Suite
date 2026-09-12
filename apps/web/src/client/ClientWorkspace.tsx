@@ -14,6 +14,7 @@ import {
 } from '../api/latest-authenticated-request';
 import { ClientDossierPanel } from './ClientDossierPanel';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
+import { ClientUnionPanel } from './ClientUnionPanel';
 import {
   optionalProperty,
   resolveRetryCommand,
@@ -507,6 +508,18 @@ export function ClientWorkspace({
           onClientsChanged={() => loadClients(activeCompany.id)}
         />
       )}
+      {canResolveDuplicateClients && (
+        <ClientUnionPanel
+          companyContextId={activeCompany.id}
+          identity={identity}
+          clients={listState.status === 'ready' ? listState.clients : []}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          onActorRevalidated={onActorRevalidated}
+          onActivityRecorded={onActivityRecorded}
+          onClientsChanged={() => loadClients(activeCompany.id)}
+        />
+      )}
       <form onSubmit={(event) => void searchClients(event)} noValidate>
         <label htmlFor="client-search">{copy.searchLabel}</label>
         <div>
@@ -606,6 +619,9 @@ export function ClientWorkspace({
           onClientsChanged={() => loadClients(activeCompany.id)}
           onDuplicateReviewRequired={() =>
             setDuplicateReviewRefreshKey((current) => current + 1)
+          }
+          onOpenClient={(clientAccountId) =>
+            setSelectedClientId(clientAccountId)
           }
         />
       )}

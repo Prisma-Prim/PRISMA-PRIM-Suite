@@ -573,6 +573,8 @@ export const clientAccountCorrectionCommands = pgTable(
       businessActivity: string | null;
       version: number;
       involvedCompanyDisplayNames: string[];
+      // Absent in results stored before governed unions existed.
+      unitedWithClientAccountId?: string | null;
     }>(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()

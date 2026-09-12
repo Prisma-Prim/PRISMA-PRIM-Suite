@@ -40,12 +40,18 @@ paths:
                 additionalProperties: false
                 required:
                   - events
+                  - clientUnionOperations
                 properties:
                   events:
                     type: array
                     maxItems: 50
                     items:
                       $ref: '#/components/schemas/ActivityLogEvent'
+                  clientUnionOperations:
+                    description: Redacted governed-union projections of the selected Company. They are separate from `events` because their Company-local position is generated independently from the internal action time.
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RedactedClientUnionOperationProjection'
         '401':
           description: No verified External Principal is available.
         '403':
@@ -519,6 +525,162 @@ paths:
           description: The selected Company context is invalid.
         '404':
           description: The reference is absent, stale, unavailable or not covered by complete current authority.
+  /api/client-union-comparisons:
+    post:
+      operationId: compareExistingClientDossiersForUnion
+      summary: Open one opaque comparison of exactly two existing same-identifier dossiers
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - clientAccountIds
+              properties:
+                clientAccountIds:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  uniqueItems: true
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: One comparison of both persisted dossiers, or the bounded remediation-only outcome for a complete group of three or more.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionComparison'
+        '400':
+          description: The compared Client identifiers are malformed or not exactly two distinct values.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: No valid active Company context is selected.
+        '404':
+          description: The inputs are not the complete exact-identifier group of exactly two active, non-superseded dossiers, have no active affected Company, or are not covered by complete current resolver authority.
+  /api/client-unions:
+    post:
+      operationId: confirmGovernedClientUnion
+      summary: Confirm one non-destructive governed union of the compared dossiers
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUnionCommand'
+      responses:
+        '201':
+          description: The restricted operation record, returned only to a resolver holding complete authority in every affected Company. A replay of the same key returns the original record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionOperationDetail'
+        '400':
+          description: The command, written reason or Idempotency-Key is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: No valid active Company context is selected.
+        '404':
+          description: The comparison, the dossiers or the complete resolver authority is unavailable.
+        '409':
+          description: The comparison is stale, the reviewed differences are unconfirmed, the Contact result exceeds the delivered limit, an archived canonical relationship collides, or the key was reused for a different intent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionConflict'
+  /api/client-unions/{unionOperationId}:
+    get:
+      operationId: readGovernedClientUnionOperation
+      summary: Read one restricted union operation record
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: unionOperationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The restricted operation record.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionOperationDetail'
+        '400':
+          description: The operation identifier is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: No valid active Company context is selected.
+        '404':
+          description: The operation is absent or not covered by complete current resolver authority in every affected Company.
+  /api/client-unions/{unionOperationId}/reversal:
+    post:
+      operationId: reverseGovernedClientUnion
+      summary: Reverse one governed union while its version guards still hold
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: unionOperationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        '201':
+          description: The reversed operation record. A replay of the same key returns it without a second projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionOperationDetail'
+        '400':
+          description: The written reason or Idempotency-Key is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: No valid active Company context is selected.
+        '404':
+          description: The operation is absent or the complete captured authority is unavailable.
+        '409':
+          description: The operation is already reversed, a captured Company became inactive, the canonical dossier, its Contacts or a captured relationship changed since the union, or the key was reused for a different intent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionConflict'
   /api/clients/{clientAccountId}/active-company-relationship:
     put:
       operationId: attachClientToActiveCompany
@@ -1185,6 +1347,7 @@ components:
         - businessActivity
         - version
         - involvedCompanyDisplayNames
+        - unitedWithClientAccountId
       properties:
         id:
           type: string
@@ -1229,6 +1392,327 @@ components:
           type: array
           items:
             type: string
+        unitedWithClientAccountId:
+          description: The canonical Client an unreversed governed union superseded this dossier into, or null.
+          type:
+            - string
+            - 'null'
+          format: uuid
+    ClientUnionComparison:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+            - comparison_reference
+            - normalizedIdentifier
+            - clients
+            - affectedCompanies
+            - differingFields
+          properties:
+            outcome:
+              type: string
+              const: comparison
+            comparison_reference:
+              description: An opaque server-owned reference with no embedded Client or Company data.
+              type: string
+              format: uuid
+            normalizedIdentifier:
+              type: string
+              minLength: 1
+            clients:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/ClientUnionComparedDossier'
+            affectedCompanies:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                  - id
+                  - displayName
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  displayName:
+                    type: string
+            differingFields:
+              description: Shared scalar fields the resolver must review before confirming.
+              type: array
+              items:
+                $ref: '#/components/schemas/ClientUnionSelectableField'
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+          properties:
+            outcome:
+              type: string
+              const: multiple_duplicate_candidates_require_data_remediation
+    ClientUnionComparedDossier:
+      allOf:
+        - $ref: '#/components/schemas/ClientDossierView'
+        - type: object
+          required:
+            - contactSources
+          properties:
+            contactSources:
+              type: array
+              items:
+                $ref: '#/components/schemas/ClientUnionContactSource'
+    ClientUnionSelectableField:
+      type: string
+      enum:
+        - displayName
+        - address
+        - telephone
+        - generalEmail
+        - businessActivity
+    ClientUnionContactSource:
+      type: object
+      additionalProperties: false
+      required:
+        - clientAccountId
+        - index
+      properties:
+        clientAccountId:
+          type: string
+          format: uuid
+        index:
+          type: integer
+          minimum: 0
+    ClientUnionCommand:
+      type: object
+      additionalProperties: false
+      required:
+        - comparisonReference
+        - canonicalClientAccountId
+        - reason
+        - confirmedCompanyIds
+      properties:
+        comparisonReference:
+          type: string
+          format: uuid
+        canonicalClientAccountId:
+          type: string
+          format: uuid
+        fieldSelections:
+          description: The source dossier retained for each reviewed shared scalar field. Every differing field must be present.
+          type: object
+          additionalProperties:
+            type: string
+            format: uuid
+        contactConsolidations:
+          description: Explicit Contact consolidations. Every absorbed source entry stays readable in the union snapshots.
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - retain
+              - absorb
+            properties:
+              retain:
+                $ref: '#/components/schemas/ClientUnionContactSource'
+              absorb:
+                type: array
+                minItems: 1
+                items:
+                  $ref: '#/components/schemas/ClientUnionContactSource'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        confirmedCompanyIds:
+          description: The complete affected-Company set, confirmed explicitly by the resolver.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    ClientUnionOperationDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - unionOperationId
+        - status
+        - canonicalClientAccountId
+        - supersededClientAccountId
+        - normalizedIdentifier
+        - affectedCompanyIds
+        - unionReason
+        - reversalReason
+        - confirmedAt
+        - confirmedByInternalUserId
+        - reversedAt
+        - reversedByInternalUserId
+        - snapshots
+      properties:
+        unionOperationId:
+          description: The internal operation identifier. It never appears in a redacted Company projection.
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - confirmed
+            - reversed
+        canonicalClientAccountId:
+          type: string
+          format: uuid
+        supersededClientAccountId:
+          type: string
+          format: uuid
+        normalizedIdentifier:
+          type: string
+        affectedCompanyIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+        unionReason:
+          type: string
+        reversalReason:
+          type:
+            - string
+            - 'null'
+        confirmedAt:
+          type: string
+          format: date-time
+        confirmedByInternalUserId:
+          type: string
+          format: uuid
+        reversedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        reversedByInternalUserId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        snapshots:
+          description: The immutable pre-union dossier of each participant.
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - clientAccountId
+              - role
+              - version
+              - displayName
+              - taxId
+              - address
+              - telephone
+              - generalEmail
+              - contacts
+              - businessActivity
+            properties:
+              clientAccountId:
+                type: string
+                format: uuid
+              role:
+                type: string
+                enum:
+                  - canonical
+                  - superseded
+              version:
+                type: integer
+                minimum: 1
+              displayName:
+                type: string
+              taxId:
+                type:
+                  - string
+                  - 'null'
+              address:
+                type:
+                  - string
+                  - 'null'
+              telephone:
+                type:
+                  - string
+                  - 'null'
+              generalEmail:
+                type:
+                  - string
+                  - 'null'
+              contacts:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientContact'
+              businessActivity:
+                type:
+                  - string
+                  - 'null'
+    ClientUnionConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - statusCode
+        - error
+        - code
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        error:
+          type: string
+          const: Conflict
+        code:
+          type: string
+          enum:
+            - client_union_comparison_stale
+            - client_union_differences_require_review
+            - client_union_contact_capacity_exceeded
+            - client_union_blocked
+            - client_union_reversal_blocked
+            - client_union_changed_intent
+    RedactedClientUnionOperationProjection:
+      description: What an Activity Log reader sees in one server-validated Company scope. It carries no actor identity, no action time and no cross-scope ordering key.
+      type: object
+      additionalProperties: false
+      required:
+        - targetType
+        - action
+        - projectionReference
+        - companyId
+        - actor
+        - companyLocalPosition
+      properties:
+        targetType:
+          type: string
+          const: client_union_operation
+        action:
+          type: string
+          enum:
+            - client.union_confirmed
+            - client.union_reversed
+        projectionReference:
+          description: Unpredictable and never reused in another Company scope.
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          const: authorized-resolver
+        companyLocalPosition:
+          description: Generated per Company scope, not derived from the internal action time, and not comparable across Company scopes.
+          type: integer
+          minimum: 1
     PossibleDuplicateReviewConflict:
       type: object
       additionalProperties: false

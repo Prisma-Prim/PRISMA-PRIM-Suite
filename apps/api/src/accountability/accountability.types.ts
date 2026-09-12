@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access/access.types.js';
+import type { RedactedClientUnionOperationProjection } from '../client/client-union.types.js';
 import type {
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
@@ -184,4 +185,11 @@ export interface ActivityLogEvent {
 
 export interface ActivityLogPage {
   events: ActivityLogEvent[];
+  /**
+   * Company-scoped governed union projections. They are kept out of `events`
+   * because their Company-local position is generated independently from the
+   * internal action time and is therefore not comparable with event ordering
+   * or across Company scopes.
+   */
+  clientUnionOperations: RedactedClientUnionOperationProjection[];
 }

@@ -32,6 +32,7 @@ interface ClientDossierView {
   businessActivity: string | null;
   version: number;
   involvedCompanyDisplayNames: string[];
+  unitedWithClientAccountId: string | null;
 }
 
 interface DossierDraft {
@@ -71,6 +72,7 @@ export function ClientDossierPanel({
   onActivityRecorded,
   onClientsChanged,
   onDuplicateReviewRequired = () => undefined,
+  onOpenClient,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -82,6 +84,7 @@ export function ClientDossierPanel({
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
   onDuplicateReviewRequired?: () => void;
+  onOpenClient?: (clientAccountId: string) => void;
 }) {
   const [dossierState, setDossierState] = useState<DossierState>({
     status: 'idle',
@@ -312,6 +315,10 @@ export function ClientDossierPanel({
           value={dossier.involvedCompanyDisplayNames.join(', ')}
         />
       </dl>
+      <UnitedWithHistory
+        canonicalClientAccountId={dossier.unitedWithClientAccountId}
+        onOpenClient={onOpenClient}
+      />
       <section aria-labelledby="client-contacts-title">
         <h4 id="client-contacts-title">{copy.contactsLabel}</h4>
         {dossier.contacts.length === 0 ? (
@@ -454,6 +461,30 @@ function emptyDraft(): DossierDraft {
     contacts: [],
     businessActivity: '',
   };
+}
+
+/** The authorized historical route from a superseded dossier to its canonical Client. */
+function UnitedWithHistory({
+  canonicalClientAccountId,
+  onOpenClient,
+}: {
+  canonicalClientAccountId: string | null;
+  onOpenClient?: (clientAccountId: string) => void;
+}) {
+  if (canonicalClientAccountId === null) return null;
+  return (
+    <p>
+      {copy.unitedWithLabel}
+      {onOpenClient && (
+        <button
+          type="button"
+          onClick={() => onOpenClient(canonicalClientAccountId)}
+        >
+          {copy.openCanonicalDossier}
+        </button>
+      )}
+    </p>
+  );
 }
 
 function draftFrom(dossier: ClientDossierView): DossierDraft {

@@ -19,6 +19,11 @@ export interface ClientDossierView extends ClientAccountView {
   businessActivity: string | null;
   version: number;
   involvedCompanyDisplayNames: string[];
+  /**
+   * Set when an unreversed governed union superseded this dossier. It is the
+   * authorized historical route to the readable canonical Client.
+   */
+  unitedWithClientAccountId: string | null;
 }
 
 export interface ClientDossierFieldsInput {

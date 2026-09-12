@@ -20,6 +20,10 @@ import {
 } from '../database/schema/index.js';
 import type { NormalizedDossierFields } from './client-dossier-validation.js';
 import {
+  notSupersededByOpenUnion,
+  reservedIdentifierTargets,
+} from './client-union-history.js';
+import {
   POSSIBLE_DUPLICATE_REVIEW_REQUIRED,
   type ClientDuplicateReviewDetail,
   type ClientDuplicateReviewListItem,
@@ -282,6 +286,8 @@ export class ClientDuplicateReviewService {
           )
           .map((relationship) => relationship.companyDisplayName)
           .toSorted(),
+        // A candidate resolved here is never superseded by an open union.
+        unitedWithClientAccountId: null,
       },
     };
   }
@@ -498,17 +504,18 @@ export class ClientDuplicateReviewService {
       participantAccounts.map((account) => [account.id, account]),
     );
 
+    const reviewedIdentifiers = uniqueStrings(
+      reviews.map((review) => review.normalizedIdentifier),
+    );
     const currentGroupAccounts = await this.databaseContext.connection
       .select({ id: clientAccounts.id, taxId: clientAccounts.taxId })
       .from(clientAccounts)
       .where(
         and(
           eq(clientAccounts.workspaceId, actor.workspaceId),
-          inArray(
-            clientAccounts.taxId,
-            uniqueStrings(reviews.map((review) => review.normalizedIdentifier)),
-          ),
+          inArray(clientAccounts.taxId, reviewedIdentifiers),
           eq(clientAccounts.status, 'active'),
+          notSupersededByOpenUnion(),
         ),
       );
     const currentGroupIdsByIdentifier = groupByDefined(
@@ -516,6 +523,23 @@ export class ClientDuplicateReviewService {
       (account) => account.taxId,
       (account) => account.id,
     );
+    // A normalized identifier retained by an unreversed union stays reserved to
+    // that union's canonical Client even after its current identifier changes.
+    for (const identifier of reviewedIdentifiers) {
+      const reservedTargetIds = await reservedIdentifierTargets(
+        this.databaseContext.connection,
+        actor.workspaceId,
+        identifier,
+      );
+      if (reservedTargetIds.length === 0) continue;
+      currentGroupIdsByIdentifier.set(
+        identifier,
+        uniqueStrings([
+          ...(currentGroupIdsByIdentifier.get(identifier) ?? []),
+          ...reservedTargetIds,
+        ]),
+      );
+    }
 
     const relationships =
       participantIds.length === 0
@@ -623,8 +647,16 @@ export class ClientDuplicateReviewService {
     return review?.reference;
   }
 
-  private findCandidates(workspaceId: string, normalizedIdentifier: string) {
-    return this.databaseContext.connection
+  /**
+   * The complete candidate group for one normalized identifier: every active,
+   * non-superseded Client carrying it now, plus the live canonical Client an
+   * unreversed union still reserves it to.
+   */
+  private async findCandidates(
+    workspaceId: string,
+    normalizedIdentifier: string,
+  ): Promise<DuplicateCandidateVersion[]> {
+    const current = await this.databaseContext.connection
       .select({ id: clientAccounts.id, version: clientAccounts.version })
       .from(clientAccounts)
       .where(
@@ -632,9 +664,33 @@ export class ClientDuplicateReviewService {
           eq(clientAccounts.workspaceId, workspaceId),
           eq(clientAccounts.status, 'active'),
           eq(clientAccounts.taxId, normalizedIdentifier),
+          notSupersededByOpenUnion(),
         ),
       )
       .orderBy(asc(clientAccounts.id));
+    const reservedTargetIds = await reservedIdentifierTargets(
+      this.databaseContext.connection,
+      workspaceId,
+      normalizedIdentifier,
+    );
+    const missingTargetIds = reservedTargetIds.filter(
+      (targetId) => !current.some((candidate) => candidate.id === targetId),
+    );
+    if (missingTargetIds.length === 0) return current;
+    const reserved = await this.databaseContext.connection
+      .select({ id: clientAccounts.id, version: clientAccounts.version })
+      .from(clientAccounts)
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, workspaceId),
+          eq(clientAccounts.status, 'active'),
+          inArray(clientAccounts.id, missingTargetIds),
+          notSupersededByOpenUnion(),
+        ),
+      );
+    return [...current, ...reserved].toSorted((left, right) =>
+      left.id.localeCompare(right.id),
+    );
   }
 
   private async lockIdentifier(

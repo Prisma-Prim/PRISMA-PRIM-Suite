@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access/access.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { AccountabilityService } from './accountability.service.js';
+import { ClientUnionAccountabilityService } from './client-union-accountability.service.js';
 import { CLIENT_CORRECTED_ACTION } from './accountability.types.js';
 
 describe('AccountabilityService', () => {
@@ -10,8 +11,12 @@ describe('AccountabilityService', () => {
     const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
     const values = vi.fn().mockReturnValue({ onConflictDoNothing });
     const database = { insert: vi.fn().mockReturnValue({ values }) };
+    const databaseContext = new DatabaseContext(
+      database as unknown as NodePgDatabase,
+    );
     const service = new AccountabilityService(
-      new DatabaseContext(database as unknown as NodePgDatabase),
+      databaseContext,
+      new ClientUnionAccountabilityService(databaseContext),
     );
 
     await service.record({

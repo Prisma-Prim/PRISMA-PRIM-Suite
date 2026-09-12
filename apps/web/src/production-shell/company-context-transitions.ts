@@ -35,6 +35,25 @@ export type CompanyContextState =
       companies: [VisibleCompany, VisibleCompany, ...VisibleCompany[]];
     });
 
+/**
+ * What an Activity Log reader sees for one governed Client union in the
+ * selected Company. It carries no actor identity, no action time and no
+ * cross-scope ordering key.
+ */
+export interface RedactedClientUnionOperationProjection {
+  targetType: 'client_union_operation';
+  action: 'client.union_confirmed' | 'client.union_reversed';
+  projectionReference: string;
+  companyId: string;
+  actor: 'authorized-resolver';
+  companyLocalPosition: number;
+}
+
+export interface ActivityLogPageResponse {
+  events: ActivityLogEvent[];
+  clientUnionOperations?: RedactedClientUnionOperationProjection[];
+}
+
 export interface ActivityLogEvent {
   id: string;
   action:
@@ -98,7 +117,11 @@ export interface ActivityLogEvent {
 
 export type ActivityLogState =
   | { status: 'loading' }
-  | { status: 'ready'; events: ActivityLogEvent[] }
+  | {
+      status: 'ready';
+      events: ActivityLogEvent[];
+      clientUnionOperations: RedactedClientUnionOperationProjection[];
+    }
   | { status: 'error' };
 
 export type ProductionShellContext =

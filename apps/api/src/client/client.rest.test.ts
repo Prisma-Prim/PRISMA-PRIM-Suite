@@ -947,6 +947,7 @@ describeWithPostgres('Client REST API', () => {
       businessActivity: 'Consulting',
       version: 1,
       involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+      unitedWithClientAccountId: null,
     });
 
     const forbiddenCompanyMutation = await fetch(`${origin}/api/companies`, {
@@ -1058,6 +1059,7 @@ describeWithPostgres('Client REST API', () => {
     expect(initial).toMatchObject({
       version: 1,
       involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+      unitedWithClientAccountId: null,
     });
 
     const oversizedVersion = await fetch(
@@ -1118,6 +1120,7 @@ describeWithPostgres('Client REST API', () => {
       telephone: '+373 69 111 222',
       businessActivity: 'Consulting and certification',
       involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
+      unitedWithClientAccountId: null,
     });
 
     const replay = await fetch(
@@ -1758,6 +1761,7 @@ describeWithPostgres('Client REST API', () => {
         version: 1,
         relatedToActiveCompany: false,
         involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+        unitedWithClientAccountId: null,
       },
     });
 

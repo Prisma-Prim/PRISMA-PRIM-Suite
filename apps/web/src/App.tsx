@@ -165,6 +165,25 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
           ))}
         </ol>
       )}
+      {state.status === 'ready' && state.clientUnionOperations.length > 0 && (
+        <section aria-labelledby="client-union-projection-title">
+          <h3 id="client-union-projection-title">
+            {clientWorkspaceCopy.unionProjectionTitle}
+          </h3>
+          <p>{clientWorkspaceCopy.unionProjectionDescription}</p>
+          <ol className="client-union-projection-list">
+            {state.clientUnionOperations.map((projection) => (
+              <li key={projection.projectionReference}>
+                <strong>
+                  {clientWorkspaceCopy.unionProjectionActor}{' '}
+                  {clientWorkspaceCopy.activityUnionLabels[projection.action]}
+                </strong>
+                <span>{projection.projectionReference}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </section>
   );
 }

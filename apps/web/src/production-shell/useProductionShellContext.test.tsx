@@ -127,6 +127,7 @@ describe('useProductionShellContext request coordination', () => {
     expect(result.current.shellContext.activityLog).toEqual({
       status: 'ready',
       events: [],
+      clientUnionOperations: [],
     });
   });
 

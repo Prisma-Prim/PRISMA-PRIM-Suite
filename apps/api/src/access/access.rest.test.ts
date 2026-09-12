@@ -374,6 +374,7 @@ describeWithPostgres('Access REST API', () => {
           metadata: { identityProvider: 'deterministic-test' },
         },
       ],
+      clientUnionOperations: [],
     });
   });
 

@@ -104,18 +104,20 @@ describeWithPostgres('previous schema migration preflight', () => {
         });
         await migrationPool.query(`
           WITH seeded_workspace AS (
-            INSERT INTO workspaces (id, singleton_key, name)
-            VALUES ('${PREVIOUS_WORKSPACE_ID}', 'previous-schema-workspace',
-              'Previous Schema Workspace')
+            INSERT INTO workspaces (id, name)
+            VALUES ('${PREVIOUS_WORKSPACE_ID}', 'Previous Schema Workspace')
+            RETURNING id
+          ), seeded_internal_user AS (
+            INSERT INTO internal_users (
+              external_provider, external_subject, display_name, email
+            )
+            VALUES ('deterministic-test', 'previous-schema-owner',
+              'Previous Owner', 'previous-owner@example.test')
             RETURNING id
           )
-          INSERT INTO internal_users (
-            workspace_id, external_provider, external_subject,
-            display_name, email
-          )
-          SELECT id, 'deterministic-test', 'previous-schema-owner',
-            'Previous Owner', 'previous-owner@example.test'
-          FROM seeded_workspace
+          INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+          SELECT seeded_workspace.id, seeded_internal_user.id
+          FROM seeded_workspace CROSS JOIN seeded_internal_user
         `);
         await migrationPool.query(`
           WITH seeded_membership AS (
@@ -123,11 +125,8 @@ describeWithPostgres('previous schema migration preflight', () => {
               membership.internal_user_id
             FROM workspace_memberships AS membership
             INNER JOIN internal_users AS internal_user
-              ON internal_user.workspace_id = membership.workspace_id
-              AND internal_user.id = membership.internal_user_id
-            INNER JOIN workspaces AS workspace
-              ON workspace.id = membership.workspace_id
-            WHERE workspace.singleton_key = 'previous-schema-workspace'
+              ON internal_user.id = membership.internal_user_id
+            WHERE membership.workspace_id = '${PREVIOUS_WORKSPACE_ID}'
               AND internal_user.external_provider = 'deterministic-test'
               AND internal_user.external_subject = 'previous-schema-owner'
           ), seeded_company AS (
@@ -170,8 +169,7 @@ describeWithPostgres('previous schema migration preflight', () => {
               membership.internal_user_id
             FROM workspace_memberships AS membership
             INNER JOIN internal_users AS internal_user
-              ON internal_user.workspace_id = membership.workspace_id
-              AND internal_user.id = membership.internal_user_id
+              ON internal_user.id = membership.internal_user_id
             WHERE internal_user.external_provider = 'deterministic-test'
               AND internal_user.external_subject = 'previous-schema-owner'
           ), seeded_revoked_company AS (
@@ -619,6 +617,7 @@ describeWithPostgres('previous schema migration preflight', () => {
           version: 1,
           relatedToActiveCompany: true,
           involvedCompanyDisplayNames: ['Previous Provider'],
+          unitedWithClientAccountId: null,
         });
 
         const response = await fetch(`${applicationUrl}/api/health`);

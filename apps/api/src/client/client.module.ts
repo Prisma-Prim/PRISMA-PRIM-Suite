@@ -5,6 +5,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import { ClientDuplicateReviewService } from './client-duplicate-review.service.js';
 import { ClientDossierService } from './client-dossier.service.js';
 import { ClientService } from './client.service.js';
+import { ClientUnionService } from './client-union.service.js';
 
 @Module({
   imports: [AccessModule, AccountabilityModule, DatabaseModule],
@@ -12,7 +13,8 @@ import { ClientService } from './client.service.js';
     ClientDossierService,
     ClientDuplicateReviewService,
     ClientService,
+    ClientUnionService,
   ],
-  exports: [ClientDuplicateReviewService, ClientService],
+  exports: [ClientDuplicateReviewService, ClientService, ClientUnionService],
 })
 export class ClientModule {}

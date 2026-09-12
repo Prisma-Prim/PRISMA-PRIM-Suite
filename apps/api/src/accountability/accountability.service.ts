@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { and, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
+import { ClientUnionAccountabilityService } from './client-union-accountability.service.js';
 import {
   activityLogEvents,
   clientAccounts,
@@ -20,7 +21,10 @@ const INITIAL_PAGE_SIZE = 50;
 
 @Injectable()
 export class AccountabilityService {
-  constructor(private readonly databaseContext: DatabaseContext) {}
+  constructor(
+    private readonly databaseContext: DatabaseContext,
+    private readonly clientUnions: ClientUnionAccountabilityService,
+  ) {}
 
   async record(event: CanonicalActivityEvent): Promise<void> {
     if (
@@ -256,7 +260,18 @@ export class AccountabilityService {
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
       .limit(INITIAL_PAGE_SIZE);
 
+    // The redacted governed-union projections of the selected Company. They
+    // carry no actor, no action time and no second affected Company.
+    const clientUnionOperations =
+      canReadClientsForCompany && actor.activeCompany
+        ? await this.clientUnions.listRedactedProjectionsForCompany(
+            actor.workspaceId,
+            actor.activeCompany.id,
+          )
+        : [];
+
     return {
+      clientUnionOperations,
       events: rows.map((event) => ({
         id: event.id,
         action: event.action,

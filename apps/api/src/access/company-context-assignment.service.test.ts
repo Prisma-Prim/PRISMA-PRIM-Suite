@@ -1,6 +1,7 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountabilityService } from '../accountability/accountability.service.js';
+import { ClientUnionAccountabilityService } from '../accountability/client-union-accountability.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { CompanyContextAssignmentService } from './company-context-assignment.service.js';
 import type { ActorContext } from './access.types.js';
@@ -22,7 +23,10 @@ describe('CompanyContextAssignmentService', () => {
     } as unknown as NodePgDatabase);
     const service = new CompanyContextAssignmentService(
       databaseContext,
-      new AccountabilityService(databaseContext),
+      new AccountabilityService(
+        databaseContext,
+        new ClientUnionAccountabilityService(databaseContext),
+      ),
     );
 
     await expect(service.readAdministrationState(actor)).resolves.toEqual({

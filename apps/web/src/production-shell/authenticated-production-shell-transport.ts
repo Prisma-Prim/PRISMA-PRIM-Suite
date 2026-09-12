@@ -1,7 +1,7 @@
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import type { ActivityLogEvent } from './company-context-transitions';
+import type { ActivityLogPageResponse } from './company-context-transitions';
 import type { ProductionShellTransport } from './production-shell-session';
 
 export async function createAuthenticatedProductionShellTransport(
@@ -19,7 +19,7 @@ export async function createAuthenticatedProductionShellTransport(
         signal,
       }),
     loadActivityLog: ({ companyId, signal }) =>
-      api.request<{ events: ActivityLogEvent[] }>('/activity-log', {
+      api.request<ActivityLogPageResponse>('/activity-log', {
         companyContextId: companyId,
         signal,
       }),

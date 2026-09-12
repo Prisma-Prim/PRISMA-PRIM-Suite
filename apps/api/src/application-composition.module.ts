@@ -14,6 +14,10 @@ import { CompanyController } from './company/company.controller.js';
 import { CompanyModule } from './company/company.module.js';
 import { ClientController } from './client/client.controller.js';
 import { ClientDuplicateReviewController } from './client/client-duplicate-review.controller.js';
+import {
+  ClientUnionComparisonController,
+  ClientUnionController,
+} from './client/client-union.controller.js';
 import { ClientModule } from './client/client.module.js';
 import { DatabaseModule } from './database/database.module.js';
 
@@ -29,6 +33,8 @@ import { DatabaseModule } from './database/database.module.js';
     AccessController,
     ActivityLogController,
     ClientDuplicateReviewController,
+    ClientUnionComparisonController,
+    ClientUnionController,
     ClientController,
     CompanyController,
     CompanyContextAssignmentController,

@@ -249,7 +249,12 @@ describeWithPostgres('Workspace Membership migration', () => {
 
     expect(currentActor).toMatchObject(beforeActor);
     expect(currentActor.workspaceMembershipId).toEqual(expect.any(String));
-    expect(currentActivity).toEqual(legacyAfterCompanyMigrationsWriteActivity);
+    // The legacy shim models only the event collection; the current page also
+    // carries the Company-scoped governed union projections, empty here.
+    expect(currentActivity.events).toEqual(
+      legacyAfterCompanyMigrationsWriteActivity.events,
+    );
+    expect(currentActivity.clientUnionOperations).toEqual([]);
     expect(currentLegacyCreated).toMatchObject({
       internalUserId: legacyCreated.internalUserId,
       workspaceId: legacyCreated.workspaceId,

@@ -16,6 +16,7 @@ import {
   clientAccountCorrectionCommands,
   clientAccounts,
   clientCompanyRelationships,
+  clientUnionOperations,
   companies,
 } from '../database/schema/index.js';
 import type {
@@ -104,7 +105,10 @@ export class ClientDossierService {
           companyId,
           command.clientAccountId,
         );
-        return { kind: 'completed', value: existingCommand.result };
+        return {
+          kind: 'completed',
+          value: storedDossier(existingCommand.result),
+        };
       }
 
       const [reserved] = await this.databaseContext.connection
@@ -242,7 +246,7 @@ export class ClientDossierService {
       companyId,
       command.clientAccountId,
     );
-    return { kind: 'completed', value: racedCommand.result };
+    return { kind: 'completed', value: storedDossier(racedCommand.result) };
   }
 
   private async requireRelatedClient(
@@ -336,14 +340,41 @@ export class ClientDossierService {
         ),
       )
       .orderBy(asc(companies.displayName), asc(companies.id));
+    const [openUnion] = await this.databaseContext.connection
+      .select({
+        canonicalClientAccountId:
+          clientUnionOperations.canonicalClientAccountId,
+      })
+      .from(clientUnionOperations)
+      .where(
+        and(
+          eq(clientUnionOperations.workspaceId, workspaceId),
+          eq(clientUnionOperations.supersededClientAccountId, client.id),
+          eq(clientUnionOperations.status, 'confirmed'),
+        ),
+      )
+      .limit(1);
     return {
       ...client,
       relatedToActiveCompany: true,
       involvedCompanyDisplayNames: involvedCompanies.map(
         (company) => company.displayName,
       ),
+      unitedWithClientAccountId: openUnion?.canonicalClientAccountId ?? null,
     };
   }
+}
+
+/** A replay result stored before governed unions carries no union history. */
+function storedDossier(
+  result: NonNullable<
+    typeof clientAccountCorrectionCommands.$inferSelect.result
+  >,
+): ClientDossierView {
+  return {
+    ...result,
+    unitedWithClientAccountId: result.unitedWithClientAccountId ?? null,
+  };
 }
 
 function clientSelection() {

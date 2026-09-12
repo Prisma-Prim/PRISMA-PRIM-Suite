@@ -131,7 +131,7 @@ describe('production shell session', () => {
     const recovered = observed.current().shellContext;
     expect(recovered).toMatchObject({
       status: 'active',
-      activityLog: { status: 'ready', events: [] },
+      activityLog: { status: 'ready', events: [], clientUnionOperations: [] },
     });
     if (recovered.status !== 'active')
       throw new Error('Expected an active production-shell session.');
