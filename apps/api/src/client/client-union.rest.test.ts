@@ -35,6 +35,13 @@ describeWithPostgres('Governed Client union REST journey', () => {
   let first: string;
   let second: string;
   let membershipId: string;
+  let secondRegistrationKey: ReturnType<typeof randomUUID>;
+  const secondRegistration = {
+    displayName: 'Exemplu S.R.L.',
+    taxId: 'LEGACY-Y',
+    address: 'Chisinau',
+    contacts: [{ name: 'Dana', email: 'dana@example.test' }],
+  };
 
   beforeAll(async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
@@ -99,19 +106,16 @@ describeWithPostgres('Governed Client union REST journey', () => {
         )
       ).id,
     );
+    secondRegistrationKey = randomUUID();
     second = string(
       (
         await body(
           await request(
             '/clients',
             'POST',
-            {
-              displayName: 'Exemplu S.R.L.',
-              taxId: 'LEGACY-Y',
-              address: 'Chisinau',
-              contacts: [{ name: 'Dana', email: 'dana@example.test' }],
-            },
+            secondRegistration,
             companyB,
+            secondRegistrationKey,
           ),
         )
       ).id,
@@ -195,6 +199,92 @@ describeWithPostgres('Governed Client union REST journey', () => {
       (SELECT count(*) FROM client_identifier_reservations)::integer AS reservations`);
     return result.rows;
   }
+
+  it('discovers superseded sources only in their own Company and follows authorized history', async () => {
+    await unite();
+    expect(await (await request('/client-union-sources')).json()).toEqual([]);
+    const sources = await request(
+      '/client-union-sources',
+      'GET',
+      undefined,
+      companyB,
+    );
+    expect(sources.status).toBe(200);
+    expect(await sources.json()).toEqual([
+      { id: second, displayName: secondRegistration.displayName },
+    ]);
+    expect(
+      (await request(`/clients/${second}`, 'GET', undefined, companyB)).status,
+    ).toBe(404);
+    const history = await body(
+      await request(
+        `/clients/${second}/union-history`,
+        'GET',
+        undefined,
+        companyB,
+      ),
+    );
+    if (!Array.isArray(history.detailReferences))
+      throw new Error('Expected authorized detail references.');
+    const detail = await body(
+      await request(
+        `/client-union-operations/${string(history.detailReferences[0])}`,
+        'GET',
+        undefined,
+        companyB,
+      ),
+    );
+    expect(detail.canonicalClientId).toBe(first);
+    expect(
+      (await request(`/clients/${first}`, 'GET', undefined, companyB)).status,
+    ).toBe(200);
+  });
+
+  it('replays original registration and correction results after superseding the source', async () => {
+    const key = randomUUID();
+    const command = { expectedVersion: 1, telephone: '+373 60 000 002' };
+    const correction = await request(
+      `/clients/${second}`,
+      'PATCH',
+      command,
+      companyB,
+      key,
+    );
+    expect(correction.status).toBe(200);
+    const originalResult = await body(correction);
+    await unite();
+    const after = await state();
+    const registrationReplay = await request(
+      '/clients',
+      'POST',
+      secondRegistration,
+      companyB,
+      secondRegistrationKey,
+    );
+    expect(registrationReplay.status).toBe(201);
+    expect(await registrationReplay.json()).toEqual({
+      id: second,
+      displayName: secondRegistration.displayName,
+      relatedToActiveCompany: true,
+    });
+    const correctionReplay = await request(
+      `/clients/${second}`,
+      'PATCH',
+      command,
+      companyB,
+      key,
+    );
+    expect(correctionReplay.status).toBe(200);
+    expect(await correctionReplay.json()).toEqual(originalResult);
+    expect(
+      (await request(`/clients/${second}`, 'PATCH', command, companyB)).status,
+    ).toBe(404);
+    expect(
+      (await request(`/clients/${second}`, 'PATCH', command, companyA, key))
+        .status,
+    ).toBe(400);
+    expect(await state()).toEqual(after);
+  });
 
   it('unites two dossiers across Companies, preserves sources and reverses once', async () => {
     const originals = await harness.pool.query(

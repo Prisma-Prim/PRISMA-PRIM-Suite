@@ -678,6 +678,37 @@ paths:
           description:
             Conflict with current state, capacity, a preserved relationship,
             or command intent. No partial mutation or success event.
+  /api/client-union-sources:
+    get:
+      operationId: listSupersededClientSources
+      summary: Discover superseded dossiers related to the active Company
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Only source identity and display name are returned. Canonical links and operation detail require complete current resolver authority through union history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, displayName]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    displayName:
+                      type: string
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description: Current Company Client read permission is required.
   /api/clients/{clientId}/union-history:
     get:
       operationId: readClientUnionHistory

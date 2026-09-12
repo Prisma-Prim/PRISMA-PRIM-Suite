@@ -85,6 +85,57 @@ describe('Client union UI public journey', () => {
     vi.unstubAllGlobals();
   });
 
+  it('discovers superseded history without an active selection and opens the canonical dossier', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(response(detail)),
+    );
+    const callbacks = props();
+    render(<ClientUnionPanel {...callbacks} clientId={undefined} />);
+    expect(
+      screen.queryByRole('button', { name: 'Review existing duplicates' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open canonical Client dossier',
+      }),
+    );
+    expect(callbacks.onChanged).toHaveBeenCalledWith(first.id);
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/clients/client-2/union-history',
+      expect.any(Object),
+    );
+  });
+
   it('requires deliberate choices, confirms a union, reads attributable history and reverses it', async () => {
     const fetcher = vi
       .fn()

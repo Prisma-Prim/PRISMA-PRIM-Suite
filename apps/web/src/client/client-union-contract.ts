@@ -118,6 +118,16 @@ export function readUnionHistory(value: unknown) {
       .filter((reference) => references.has(reference)),
   };
 }
+
+export function readUnionSources(value: unknown) {
+  return list(value).map((entry) => {
+    const row = unionObject(entry);
+    return {
+      id: unionString(row.id),
+      displayName: unionString(row.displayName),
+    };
+  });
+}
 export type UnionHistory = ReturnType<typeof readUnionHistory>;
 
 function attribution(value: unknown) {

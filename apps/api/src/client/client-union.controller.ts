@@ -28,6 +28,11 @@ function actor(request: ActorContextRequest) {
 export class ClientUnionController {
   constructor(private readonly unions: ClientUnionService) {}
 
+  @Get('client-union-sources')
+  sources(@Req() request: ActorContextRequest) {
+    return this.unions.supersededSources(actor(request));
+  }
+
   @Post('clients/:clientId/union-reviews')
   begin(
     @Req() request: ActorContextRequest,

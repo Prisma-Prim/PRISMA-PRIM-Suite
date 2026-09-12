@@ -60,6 +60,26 @@ test('compares existing Clients, confirms their union and reverses it', async ({
       return route.fulfill({ json: { events: [] } });
     if (path.endsWith('/client-duplicate-reviews'))
       return route.fulfill({ json: { items: [], next_cursor: null } });
+    if (path.endsWith('/client-union-sources'))
+      return route.fulfill({
+        json:
+          united && !reversed
+            ? [{ id: secondId, displayName: second.displayName }]
+            : [],
+      });
+    if (path.endsWith('/union-history'))
+      return route.fulfill({
+        json: {
+          events: [
+            {
+              action: 'client.union_confirmed',
+              projectionReference,
+              companyId: companyA.id,
+            },
+          ],
+          detailReferences: [projectionReference],
+        },
+      });
     if (path.endsWith('/clients'))
       return route.fulfill({
         json: [
@@ -178,12 +198,42 @@ test('compares existing Clients, confirms their union and reverses it', async ({
     .getByRole('button', { name: 'Confirm union', exact: true })
     .click();
   await expect(union.getByText(/Union confirmed\./)).toBeVisible();
+  // A fresh page has no selected active dossier. The superseded source must
+  // remain discoverable without reconstructing a private API URL.
+  await page.reload();
+  await expect(
+    union.getByRole('button', { name: 'Review existing duplicates' }),
+  ).toHaveCount(0);
+  await union
+    .getByRole('button', { name: 'Superseded Client history' })
+    .click();
+  await union
+    .getByRole('button', { name: second.displayName, exact: true })
+    .click();
   await union
     .getByRole('button', { name: 'View authorized union details' })
     .click();
   await expect(
     union.getByRole('heading', { name: 'Attributable union history' }),
   ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `client-union-history-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+  await union
+    .getByRole('button', { name: 'Open canonical Client dossier' })
+    .click();
+  await expect(
+    union.getByRole('button', { name: 'Review existing duplicates' }),
+  ).toBeVisible();
+  await union
+    .getByRole('button', { name: 'Union history', exact: true })
+    .click();
+  await union
+    .getByRole('button', { name: 'View authorized union details' })
+    .click();
   const reversal = union.getByRole('form', { name: 'Reverse union' });
   await reversal
     .getByLabel('Reason for reversal')

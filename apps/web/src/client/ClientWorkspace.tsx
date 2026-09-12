@@ -612,7 +612,7 @@ export function ClientWorkspace({
           }
         />
       )}
-      {canReadClientDossiers && selectedClientId && (
+      {canReadClientDossiers && (
         <ClientUnionPanel
           key={`${actor.workspaceMembershipId}:${activeCompany.id}:${selectedClientId}`}
           clientId={selectedClientId}

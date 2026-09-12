@@ -11,6 +11,7 @@ import {
   readUnionDetail,
   readUnionHistory,
   readUnionReview,
+  readUnionSources,
   unionFields,
   unionObject,
   unionString,
@@ -26,6 +27,7 @@ type UnionView =
   | { kind: 'idle' }
   | { kind: 'comparison'; comparison: UnionComparison }
   | { kind: 'history'; history: UnionHistory }
+  | { kind: 'sources'; sources: ReturnType<typeof readUnionSources> }
   | { kind: 'detail'; detail: UnionDetail }
   | { kind: 'saved'; reference: string }
   | { kind: 'reversed' }
@@ -49,7 +51,7 @@ export function ClientUnionPanel({
   onActorRevalidated,
   onWorkspaceAccessRejected,
 }: {
-  clientId: string;
+  clientId: string | undefined;
   companyContextId: string;
   identity: BrowserIdentity;
   canResolve: boolean;
@@ -166,6 +168,13 @@ export function ClientUnionPanel({
       receive: (detail) => setView({ kind: 'detail', detail }),
     });
   }
+  function loadHistory(sourceId: string) {
+    return run({
+      path: `/clients/${encodeURIComponent(sourceId)}/union-history`,
+      parse: readUnionHistory,
+      receive: (history) => setView({ kind: 'history', history }),
+    });
+  }
   function close() {
     pending.current?.abort();
     retry.current = undefined;
@@ -177,7 +186,7 @@ export function ClientUnionPanel({
     <section className="client-dossier client-union" aria-label={copy.title}>
       <h3>{copy.title}</h3>
       <div className="client-union-actions">
-        {canResolve && (
+        {canResolve && clientId && (
           <button
             type="button"
             disabled={busy}
@@ -198,18 +207,27 @@ export function ClientUnionPanel({
             {copy.review}
           </button>
         )}
+        {clientId && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void loadHistory(clientId)}
+          >
+            {copy.history}
+          </button>
+        )}
         <button
           type="button"
           disabled={busy}
           onClick={() =>
             void run({
-              path: `/clients/${encodeURIComponent(clientId)}/union-history`,
-              parse: readUnionHistory,
-              receive: (history) => setView({ kind: 'history', history }),
+              path: '/client-union-sources',
+              parse: readUnionSources,
+              receive: (sources) => setView({ kind: 'sources', sources }),
             })
           }
         >
-          {copy.history}
+          {copy.sources}
         </button>
         {(view.kind !== 'idle' || busy) && (
           <button type="button" onClick={close}>
@@ -260,6 +278,25 @@ export function ClientUnionPanel({
         </div>
       )}
       {view.kind === 'reversed' && <p role="status">{copy.reversed}</p>}
+      {view.kind === 'sources' && (
+        <div>
+          <h4>{copy.sources}</h4>
+          {view.sources.length === 0 && <p>{copy.noSources}</p>}
+          <ul>
+            {view.sources.map((source) => (
+              <li key={source.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void loadHistory(source.id)}
+                >
+                  {source.displayName}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {view.kind === 'history' && (
         <div>
           {view.history.events.length === 0 && <p>{copy.noHistory}</p>}
@@ -289,6 +326,10 @@ export function ClientUnionPanel({
         <UnionOperationDetail
           detail={view.detail}
           busy={busy}
+          onOpenCanonical={() => {
+            close();
+            void callbacks.current.onChanged(view.detail.canonicalClientId);
+          }}
           onReverse={(reason) =>
             run({
               path: `/client-union-operations/${encodeURIComponent(view.detail.projectionReference)}/reversal`,
@@ -480,10 +521,12 @@ function Dossiers({ clients }: { clients: UnionComparison['clients'] }) {
 function UnionOperationDetail({
   detail,
   busy,
+  onOpenCanonical,
   onReverse,
 }: {
   detail: UnionDetail;
   busy: boolean;
+  onOpenCanonical: () => void;
   onReverse: (reason: string) => Promise<void>;
 }) {
   const [reason, setReason] = useState('');
@@ -498,6 +541,11 @@ function UnionOperationDetail({
         </time>
       </p>
       <p>{detail.reason}</p>
+      {detail.state === 'united' && (
+        <button type="button" disabled={busy} onClick={onOpenCanonical}>
+          {copy.openCanonical}
+        </button>
+      )}
       <h4>{copy.originals}</h4>
       <Dossiers clients={detail.originals} />
       {detail.reversal && (

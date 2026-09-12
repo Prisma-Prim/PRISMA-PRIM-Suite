@@ -465,6 +465,37 @@ export class ClientUnionService {
     );
   }
 
+  supersededSources(actor: ActorContext) {
+    const companyId = this.activeCompany(actor);
+    // Only dossiers already related to this Company are discoverable here.
+    // Canonical links and operation detail retain their complete-scope guard.
+    return this.databaseContext.connection
+      .select({
+        id: clientAccounts.id,
+        displayName: clientAccounts.displayName,
+      })
+      .from(clientAccounts)
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            clientAccounts.workspaceId,
+          ),
+          eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
+          eq(clientCompanyRelationships.companyId, companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          eq(clientAccounts.status, 'superseded'),
+        ),
+      )
+      .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id));
+  }
+
   history(actor: ActorContext, clientId: string) {
     const companyId = this.activeCompany(actor);
     return this.databaseContext.transaction(
