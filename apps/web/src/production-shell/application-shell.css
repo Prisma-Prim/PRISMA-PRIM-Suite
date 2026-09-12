@@ -429,6 +429,70 @@
   grid-column: 2;
 }
 
+.client-union-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.client-union-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1.25rem;
+  margin: 1rem 0;
+}
+
+.client-union-comparison article {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.client-union form.client-union-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.client-union-form fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  border: 1px solid var(--shell-line);
+}
+
+.client-union-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.client-union-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #9eb0bd;
+  border-radius: 0.35rem;
+  background: white;
+  color: var(--shell-ink);
+  font: inherit;
+}
+
+.client-union-form label.client-union-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.client-union-check input {
+  flex: none;
+  margin-top: 0.3rem;
+}
+
+.client-union-form > button {
+  grid-column: 1;
+}
+
 .client-duplicate-review {
   display: grid;
   gap: 0.75rem;

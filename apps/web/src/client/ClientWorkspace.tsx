@@ -13,6 +13,7 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { ClientDossierPanel } from './ClientDossierPanel';
+import { ClientUnionPanel } from './ClientUnionPanel';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
 import {
   optionalProperty,
@@ -88,6 +89,7 @@ export function ClientWorkspace({
     undefined,
   );
   const [duplicateReviewRefreshKey, setDuplicateReviewRefreshKey] = useState(0);
+  const [unionRevision, setUnionRevision] = useState(0);
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
@@ -595,6 +597,7 @@ export function ClientWorkspace({
       )}
       {canReadClientDossiers && (
         <ClientDossierPanel
+          key={`${selectedClientId ?? ''}:${unionRevision}`}
           clientAccountId={selectedClientId}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
@@ -607,6 +610,26 @@ export function ClientWorkspace({
           onDuplicateReviewRequired={() =>
             setDuplicateReviewRefreshKey((current) => current + 1)
           }
+        />
+      )}
+      {canReadClientDossiers && (
+        <ClientUnionPanel
+          key={`${actor.workspaceMembershipId}:${activeCompany.id}:${selectedClientId}`}
+          clientId={selectedClientId}
+          companyContextId={activeCompany.id}
+          identity={identity}
+          canResolve={canResolveDuplicateClients}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          onActorRevalidated={onActorRevalidated}
+          onChanged={async (canonicalClientId) => {
+            if (canonicalClientId) setSelectedClientId(canonicalClientId);
+            setUnionRevision((revision) => revision + 1);
+            await Promise.all([
+              loadClients(activeCompany.id),
+              onActivityRecorded(),
+            ]);
+          }}
         />
       )}
     </section>

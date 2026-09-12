@@ -19,6 +19,7 @@ import {
   workspaceMemberships,
 } from '../database/schema/index.js';
 import type { NormalizedDossierFields } from './client-dossier-validation.js';
+import { ClientIdentifierIndex } from './client-identifier-index.js';
 import {
   POSSIBLE_DUPLICATE_REVIEW_REQUIRED,
   type ClientDuplicateReviewDetail,
@@ -84,6 +85,7 @@ export class ClientDuplicateReviewService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly companyAuthorization: CompanyContextAuthorization,
+    private readonly identifierIndex: ClientIdentifierIndex,
   ) {}
 
   async proposeRegistration(
@@ -498,19 +500,10 @@ export class ClientDuplicateReviewService {
       participantAccounts.map((account) => [account.id, account]),
     );
 
-    const currentGroupAccounts = await this.databaseContext.connection
-      .select({ id: clientAccounts.id, taxId: clientAccounts.taxId })
-      .from(clientAccounts)
-      .where(
-        and(
-          eq(clientAccounts.workspaceId, actor.workspaceId),
-          inArray(
-            clientAccounts.taxId,
-            uniqueStrings(reviews.map((review) => review.normalizedIdentifier)),
-          ),
-          eq(clientAccounts.status, 'active'),
-        ),
-      );
+    const currentGroupAccounts = await this.identifierIndex.candidates(
+      actor.workspaceId,
+      uniqueStrings(reviews.map((review) => review.normalizedIdentifier)),
+    );
     const currentGroupIdsByIdentifier = groupByDefined(
       currentGroupAccounts,
       (account) => account.taxId,
@@ -624,27 +617,14 @@ export class ClientDuplicateReviewService {
   }
 
   private findCandidates(workspaceId: string, normalizedIdentifier: string) {
-    return this.databaseContext.connection
-      .select({ id: clientAccounts.id, version: clientAccounts.version })
-      .from(clientAccounts)
-      .where(
-        and(
-          eq(clientAccounts.workspaceId, workspaceId),
-          eq(clientAccounts.status, 'active'),
-          eq(clientAccounts.taxId, normalizedIdentifier),
-        ),
-      )
-      .orderBy(asc(clientAccounts.id));
+    return this.identifierIndex.candidates(workspaceId, [normalizedIdentifier]);
   }
 
   private async lockIdentifier(
     workspaceId: string,
     normalizedIdentifier: string,
   ): Promise<void> {
-    const lockKey = JSON.stringify([workspaceId, normalizedIdentifier]);
-    await this.databaseContext.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-    );
+    await this.identifierIndex.lock({ workspaceId, normalizedIdentifier });
   }
 }
 
@@ -695,11 +675,7 @@ function resolveFreshDuplicateReview(options: {
     const candidate = options.participantAccountsById.get(
       snapshot.clientAccountId,
     );
-    if (
-      !candidate ||
-      candidate.taxId !== review.normalizedIdentifier ||
-      candidate.version !== snapshot.capturedVersion
-    ) {
+    if (!candidate || candidate.version !== snapshot.capturedVersion) {
       return undefined;
     }
     candidates.push(candidate);

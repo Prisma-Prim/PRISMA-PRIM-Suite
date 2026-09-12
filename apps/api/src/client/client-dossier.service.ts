@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import {
@@ -103,6 +103,7 @@ export class ClientDossierService {
           actor.workspaceId,
           companyId,
           command.clientAccountId,
+          ['active', 'superseded'],
         );
         return { kind: 'completed', value: existingCommand.result };
       }
@@ -128,7 +129,7 @@ export class ClientDossierService {
         actor.workspaceId,
         companyId,
         command.clientAccountId,
-        true,
+        { lock: true },
       );
       if (!current) throw new NotFoundException();
       if (current.version !== command.expectedVersion) {
@@ -146,7 +147,8 @@ export class ClientDossierService {
 
       if (
         Object.hasOwn(command.changes, 'taxId') &&
-        command.changes.taxId !== current.taxId &&
+        (command.changes.taxId?.trim() ?? null) !==
+          (current.taxId?.trim() ?? null) &&
         command.changes.taxId !== null
       ) {
         const duplicateReviewReference =
@@ -241,6 +243,7 @@ export class ClientDossierService {
       actor.workspaceId,
       companyId,
       command.clientAccountId,
+      ['active', 'superseded'],
     );
     return { kind: 'completed', value: racedCommand.result };
   }
@@ -249,11 +252,13 @@ export class ClientDossierService {
     workspaceId: string,
     companyId: string,
     clientAccountId: string,
+    statuses: (typeof clientAccounts.$inferSelect.status)[] = ['active'],
   ): Promise<ClientRow> {
     const client = await this.findRelatedClient(
       workspaceId,
       companyId,
       clientAccountId,
+      { statuses },
     );
     if (!client) throw new NotFoundException();
     return client;
@@ -284,7 +289,10 @@ export class ClientDossierService {
     workspaceId: string,
     companyId: string,
     clientAccountId: string,
-    lock = false,
+    options: {
+      lock?: boolean;
+      statuses?: (typeof clientAccounts.$inferSelect.status)[];
+    } = {},
   ): Promise<ClientRow | undefined> {
     const query = this.databaseContext.connection
       .select(clientSelection())
@@ -305,10 +313,10 @@ export class ClientDossierService {
         and(
           eq(clientAccounts.workspaceId, workspaceId),
           eq(clientAccounts.id, clientAccountId),
-          eq(clientAccounts.status, 'active'),
+          inArray(clientAccounts.status, options.statuses ?? ['active']),
         ),
       );
-    return lock
+    return options.lock
       ? (await query.for('update', { of: clientAccounts }).limit(1))[0]
       : (await query.limit(1))[0];
   }

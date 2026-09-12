@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
 import type {
   ActorContext,
@@ -381,7 +381,7 @@ export class ClientService {
         and(
           eq(clientAccounts.workspaceId, actor.workspaceId),
           eq(clientAccounts.id, persistedCommand.resultClientAccountId),
-          eq(clientAccounts.status, 'active'),
+          inArray(clientAccounts.status, ['active', 'superseded']),
         ),
       )
       .limit(1);
@@ -416,7 +416,8 @@ export class ClientService {
             eq(clientAccounts.status, 'active'),
           ),
         )
-        .limit(1);
+        .limit(1)
+        .for('update');
       if (!client) throw new NotFoundException();
 
       const [inserted] = await this.databaseContext.connection

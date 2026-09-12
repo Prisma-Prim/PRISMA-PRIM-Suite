@@ -52,10 +52,11 @@ export class CompanyContextAuthorization {
   async duplicateReviewAuthorizedCompanyIds(
     actor: ActorContext,
     companyIds: readonly string[],
+    lock = false,
   ): Promise<ReadonlySet<string>> {
     const requiredCompanyIds = [...new Set(companyIds)];
     if (requiredCompanyIds.length === 0) return new Set();
-    const rows = await this.databaseContext.connection
+    const query = this.databaseContext.connection
       .select({ companyId: companyRoleAssignments.companyId })
       .from(companyRoleAssignments)
       .innerJoin(
@@ -104,6 +105,7 @@ export class CompanyContextAuthorization {
           inArray(companyRoleAssignments.companyId, requiredCompanyIds),
         ),
       );
+    const rows = lock ? await query.for('share') : await query;
     return new Set(rows.map((row) => row.companyId));
   }
 

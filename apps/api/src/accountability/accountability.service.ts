@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -9,11 +9,15 @@ import {
   companies,
   internalUsers,
   workspaceMemberships,
+  clientUnionOperations,
+  clientUnionReversals,
+  clientUnionProjections,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import type {
   ActivityLogPage,
   CanonicalActivityEvent,
+  ClientUnionActivityEvent,
 } from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
@@ -21,6 +25,125 @@ const INITIAL_PAGE_SIZE = 50;
 @Injectable()
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordClientUnion(input: {
+    actor: ActorContext;
+    reviewReference: string;
+    canonicalClientId: string;
+    companyId: string;
+    companyIds: readonly string[];
+    idempotencyKey: string;
+    reason: string;
+    intent: unknown;
+    resultSnapshot: unknown;
+  }) {
+    const [operation] = await this.databaseContext.connection
+      .insert(clientUnionOperations)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        reviewReference: input.reviewReference,
+        canonicalClientId: input.canonicalClientId,
+        companyId: input.companyId,
+        idempotencyKey: input.idempotencyKey,
+        reason: input.reason,
+        intent: input.intent,
+        resultSnapshot: input.resultSnapshot,
+      })
+      .returning();
+    if (!operation) throw new Error('Client union operation was not recorded.');
+    await this.recordUnionProjections(
+      input.actor.workspaceId,
+      operation.id,
+      input.companyIds,
+      'client.union_confirmed',
+    );
+    return operation;
+  }
+
+  async recordClientUnionReversal(input: {
+    actor: ActorContext;
+    operationId: string;
+    companyId: string;
+    companyIds: readonly string[];
+    idempotencyKey: string;
+    reason: string;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(clientUnionReversals).values({
+      workspaceId: input.actor.workspaceId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      operationId: input.operationId,
+      companyId: input.companyId,
+      idempotencyKey: input.idempotencyKey,
+      reason: input.reason,
+    });
+    await this.recordUnionProjections(
+      input.actor.workspaceId,
+      input.operationId,
+      input.companyIds,
+      'client.union_reversed',
+    );
+  }
+
+  async clientUnionEvents(
+    actor: ActorContext,
+    operationId?: string,
+  ): Promise<ClientUnionActivityEvent[]> {
+    if (!actor.activeCompany) return [];
+    const rows = await this.databaseContext.connection
+      .select()
+      .from(clientUnionProjections)
+      .where(
+        and(
+          eq(clientUnionProjections.workspaceId, actor.workspaceId),
+          eq(clientUnionProjections.companyId, actor.activeCompany.id),
+          operationId
+            ? eq(clientUnionProjections.operationId, operationId)
+            : undefined,
+        ),
+      )
+      .orderBy(asc(clientUnionProjections.reference))
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row) => {
+      if (
+        row.action !== 'client.union_confirmed' &&
+        row.action !== 'client.union_reversed'
+      )
+        throw new Error('Unknown Client union event.');
+      return {
+        action: row.action,
+        projectionReference: row.reference,
+        companyId: row.companyId,
+        actor: { kind: 'authorized_resolver' },
+        target: {
+          type: 'client_union_operation',
+          projectionReference: row.reference,
+          companyId: row.companyId,
+        },
+      };
+    });
+  }
+
+  private async recordUnionProjections(
+    workspaceId: string,
+    operationId: string,
+    companyIds: readonly string[],
+    action: ClientUnionActivityEvent['action'],
+  ): Promise<void> {
+    if (
+      companyIds.length === 0 ||
+      new Set(companyIds).size !== companyIds.length
+    )
+      throw new Error('A complete Company projection scope is required.');
+    await this.databaseContext.connection.insert(clientUnionProjections).values(
+      companyIds.map((companyId) => ({
+        workspaceId,
+        operationId,
+        companyId,
+        action,
+      })),
+    );
+  }
 
   async record(event: CanonicalActivityEvent): Promise<void> {
     if (
@@ -257,17 +380,20 @@ export class AccountabilityService {
       .limit(INITIAL_PAGE_SIZE);
 
     return {
-      events: rows.map((event) => ({
-        id: event.id,
-        action: event.action,
-        occurredAt: event.occurredAt.toISOString(),
-        actor: {
-          internalUserId: event.actorInternalUserId,
-          displayName: event.actorDisplayName,
-        },
-        target: canonicalTarget(event),
-        metadata: event.metadata,
-      })),
+      events: [
+        ...rows.map((event) => ({
+          id: event.id,
+          action: event.action,
+          occurredAt: event.occurredAt.toISOString(),
+          actor: {
+            internalUserId: event.actorInternalUserId,
+            displayName: event.actorDisplayName,
+          },
+          target: canonicalTarget(event),
+          metadata: event.metadata,
+        })),
+        ...(await this.clientUnionEvents(actor)),
+      ],
     };
   }
 }

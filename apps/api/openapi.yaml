@@ -32,7 +32,7 @@ paths:
         - $ref: '#/components/parameters/CompanyContextId'
       responses:
         '200':
-          description: A bounded reverse-chronological Activity Log page.
+          description: Up to 50 ordinary events in reverse chronological order, followed by up to 50 Company union projections ordered by independently generated public references.
           content:
             application/json:
               schema:
@@ -43,7 +43,7 @@ paths:
                 properties:
                   events:
                     type: array
-                    maxItems: 50
+                    maxItems: 100
                     items:
                       $ref: '#/components/schemas/ActivityLogEvent'
         '401':
@@ -548,6 +548,285 @@ paths:
           description: The actor lacks Client authority or a valid active Company context.
         '404':
           description: No active Client matches the identifier in the actor's Workspace.
+  /api/clients/{clientId}/union-reviews:
+    post:
+      operationId: beginClientUnionReview
+      summary: Discover and compare the complete group of two existing exact-ID dossiers
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        description:
+          The server discovers the complete persisted exact-ID group. Only
+          an empty body is accepted.
+        content:
+          application/json:
+            schema:
+              type: object
+              maxProperties: 0
+      responses:
+        '201':
+          description:
+            Discover and compare the complete group of two existing exact-ID
+            dossiers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionReview'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
+  /api/client-union-reviews/{reference}:
+    get:
+      operationId: readClientUnionReview
+      summary: Revalidate an opaque existing-dossier comparison
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: reference
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revalidate an opaque existing-dossier comparison.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionComparison'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
+  /api/client-union-reviews/{reference}/confirm:
+    post:
+      operationId: confirmClientUnion
+      summary: Confirm a non-destructive Client union atomically
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: reference
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUnionConfirmation'
+      responses:
+        '201':
+          description: Confirm a non-destructive Client union atomically.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionConfirmed'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
+  /api/client-union-sources:
+    get:
+      operationId: listSupersededClientSources
+      summary: Discover superseded dossiers related to the active Company
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Only source identity and display name are returned. Canonical links and operation detail require complete current resolver authority through union history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, displayName]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    displayName:
+                      type: string
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description: Current Company Client read permission is required.
+  /api/clients/{clientId}/union-history:
+    get:
+      operationId: readClientUnionHistory
+      summary: Read Company-safe history for a current or superseded dossier
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Read Company-safe history for a current or superseded dossier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionHistory'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
+  /api/client-union-operations/{reference}:
+    get:
+      operationId: readClientUnionDetail
+      summary: Read fully authorized union detail through an own-Company projection
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: reference
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Read fully authorized union detail through an own-Company projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionDetail'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
+  /api/client-union-operations/{reference}/reversal:
+    post:
+      operationId: reverseClientUnion
+      summary: Restore original dossiers while all captured version fences hold
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: reference
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUnionReversal'
+      responses:
+        '201':
+          description: Restore original dossiers while all captured version fences hold.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientUnionReversed'
+        '400':
+          description:
+            Malformed input, incomplete confirmation, or unsupported identity
+            evidence.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Workspace or selected Company context is no longer authorized.
+        '404':
+          description:
+            Safe unavailable response for foreign, stale, incomplete, inactive,
+            or unauthorized scope. No hidden metadata.
+        '409':
+          description:
+            Conflict with current state, capacity, a preserved relationship,
+            or command intent. No partial mutation or success event.
 components:
   parameters:
     IdempotencyKey:
@@ -574,6 +853,10 @@ components:
         type: string
   schemas:
     ActivityLogEvent:
+      oneOf:
+        - $ref: '#/components/schemas/OrdinaryActivityLogEvent'
+        - $ref: '#/components/schemas/ClientUnionProjection'
+    OrdinaryActivityLogEvent:
       type: object
       additionalProperties: false
       required:
@@ -1503,3 +1786,443 @@ components:
           enum:
             - v1
             - v2
+    ClientUnionDossier:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - version
+        - displayName
+        - taxId
+        - address
+        - telephone
+        - generalEmail
+        - businessActivity
+        - contacts
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        displayName:
+          type: string
+        taxId:
+          type:
+            - string
+            - 'null'
+        address:
+          type:
+            - string
+            - 'null'
+        telephone:
+          type:
+            - string
+            - 'null'
+        generalEmail:
+          type:
+            - string
+            - 'null'
+        businessActivity:
+          type:
+            - string
+            - 'null'
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientContact'
+          maxItems: 50
+    ClientUnionProjection:
+      type: object
+      additionalProperties: false
+      required:
+        - action
+        - projectionReference
+        - companyId
+        - actor
+        - target
+      properties:
+        action:
+          enum:
+            - client.union_confirmed
+            - client.union_reversed
+        projectionReference:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        actor:
+          type: object
+          additionalProperties: false
+          required:
+            - kind
+          properties:
+            kind:
+              const: authorized_resolver
+        target:
+          type: object
+          additionalProperties: false
+          required:
+            - type
+            - projectionReference
+            - companyId
+          properties:
+            type:
+              const: client_union_operation
+            projectionReference:
+              type: string
+              format: uuid
+            companyId:
+              type: string
+              format: uuid
+      description:
+        An immutable Company projection, ordered by its independently generated
+        public reference. No internal operation ID, actor identity, timestamp, time bucket,
+        reason, foreign Company, or hidden Client data is returned.
+    ClientUnionComparison:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - reviewReference
+        - clients
+        - companies
+        - fields
+        - identityBasis
+      properties:
+        outcome:
+          const: comparison
+        reviewReference:
+          type: string
+          format: uuid
+        clients:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientUnionDossier'
+          minItems: 2
+          maxItems: 2
+        companies:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - id
+              - displayName
+            properties:
+              id:
+                type: string
+                format: uuid
+              displayName:
+                type: string
+          minItems: 1
+        fields:
+          type: array
+          const:
+            - displayName
+            - taxId
+            - address
+            - telephone
+            - generalEmail
+            - businessActivity
+        identityBasis:
+          type: object
+          additionalProperties: false
+          required:
+            - kind
+            - identifier
+          properties:
+            kind:
+              const: exact_tax_identifier
+            identifier:
+              type: string
+              minLength: 1
+    ClientUnionRemediation:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+      properties:
+        outcome:
+          const: multiple_duplicate_candidates_require_data_remediation
+    ClientUnionReview:
+      oneOf:
+        - $ref: '#/components/schemas/ClientUnionComparison'
+        - $ref: '#/components/schemas/ClientUnionRemediation'
+    ClientUnionConfirmation:
+      type: object
+      additionalProperties: false
+      required:
+        - canonicalClientId
+        - fields
+        - companyIds
+        - reviewedDifferences
+        - reason
+      properties:
+        canonicalClientId:
+          type: string
+          format: uuid
+        fields:
+          type: object
+          additionalProperties: false
+          required:
+            - displayName
+            - taxId
+            - address
+            - telephone
+            - generalEmail
+            - businessActivity
+          properties:
+            displayName:
+              type: string
+              format: uuid
+            taxId:
+              type: string
+              format: uuid
+            address:
+              type: string
+              format: uuid
+            telephone:
+              type: string
+              format: uuid
+            generalEmail:
+              type: string
+              format: uuid
+            businessActivity:
+              type: string
+              format: uuid
+        companyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          uniqueItems: true
+        reviewedDifferences:
+          const: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      description:
+        Select each scalar from one of the two reviewed Client IDs and confirm
+        every affected Company. All Contacts are retained as separate entries with source
+        provenance; more than 50 combined Contacts blocks atomically. Document-derived
+        evidence and additional fields are rejected.
+    ClientUnionConfirmed:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - canonicalClientId
+        - projectionReference
+      properties:
+        outcome:
+          const: united
+        canonicalClientId:
+          type: string
+          format: uuid
+        projectionReference:
+          type: string
+          format: uuid
+    ClientUnionReversal:
+      type: object
+      additionalProperties: false
+      required:
+        - companyIds
+        - reason
+      properties:
+        companyIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          uniqueItems: true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ClientUnionReversed:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - clientIds
+      properties:
+        outcome:
+          const: reversed
+        clientIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 2
+          maxItems: 2
+          uniqueItems: true
+    ClientUnionHistory:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - detailReferences
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientUnionProjection'
+          maxItems: 100
+        detailReferences:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+          uniqueItems: true
+      description:
+        Company-local random-reference ordering. A reference appears in detailReferences
+        only after complete current resolver authority passes for the captured scope.
+    ClientUnionDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - operationId
+        - projectionReference
+        - targetType
+        - state
+        - canonicalClientId
+        - originals
+        - companies
+        - identityBasis
+        - reason
+        - occurredAt
+        - actor
+        - contactSources
+        - reversal
+        - canReverse
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        projectionReference:
+          type: string
+          format: uuid
+        targetType:
+          const: client_union_operation
+        state:
+          enum:
+            - united
+            - reversed
+        canonicalClientId:
+          type: string
+          format: uuid
+        originals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientUnionDossier'
+          minItems: 2
+          maxItems: 2
+        companies:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - id
+              - displayName
+            properties:
+              id:
+                type: string
+                format: uuid
+              displayName:
+                type: string
+          minItems: 1
+        identityBasis:
+          type: object
+          additionalProperties: false
+          required:
+            - kind
+            - identifier
+          properties:
+            kind:
+              const: exact_tax_identifier
+            identifier:
+              type: string
+              minLength: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        occurredAt:
+          type: string
+          format: date-time
+        actor:
+          type: object
+          additionalProperties: false
+          required:
+            - internalUserId
+            - displayName
+          properties:
+            internalUserId:
+              type: string
+              format: uuid
+            displayName:
+              type: string
+        contactSources:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - clientId
+              - version
+              - index
+            properties:
+              clientId:
+                type: string
+                format: uuid
+              version:
+                type: integer
+                minimum: 1
+              index:
+                type: integer
+                minimum: 0
+          maxItems: 50
+        reversal:
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required:
+                - reason
+                - occurredAt
+                - actor
+              properties:
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+                occurredAt:
+                  type: string
+                  format: date-time
+                actor:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - internalUserId
+                    - displayName
+                  properties:
+                    internalUserId:
+                      type: string
+                      format: uuid
+                    displayName:
+                      type: string
+        canReverse:
+          type: boolean
+      description:
+        Requires current Client read and captured resolver-enabled v2 authority
+        in every captured Company. Internal ID and exact attribution are disclosed only
+        here. Reversal appends its own reason and preserves the original reason.

@@ -1,2 +1,3 @@
 export * from './core.js';
 export * from './client-duplicate-review.js';
+export * from './client-union.js';

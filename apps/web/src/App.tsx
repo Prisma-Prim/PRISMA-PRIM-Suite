@@ -12,6 +12,7 @@ import { CompanyRegistration } from './company/CompanyRegistration';
 import { ClientWorkspace } from './client/ClientWorkspace';
 import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
+import { clientUnionCopy } from './client/client-union.copy';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -153,14 +154,22 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
       {state.status === 'ready' && state.events.length > 0 && (
         <ol className="activity-log-list">
           {state.events.map((event) => (
-            <li key={event.id}>
+            <li
+              key={
+                'projectionReference' in event
+                  ? event.projectionReference
+                  : event.id
+              }
+            >
               <div>
                 <strong>{activityDescription(event)}</strong>
                 <span>Target: {activityTargetDescription(event)}</span>
               </div>
-              <time dateTime={event.occurredAt}>
-                {formatApplicationDateTime(event.occurredAt)}
-              </time>
+              {'occurredAt' in event && (
+                <time dateTime={event.occurredAt}>
+                  {formatApplicationDateTime(event.occurredAt)}
+                </time>
+              )}
             </li>
           ))}
         </ol>
@@ -176,12 +185,17 @@ function activityDescription(event: ActivityLogEvent): string {
     ...companyContextAccessCopy.activityActionLabels,
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
     ...clientWorkspaceCopy.activityActionLabels,
+    ...clientUnionCopy.actionLabels,
   };
-  return `${event.actor.displayName} ${actionLabels[event.action]}`;
+  const actorName =
+    'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
+  return `${actorName} ${actionLabels[event.action]}`;
 }
 
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
+    case 'client_union_operation':
+      return clientUnionCopy.title;
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':

@@ -42,6 +42,7 @@ export const companyStatus = pgEnum('company_status', ['active', 'inactive']);
 export const clientAccountStatus = pgEnum('client_account_status', [
   'active',
   'archived',
+  'superseded',
 ]);
 export const clientCompanyRelationshipStatus = pgEnum(
   'client_company_relationship_status',

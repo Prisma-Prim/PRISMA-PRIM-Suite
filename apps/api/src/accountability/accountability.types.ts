@@ -112,7 +112,7 @@ export type CanonicalActivityEvent =
       metadata: Record<string, never>;
     };
 
-export interface ActivityLogEvent {
+export interface OrdinaryActivityLogEvent {
   id: string;
   action:
     | typeof INTERNAL_USER_PROVISIONED_ACTION
@@ -185,3 +185,18 @@ export interface ActivityLogEvent {
 export interface ActivityLogPage {
   events: ActivityLogEvent[];
 }
+
+export interface ClientUnionActivityEvent {
+  action: 'client.union_confirmed' | 'client.union_reversed';
+  projectionReference: string;
+  companyId: string;
+  actor: { kind: 'authorized_resolver' };
+  target: {
+    type: 'client_union_operation';
+    projectionReference: string;
+    companyId: string;
+  };
+}
+
+export type ActivityLogEvent =
+  OrdinaryActivityLogEvent | ClientUnionActivityEvent;
