@@ -38,6 +38,8 @@ export type CompanyContextState =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'workspace_invitation.issued'
+    | 'workspace_invitation.revoked'
     | 'internal_user.provisioned'
     | 'workspace_membership.suspended'
     | 'company.registered'
@@ -51,6 +53,7 @@ export interface OrdinaryActivityLogEvent {
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
+    | { type: 'workspace_invitation'; invitationId: string }
     | {
         type: 'internal_user';
         internalUserId: string;

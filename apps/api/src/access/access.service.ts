@@ -22,6 +22,7 @@ import {
 import { CompanyContextAuthorization } from './company-context-authorization.js';
 
 const bootstrapWorkspacePermissions = [
+  'member.invite',
   'company.manage',
   'company.assignment.manage',
   'client.manage',

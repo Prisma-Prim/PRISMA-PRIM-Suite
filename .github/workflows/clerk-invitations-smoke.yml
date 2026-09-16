@@ -1,0 +1,31 @@
+name: Clerk invitation smoke (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clerk-invitations-smoke
+  cancel-in-progress: false
+
+jobs:
+  provider-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: clerk-development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @prisma-prim/api build
+      - name: Issue and revoke one controlled invitation
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_SMOKE_RECIPIENT: ${{ secrets.CLERK_SMOKE_RECIPIENT }}
+        run: node apps/api/scripts/clerk-invitations-smoke.mjs

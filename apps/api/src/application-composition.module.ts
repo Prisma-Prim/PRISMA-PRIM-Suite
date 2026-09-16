@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { WorkspaceInvitationController } from './access/workspace-invitation.controller.js';
+import { WorkspaceInvitationService } from './access/workspace-invitation.service.js';
+import { WORKSPACE_INVITATION_PROVIDER } from './access/workspace-invitation-provider.js';
+import { ClerkInvitationProvider } from './identity/clerk-invitation.adapter.js';
 import { AccessController } from './access/access.controller.js';
 import { AccessModule } from './access/access.module.js';
 import { AccessService } from './access/access.service.js';
@@ -27,6 +31,7 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    WorkspaceInvitationController,
     ClientUnionController,
     AccessController,
     ActivityLogController,
@@ -38,6 +43,11 @@ import { DatabaseModule } from './database/database.module.js';
     WorkspaceMembershipSuspensionController,
   ],
   providers: [
+    WorkspaceInvitationService,
+    {
+      provide: WORKSPACE_INVITATION_PROVIDER,
+      useFactory: () => new ClerkInvitationProvider(),
+    },
     AccessService,
     ActorContextAdapter,
     CompanyContextAssignmentService,
