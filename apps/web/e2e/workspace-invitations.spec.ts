@@ -33,24 +33,27 @@ test('Owner issues and revokes an invitation without granting access', async ({
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({ json: { events: [] } }),
   );
-  await page.route('**/api/workspace-invitations**', (route) => {
-    const request = route.request();
-    if (request.method() === 'POST') {
-      expect(request.headers()['idempotency-key']).toBeTruthy();
-      if (request.url().endsWith('/revoke')) revoked = true;
-      else {
-        expect(request.postDataJSON()).toEqual({
-          email: 'recipient@example.test',
-          expiresInDays: 7,
-        });
-        issued = true;
+  await page.route(
+    /\/api\/workspace-invitations(?:\/[^/?]+\/(?:revoke|refresh))?(?:\?.*)?$/,
+    (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        expect(request.headers()['idempotency-key']).toBeTruthy();
+        if (request.url().endsWith('/revoke')) revoked = true;
+        else {
+          expect(request.postDataJSON()).toEqual({
+            email: 'recipient@example.test',
+            expiresInDays: 7,
+          });
+          issued = true;
+        }
+        return route.fulfill({ status: 201, json: record() });
       }
-      return route.fulfill({ status: 201, json: record() });
-    }
-    return route.fulfill({
-      json: { invitations: issued ? [record()] : [], nextCursor: null },
-    });
-  });
+      return route.fulfill({
+        json: { invitations: issued ? [record()] : [], nextCursor: null },
+      });
+    },
+  );
   await page.goto('/');
   await page.getByLabel('Recipient email').fill('recipient@example.test');
   await page.getByRole('button', { name: 'Send invitation' }).click();
