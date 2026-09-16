@@ -234,6 +234,11 @@ describeWithPostgres('Workspace Membership migration', () => {
       { permission: 'company.manage' },
     ]);
 
+    // Preserve the historical membership assertions above, then provide the
+    // current schema required by today's application and Activity Log reader.
+    await applyMigration('0017_client_union.sql');
+    await applyMigration('0018_workspace_invitations.sql');
+
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());
     const currentActivity = await fetchActivity(current.origin, headers());
