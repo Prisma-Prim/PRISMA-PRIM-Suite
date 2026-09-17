@@ -30,6 +30,12 @@ export type ClientCorrectionChanges = Record<
 export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
+      action: 'workspace_invitation.issued' | 'workspace_invitation.revoked';
+      target: { type: 'workspace_invitation'; invitationId: string };
+      metadata: Record<string, never>;
+    }
+  | {
+      actor: ActorContext;
       action:
         | typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION
         | 'workspace_sessions.revoked'
@@ -118,6 +124,8 @@ export type CanonicalActivityEvent =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'workspace_invitation.issued'
+    | 'workspace_invitation.revoked'
     | typeof INTERNAL_USER_PROVISIONED_ACTION
     | typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION
     | 'workspace_sessions.revoked'
@@ -136,6 +144,7 @@ export interface OrdinaryActivityLogEvent {
     displayName: string;
   };
   target:
+    | { type: 'workspace_invitation'; invitationId: string }
     | {
         type: 'internal_user';
         internalUserId: string;

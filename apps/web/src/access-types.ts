@@ -7,7 +7,10 @@ export interface ActorContext {
   email: string;
   active: true;
   workspacePermissions: Array<
-    'company.manage' | 'company.assignment.manage' | 'client.manage'
+    | 'company.manage'
+    | 'company.assignment.manage'
+    | 'client.manage'
+    | 'member.invite'
   >;
   activeCompany?: {
     id: string;

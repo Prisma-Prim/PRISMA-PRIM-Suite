@@ -2,7 +2,7 @@
 
 ## Required configuration
 
-Create a Clerk **test** application for PRISMA-PRIM Suite. Configure it as invitation-only: disable public sign-up paths, add the deployed web origin to the allowed origins, and configure the application sign-in URL for that origin. Create invitations only from the Clerk Dashboard; the product intentionally has no invitation administration UI.
+Use a Clerk **Development/test** application for PRISMA-PRIM Suite. Confirm its instance and keys belong to this repository before using the existing PRISMA CERT application. Configure it as invitation-only: disable public sign-up paths, configure the web origin and application sign-in URL. The configured bootstrap Workspace Owner can issue and revoke controlled invitations in the application. The Dashboard remains useful for preparing the initial Owner and checking provider evidence.
 
 Set these variables in the deployment environment (never commit their values):
 
@@ -38,6 +38,47 @@ A production frontend runtime fails closed when `VITE_CLERK_PUBLISHABLE_KEY` is 
 10. Remove the test user, its Access admission entry, and deployment secrets when the temporary environment is retired.
 
 This credential-dependent procedure is supplemental; automated tests use the deterministic identity composition and a mocked Clerk gateway without Clerk network access.
+
+## Controlled Workspace invitations (#162)
+
+### Configuration and authority
+
+No hosted application or hosted database is required for this slice. For local verification, start PostgreSQL with the repository's existing Docker setup, run `pnpm db:migrate`, and start the web/API with `pnpm dev`. Use the Clerk configuration above with `WEB_ORIGIN=http://localhost:5173`; configure that same local origin in Clerk. The Vite frontend needs `VITE_CLERK_PUBLISHABLE_KEY`, and the API needs both backend Clerk variables. Keep deterministic/local-demo identity modes disabled when collecting real Clerk evidence. See the repository environment contract for the supported local startup commands.
+
+The bootstrap configuration identifies the Owner by exact external provider and subject. Resolving that Owner grants `member.invite`; an ordinary Company manager or access administrator does not receive it. Existing Owners receive this permission on their next resolution. The migration does not grant it to existing members. There is no delegation UI or endpoint.
+
+Issuance stores one Workspace-bound invitation and one attributable `workspace_invitation.issued` Activity Log event before delivery. This event records the local issuance, not proof that a mailbox received an email. Revocation stores `revoked_at` and one `workspace_invitation.revoked` event before contacting Clerk. Neither operation creates an Internal User, Membership, Company assignment or business permission. Email is a delivery address only. Acceptance and admission remain #163; do not add the recipient to `ACCESS_ACCEPTED_INVITATIONS_JSON` for the #162 proof.
+
+### API and retry contract
+
+- `GET /api/workspace-invitations?after=<cursor>` returns at most 50 safe records and a next cursor within the authenticated Workspace.
+- `POST /api/workspace-invitations` takes `{ "email": "controlled address", "expiresInDays": 7 }` and `Idempotency-Key`. The supported expiry window is 1–30 whole days, explicitly chosen in the UI. The application expiry starts at reservation, so it cannot extend Clerk's delivery-time expiry.
+- `POST /api/workspace-invitations/:id/revoke` takes `Idempotency-Key` and makes local revocation durable, even when provider revocation cannot yet be confirmed.
+- `POST /api/workspace-invitations/:id/refresh` checks provider state; it never sends another invitation.
+
+Keys are scoped to the Workspace and actor across both commands. An exact issuance replay returns its current safe state without a new send; changed email, expiry or operation under the same key is rejected. An unresolved or pending invitation to the same delivery address in the same Workspace also prevents bypassing this protection with a new key. A new controlled issuance requires a new key after a definitive rejection or confirmed provider terminal state.
+
+Provider calls have a 10-second response deadline. Reconciliation uses one bounded query per Clerk status (maximum 100 results each), matching the opaque application reference as well as the delivery address. Missing, malformed, ambiguous or truncated results stay uncertain. Manual checks are limited to one claimed reconciliation per invitation per 30 seconds. There are no background retries, automatic resends or scheduled repair loops. A response from an obsolete claim cannot overwrite a newer one. A revocation requested during an in-flight send remains locally effective and is reconciled by a later manual check.
+
+`status` is the application state, including local revocation and expiry. `deliveryStatus` is the last confirmed provider state, or `uncertain`/`rejected`. Provider IDs, public metadata, invitation URLs/tokens and raw provider errors are absent from business responses and Activity Log metadata. An uncertain invitation must be checked in Clerk before any replacement attempt. Clerk application invitations may reject an address that already belongs to a user; this slice deliberately does not bypass that protection with `ignoreExisting`.
+
+Provider references: [create invitation](https://clerk.com/docs/reference/backend/invitations/create-invitation), [list invitations](https://clerk.com/docs/reference/backend/invitations/get-invitation-list), [revoke invitation](https://clerk.com/docs/reference/backend/invitations/revoke-invitation).
+
+### Week-end local proof (required before merge)
+
+1. Sign in as the configured Workspace Owner. In **Workspace invitations**, issue an invitation to a mailbox you control, using a new test-only address and a one-day expiry. Confirm the intended Workspace and one Activity Log issuance. Record the date and outcome, without the address, keys, cookie, provider subject or link.
+2. Check the mailbox. Actual receipt is a human check; a successful API response alone is insufficient. Do not capture or paste the invitation URL. Confirm the UI has no membership or Company grant created by issuance. A recipient authenticated only at Clerk must still receive an application access denial.
+3. Revoke the unused invitation using the confirmation control. If delivery is still unconfirmed, wait until the displayed next check time and select **Check invitation status**. Confirm provider revocation, one attributable revocation event, and that the original email link is unusable. An independent Clerk sign-up path must not grant Workspace access either.
+4. Issue a second controlled invitation, leave it unused for its one-day lifetime, then confirm expiry in both the application and Clerk and that its link cannot admit the recipient. Prepare this sample at least a day before the planned weekend validation; do not shorten the application database timestamp and call that real provider-expiry proof.
+5. Retain only a sanitized checklist with date, Development instance confirmed, receipt, revocation, expiry, denied application admission, and human reviewer. Attach that checklist to the PR. Keep #162 open and the PR in draft until the real proof and explicit human validation are complete.
+
+### Optional GitHub Actions provider check
+
+The existing required CI remains provider-independent and includes PostgreSQL REST tests, provider-boundary failure tests and desktop/mobile browser journeys. It needs no Clerk secrets. Local browser/PostgreSQL tests may be deferred to this CI when the agent environment lacks those services.
+
+`Clerk invitation smoke (manual)` is a separate `workflow_dispatch` workflow, not a required PR check. Configure the `clerk-development` GitHub environment with `CLERK_SECRET_KEY` (test key only) and `CLERK_SMOKE_RECIPIENT` (a mailbox you control, not an existing Clerk user). Restrict that environment to trusted branches and a required reviewer before adding the secret. Each explicit run sends one email and attempts to revoke that invitation; it has no automatic trigger or retry. Do not invoke it with a real collaborator's address.
+
+The script prints only boolean outcomes and a timestamp. It verifies real provider issuance and revocation, but explicitly does **not** claim mailbox receipt, expiry or application admission proof. Complete those locally using the procedure above. No credentials have been configured and no live invitation has been sent as part of implementing this slice.
 
 ## Suspended-member session revocation (#161)
 

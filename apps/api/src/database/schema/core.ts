@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { workspaceInvitations } from './workspace-invitation.js';
 import {
   check,
   foreignKey,
@@ -24,6 +25,7 @@ export const workspaceMembershipStatus = pgEnum('workspace_membership_status', [
 ]);
 
 export const workspacePermission = pgEnum('workspace_permission', [
+  'member.invite',
   'company.manage',
   'company.assignment.manage',
   'client.manage',
@@ -637,6 +639,8 @@ export const clientAccountCorrectionCommands = pgTable(
 );
 
 export const activityLogAction = pgEnum('activity_log_action', [
+  'workspace_invitation.issued',
+  'workspace_invitation.revoked',
   'internal_user.provisioned',
   'workspace_membership.suspended',
   'workspace_sessions.revoked',
@@ -652,6 +656,7 @@ export const activityLogAction = pgEnum('activity_log_action', [
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
+  'workspace_invitation',
   'internal_user',
   'workspace_membership',
   'company',
@@ -671,6 +676,7 @@ export const activityLogEvents = pgTable(
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     action: activityLogAction('action').notNull(),
     targetType: activityLogTargetType('target_type').notNull(),
+    targetWorkspaceInvitationId: uuid('target_workspace_invitation_id'),
     targetInternalUserId: uuid('target_internal_user_id'),
     targetWorkspaceMembershipId: uuid('target_workspace_membership_id'),
     targetCompanyId: uuid('target_company_id'),
@@ -697,6 +703,18 @@ export const activityLogEvents = pgTable(
   (table) => [
     uniqueIndex('activity_log_events_idempotency_key_unique').on(
       table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'activity_log_events_invitation_fk',
+      columns: [table.workspaceId, table.targetWorkspaceInvitationId],
+      foreignColumns: [
+        workspaceInvitations.workspaceId,
+        workspaceInvitations.id,
+      ],
+    }),
+    check(
+      'activity_log_events_invitation_target_check',
+      sql`(${table.targetType}::text = 'workspace_invitation') = (${table.targetWorkspaceInvitationId} IS NOT NULL)`,
     ),
     foreignKey({
       name: 'activity_log_events_actor_membership_fk',
@@ -767,6 +785,14 @@ export const activityLogEvents = pgTable(
     check(
       'activity_log_events_target_shape_check',
       sql`(
+        (${table.targetType}::text = 'workspace_invitation'
+          AND ${table.targetInternalUserId} IS NULL
+          AND ${table.targetWorkspaceMembershipId} IS NULL
+          AND ${table.targetCompanyId} IS NULL
+          AND ${table.targetCompanyRoleAssignmentId} IS NULL
+          AND ${table.targetClientAccountId} IS NULL
+          AND ${table.targetClientCompanyRelationshipId} IS NULL)
+        OR
         (${table.targetType}::text = 'internal_user'
           AND ${table.targetInternalUserId} IS NOT NULL
           AND ${table.targetWorkspaceMembershipId} IS NOT NULL

@@ -1,5 +1,5 @@
 {
-  "id": "76c7b0ae-575e-4f38-9d73-4156e971ffca",
+  "id": "85410909-7bd5-407d-8320-a0a8e7c24b28",
   "prevId": "f0181f66-5086-4cae-8888-b5cb0df2d578",
   "version": "7",
   "dialect": "postgresql",
@@ -46,6 +46,12 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
+        },
+        "target_workspace_invitation_id": {
+          "name": "target_workspace_invitation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "target_internal_user_id": {
           "name": "target_internal_user_id",
@@ -129,6 +135,21 @@
             "workspace_id"
           ],
           "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_log_events_invitation_fk": {
+          "name": "activity_log_events_invitation_fk",
+          "tableFrom": "activity_log_events",
+          "tableTo": "workspace_invitations",
+          "columnsFrom": [
+            "workspace_id",
+            "target_workspace_invitation_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
             "id"
           ],
           "onDelete": "no action",
@@ -241,9 +262,13 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "activity_log_events_invitation_target_check": {
+          "name": "activity_log_events_invitation_target_check",
+          "value": "(\"activity_log_events\".\"target_type\"::text = 'workspace_invitation') = (\"activity_log_events\".\"target_workspace_invitation_id\" IS NOT NULL)"
+        },
         "activity_log_events_target_shape_check": {
           "name": "activity_log_events_target_shape_check",
-          "value": "(\n        (\"activity_log_events\".\"target_type\"::text = 'internal_user'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'workspace_membership'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'company'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'company_role_assignment'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'client_account'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'client_company_relationship'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NOT NULL)\n      )"
+          "value": "(\n        (\"activity_log_events\".\"target_type\"::text = 'workspace_invitation'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'internal_user'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'workspace_membership'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'company'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'company_role_assignment'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'client_account'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NULL)\n        OR\n        (\"activity_log_events\".\"target_type\"::text = 'client_company_relationship'\n          AND \"activity_log_events\".\"target_internal_user_id\" IS NULL\n          AND \"activity_log_events\".\"target_workspace_membership_id\" IS NULL\n          AND \"activity_log_events\".\"target_company_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_company_role_assignment_id\" IS NULL\n          AND \"activity_log_events\".\"target_client_account_id\" IS NOT NULL\n          AND \"activity_log_events\".\"target_client_company_relationship_id\" IS NOT NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -1675,25 +1700,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "session_revocation_status": {
-          "name": "session_revocation_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "session_revocation_attempt_id": {
-          "name": "session_revocation_attempt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "session_revocation_attempted_at": {
-          "name": "session_revocation_attempted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1766,16 +1772,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "suspension_session_revocation_status_check": {
-          "name": "suspension_session_revocation_status_check",
-          "value": "\"workspace_membership_suspension_commands\".\"session_revocation_status\" IN ('pending', 'running', 'retry_required', 'complete')"
-        },
-        "suspension_session_revocation_attempt_check": {
-          "name": "suspension_session_revocation_attempt_check",
-          "value": "(\"workspace_membership_suspension_commands\".\"session_revocation_status\" = 'pending' AND \"workspace_membership_suspension_commands\".\"session_revocation_attempt_id\" IS NULL AND \"workspace_membership_suspension_commands\".\"session_revocation_attempted_at\" IS NULL) OR (\"workspace_membership_suspension_commands\".\"session_revocation_status\" <> 'pending' AND \"workspace_membership_suspension_commands\".\"session_revocation_attempt_id\" IS NOT NULL AND \"workspace_membership_suspension_commands\".\"session_revocation_attempted_at\" IS NOT NULL)"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.workspace_memberships": {
@@ -3311,6 +3308,295 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "public.workspace_invitation_commands": {
+      "name": "workspace_invitation_commands",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_workspace_membership_id": {
+          "name": "actor_workspace_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation": {
+          "name": "operation",
+          "type": "invitation_command_operation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invitation_id": {
+          "name": "invitation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "workspace_invitation_commands_actor_key_unique": {
+          "name": "workspace_invitation_commands_actor_key_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_workspace_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "idempotency_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "workspace_invitation_commands_actor_fk": {
+          "name": "workspace_invitation_commands_actor_fk",
+          "tableFrom": "workspace_invitation_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_workspace_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workspace_invitation_commands_invitation_fk": {
+          "name": "workspace_invitation_commands_invitation_fk",
+          "tableFrom": "workspace_invitation_commands",
+          "tableTo": "workspace_invitations",
+          "columnsFrom": [
+            "workspace_id",
+            "invitation_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.workspace_invitations": {
+      "name": "workspace_invitations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_by_workspace_membership_id": {
+          "name": "issued_by_workspace_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_in_days": {
+          "name": "expires_in_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_status": {
+          "name": "delivery_status",
+          "type": "invitation_delivery_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'uncertain'"
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_claim": {
+          "name": "sync_claim",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_after": {
+          "name": "sync_after",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "workspace_invitations_scope_unique": {
+          "name": "workspace_invitations_scope_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "workspace_invitations_provider_unique": {
+          "name": "workspace_invitations_provider_unique",
+          "columns": [
+            {
+              "expression": "provider_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "workspace_invitations_listing": {
+          "name": "workspace_invitations_listing",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "workspace_invitations_issuer_fk": {
+          "name": "workspace_invitations_issuer_fk",
+          "tableFrom": "workspace_invitations",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "issued_by_workspace_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "workspace_invitations_expiry_check": {
+          "name": "workspace_invitations_expiry_check",
+          "value": "\"workspace_invitations\".\"expires_in_days\" BETWEEN 1 AND 30"
+        },
+        "workspace_invitations_provider_check": {
+          "name": "workspace_invitations_provider_check",
+          "value": "\"workspace_invitations\".\"delivery_status\" IN ('uncertain', 'rejected') OR \"workspace_invitations\".\"provider_id\" IS NOT NULL"
+        }
+      },
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -3318,10 +3604,10 @@
       "name": "activity_log_action",
       "schema": "public",
       "values": [
+        "workspace_invitation.issued",
+        "workspace_invitation.revoked",
         "internal_user.provisioned",
         "workspace_membership.suspended",
-        "workspace_sessions.revoked",
-        "workspace_sessions.revocation_retry_required",
         "company.registered",
         "company_context_assignment.granted",
         "company_context_assignment.revoked",
@@ -3336,6 +3622,7 @@
       "name": "activity_log_target_type",
       "schema": "public",
       "values": [
+        "workspace_invitation",
         "internal_user",
         "workspace_membership",
         "company",
@@ -3405,9 +3692,30 @@
       "name": "workspace_permission",
       "schema": "public",
       "values": [
+        "member.invite",
         "company.manage",
         "company.assignment.manage",
         "client.manage"
+      ]
+    },
+    "public.invitation_command_operation": {
+      "name": "invitation_command_operation",
+      "schema": "public",
+      "values": [
+        "issue",
+        "revoke"
+      ]
+    },
+    "public.invitation_delivery_status": {
+      "name": "invitation_delivery_status",
+      "schema": "public",
+      "values": [
+        "uncertain",
+        "pending",
+        "accepted",
+        "revoked",
+        "expired",
+        "rejected"
       ]
     }
   },

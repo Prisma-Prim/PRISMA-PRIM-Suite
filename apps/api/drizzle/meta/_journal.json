@@ -131,8 +131,15 @@
     {
       "idx": 18,
       "version": "7",
-      "when": 1789624363566,
-      "tag": "0018_workspace_session_revocation",
+      "when": 1789589178045,
+      "tag": "0018_workspace_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789625077047,
+      "tag": "0019_workspace_session_revocation",
       "breakpoints": true
     }
   ]
