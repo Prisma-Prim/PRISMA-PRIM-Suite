@@ -403,6 +403,9 @@ describe('App', () => {
         'revoked Company Director Client Access',
     });
     expect(workspaceMembershipSuspensionCopy.activityActionLabels).toEqual({
+      'workspace_sessions.revoked': 'revoked existing provider sessions for',
+      'workspace_sessions.revocation_retry_required':
+        'recorded a required provider-session retry for',
       'workspace_membership.suspended': 'suspended Workspace access for',
     });
   });

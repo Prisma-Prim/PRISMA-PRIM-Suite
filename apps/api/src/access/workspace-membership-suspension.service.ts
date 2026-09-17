@@ -25,6 +25,8 @@ import type {
   WorkspaceMembershipSuspensionRecord,
 } from './workspace-membership-suspension.types.js';
 
+import { WorkspaceSessionRevocationService } from './workspace-session-revocation.service.js';
+
 type CommandRow = typeof workspaceMembershipSuspensionCommands.$inferSelect;
 
 @Injectable()
@@ -32,6 +34,7 @@ export class WorkspaceMembershipSuspensionService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
+    private readonly revocations: WorkspaceSessionRevocationService,
   ) {}
 
   async suspend(
@@ -42,7 +45,7 @@ export class WorkspaceMembershipSuspensionService {
     const workspaceMembershipId = requireUuid(command.workspaceMembershipId);
     const idempotencyKey = requireIdempotencyKey(command.idempotencyKey);
 
-    return this.databaseContext.transaction(async () => {
+    const result = await this.databaseContext.transaction(async () => {
       await this.lockWorkspace(actor.workspaceId);
       await this.requireLiveAccessAdministrationAuthorityHolder(actor);
 
@@ -107,6 +110,8 @@ export class WorkspaceMembershipSuspensionService {
 
       return commandResult(reserved);
     });
+    await this.revocations.afterSuspension(actor, result.workspaceMembershipId);
+    return result;
   }
 
   private async lockWorkspace(workspaceId: string): Promise<void> {

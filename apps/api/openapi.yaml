@@ -147,6 +147,74 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks Company-access administration authority.
+  /api/workspace-session-revocations:
+    get:
+      operationId: listWorkspaceSessionRevocations
+      summary: Inspect provider revocation for suspended Workspace members
+      description: Requires current company.assignment.manage authority. Returns at most 50 safe records in command-ID order. An abandoned 30-second lease is presented as retry_required. No provider subjects, session IDs or errors are returned.
+      tags: [Access]
+      parameters:
+        - in: query
+          name: after
+          schema: { type: string, format: uuid }
+          description: Continuation cursor from the preceding page.
+      responses:
+        '200':
+          description: Current safe revocation states.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [records, nextCursor]
+                properties:
+                  records:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      required: [workspaceMembershipId, displayName, status]
+                      properties:
+                        workspaceMembershipId: { type: string, format: uuid }
+                        displayName: { type: string }
+                        status:
+                          type: string
+                          enum: [pending, running, retry_required, complete]
+                  nextCursor:
+                    type: [string, 'null']
+                    format: uuid
+        '400':
+          description: Invalid cursor.
+        '401':
+          description: No verified identity.
+        '403':
+          description: No current Workspace access-administration authority.
+  /api/workspace-session-revocations/{workspaceMembershipId}/retry:
+    post:
+      operationId: retryWorkspaceSessionRevocation
+      summary: Retry provider revocation after a committed suspension
+      description: Requires current company.assignment.manage authority and a same-Workspace committed suspension. At most one attempt per 30 seconds; completed attempts are no-ops. An acknowledgement is not proof of completion; read canonical status. Application access remains suspended regardless of provider outcome.
+      tags: [Access]
+      parameters:
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Attempt processed or already claimed/completed; read status separately.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [checked] }
+        '400':
+          description: Invalid identifier.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Uniform denial for missing authority or an active, unknown or foreign target.
   /api/workspace-membership-suspensions:
     post:
       operationId: suspendWorkspaceMembership
@@ -875,6 +943,8 @@ components:
           enum:
             - internal_user.provisioned
             - workspace_membership.suspended
+            - workspace_sessions.revoked
+            - workspace_sessions.revocation_retry_required
             - company.registered
             - company_context_assignment.granted
             - company_context_assignment.revoked

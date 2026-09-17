@@ -148,7 +148,7 @@ describe('CompanyContextAccess', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Their application access will stop. Their identity, assignments, and history will be preserved.',
+        'Their application access will stop. Their identity, assignments, and history will be preserved. Existing identity-provider sessions will also be revoked across this application.',
       ),
     ).toBeInTheDocument();
 

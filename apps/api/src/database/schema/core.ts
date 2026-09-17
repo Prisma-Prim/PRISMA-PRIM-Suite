@@ -156,11 +156,28 @@ export const workspaceMembershipSuspensionCommands = pgTable(
     targetWorkspaceMembershipId: uuid(
       'target_workspace_membership_id',
     ).notNull(),
+    sessionRevocationStatus: text('session_revocation_status', {
+      enum: ['pending', 'running', 'retry_required', 'complete'],
+    })
+      .default('pending')
+      .notNull(),
+    sessionRevocationAttemptId: uuid('session_revocation_attempt_id'),
+    sessionRevocationAttemptedAt: timestamp('session_revocation_attempted_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => [
+    check(
+      'suspension_session_revocation_status_check',
+      sql`${table.sessionRevocationStatus} IN ('pending', 'running', 'retry_required', 'complete')`,
+    ),
+    check(
+      'suspension_session_revocation_attempt_check',
+      sql`(${table.sessionRevocationStatus} = 'pending' AND ${table.sessionRevocationAttemptId} IS NULL AND ${table.sessionRevocationAttemptedAt} IS NULL) OR (${table.sessionRevocationStatus} <> 'pending' AND ${table.sessionRevocationAttemptId} IS NOT NULL AND ${table.sessionRevocationAttemptedAt} IS NOT NULL)`,
+    ),
     uniqueIndex('workspace_membership_suspension_commands_actor_key_unique').on(
       table.workspaceId,
       table.actorWorkspaceMembershipId,
@@ -622,6 +639,8 @@ export const clientAccountCorrectionCommands = pgTable(
 export const activityLogAction = pgEnum('activity_log_action', [
   'internal_user.provisioned',
   'workspace_membership.suspended',
+  'workspace_sessions.revoked',
+  'workspace_sessions.revocation_retry_required',
   'company.registered',
   'company_context_assignment.granted',
   'company_context_assignment.revoked',

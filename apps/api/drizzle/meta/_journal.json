@@ -127,6 +127,13 @@
       "when": 1789235118491,
       "tag": "0017_client_union",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789624363566,
+      "tag": "0018_workspace_session_revocation",
+      "breakpoints": true
     }
   ]
 }

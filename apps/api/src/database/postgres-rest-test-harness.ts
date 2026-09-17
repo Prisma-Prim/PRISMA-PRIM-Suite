@@ -1,3 +1,7 @@
+import {
+  IDENTITY_SESSION_REVOKER,
+  type IdentitySessionRevoker,
+} from '../access/identity-session-revoker.js';
 import { Test } from '@nestjs/testing';
 import type { Logger } from 'drizzle-orm/logger';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -22,6 +26,7 @@ export interface PostgresRestTestHarness {
 }
 
 export interface CreatePostgresRestTestHarnessOptions {
+  readonly sessionRevoker?: IdentitySessionRevoker;
   readonly databaseUrl: string;
   readonly environment: Readonly<Record<string, string>>;
 }
@@ -50,6 +55,7 @@ class ApplicationQueryCounter implements Logger {
 export async function createPostgresRestTestHarness({
   databaseUrl,
   environment,
+  sessionRevoker,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
   Object.assign(process.env, environment, { DATABASE_URL: databaseUrl });
@@ -66,12 +72,16 @@ export async function createPostgresRestTestHarness({
       client: applicationPool,
       logger: queryCounter,
     });
-    const moduleRef = await Test.createTestingModule({
+    const builder = Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(DATABASE)
-      .useValue(database)
-      .compile();
+      .useValue(database);
+    if (sessionRevoker)
+      builder
+        .overrideProvider(IDENTITY_SESSION_REVOKER)
+        .useValue(sessionRevoker);
+    const moduleRef = await builder.compile();
     const app = moduleRef.createNestApplication();
     ownedResources.unshift({
       name: 'Nest application',

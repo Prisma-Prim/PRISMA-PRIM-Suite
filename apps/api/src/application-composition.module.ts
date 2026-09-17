@@ -1,3 +1,5 @@
+import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
+import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
 import { Module } from '@nestjs/common';
 import { AccessController } from './access/access.controller.js';
 import { AccessModule } from './access/access.module.js';
@@ -36,12 +38,14 @@ import { DatabaseModule } from './database/database.module.js';
     CompanyContextAssignmentController,
     CompanyDirectorClientAssignmentController,
     WorkspaceMembershipSuspensionController,
+    WorkspaceSessionRevocationController,
   ],
   providers: [
     AccessService,
     ActorContextAdapter,
     CompanyContextAssignmentService,
     WorkspaceMembershipSuspensionService,
+    WorkspaceSessionRevocationService,
   ],
   exports: [AccessService, ActorContextAdapter],
 })
