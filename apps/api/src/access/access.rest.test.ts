@@ -152,6 +152,7 @@ describeWithPostgres('Access REST API', () => {
       { permission: 'client.manage' },
       { permission: 'company.assignment.manage' },
       { permission: 'company.manage' },
+      { permission: 'member.invite' },
     ]);
   });
 

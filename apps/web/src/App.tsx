@@ -5,6 +5,8 @@ import {
 import { useState } from 'react';
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
+import { WorkspaceInvitations } from './access/WorkspaceInvitations';
+import { workspaceInvitationsCopy } from './access/workspace-invitations.copy';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
 import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
@@ -131,6 +133,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       )}
       <ActivityLog state={access.activityLog} />
+      {access.actor.workspacePermissions.includes('member.invite') && (
+        <WorkspaceInvitations
+          key={`invitations:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      )}
     </ApplicationShell>
   );
 }
@@ -186,6 +197,7 @@ function activityDescription(event: ActivityLogEvent): string {
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
     ...clientWorkspaceCopy.activityActionLabels,
     ...clientUnionCopy.actionLabels,
+    ...workspaceInvitationsCopy.activityActionLabels,
   };
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
@@ -194,6 +206,8 @@ function activityDescription(event: ActivityLogEvent): string {
 
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
+    case 'workspace_invitation':
+      return event.target.invitationId;
     case 'client_union_operation':
       return clientUnionCopy.title;
     case 'company_role_assignment':

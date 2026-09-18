@@ -316,6 +316,8 @@ export class AccountabilityService {
         actorInternalUserId: eventActor.id,
         actorDisplayName: eventActor.displayName,
         targetType: activityLogEvents.targetType,
+        targetWorkspaceInvitationId:
+          activityLogEvents.targetWorkspaceInvitationId,
         targetCompanyRoleAssignmentId:
           activityLogEvents.targetCompanyRoleAssignmentId,
         targetWorkspaceMembershipId:
@@ -375,7 +377,20 @@ export class AccountabilityService {
           eq(activityLogEvents.targetClientAccountId, eventTargetClient.id),
         ),
       )
-      .where(visibleEvents)
+      .where(
+        or(
+          and(
+            visibleEvents,
+            sql`${activityLogEvents.targetType}::text <> 'workspace_invitation'`,
+          ),
+          actor.workspacePermissions.includes('member.invite')
+            ? and(
+                eq(activityLogEvents.workspaceId, actor.workspaceId),
+                eq(activityLogEvents.targetType, 'workspace_invitation'),
+              )
+            : sql<boolean>`false`,
+        ),
+      )
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
       .limit(INITIAL_PAGE_SIZE);
 
@@ -400,6 +415,13 @@ export class AccountabilityService {
 
 function persistenceFor(event: CanonicalActivityEvent) {
   switch (event.action) {
+    case 'workspace_invitation.issued':
+    case 'workspace_invitation.revoked':
+      return {
+        targetType: event.target.type,
+        targetWorkspaceInvitationId: event.target.invitationId,
+        idempotencyKey: `${event.action}:${event.target.invitationId}`,
+      };
     case 'internal_user.provisioned':
       return {
         targetType: event.target.type,
@@ -487,6 +509,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
 
 interface PersistedActivityTarget {
   targetType:
+    | 'workspace_invitation'
     | 'internal_user'
     | 'workspace_membership'
     | 'company'
@@ -494,6 +517,7 @@ interface PersistedActivityTarget {
     | 'client_account'
     | 'client_company_relationship';
   targetCompanyRoleAssignmentId: string | null;
+  targetWorkspaceInvitationId: string | null;
   targetWorkspaceMembershipId: string | null;
   targetInternalUserId: string | null;
   targetInternalUserDisplayName: string | null;
@@ -506,6 +530,14 @@ interface PersistedActivityTarget {
 
 function canonicalTarget(event: PersistedActivityTarget) {
   switch (event.targetType) {
+    case 'workspace_invitation':
+      return {
+        type: event.targetType,
+        invitationId: required(
+          event.targetWorkspaceInvitationId,
+          'Invitation id',
+        ),
+      };
     case 'internal_user':
       return {
         type: event.targetType,
