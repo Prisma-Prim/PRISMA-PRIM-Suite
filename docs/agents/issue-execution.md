@@ -10,7 +10,7 @@ Use this workflow for Codex Cloud, Codex CLI, Claude Code, and other AI coding h
 
 ## Before changing anything
 
-1. Read the complete issue body and all available comments.
+1. Read the complete issue body and all available comments. Confirm the issue is still open, inspect open pull requests for an implementation of that issue, and check the comments for another active session claim. Stop and report an existing implementation or active claim instead of starting a duplicate; resume only through an explicit handoff. Before implementation, post a one-line claim on the issue identifying the harness and branch. An existing `@codex` launch comment for this session serves as its claim. Recheck for competing claims before the first commit; a comment is a coordination signal, not an atomic lock.
 2. Confirm every issue listed under **Blocked by** is closed. Stop if a blocker remains open.
 3. Read every applicable `AGENTS.md`, then follow only the issue's pointers to its owning PRD, cross-cutting PRDs, decision record sections, ADRs, and evidence, as described in the [fresh-context reading route](repository-knowledge-system.md#4-fresh-context-reading-route). Read `CONTEXT.md` when domain language or business boundaries are involved.
 4. Run `node scripts/agent-doctor.mjs`; use `--profile postgres` when PostgreSQL verification is required, `--profile web` when browser verification is required, or `--profile web-postgres` when the slice needs both. Fix safe setup drift before implementation and note anything that cannot run.
