@@ -148,7 +148,8 @@ export class WorkspaceSessionRevocationService {
         .set({
           sessionRevocationStatus: 'running',
           sessionRevocationAttemptId: attemptId,
-          sessionRevocationAttemptedAt: sql`now()`,
+          // now() is transaction-start time and includes any lock wait.
+          sessionRevocationAttemptedAt: sql`clock_timestamp()`,
         })
         .where(eq(commands.id, row.command.id));
       return {

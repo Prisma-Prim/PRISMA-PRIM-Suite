@@ -233,6 +233,68 @@ run('Suspended member session revocation REST journey', () => {
     ]);
   });
 
+  it('starts a fresh lease after waiting for the Workspace lock', async () => {
+    await request('/access/current-actor', 'GET', undefined, 'user_other');
+    await harness.pool.query(
+      `INSERT INTO workspace_permission_grants(workspace_id, workspace_membership_id, permission)
+       SELECT workspace_id, workspace_memberships.id, 'company.assignment.manage'
+       FROM workspace_memberships JOIN internal_users ON internal_users.id = internal_user_id
+       WHERE external_subject = 'user_other'`,
+    );
+    provider.revoke.mockResolvedValueOnce({ status: 'retry_required' });
+    await suspend();
+    await ageAttempt();
+
+    let release: (outcome: SessionRevocationOutcome) => void = () => undefined;
+    let entered: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const outcome = new Promise<SessionRevocationOutcome>((resolve) => {
+      release = resolve;
+    });
+    provider.revoke.mockImplementationOnce(() => {
+      entered();
+      return outcome;
+    });
+    const locker = await harness.pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await locker.query('BEGIN');
+      await locker.query('SELECT id FROM workspaces WHERE id = $1 FOR UPDATE', [
+        workspaceId,
+      ]);
+      // Use an existing non-bootstrap administrator so authentication itself
+      // does not update the locked Workspace before the retry transaction.
+      pending = retry(targetId, 'user_other');
+      await waitForBlockedRevocationTransactions(1);
+      const boundary = await locker.query<{ claimedAfter: string }>(
+        'SELECT clock_timestamp()::text AS "claimedAfter"',
+      );
+      const claimedAfter = boundary.rows[0]?.claimedAfter;
+      if (!claimedAfter) throw new Error('Missing database clock boundary');
+      await locker.query('COMMIT');
+      await started;
+      const lease = await harness.pool.query<{ fresh: boolean }>(
+        `SELECT session_revocation_attempted_at >= $1::timestamptz AS fresh
+         FROM workspace_membership_suspension_commands
+         WHERE target_workspace_membership_id = $2`,
+        [claimedAfter, targetId],
+      );
+      expect(lease.rows[0]?.fresh).toBe(true);
+      expect(await list()).toMatchObject({ records: [{ status: 'running' }] });
+      expect((await retry(targetId, 'user_other')).status).toBe(201);
+      expect(provider.revoke).toHaveBeenCalledTimes(2);
+    } finally {
+      await locker.query('ROLLBACK');
+      locker.release();
+      release({ status: 'complete' });
+      await Promise.allSettled([pending]);
+    }
+    expect((await pending)?.status).toBe(201);
+    expect(await list()).toMatchObject({ records: [{ status: 'complete' }] });
+  }, 15_000);
+
   it('preserves an in-flight completion when an expired retry competes for its claim', async () => {
     let release: (outcome: SessionRevocationOutcome) => void = () => undefined;
     let entered: () => void = () => undefined;
