@@ -14,6 +14,52 @@ const actor: ActorContext = {
   workspacePermissions: [],
 };
 
+test('session rejection clears the prior account Workspace before another account signs in', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('identity-fixture-initialized')) {
+      sessionStorage.setItem('identity-fixture-initialized', 'true');
+      sessionStorage.setItem(
+        'prisma-workspace-context',
+        'aaaaaaaa-0000-4000-8000-000000000163',
+      );
+    }
+  });
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({ status: 401 }),
+  );
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toHaveText(
+    'Sign in is required to access this workspace.',
+  );
+  expect(
+    await page.evaluate(() =>
+      sessionStorage.getItem('prisma-workspace-context'),
+    ),
+  ).toBeNull();
+  await page.evaluate(() =>
+    sessionStorage.setItem('deterministic-auth-state', 'signed-in'),
+  );
+  await page.route('**/api/access/current-actor', (route) => {
+    expect(route.request().headers()['x-workspace-context-id']).toBeUndefined();
+    return route.fulfill({ json: actor });
+  });
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Company context')
+      .getByText('Invited Workspace', { exact: true }),
+  ).toBeVisible();
+});
+
 for (const deniedAt of ['acceptance', 'current access']) {
   test(
     'safe denial at ' +

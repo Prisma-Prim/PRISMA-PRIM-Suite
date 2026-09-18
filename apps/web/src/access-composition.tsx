@@ -51,7 +51,10 @@ function ClerkIdentity({
       loaded: isLoaded,
       signedIn: Boolean(isSignedIn),
       getToken,
-      rejectSession: () => clerk.signOut(),
+      rejectSession: () => {
+        clearWorkspaceSelection();
+        return clerk.signOut();
+      },
       signOut: () => {
         clearWorkspaceSelection();
         return clerk.signOut();
@@ -73,6 +76,7 @@ export function deterministicBrowserIdentity(
     signedIn,
     getToken: async () => null,
     rejectSession: async () => {
+      clearWorkspaceSelection();
       sessionStorage.setItem('deterministic-auth-state', 'signed-out');
     },
     signOut: async () => {

@@ -56,6 +56,87 @@ function gateway(status = 'accepted'): AcceptanceGateway {
 describe('Clerk invitation recipient evidence', () => {
   afterEach(() => vi.useRealTimers());
 
+  it.each(['pending', 'accepted', 'revoked', 'expired'] as const)(
+    'finds the exact invitation across all pages when %s has more than 100 records',
+    async (largeStatus) => {
+      const external = gateway();
+      const target = {
+        id: 'inv_one',
+        status: 'accepted' as const,
+        publicMetadata: { workspaceInvitationReference: 'local_reference' },
+      };
+      vi.mocked(external.list).mockImplementation(
+        async ({ status, offset, limit }) => {
+          const records =
+            status === largeStatus
+              ? Array.from({ length: 101 }, (_, index) => ({
+                  id: 'inv_other_' + index,
+                  status,
+                  publicMetadata: { workspaceInvitationReference: 'unrelated' },
+                }))
+              : [];
+          if (status === 'accepted') records.push(target);
+          return {
+            data: records.slice(offset, offset + limit),
+            totalCount: records.length,
+          };
+        },
+      );
+      const provider = new ClerkInvitationAcceptanceProvider(
+        external,
+        'test-encryption-secret',
+      );
+      expect(await provider.prove(request)).toEqual(receipt);
+      expect(external.list).toHaveBeenCalledWith({
+        query: request.invitation.email,
+        status: largeStatus,
+        limit: 100,
+        offset: 100,
+      });
+    },
+  );
+
+  it('rejects an ambiguous invitation reference found on a later page', async () => {
+    const external = gateway();
+    vi.mocked(external.list).mockImplementation(async ({ status, offset }) => ({
+      data:
+        status === 'accepted'
+          ? [
+              {
+                id: offset === 0 ? 'inv_one' : 'inv_duplicate',
+                status,
+                publicMetadata: {
+                  workspaceInvitationReference: 'local_reference',
+                },
+              },
+            ]
+          : [],
+      totalCount: status === 'accepted' ? 2 : 0,
+    }));
+    expect(
+      await new ClerkInvitationAcceptanceProvider(
+        external,
+        'test-encryption-secret',
+      ).prove(request),
+    ).toEqual({ kind: 'denied' });
+    expect(external.user).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when pagination totals change before the scan completes', async () => {
+    const external = gateway();
+    vi.mocked(external.list).mockImplementation(async ({ status, offset }) => ({
+      data: [{ id: 'unrelated', status, publicMetadata: {} }],
+      totalCount: offset === 0 ? 2 : 3,
+    }));
+    expect(
+      await new ClerkInvitationAcceptanceProvider(
+        external,
+        'test-encryption-secret',
+      ).prove(request),
+    ).toEqual({ kind: 'unavailable' });
+    expect(external.exchange).not.toHaveBeenCalled();
+  });
+
   it('recovers existing-user ticket consumption from its server-owned client when the exchange response is lost', async () => {
     const external = gateway('pending');
     vi.mocked(external.user).mockResolvedValue({

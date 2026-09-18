@@ -187,42 +187,54 @@ async function findInvitation(
     string,
     { id: string; status: string; url: string | undefined }
   >();
+  const deadline = Date.now() + 10_000;
   for (const status of ['pending', 'accepted', 'revoked', 'expired'] as const) {
-    const page = await api.list({
-      query: request.invitation.email,
-      status,
-      limit: 100,
-      offset: 0,
-    });
-    if (
-      !record(page) ||
-      !Array.isArray(page.data) ||
-      typeof page.totalCount !== 'number' ||
-      !Number.isInteger(page.totalCount) ||
-      page.totalCount !== page.data.length
-    )
-      throw new Error('Incomplete invitation evidence.');
-    for (const value of page.data) {
-      if (
-        !record(value) ||
-        !record(value.publicMetadata) ||
-        value.publicMetadata.workspaceInvitationReference !==
-          request.invitation.reference
-      )
-        continue;
-      if (
-        typeof value.id !== 'string' ||
-        !value.id ||
-        value.status !== status ||
-        matches.has(value.id)
-      )
-        throw new Error('Ambiguous invitation evidence.');
-      matches.set(value.id, {
-        id: value.id,
+    let offset = 0;
+    let total: number | undefined;
+    do {
+      if (Date.now() >= deadline) throw new Error('Invitation proof timeout.');
+      const page = await api.list({
+        query: request.invitation.email,
         status,
-        url: typeof value.url === 'string' ? value.url : undefined,
+        limit: 100,
+        offset,
       });
-    }
+      if (
+        !record(page) ||
+        !Array.isArray(page.data) ||
+        typeof page.totalCount !== 'number' ||
+        !Number.isSafeInteger(page.totalCount) ||
+        page.totalCount < 0 ||
+        (total !== undefined && page.totalCount !== total) ||
+        page.data.length > 100 ||
+        offset + page.data.length > page.totalCount ||
+        (page.data.length === 0 && offset < page.totalCount)
+      )
+        throw new Error('Incomplete invitation evidence.');
+      total = page.totalCount;
+      for (const value of page.data) {
+        if (
+          !record(value) ||
+          !record(value.publicMetadata) ||
+          value.publicMetadata.workspaceInvitationReference !==
+            request.invitation.reference
+        )
+          continue;
+        if (
+          typeof value.id !== 'string' ||
+          !value.id ||
+          value.status !== status ||
+          matches.has(value.id)
+        )
+          throw new Error('Ambiguous invitation evidence.');
+        matches.set(value.id, {
+          id: value.id,
+          status,
+          url: typeof value.url === 'string' ? value.url : undefined,
+        });
+      }
+      offset += page.data.length;
+    } while (offset < total);
   }
   if (matches.size !== 1) return undefined;
   const invitation = [...matches.values()][0];
