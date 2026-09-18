@@ -47,7 +47,7 @@ Before creating or restructuring documentation, reconciliation artifacts, eviden
 
 - Use a fresh AI-agent session for one GitHub issue and deliver only that issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that makes the behaviour complete.
 - Work from a harness that can run the repository checks itself. The default is Codex Cloud launched from an `@codex` comment on the originating issue; a local harness with a shell, such as Codex CLI or Claude Code, is equivalent. A harness that cannot execute `pnpm verify`, such as a GitHub connector without a shell, must not publish code. It may draft issues, documentation, and reviews.
-- Follow `docs/agents/issue-execution.md`. Its implementation, verification, and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
+- Follow [AI agent issue execution](docs/agents/issue-execution.md), beginning with its [issue ownership check and session claim](docs/agents/issue-execution.md#before-changing-anything). Its implementation, verification, and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
 - Run `node scripts/agent-doctor.mjs` before editing. Use `--profile postgres` for PostgreSQL work, `--profile web` for browser work, and `--profile web-postgres` only when the same slice needs both.
 - Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
 - Give each owning module the narrowest stable public interface that completes the slice. Prefer tests through that interface, the API, or the user interface over tests coupled to implementation details.
