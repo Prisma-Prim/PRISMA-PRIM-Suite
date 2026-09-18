@@ -10,6 +10,7 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { companyContextAccessCopy as copy } from './company-context-access.copy';
+import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
 type Submission = 'grant' | 'revoke';
@@ -458,6 +459,12 @@ export function CompanyContextAccess({
         </p>
       )}
       {mutation.status === 'error' && <p role="alert">{copy.error}</p>}
+      <WorkspaceSessionRevocations
+        actor={actor}
+        identity={identity}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        onActivityRecorded={onActivityRecorded}
+      />
       <WorkspaceMembershipSuspension
         actor={actor}
         identity={identity}

@@ -434,6 +434,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         idempotencyKey: `${event.action}:${event.target.internalUserId}`,
       };
     case 'workspace_membership.suspended':
+    case 'workspace_sessions.revoked':
+    case 'workspace_sessions.revocation_retry_required':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

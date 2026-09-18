@@ -97,7 +97,7 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
       ...preservedBefore,
       membershipStatus: 'inactive',
       historical_event_count: String(
-        Number(preservedBefore.historical_event_count) + 1,
+        Number(preservedBefore.historical_event_count) + 2,
       ),
     });
     expect(preservedAfter.assignmentId).toBe(assignment.id);

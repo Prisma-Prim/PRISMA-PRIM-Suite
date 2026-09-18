@@ -36,7 +36,10 @@ export type CanonicalActivityEvent =
     }
   | {
       actor: ActorContext;
-      action: typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION;
+      action:
+        | typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION
+        | 'workspace_sessions.revoked'
+        | 'workspace_sessions.revocation_retry_required';
       target: {
         type: 'workspace_membership';
         workspaceMembershipId: string;
@@ -125,6 +128,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_invitation.revoked'
     | typeof INTERNAL_USER_PROVISIONED_ACTION
     | typeof WORKSPACE_MEMBERSHIP_SUSPENDED_ACTION
+    | 'workspace_sessions.revoked'
+    | 'workspace_sessions.revocation_retry_required'
     | typeof COMPANY_REGISTERED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
     | typeof COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION

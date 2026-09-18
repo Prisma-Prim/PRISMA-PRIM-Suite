@@ -79,3 +79,81 @@ The existing required CI remains provider-independent and includes PostgreSQL RE
 `Clerk invitation smoke (manual)` is a separate `workflow_dispatch` workflow, not a required PR check. Configure the `clerk-development` GitHub environment with `CLERK_SECRET_KEY` (test key only) and `CLERK_SMOKE_RECIPIENT` (a mailbox you control, not an existing Clerk user). Restrict that environment to trusted branches and a required reviewer before adding the secret. Each explicit run sends one email and attempts to revoke that invitation; it has no automatic trigger or retry. Do not invoke it with a real collaborator's address.
 
 The script prints only boolean outcomes and a timestamp. It verifies real provider issuance and revocation, but explicitly does **not** claim mailbox receipt, expiry or application admission proof. Complete those locally using the procedure above. No credentials have been configured and no live invitation has been sent as part of implementing this slice.
+
+## Suspended-member session revocation (#161)
+
+The existing suspension command commits application denial before attempting
+provider revocation. NestJS derives the target from the persisted Internal User's
+verified `(provider, subject)`, never the delivery email. The provider-neutral
+boundary uses the existing Clerk Backend SDK and server-only `CLERK_SECRET_KEY`;
+its application must match the authentication application's keys and have access
+to list and revoke that application's sessions. Use only a controlled Development
+instance and disposable users for this proof.
+
+Clerk revocation applies to all existing active sessions of that user in the Clerk
+application, including sessions used for other Workspaces. It is not a user ban,
+deletion, permission restoration or prevention of a fresh sign-in. A fresh sign-in
+still cannot restore access to the suspended Workspace. Already issued JWTs may
+remain cryptographically valid until expiry; immediate application denial comes
+from the inactive Workspace Membership, not an assertion that offline JWT
+verification consults Clerk. Verify termination and inability to refresh the old
+session separately.
+
+The existing Workspace access panel includes **Check session revocations**. It
+loads up to 50 suspended members and provides continuation. Status is `pending`,
+`running`, `retry_required` or `complete`. Retry is deliberate, limited to one
+attempt per 30 seconds, and never grants application access. Each adapter attempt
+has a 10-second deadline and drains at most ten batches of 100 active sessions
+from offset zero. A final empty provider listing is required for completion;
+partial, malformed, unsupported-provider and unavailable outcomes remain
+retryable. A crashed attempt becomes visibly retryable after its lease expires.
+There is no scheduler or automatic correction/retry loop.
+
+Public interfaces:
+
+- `GET /api/workspace-session-revocations?after=<nextCursor>`: safe states only,
+  requiring live `company.assignment.manage` authority.
+- `POST /api/workspace-session-revocations/:workspaceMembershipId/retry`:
+  same-Workspace suspended member; repeat/concurrent attempts are safe. The
+  acknowledgement means the request was processed, not that Clerk succeeded.
+- Activity Log outcomes: `workspace_sessions.revoked` and
+  `workspace_sessions.revocation_retry_required`; access administrators alone can
+  inspect these Membership-targeted outcomes. No session IDs, provider subject,
+  tokens or raw errors are recorded.
+
+### Local proof required before merging #161
+
+Use the existing local PostgreSQL setup, run `pnpm db:migrate` and start the web
+and API with `pnpm dev`. Configure real Development Clerk keys and
+`WEB_ORIGIN=http://localhost:5173`; omit `ACCESS_IDENTITY_MODE` and
+`VITE_ACCESS_IDENTITY_MODE` so this is real authentication. No hosted deployment
+or paid provider is required. Use two disposable identities: a Workspace Owner
+and an admitted ordinary member. Keep the Owner signed in separately.
+
+1. Establish two Clerk sessions for the ordinary member in separate browser
+   profiles before suspension. Keep one profile open. Record only the test time
+   and number of sessions, never their tokens or identifiers.
+2. As Owner, suspend that member through **Workspace access**. Confirm the next
+   protected API request by the member is denied even before the member's old
+   token expires. Their identity, assignments and history remain preserved.
+3. Click **Check session revocations**. Confirm `complete`, both old sessions are
+   revoked in the controlled Clerk Dashboard, and the old browser sessions can
+   no longer refresh or maintain sign-in. A new sign-in must still be denied
+   access to the suspended Workspace.
+4. Check one suspension event and one successful revocation event. Refresh and
+   repeat the status check; no additional success event or grants should appear.
+5. For failure/recovery, use a second disposable member with an established
+   session. Temporarily use a server-side test key lacking revocation access, or
+   block backend access to Clerk after authentication, then suspend the member.
+   If this also blocks authentication, restore it and use the deterministic
+   failure evidence from CI rather than weakening authentication. Confirm
+   application denial and `retry_required` when a provider attempt fails.
+6. Restore the configuration, wait 30 seconds, then retry from the Owner panel.
+   Confirm completion and continuing application denial. No secrets or provider
+   response bodies should appear in the UI or Activity Log.
+
+Attach sanitized evidence to the PR: date, Development instance alias, human
+reviewer, two pre-existing sessions, immediate application denial, old-session
+termination/refresh denial, safe retry if exercised, no restored grants, and
+attributable non-secret outcomes. Deterministic CI is necessary but does not
+replace this provider-backed proof. Keep the PR draft until the evidence exists.

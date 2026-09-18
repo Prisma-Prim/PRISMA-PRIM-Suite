@@ -42,6 +42,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_invitation.revoked'
     | 'internal_user.provisioned'
     | 'workspace_membership.suspended'
+    | 'workspace_sessions.revoked'
+    | 'workspace_sessions.revocation_retry_required'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
