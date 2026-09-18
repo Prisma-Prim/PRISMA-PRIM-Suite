@@ -233,6 +233,56 @@ run('Suspended member session revocation REST journey', () => {
     ]);
   });
 
+  it('preserves an in-flight completion when an expired retry competes for its claim', async () => {
+    let release: (outcome: SessionRevocationOutcome) => void = () => undefined;
+    let entered: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    provider.revoke
+      .mockImplementationOnce(() => {
+        entered();
+        return new Promise((resolve) => {
+          release = resolve;
+        });
+      })
+      .mockResolvedValue({ status: 'retry_required' });
+    const original = suspend();
+    let competingRetry: Promise<Response> | undefined;
+    const locker = await harness.pool.connect();
+    try {
+      await started;
+      await ageAttempt();
+      await locker.query('BEGIN');
+      await locker.query(
+        'SELECT id FROM workspace_membership_suspension_commands WHERE target_workspace_membership_id = $1 FOR UPDATE',
+        [targetId],
+      );
+
+      // Hold the command row so the outcome remains in flight when a retry
+      // arrives. Both requests must finish without losing the successful outcome.
+      release({ status: 'complete' });
+      await waitForBlockedRevocationTransactions(1);
+      competingRetry = retry();
+      await waitForBlockedRevocationTransactions(2);
+      await locker.query('COMMIT');
+
+      expect((await original).status).toBe(201);
+      expect((await competingRetry).status).toBe(201);
+      expect(provider.revoke).toHaveBeenCalledTimes(1);
+      expect(await list()).toMatchObject({ records: [{ status: 'complete' }] });
+      expect(await actions()).toEqual([
+        'workspace_membership.suspended',
+        'workspace_sessions.revoked',
+      ]);
+    } finally {
+      release({ status: 'complete' });
+      await locker.query('ROLLBACK');
+      locker.release();
+      await Promise.allSettled([original, competingRetry]);
+    }
+  }, 15_000);
+
   it('denies ordinary, suspended, unknown and foreign targets without provider calls or metadata', async () => {
     await request('/access/current-actor', 'GET', undefined, 'user_other');
     expect(
@@ -384,14 +434,28 @@ run('Suspended member session revocation REST journey', () => {
     expect(response.status).toBe(200);
     return body(response);
   }
+  async function waitForBlockedRevocationTransactions(count: number) {
+    await vi.waitFor(
+      async () => {
+        const result = await harness.pool.query<{ count: number }>(
+          `SELECT count(*)::int AS count FROM pg_stat_activity
+           WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        expect(result.rows[0]?.count).toBe(count);
+      },
+      { timeout: 5_000 },
+    );
+  }
+
   async function ageAttempt() {
     await harness.pool.query(
       "UPDATE workspace_membership_suspension_commands SET session_revocation_attempted_at = now() - interval '31 seconds'",
     );
   }
   async function actions() {
+    // Audit timestamps can tie; these assertions verify exact event counts.
     const result = await harness.pool.query<{ action: string }>(
-      "SELECT action FROM activity_log_events WHERE action::text LIKE 'workspace_%' ORDER BY occurred_at, id",
+      "SELECT action FROM activity_log_events WHERE action::text LIKE 'workspace_%' ORDER BY action::text",
     );
     return result.rows.map((r) => r.action);
   }

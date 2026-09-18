@@ -169,6 +169,9 @@ export class WorkspaceSessionRevocationService {
       outcome = { status: 'retry_required' };
     }
     await this.database.transaction(async () => {
+      // Claims and outcomes take locks in the same order. This prevents a
+      // retry from replacing a completed attempt or deadlocking its audit insert.
+      await this.lockWorkspace(actor.workspaceId);
       const [updated] = await this.database.connection
         .update(commands)
         .set({ sessionRevocationStatus: outcome.status })
