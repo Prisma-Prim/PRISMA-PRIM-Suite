@@ -50,13 +50,19 @@ test('an administrator sees a provider failure and safely retries session revoca
   await page.goto('/');
   await page.getByRole('button', { name: 'Check session revocations' }).click();
   await expect(
-    page.getByText('Session revocation needs another attempt.', {
-      exact: false,
-    }),
+    page.getByText(
+      'Session revocation needs another attempt. Retry after 30 seconds.',
+      {
+        exact: true,
+      },
+    ),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Retry session revocation' }).click();
   await expect(
-    page.getByText('Existing provider sessions revoked.', { exact: false }),
+    page.getByText(
+      'Existing provider sessions revoked. Workspace access remains suspended.',
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Retry session revocation' }),
