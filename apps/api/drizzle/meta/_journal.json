@@ -141,6 +141,13 @@
       "when": 1789625077047,
       "tag": "0019_workspace_session_revocation",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789768272121,
+      "tag": "0020_workspace_invitation_acceptance",
+      "breakpoints": true
     }
   ]
 }

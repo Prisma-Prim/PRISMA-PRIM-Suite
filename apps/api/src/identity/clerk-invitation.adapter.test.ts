@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClerkAPIResponseError } from '@clerk/backend/errors';
 import {
   ClerkInvitationProvider,
@@ -28,7 +28,11 @@ function gateway(): InvitationGateway {
 }
 
 describe('Clerk invitation provider', () => {
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => vi.stubEnv('WEB_ORIGIN', 'http://localhost:5173'));
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
 
   it('bounds an unresponsive provider and ignores a late successful response', async () => {
     vi.useFakeTimers();
@@ -105,7 +109,9 @@ describe('Clerk invitation provider', () => {
     expect(external.create).toHaveBeenCalledExactlyOnceWith({
       emailAddress: intent.email,
       expiresInDays: 7,
-      ignoreExisting: false,
+      ignoreExisting: true,
+      redirectUrl:
+        'http://localhost:5173/accept-invitation?invitation=local-reference',
       notify: true,
       publicMetadata: { workspaceInvitationReference: intent.reference },
     });

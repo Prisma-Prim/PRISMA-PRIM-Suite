@@ -641,6 +641,7 @@ export const clientAccountCorrectionCommands = pgTable(
 export const activityLogAction = pgEnum('activity_log_action', [
   'workspace_invitation.issued',
   'workspace_invitation.revoked',
+  'workspace_invitation.accepted',
   'internal_user.provisioned',
   'workspace_membership.suspended',
   'workspace_sessions.revoked',

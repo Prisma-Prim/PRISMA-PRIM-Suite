@@ -417,6 +417,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
   switch (event.action) {
     case 'workspace_invitation.issued':
     case 'workspace_invitation.revoked':
+    case 'workspace_invitation.accepted':
       return {
         targetType: event.target.type,
         targetWorkspaceInvitationId: event.target.invitationId,

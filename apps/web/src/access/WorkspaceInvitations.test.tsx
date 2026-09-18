@@ -35,6 +35,46 @@ const invitation = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Workspace invitation controls', () => {
+  it.each([false, true])(
+    'distinguishes provider use from local consumption = %s',
+    async (consumed) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () =>
+          Response.json({
+            invitations: [
+              {
+                ...invitation,
+                status: 'accepted',
+                deliveryStatus: 'accepted',
+                consumedAt: consumed ? invitation.createdAt : null,
+              },
+            ],
+            nextCursor: null,
+          }),
+        ),
+      );
+      render(
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />,
+      );
+      if (consumed) {
+        await screen.findByText(
+          'Accepted into the Workspace. Business access is assigned separately.',
+        );
+        expect(
+          screen.queryByRole('button', { name: 'Revoke invitation' }),
+        ).toBeNull();
+      } else
+        expect(
+          await screen.findByRole('button', { name: 'Revoke invitation' }),
+        ).toBeInTheDocument();
+    },
+  );
   it('reports provider use discovered during local revocation', async () => {
     vi.stubGlobal(
       'fetch',

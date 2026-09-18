@@ -20,6 +20,7 @@ import {
   type AccessAdmissionDecision,
 } from './access-admission.js';
 import { CompanyContextAuthorization } from './company-context-authorization.js';
+import { requireUuid } from './access-command-validation.js';
 
 const bootstrapWorkspacePermissions = [
   'member.invite',
@@ -40,8 +41,15 @@ export class AccessService {
 
   async resolveActor(
     principal: ExternalPrincipal,
-    requestedCompanyId?: string,
+    selection: { companyId?: string; workspaceId?: string } = {},
   ): Promise<ActorContext> {
+    if (selection.workspaceId !== undefined) {
+      try {
+        requireUuid(selection.workspaceId);
+      } catch {
+        throw new ForbiddenException();
+      }
+    }
     return this.databaseContext.transaction(async () => {
       const database = this.databaseContext.connection;
       const admissionDecision = this.admission.resolve(principal);
@@ -111,11 +119,14 @@ export class AccessService {
       }
       const authority = await this.findActiveAuthority(
         internalUser.id,
-        admissionWorkspace?.id,
+        selection.workspaceId ?? admissionWorkspace?.id,
       );
       if (!authority) throw new ForbiddenException();
 
-      if (admissionDecision?.kind === 'bootstrap') {
+      if (
+        admissionDecision?.kind === 'bootstrap' &&
+        authority.workspace.id === admissionWorkspace?.id
+      ) {
         await database
           .insert(workspacePermissionGrants)
           .values(
@@ -155,11 +166,11 @@ export class AccessService {
         ),
       };
 
-      if (requestedCompanyId !== undefined) {
+      if (selection.companyId !== undefined) {
         const activeCompany =
           await this.companyContextAuthorization.resolveAuthorizedActiveCompany(
             actor,
-            requestedCompanyId,
+            selection.companyId,
           );
         if (!activeCompany) throw new ForbiddenException();
         actor.activeCompany = activeCompany;

@@ -18,9 +18,9 @@ Set these variables in the deployment environment (never commit their values):
   complete provider-neutral initial-Workspace bootstrap entry. Omit all four
   only after bootstrap is no longer needed; a partial entry is invalid.
 - `ACCESS_ACCEPTED_INVITATIONS_JSON`: a JSON array containing exact
-  `{ "provider", "subject", "workspaceId" }` entries for accepted invitations.
-  The Workspace must already exist. This application admission configuration is
-  distinct from Clerk authentication and contains no role or permission grant.
+  `{ "provider", "subject", "workspaceId" }` entries for explicit legacy admission.
+  The Workspace must already exist. Keep this empty for the automatic recipient
+  journey below; it is not evidence of invitation consumption.
 
 A production frontend runtime fails closed when `VITE_CLERK_PUBLISHABLE_KEY` is absent. NestJS production startup fails when either server-side Clerk key or a valid exact `WEB_ORIGIN` is absent. Invalid, missing, or expired sessions fail closed with `401 Unauthorized`. Invited users may leave Clerk first and last name fields empty; the verified primary email then serves as the provider-neutral display name.
 
@@ -28,14 +28,14 @@ A production frontend runtime fails closed when `VITE_CLERK_PUBLISHABLE_KEY` is 
 
 1. In the Clerk test application, confirm public sign-up is disabled and the deployed frontend origin/sign-in redirect URLs match the test deployment.
 2. Add the variables above to the web/API deployment secret stores, rebuild the web application, restart the API, and confirm neither service logs their values.
-3. In the Clerk Dashboard, invite a new test-only address that is not present in repository fixtures or client records. Leave its first and last name empty to exercise the supported email-only profile.
-4. Accept the invitation, obtain the resulting stable Clerk user subject from the test dashboard, add the exact provider/subject and intended existing Workspace ID to `ACCESS_ACCEPTED_INVITATIONS_JSON`, and restart the API. Do not use email or email domain as admission evidence.
+3. As the configured Workspace Owner, issue an invitation from the application to a new test-only address. Leave its first and last name empty during invited account creation to exercise the supported email-only profile.
+4. Follow the recipient journey below to accept the invitation. Do not change an identity allowlist or restart the API to admit the recipient.
 5. In a private browser window, copy a protected deep URL, open it signed out, and confirm Clerk receives the sign-in flow without protected shell content appearing first.
 6. Complete Clerk sign-in. Confirm the browser returns to the exact protected URL, the shell displays the verified email as both the fallback display name and email, and the expected Workspace is shown.
 7. Sign out from the shell. Confirm protected content disappears and Clerk sign-in is required at the same route.
 8. Sign in again, then expire or revoke the session in the Clerk Dashboard. Refresh the protected route and confirm the UI returns to sign-in and `GET /api/access/current-actor` returns `401` without a token, cookie, stack trace, local identifier, or protected profile in its response.
 9. Repeat steps 5–8 at desktop (1440×900) and mobile (390×844), retaining only non-sensitive screenshots in the CI/browser evidence artifact.
-10. Remove the test user, its Access admission entry, and deployment secrets when the temporary environment is retired.
+10. Retire only the disposable test user/database and temporary deployment secrets. Preserve unrelated users and historical application data.
 
 This credential-dependent procedure is supplemental; automated tests use the deterministic identity composition and a mocked Clerk gateway without Clerk network access.
 
@@ -47,7 +47,7 @@ No hosted application or hosted database is required for this slice. For local v
 
 The bootstrap configuration identifies the Owner by exact external provider and subject. Resolving that Owner grants `member.invite`; an ordinary Company manager or access administrator does not receive it. Existing Owners receive this permission on their next resolution. The migration does not grant it to existing members. There is no delegation UI or endpoint.
 
-Issuance stores one Workspace-bound invitation and one attributable `workspace_invitation.issued` Activity Log event before delivery. This event records the local issuance, not proof that a mailbox received an email. Revocation stores `revoked_at` and one `workspace_invitation.revoked` event before contacting Clerk. Neither operation creates an Internal User, Membership, Company assignment or business permission. Email is a delivery address only. Acceptance and admission remain #163; do not add the recipient to `ACCESS_ACCEPTED_INVITATIONS_JSON` for the #162 proof.
+Issuance stores one Workspace-bound invitation and one attributable `workspace_invitation.issued` Activity Log event before delivery. This event records the local issuance, not proof that a mailbox received an email. Revocation stores `revoked_at` and one `workspace_invitation.revoked` event before contacting Clerk. Neither operation creates an Internal User, Membership, Company assignment or business permission. Email is a delivery address only. Recipient acceptance is a separate command described below.
 
 ### API and retry contract
 
@@ -60,11 +60,13 @@ Keys are scoped to the Workspace and actor across both commands. An exact issuan
 
 Provider calls have a 10-second response deadline. Reconciliation uses one bounded query per Clerk status (maximum 100 results each), matching the opaque application reference as well as the delivery address. Missing, malformed, ambiguous or truncated results stay uncertain. Manual checks are limited to one claimed reconciliation per invitation per 30 seconds. There are no background retries, automatic resends or scheduled repair loops. A response from an obsolete claim cannot overwrite a newer one. A revocation requested during an in-flight send remains locally effective and is reconciled by a later manual check.
 
-`status` is the application state, including local revocation and expiry. `deliveryStatus` is the last confirmed provider state, or `uncertain`/`rejected`. Provider IDs, public metadata, invitation URLs/tokens and raw provider errors are absent from business responses and Activity Log metadata. An uncertain invitation must be checked in Clerk before any replacement attempt. Clerk application invitations may reject an address that already belongs to a user; this slice deliberately does not bypass that protection with `ignoreExisting`.
+`status` is the application state, including local revocation and expiry. `deliveryStatus` is the last confirmed provider state, or `uncertain`/`rejected`. `consumedAt` distinguishes committed Workspace admission from provider use alone. Owners can revoke until local consumption, even after provider use. Provider IDs, public metadata, invitation URLs/tokens and raw provider errors are absent from business responses and Activity Log metadata. An uncertain invitation must be checked in Clerk before any replacement attempt. Issuance uses `ignoreExisting: true` to support existing identities; the local unresolved/pending guard still prevents duplicate sends. Every new invitation carries its opaque local reference and a `WEB_ORIGIN/accept-invitation` callback.
 
 Provider references: [create invitation](https://clerk.com/docs/reference/backend/invitations/create-invitation), [list invitations](https://clerk.com/docs/reference/backend/invitations/get-invitation-list), [revoke invitation](https://clerk.com/docs/reference/backend/invitations/revoke-invitation).
 
-### Week-end local proof (required before merge)
+### Historical #162 provider proof
+
+The delivered proof is owned by [#222](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/222). The following procedure documents that boundary; #163 reuses unchanged delivery, mailbox, revocation and expiry evidence.
 
 1. Sign in as the configured Workspace Owner. In **Workspace invitations**, issue an invitation to a mailbox you control, using a new test-only address and a one-day expiry. Confirm the intended Workspace and one Activity Log issuance. Record the date and outcome, without the address, keys, cookie, provider subject or link.
 2. Check the mailbox. Actual receipt is a human check; a successful API response alone is insufficient. Do not capture or paste the invitation URL. Confirm the UI has no membership or Company grant created by issuance. A recipient authenticated only at Clerk must still receive an application access denial.
@@ -79,6 +81,61 @@ The existing required CI remains provider-independent and includes PostgreSQL RE
 `Clerk invitation smoke (manual)` is a separate `workflow_dispatch` workflow, not a required PR check. Configure the `clerk-development` GitHub environment with `CLERK_SECRET_KEY` (test key only) and `CLERK_SMOKE_RECIPIENT` (a mailbox you control, not an existing Clerk user). Restrict that environment to trusted branches and a required reviewer before adding the secret. Each explicit run sends one email and attempts to revoke that invitation; it has no automatic trigger or retry. Do not invoke it with a real collaborator's address.
 
 The script prints only boolean outcomes and a timestamp. It verifies real provider issuance and revocation, but explicitly does **not** claim mailbox receipt, expiry or application admission proof. Complete those locally using the procedure above. No credentials have been configured and no live invitation has been sent as part of implementing this slice.
+
+## Recipient acceptance (#163)
+
+Use the same configured Clerk application for the web and API. Existing-account
+acceptance requires its Native API to be available. The API does not enable it
+or alter provider settings. The configured publishable key determines the
+trusted FAPI host; browser-supplied URLs, email matches and status alone never
+prove identity.
+
+1. Follow an application-issued invitation. Choose **Create your invited
+   account** for a new account, or **Sign in** for an existing one. The latter
+   authenticates independently before server-side ticket consumption.
+2. Select **Accept invitation**. The browser retains one intent/key across a
+   refresh or uncertain response and offers a deliberate retry. Successful
+   admission re-fetches current actor context before entering the intended
+   Workspace, without an active Company or newly assigned business permission.
+3. Confirm one acceptance event as Owner and, only for a new Internal User,
+   one provisioning event. The approved semantics live in the
+   [Activity Log PRD](../product/activity-log-accountability-prd.md#4-event-contract).
+4. Reopen the same intent after suspension: denial must persist. A fresh
+   invitation cannot reactivate an inactive identity or Membership.
+
+`POST /api/access/invitations/accept` requires a verified session,
+`Idempotency-Key`, and `{ invitationId, ticket? }`. Authentication here
+precedes Membership; ordinary business endpoints retain their active-access
+guard. Missing authentication returns 401; ineligible intent returns a uniform
+403; uncertain provider evidence returns a retryable 503. Exact replay returns
+the original result only while that identity and intended Membership remain
+active. `x-workspace-context-id` selects a currently authorized Workspace on
+ordinary API requests and cannot grant or retarget Membership.
+
+Clerk sign-up copies server-set invitation metadata to the new User. Existing
+user sign-in does not replace that metadata. For that case, the API validates
+the opaque ticket against the correlated provider invitation, creates a private
+native client, and persists its ID and AES-GCM-protected initial bearer before
+exchange. BAPI readback of that exclusively server-owned client's sole active
+session binds the invitation to the independently verified caller. This receipt
+also recovers a lost exchange response; neither the client nor its bearer is
+accepted from or returned to the browser. Native exchange credentials are never
+used as the caller's authentication. Rotating the server secret can invalidate
+an unconsumed encrypted context; safe denial is preserved and an Owner may revoke
+and issue a replacement.
+
+Provider proof precedes the local transaction. Consumption, identity/Membership,
+canonical result and history commit atomically after rechecking revocation,
+expiry and inactive access under PostgreSQL locks. A rollback leaves no partial
+admission; the private provider context remains available for retry. Clerk and
+PostgreSQL do not share a transaction. Historical provider-accepted invitations
+are not backfilled into local consumption.
+
+See [Clerk application invitation flows](https://clerk.com/docs/guides/development/custom-flows/authentication/application-invitations)
+and the [Clerk API schemas](https://github.com/clerk/openapi-specs) for the
+provider contract. Sanitized real-provider evidence and current scenario results
+belong to [#163](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/163)
+and its PR; no credentials or provider tickets belong in those artifacts.
 
 ## Suspended-member session revocation (#161)
 

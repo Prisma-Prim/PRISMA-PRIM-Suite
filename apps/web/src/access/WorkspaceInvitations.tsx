@@ -218,7 +218,11 @@ export function WorkspaceInvitations({
             {state.page.invitations.map((invitation) => (
               <li key={invitation.id}>
                 <strong>{invitation.email}</strong>
-                <p>{copy.statuses[invitation.status]}</p>
+                <p>
+                  {invitation.consumedAt
+                    ? copy.consumed
+                    : copy.statuses[invitation.status]}
+                </p>
                 <p>
                   {copy.expires}:{' '}
                   <time dateTime={invitation.expiresAt}>
@@ -245,7 +249,7 @@ export function WorkspaceInvitations({
                   {copy.refresh}
                 </button>
                 {!invitation.revokedAt &&
-                  invitation.deliveryStatus !== 'accepted' &&
+                  !invitation.consumedAt &&
                   invitation.deliveryStatus !== 'rejected' &&
                   invitation.deliveryStatus !== 'revoked' && (
                     <button
