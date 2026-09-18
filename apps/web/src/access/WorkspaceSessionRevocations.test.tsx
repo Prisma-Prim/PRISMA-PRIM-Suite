@@ -146,3 +146,43 @@ it('clears restricted data when authority is lost', async () => {
   );
   expect(screen.queryByText('Suspended Person')).not.toBeInTheDocument();
 });
+
+it.each([
+  { action: 'list', status: 401 },
+  { action: 'retry', status: 401 },
+  { action: 'list', status: 403 },
+  { action: 'retry', status: 403 },
+])(
+  'routes $action HTTP $status to the appropriate access boundary',
+  async ({ action, status }) => {
+    const fetch = vi.fn();
+    if (action === 'retry')
+      fetch.mockResolvedValueOnce(response(page('retry_required')));
+    fetch.mockResolvedValueOnce(new Response(null, { status }));
+    vi.stubGlobal('fetch', fetch);
+    const rejectSession = vi.fn();
+    const rejectWorkspace = vi.fn();
+    const activity = vi.fn();
+    render(
+      <WorkspaceSessionRevocations
+        actor={actor}
+        identity={{ ...deterministicBrowserIdentity(), rejectSession }}
+        onWorkspaceAccessRejected={rejectWorkspace}
+        onActivityRecorded={activity}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check session revocations' }),
+    );
+    if (action === 'retry') {
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Retry session revocation' }),
+      );
+    }
+    await screen.findByRole('alert');
+    expect(rejectSession).toHaveBeenCalledTimes(status === 401 ? 1 : 0);
+    expect(rejectWorkspace).toHaveBeenCalledTimes(status === 403 ? 1 : 0);
+    expect(activity).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(action === 'retry' ? 2 : 1);
+  },
+);

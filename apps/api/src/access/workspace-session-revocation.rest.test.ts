@@ -146,6 +146,36 @@ run('Suspended member session revocation REST journey', () => {
     expect(text).not.toContain('secret');
   });
 
+  it('does not retry provider work when a failed suspension is replayed after the lease', async () => {
+    provider.revoke
+      .mockResolvedValueOnce({ status: 'retry_required' })
+      .mockResolvedValue({ status: 'complete' });
+    const first = await suspend('failed-replay');
+    expect(first.status).toBe(201);
+    const original = await body(first);
+    await ageAttempt();
+
+    const replay = await suspend('failed-replay');
+    expect(replay.status).toBe(201);
+    expect(await body(replay)).toEqual(original);
+    expect(provider.revoke).toHaveBeenCalledTimes(1);
+    expect(await list()).toMatchObject({
+      records: [{ status: 'retry_required' }],
+    });
+    expect(await actions()).toEqual([
+      'workspace_membership.suspended',
+      'workspace_sessions.revocation_retry_required',
+    ]);
+
+    expect((await retry()).status).toBe(201);
+    expect(provider.revoke).toHaveBeenCalledTimes(2);
+    expect(await list()).toMatchObject({ records: [{ status: 'complete' }] });
+    expect(await actions()).toEqual([
+      'workspace_membership.suspended',
+      'workspace_sessions.revocation_retry_required',
+      'workspace_sessions.revoked',
+    ]);
+  });
   it('exposes an in-flight attempt without starting competing provider work', async () => {
     let release: (outcome: SessionRevocationOutcome) => void = () => undefined;
     let entered: () => void = () => undefined;

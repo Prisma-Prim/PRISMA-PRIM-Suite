@@ -60,7 +60,8 @@ export function WorkspaceSessionRevocations({
         );
         if (request.signal.aborted) return;
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          await onWorkspaceAccessRejected();
+          if (result.status === 'unauthorized') await identity.rejectSession();
+          else await onWorkspaceAccessRejected();
           throw new Error('Access denied');
         }
         if (
@@ -78,7 +79,8 @@ export function WorkspaceSessionRevocations({
       );
       if (request.signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await onWorkspaceAccessRejected();
+        if (result.status === 'unauthorized') await identity.rejectSession();
+        else await onWorkspaceAccessRejected();
         throw new Error('Access denied');
       }
       if (result.status !== 'ok') throw new Error('Status unavailable');

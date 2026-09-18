@@ -52,7 +52,7 @@ export class WorkspaceMembershipSuspensionService {
       const replay = await this.findCommand(actor, idempotencyKey);
       if (replay) {
         assertSameSuspension(replay, workspaceMembershipId);
-        return commandResult(replay);
+        return { record: commandResult(replay), newlyCommitted: false };
       }
 
       const target = await this.requireActiveTarget(
@@ -79,7 +79,7 @@ export class WorkspaceMembershipSuspensionService {
         if (!raced)
           throw new Error('The idempotent suspension could not be resolved.');
         assertSameSuspension(raced, workspaceMembershipId);
-        return commandResult(raced);
+        return { record: commandResult(raced), newlyCommitted: false };
       }
 
       const [suspended] = await this.databaseContext.connection
@@ -108,10 +108,15 @@ export class WorkspaceMembershipSuspensionService {
         transitionId: reserved.id,
       });
 
-      return commandResult(reserved);
+      return { record: commandResult(reserved), newlyCommitted: true };
     });
-    await this.revocations.afterSuspension(actor, result.workspaceMembershipId);
-    return result;
+    if (result.newlyCommitted) {
+      await this.revocations.afterSuspension(
+        actor,
+        result.record.workspaceMembershipId,
+      );
+    }
+    return result.record;
   }
 
   private async lockWorkspace(workspaceId: string): Promise<void> {
