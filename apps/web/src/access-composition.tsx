@@ -5,6 +5,7 @@ import {
   useClerk,
 } from '@clerk/react';
 import { useMemo, type ReactNode } from 'react';
+import { clearWorkspaceSelection } from './access/workspace-selection';
 
 export interface BrowserIdentity {
   loaded: boolean;
@@ -18,8 +19,10 @@ export interface BrowserIdentity {
 
 export function ClerkAccessComposition({
   children,
+  signedOutView,
 }: {
   children(identity: BrowserIdentity): ReactNode;
+  signedOutView?: ReactNode;
 }) {
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
   if (!publishableKey)
@@ -29,15 +32,17 @@ export function ClerkAccessComposition({
       publishableKey={publishableKey}
       afterSignOutUrl={window.location.href}
     >
-      <ClerkIdentity>{children}</ClerkIdentity>
+      <ClerkIdentity signedOutView={signedOutView}>{children}</ClerkIdentity>
     </ClerkProvider>
   );
 }
 
 function ClerkIdentity({
   children,
+  signedOutView,
 }: {
   children(identity: BrowserIdentity): ReactNode;
+  signedOutView?: ReactNode;
 }) {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const clerk = useClerk();
@@ -46,11 +51,17 @@ function ClerkIdentity({
       loaded: isLoaded,
       signedIn: Boolean(isSignedIn),
       getToken,
-      rejectSession: () => clerk.signOut(),
-      signOut: () => clerk.signOut(),
-      signedOutView: <RedirectToSignIn />,
+      rejectSession: () => {
+        clearWorkspaceSelection();
+        return clerk.signOut();
+      },
+      signOut: () => {
+        clearWorkspaceSelection();
+        return clerk.signOut();
+      },
+      signedOutView: signedOutView ?? <RedirectToSignIn />,
     }),
-    [clerk, getToken, isLoaded, isSignedIn],
+    [clerk, getToken, isLoaded, isSignedIn, signedOutView],
   );
   return children(identity);
 }
@@ -65,9 +76,11 @@ export function deterministicBrowserIdentity(
     signedIn,
     getToken: async () => null,
     rejectSession: async () => {
+      clearWorkspaceSelection();
       sessionStorage.setItem('deterministic-auth-state', 'signed-out');
     },
     signOut: async () => {
+      clearWorkspaceSelection();
       sessionStorage.setItem('deterministic-auth-state', 'signed-out');
       window.location.reload();
     },

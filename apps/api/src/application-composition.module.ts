@@ -1,6 +1,11 @@
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
 import { Module } from '@nestjs/common';
+import { VerifiedPrincipalAdapter } from './access/verified-principal.adapter.js';
+import { WorkspaceInvitationAcceptanceController } from './access/workspace-invitation-acceptance.controller.js';
+import { WorkspaceInvitationAcceptanceService } from './access/workspace-invitation-acceptance.service.js';
+import { INVITATION_ACCEPTANCE_PROVIDER } from './access/workspace-invitation-acceptance-provider.js';
+import { ClerkInvitationAcceptanceProvider } from './identity/clerk-invitation-acceptance.adapter.js';
 import { WorkspaceInvitationController } from './access/workspace-invitation.controller.js';
 import { WorkspaceInvitationService } from './access/workspace-invitation.service.js';
 import { WORKSPACE_INVITATION_PROVIDER } from './access/workspace-invitation-provider.js';
@@ -33,6 +38,7 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    WorkspaceInvitationAcceptanceController,
     WorkspaceInvitationController,
     ClientUnionController,
     AccessController,
@@ -46,6 +52,12 @@ import { DatabaseModule } from './database/database.module.js';
     WorkspaceSessionRevocationController,
   ],
   providers: [
+    VerifiedPrincipalAdapter,
+    WorkspaceInvitationAcceptanceService,
+    {
+      provide: INVITATION_ACCEPTANCE_PROVIDER,
+      useFactory: () => new ClerkInvitationAcceptanceProvider(),
+    },
     WorkspaceInvitationService,
     {
       provide: WORKSPACE_INVITATION_PROVIDER,

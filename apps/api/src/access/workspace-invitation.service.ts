@@ -16,6 +16,7 @@ import {
   workspaces,
   workspaceInvitations,
   workspaceInvitationCommands,
+  workspaceInvitationAcceptances,
 } from '../database/schema/index.js';
 import {
   requireIdempotencyKey,
@@ -124,8 +125,18 @@ export class WorkspaceInvitationService {
     return this.database.transaction(async () => {
       await this.requireOwner(actor);
       const rows = await this.database.connection
-        .select()
+        .select({
+          invitation: workspaceInvitations,
+          consumedAt: workspaceInvitationAcceptances.acceptedAt,
+        })
         .from(workspaceInvitations)
+        .leftJoin(
+          workspaceInvitationAcceptances,
+          eq(
+            workspaceInvitationAcceptances.invitationId,
+            workspaceInvitations.id,
+          ),
+        )
         .where(
           and(
             eq(workspaceInvitations.workspaceId, actor.workspaceId),
@@ -136,8 +147,11 @@ export class WorkspaceInvitationService {
         .limit(51);
       const page = rows.slice(0, 50);
       return {
-        invitations: page.map(safeInvitation),
-        nextCursor: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
+        invitations: page.map((row) =>
+          safeInvitation(row.invitation, row.consumedAt),
+        ),
+        nextCursor:
+          rows.length > 50 ? (page.at(-1)?.invitation.id ?? null) : null,
       };
     });
   }
@@ -145,7 +159,12 @@ export class WorkspaceInvitationService {
   async get(actor: ActorContext, id: string) {
     return this.database.transaction(async () => {
       await this.requireOwner(actor);
-      return safeInvitation(await this.invitation(actor, id));
+      const invitation = await this.invitation(actor, id);
+      const [consumed] = await this.database.connection
+        .select({ acceptedAt: workspaceInvitationAcceptances.acceptedAt })
+        .from(workspaceInvitationAcceptances)
+        .where(eq(workspaceInvitationAcceptances.invitationId, invitation.id));
+      return safeInvitation(invitation, consumed?.acceptedAt ?? null);
     });
   }
 
@@ -164,9 +183,13 @@ export class WorkspaceInvitationService {
         return;
       }
       const invitation = await this.invitation(actor, invitationId);
-      if (invitation.deliveryStatus === 'accepted')
+      const [consumed] = await this.database.connection
+        .select({ id: workspaceInvitationAcceptances.invitationId })
+        .from(workspaceInvitationAcceptances)
+        .where(eq(workspaceInvitationAcceptances.invitationId, invitation.id));
+      if (consumed)
         throw new ConflictException(
-          'The provider invitation has already been used.',
+          'The Workspace invitation has already been consumed.',
         );
       await this.recordCommand(actor, idempotencyKey, 'revoke', invitation.id);
       if (!invitation.revokedAt) {
@@ -194,7 +217,12 @@ export class WorkspaceInvitationService {
     const claimed = await this.database.transaction(async () => {
       await this.requireOwner(actor);
       const invitation = await this.invitation(actor, invitationId);
+      const [consumed] = await this.database.connection
+        .select({ id: workspaceInvitationAcceptances.invitationId })
+        .from(workspaceInvitationAcceptances)
+        .where(eq(workspaceInvitationAcceptances.invitationId, invitation.id));
       if (
+        consumed ||
         invitation.deliveryStatus === 'rejected' ||
         invitation.deliveryStatus === 'revoked' ||
         invitation.deliveryStatus === 'expired' ||
@@ -351,7 +379,7 @@ function intent(invitation: Invitation) {
   };
 }
 
-function safeInvitation(invitation: Invitation) {
+function safeInvitation(invitation: Invitation, consumedAt: Date | null) {
   const expired = invitation.expiresAt.getTime() <= Date.now();
   return {
     id: invitation.id,
@@ -359,11 +387,14 @@ function safeInvitation(invitation: Invitation) {
     expiresAt: invitation.expiresAt.toISOString(),
     createdAt: invitation.createdAt.toISOString(),
     revokedAt: invitation.revokedAt?.toISOString() ?? null,
-    status: invitation.revokedAt
-      ? 'revoked'
-      : expired
-        ? 'expired'
-        : invitation.deliveryStatus,
+    consumedAt: consumedAt?.toISOString() ?? null,
+    status: consumedAt
+      ? 'accepted'
+      : invitation.revokedAt
+        ? 'revoked'
+        : expired
+          ? 'expired'
+          : invitation.deliveryStatus,
     deliveryStatus: invitation.deliveryStatus,
     nextCheckAt: invitation.syncAfter.toISOString(),
   };

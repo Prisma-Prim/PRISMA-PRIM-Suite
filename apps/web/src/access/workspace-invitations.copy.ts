@@ -25,6 +25,8 @@ export const workspaceInvitationsCopy = {
     'Clerk reports that this invitation was already used. Local revocation remains recorded; no Workspace access is granted here.',
   checkAfter: 'Next provider check available after',
   expires: 'Expires',
+  consumed:
+    'Accepted into the Workspace. Business access is assigned separately.',
   statuses: {
     uncertain:
       'Delivery unconfirmed — check status before sending another invitation.',
@@ -37,6 +39,7 @@ export const workspaceInvitationsCopy = {
       'Clerk rejected the invitation. Check the recipient and provider configuration.',
   },
   activityActionLabels: {
+    'workspace_invitation.accepted': 'accepted a Workspace invitation',
     'workspace_invitation.issued': 'issued a Workspace invitation',
     'workspace_invitation.revoked': 'revoked a Workspace invitation',
   },

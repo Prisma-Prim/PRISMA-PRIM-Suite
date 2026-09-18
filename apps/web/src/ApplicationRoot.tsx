@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { App } from './App';
+import { WorkspaceInvitationEntry } from './access/WorkspaceInvitationEntry';
 import {
   ClerkAccessComposition,
   deterministicBrowserIdentity,
@@ -25,7 +26,12 @@ export function ApplicationRoot({ pathname, identity }: ApplicationRootProps) {
         <PrismaCertUiBaseline />
       </Suspense>
     );
-  if (identity) return <App identity={identity} />;
+  if (identity)
+    return pathname === '/accept-invitation' ? (
+      <WorkspaceInvitationEntry identity={identity} />
+    ) : (
+      <App identity={identity} />
+    );
 
   const localDemoValues =
     import.meta.env.MODE === 'local-demo'
@@ -43,8 +49,14 @@ export function ApplicationRoot({ pathname, identity }: ApplicationRootProps) {
   ) {
     if (Object.values(localDemoValues).some((value) => !value?.trim()))
       throw new Error('Local demonstration identity is incomplete.');
-    return <App identity={deterministicBrowserIdentity(localDemoValues)} />;
+    const localIdentity = deterministicBrowserIdentity(localDemoValues);
+    return pathname === '/accept-invitation' ? (
+      <WorkspaceInvitationEntry identity={localIdentity} />
+    ) : (
+      <App identity={localIdentity} />
+    );
   }
+  if (pathname === '/accept-invitation') return <WorkspaceInvitationEntry />;
   return (
     <ClerkAccessComposition>
       {(clerkIdentity) => <App identity={clerkIdentity} />}

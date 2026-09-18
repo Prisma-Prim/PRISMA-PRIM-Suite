@@ -45,7 +45,8 @@ export class ClerkInvitationProvider implements WorkspaceInvitationProvider {
         this.external().create({
           emailAddress: intent.email,
           expiresInDays: intent.expiresInDays,
-          ignoreExisting: false,
+          ignoreExisting: true,
+          redirectUrl: invitationRedirect(intent.reference),
           notify: true,
           publicMetadata: { workspaceInvitationReference: intent.reference },
         }),
@@ -129,6 +130,18 @@ export class ClerkInvitationProvider implements WorkspaceInvitationProvider {
   private external(): InvitationGateway {
     return this.gateway ?? productionGateway();
   }
+}
+
+function invitationRedirect(reference: string) {
+  const origin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+  const url = new URL(origin);
+  if (url.origin !== origin || !['http:', 'https:'].includes(url.protocol))
+    throw new InvitationConfigurationError(
+      'Invalid invitation redirect configuration.',
+    );
+  url.pathname = '/accept-invitation';
+  url.searchParams.set('invitation', reference);
+  return url.toString();
 }
 
 function record(value: unknown): value is Record<string, unknown> {

@@ -1,4 +1,5 @@
 import type { BrowserIdentity } from '../access-composition';
+import { selectedWorkspaceId } from '../access/workspace-selection';
 
 export type ApiResult<T> =
   | { status: 'ok'; value: T }
@@ -94,10 +95,17 @@ function requestHeaders(
   requestSpecificHeaders: Record<string, string> | undefined,
   companyContextId: string | undefined,
 ): Record<string, string> | undefined {
-  if (!identityHeaders && !requestSpecificHeaders && !companyContextId)
+  const workspaceId = selectedWorkspaceId();
+  if (
+    !identityHeaders &&
+    !requestSpecificHeaders &&
+    !companyContextId &&
+    !workspaceId
+  )
     return undefined;
   return {
     ...identityHeaders,
+    ...(workspaceId ? { 'x-workspace-context-id': workspaceId } : {}),
     ...requestSpecificHeaders,
     ...(companyContextId
       ? { 'x-company-context-id': companyContextId }
