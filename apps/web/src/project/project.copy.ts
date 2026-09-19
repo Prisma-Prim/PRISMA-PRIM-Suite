@@ -20,6 +20,7 @@ export const projectCopy = {
     'This request conflicts with an earlier submission. Reload before trying again.',
   retry: 'Reload Projects',
   clientPrefix: 'Client:',
+  openDossier: 'Open Client dossier',
   companyPrefix: 'Company:',
   status: 'Preparatory',
   noClients:

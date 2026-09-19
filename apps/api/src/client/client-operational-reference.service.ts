@@ -10,6 +10,9 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
+  clientUnionOperations,
+  clientUnionReviews,
+  clientUnionReversals,
 } from '../database/schema/index.js';
 
 /** Client owns the identity and relationship checks used by operational records. */
@@ -47,6 +50,96 @@ export class ClientOperationalReferenceService {
       );
     if (!client) throw new NotFoundException();
     return client;
+  }
+
+  async resolveReadableDossierId(
+    actor: ActorContext,
+    originalClientId: string,
+  ): Promise<string | undefined> {
+    const activeCompany = actor.activeCompany;
+    const companyId = activeCompany?.id;
+    if (!companyId || !activeCompany.clientPermissions.includes('client.read'))
+      return undefined;
+
+    const activeUnions = await this.databaseContext.connection
+      .select({
+        canonicalClientId: clientUnionOperations.canonicalClientId,
+        firstClientId: clientUnionReviews.firstClientId,
+        secondClientId: clientUnionReviews.secondClientId,
+      })
+      .from(clientUnionOperations)
+      .innerJoin(
+        clientUnionReviews,
+        and(
+          eq(clientUnionReviews.workspaceId, clientUnionOperations.workspaceId),
+          eq(
+            clientUnionReviews.reference,
+            clientUnionOperations.reviewReference,
+          ),
+        ),
+      )
+      .leftJoin(
+        clientUnionReversals,
+        and(
+          eq(
+            clientUnionReversals.workspaceId,
+            clientUnionOperations.workspaceId,
+          ),
+          eq(clientUnionReversals.operationId, clientUnionOperations.id),
+        ),
+      )
+      .where(
+        and(
+          eq(clientUnionOperations.workspaceId, actor.workspaceId),
+          sql`${clientUnionReversals.operationId} IS NULL`,
+        ),
+      );
+
+    let dossierId = originalClientId;
+    const visited = new Set<string>();
+    while (true) {
+      if (visited.has(dossierId)) return undefined;
+      visited.add(dossierId);
+      const candidates = new Set(
+        activeUnions
+          .filter(
+            (operation) =>
+              operation.firstClientId === dossierId ||
+              operation.secondClientId === dossierId,
+          )
+          .map((operation) => operation.canonicalClientId)
+          .filter((candidate) => candidate !== dossierId),
+      );
+      if (candidates.size === 0) break;
+      if (candidates.size !== 1) return undefined;
+      const [next] = candidates;
+      if (!next) return undefined;
+      dossierId = next;
+    }
+
+    const [readable] = await this.databaseContext.connection
+      .select({ id: clientAccounts.id })
+      .from(clientAccounts)
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            clientAccounts.workspaceId,
+          ),
+          eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
+          eq(clientCompanyRelationships.companyId, companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          eq(clientAccounts.id, dossierId),
+          eq(clientAccounts.status, 'active'),
+        ),
+      );
+    return readable?.id;
   }
 
   /** Call inside the owning command transaction, once for a new reference. */

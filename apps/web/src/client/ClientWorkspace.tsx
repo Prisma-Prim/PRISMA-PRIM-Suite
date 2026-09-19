@@ -59,6 +59,8 @@ export function ClientWorkspace({
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
+  onOpenProjects,
+  requestedClientDossierId,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -66,6 +68,8 @@ export function ClientWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
+  onOpenProjects?: (client: { id: string; displayName: string }) => void;
+  requestedClientDossierId?: string;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
@@ -152,6 +156,11 @@ export function ClientWorkspace({
     'client.duplicate.resolve',
   );
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
+
+  useEffect(() => {
+    if (requestedClientDossierId && canReadClientDossiers)
+      openDossier(requestedClientDossierId);
+  }, [requestedClientDossierId, canReadClientDossiers]);
 
   const handleAccessRejection = useCallback(
     async (
@@ -801,6 +810,7 @@ export function ClientWorkspace({
           key={`${selectedClientId ?? ''}:${unionRevision}`}
           clientAccountId={selectedClientId}
           onHeadingReady={receiveDossierHeading}
+          onOpenProjects={onOpenProjects}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}

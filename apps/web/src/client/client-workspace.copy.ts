@@ -53,6 +53,7 @@ export const clientWorkspaceCopy = {
   searchResultsTitle: 'Search results',
   clientId: (id: string) => `Client ID: ${id}`,
   openDossier: 'Open dossier',
+  openProjects: 'Open Client Projects',
   loadingDossier: 'Loading Client dossier…',
   dossierNotFound: 'The Client dossier is not available in this Company.',
   dossierEyebrow: 'Shared general dossier',

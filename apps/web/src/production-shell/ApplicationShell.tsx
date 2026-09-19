@@ -329,6 +329,8 @@ export function ApplicationShell({
                 <div
                   className="application-section"
                   key={section.id}
+                  id={section.id}
+                  tabIndex={-1}
                   hidden={isPrisme && selected?.id !== section.id}
                 >
                   {section.content}

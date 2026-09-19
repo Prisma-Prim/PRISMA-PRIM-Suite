@@ -143,14 +143,15 @@ export class ProjectService {
   }
 
   private async view(actor: ActorContext, row: ProjectRow) {
-    const client = await this.clients.readReferenceClient(
-      actor,
-      row.clientAccountId,
-    );
+    const [client, clientDossierId] = await Promise.all([
+      this.clients.readReferenceClient(actor, row.clientAccountId),
+      this.clients.resolveReadableDossierId(actor, row.clientAccountId),
+    ]);
     return {
       id: row.id,
       companyId: row.companyId,
       clientAccountId: row.clientAccountId,
+      ...(clientDossierId ? { clientDossierId } : {}),
       clientDisplayName: client.displayName,
       title: row.title,
       status: row.status,

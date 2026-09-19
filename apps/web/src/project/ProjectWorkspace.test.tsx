@@ -98,6 +98,118 @@ it('filters loaded Projects by visible title or Client without requesting again 
   ).not.toBeInTheDocument();
 });
 
+it('uses an authorized dossier identity for navigation and an exact loaded filter', async () => {
+  const openDossier = vi.fn();
+  const projects = [
+    {
+      id: 'historical-project',
+      title: 'Historical preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'historical-client',
+      clientDossierId: 'canonical-client',
+      clientDisplayName: 'Canonical Client',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+    {
+      id: 'other-project',
+      title: 'Other preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'other-client',
+      clientDossierId: 'other-client',
+      clientDisplayName: 'Canonical Client',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+  ];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/api/clients') return Response.json([]);
+      if (url === '/api/projects/historical-project')
+        return Response.json(projects[0]);
+      return Response.json(projects);
+    }),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      clientFilter={{
+        clientDossierId: 'canonical-client',
+        displayName: 'Canonical Client',
+      }}
+      onOpenClientDossier={openDossier}
+    />,
+  );
+
+  expect(
+    await screen.findByRole('button', {
+      name: 'Historical preparation Client: Canonical Client',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', {
+      name: 'Other preparation Client: Canonical Client',
+    }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Historical preparation Client: Canonical Client',
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open Client dossier' }),
+  );
+  expect(openDossier).toHaveBeenCalledWith('canonical-client');
+
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
+    target: { value: '' },
+  });
+  expect(screen.getAllByRole('listitem')).toHaveLength(2);
+});
+
+it('does not expose Project-to-dossier navigation without a derived authorized dossier', async () => {
+  const project = {
+    id: 'project',
+    title: 'Preparation',
+    status: 'preparatory',
+    companyId: 'company',
+    clientAccountId: 'historical-client',
+    clientDisplayName: 'Visible Client',
+    createdAt: '2026-09-19T00:00:00.000Z',
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? []
+          : url.endsWith('/project')
+            ? project
+            : [project],
+      ),
+    ),
+  );
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      onOpenClientDossier={vi.fn()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Preparation Client: Visible Client',
+    }),
+  );
+  await screen.findByRole('heading', { name: 'Preparation' });
+  expect(
+    screen.queryByRole('button', { name: 'Open Client dossier' }),
+  ).not.toBeInTheDocument();
+});
+
 it('keeps an opened detail while filtering and reflects its authoritative reopen response', async () => {
   const listedProject = {
     id: 'project',
