@@ -287,9 +287,8 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
   await page.goto('/accept-invitation?invitation=' + invitationId);
   await page.getByRole('button', { name: 'Accept invitation' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
   await page
     .locator('.prisme-capabilities')
     .getByRole('link', { name: /Activity Log/ })

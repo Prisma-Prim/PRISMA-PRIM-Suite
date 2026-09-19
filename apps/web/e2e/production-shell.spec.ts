@@ -49,22 +49,25 @@ test('renders the production shell at the normal application entry point', async
   });
   if (testInfo.project.name === 'narrow') {
     await expect(navigation).toBeHidden();
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(navigation).toBeVisible();
   } else {
     await expect(navigation).toBeVisible();
   }
   await expect(page.getByRole('main')).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
   await expect(page.getByText('Ada Ionescu', { exact: true })).toBeVisible();
   await expect(page.getByText('ada@example.test')).toBeVisible();
+  await expect(page.locator('.prisme-breadcrumb')).toContainText(
+    'PRISMA Workspace',
+  );
+  await navigation
+    .getByRole('link', { name: 'Activity Log', exact: true })
+    .click();
   await expect(
-    page
-      .getByRole('region', { name: 'Company context' })
-      .getByText('PRISMA Workspace'),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Activity Log' }),
+    page.getByRole('heading', { name: 'Activity Log' }).first(),
   ).toBeVisible();
   await expect(page.getByText('Ada Ionescu was provisioned')).toBeVisible();
   await expect(page.getByText('Target: Ada Ionescu')).toBeVisible();
@@ -107,7 +110,7 @@ test('makes primary navigation available on a narrow viewport', async ({
   await expect(openMenuButton).toHaveAttribute('aria-expanded', 'true');
   await expect(navigation).toBeVisible();
   await expect(
-    navigation.getByRole('link', { name: 'Home Current' }),
+    navigation.getByRole('link', { name: 'Overview', exact: true }),
   ).toBeVisible();
 
   await page.keyboard.press('Escape');
@@ -171,7 +174,7 @@ test('fails closed for a signed-out deterministic session and recovers the prote
   await page.reload();
   await expect(page).toHaveURL(/\/protected-return-target\?source=invitation$/);
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
 });
 
@@ -184,7 +187,7 @@ test('shows a safe denial when the verified user has no active Workspace Members
       json: { message: 'Forbidden', statusCode: 403 },
     }),
   );
-  await page.goto('/');
+  await page.goto('/?frame=classic');
 
   await expect(page.getByRole('alert')).toHaveText(
     'Your access to this workspace is inactive.',
@@ -227,7 +230,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
     publicReadObserved = true;
     await route.fulfill({ json: company });
   });
-  await page.goto('/');
+  await page.goto('/?frame=classic');
 
   await page.getByLabel('Company display name').fill('North Star Consulting');
   await page.getByRole('button', { name: 'Register Company' }).click();
@@ -272,7 +275,7 @@ test('shows an empty Company context without exposing administration controls', 
     route.fulfill({ json: { events: [] } }),
   );
   await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
-  await page.goto('/');
+  await page.goto('/?frame=classic');
 
   await expect(
     page.getByText(
@@ -335,7 +338,7 @@ test('selects and restores one server-validated Company context', async ({
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   const companyContext = page.getByRole('region', {
     name: 'Company context',
   });
@@ -431,7 +434,7 @@ test('does not clear a newer Company when an older registration is rejected', as
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByLabel('Active Company').selectOption(companies[0]!.id);
   await expect(page.getByLabel('Active Company')).toHaveValue(companies[0]!.id);
   await page.getByLabel('Company display name').fill('Delayed registration');
@@ -497,7 +500,7 @@ test('shows clear zero and one active Company states', async ({ page }) => {
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   const companyContext = page.getByRole('region', {
     name: 'Company context',
   });
@@ -554,7 +557,7 @@ test('does not share a saved Company context between Workspace members', async (
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByLabel('Active Company').selectOption(company.id);
   await expect(page.getByLabel('Active Company')).toHaveValue(company.id);
 
@@ -635,7 +638,7 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     route.fulfill({ json: { events: [] } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   const companyContext = page.getByRole('region', {
     name: 'Company context',
   });
@@ -778,7 +781,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
     return route.fallback();
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByLabel('Workspace member').selectOption({
     label: `${member.displayName} — ${member.email}`,
   });
@@ -1046,7 +1049,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByLabel('Active Company').selectOption(companies[0]!.id);
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
@@ -1370,7 +1373,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
     });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByLabel('Access bundle').selectOption('director-client');
   for (const director of [directors.a, directors.b]) {
     await page.getByLabel('Workspace member').selectOption({
@@ -1708,7 +1711,7 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     return route.fulfill({ status: 404 });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await expect(page.getByRole('region', { name: 'Clients' })).toBeVisible();
   await page
     .getByLabel('Client display name')

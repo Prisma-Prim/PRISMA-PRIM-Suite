@@ -1,7 +1,147 @@
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
-test('opts into Prisme, switches authorized Company and opens Clients', async ({
+test('keeps Classic as an explicit reload-stable rollback and accepts legacy Prisme links', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/access/current-actor'))
+      return route.fulfill({ json: actorContextFixture });
+    if (path.endsWith('/activity-log'))
+      return route.fulfill({ json: { events: [] } });
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto('/?source=preserved&frame=classic#companies');
+  await expect(page.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\?source=preserved&frame=classic#companies$/);
+  await expect(page.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
+
+  await page.goto('/?source=preserved&frame=prisme#companies');
+  await expect(
+    page.getByRole('heading', { name: 'Companies', exact: true }),
+  ).toBeVisible();
+});
+
+test('keeps every authorized MVP section reachable from the default frame', async ({
+  page,
+}) => {
+  let context: 'operational' | 'administration' = 'operational';
+  const company = { id: 'company-all-sections', displayName: 'PRISMA-PRIM' };
+  await page.addInitScript(
+    ({ key, companyId }) => {
+      if (sessionStorage.getItem('mvp-section-context') !== 'administration')
+        localStorage.setItem(key, companyId);
+    },
+    {
+      key: `prisma-prim.company-context:${actorContextFixture.workspaceId}:${actorContextFixture.workspaceMembershipId}`,
+      companyId: company.id,
+    },
+  );
+  await page.route('**/api/**', (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/access/current-actor'))
+      return route.fulfill({
+        json: {
+          ...actorContextFixture,
+          workspacePermissions:
+            context === 'operational'
+              ? ['client.manage']
+              : [
+                  'company.manage',
+                  'company.assignment.manage',
+                  'member.invite',
+                ],
+          ...(context === 'operational' &&
+          request.headers()['x-company-context-id'] === company.id
+            ? {
+                activeCompany: {
+                  ...company,
+                  clientPermissions: ['client.read'],
+                  projectPermissions: ['project.read'],
+                  documentPermissions: ['document.read'],
+                },
+              }
+            : {}),
+        },
+      });
+    if (path.endsWith('/companies'))
+      return route.fulfill({
+        json: context === 'operational' ? [company] : [],
+      });
+    if (path.endsWith('/activity-log'))
+      return route.fulfill({ json: { events: [] } });
+    if (
+      context === 'operational' &&
+      (path.endsWith('/clients') ||
+        path.endsWith('/projects') ||
+        path.endsWith('/documents'))
+    )
+      return route.fulfill({ json: [] });
+    if (path.endsWith('/company-context-assignments/administration'))
+      return route.fulfill({
+        json: { members: [], companies: [], assignments: [] },
+      });
+    if (path.endsWith('/workspace-invitations'))
+      return route.fulfill({
+        json: { invitations: [], nextCursor: null },
+      });
+    return route.fulfill({ status: 404 });
+  });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+  ).toBeVisible();
+  await expect
+    .poll(async () =>
+      page
+        .locator('#primary-navigation a')
+        .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+    )
+    .toEqual([
+      '#overview',
+      '#overview',
+      '#documents',
+      '#clients',
+      '#projects',
+      '#activity',
+    ]);
+
+  context = 'administration';
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.setItem('mvp-section-context', 'administration');
+  });
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+  ).toBeVisible();
+  await expect
+    .poll(async () =>
+      page
+        .locator('#primary-navigation a')
+        .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+    )
+    .toEqual([
+      '#overview',
+      '#overview',
+      '#access',
+      '#companies',
+      '#activity',
+      '#invitations',
+    ]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('opens authenticated members in Prisme, switches authorized Company and opens Clients', async ({
   page,
 }, testInfo) => {
   const companies = [
@@ -50,8 +190,7 @@ test('opts into Prisme, switches authorized Company and opens Clients', async ({
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(page).toHaveURL(/frame=prisme/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
@@ -126,6 +265,9 @@ test('keeps registration retries, section selection and focus across presentatio
     return route.fulfill({ json: [] });
   });
   await page.goto('/?source=preserved&frame=prisme#companies');
+  await page.evaluate(() =>
+    history.replaceState({ workspaceRecovery: 'opaque' }, '', location.href),
+  );
   const name = page.getByLabel('Company display name');
   await name.fill('Company draft');
   await page.getByRole('button', { name: 'Register Company' }).click();
@@ -133,10 +275,14 @@ test('keeps registration retries, section selection and focus across presentatio
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Use classic frame' }).click();
-  await expect(page).toHaveURL(/\?source=preserved#companies$/);
+  await expect(page).toHaveURL(/\?source=preserved&frame=classic#companies$/);
   await expect(name).toHaveValue('Company draft');
   await page.getByRole('button', { name: 'Try Prisme' }).click();
+  await expect(page).toHaveURL(/\?source=preserved#companies$/);
   await expect(name).toHaveValue('Company draft');
+  expect(await page.evaluate(() => history.state)).toEqual({
+    workspaceRecovery: 'opaque',
+  });
   await page.getByRole('button', { name: 'Register Company' }).click();
   await expect.poll(() => commands.length).toBe(2);
   expect(commands[0]).toBe(commands[1]);
@@ -195,7 +341,9 @@ for (const startInPrisme of [false, true]) {
       return route.fulfill({ json: [] });
     });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(startInPrisme ? '/?frame=prisme#companies' : '/#companies');
+    await page.goto(
+      startInPrisme ? '/?frame=prisme#companies' : '/?frame=classic#companies',
+    );
     if (startInPrisme && testInfo.project.name === 'narrow') {
       await page.getByRole('button', { name: 'Open navigation' }).focus();
       await page.keyboard.press('Enter');
