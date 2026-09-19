@@ -157,6 +157,9 @@ async function openProject(page: Page, testInfo: TestInfo) {
   await expect(
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
+  await page
+    .getByRole('tab', { name: 'Working Documents', exact: true })
+    .click();
   const documents = page.getByRole('region', {
     name: 'Working Documents',
     exact: true,
@@ -261,6 +264,9 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
 
   await page.reload();
   await page.getByRole('button', { name: project.title, exact: true }).click();
+  await page
+    .getByRole('tab', { name: 'Working Documents', exact: true })
+    .click();
   state.document = {
     ...state.document,
     title: 'Corrected preparation questionnaire',
@@ -341,6 +347,9 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   await capture(page, testInfo, 'project-documents-removed.png');
   await page.reload();
   await page.getByRole('button', { name: project.title, exact: true }).click();
+  await page
+    .getByRole('tab', { name: 'Working Documents', exact: true })
+    .click();
   await expect(
     documents.getByText('No working Documents attached.'),
   ).toBeVisible();
