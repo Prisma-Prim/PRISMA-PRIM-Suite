@@ -137,7 +137,6 @@ function attribution(value: unknown) {
     reason: unionString(row.reason),
     occurredAt: unionString(row.occurredAt),
     actor: {
-      internalUserId: unionString(actor.internalUserId),
       displayName: unionString(actor.displayName),
     },
   };
@@ -151,7 +150,6 @@ export function readUnionDetail(value: unknown) {
     throw new Error('Invalid union history state.');
   return {
     ...attribution(row),
-    operationId: unionString(row.operationId),
     projectionReference: unionString(row.projectionReference),
     canonicalClientId: unionString(row.canonicalClientId),
     state: row.state,
