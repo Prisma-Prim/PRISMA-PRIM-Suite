@@ -37,6 +37,42 @@
   padding: 0;
   margin-top: 0;
 }
+.task-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.65fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  min-width: 0;
+}
+.task-filters label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  color: #54617a;
+  font-size: 0.8rem;
+}
+.task-filters input,
+.task-filters select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #9ca8bb;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  color: #15233b;
+  background: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.task-filters input:focus-visible,
+.task-filters select:focus-visible {
+  outline: 3px solid #4b36b5;
+  outline-offset: 2px;
+}
+.task-no-match {
+  margin: 0 0 1rem;
+  color: #54617a;
+}
 .task-list li {
   display: grid;
   gap: 0.4rem;
@@ -124,10 +160,19 @@
   color: #fff;
   background: #6451e8;
 }
-.prisme-shell .project-tasks--prisme button:focus-visible,
-.prisme-shell .project-tasks--prisme input:focus-visible,
-.prisme-shell .project-tasks--prisme select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--shell-focus) 42%, transparent);
+.prisme-shell
+  .project-workspace--prisme
+  .project-tasks--prisme
+  button:focus-visible,
+.prisme-shell
+  .project-workspace--prisme
+  .project-tasks--prisme
+  input:focus-visible,
+.prisme-shell
+  .project-workspace--prisme
+  .project-tasks--prisme
+  select:focus-visible {
+  outline: 3px solid #4b36b5;
   outline-offset: 2px;
 }
 .prisme-shell .project-tasks--prisme .task-list li {
@@ -172,6 +217,7 @@
     display: grid;
   }
   .task-layout,
+  .task-filters,
   .task-facts {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import type { TaskView } from './task-response';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -270,6 +271,226 @@ async function openSavedTask() {
   await screen.findByRole('heading', { name: savedTask.title });
   return screen.getByRole('region', { name: 'Tasks' });
 }
+
+it('filters loaded Tasks locally by title and current status while preserving server order', async () => {
+  const completedTask = {
+    ...savedTask,
+    id: 'completed-task',
+    title: 'Archive preparation evidence',
+    status: 'done',
+    completion: {
+      actor: attribution,
+      occurredAt: savedTask.updatedAt,
+    },
+  };
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({
+            mutable: true,
+            tasks: [
+              savedTask,
+              completedTask,
+              { ...savedTask, id: 'last-task', title: 'Review archive notes' },
+            ],
+          })
+        : undefined,
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  const taskList = await within(tasks).findByRole('navigation', {
+    name: 'Tasks',
+  });
+  expect(
+    within(taskList)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
+  const fetchCount = fetcher.mock.calls.length;
+
+  expect(within(taskList).getByLabelText('Task status')).toHaveValue('all');
+  fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
+    target: { value: 'ARCHIVE' },
+  });
+  expect(
+    within(taskList)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Archive preparation evidence', 'Review archive notes']);
+
+  fireEvent.change(within(taskList).getByLabelText('Task status'), {
+    target: { value: 'done' },
+  });
+  expect(
+    within(taskList)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Archive preparation evidence']);
+
+  fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
+    target: { value: 'missing title' },
+  });
+  expect(
+    within(taskList).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(taskList).queryByText('No manual Tasks for this Project yet.'),
+  ).not.toBeInTheDocument();
+  expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+});
+
+it('keeps the selected detail, draft and exact retry command when filters hide its list item', async () => {
+  const commands: { key: string | null; body: unknown }[] = [];
+  let replayed = false;
+  fixture({
+    mutate: (_url, request) => {
+      commands.push({
+        key: new Headers(request.headers).get('idempotency-key'),
+        body: JSON.parse(
+          typeof request.body === 'string' ? request.body : '{}',
+        ),
+      });
+      if (commands.length === 1) return new Response(null, { status: 500 });
+      replayed = true;
+      return Response.json({
+        ...savedTask,
+        title: 'Unsaved correction',
+        version: 2,
+      });
+    },
+    read: (url) =>
+      replayed && url === '/api/tasks/task'
+        ? Response.json({
+            mutable: true,
+            task: {
+              ...savedTask,
+              title: 'Unsaved correction',
+              version: 2,
+            },
+          })
+        : undefined,
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: 'Unsaved correction' },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByRole('button', {
+    name: 'Retry pending Task change',
+  });
+
+  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
+    target: { value: 'another' },
+  });
+  expect(
+    within(tasks).queryByRole('button', { name: savedTask.title }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tasks).getByRole('heading', { name: savedTask.title }),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+    'Unsaved correction',
+  );
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Retry pending Task change' }),
+  );
+  await within(tasks).findByRole('heading', { name: 'Unsaved correction' });
+  expect(commands).toHaveLength(2);
+  expect(commands[0]).toEqual(commands[1]);
+  expect(commands[0]?.body).toEqual({
+    expectedVersion: 1,
+    title: 'Unsaved correction',
+  });
+  expect(commands[0]?.key).toBeTruthy();
+});
+
+it('refreshes filtered navigation after complete and reopen while keeping the open detail readable', async () => {
+  let currentTask: TaskView = { ...savedTask, status: 'todo' };
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [currentTask] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: currentTask });
+      return undefined;
+    },
+    mutate: (url) => {
+      const done = url.endsWith('/complete');
+      currentTask = done
+        ? {
+            ...currentTask,
+            status: 'done',
+            completion: {
+              actor: attribution,
+              occurredAt: savedTask.updatedAt,
+            },
+            version: currentTask.version + 1,
+          }
+        : {
+            ...currentTask,
+            status: 'todo',
+            completion: null,
+            version: currentTask.version + 1,
+          };
+      return Response.json(currentTask);
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  await within(tasks).findByRole('navigation', { name: 'Tasks' });
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'todo' },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: savedTask.title }));
+  await within(tasks).findByRole('heading', { name: savedTask.title });
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await within(tasks).findByRole('button', { name: 'Reopen Task' });
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByRole('heading', { name: savedTask.title }),
+  ).toBeInTheDocument();
+
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'done' },
+  });
+  expect(
+    within(tasks).getByRole('button', { name: savedTask.title }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await within(tasks).findByRole('button', { name: 'Mark done' });
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByRole('heading', { name: savedTask.title }),
+  ).toBeInTheDocument();
+});
 
 it('keeps the original edit key and expected version across Task navigation and reads current state after a historical replay', async () => {
   const commands: { key: string | null; body: unknown }[] = [];

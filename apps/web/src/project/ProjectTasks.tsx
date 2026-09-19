@@ -68,6 +68,7 @@ type Command = { key: string } & (
 type Mutation =
   | { kind: 'idle' | 'blocked' }
   | { kind: 'pending' | 'uncertain'; command: Command };
+type TaskFilter = 'all' | TaskView['status'];
 const emptyDraft: Draft = { title: '', assigneeMembershipId: '', dueDate: '' };
 
 export function ProjectTasks(props: Props) {
@@ -120,6 +121,8 @@ function TaskProject({
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [feedback, setFeedback] = useState('');
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const drafts = useRef(
     new Map<string, { version: number | null; draft: Draft }>(),
   );
@@ -143,6 +146,15 @@ function TaskProject({
     current?.mutable ?? (load.kind === 'ready' && load.listing.mutable);
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
+  const normalizedTaskSearch = taskSearch.trim().toLowerCase();
+  const visibleTasks =
+    load.kind === 'ready'
+      ? load.listing.tasks.filter(
+          (task) =>
+            (taskFilter === 'all' || task.status === taskFilter) &&
+            task.title.toLowerCase().includes(normalizedTaskSearch),
+        )
+      : [];
 
   async function resultValue(
     result: ApiResult<unknown>,
@@ -441,8 +453,42 @@ function TaskProject({
           <div className="task-layout">
             <nav aria-label={copy.title}>
               {load.listing.tasks.length === 0 && <p>{copy.empty}</p>}
+              {load.listing.tasks.length > 0 && (
+                <div className="task-filters">
+                  <label>
+                    <span>{copy.searchLabel}</span>
+                    <input
+                      type="search"
+                      value={taskSearch}
+                      onChange={(event) => setTaskSearch(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>{copy.statusFilterLabel}</span>
+                    <select
+                      value={taskFilter}
+                      onChange={(event) => {
+                        const nextFilter = event.target.value;
+                        if (
+                          nextFilter === 'all' ||
+                          nextFilter === 'todo' ||
+                          nextFilter === 'done'
+                        )
+                          setTaskFilter(nextFilter);
+                      }}
+                    >
+                      <option value="all">{copy.all}</option>
+                      <option value="todo">{copy.todo}</option>
+                      <option value="done">{copy.completedFilter}</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+              {load.listing.tasks.length > 0 && visibleTasks.length === 0 && (
+                <p className="task-no-match">{copy.noMatch}</p>
+              )}
               <ul className="task-list">
-                {load.listing.tasks.map((task) => (
+                {visibleTasks.map((task) => (
                   <li key={task.id}>
                     <button
                       type="button"
