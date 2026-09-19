@@ -9,7 +9,8 @@ const baseURL = 'http://127.0.0.1:' + port;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  workers: process.platform === 'win32' ? 2 : undefined,
+  // Keep Windows browser journeys sequential to avoid rendering contention.
+  workers: process.platform === 'win32' ? 1 : undefined,
   use: {
     baseURL,
     trace: 'on-first-retry',
