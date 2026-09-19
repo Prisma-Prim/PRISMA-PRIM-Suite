@@ -535,7 +535,9 @@ describe('Client union UI public journey', () => {
     });
     const reason = within(reversal).getByLabelText('Reason for reversal');
     const acknowledgement = within(reversal).getByRole('checkbox');
-    fireEvent.submit(reversal);
+    fireEvent.click(
+      within(reversal).getByRole('button', { name: 'Reverse union' }),
+    );
     expect(await within(reversal).findByRole('alert')).toHaveTextContent(
       'Give a reason and confirm the complete captured Company set before reversing.',
     );

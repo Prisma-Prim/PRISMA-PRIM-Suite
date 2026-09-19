@@ -32,14 +32,15 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
       clientPermissionSetVersion: 'v2',
     },
   };
+  const reversalCommands: {
+    body: string | null;
+    key: string | undefined;
+    company: string | undefined;
+  }[] = [];
   const state = {
     activityReads: 0,
     clientReads: 0,
-    reversalCommands: [] as {
-      body: string | null;
-      key: string | undefined;
-      company: string | undefined;
-    }[],
+    reversalCommands,
   };
   await page.route('**/api/**', async (route) => {
     const request = route.request();

@@ -537,6 +537,7 @@ function UnionOperationDetail({
         <form
           className="client-union-form client-union-history-form"
           aria-label={copy.reverse}
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             setAttempted(true);
