@@ -98,6 +98,71 @@ it('filters loaded Projects by visible title or Client without requesting again 
   ).not.toBeInTheDocument();
 });
 
+it('applies a dossier Client filter and returns from Project detail through stable relationships', async () => {
+  const projects = [
+    {
+      id: 'project-alpha',
+      title: 'Alpha preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'client-alpha',
+      clientDisplayName: 'Alpha Advisory',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+    {
+      id: 'project-beta',
+      title: 'Beta preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'client-beta',
+      clientDisplayName: 'Beta Certification',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+  ];
+  const fetch = vi.fn(async (url: string) =>
+    Response.json(
+      url === '/api/clients'
+        ? [
+            { id: 'client-alpha', displayName: 'Alpha Advisory' },
+            { id: 'client-beta', displayName: 'Beta Certification' },
+          ]
+        : url === '/api/projects/project-alpha'
+          ? projects[0]
+          : projects,
+    ),
+  );
+  vi.stubGlobal('fetch', fetch);
+  const onOpenClient = vi.fn();
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      clientFilter={{ id: 'client-alpha', displayName: 'Alpha Advisory' }}
+      onOpenClient={onOpenClient}
+    />,
+  );
+
+  const search = await screen.findByRole('searchbox', {
+    name: 'Find Projects',
+  });
+  expect(search).toHaveValue('Alpha Advisory');
+  expect(screen.getByRole('list', { name: 'Projects' }).children).toHaveLength(
+    1,
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Alpha preparation/ }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Open Client dossier' }),
+  );
+  expect(onOpenClient).toHaveBeenCalledWith('client-alpha');
+
+  fireEvent.change(search, { target: { value: '' } });
+  expect(screen.getByRole('list', { name: 'Projects' }).children).toHaveLength(
+    2,
+  );
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
+
 it('keeps an opened detail while filtering and reflects its authoritative reopen response', async () => {
   const listedProject = {
     id: 'project',

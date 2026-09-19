@@ -39,10 +39,14 @@ export function ProjectWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
+  clientFilter,
+  onOpenClient,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
+  clientFilter?: { id: string; displayName: string };
+  onOpenClient?: (clientAccountId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
@@ -50,6 +54,7 @@ export function ProjectWorkspace({
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
   const [query, setQuery] = useState('');
+  const [filteredClientId, setFilteredClientId] = useState<string>();
   const [title, setTitle] = useState('');
   const [clientAccountId, setClientAccountId] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -135,6 +140,11 @@ export function ProjectWorkspace({
     generation,
     identity,
   ]);
+  useEffect(() => {
+    if (!clientFilter) return;
+    setQuery(clientFilter.displayName);
+    setFilteredClientId(clientFilter.id);
+  }, [clientFilter]);
 
   async function run(
     path: string,
@@ -253,11 +263,12 @@ export function ProjectWorkspace({
   const normalizedQuery = query.trim().toLowerCase();
   const filteredProjects =
     load.kind === 'ready'
-      ? load.projects.filter(
-          (project) =>
-            normalizedQuery.length === 0 ||
-            project.title.toLowerCase().includes(normalizedQuery) ||
-            project.clientDisplayName.toLowerCase().includes(normalizedQuery),
+      ? load.projects.filter((project) =>
+          filteredClientId
+            ? project.clientAccountId === filteredClientId
+            : normalizedQuery.length === 0 ||
+              project.title.toLowerCase().includes(normalizedQuery) ||
+              project.clientDisplayName.toLowerCase().includes(normalizedQuery),
         )
       : [];
   return (
@@ -302,7 +313,10 @@ export function ProjectWorkspace({
                 type="search"
                 value={query}
                 placeholder={copy.searchPlaceholder}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setFilteredClientId(undefined);
+                }}
                 disabled={pending}
               />
             </label>
@@ -406,6 +420,15 @@ export function ProjectWorkspace({
               <p>
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              {onOpenClient && (
+                <button
+                  type="button"
+                  className="project-client-navigation"
+                  onClick={() => onOpenClient(selected.clientAccountId)}
+                >
+                  {copy.openClientDossier}
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -414,6 +437,14 @@ export function ProjectWorkspace({
               <p>
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              {onOpenClient && (
+                <button
+                  type="button"
+                  onClick={() => onOpenClient(selected.clientAccountId)}
+                >
+                  {copy.openClientDossier}
+                </button>
+              )}
             </>
           )}
           {isPrisme && (

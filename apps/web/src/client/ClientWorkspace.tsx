@@ -59,6 +59,8 @@ export function ClientWorkspace({
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
+  requestedClientId,
+  onOpenProjects,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -66,6 +68,8 @@ export function ClientWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
+  requestedClientId?: string;
+  onOpenProjects?: (client: { id: string; displayName: string }) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
@@ -126,6 +130,9 @@ export function ClientWorkspace({
     dossierOpeningTrigger.current = isPrisme ? document.activeElement : null;
     setSelectedClientId(clientId);
   }
+  useEffect(() => {
+    if (requestedClientId) openDossier(requestedClientId);
+  }, [requestedClientId]);
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
@@ -801,6 +808,7 @@ export function ClientWorkspace({
           key={`${selectedClientId ?? ''}:${unionRevision}`}
           clientAccountId={selectedClientId}
           onHeadingReady={receiveDossierHeading}
+          onOpenProjects={onOpenProjects}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}

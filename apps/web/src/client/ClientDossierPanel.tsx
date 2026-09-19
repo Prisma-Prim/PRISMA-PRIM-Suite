@@ -81,6 +81,7 @@ export function ClientDossierPanel({
   onClientsChanged,
   onDuplicateReviewRequired = () => undefined,
   onHeadingReady,
+  onOpenProjects,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -93,6 +94,7 @@ export function ClientDossierPanel({
   onClientsChanged: () => Promise<void>;
   onDuplicateReviewRequired?: () => void;
   onHeadingReady?: (heading: HTMLHeadingElement | null) => void;
+  onOpenProjects?: (client: { id: string; displayName: string }) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -397,6 +399,20 @@ export function ClientDossierPanel({
             onClick={() => setCorrectionOpen((open) => !open)}
           >
             {copy.correctionFormLabel}
+          </button>
+        )}
+        {onOpenProjects && (
+          <button
+            type="button"
+            className="client-secondary-action"
+            onClick={() =>
+              onOpenProjects({
+                id: dossier.id,
+                displayName: dossier.displayName,
+              })
+            }
+          >
+            {copy.openProjects}
           </button>
         )}
       </div>

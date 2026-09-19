@@ -31,6 +31,15 @@ import {
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
+  const [projectClientFilter, setProjectClientFilter] = useState<{
+    id: string;
+    displayName: string;
+    companyId: string;
+  }>();
+  const [requestedClient, setRequestedClient] = useState<{
+    id: string;
+    companyId: string;
+  }>();
   const {
     shellContext: access,
     selectCompany,
@@ -70,6 +79,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.workspacePermissions.includes('client.manage') ||
     access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
       true;
+  const activeCompanyId = access.actor.activeCompany?.id;
 
   const sections: ApplicationSection[] = [];
   if (access.actor.activeCompany && canAccessClients)
@@ -99,6 +109,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
+          requestedClientId={
+            requestedClient && requestedClient.companyId === activeCompanyId
+              ? requestedClient.id
+              : undefined
+          }
+          onOpenProjects={(client) => {
+            if (!activeCompanyId) return;
+            setProjectClientFilter({
+              ...client,
+              companyId: activeCompanyId,
+            });
+            window.location.hash = 'projects';
+          }}
         />
       ),
     });
@@ -116,6 +139,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}
+          clientFilter={
+            projectClientFilter?.companyId === activeCompanyId
+              ? projectClientFilter
+              : undefined
+          }
+          onOpenClient={(clientAccountId) => {
+            if (!activeCompanyId) return;
+            setRequestedClient({
+              id: clientAccountId,
+              companyId: activeCompanyId,
+            });
+            window.location.hash = 'clients';
+          }}
         />
       ),
     });

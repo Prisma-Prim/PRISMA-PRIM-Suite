@@ -68,6 +68,7 @@ export const clientWorkspaceCopy = {
   contactsInvalid: 'Each Contact must have a name.',
   correctionFormLabel: 'Correct Client dossier',
   sharedDetails: 'Shared details',
+  openProjects: 'Open Client Projects',
   closeCorrection: 'Close correction',
   correctionHint:
     'Closing keeps your draft. A correction already being saved continues.',
