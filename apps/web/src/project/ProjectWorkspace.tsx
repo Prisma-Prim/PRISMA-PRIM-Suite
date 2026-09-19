@@ -271,20 +271,41 @@ export function ProjectWorkspace({
                   disabled={pending}
                 />
               </label>
-              <label htmlFor="project-client">{copy.client}</label>
-              <select
-                id="project-client"
-                value={clientAccountId}
-                onChange={(event) => setClientAccountId(event.target.value)}
-                disabled={pending}
-              >
-                <option value="">{copy.selectClient}</option>
-                {load.clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.displayName}
-                  </option>
-                ))}
-              </select>
+              {isPrisme ? (
+                <div className="project-client-field">
+                  <label htmlFor="project-client">{copy.client}</label>
+                  <select
+                    id="project-client"
+                    value={clientAccountId}
+                    onChange={(event) => setClientAccountId(event.target.value)}
+                    disabled={pending}
+                  >
+                    <option value="">{copy.selectClient}</option>
+                    {load.clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <label htmlFor="project-client">{copy.client}</label>
+                  <select
+                    id="project-client"
+                    value={clientAccountId}
+                    onChange={(event) => setClientAccountId(event.target.value)}
+                    disabled={pending}
+                  >
+                    <option value="">{copy.selectClient}</option>
+                    {load.clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
               {load.clients.length === 0 && <p>{copy.noClients}</p>}
               <button
                 type="submit"
