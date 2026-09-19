@@ -80,13 +80,19 @@ export const clientWorkspaceCopy = {
   correctionSaved: 'Client correction saved with attributable history.',
   correctionRetry: 'The correction could not be saved. Retry safely.',
   duplicateReviewTitle: 'Possible duplicate reviews',
-  duplicateReviewDescription:
-    'Only reviews covered by your complete current Company authority appear here.',
+  duplicateReviewDescription: 'Review possible duplicates you have access to.',
   loadingDuplicateReviews: 'Loading possible duplicate reviews…',
   loadMoreDuplicateReviews: 'Load more possible duplicate reviews',
   loadingMoreDuplicateReviews: 'Loading more possible duplicate reviews…',
   loadingDuplicateReview: 'Loading the duplicate comparison…',
   noDuplicateReviews: 'No possible duplicate review is currently available.',
+  emptyDuplicateReviewPage:
+    'No review on this page. More reviews may be available.',
+  retryDuplicateReviews: 'Retry review list',
+  duplicateReviewDenied:
+    'Review access is not available with your current authority.',
+  duplicateAttachmentRetry:
+    'The Company attachment could not be confirmed. Reopen the review before trying again.',
   duplicateReviewRetry: 'The duplicate review could not be loaded safely.',
   duplicateReviewContinuationRetry:
     'More duplicate reviews could not be loaded safely. Try again.',
@@ -97,14 +103,29 @@ export const clientWorkspaceCopy = {
   multipleDuplicateCandidates:
     'Several existing Clients use this identifier. Data remediation is required before comparison can continue.',
   duplicateComparisonTitle: 'Compare the proposed and existing Client',
+  duplicateComparisonDescription:
+    'Read the proposed information alongside the saved dossier. No proposed value is copied into the existing Client.',
+  duplicateRegistrationProposal: 'Registration proposal · not saved',
+  duplicateCorrectionProposal: 'Correction proposal · not saved',
+  noProposedContacts: 'No Contacts proposed.',
+  duplicateAlreadyLinked:
+    'The existing Client is already linked to the active Company.',
+  duplicateNotLinked:
+    'The existing Client is not linked to the active Company.',
+  duplicateAttachmentUnavailable:
+    'Linking this Client is not available with your current access.',
   duplicateFieldColumn: 'Field',
+  duplicateRecordState: 'Record state',
   duplicateProposalColumn: 'Proposed value',
   duplicateCandidateColumn: 'Existing Client',
   notApplicable: 'Not applicable',
   attachExistingDuplicate: 'Use this existing Client in the active Company',
   attachingDuplicate: 'Adding existing Client…',
+  duplicateAttached: 'Existing Client linked to the active Company.',
+  duplicateAttachmentRefreshFailed:
+    'The Client was linked, but some information could not be refreshed.',
   correctDuplicateProposal:
-    'Return to the dossier and submit a fresh ordinary correction after reviewing these values.',
+    'Return to the relevant dossier and submit an ordinary correction if appropriate.',
   staleCorrection:
     'This dossier changed before your correction was saved. Reload the current version before retrying.',
   reloadDossier: 'Reload dossier',

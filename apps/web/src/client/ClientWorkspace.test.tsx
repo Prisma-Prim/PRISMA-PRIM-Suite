@@ -1306,12 +1306,8 @@ describe('ClientWorkspace', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Proposed Client')).toBeInTheDocument();
     expect(screen.getAllByText('Existing Client')).toHaveLength(2);
-    expect(
-      screen.getByText('Proposed Contact — proposed@example.test'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Existing Contact — +373 22 100 100'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Proposed Contact')).toBeInTheDocument();
+    expect(screen.getByText('Existing Contact')).toBeInTheDocument();
     expect(screen.queryByText(reference)).not.toBeInTheDocument();
 
     fireEvent.click(
@@ -1320,7 +1316,7 @@ describe('ClientWorkspace', () => {
       }),
     );
     expect(
-      await screen.findByText(/review is no longer available/i),
+      await screen.findByText('Existing Client linked to the active Company.'),
     ).toBeInTheDocument();
     expect(refreshActivity).toHaveBeenCalledOnce();
     expect(duplicateListLoads).toBe(2);

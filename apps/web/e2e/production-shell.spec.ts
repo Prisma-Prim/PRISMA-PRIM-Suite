@@ -1755,6 +1755,7 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
+  await page.goto('/?frame=prisme#clients');
   await expect(
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
   ).toHaveCount(0);
@@ -1789,7 +1790,9 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
       })
       .click(),
   ]);
-  await expect(page.getByText(/review is no longer available/i)).toBeVisible();
+  await expect(
+    page.getByText('Existing Client linked to the active Company.'),
+  ).toBeVisible();
   expect(candidateAttached).toBe(true);
 
   const geometry = await page.evaluate(() => ({
