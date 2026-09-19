@@ -50,9 +50,9 @@ test('keeps checking, denied, error and signed-out states outside the opt-in fra
     sessionStorage.setItem('deterministic-auth-state', 'signed-out'),
   );
   await page.reload();
-  await expect(page.getByRole('alert')).toHaveText(
-    'Sign in is required to access this workspace.',
-  );
+  await expect(
+    page.getByRole('heading', { name: 'Make every decision traceable.' }),
+  ).toBeVisible();
   await expect(page.getByRole('banner')).toHaveCount(0);
 });
 
@@ -241,9 +241,9 @@ test('discards a late previous-Company result and removes the frame on logout', 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('alert')).toHaveText(
-    'Sign in is required to access this workspace.',
-  );
+  await expect(
+    page.getByRole('heading', { name: 'Make every decision traceable.' }),
+  ).toBeVisible();
   await expect(page.getByRole('banner')).toHaveCount(0);
 });
 
