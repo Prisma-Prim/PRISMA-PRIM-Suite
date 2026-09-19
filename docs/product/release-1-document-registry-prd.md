@@ -1,8 +1,8 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references and their Project association approved in #239 and #245; wider governance remains Draft  
-**Version:** 0.5  
-**Owner:** Dan Popescu  
+**Status:** Partially approved — working references, their correction and Project association approved in #239, #250 and #245; wider governance remains Draft
+**Version:** 0.6
+**Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
 ## 1. Problem statement
@@ -140,7 +140,7 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-The working-reference registration slice is approved in section 17 and the Project-association slice in section 18. Wider registration families, official promotion, content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block either bounded slice.
+The working-reference registration slice is approved in section 17, Project association in section 18 and bounded working-reference correction in section 19. Wider registration families, official promotion, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
 
 ## 16. Evidence authority boundary
 
@@ -192,11 +192,12 @@ states and reload/reopen support. Tests own proof through real PostgreSQL REST,
 the metadata-only Documents read seam, component interactions and desktop/narrow
 browser journeys. No schema backfill grants additional permissions.
 
-Official promotion, signatures, numbering, editing/replacement, archival/retention,
+Official promotion, signatures, numbering, replacement, archival/retention,
 uploads, Google integration, byte preservation, evidence reuse,
 generation/OCR/AI and the wider role taxonomy remain deferred. This tracer does
 not complete the parent Document Registry capability. Section 18 separately
-authorizes only the working Project-association boundary.
+authorizes only the working Project-association boundary; section 19 authorizes
+only in-place correction of this unverified working reference.
 
 ## 18. Approved working Project associations (#245)
 
@@ -279,3 +280,45 @@ Public PostgreSQL REST tests prove both-end authorization, immutable identities,
 revision/idempotency behavior, atomic history and the Client reversal fence.
 Component and desktop/narrow browser tests prove the attach/reload/open/remove
 journey. No external provider integration or new verification harness is needed.
+
+## 19. Approved unverified working-reference correction (#250)
+
+Dan approved this bounded MVP correction on 2026-09-19. An explicitly authorized
+Company user may correct the trimmed title, purpose and credential-free external
+HTTPS URL of the unverified working questionnaire introduced in section 17.
+Correction updates that working record in place while preserving its Document,
+draft Version and Representation identifiers, original Client, creator, creation
+time and optional Project association. It neither creates a formal Version nor
+approves, verifies, replaces, archives or officializes content.
+
+`workingRevision` starts at one and is separate from Version identity and the
+Project-association revision. A command supplies the expected revision and at
+least one allowed field. A material change increments the revision once; a stale
+or competing intent conflicts without overwrite. A normalized no-op records an
+`unchanged` receipt at the same revision without an Activity Log event or Client
+fence advance. Exact actor-and-Workspace-scoped retries recheck live authority and
+visibility and return their durable receipt; changed reuse of a key conflicts.
+
+The existing Company Document Registrar v1 remains unchanged. A fresh explicitly
+granted **Company Document Registrar v2** contains v1 plus `document.correct`.
+Correction requires the v2 assignment, Document metadata and Representation read,
+the active Company context and the existing Client-read prerequisite. Existing v1
+assignments do not expand automatically; unknown or null versions fail closed.
+The stored original Client and its Company relationship must remain active for a
+new correction. A superseded original stays readable but correction read-only;
+writes never follow a canonical Client created by a union.
+
+Field changes, the revision, an append-only internal before/after command ledger,
+one `document.corrected` event and one material Client operational-use fence
+advance commit or roll back together. The Activity Log event exposes actor, server
+time, Company and Document target with empty metadata; title, purpose, URL,
+Project identity and before/after values remain absent. A detailed public
+before/after history view is deferred.
+
+The Document detail UI provides Edit, Cancel and Save only with current correction
+authority and Representation read. It preserves the exact body and idempotency key
+for an explicit retry after an uncertain result, requires reload after conflict,
+and invalidates drafts and late responses when Company, session, membership or
+permission context changes. Uploads, URL fetching, storage integration, new
+Versions or Representations, Client reassignment, Project mutation, official
+governance and deletion remain outside this slice.

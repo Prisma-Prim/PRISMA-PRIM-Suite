@@ -14,12 +14,29 @@ export const DOCUMENT_V1_PERMISSIONS = [
   'document.register',
   'document.reference.read',
 ] as const;
+export const DOCUMENT_V2_PERMISSIONS = [
+  ...DOCUMENT_V1_PERMISSIONS,
+  'document.correct',
+] as const;
 export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE =
   'company_document_project_organizer';
 export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL =
   'Company Document Project Organizer';
 export type DocumentPermission =
-  (typeof DOCUMENT_V1_PERMISSIONS)[number] | 'document.project.manage';
+  (typeof DOCUMENT_V2_PERMISSIONS)[number] | 'document.project.manage';
+export type DocumentPermissionSetVersion = 'v1' | 'v2';
+export function documentPermissionsFor(
+  version: unknown,
+): readonly DocumentPermission[] {
+  switch (version) {
+    case 'v1':
+      return DOCUMENT_V1_PERMISSIONS;
+    case 'v2':
+      return DOCUMENT_V2_PERMISSIONS;
+    default:
+      return [];
+  }
+}
 export const COMPANY_CONTEXT_USE_BUNDLES = [
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,

@@ -18,5 +18,18 @@ export const documentsCopy = {
   draft: 'Draft questionnaire · Company-confidential',
   open: 'Open external reference',
   referenceDenied: 'You do not have permission to open this reference.',
+  edit: 'Edit reference',
+  cancel: 'Cancel',
+  save: 'Save correction',
+  saving: 'Saving correction…',
+  saved: 'Correction saved.',
+  unchanged: 'No changes were needed.',
+  correctionDenied: 'You no longer have permission to correct this reference.',
+  conflict: 'This reference changed. Reload it before correcting it again.',
+  reload: 'Reload reference',
+  uncertain:
+    'The correction result is uncertain. Retry the exact same correction safely.',
+  retryCorrection: 'Retry same correction',
   activity: 'registered a working Document reference',
+  correctionActivity: 'corrected a working Document reference',
 } as const;

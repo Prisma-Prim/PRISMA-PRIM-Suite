@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -33,6 +34,14 @@ export class DocumentsController {
     @Param('id') id: string,
   ) {
     return this.documents.read(actor(request), id);
+  }
+  @Patch(':id') correct(
+    @Req() request: ActorContextRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.documents.correct(actor(request), id, body, key);
   }
 }
 function actor(request: ActorContextRequest) {

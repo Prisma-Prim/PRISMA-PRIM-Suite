@@ -257,6 +257,7 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.project.linked': projectDocumentsCopy.linked,
     'document.project.unlinked': projectDocumentsCopy.unlinked,
     'document.registered': documentsCopy.activity,
+    'document.corrected': documentsCopy.correctionActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
     ...taskCopy.activityActionLabels,

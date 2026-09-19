@@ -111,6 +111,16 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For the approved [unverified working-reference correction](release-1-document-registry-prd.md#19-approved-unverified-working-reference-correction-250),
+each material correction creates one `document.corrected` event in the same
+transaction as the field update, working revision, durable command/history receipt
+and original Client fence advance. A no-op, failed command or exact replay creates
+no event. The event retains actor membership, server time, responsible Company and
+Document target. Its public metadata is empty and contains no title, purpose, URL,
+Project identifier or before/after values. Projection requires the same current
+Document and original Client visibility as registration history and participates
+in the existing newest-first bounded page.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.

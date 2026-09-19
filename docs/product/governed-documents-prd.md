@@ -67,6 +67,13 @@ Document content status, approval, transmission, signature and retention are sep
 
 Formal content may move through draft, pending review, approved/rejected, superseded and archived. Errors after official use produce a new version or governed correction; they do not overwrite history.
 
+The bounded Release 1 working-reference correction in issue #250 is deliberately
+not a formal-content correction: it may update only title, purpose and the URL of
+an unverified mutable external reference while retaining an append-only internal
+before/after ledger. It preserves Document, draft Version and Representation
+identity. Official or evidentiary content remains subject to the immutable-Version
+rules above.
+
 ## 7. Permissions
 
 Permissions distinguish reading metadata, reading content, registering Documents, creating formal Versions, reviewing/approving, managing Templates, attaching evidence, managing Locations and authorizing archive/purge.

@@ -11,6 +11,7 @@ import {
   projects,
   activityLogEvents,
   documentRegistrationEvents,
+  documentCorrectionCommands,
   documentProjectEvents,
   workingDocuments,
   clientAccounts,
@@ -26,6 +27,7 @@ import type { ActorContext } from '../access/access.types.js';
 import type {
   ActivityLogPage,
   DocumentRegisteredActivityEvent,
+  DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
   CanonicalActivityEvent,
   ClientUnionActivityEvent,
@@ -448,6 +450,105 @@ export class AccountabilityService {
       metadata: {},
     }));
   }
+  private async documentCorrectionEvents(
+    actor: ActorContext,
+  ): Promise<DocumentCorrectedActivityEvent[]> {
+    if (
+      !actor.active ||
+      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: documentCorrectionCommands.id,
+        documentId: documentCorrectionCommands.documentId,
+        companyId: documentCorrectionCommands.companyId,
+        occurredAt: documentCorrectionCommands.occurredAt,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(documentCorrectionCommands)
+      .innerJoin(
+        workingDocuments,
+        and(
+          eq(
+            workingDocuments.workspaceId,
+            documentCorrectionCommands.workspaceId,
+          ),
+          eq(workingDocuments.companyId, documentCorrectionCommands.companyId),
+          eq(workingDocuments.id, documentCorrectionCommands.documentId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
+          eq(clientAccounts.id, workingDocuments.clientId),
+          sql`${clientAccounts.status} IN ('active','superseded')`,
+        ),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            workingDocuments.workspaceId,
+          ),
+          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            workingDocuments.clientId,
+          ),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            documentCorrectionCommands.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            documentCorrectionCommands.actorMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
+          eq(documentCorrectionCommands.companyId, actor.activeCompany.id),
+          eq(documentCorrectionCommands.outcome, 'corrected'),
+        ),
+      )
+      .orderBy(
+        desc(documentCorrectionCommands.occurredAt),
+        desc(documentCorrectionCommands.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row) => ({
+      id: row.id,
+      action: 'document.corrected',
+      occurredAt: row.occurredAt.toISOString(),
+      actor: {
+        internalUserId: row.internalUserId,
+        displayName: row.displayName,
+      },
+      target: {
+        type: 'document',
+        documentId: row.documentId,
+        companyId: row.companyId,
+      },
+      metadata: {},
+    }));
+  }
   private async documentProjectEvents(
     actor: ActorContext,
   ): Promise<DocumentProjectActivityEvent[]> {
@@ -820,6 +921,7 @@ export class AccountabilityService {
       ...(await this.readTaskHistory(actor)),
       ...(await this.projectEvents(actor)),
       ...(await this.documentEvents(actor)),
+      ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
     ];
     datedEvents.sort(

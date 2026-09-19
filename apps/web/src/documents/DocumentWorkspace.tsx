@@ -5,6 +5,7 @@ import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import {
   readClients,
   readDocument,
+  readDocumentCorrectionReceipt,
   readDocuments,
   type WorkingDocument,
 } from './document-response';
@@ -36,8 +37,21 @@ export function DocumentWorkspace({
   const [mutation, setMutation] = useState<'idle' | 'pending' | 'error'>(
     'idle',
   );
+  const [editing, setEditing] = useState(false);
+  const [correction, setCorrection] = useState<
+    | 'idle'
+    | 'pending'
+    | 'saved'
+    | 'unchanged'
+    | 'uncertain'
+    | 'conflict'
+    | 'denied'
+  >('idle');
   const pending = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
+  const correctionRetry = useRef<
+    { documentId: string; payload: string; key: string } | undefined
+  >(undefined);
   const companyId = actor.activeCompany?.id;
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
@@ -45,6 +59,10 @@ export function DocumentWorkspace({
   const canRegister =
     actor.activeCompany?.documentPermissions?.includes('document.register') ===
     true;
+  const canCorrect =
+    actor.activeCompany?.documentPermissions?.includes('document.correct') ===
+      true &&
+    actor.activeCompany.documentPermissions.includes('document.reference.read');
   useEffect(() => {
     setDetail(undefined);
     setClientId('');
@@ -52,7 +70,10 @@ export function DocumentWorkspace({
     setPurpose('');
     setUrl('');
     setMutation('idle');
+    setEditing(false);
+    setCorrection('idle');
     retry.current = undefined;
+    correctionRetry.current = undefined;
     const request = new AbortController();
     pending.current?.abort();
     pending.current = request;
@@ -106,6 +127,7 @@ export function DocumentWorkspace({
     identity,
     companyId,
     canRead,
+    canCorrect,
     actor.workspaceId,
     actor.workspaceMembershipId,
     revision,
@@ -135,9 +157,120 @@ export function DocumentWorkspace({
       }
       if (result.status !== 'ok') throw new Error('Read failed');
       setDetail(readDocument(result.value));
+      setEditing(false);
+      setCorrection('idle');
+      correctionRetry.current = undefined;
       setMutation('idle');
     } catch {
       if (!request.signal.aborted) setMutation('error');
+    }
+  }
+  function beginCorrection() {
+    if (
+      !detail ||
+      !canCorrect ||
+      detail.correction !== 'allowed' ||
+      detail.version.representation.access !== 'granted'
+    )
+      return;
+    setTitle(detail.title);
+    setPurpose(detail.purpose);
+    setUrl(detail.version.representation.url);
+    setEditing(true);
+    setCorrection('idle');
+    correctionRetry.current = undefined;
+  }
+  async function submitCorrection(event: FormEvent, retryStored = false) {
+    event.preventDefault();
+    if (!companyId || !detail || correction === 'pending') return;
+    const previous = correctionRetry.current;
+    const command = retryStored
+      ? previous?.documentId === detail.id && correction === 'uncertain'
+        ? previous
+        : undefined
+      : (() => {
+          const payload = JSON.stringify({
+            expectedRevision: detail.workingRevision,
+            title,
+            purpose,
+            url,
+          });
+          return previous?.documentId === detail.id &&
+            previous.payload === payload
+            ? previous
+            : { documentId: detail.id, payload, key: crypto.randomUUID() };
+        })();
+    if (!command) return;
+    correctionRetry.current = command;
+    pending.current?.abort();
+    const request = new AbortController();
+    pending.current = request;
+    setCorrection('pending');
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
+      const result = await api.request<unknown>(
+        `/documents/${encodeURIComponent(detail.id)}`,
+        {
+          method: 'PATCH',
+          companyContextId: companyId,
+          signal: request.signal,
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': command.key,
+          },
+          body: command.payload,
+        },
+      );
+      if (request.signal.aborted) return;
+      if (result.status === 'unauthorized') {
+        await identity.rejectSession();
+        return;
+      }
+      if (result.status === 'forbidden' || result.status === 'notFound') {
+        setCorrection('denied');
+        setEditing(false);
+        correctionRetry.current = undefined;
+        return;
+      }
+      if (result.status === 'conflict') {
+        setCorrection('conflict');
+        setEditing(false);
+        correctionRetry.current = undefined;
+        return;
+      }
+      if (result.status !== 'ok') {
+        setCorrection('uncertain');
+        return;
+      }
+      const receipt = readDocumentCorrectionReceipt(result.value);
+      if (receipt.documentId !== detail.id)
+        throw new Error('Unexpected correction receipt');
+      const [documentResult, documentsResult] = await Promise.all([
+        api.request<unknown>(`/documents/${encodeURIComponent(detail.id)}`, {
+          companyContextId: companyId,
+          signal: request.signal,
+        }),
+        api.request<unknown>('/documents', {
+          companyContextId: companyId,
+          signal: request.signal,
+        }),
+      ]);
+      if (request.signal.aborted) return;
+      if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
+        throw new Error('Reload failed');
+      const saved = readDocument(documentResult.value);
+      const documents = readDocuments(documentsResult.value);
+      setDetail(saved);
+      setState((current) =>
+        current.status === 'ready' ? { ...current, documents } : current,
+      );
+      setEditing(false);
+      setCorrection(receipt.outcome === 'corrected' ? 'saved' : 'unchanged');
+      correctionRetry.current = undefined;
+      if (receipt.outcome === 'corrected') await onActivityRecorded();
+    } catch {
+      if (!request.signal.aborted) setCorrection('uncertain');
     }
   }
   async function submit(event: FormEvent) {
@@ -218,11 +351,73 @@ export function DocumentWorkspace({
         <>
           {detail ? (
             <article>
-              <h3>{detail.title}</h3>
-              <p>{copy.draft}</p>
-              <p>{detail.clientDisplayName}</p>
-              <p>{detail.purpose}</p>
-              {detail.version.representation.access === 'granted' ? (
+              {editing ? (
+                <form onSubmit={(event) => void submitCorrection(event)}>
+                  <label>
+                    {copy.titleLabel}
+                    <input
+                      required
+                      maxLength={200}
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    {copy.purpose}
+                    <textarea
+                      required
+                      maxLength={2000}
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
+                      value={purpose}
+                      onChange={(event) => setPurpose(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    {copy.url}
+                    <input
+                      required
+                      type="url"
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    disabled={
+                      correction === 'pending' || correction === 'uncertain'
+                    }
+                  >
+                    {copy.save}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={correction === 'pending'}
+                    onClick={() => {
+                      setEditing(false);
+                      setCorrection('idle');
+                      correctionRetry.current = undefined;
+                    }}
+                  >
+                    {copy.cancel}
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <h3>{detail.title}</h3>
+                  <p>{copy.draft}</p>
+                  <p>{detail.clientDisplayName}</p>
+                  <p>{detail.purpose}</p>
+                </>
+              )}
+              {!editing &&
+              detail.version.representation.access === 'granted' ? (
                 <a
                   href={detail.version.representation.url}
                   target="_blank"
@@ -230,10 +425,46 @@ export function DocumentWorkspace({
                 >
                   {copy.open}
                 </a>
-              ) : (
+              ) : !editing ? (
                 <p>{copy.referenceDenied}</p>
+              ) : null}
+              {!editing &&
+                canCorrect &&
+                detail.correction === 'allowed' &&
+                detail.version.representation.access === 'granted' && (
+                  <button onClick={beginCorrection}>{copy.edit}</button>
+                )}
+              {!editing && (
+                <button onClick={() => setDetail(undefined)}>
+                  {copy.back}
+                </button>
               )}
-              <button onClick={() => setDetail(undefined)}>{copy.back}</button>
+              {correction === 'pending' && <p role="status">{copy.saving}</p>}
+              {correction === 'saved' && <p role="status">{copy.saved}</p>}
+              {correction === 'unchanged' && (
+                <p role="status">{copy.unchanged}</p>
+              )}
+              {correction === 'denied' && (
+                <p role="alert">{copy.correctionDenied}</p>
+              )}
+              {correction === 'conflict' && (
+                <>
+                  <p role="alert">{copy.conflict}</p>
+                  <button onClick={() => void open(detail.id)}>
+                    {copy.reload}
+                  </button>
+                </>
+              )}
+              {correction === 'uncertain' && (
+                <>
+                  <p role="alert">{copy.uncertain}</p>
+                  <button
+                    onClick={(event) => void submitCorrection(event, true)}
+                  >
+                    {copy.retryCorrection}
+                  </button>
+                </>
+              )}
             </article>
           ) : (
             <>

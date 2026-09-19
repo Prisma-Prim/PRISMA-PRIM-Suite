@@ -8,6 +8,8 @@ export interface WorkingDocument {
   type: 'questionnaire';
   confidentiality: 'company-confidential';
   createdAt: string;
+  workingRevision: number;
+  correction: 'allowed' | 'read-only';
   version: {
     id: string;
     status: 'draft';
@@ -27,6 +29,11 @@ function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid response');
   return value;
 }
+function positiveInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
+    throw new Error('Invalid response');
+  return value;
+}
 export function readDocument(value: unknown): WorkingDocument {
   const row = record(value);
   const version = record(row.version);
@@ -36,7 +43,8 @@ export function readDocument(value: unknown): WorkingDocument {
     row.confidentiality !== 'company-confidential' ||
     version.status !== 'draft' ||
     representation.kind !== 'external-reference' ||
-    representation.verification !== 'unverified'
+    representation.verification !== 'unverified' ||
+    (row.correction !== 'allowed' && row.correction !== 'read-only')
   )
     throw new Error('Unknown Document state');
   const base = {
@@ -74,6 +82,8 @@ export function readDocument(value: unknown): WorkingDocument {
     type: row.type,
     confidentiality: row.confidentiality,
     createdAt: string(row.createdAt),
+    workingRevision: positiveInteger(row.workingRevision),
+    correction: row.correction,
     version: {
       id: string(version.id),
       status: version.status,
@@ -84,6 +94,23 @@ export function readDocument(value: unknown): WorkingDocument {
 export function readDocuments(value: unknown): WorkingDocument[] {
   if (!Array.isArray(value)) throw new Error('Invalid list');
   return value.map(readDocument);
+}
+export type DocumentCorrectionReceipt = {
+  documentId: string;
+  revision: number;
+  outcome: 'corrected' | 'unchanged';
+};
+export function readDocumentCorrectionReceipt(
+  value: unknown,
+): DocumentCorrectionReceipt {
+  const row = record(value);
+  if (row.outcome !== 'corrected' && row.outcome !== 'unchanged')
+    throw new Error('Unknown correction outcome');
+  return {
+    documentId: string(row.documentId),
+    revision: positiveInteger(row.revision),
+    outcome: row.outcome,
+  };
 }
 export function readClients(
   value: unknown,
