@@ -15,12 +15,14 @@ import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'task-manager'
   | 'company-context'
   | 'director-client'
   | 'document-registrar'
   | 'document-project-organizer'
   | 'project';
 type AssignmentBundleLabel =
+  | 'Company Task Manager'
   | 'Company Context Access'
   | 'Company Director Client Access'
   | 'Company Document Project Organizer'
@@ -200,15 +202,17 @@ export function CompanyContextAccess({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const assignmentPath =
-        bundle === 'document-project-organizer'
-          ? '/company-document-project-organizer-assignments'
-          : bundle === 'document-registrar'
-            ? '/company-document-registrar-assignments'
-            : bundle === 'project'
-              ? '/company-project-assignments'
-              : bundle === 'director-client'
-                ? '/company-director-client-assignments'
-                : '/company-context-assignments';
+        bundle === 'task-manager'
+          ? '/company-task-manager-assignments'
+          : bundle === 'document-project-organizer'
+            ? '/company-document-project-organizer-assignments'
+            : bundle === 'document-registrar'
+              ? '/company-document-registrar-assignments'
+              : bundle === 'project'
+                ? '/company-project-assignments'
+                : bundle === 'director-client'
+                  ? '/company-director-client-assignments'
+                  : '/company-context-assignments';
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
@@ -427,6 +431,7 @@ export function CompanyContextAccess({
               resetCommand();
               const value = event.target.value;
               if (
+                value === 'task-manager' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -445,8 +450,10 @@ export function CompanyContextAccess({
               {copy.documentRegistrarBundle}
             </option>
             <option value="project">{copy.projectBundle}</option>
+            <option value="task-manager">{copy.taskManagerBundle}</option>
           </select>
 
+          {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy.currentStateLabel}:{' '}
@@ -517,15 +524,17 @@ export function CompanyContextAccess({
 }
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  return bundle === 'document-project-organizer'
-    ? copy.documentProjectOrganizerBundle
-    : bundle === 'document-registrar'
-      ? 'Company Document Registrar'
-      : bundle === 'project'
-        ? copy.projectBundle
-        : bundle === 'director-client'
-          ? 'Company Director Client Access'
-          : 'Company Context Access';
+  return bundle === 'task-manager'
+    ? copy.taskManagerBundle
+    : bundle === 'document-project-organizer'
+      ? copy.documentProjectOrganizerBundle
+      : bundle === 'document-registrar'
+        ? 'Company Document Registrar'
+        : bundle === 'project'
+          ? copy.projectBundle
+          : bundle === 'director-client'
+            ? 'Company Director Client Access'
+            : 'Company Context Access';
 }
 
 function memberLabel(member: AdministrationState['members'][number]): string {

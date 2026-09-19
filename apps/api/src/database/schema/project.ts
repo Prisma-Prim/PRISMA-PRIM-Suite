@@ -35,6 +35,12 @@ export const projects = pgTable(
       table.workspaceId,
       table.id,
     ),
+    uniqueIndex('projects_original_scope_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.clientAccountId,
+      table.id,
+    ),
     uniqueIndex('projects_scope_id_unique').on(
       table.workspaceId,
       table.companyId,

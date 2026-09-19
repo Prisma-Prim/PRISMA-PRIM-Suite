@@ -1,3 +1,4 @@
+import { taskCopy } from './project/task.copy';
 import { projectDocumentsCopy } from './project/project-documents.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
 import { projectCopy } from './project/project.copy';
@@ -258,6 +259,7 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.registered': documentsCopy.activity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
+    ...taskCopy.activityActionLabels,
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
@@ -278,6 +280,8 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return event.target.documentId;
     case 'project':
       return event.target.projectId;
+    case 'task':
+      return event.target.taskId;
     case 'workspace_invitation':
       return event.target.invitationId;
     case 'client_union_operation':

@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration approved by #238; remaining capability Draft  
-**Version:** 0.4  
+**Status:** Preparatory registration and manual preparation Tasks approved by #238 and #246; remaining capability Draft  
+**Version:** 0.5  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -151,8 +151,115 @@ Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and D
 
 ## 16. Remaining readiness
 
-The preparatory registration slice is ready independently. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in a preparatory Project without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
+The preparatory registration slice and manual preparation Tasks in section 18 are independently bounded approvals. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in a preparatory Project without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
 
 ## 17. Evidence authority boundary
 
 Issue #81 preserves raw business evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes lifecycle transitions, automation, permissions or start gates by itself. Any implementation issue must cite this PRD after the relevant evidence has been normalized here.
+
+## 18. Approved manual preparation Tasks (#246)
+
+Dan approved this bounded next MVP slice on 2026-09-19. It implements manual
+preparation work on an existing preparatory Project; these are delegated product
+choices under that approval, not newly collected Iurie evidence or a complete
+operational role/workflow matrix. The existing direction includes responsibility,
+dates and visible unfinished work. Templates, required Tasks, execution approval,
+completion evidence and wider workflow decisions remain separate.
+
+### Record and lifecycle
+
+An authorized manager creates a Task with a trimmed title of 1–200 characters, an
+optional eligible responsible Workspace Membership and an optional calendar due
+date. Dates use exact YYYY-MM-DD values, years 0001–9999, without timezone
+conversion; impossible dates fail validation and past dates are permitted.
+Unassigned and undated Tasks are valid. The server derives immutable Workspace,
+Company, Project and original Client from the Project, and establishes identity,
+creator, timestamps and initial version.
+
+A new Task is `todo`. While `todo`, a manager can edit its title, assignee and date
+or mark it `done`. A done Task is read-only except for explicit reopening to
+`todo`, which preserves its fields. Completion records the declaring actor and
+time; reopening preserves that declaration in immutable history. A manager need
+not be the assignee or creator. No deletion, cancellation or archive is introduced.
+
+The Project remains `preparatory`. Neither a Task assignment nor completion grants
+access, approves operational execution, closes a nonconformity, satisfies a
+required-evidence gate or changes a Document/Contract state. There are no reminders,
+automatic assignment, urgency rules, priorities, dependencies or background state
+transitions.
+
+### Authority and responsible member
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families)
+owns explicit captured **Company Task Manager v1**, containing only `task.read`
+and `task.manage`. No existing assignment gains Task permissions. Every Task read
+and history request additionally requires current Company context, Project read
+and the original Client/read relationship boundary. Every new mutation additionally
+requires `task.manage`; assigning a Task never substitutes for those permissions.
+
+The manager selects an assignee through a narrow Project-scoped eligible-member
+query. Access owns the evaluation; business code does not inspect Access storage
+or impersonate candidate actors. Eligible members have an active Internal User,
+active same-Workspace membership and effective Company context, Project read, Task
+read and Client read for the Project. The query reveals only membership identifier
+and display label, never email, unrelated members or reasons for exclusion.
+Empty eligibility leaves unassigned creation available. Direct submissions undergo
+the same live check inside create/reassignment.
+
+Later suspension or loss of eligibility preserves existing assignment/history
+without retaining access. The member disappears from new selection; an authorized
+manager can clear or replace that assignment on a todo Task. Historical attribution
+is preserved without becoming a general member-directory lookup.
+
+### Historical Clients, versions and retry
+
+Reads retain immutable original Project/Client links, including a readable
+superseded original Client. Every new create, edit, completion or reopen requires
+that exact original Client to be active and related to the Company. Superseded
+original records are read-only in this slice; the UI explains this without exposing
+canonical union or other-Company details. Writes against superseded originals
+remain deferred.
+
+A material mutation carries the observed Task version and a stable actor/Workspace
+idempotency key. Stale versions, invalid transitions and conflicting reuse of a
+key fail without change. Concurrent writes on the same version allow at most one
+material outcome. A normalized no-op edit must pass current authorization, todo
+state and expected version checks; it adds no version, event or fence advance.
+
+An exact committed replay rechecks live authority and target visibility before
+returning its recorded outcome, without repeating writes. It is resolved before
+rejecting its old expected version and may confirm an earlier result after original
+Client supersession. Current Task state is refreshed separately from that prior
+command result. The UI preserves an uncertain command's original payload, observed
+version and key for explicit retry; conflict recovery requires an explicit reload.
+
+Each new material change atomically updates Task state/version, command outcome,
+the original active Client's existing reversal fence, and append-only history.
+Use the Client-owned write interface and identity-before-relationship lock order.
+Reads, rejected commands, no-ops and exact replays do not advance the fence.
+Current actor and changed-assignee authority is serialized against relevant
+suspension/revocation through the existing Access boundary.
+
+### History and user journey
+
+The [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy)
+owns authorized projections of `task.created`, `task.updated`,
+`task.completed` and `task.reopened`. Task detail preserves ordered server
+attribution and versions, initial title/assignee/date, correction before/after
+values and each completion/reopening. No route modifies or erases history.
+Task history is visible through `task.read` plus the same Project/Client boundary;
+mutation permission is separate.
+
+From Project detail, a user creates, reloads, opens, edits, completes and reopens
+a Task without entering raw identifiers. The view shows responsible member or
+Unassigned, optional date, state, Company/Project context and the preparation
+warning. Loading, empty, validation, no eligible assignee, denied/revoked access,
+missing, conflict/reload, uncertain retry and historical-Client read-only states
+are explicit. Same-context navigation preserves useful drafts and command
+identity; actor, Company and permission changes invalidate old state and replies.
+
+Public component tests start the observable red-to-green proof. PostgreSQL REST
+tests own permission isolation, assignment eligibility, dates, state/version
+concurrency, atomic history, retry and union/reversal boundaries. Existing browser
+journeys prove the full path at desktop and narrow widths. No new CI, runtime,
+provider or test framework is introduced.

@@ -1,3 +1,6 @@
+import { TaskModule } from './task/task.module.js';
+import { TaskController } from './task/task.controller.js';
+import { CompanyTaskManagerAssignmentController } from './access/company-task-manager-assignment.controller.js';
 import { DocumentProjectsController } from './documents/document-projects.controller.js';
 import { CompanyDocumentProjectOrganizerAssignmentController } from './access/company-document-project-organizer-assignment.controller.js';
 import { ProjectController } from './project/project.controller.js';
@@ -39,6 +42,7 @@ import { DatabaseModule } from './database/database.module.js';
 
 @Module({
   imports: [
+    TaskModule,
     DocumentsModule,
     ProjectModule,
     AccessModule,
@@ -48,6 +52,8 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    TaskController,
+    CompanyTaskManagerAssignmentController,
     DocumentsController,
     DocumentProjectsController,
     CompanyDocumentRegistrarAssignmentController,

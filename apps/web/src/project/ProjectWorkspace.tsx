@@ -1,4 +1,5 @@
 import { ProjectDocuments } from './ProjectDocuments';
+import { ProjectTasks } from './ProjectTasks';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -283,7 +284,6 @@ export function ProjectWorkspace({
           <p>
             {copy.clientPrefix} {selected.clientDisplayName}
           </p>
-          <p>{selected.id}</p>
           <ProjectDocuments
             actor={actor}
             identity={identity}
@@ -292,6 +292,12 @@ export function ProjectWorkspace({
           />
         </article>
       )}
+      <ProjectTasks
+        actor={actor}
+        identity={identity}
+        projectId={selected?.id ?? null}
+        onActivityRecorded={onActivityRecorded}
+      />
     </section>
   );
 }

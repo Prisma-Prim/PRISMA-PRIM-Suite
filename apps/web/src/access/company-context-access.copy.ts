@@ -8,6 +8,9 @@ export const companyContextAccessCopy = {
   documentRegistrarBundle: 'Company Document Registrar',
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
+  taskManagerBundle: 'Company Task Manager',
+  taskManagerPrerequisites:
+    'Company Task Manager v1 grants Task read and management only. Company context, Project read and Client read must already be authorized separately.',
   directorClientBundle: 'Company Director Client Access',
   workspaceMemberLabel: 'Workspace member',
   companyLabel: 'Company',
@@ -26,6 +29,8 @@ export const companyContextAccessCopy = {
   retry: 'Retry access state',
   error: 'The access state could not be loaded or changed.',
   activityActionLabels: {
+    'company_task_manager_assignment.granted': 'granted Company Task Manager',
+    'company_task_manager_assignment.revoked': 'revoked Company Task Manager',
     'company_document_project_organizer_assignment.granted':
       'granted Company Document Project Organizer',
     'company_document_project_organizer_assignment.revoked':

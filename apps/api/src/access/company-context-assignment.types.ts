@@ -1,4 +1,5 @@
 import type {
+  COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
@@ -8,6 +9,7 @@ import type {
 import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
+  | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
   | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
@@ -24,6 +26,7 @@ interface CompanyContextAssignmentRecordBase {
 export type CompanyContextAssignmentRecord =
   | (CompanyContextAssignmentRecordBase & {
       bundle:
+        | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
         | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
         | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
         | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL;

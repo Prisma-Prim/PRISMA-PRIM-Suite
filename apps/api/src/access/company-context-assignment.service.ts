@@ -26,6 +26,8 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  COMPANY_TASK_MANAGER_BUNDLE,
+  COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
@@ -50,6 +52,7 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 type BundleDefinition = {
   value: Bundle;
   label:
+    | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
@@ -58,6 +61,11 @@ type BundleDefinition = {
   permissionSetVersion: CompanyDirectorClientPermissionSetVersion | null;
 };
 
+const TASK_MANAGER_BUNDLE: BundleDefinition = {
+  value: COMPANY_TASK_MANAGER_BUNDLE,
+  label: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const CONTEXT_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTEXT_ACCESS_BUNDLE,
   label: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
@@ -84,6 +92,7 @@ const PROJECT_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -355,6 +364,34 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  grantTaskManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      TASK_MANAGER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeTaskManager(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    key: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      TASK_MANAGER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      key,
+    );
+  }
   private async mutate(
     actor: ActorContext,
     bundle: BundleDefinition,
@@ -433,25 +470,29 @@ export class CompanyContextAssignmentService {
         await this.accountability.record({
           actor,
           action:
-            bundle.value === COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE
+            bundle.value === COMPANY_TASK_MANAGER_BUNDLE
               ? operation === 'grant'
-                ? 'company_document_project_organizer_assignment.granted'
-                : 'company_document_project_organizer_assignment.revoked'
-              : bundle.value === COMPANY_DOCUMENT_REGISTRAR_BUNDLE
+                ? 'company_task_manager_assignment.granted'
+                : 'company_task_manager_assignment.revoked'
+              : bundle.value === COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE
                 ? operation === 'grant'
-                  ? 'company_document_registrar_assignment.granted'
-                  : 'company_document_registrar_assignment.revoked'
-                : bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
+                  ? 'company_document_project_organizer_assignment.granted'
+                  : 'company_document_project_organizer_assignment.revoked'
+                : bundle.value === COMPANY_DOCUMENT_REGISTRAR_BUNDLE
                   ? operation === 'grant'
-                    ? 'company_project_assignment.granted'
-                    : 'company_project_assignment.revoked'
-                  : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+                    ? 'company_document_registrar_assignment.granted'
+                    : 'company_document_registrar_assignment.revoked'
+                  : bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
                     ? operation === 'grant'
-                      ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-                      : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
-                    : operation === 'grant'
-                      ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
-                      : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
+                      ? 'company_project_assignment.granted'
+                      : 'company_project_assignment.revoked'
+                    : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+                      ? operation === 'grant'
+                        ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+                        : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+                      : operation === 'grant'
+                        ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+                        : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -711,6 +752,14 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_TASK_MANAGER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Task Manager version.');
+      return {
+        ...base,
+        bundle: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
     case COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Document Project Organizer version.');

@@ -1,3 +1,4 @@
+import { TaskAccessService } from './task-access.service.js';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module.js';
@@ -10,6 +11,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
 @Module({
   imports: [DatabaseModule],
   providers: [
+    TaskAccessService,
     CompanyContextAuthorization,
     {
       provide: ACCESS_ADMISSION,
@@ -37,6 +39,6 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
         }),
     },
   ],
-  exports: [ACCESS_ADMISSION, CompanyContextAuthorization],
+  exports: [ACCESS_ADMISSION, CompanyContextAuthorization, TaskAccessService],
 })
 export class AccessModule {}

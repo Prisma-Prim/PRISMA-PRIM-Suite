@@ -631,6 +631,86 @@ describe('CompanyContextAccess', () => {
     expect(screen.getByRole('option', { name: 'BIC' })).toBeInTheDocument();
   });
 
+  it('grants and revokes Task Manager v1 with explicit Project and Client prerequisites', async () => {
+    let active = false;
+    const commands: { method: string; path: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json({
+            ...administration(),
+            assignments: active
+              ? [
+                  {
+                    id: 'task-assignment',
+                    workspaceMembershipId: memberId,
+                    companyId,
+                    bundle: 'Company Task Manager',
+                    permissionSetVersion: 'v1',
+                    active: true,
+                  },
+                ]
+              : [],
+          });
+        if (path.startsWith('/api/company-task-manager-assignments')) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'task-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Task Manager',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'task-manager' },
+    });
+    expect(
+      screen.getByText(
+        /Company Task Manager v1 grants Task read and management only/,
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByRole('button', { name: 'Revoke access' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-task-manager-assignments',
+        key: expect.any(String),
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-task-manager-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+      },
+    ]);
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+  });
+
   it('grants Company Context Access and reloads the canonical server state before reporting success', async () => {
     const refreshActivity = vi.fn(async () => undefined);
     vi.stubGlobal(

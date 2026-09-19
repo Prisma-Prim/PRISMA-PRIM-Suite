@@ -143,9 +143,12 @@ test('registers and reopens a Company preparatory Project after reload', async (
   await page.getByRole('button', { name: project.title }).click();
   denied = true;
   await page.getByRole('button', { name: 'Reload Projects' }).click();
-  await expect(page.getByRole('alert')).toHaveText(
-    'Project access and Client read access are required for this Company.',
-  );
+  await expect(
+    page.getByRole('alert').filter({
+      hasText:
+        /^Project access and Client read access are required for this Company\.$/,
+    }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: project.title })).toHaveCount(
     0,
   );

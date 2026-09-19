@@ -10,6 +10,8 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_TASK_MANAGER_BUNDLE,
+  taskPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   DOCUMENT_V1_PERMISSIONS,
@@ -339,6 +341,7 @@ export class CompanyContextAuthorization {
       ),
       inArray(companyRoleAssignments.bundle, [
         ...COMPANY_CONTEXT_USE_BUNDLES,
+        COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_PROJECT_ACCESS_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       ]),
@@ -410,7 +413,20 @@ export class CompanyContextAuthorization {
       ) {
         company.projectPermissions = [...COMPANY_PROJECT_V1_PERMISSIONS];
       }
-      if (row.bundle !== COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE) {
+      if (
+        row.bundle === COMPANY_TASK_MANAGER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.taskPermissions = [
+          ...taskPermissionsFor(row.permissionSetVersion),
+        ];
+        company.taskPermissionAssignmentId = row.assignmentId;
+        company.taskPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle !== COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE &&
+        row.bundle !== COMPANY_TASK_MANAGER_BUNDLE
+      ) {
         independentlyAuthorizedCompanies.add(row.id);
       }
       companiesById.set(row.id, company);

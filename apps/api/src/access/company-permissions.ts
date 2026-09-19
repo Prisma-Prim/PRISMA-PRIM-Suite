@@ -66,3 +66,16 @@ export const COMPANY_PROJECT_V1_PERMISSIONS = [
 ] as const;
 export type CompanyProjectPermission =
   (typeof COMPANY_PROJECT_V1_PERMISSIONS)[number];
+
+export const COMPANY_TASK_MANAGER_BUNDLE = 'company_task_manager';
+export const COMPANY_TASK_MANAGER_BUNDLE_LABEL = 'Company Task Manager';
+export const COMPANY_TASK_V1_PERMISSIONS = [
+  'task.read',
+  'task.manage',
+] as const;
+export type TaskPermission = (typeof COMPANY_TASK_V1_PERMISSIONS)[number];
+export function taskPermissionsFor(
+  version: unknown,
+): readonly TaskPermission[] {
+  return version === 'v1' ? COMPANY_TASK_V1_PERMISSIONS : [];
+}
