@@ -299,7 +299,11 @@ export function ProjectWorkspace({
       <button
         type="button"
         disabled={pending}
-        onClick={() => setGeneration((value) => value + 1)}
+        onClick={() => {
+          setQuery('');
+          setFilteredClientId(undefined);
+          setGeneration((value) => value + 1);
+        }}
       >
         {copy.retry}
       </button>

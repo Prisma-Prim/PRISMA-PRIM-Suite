@@ -58,6 +58,50 @@ describe('Client ownership through App', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('does not offer Client-to-Projects navigation without Project read access', async () => {
+    const actor = directorActor();
+    const client = {
+      id: 'client-a',
+      displayName: 'Client A',
+      relatedToActiveCompany: true,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = input.toString();
+        if (path.endsWith('/access/current-actor')) return respond(actor);
+        if (path.endsWith('/companies')) return respond([companyA]);
+        if (path.endsWith('/activity-log')) return respond({ events: [] });
+        if (path.includes('/client-duplicate-reviews?'))
+          return respond({ items: [], next_cursor: null });
+        if (path.endsWith(`/clients/${client.id}`))
+          return respond({
+            ...client,
+            taxId: null,
+            address: null,
+            telephone: null,
+            generalEmail: null,
+            contacts: [],
+            businessActivity: null,
+            version: 1,
+            involvedCompanyDisplayNames: [companyA.displayName],
+          });
+        if (path.endsWith('/clients')) return respond([client]);
+        throw new Error('Unexpected API request: ' + path);
+      }),
+    );
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open dossier' }),
+    );
+    await screen.findByRole('heading', { name: client.displayName });
+
+    expect(
+      screen.queryByRole('button', { name: 'Open Client Projects' }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each(['Company', 'session', 'membership', 'assignment', 'version'])(
     'invalidates the Client draft and retry key across a %s boundary',
     async (boundary) => {

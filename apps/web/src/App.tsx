@@ -7,7 +7,7 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DocumentWorkspace } from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
@@ -39,7 +39,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedClient, setRequestedClient] = useState<{
     id: string;
     companyId: string;
+    intentId: number;
   }>();
+  const clientNavigationIntentId = useRef(0);
   const {
     shellContext: access,
     selectCompany,
@@ -79,7 +81,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.workspacePermissions.includes('client.manage') ||
     access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
       true;
-  const activeCompanyId = access.actor.activeCompany?.id;
+  const activeCompany = access.actor.activeCompany;
+  const activeCompanyId = activeCompany?.id;
+  const canAccessProjects =
+    activeCompany?.projectPermissions?.includes('project.read') === true &&
+    canAccessClients;
 
   const sections: ApplicationSection[] = [];
   if (access.actor.activeCompany && canAccessClients)
@@ -109,33 +115,34 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
-          requestedClientId={
+          requestedClient={
             requestedClient && requestedClient.companyId === activeCompanyId
-              ? requestedClient.id
+              ? requestedClient
               : undefined
           }
-          onOpenProjects={(client) => {
-            if (!activeCompanyId) return;
-            setProjectClientFilter({
-              ...client,
-              companyId: activeCompanyId,
-            });
-            window.location.hash = 'projects';
-          }}
+          onOpenProjects={
+            canAccessProjects
+              ? (client) => {
+                  if (!activeCompanyId) return;
+                  setProjectClientFilter({
+                    ...client,
+                    companyId: activeCompanyId,
+                  });
+                  window.location.hash = 'projects';
+                }
+              : undefined
+          }
         />
       ),
     });
-  if (
-    access.actor.activeCompany?.projectPermissions?.includes('project.read') &&
-    canAccessClients
-  )
+  if (activeCompany && canAccessProjects)
     sections.push({
       id: 'projects',
       label: projectCopy.title,
       description: projectCopy.navDescription,
       content: (
         <ProjectWorkspace
-          key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+          key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompany.id}`}
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}
@@ -149,6 +156,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             setRequestedClient({
               id: clientAccountId,
               companyId: activeCompanyId,
+              intentId: ++clientNavigationIntentId.current,
             });
             window.location.hash = 'clients';
           }}

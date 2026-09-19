@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -161,6 +167,62 @@ it('applies a dossier Client filter and returns from Project detail through stab
     2,
   );
   expect(fetch).toHaveBeenCalledTimes(3);
+});
+
+it('clears the visible query and exact Client filter when Projects reload', async () => {
+  const projects = [
+    {
+      id: 'project-alpha',
+      title: 'Alpha preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'client-alpha',
+      clientDisplayName: 'Alpha Advisory',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+    {
+      id: 'project-beta',
+      title: 'Beta preparation',
+      status: 'preparatory',
+      companyId: 'company',
+      clientAccountId: 'client-beta',
+      clientDisplayName: 'Beta Certification',
+      createdAt: '2026-09-19T00:00:00.000Z',
+    },
+  ];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [
+              { id: 'client-alpha', displayName: 'Alpha Advisory' },
+              { id: 'client-beta', displayName: 'Beta Certification' },
+            ]
+          : projects,
+      ),
+    ),
+  );
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      clientFilter={{ id: 'client-alpha', displayName: 'Alpha Advisory' }}
+    />,
+  );
+
+  const projectList = await screen.findByRole('list', { name: 'Projects' });
+  expect(projectList.children).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Reload Projects' }));
+
+  expect(
+    await screen.findByRole('searchbox', { name: 'Find Projects' }),
+  ).toHaveValue('');
+  await waitFor(() =>
+    expect(
+      screen.getByRole('list', { name: 'Projects' }).children,
+    ).toHaveLength(2),
+  );
 });
 
 it('keeps an opened detail while filtering and reflects its authoritative reopen response', async () => {

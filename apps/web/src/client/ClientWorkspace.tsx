@@ -59,7 +59,7 @@ export function ClientWorkspace({
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
-  requestedClientId,
+  requestedClient,
   onOpenProjects,
 }: {
   actor: ActorContext;
@@ -68,7 +68,7 @@ export function ClientWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
-  requestedClientId?: string;
+  requestedClient?: { id: string; intentId: number };
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
@@ -131,8 +131,8 @@ export function ClientWorkspace({
     setSelectedClientId(clientId);
   }
   useEffect(() => {
-    if (requestedClientId) openDossier(requestedClientId);
-  }, [requestedClientId]);
+    if (requestedClient) openDossier(requestedClient.id);
+  }, [requestedClient]);
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);

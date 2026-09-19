@@ -36,6 +36,94 @@ describe('ClientWorkspace', () => {
     vi.restoreAllMocks();
   });
 
+  it('consumes each Project-to-Client navigation intent even when the Client repeats', async () => {
+    const clients = [
+      {
+        id: 'client-a',
+        displayName: 'Client A',
+        relatedToActiveCompany: true,
+      },
+      {
+        id: 'client-b',
+        displayName: 'Client B',
+        relatedToActiveCompany: true,
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = input.toString();
+        const client = clients.find(({ id }) =>
+          path.endsWith(`/clients/${id}`),
+        );
+        return new Response(
+          JSON.stringify(
+            client
+              ? {
+                  ...client,
+                  taxId: null,
+                  address: null,
+                  telephone: null,
+                  generalEmail: null,
+                  contacts: [],
+                  businessActivity: null,
+                  version: 1,
+                  involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+                }
+              : clients,
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+    const props = {
+      actor,
+      identity: deterministicBrowserIdentity(),
+      onCompanyContextRejected: vi.fn(),
+      onActivityRecorded: vi.fn(async () => undefined),
+    };
+    const view = render(<ClientWorkspace {...props} />);
+    await screen.findAllByRole('button', { name: 'Open dossier' });
+    view.rerender(
+      <ClientWorkspace
+        {...props}
+        requestedClient={{ id: 'client-a', intentId: 1 }}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/clients/client-a',
+        expect.any(Object),
+      ),
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Open dossier' })[1]!,
+    );
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/clients/client-b',
+        expect.any(Object),
+      ),
+    );
+
+    view.rerender(
+      <ClientWorkspace
+        {...props}
+        requestedClient={{ id: 'client-a', intentId: 2 }}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.filter(([input]) =>
+            input.toString().endsWith('/clients/client-a'),
+          ),
+      ).toHaveLength(2),
+    );
+  });
+
   it('creates and lists a minimal Client in the active Company', async () => {
     vi.stubGlobal(
       'fetch',
