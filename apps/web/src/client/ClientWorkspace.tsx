@@ -15,6 +15,7 @@ import {
 } from '../api/latest-authenticated-request';
 import { ClientDossierPanel } from './ClientDossierPanel';
 import { ClientUnionPanel } from './ClientUnionPanel';
+import { clientUnionCopy } from './client-union.copy';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
 import {
   optionalProperty,
@@ -96,6 +97,8 @@ export function ClientWorkspace({
   );
   const [duplicateReviewRefreshKey, setDuplicateReviewRefreshKey] = useState(0);
   const [unionRevision, setUnionRevision] = useState(0);
+  const [confirmedUnionClientId, setConfirmedUnionClientId] =
+    useState<string>();
   const dossierHeading = useRef<HTMLHeadingElement | null>(null);
   const dossierOpeningTrigger = useRef<Element | null>(null);
   const receiveDossierHeading = useCallback(
@@ -115,6 +118,7 @@ export function ClientWorkspace({
     [isPrisme],
   );
   function openDossier(clientId: string) {
+    setConfirmedUnionClientId(undefined);
     if (isPrisme && clientId === selectedClientId) {
       dossierHeading.current?.focus();
       return;
@@ -212,6 +216,7 @@ export function ClientWorkspace({
     setSearchState({ status: 'idle' });
     setAttachingClientId(undefined);
     setSelectedClientId(undefined);
+    setConfirmedUnionClientId(undefined);
     setDuplicateReviewRefreshKey(0);
 
     if (!canReadClients || !activeCompany) return;
@@ -758,7 +763,7 @@ export function ClientWorkspace({
                     {canReadClientDossiers && (
                       <button
                         type="button"
-                        onClick={() => setSelectedClientId(client.id)}
+                        onClick={() => openDossier(client.id)}
                       >
                         {copy.openDossier}
                       </button>
@@ -784,6 +789,13 @@ export function ClientWorkspace({
           onClientsChanged={() => loadClients(activeCompany.id)}
         />
       )}
+      {canReadClientDossiers &&
+        confirmedUnionClientId !== undefined &&
+        confirmedUnionClientId === selectedClientId && (
+          <ClientDirectoryFeedback role="status" tone="success">
+            {clientUnionCopy.saved}
+          </ClientDirectoryFeedback>
+        )}
       {canReadClientDossiers && (
         <ClientDossierPanel
           key={`${selectedClientId ?? ''}:${unionRevision}`}
@@ -809,11 +821,13 @@ export function ClientWorkspace({
           companyContextId={activeCompany.id}
           identity={identity}
           canResolve={canResolveDuplicateClients}
+          onConfirmed={setConfirmedUnionClientId}
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
           onChanged={async (canonicalClientId) => {
             if (canonicalClientId) setSelectedClientId(canonicalClientId);
+            else setConfirmedUnionClientId(undefined);
             setUnionRevision((revision) => revision + 1);
             await Promise.all([
               loadClients(activeCompany.id),

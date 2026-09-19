@@ -197,7 +197,12 @@ test('compares existing Clients, confirms their union and reverses it', async ({
   await confirm
     .getByRole('button', { name: 'Confirm union', exact: true })
     .click();
-  await expect(union.getByText(/Union confirmed\./)).toBeVisible();
+  await expect(
+    page.getByText(
+      'Union confirmed. The canonical dossier is now available in the affected Companies.',
+      { exact: true },
+    ),
+  ).toBeVisible();
   // A fresh page has no selected active dossier. The superseded source must
   // remain discoverable without reconstructing a private API URL.
   await page.reload();
