@@ -242,7 +242,9 @@ function registration(value: unknown) {
   const clientId = requireUuid(row.clientId);
   const title = requiredText(row.title, 200);
   const purpose = requiredText(row.purpose, 2000);
-  const urlText = requiredText(row.url, 4000);
+  if (typeof row.url !== 'string' || !row.url.trim())
+    throw new BadRequestException('An HTTPS reference is required.');
+  const urlText = row.url.trim();
   let url: URL;
   try {
     url = new URL(urlText);

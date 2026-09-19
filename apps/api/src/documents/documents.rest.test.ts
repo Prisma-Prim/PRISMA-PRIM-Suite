@@ -177,6 +177,19 @@ describe.skipIf(!databaseUrl)(
         ]),
       );
     });
+    it('registers and reopens a valid HTTPS reference longer than 4000 characters', async () => {
+      await grant();
+      const url = `https://example.test/questionnaire?reference=${'a'.repeat(5000)}`;
+      const response = await request('/documents', 'POST', { ...input(), url });
+      expect(response.status).toBe(201);
+      const document = await body(response);
+      expect(document).toMatchObject({
+        version: { representation: { url } },
+      });
+      expect(
+        await body(await request(`/documents/${text(document.id)}`)),
+      ).toEqual(document);
+    });
     it('collapses concurrent exact retries and rejects a conflicting payload without another event', async () => {
       await grant();
       const key = randomUUID();
