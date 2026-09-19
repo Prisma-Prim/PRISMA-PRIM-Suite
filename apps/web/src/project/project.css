@@ -38,3 +38,18 @@
   display: grid;
   gap: 0.5rem;
 }
+.project-documents,
+.project-documents li,
+.project-documents > div {
+  display: grid;
+  gap: 0.75rem;
+}
+.project-documents h4,
+.project-documents h5,
+.project-documents p,
+.project-documents ul {
+  margin-block: 0;
+}
+.project-documents {
+  margin-top: 1.5rem;
+}

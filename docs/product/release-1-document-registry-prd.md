@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working questionnaire-reference tracer approved in #239; wider governance remains Draft  
-**Version:** 0.4  
+**Status:** Partially approved — working references and their Project association approved in #239 and #245; wider governance remains Draft  
+**Version:** 0.5  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -140,7 +140,7 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-Issue #239 is ready under the explicitly bounded approval in section 17. Wider registration families, official promotion, correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block manual working-reference registration.
+The working-reference registration slice is approved in section 17 and the Project-association slice in section 18. Wider registration families, official promotion, content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block either bounded slice.
 
 ## 16. Evidence authority boundary
 
@@ -193,6 +193,89 @@ the metadata-only Documents read seam, component interactions and desktop/narrow
 browser journeys. No schema backfill grants additional permissions.
 
 Official promotion, signatures, numbering, editing/replacement, archival/retention,
-uploads, Google integration, byte preservation, Project links, evidence reuse,
+uploads, Google integration, byte preservation, evidence reuse,
 generation/OCR/AI and the wider role taxonomy remain deferred. This tracer does
-not complete the parent Document Registry capability.
+not complete the parent Document Registry capability. Section 18 separately
+authorizes only the working Project-association boundary.
+
+## 18. Approved working Project associations (#245)
+
+Dan approved the next bounded MVP progression on 2026-09-19: organize existing
+working Documents within preparatory Projects, then add manual preparation Tasks.
+This section records the conservative product synthesis delegated by that
+approval. It does not attribute an exact relationship or permission matrix to
+Iurie. The existing evidence supports Project-specific Documents and finding a
+Client's work together (coverage S02-Q07, S02-Q21 and S00-Q11).
+
+### Association and correction
+
+Each working questionnaire Document may be unlinked or linked to one Project;
+a Project may have many such Documents. Workspace, responsible Company and exact
+stored original Client identity must match at both ends. Linking does not
+reinterpret a Client union, rewrite original references, create a Version or
+change the draft, confidentiality or unverified external-reference status.
+The Project remains preparatory. The association is working-material organization,
+not accepted evidence, a complete start dossier or operational approval.
+
+An explicit link changes unlinked to linked; an explicit removal changes linked
+to unlinked. Reassignment requires those two deliberate actions. Removing a link
+preserves the Document, Version, Representation and prior relationship history.
+Many-Project reuse, content corrections and deletion remain outside this slice.
+
+### Authority and historical Clients
+
+Association reads require active Company context, Project read, Document metadata
+read and the existing original Client/read relationship boundary. The separate
+Representation-read permission is still required before returning or opening a
+URL. Project visibility alone grants neither Document metadata nor content.
+
+The new opt-in Company Document Project Organizer v1 bundle grants only
+`document.project.manage`. The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families)
+owns its captured assignment and administration rules. Linking and removal require
+this permission in addition to both records' read authority; they never expand
+the captured permissions of an existing assignment.
+
+Every new association mutation requires the exact original Client to be active
+and still related to the Company. Existing links involving a superseded original
+Client remain readable but cannot be linked or removed by this first slice.
+The UI explains that refusal without exposing canonical union details. A future
+contract may extend correction of these historical records; this slice does not
+silently apply new writes to a canonical Client.
+
+### Concurrency, retries and history
+
+Each Document association has a monotonically increasing revision starting at
+zero. Commands carry an expected revision; stale revisions and linking a Document
+that is already linked conflict without overwrite. Company, actor and time are
+server-established. A stable command key is scoped to actor and Workspace;
+reusing it with a different Company, Document, action, Project or expected revision
+conflicts. An identical replay rechecks current authority and confirms the recorded
+outcome without another event or fence advance. A later association state is
+refreshed separately and must not be misrepresented by replayed success.
+
+Every successful new link or removal atomically advances the original Client's
+existing operational-use/reversal fence, updates the association and stores one
+append-only relationship event and command outcome. Failed commands roll back all
+four effects. The Client-owned lock ordering and active-relationship validation
+remain authoritative. Existing union/reversal behavior is otherwise unchanged.
+
+History retains the original Document and Project identifiers, actor and server
+time. The [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy)
+owns its read projection: both endpoints must remain readable and no title,
+purpose or URL belongs in the event metadata. Document-only readers receive no
+Project identity or relationship-history disclosure.
+
+### User journey and proof
+
+Project detail shows only authorized linked Documents. An explicitly opened
+selector offers eligible existing working Documents for that exact original
+Client and Company. An authorized user links one, reloads the Project, opens its
+existing reference if separately permitted, and can remove an accidental link.
+Empty, denied, loading, conflict and recoverable-failure states remain distinct.
+An uncertain result retains the unchanged command for explicit retry; changing
+Project, Company or actor authority invalidates pending UI work and late replies.
+
+Public PostgreSQL REST tests prove both-end authorization, immutable identities,
+revision/idempotency behavior, atomic history and the Client reversal fence.
+Component and desktop/narrow browser tests prove the attach/reload/open/remove
+journey. No external provider integration or new verification harness is needed.

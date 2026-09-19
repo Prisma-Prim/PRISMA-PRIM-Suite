@@ -1,3 +1,4 @@
+import { ProjectDocuments } from './ProjectDocuments';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -283,6 +284,12 @@ export function ProjectWorkspace({
             {copy.clientPrefix} {selected.clientDisplayName}
           </p>
           <p>{selected.id}</p>
+          <ProjectDocuments
+            actor={actor}
+            identity={identity}
+            projectId={selected.id}
+            onActivityRecorded={onActivityRecorded}
+          />
         </article>
       )}
     </section>

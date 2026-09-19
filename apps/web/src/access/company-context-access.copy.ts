@@ -4,6 +4,7 @@ export const companyContextAccessCopy = {
   description:
     'Choose an active Workspace member, an active Company and one approved access bundle. The displayed state is always reloaded from the server.',
   bundleLabel: 'Access bundle',
+  documentProjectOrganizerBundle: 'Company Document Project Organizer',
   documentRegistrarBundle: 'Company Document Registrar',
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
@@ -25,6 +26,10 @@ export const companyContextAccessCopy = {
   retry: 'Retry access state',
   error: 'The access state could not be loaded or changed.',
   activityActionLabels: {
+    'company_document_project_organizer_assignment.granted':
+      'granted Company Document Project Organizer',
+    'company_document_project_organizer_assignment.revoked':
+      'revoked Company Document Project Organizer',
     'company_document_registrar_assignment.granted':
       'granted Company Document Registrar',
     'company_document_registrar_assignment.revoked':

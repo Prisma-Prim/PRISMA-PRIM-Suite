@@ -2,12 +2,14 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   foreignKey,
+  integer,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { projects } from './project.js';
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
 export const workingDocuments = pgTable(
   'working_documents',
@@ -16,6 +18,8 @@ export const workingDocuments = pgTable(
     workspaceId: uuid('workspace_id').notNull(),
     companyId: uuid('company_id').notNull(),
     clientId: uuid('client_id').notNull(),
+    projectId: uuid('project_id'),
+    projectRevision: integer('project_revision').notNull().default(0),
     title: text('title').notNull(),
     purpose: text('purpose').notNull(),
     type: text('type').notNull().default('questionnaire'),
@@ -30,6 +34,15 @@ export const workingDocuments = pgTable(
     requestFingerprint: text('request_fingerprint').notNull(),
   },
   (table) => [
+    check(
+      'working_documents_project_revision_check',
+      sql`${table.projectRevision} >= 0`,
+    ),
+    foreignKey({
+      name: 'working_documents_project_fk',
+      columns: [table.workspaceId, table.companyId, table.projectId],
+      foreignColumns: [projects.workspaceId, projects.companyId, projects.id],
+    }),
     uniqueIndex('working_documents_scope_unique').on(
       table.workspaceId,
       table.companyId,
@@ -157,6 +170,65 @@ export const documentRegistrationEvents = pgTable(
     }),
     foreignKey({
       name: 'document_registration_events_actor_fk',
+      columns: [table.workspaceId, table.actorMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+  ],
+);
+
+// Each committed command is the append-only relationship event and its receipt.
+export const documentProjectEvents = pgTable(
+  'document_project_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    action: text('action', { enum: ['link', 'unlink'] }).notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    revision: integer('revision').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('document_project_events_actor_key_unique').on(
+      table.workspaceId,
+      table.actorMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('document_project_events_revision_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.documentId,
+      table.revision,
+    ),
+    check(
+      'document_project_events_state_check',
+      sql`${table.action} IN ('link', 'unlink') AND ${table.expectedRevision} >= 0 AND ${table.revision} = ${table.expectedRevision} + 1`,
+    ),
+    foreignKey({
+      name: 'document_project_events_document_fk',
+      columns: [table.workspaceId, table.companyId, table.documentId],
+      foreignColumns: [
+        workingDocuments.workspaceId,
+        workingDocuments.companyId,
+        workingDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_project_events_project_fk',
+      columns: [table.workspaceId, table.companyId, table.projectId],
+      foreignColumns: [projects.workspaceId, projects.companyId, projects.id],
+    }),
+    foreignKey({
+      name: 'document_project_events_actor_fk',
       columns: [table.workspaceId, table.actorMembershipId],
       foreignColumns: [
         workspaceMemberships.workspaceId,

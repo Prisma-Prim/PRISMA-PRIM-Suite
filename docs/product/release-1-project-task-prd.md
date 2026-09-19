@@ -151,7 +151,7 @@ Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and D
 
 ## 16. Remaining readiness
 
-The preparatory registration slice is ready independently. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; only the bounded preparation slice above is implementation-ready. This capability follows Company/RBAC and Shared Client.
+The preparatory registration slice is ready independently. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in a preparatory Project without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
 
 ## 17. Evidence authority boundary
 

@@ -23,6 +23,7 @@ export class ClientOperationalReferenceService {
       .select({
         id: clientAccounts.id,
         displayName: clientAccounts.displayName,
+        status: clientAccounts.status,
       })
       .from(clientAccounts)
       .innerJoin(

@@ -53,6 +53,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_context_assignment.revoked'
     | 'company_director_client_assignment.granted'
     | 'company_director_client_assignment.revoked'
+    | 'company_document_project_organizer_assignment.granted'
+    | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
     | 'company_document_registrar_assignment.revoked'
     | 'client.created'
@@ -105,6 +107,7 @@ export interface OrdinaryActivityLogEvent {
         bundle:
           | 'Company Context Access'
           | 'Company Director Client Access'
+          | 'Company Document Project Organizer'
           | 'Company Document Registrar'
           | 'Company Project Access';
       }
@@ -132,7 +135,21 @@ export interface DocumentRegisteredActivityLogEvent {
   target: { type: 'document'; documentId: string; companyId: string };
   metadata: Record<string, never>;
 }
+export interface DocumentProjectActivityLogEvent {
+  id: string;
+  action: 'document.project.linked' | 'document.project.unlinked';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'document_project';
+    documentId: string;
+    projectId: string;
+    companyId: string;
+  };
+  metadata: Record<string, never>;
+}
 export type ActivityLogEvent =
+  | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
   | DocumentRegisteredActivityLogEvent;

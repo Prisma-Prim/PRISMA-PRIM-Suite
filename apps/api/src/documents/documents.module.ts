@@ -1,3 +1,5 @@
+import { ProjectModule } from '../project/project.module.js';
+import { DocumentProjectsService } from './document-projects.service.js';
 import { AccessModule } from '../access/access.module.js';
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module.js';
@@ -5,8 +7,14 @@ import { ClientModule } from '../client/client.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
 import { DocumentsService } from './documents.service.js';
 @Module({
-  imports: [AccessModule, DatabaseModule, ClientModule, AccountabilityModule],
-  providers: [DocumentsService],
-  exports: [DocumentsService],
+  imports: [
+    ProjectModule,
+    AccessModule,
+    DatabaseModule,
+    ClientModule,
+    AccountabilityModule,
+  ],
+  providers: [DocumentsService, DocumentProjectsService],
+  exports: [DocumentsService, DocumentProjectsService],
 })
 export class DocumentsModule {}

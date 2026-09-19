@@ -3,6 +3,7 @@ import type {
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+  COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 
@@ -76,6 +77,8 @@ export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
       action:
+        | 'company_document_project_organizer_assignment.granted'
+        | 'company_document_project_organizer_assignment.revoked'
         | 'company_document_registrar_assignment.granted'
         | 'company_document_registrar_assignment.revoked'
         | 'company_project_assignment.granted'
@@ -93,6 +96,7 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -143,6 +147,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
     | typeof COMPANY_REGISTERED_ACTION
+    | 'company_document_project_organizer_assignment.granted'
+    | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
     | 'company_document_registrar_assignment.revoked'
     | 'company_project_assignment.granted'
@@ -205,6 +211,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -238,7 +245,21 @@ export interface DocumentRegisteredActivityEvent {
   target: { type: 'document'; documentId: string; companyId: string };
   metadata: Record<string, never>;
 }
+export interface DocumentProjectActivityEvent {
+  id: string;
+  action: 'document.project.linked' | 'document.project.unlinked';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'document_project';
+    documentId: string;
+    projectId: string;
+    companyId: string;
+  };
+  metadata: Record<string, never>;
+}
 export type ActivityLogEvent =
+  | DocumentProjectActivityEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent
   | DocumentRegisteredActivityEvent

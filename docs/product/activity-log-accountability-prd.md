@@ -78,6 +78,20 @@ Activity Log read permission is separate from mutation permissions. Queries enfo
 
 Sensitive metadata is minimized and may require capability-specific permissions. Platform diagnostics reference opaque identifiers where business details are unnecessary.
 
+For the approved [working Document–Project association slice](release-1-document-registry-prd.md#18-approved-working-project-associations-245),
+one committed link creates `document.project.linked` and one committed removal
+creates `document.project.unlinked`, each an append-only relationship event in the
+same transaction as the association revision, command outcome and original Client
+operational-use fence. Failed commands and exact replays create no new event.
+The record retains the original Document and Project, actor membership, responsible
+Company and server time. Its Activity Log projection requires current read authority
+for both endpoints and the original Client/Company relationship, in addition to
+the existing Activity Log boundary. A Document-only reader receives no Project
+identifier, title or relationship-event disclosure. Event metadata contains no
+Document title, purpose or URL. Visible relationship events participate in the
+existing dated, bounded page rather than an appended unsorted list. Removal is a
+new attributable event and never erases earlier relationship history.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.

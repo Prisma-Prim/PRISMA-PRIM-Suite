@@ -1,3 +1,5 @@
+import { DocumentProjectsController } from './documents/document-projects.controller.js';
+import { CompanyDocumentProjectOrganizerAssignmentController } from './access/company-document-project-organizer-assignment.controller.js';
 import { ProjectController } from './project/project.controller.js';
 import { ProjectModule } from './project/project.module.js';
 import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
@@ -47,7 +49,9 @@ import { DatabaseModule } from './database/database.module.js';
   ],
   controllers: [
     DocumentsController,
+    DocumentProjectsController,
     CompanyDocumentRegistrarAssignmentController,
+    CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
     CompanyProjectAssignmentController,
     WorkspaceInvitationAcceptanceController,

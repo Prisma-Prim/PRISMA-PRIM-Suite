@@ -1,3 +1,4 @@
+import { projectDocumentsCopy } from './project/project-documents.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
 import { projectCopy } from './project/project.copy';
 import {
@@ -252,6 +253,8 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
 
 function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
+    'document.project.linked': projectDocumentsCopy.linked,
+    'document.project.unlinked': projectDocumentsCopy.unlinked,
     'document.registered': documentsCopy.activity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
@@ -269,6 +272,8 @@ function activityDescription(event: ActivityLogEvent): string {
 
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
+    case 'document_project':
+      return `${event.target.documentId} — ${event.target.projectId}`;
     case 'document':
       return event.target.documentId;
     case 'project':
