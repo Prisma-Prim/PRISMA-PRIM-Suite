@@ -49,6 +49,7 @@ export function ProjectWorkspace({
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
+  const [query, setQuery] = useState('');
   const [title, setTitle] = useState('');
   const [clientAccountId, setClientAccountId] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -69,6 +70,7 @@ export function ProjectWorkspace({
     const controller = new AbortController();
     request.current = controller;
     setSelected(null);
+    setQuery('');
     setFeedback('');
     setPending(false);
     setTitle('');
@@ -178,19 +180,23 @@ export function ProjectWorkspace({
       }
       setSelected(result.value);
       setDetailPanel('tasks');
+      const project = result.value;
+      setLoad((current) =>
+        current.kind === 'ready'
+          ? {
+              ...current,
+              projects: command
+                ? [
+                    ...current.projects.filter((row) => row.id !== project.id),
+                    project,
+                  ]
+                : current.projects.map((row) =>
+                    row.id === project.id ? project : row,
+                  ),
+            }
+          : current,
+      );
       if (command) {
-        const project = result.value;
-        setLoad((current) =>
-          current.kind === 'ready'
-            ? {
-                ...current,
-                projects: [
-                  ...current.projects.filter((row) => row.id !== project.id),
-                  project,
-                ],
-              }
-            : current,
-        );
         retry.current = null;
         setTitle('');
         setClientAccountId('');
@@ -244,6 +250,16 @@ export function ProjectWorkspace({
       ?.querySelector<HTMLButtonElement>(`#project-${next}-tab`)
       ?.focus();
   }
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredProjects =
+    load.kind === 'ready'
+      ? load.projects.filter(
+          (project) =>
+            normalizedQuery.length === 0 ||
+            project.title.toLowerCase().includes(normalizedQuery) ||
+            project.clientDisplayName.toLowerCase().includes(normalizedQuery),
+        )
+      : [];
   return (
     <section
       className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
@@ -279,8 +295,26 @@ export function ProjectWorkspace({
       {load.kind === 'ready' && (
         <>
           {load.projects.length === 0 && <p>{copy.empty}</p>}
-          <ul className={isPrisme ? 'project-list' : undefined}>
-            {load.projects.map((project) => (
+          {load.projects.length > 0 && (
+            <label className="project-search">
+              {copy.searchLabel}
+              <input
+                type="search"
+                value={query}
+                placeholder={copy.searchPlaceholder}
+                onChange={(event) => setQuery(event.target.value)}
+                disabled={pending}
+              />
+            </label>
+          )}
+          {load.projects.length > 0 && filteredProjects.length === 0 && (
+            <p className="project-no-matches">{copy.noMatches}</p>
+          )}
+          <ul
+            className={isPrisme ? 'project-list' : undefined}
+            aria-label={copy.title}
+          >
+            {filteredProjects.map((project) => (
               <li key={project.id}>
                 <button
                   type="button"
@@ -289,7 +323,10 @@ export function ProjectWorkspace({
                     void run(`/projects/${encodeURIComponent(project.id)}`)
                   }
                 >
-                  {project.title}
+                  <span>{project.title}</span>{' '}
+                  <span className="project-list-client">
+                    {copy.clientPrefix} {project.clientDisplayName}
+                  </span>
                 </button>
               </li>
             ))}

@@ -7,7 +7,10 @@ export const projectCopy = {
   client: 'Client',
   selectClient: 'Select a Client',
   create: 'Create Project',
+  searchLabel: 'Find Projects',
+  searchPlaceholder: 'Search by Project or Client',
   empty: 'No preparatory Projects for this Company yet.',
+  noMatches: 'No Project matches this search.',
   loading: 'Loading Projects…',
   denied:
     'Project access and Client read access are required for this Company.',

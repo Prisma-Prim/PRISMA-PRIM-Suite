@@ -217,7 +217,11 @@ test('manages manual Tasks through the production shell with retained retry and 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
-  await page.getByRole('button', { name: project.title }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    })
+    .click();
   const tasks = page.getByRole('region', { name: 'Tasks', exact: true });
   await expect(
     tasks.getByText('No manual Tasks for this Project yet.'),
@@ -234,7 +238,11 @@ test('manages manual Tasks through the production shell with retained retry and 
     tasks.locator('dd').getByText('Unassigned', { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: project.title }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    })
+    .click();
   await tasks
     .getByRole('button', { name: 'Collect preparation notes', exact: true })
     .click();

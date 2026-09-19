@@ -164,7 +164,11 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
   fireEvent.change(await within(tasks).findByLabelText('Task title'), {
     target: { value: task.title },
@@ -266,7 +270,11 @@ function fixture(
   return fetcher;
 }
 async function openSavedTask() {
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   fireEvent.click(await screen.findByRole('button', { name: savedTask.title }));
   await screen.findByRole('heading', { name: savedTask.title });
   return screen.getByRole('region', { name: 'Tasks' });
@@ -302,7 +310,11 @@ it('filters loaded Tasks locally by title and current status while preserving se
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
   const taskList = await within(tasks).findByRole('navigation', {
     name: 'Tasks',
@@ -458,7 +470,11 @@ it('refreshes filtered navigation after complete and reopen while keeping the op
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
   await within(tasks).findByRole('navigation', { name: 'Tasks' });
   fireEvent.change(within(tasks).getByLabelText('Task status'), {
@@ -819,7 +835,9 @@ it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
         version: 2,
       }),
     );
-    await screen.findByRole('button', { name: project.title });
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    });
     expect(screen.queryByText('Task change recorded.')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Retry pending Task change' }),
@@ -858,7 +876,11 @@ it('fails closed for malformed Task history', async () => {
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   fireEvent.click(await screen.findByRole('button', { name: savedTask.title }));
   const tasks = screen.getByRole('region', { name: 'Tasks' });
   await within(tasks).findByText(
