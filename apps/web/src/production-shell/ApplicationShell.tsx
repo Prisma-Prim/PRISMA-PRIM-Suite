@@ -18,7 +18,14 @@ import './application-shell.css';
 import './prisme/prisme-frame.css';
 
 export interface ApplicationSection {
-  id: 'clients' | 'access' | 'companies' | 'activity' | 'invitations';
+  id:
+    | 'documents'
+    | 'projects'
+    | 'clients'
+    | 'access'
+    | 'companies'
+    | 'activity'
+    | 'invitations';
   label: string;
   description: string;
   content: ReactNode;
@@ -258,7 +265,12 @@ export function ApplicationShell({
               </a>
             </li>
             {sections
-              .filter((section) => isPrisme || section.id === 'clients')
+              .filter(
+                (section) =>
+                  isPrisme ||
+                  section.id === 'clients' ||
+                  section.id === 'projects',
+              )
               .map((section) => (
                 <li key={section.id}>
                   <a

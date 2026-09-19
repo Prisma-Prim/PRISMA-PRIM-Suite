@@ -20,8 +20,8 @@ runs:
     - name: Record verification provenance
       shell: bash
       run: |
-        git log -1 --format='commit=%H parents=%P'
-        git rev-parse 'HEAD^{tree}'
+        git rev-parse HEAD
+        git cat-file -p HEAD | sed -n '/^tree /p; /^parent /p'
         git status --porcelain
         node --input-type=module --eval 'import os from "node:os"; console.log(JSON.stringify({node:process.version,platform:process.platform,arch:process.arch,cpus:os.availableParallelism(),memoryBytes:os.totalmem(),runnerImage:process.env.ImageOS,runnerImageVersion:process.env.ImageVersion}))'
         pnpm --version

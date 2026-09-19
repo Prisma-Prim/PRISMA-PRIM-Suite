@@ -1,5 +1,5 @@
 import { expect, type Route } from '@playwright/test';
-import { test } from './browser-diagnostics.fixture';
+import { test } from './windows-chromium.fixture';
 import { actorContextFixture } from './actor-context.fixture';
 
 const companyA = { id: 'company-a', displayName: 'First authorized Company' };

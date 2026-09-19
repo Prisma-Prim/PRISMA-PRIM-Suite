@@ -45,17 +45,23 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_membership.suspended'
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
+    | 'project.created'
+    | 'company_project_assignment.granted'
+    | 'company_project_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
     | 'company_director_client_assignment.granted'
     | 'company_director_client_assignment.revoked'
+    | 'company_document_registrar_assignment.granted'
+    | 'company_document_registrar_assignment.revoked'
     | 'client.created'
     | 'client_company_relationship.established'
     | 'client.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
+    | { type: 'project'; projectId: string; companyId: string }
     | { type: 'workspace_invitation'; invitationId: string }
     | {
         type: 'internal_user';
@@ -96,7 +102,11 @@ export interface OrdinaryActivityLogEvent {
   metadata:
     | { identityProvider: string }
     | {
-        bundle: 'Company Context Access' | 'Company Director Client Access';
+        bundle:
+          | 'Company Context Access'
+          | 'Company Director Client Access'
+          | 'Company Document Registrar'
+          | 'Company Project Access';
       }
     | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
@@ -114,8 +124,18 @@ export interface ClientUnionActivityLogEvent {
   };
 }
 
+export interface DocumentRegisteredActivityLogEvent {
+  id: string;
+  action: 'document.registered';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: { type: 'document'; documentId: string; companyId: string };
+  metadata: Record<string, never>;
+}
 export type ActivityLogEvent =
-  OrdinaryActivityLogEvent | ClientUnionActivityLogEvent;
+  | OrdinaryActivityLogEvent
+  | ClientUnionActivityLogEvent
+  | DocumentRegisteredActivityLogEvent;
 
 export type ActivityLogState =
   | { status: 'loading' }

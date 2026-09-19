@@ -148,6 +148,20 @@
       "when": 1789768272121,
       "tag": "0020_workspace_invitation_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789804922259,
+      "tag": "0021_preparatory_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789805848745,
+      "tag": "0022_working_document_references",
+      "breakpoints": true
     }
   ]
 }

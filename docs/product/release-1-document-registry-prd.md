@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Draft — audited interview evidence received; representative practice pending  
-**Version:** 0.3  
+**Status:** Partially approved — working questionnaire-reference tracer approved in #239; wider governance remains Draft  
+**Version:** 0.4  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -114,7 +114,7 @@ The current audited evidence supports these directions:
 - exact-Version approval/signature evidence is important;
 - Company separation, selected confidentiality examples, retention concerns and active-case holds are supported as direction.
 
-Still blocking ticket decomposition:
+Still blocking wider governance ticket decomposition (not the bounded working-reference slice in section 17):
 
 - representative Release 1 Document families and purposes;
 - per-family responsibility matrix;
@@ -140,8 +140,59 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on representative Document practice, confidentiality authority, official-Version rules and the Release 1 Representation mechanism. The current coverage audit narrows the evidence boundary but does not make a Document Registry implementation child ready.
+Issue #239 is ready under the explicitly bounded approval in section 17. Wider registration families, official promotion, correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block manual working-reference registration.
 
 ## 16. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes numbering, legal/signature behaviour, promotion authority or storage mechanisms by itself. Future implementation issues must cite this PRD after the relevant blocker is normalized here.
+
+## 17. Approved working questionnaire-reference tracer (#239)
+
+Dan authorized this first independent Document slice on 2026-09-19 under the
+parallel MVP delivery decision. The following is a bounded product synthesis,
+not a claim that Iurie supplied the full future permission matrix.
+
+An authorized Company user registers a working questionnaire for an existing
+Client related to the selected Company. Required trimmed title (1–200 characters),
+purpose (1–2000) and an external HTTPS URL create distinct, provider-independent
+Document, draft Version and Representation identities. The Workspace, responsible
+Company, original Client association, creator and creation time are server-established.
+The original Client reference remains immutable through Client union/reversal;
+existing references remain readable under their original Company relationship.
+A new post-union reference atomically advances the Client reversal fence so
+reversal cannot silently relocate later operational history.
+
+The fixed **Company Document Registrar v1** bundle grants `document.read`,
+`document.register` and `document.reference.read` as separate permissions. Existing
+Client Director, Company Context Access and Workspace Owner assignments gain no
+Document rights automatically. An administrator with `company.assignment.manage`
+explicitly grants or revokes the captured v1 bundle through Company assignment
+administration, with attributable grant/revoke history. Current Client-read
+authority and an active Client–Company relationship are additionally required.
+There is no cross-Company sharing or metadata-only assignment bundle in this
+slice; the read seam nevertheless never serializes a URL without the separate
+Representation-read permission.
+
+All records are Company-confidential. The Representation is an explicitly
+**unverified, mutable external reference**, not preserved bytes, an official
+original or accepted evidence. The server accepts HTTPS only, rejects embedded
+credentials and does not fetch, proxy, download or verify the external content.
+The UI opens the reference explicitly in a separate tab with opener isolation.
+
+Registration atomically creates the three identities and one append-only
+`document.registered` event. Its server attribution, responsible Company and
+Document target are visible only wherever the Document metadata is visible;
+its metadata contains no title, purpose or URL. Exact retries use one stable key
+per actor and Workspace and recheck live authority; conflicting input or Company
+context returns a conflict without further records or history.
+
+The public surface is authenticated register/list/detail REST and a production
+Working Documents page with localized-copy ownership, empty/loading/error/denied
+states and reload/reopen support. Tests own proof through real PostgreSQL REST,
+the metadata-only Documents read seam, component interactions and desktop/narrow
+browser journeys. No schema backfill grants additional permissions.
+
+Official promotion, signatures, numbering, editing/replacement, archival/retention,
+uploads, Google integration, byte preservation, Project links, evidence reuse,
+generation/OCR/AI and the wider role taxonomy remain deferred. This tracer does
+not complete the parent Document Registry capability.

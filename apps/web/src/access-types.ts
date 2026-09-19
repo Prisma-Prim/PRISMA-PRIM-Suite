@@ -15,11 +15,15 @@ export interface ActorContext {
   activeCompany?: {
     id: string;
     displayName: string;
+    projectPermissions?: Array<'project.read' | 'project.create'>;
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'
       | 'client.update'
       | 'client.duplicate.resolve'
+    >;
+    documentPermissions?: Array<
+      'document.read' | 'document.register' | 'document.reference.read'
     >;
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';

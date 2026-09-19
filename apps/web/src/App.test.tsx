@@ -395,6 +395,12 @@ describe('App', () => {
 
   it('keeps access-administration Activity Log labels in copy resources', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({
+      'company_document_registrar_assignment.granted':
+        'granted Company Document Registrar',
+      'company_document_registrar_assignment.revoked':
+        'revoked Company Document Registrar',
+      'company_project_assignment.granted': 'granted Company Project Access',
+      'company_project_assignment.revoked': 'revoked Company Project Access',
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
       'company_director_client_assignment.granted':
