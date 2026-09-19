@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from './access-composition';
 import { ApplicationRoot } from './ApplicationRoot';
 
@@ -27,6 +27,32 @@ describe('ApplicationRoot', () => {
         ),
       ),
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+  });
+
+  it('shows the public welcome at the root without requesting protected data', () => {
+    sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    render(
+      <ApplicationRoot
+        pathname="/"
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Make every decision traceable.' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Continue to sign in' }),
+    ).toHaveAttribute('href', '/sign-in');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('renders the protected production shell with local identity', async () => {
