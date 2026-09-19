@@ -60,6 +60,7 @@ type ListState =
   | {
       status: 'ready';
       references: string[];
+      lastPageEmpty: boolean;
       continuation:
         | { status: 'complete' }
         | { status: 'idle' | 'loading' | 'failed'; cursor: string };
@@ -195,6 +196,7 @@ export function ClientDuplicateReviewPanel({
             return {
               status: 'ready',
               references,
+              lastPageEmpty: page.references.length === 0,
               continuation: page.nextCursor
                 ? { status: 'idle', cursor: page.nextCursor }
                 : { status: 'complete' },
@@ -341,13 +343,20 @@ export function ClientDuplicateReviewPanel({
           {copy.duplicateReviewDenied}
         </ClientDirectoryFeedback>
       )}
-      {listState.status === 'ready' && listState.references.length === 0 && (
-        <ClientDirectoryFeedback>
-          {availableContinuation
-            ? copy.emptyDuplicateReviewPage
-            : copy.noDuplicateReviews}
-        </ClientDirectoryFeedback>
-      )}
+      {listState.status === 'ready' &&
+        listState.lastPageEmpty &&
+        availableContinuation && (
+          <ClientDirectoryFeedback>
+            {copy.emptyDuplicateReviewPage}
+          </ClientDirectoryFeedback>
+        )}
+      {listState.status === 'ready' &&
+        listState.references.length === 0 &&
+        !availableContinuation && (
+          <ClientDirectoryFeedback>
+            {copy.noDuplicateReviews}
+          </ClientDirectoryFeedback>
+        )}
       {listState.status === 'ready' && listState.references.length > 0 && (
         <ol className="client-review-list">
           {listState.references.map((reference, index) => (

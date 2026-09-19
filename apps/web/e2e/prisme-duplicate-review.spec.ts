@@ -115,6 +115,7 @@ test('continues empty pages explicitly and retains rows and cursor after a conti
 }, testInfo) => {
   const state = await installReviewFixture(page);
   const secondCursor = '23600000-0000-4000-8000-000000000007';
+  const thirdCursor = '23600000-0000-4000-8000-000000000008';
   let failed = false;
   state.list = (route) => {
     const cursor = new URL(route.request().url()).searchParams.get('cursor');
@@ -127,7 +128,9 @@ test('continues empty pages explicitly and retains rows and cursor after a conti
           next_cursor: secondCursor,
         },
       });
-    expect(cursor).toBe(secondCursor);
+    if (cursor === secondCursor)
+      return route.fulfill({ json: { items: [], next_cursor: thirdCursor } });
+    expect(cursor).toBe(thirdCursor);
     if (!failed) {
       failed = true;
       return route.fulfill({ status: 503 });
@@ -162,13 +165,32 @@ test('continues empty pages explicitly and retains rows and cursor after a conti
   await more.click();
   await expect(openReviewButton(page)).toBeVisible();
   expect(state.listRequests).toEqual([null, reviewCursor]);
+  const emptyPage = reviewPanel(page).getByText(
+    'No review on this page. More reviews may be available.',
+  );
+  await expect(emptyPage).toHaveCount(0);
+  await more.click();
+  await expect(emptyPage).toBeVisible();
+  await expect(openReviewButton(page)).toBeVisible();
+  await expect(
+    reviewPanel(page).getByText(
+      'No possible duplicate review is currently available.',
+    ),
+  ).toHaveCount(0);
+  await captureReview(page, testInfo, 'review-empty-continuation-after-rows');
+  expect(state.listRequests).toEqual([null, reviewCursor, secondCursor]);
   await more.click();
   await expect(reviewPanel(page).getByRole('alert')).toHaveText(
     'More duplicate reviews could not be loaded safely. Try again.',
   );
   await expect(openReviewButton(page)).toBeVisible();
   expect(state.detailReads).toBe(0);
-  expect(state.listRequests).toEqual([null, reviewCursor, secondCursor]);
+  expect(state.listRequests).toEqual([
+    null,
+    reviewCursor,
+    secondCursor,
+    thirdCursor,
+  ]);
   await captureReview(page, testInfo, 'review-continuation-failure');
   await more.click();
   await expect(
@@ -182,17 +204,25 @@ test('continues empty pages explicitly and retains rows and cursor after a conti
     }),
   ).toHaveCount(2);
   await expect(more).toHaveCount(0);
+  await expect(emptyPage).toHaveCount(0);
+  await expect(
+    reviewPanel(page).getByText(
+      'No possible duplicate review is currently available.',
+    ),
+  ).toHaveCount(0);
   expect(state.listRequests).toEqual([
     null,
     reviewCursor,
     secondCursor,
-    secondCursor,
+    thirdCursor,
+    thirdCursor,
   ]);
   for (const opaque of [
     reviewReference,
     nextReference,
     reviewCursor,
     secondCursor,
+    thirdCursor,
   ])
     await expect(reviewPanel(page).getByText(opaque)).toHaveCount(0);
 });
