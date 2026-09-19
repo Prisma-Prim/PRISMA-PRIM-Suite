@@ -91,6 +91,7 @@ describe('previous-schema test lifecycle', () => {
       waitForTargetDatabaseConnectionsToClose(getConnectionCount, {
         timeoutMs: 5,
         pollIntervalMs: 1,
+        now: () => 0,
       }),
     ).rejects.toThrow(
       'Timed out waiting for the target database connection-count query to finish.',
