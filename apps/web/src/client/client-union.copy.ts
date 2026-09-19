@@ -51,6 +51,18 @@ export const clientUnionCopy = {
     'Union confirmed. The canonical dossier is now available in the affected Companies.',
   reversed:
     'Union reversed. The original dossiers and relationships are available again.',
+  unitedState: 'United',
+  reversedState: 'Reversed',
+  state: 'Operation state',
+  canonicalSource: 'Canonical Client',
+  capturedCompanies: 'Complete captured Company set',
+  reversalUncertain:
+    'No confirmation has been received for this reversal. Your reason and complete Company acknowledgement are retained. Retry only if this intention is unchanged.',
+  reversalStale:
+    'The reversal is no longer current. Load the authorized operation detail again before deciding.',
+  reverseIncomplete:
+    'Give a reason and confirm the complete captured Company set before reversing.',
+  retryReversal: 'Retry reversal',
   viewDetails: 'View authorized union details',
   noHistory:
     'No union history is available for this Client in the active Company.',
@@ -60,7 +72,7 @@ export const clientUnionCopy = {
   restrictedTitle: 'Attributable union history',
   originals: 'Preserved original dossiers',
   reversalBlocked:
-    'Reversal is blocked because the dossier or its relationships changed after union.',
+    'This union cannot be reversed from the current authorized detail. Its state or governing conditions may have changed.',
   notProvided: 'Not provided',
   actionLabels: {
     'client.union_confirmed': 'confirmed a Client union',

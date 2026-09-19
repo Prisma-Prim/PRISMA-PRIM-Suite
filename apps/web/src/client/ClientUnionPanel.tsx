@@ -25,8 +25,10 @@ import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientUnionComparison } from './ClientUnionComparison';
 import './client-union-comparison.css';
+import './client-union-history.css';
 
-type UnionFailureFeedback = 'error' | 'confirmationUncertain';
+type UnionFailureFeedback =
+  'error' | 'confirmationUncertain' | 'reversalUncertain' | 'reversalStale';
 
 type UnionView =
   | { kind: 'idle' }
@@ -122,12 +124,14 @@ export function ClientUnionPanel({
     receive,
     input,
     failureFeedback = 'error',
+    conflictFeedback = 'unavailable',
   }: {
     path: string;
     parse: (value: unknown) => T;
     receive: (value: T, signal: AbortSignal) => Promise<void> | void;
     input?: unknown;
     failureFeedback?: UnionFailureFeedback;
+    conflictFeedback?: 'unavailable' | 'reversalStale';
   }) {
     const serializedBody =
       input === undefined ? undefined : JSON.stringify(input);
@@ -167,14 +171,16 @@ export function ClientUnionPanel({
           ...callbacks.current,
         });
         if (signal.aborted) return;
-        if (
-          rejected ||
-          result.status === 'notFound' ||
-          result.status === 'conflict'
-        ) {
+        if (rejected || result.status === 'notFound') {
           retry.current = undefined;
           setView({ kind: 'idle' });
           setFeedback('unavailable');
+          return;
+        }
+        if (result.status === 'conflict') {
+          retry.current = undefined;
+          setView({ kind: 'idle' });
+          setFeedback(conflictFeedback);
           return;
         }
         if (result.status !== 'ok') {
@@ -272,6 +278,7 @@ export function ClientUnionPanel({
       {feedback === 'error' && <p role="alert">{copy.error}</p>}
       {feedback === 'refreshError' && <p role="alert">{copy.refreshError}</p>}
       {feedback === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
+      {feedback === 'reversalStale' && <p role="alert">{copy.reversalStale}</p>}
       {view.kind === 'remediation' && <p role="alert">{copy.remediation}</p>}
       {view.kind === 'comparison' && (
         <ClientUnionComparison
@@ -343,8 +350,8 @@ export function ClientUnionPanel({
         <div>
           {view.history.events.length === 0 && <p>{copy.noHistory}</p>}
           <ul>
-            {view.history.events.map((event) => (
-              <li key={event.projectionReference}>
+            {view.history.events.map((event, index) => (
+              <li key={`${event.projectionReference}:${event.action}:${index}`}>
                 <span>
                   {copy.resolver} {copy.actionLabels[event.action]}
                 </span>
@@ -366,8 +373,10 @@ export function ClientUnionPanel({
       )}
       {view.kind === 'detail' && (
         <UnionOperationDetail
+          key={`${view.detail.projectionReference}:${view.detail.state}:${view.detail.canReverse}`}
           detail={view.detail}
           busy={busy}
+          uncertain={feedback === 'reversalUncertain'}
           onOpenCanonical={() => {
             close();
             void callbacks.current.onChanged(view.detail.canonicalClientId);
@@ -379,15 +388,21 @@ export function ClientUnionPanel({
                 reason,
                 companyIds: view.detail.companies.map((company) => company.id),
               },
+              failureFeedback: 'reversalUncertain',
+              conflictFeedback: 'reversalStale',
               parse: (value) => {
                 const row = unionObject(value);
                 if (row.outcome !== 'reversed')
                   throw new Error('Invalid reversal outcome.');
                 return row;
               },
-              receive: async () => {
+              receive: async (_, signal) => {
                 setView({ kind: 'reversed' });
-                await callbacks.current.onChanged();
+                try {
+                  await callbacks.current.onChanged();
+                } catch {
+                  if (!signal.aborted) setFeedback('refreshError');
+                }
               },
             })
           }
@@ -397,12 +412,21 @@ export function ClientUnionPanel({
   );
 }
 
-function Dossiers({ clients }: { clients: UnionComparison['clients'] }) {
+function Dossiers({
+  clients,
+  canonicalClientId,
+}: {
+  clients: UnionComparison['clients'];
+  canonicalClientId: string;
+}) {
   return (
-    <div className="client-union-comparison">
-      {clients.map((client) => (
-        <article key={client.id}>
-          <h4>{client.displayName}</h4>
+    <div className="client-union-history-dossiers">
+      {clients.map((client, index) => (
+        <article className="client-union-history-source" key={client.id}>
+          <h4>
+            {copy.source({ number: index + 1, name: client.displayName })}
+          </h4>
+          {client.id === canonicalClientId && <p>{copy.canonicalSource}</p>}
           <p>{clientCopy.version(client.version)}</p>
           <dl>
             {unionFields.map((field) => (
@@ -413,15 +437,25 @@ function Dossiers({ clients }: { clients: UnionComparison['clients'] }) {
             ))}
           </dl>
           <h4>{clientCopy.contactsLabel}</h4>
-          <ul>
-            {client.contacts.map((contact, index) => (
-              <li key={`${client.id}:${client.version}:${index}`}>
-                <strong>{contact.name}</strong>
-                {contact.telephone && <span>{contact.telephone}</span>}
-                {contact.email && <span>{contact.email}</span>}
-              </li>
-            ))}
-          </ul>
+          {client.contacts.length === 0 ? (
+            <p>{copy.noContacts}</p>
+          ) : (
+            <ul className="client-union-history-contacts">
+              {client.contacts.map((contact, contactIndex) => (
+                <li key={`${client.id}:${client.version}:${contactIndex}`}>
+                  <span>
+                    {copy.contactSource({
+                      source: index + 1,
+                      contact: contactIndex + 1,
+                    })}
+                  </span>
+                  <strong>{contact.name}</strong>
+                  {contact.telephone && <span>{contact.telephone}</span>}
+                  {contact.email && <span>{contact.email}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </article>
       ))}
     </div>
@@ -431,20 +465,32 @@ function Dossiers({ clients }: { clients: UnionComparison['clients'] }) {
 function UnionOperationDetail({
   detail,
   busy,
+  uncertain,
   onOpenCanonical,
   onReverse,
 }: {
   detail: UnionDetail;
   busy: boolean;
+  uncertain: boolean;
   onOpenCanonical: () => void;
   onReverse: (reason: string) => Promise<void>;
 }) {
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const incomplete = attempted && (!confirmed || !reason.trim());
   return (
-    <div>
+    <div className="client-union-history-detail">
       <h4>{copy.restrictedTitle}</h4>
-      <p>
+      <dl>
+        <div>
+          <dt>{copy.state}</dt>
+          <dd>
+            {detail.state === 'united' ? copy.unitedState : copy.reversedState}
+          </dd>
+        </div>
+      </dl>
+      <p className="client-union-history-attribution">
         {detail.actor.displayName} ·{' '}
         <time dateTime={detail.occurredAt}>
           {formatApplicationDateTime(detail.occurredAt)}
@@ -457,9 +503,23 @@ function UnionOperationDetail({
         </button>
       )}
       <h4>{copy.originals}</h4>
-      <Dossiers clients={detail.originals} />
+      <Dossiers
+        clients={detail.originals}
+        canonicalClientId={detail.canonicalClientId}
+      />
+      <section
+        className="client-union-history-scope"
+        aria-label={copy.capturedCompanies}
+      >
+        <h4>{copy.capturedCompanies}</h4>
+        <ul>
+          {detail.companies.map((company) => (
+            <li key={company.id}>{company.displayName}</li>
+          ))}
+        </ul>
+      </section>
       {detail.reversal && (
-        <div>
+        <div className="client-union-history-reversal">
           <p>{copy.reversed}</p>
           <p>
             {detail.reversal.actor.displayName} ·{' '}
@@ -475,10 +535,11 @@ function UnionOperationDetail({
       )}
       {detail.state === 'united' && detail.canReverse && (
         <form
-          className="client-union-form"
+          className="client-union-form client-union-history-form"
           aria-label={copy.reverse}
           onSubmit={(event) => {
             event.preventDefault();
+            setAttempted(true);
             if (!busy && confirmed && reason.trim()) void onReverse(reason);
           }}
         >
@@ -490,6 +551,10 @@ function UnionOperationDetail({
                 required
                 maxLength={2000}
                 value={reason}
+                aria-invalid={attempted && !reason.trim()}
+                aria-describedby={
+                  incomplete ? 'client-union-reversal-error' : undefined
+                }
                 onChange={(event) => setReason(event.target.value)}
               />
             </label>
@@ -498,6 +563,10 @@ function UnionOperationDetail({
                 type="checkbox"
                 required
                 checked={confirmed}
+                aria-invalid={attempted && !confirmed}
+                aria-describedby={
+                  incomplete ? 'client-union-reversal-error' : undefined
+                }
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
               {copy.confirmedCompanies}{' '}
@@ -506,8 +575,14 @@ function UnionOperationDetail({
                 .join(', ')}
             </label>
           </fieldset>
+          {incomplete && (
+            <p id="client-union-reversal-error" role="alert">
+              {copy.reverseIncomplete}
+            </p>
+          )}
+          {uncertain && <p role="alert">{copy.reversalUncertain}</p>}
           <button type="submit" disabled={busy}>
-            {busy ? copy.saving : copy.reverse}
+            {busy ? copy.saving : uncertain ? copy.retryReversal : copy.reverse}
           </button>
         </form>
       )}

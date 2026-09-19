@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientUnionPanel } from './ClientUnionPanel';
 
 const first = {
@@ -195,6 +196,26 @@ describe('Client union UI public journey', () => {
       screen.getByRole('button', { name: 'View authorized union details' }),
     );
     expect(await screen.findByText(detail.reason)).toBeVisible();
+    expect(screen.getByText('United')).toBeVisible();
+    expect(screen.getByText(/Authorized Director/)).toBeVisible();
+    expect(document.querySelector('time')).toHaveAttribute(
+      'datetime',
+      detail.occurredAt,
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Source 1 · Exemplu SRL' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Source 2 · Exemplu S.R.L.' }),
+    ).toBeVisible();
+    expect(screen.getByText('Source 1 · Contact 1')).toBeVisible();
+    expect(screen.getByText('Source 2 · Contact 1')).toBeVisible();
+    const capturedCompanies = screen.getByRole('region', {
+      name: 'Complete captured Company set',
+    });
+    expect(within(capturedCompanies).getByText('PRISMA-PRIM')).toBeVisible();
+    expect(within(capturedCompanies).getByText('BIC')).toBeVisible();
+    expect(screen.queryByText('internal-operation')).not.toBeInTheDocument();
     const reversal = screen.getByRole('form', { name: 'Reverse union' });
     fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
       target: { value: 'Restore the separate dossiers.' },
@@ -203,6 +224,704 @@ describe('Client union UI public journey', () => {
     fireEvent.submit(reversal);
     expect(await screen.findByText(/Union reversed\./)).toBeVisible();
     expect(callbacks.onChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps an uncertain reversal for an explicit unchanged retry across presentation changes', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response([{ id: second.id, displayName: second.displayName }]),
+      )
+      .mockResolvedValueOnce(
+        response({
+          events: [
+            {
+              action: 'client.union_confirmed',
+              projectionReference: 'projection-a',
+              companyId: 'company-a',
+            },
+          ],
+          detailReferences: ['projection-a'],
+        }),
+      )
+      .mockResolvedValueOnce(response(detail))
+      .mockResolvedValueOnce(response({}, 503))
+      .mockResolvedValueOnce(
+        response(
+          { outcome: 'reversed', clientIds: [first.id, second.id] },
+          201,
+        ),
+      );
+    vi.stubGlobal('fetch', fetcher);
+    const callbacks = props();
+    const panel = (presentation: 'classic' | 'prisme') => (
+      <ApplicationPresentation value={presentation}>
+        <ClientUnionPanel {...callbacks} clientId={undefined} />
+      </ApplicationPresentation>
+    );
+    const rendered = render(panel('prisme'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+      target: { value: 'Restore the separate dossiers deliberately.' },
+    });
+    fireEvent.click(within(reversal).getByRole('checkbox'));
+    fireEvent.submit(reversal);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No confirmation has been received for this reversal.',
+    );
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    rendered.rerender(panel('classic'));
+    rendered.rerender(panel('prisme'));
+    expect(screen.getByRole('form', { name: 'Reverse union' })).toBe(reversal);
+    expect(within(reversal).getByLabelText('Reason for reversal')).toHaveValue(
+      'Restore the separate dossiers deliberately.',
+    );
+    expect(within(reversal).getByRole('checkbox')).toBeChecked();
+    fireEvent.click(
+      within(reversal).getByRole('button', { name: 'Retry reversal' }),
+    );
+    expect(await screen.findByText(/Union reversed\./)).toBeVisible();
+    expect(fetcher.mock.calls[4]?.[1]).toEqual(
+      expect.objectContaining({
+        headers: fetcher.mock.calls[3]?.[1].headers,
+        body: fetcher.mock.calls[3]?.[1].body,
+      }),
+    );
+    expect(callbacks.onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a confirmed reversal separate from a rejected refresh callback', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(response(detail))
+        .mockResolvedValueOnce(
+          response(
+            { outcome: 'reversed', clientIds: [first.id, second.id] },
+            201,
+          ),
+        ),
+    );
+    render(
+      <ClientUnionPanel
+        {...props()}
+        clientId={undefined}
+        onChanged={async () => {
+          throw new Error('Refresh unavailable');
+        }}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+      target: { value: 'Restore the separate dossiers.' },
+    });
+    fireEvent.click(within(reversal).getByRole('checkbox'));
+    fireEvent.submit(reversal);
+    expect(await screen.findByText(/Union reversed\./)).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The command was confirmed, but a subsequent refresh failed.',
+    );
+    expect(
+      screen.queryByText(
+        'No confirmation has been received for this reversal.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not revive a reversal refresh warning after Close', async () => {
+    let rejectRefresh: ((reason: Error) => void) | undefined;
+    const refresh = new Promise<void>((_, reject) => {
+      rejectRefresh = reject;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(response(detail))
+        .mockResolvedValueOnce(
+          response(
+            { outcome: 'reversed', clientIds: [first.id, second.id] },
+            201,
+          ),
+        ),
+    );
+    render(
+      <ClientUnionPanel
+        {...props()}
+        clientId={undefined}
+        onChanged={() => refresh}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+      target: { value: 'Restore the separate dossiers.' },
+    });
+    fireEvent.click(within(reversal).getByRole('checkbox'));
+    fireEvent.submit(reversal);
+    await screen.findByText(/Union reversed\./);
+    fireEvent.click(screen.getByRole('button', { name: 'Close review' }));
+    await act(async () => {
+      if (!rejectRefresh) throw new Error('Expected pending reversal refresh');
+      rejectRefresh(new Error('Late refresh error'));
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Union reversed\./)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    'new Project',
+    'new Document',
+    'new Document–Project link',
+    'new Document–Project unlink',
+  ])(
+    'clears a stale reversal form after a %s fence and requires an explicit fresh lookup',
+    async () => {
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(response(detail))
+        .mockResolvedValueOnce(response({}, 409));
+      vi.stubGlobal('fetch', fetcher);
+      render(<ClientUnionPanel {...props()} clientId={undefined} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Superseded Client history' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: second.displayName }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      const reversal = await screen.findByRole('form', {
+        name: 'Reverse union',
+      });
+      fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+        target: { value: 'Restore the separate dossiers.' },
+      });
+      fireEvent.click(within(reversal).getByRole('checkbox'));
+      fireEvent.submit(reversal);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The reversal is no longer current. Load the authorized operation detail again before deciding.',
+      );
+      expect(
+        screen.queryByRole('form', { name: 'Reverse union' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(detail.reason)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Union reversed\./)).not.toBeInTheDocument();
+      expect(fetcher).toHaveBeenCalledTimes(4);
+    },
+  );
+
+  it('requires a reversal reason and the complete captured Company acknowledgement', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response([{ id: second.id, displayName: second.displayName }]),
+      )
+      .mockResolvedValueOnce(
+        response({
+          events: [
+            {
+              action: 'client.union_confirmed',
+              projectionReference: 'projection-a',
+              companyId: 'company-a',
+            },
+          ],
+          detailReferences: ['projection-a'],
+        }),
+      )
+      .mockResolvedValueOnce(response(detail));
+    vi.stubGlobal('fetch', fetcher);
+    render(<ClientUnionPanel {...props()} clientId={undefined} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    const reason = within(reversal).getByLabelText('Reason for reversal');
+    const acknowledgement = within(reversal).getByRole('checkbox');
+    fireEvent.submit(reversal);
+    expect(await within(reversal).findByRole('alert')).toHaveTextContent(
+      'Give a reason and confirm the complete captured Company set before reversing.',
+    );
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(acknowledgement).toHaveAttribute('aria-invalid', 'true');
+    expect(reason).toHaveAttribute('maxlength', '2000');
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    fireEvent.change(reason, { target: { value: '  ' } });
+    fireEvent.click(acknowledgement);
+    fireEvent.submit(reversal);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
+  it('creates a new reversal command when the retained uncertain intention changes', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response([{ id: second.id, displayName: second.displayName }]),
+      )
+      .mockResolvedValueOnce(
+        response({
+          events: [
+            {
+              action: 'client.union_confirmed',
+              projectionReference: 'projection-a',
+              companyId: 'company-a',
+            },
+          ],
+          detailReferences: ['projection-a'],
+        }),
+      )
+      .mockResolvedValueOnce(response(detail))
+      .mockResolvedValue(response({}, 503));
+    vi.stubGlobal('fetch', fetcher);
+    render(<ClientUnionPanel {...props()} clientId={undefined} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    const reason = within(reversal).getByLabelText('Reason for reversal');
+    fireEvent.change(reason, {
+      target: { value: 'Restore the separate dossiers.' },
+    });
+    fireEvent.click(within(reversal).getByRole('checkbox'));
+    fireEvent.submit(reversal);
+    await screen.findByRole('alert');
+    fireEvent.change(reason, {
+      target: { value: 'Restore them after a fresh review.' },
+    });
+    fireEvent.submit(reversal);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(5));
+    expect(fetcher.mock.calls[4]?.[1].headers['idempotency-key']).not.toBe(
+      fetcher.mock.calls[3]?.[1].headers['idempotency-key'],
+    );
+    expect(fetcher.mock.calls[4]?.[1].body).not.toBe(
+      fetcher.mock.calls[3]?.[1].body,
+    );
+  });
+
+  it('shows honest loading, empty, error and unavailable source states', async () => {
+    let release: ((value: Response) => void) | undefined;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(pending));
+    const loading = render(
+      <ClientUnionPanel {...props()} clientId={undefined} />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Loading the authorized union view…',
+    );
+    await act(async () => {
+      if (!release) throw new Error('Expected pending sources response');
+      release(response([]));
+    });
+    expect(
+      await screen.findByText(
+        'No superseded Client dossiers are related to the active Company.',
+      ),
+    ).toBeVisible();
+    loading.unmount();
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({}, 503)));
+    const failed = render(
+      <ClientUnionPanel {...props()} clientId={undefined} />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The request could not be completed. You can retry safely.',
+    );
+    failed.unmount();
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({}, 404)));
+    render(<ClientUnionPanel {...props()} clientId={undefined} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This operation is unavailable.',
+    );
+  });
+
+  it('abandons a pending reversal on Close without claiming to cancel the server command', async () => {
+    let release: ((value: Response) => void) | undefined;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response([{ id: second.id, displayName: second.displayName }]),
+      )
+      .mockResolvedValueOnce(
+        response({
+          events: [
+            {
+              action: 'client.union_confirmed',
+              projectionReference: 'projection-a',
+              companyId: 'company-a',
+            },
+          ],
+          detailReferences: ['projection-a'],
+        }),
+      )
+      .mockResolvedValueOnce(response(detail))
+      .mockReturnValueOnce(pending);
+    vi.stubGlobal('fetch', fetcher);
+    const callbacks = props();
+    render(<ClientUnionPanel {...callbacks} clientId={undefined} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    const reversal = await screen.findByRole('form', {
+      name: 'Reverse union',
+    });
+    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+      target: { value: 'Restore the separate dossiers.' },
+    });
+    fireEvent.click(within(reversal).getByRole('checkbox'));
+    fireEvent.submit(reversal);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
+    fireEvent.click(screen.getByRole('button', { name: 'Close review' }));
+    expect(fetcher.mock.calls[3]?.[1].signal.aborted).toBe(true);
+    await act(async () => {
+      if (!release) throw new Error('Expected pending reversal');
+      release(
+        response(
+          { outcome: 'reversed', clientIds: [first.id, second.id] },
+          201,
+        ),
+      );
+    });
+    expect(callbacks.onChanged).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Union reversed\./)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('form', { name: 'Reverse union' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(['Company', 'authority'])(
+    'discards a late reversal after the %s boundary changes',
+    async (boundary) => {
+      let release: ((value: Response) => void) | undefined;
+      const pending = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(response(detail))
+        .mockReturnValueOnce(pending);
+      vi.stubGlobal('fetch', fetcher);
+      const callbacks = props();
+      const rendered = render(
+        <ClientUnionPanel {...callbacks} clientId={undefined} />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Superseded Client history' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: second.displayName }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      const reversal = await screen.findByRole('form', {
+        name: 'Reverse union',
+      });
+      fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
+        target: { value: 'Restore the separate dossiers.' },
+      });
+      fireEvent.click(within(reversal).getByRole('checkbox'));
+      fireEvent.submit(reversal);
+      await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
+      rendered.rerender(
+        <ClientUnionPanel
+          {...callbacks}
+          clientId={undefined}
+          companyContextId={
+            boundary === 'Company' ? 'company-b' : callbacks.companyContextId
+          }
+          canResolve={boundary !== 'authority'}
+        />,
+      );
+      expect(fetcher.mock.calls[3]?.[1].signal.aborted).toBe(true);
+      await act(async () => {
+        if (!release) throw new Error('Expected pending reversal');
+        release(
+          response(
+            { outcome: 'reversed', clientIds: [first.id, second.id] },
+            201,
+          ),
+        );
+        await pending;
+      });
+      expect(callbacks.onChanged).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Union reversed\./)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('form', { name: 'Reverse union' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    'new Project',
+    'new Document',
+    'new Document–Project link',
+    'new Document–Project unlink',
+  ])(
+    'keeps a server-blocked reversal after a %s fence generic and does not expose reference causes',
+    async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            response([{ id: second.id, displayName: second.displayName }]),
+          )
+          .mockResolvedValueOnce(
+            response({
+              events: [
+                {
+                  action: 'client.union_confirmed',
+                  projectionReference: 'projection-a',
+                  companyId: 'company-a',
+                },
+              ],
+              detailReferences: ['projection-a'],
+            }),
+          )
+          .mockResolvedValueOnce(
+            response({
+              ...detail,
+              canReverse: false,
+              fresh: false,
+              blockingReferences: [
+                { kind: 'project', name: 'Confidential Apollo' },
+                { kind: 'document_project_link', account: 'Secret Account' },
+              ],
+            }),
+          ),
+      );
+      render(<ClientUnionPanel {...props()} clientId={undefined} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Superseded Client history' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: second.displayName }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      expect(
+        await screen.findByText(
+          'This union cannot be reversed from the current authorized detail. Its state or governing conditions may have changed.',
+        ),
+      ).toHaveAttribute('role', 'status');
+      expect(
+        screen.queryByRole('form', { name: 'Reverse union' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Apollo|Secret Account|Project|Document/),
+      ).toBeNull();
+    },
+  );
+
+  it('presents a reversed operation with separate authorized reversal attribution', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_reversed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockResolvedValueOnce(
+          response({
+            ...detail,
+            state: 'reversed',
+            canReverse: false,
+            reversal: {
+              reason: 'Authorized correction.',
+              occurredAt: '2026-09-13T13:00:00.000Z',
+              actor: {
+                internalUserId: 'other-internal-user',
+                displayName: 'Authorized Reversal Director',
+              },
+            },
+          }),
+        ),
+    );
+    render(<ClientUnionPanel {...props()} clientId={undefined} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Superseded Client history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: second.displayName }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    expect(await screen.findByText('Reversed')).toBeVisible();
+    expect(screen.getByText(detail.reason)).toBeVisible();
+    expect(screen.getByText('Authorized correction.')).toBeVisible();
+    expect(screen.getByText(/Authorized Reversal Director/)).toBeVisible();
+    expect(document.querySelectorAll('time')).toHaveLength(2);
+    expect(
+      screen.queryByRole('form', { name: 'Reverse union' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Open canonical Client dossier' }),
+    ).not.toBeInTheDocument();
   });
 
   it.each(['context', 'authority'])(
@@ -256,6 +975,76 @@ describe('Client union UI public journey', () => {
         screen.queryByRole('heading', {
           name: 'Compare the two existing Clients',
         }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(['Client', 'Company', 'identity', 'authority'])(
+    'discards a late authorized history detail after the %s boundary changes',
+    async (boundary) => {
+      let release: ((value: Response) => void) | undefined;
+      const late = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce(
+          response([{ id: second.id, displayName: second.displayName }]),
+        )
+        .mockResolvedValueOnce(
+          response({
+            events: [
+              {
+                action: 'client.union_confirmed',
+                projectionReference: 'projection-a',
+                companyId: 'company-a',
+              },
+            ],
+            detailReferences: ['projection-a'],
+          }),
+        )
+        .mockReturnValueOnce(late);
+      vi.stubGlobal('fetch', fetcher);
+      const callbacks = props();
+      const rendered = render(
+        <ClientUnionPanel {...callbacks} clientId={undefined} />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Superseded Client history' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: second.displayName }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+      rendered.rerender(
+        <ClientUnionPanel
+          {...callbacks}
+          clientId={boundary === 'Client' ? first.id : undefined}
+          companyContextId={
+            boundary === 'Company' ? 'company-b' : callbacks.companyContextId
+          }
+          identity={
+            boundary === 'identity'
+              ? deterministicBrowserIdentity()
+              : callbacks.identity
+          }
+          canResolve={boundary !== 'authority'}
+        />,
+      );
+      expect(fetcher.mock.calls[2]?.[1].signal.aborted).toBe(true);
+      await act(async () => {
+        if (!release) throw new Error('Expected pending history detail');
+        release(response(detail));
+        await late;
+      });
+      expect(screen.queryByText(detail.reason)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('form', { name: 'Reverse union' }),
       ).not.toBeInTheDocument();
     },
   );
@@ -340,6 +1129,14 @@ describe('Client union UI public journey', () => {
         response({
           events: [
             {
+              action: 'client.union_reversed',
+              projectionReference: 'projection-a',
+              companyId: 'company-a',
+              actor: { displayName: 'Restricted Person' },
+              occurredAt: '2026-09-12T12:00:00.000Z',
+              operationId: 'restricted-operation',
+            },
+            {
               action: 'client.union_confirmed',
               projectionReference: 'projection-a',
               companyId: 'company-a',
@@ -351,13 +1148,22 @@ describe('Client union UI public journey', () => {
     );
     render(<ClientUnionPanel {...props()} canResolve={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Union history' }));
-    expect(
-      await screen.findByText('Authorized resolver confirmed a Client union'),
-    ).toBeVisible();
+    const rows = await screen.findAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent(
+      'Authorized resolver reversed a Client union',
+    );
+    expect(rows[1]).toHaveTextContent(
+      'Authorized resolver confirmed a Client union',
+    );
     expect(
       screen.queryByRole('button', { name: 'View authorized union details' }),
     ).not.toBeInTheDocument();
     expect(document.querySelector('time')).toBeNull();
+    expect(screen.queryByText('Restricted Person')).not.toBeInTheDocument();
+    expect(screen.queryByText('projection-a')).not.toBeInTheDocument();
+    expect(screen.queryByText('company-a')).not.toBeInTheDocument();
+    expect(screen.queryByText('restricted-operation')).not.toBeInTheDocument();
   });
   it('identifies equal names and Contacts by source, validates every choice and keeps all source entries', async () => {
     const sameName = {
