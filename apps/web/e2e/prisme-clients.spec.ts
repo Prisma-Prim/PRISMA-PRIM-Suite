@@ -157,6 +157,12 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
   await expect(page.getByText('BIC, PRISMA-PRIM')).toBeVisible();
   await expect(
     page.getByRole('form', { name: 'Correct Client dossier' }),
+  ).toBeHidden();
+  await page
+    .getByRole('button', { name: 'Correct Client dossier', exact: true })
+    .click();
+  await expect(
+    page.getByRole('form', { name: 'Correct Client dossier' }),
   ).toBeVisible();
   expect(
     await page.evaluate(

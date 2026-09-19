@@ -96,6 +96,32 @@ export function ClientWorkspace({
   );
   const [duplicateReviewRefreshKey, setDuplicateReviewRefreshKey] = useState(0);
   const [unionRevision, setUnionRevision] = useState(0);
+  const dossierHeading = useRef<HTMLHeadingElement | null>(null);
+  const dossierOpeningTrigger = useRef<Element | null>(null);
+  const receiveDossierHeading = useCallback(
+    (heading: HTMLHeadingElement | null) => {
+      dossierHeading.current = heading;
+      if (!heading) return;
+      const trigger = dossierOpeningTrigger.current;
+      dossierOpeningTrigger.current = null;
+      if (
+        isPrisme &&
+        trigger &&
+        document.activeElement === trigger &&
+        !heading.closest('[hidden]')
+      )
+        heading.focus();
+    },
+    [isPrisme],
+  );
+  function openDossier(clientId: string) {
+    if (isPrisme && clientId === selectedClientId) {
+      dossierHeading.current?.focus();
+      return;
+    }
+    dossierOpeningTrigger.current = isPrisme ? document.activeElement : null;
+    setSelectedClientId(clientId);
+  }
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingList = useRef<AbortController | undefined>(undefined);
   const pendingCreate = useRef<AbortController | undefined>(undefined);
@@ -661,9 +687,7 @@ export function ClientWorkspace({
             <ClientDirectory
               clients={searchState.clients}
               companyName={activeCompany.displayName}
-              onOpenDossier={
-                canReadClientDossiers ? setSelectedClientId : undefined
-              }
+              onOpenDossier={canReadClientDossiers ? openDossier : undefined}
               onAttach={
                 canAttachClients ? (id) => void attachClient(id) : undefined
               }
@@ -722,9 +746,7 @@ export function ClientWorkspace({
               <ClientDirectory
                 clients={listState.clients}
                 companyName={activeCompany.displayName}
-                onOpenDossier={
-                  canReadClientDossiers ? setSelectedClientId : undefined
-                }
+                onOpenDossier={canReadClientDossiers ? openDossier : undefined}
                 attachingClientId={attachingClientId}
               />
             ) : (
@@ -765,6 +787,7 @@ export function ClientWorkspace({
         <ClientDossierPanel
           key={`${selectedClientId ?? ''}:${unionRevision}`}
           clientAccountId={selectedClientId}
+          onHeadingReady={receiveDossierHeading}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}
