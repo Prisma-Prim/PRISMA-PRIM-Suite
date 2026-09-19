@@ -1,6 +1,6 @@
 import { ProjectDocuments } from './ProjectDocuments';
 import { ProjectTasks } from './ProjectTasks';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -8,6 +8,7 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { projectCopy as copy } from './project.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './project.css';
 
 type ProjectView = {
@@ -33,6 +34,7 @@ export function ProjectWorkspace({
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
@@ -204,11 +206,26 @@ export function ProjectWorkspace({
     void run('/projects', command);
   }
   return (
-    <section className="project-workspace" aria-labelledby="project-title">
-      <h2 id="project-title">{copy.title}</h2>
-      <p>
-        {copy.companyPrefix} {actor.activeCompany?.displayName}
-      </p>
+    <section
+      className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
+      aria-labelledby="project-title"
+    >
+      {isPrisme ? (
+        <header className="project-workspace-heading">
+          <p className="prisme-eyebrow">{copy.eyebrow}</p>
+          <h2 id="project-title">{copy.title}</h2>
+          <p>
+            {copy.companyPrefix} {actor.activeCompany?.displayName}
+          </p>
+        </header>
+      ) : (
+        <>
+          <h2 id="project-title">{copy.title}</h2>
+          <p>
+            {copy.companyPrefix} {actor.activeCompany?.displayName}
+          </p>
+        </>
+      )}
       <p className="project-warning">{copy.warning}</p>
       {load.kind === 'loading' && <p role="status">{copy.loading}</p>}
       {load.kind === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -223,7 +240,7 @@ export function ProjectWorkspace({
       {load.kind === 'ready' && (
         <>
           {load.projects.length === 0 && <p>{copy.empty}</p>}
-          <ul>
+          <ul className={isPrisme ? 'project-list' : undefined}>
             {load.projects.map((project) => (
               <li key={project.id}>
                 <button
@@ -241,7 +258,10 @@ export function ProjectWorkspace({
           {actor.activeCompany?.projectPermissions?.includes(
             'project.create',
           ) && (
-            <form onSubmit={submit}>
+            <form
+              className={isPrisme ? 'project-registration' : undefined}
+              onSubmit={submit}
+            >
               <label>
                 {copy.projectTitle}
                 <input
@@ -278,12 +298,19 @@ export function ProjectWorkspace({
       )}
       {feedback && <p role="alert">{feedback}</p>}
       {selected && (
-        <article aria-labelledby="selected-project-title">
-          <h3 id="selected-project-title">{selected.title}</h3>
-          <p>{copy.status}</p>
-          <p>
-            {copy.clientPrefix} {selected.clientDisplayName}
-          </p>
+        <article
+          className={isPrisme ? 'project-detail-card' : undefined}
+          aria-labelledby="selected-project-title"
+        >
+          <div className={isPrisme ? 'project-detail-overview' : undefined}>
+            <p className={isPrisme ? 'prisme-eyebrow' : undefined}>
+              {copy.status}
+            </p>
+            <h3 id="selected-project-title">{selected.title}</h3>
+            <p>
+              {copy.clientPrefix} {selected.clientDisplayName}
+            </p>
+          </div>
           <ProjectDocuments
             actor={actor}
             identity={identity}

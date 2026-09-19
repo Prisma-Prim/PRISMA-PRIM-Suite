@@ -93,3 +93,28 @@ The authorized detail presents the returned state, attribution, reason, two pres
 `ClientUnionPanel` remains the sole request, view, failure and retry owner. An uncertain reversal retains the exact serialized body and idempotency key only for an explicit unchanged retry; changing the reason creates a new command. A stale conflict clears the form and requires a fresh authorized detail lookup. Confirmed reversal remains confirmed if later Client or Activity Log refresh fails. Closing clears local state and retry identity without claiming to cancel a server command. Existing Client, Company, identity, membership, assignment/version and permission boundaries abort late results.
 
 `ClientUnionPanel.test.tsx` covers source states, redaction, attributable detail, validation, uncertainty, stale conflict, changed intention, Close and refresh failure. `client-union-contract.test.ts` keeps internal identifiers outside the view model. `e2e/prisme-client-union-history.spec.ts` proves the fresh no-selection discovery, detail, uncertain reversal, frame and section navigation, unchanged retry and confirmed refresh at 1440px and 390px. Its API responses are intercepted contract fixtures; this is not a live Clerk or backend smoke test. Screenshots use `testInfo.outputPath` and stable copies remain outside Git.
+
+## Preparatory Projects and manual Tasks — issue #254
+
+The Projects section remains available only when the active Company has `project.read`
+and the existing Client-read authority. `ProjectWorkspace` remains the sole owner of
+the real Project list, selection, Client choice, preparatory creation/reopen command
+and its retry intent. In Prisme it adds a bounded operational heading, preparation
+notice, Project cards and a responsive detail card; classic retains its existing
+markup and behavior. The Project's original Client, active Company and preparation-only
+meaning remain explicit. Document registration, correction and Project–Document
+association behavior are unchanged by this presentation slice.
+
+`ProjectTasks` and `TaskPresentation` continue to own the existing manual Task list,
+detail, draft, mutation, reload and history contracts. Prisme adds only local cards,
+fine borders, action hierarchy and visible focus treatment. It does not reinterpret
+responsible members, dates, completion, retries or history. A presentation/section
+change preserves the mounted Project/Task owners while authority is unchanged; their
+existing Company, identity/session, membership, assignment/version and permission keys
+continue to clear stale state and suppress late replies.
+
+`e2e/projects.spec.ts` and `e2e/tasks.spec.ts` exercise the real App composition at
+desktop and 390px with intercepted contracts: Project create/reopen; Task
+create/edit/complete/reopen/history; uncertain exact retry; conflict/reload;
+superseded-original read-only history; and denied state. Screenshots are written with
+`testInfo.outputPath(...)`; these tests do not claim a live Clerk or backend smoke.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -17,6 +17,7 @@ import {
   type TaskView,
 } from './task-response';
 import { taskCopy as copy } from './task.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './task.css';
 import {
   TaskFieldsForm,
@@ -111,6 +112,7 @@ function TaskProject({
   projectId,
   onActivityRecorded,
 }: Props & { projectId: string }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -407,7 +409,10 @@ function TaskProject({
     setDraft(next);
   }
   return (
-    <section aria-label={copy.title} className="project-tasks">
+    <section
+      aria-label={copy.title}
+      className={`project-tasks${isPrisme ? ' project-tasks--prisme' : ''}`}
+    >
       <header className="task-header">
         <div>
           <h4>{copy.title}</h4>

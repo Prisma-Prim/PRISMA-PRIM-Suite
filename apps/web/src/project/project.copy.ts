@@ -1,4 +1,5 @@
 export const projectCopy = {
+  eyebrow: 'Operations',
   title: 'Projects',
   navDescription: 'Register and reopen preparatory Projects.',
   warning: 'Preparation only. This record does not authorize work to start.',
