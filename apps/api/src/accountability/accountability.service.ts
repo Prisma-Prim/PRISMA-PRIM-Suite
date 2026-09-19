@@ -477,21 +477,31 @@ export class AccountabilityService {
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
       .limit(INITIAL_PAGE_SIZE);
 
+    const datedEvents = [
+      ...rows.map((event) => ({
+        id: event.id,
+        action: event.action,
+        occurredAt: event.occurredAt.toISOString(),
+        actor: {
+          internalUserId: event.actorInternalUserId,
+          displayName: event.actorDisplayName,
+        },
+        target: canonicalTarget(event),
+        metadata: event.metadata,
+      })),
+      ...(await this.projectEvents(actor)),
+    ];
+    datedEvents.sort(
+      (left, right) =>
+        right.occurredAt.localeCompare(left.occurredAt) ||
+        right.id.localeCompare(left.id),
+    );
     return {
       events: [
-        ...rows.map((event) => ({
-          id: event.id,
-          action: event.action,
-          occurredAt: event.occurredAt.toISOString(),
-          actor: {
-            internalUserId: event.actorInternalUserId,
-            displayName: event.actorDisplayName,
-          },
-          target: canonicalTarget(event),
-          metadata: event.metadata,
-        })),
+        ...datedEvents.slice(0, INITIAL_PAGE_SIZE),
+        // Redacted union projections have no public time or cross-Company
+        // ordering key. Preserve their independently generated Company order.
         ...(await this.clientUnionEvents(actor)),
-        ...(await this.projectEvents(actor)),
       ],
     };
   }

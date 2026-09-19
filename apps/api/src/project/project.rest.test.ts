@@ -120,6 +120,84 @@ withPostgres('Preparatory Project REST', () => {
     ]);
   });
 
+  it('orders dated activity across grants and Projects under one 50-event cap while retaining redacted union projections', async () => {
+    const setup = await unionSetup();
+    const projectionReference = await setup.unite();
+    const projectIds: string[] = [];
+    for (let index = 0; index < 51; index += 1) {
+      const project = await command(
+        '/projects',
+        { title: `Preparation ${index}`, clientAccountId: setup.client.id },
+        `ordered-${index}`,
+        setup.company.id,
+      );
+      if (typeof project.id !== 'string')
+        throw new Error('Expected a Project identifier.');
+      projectIds.push(project.id);
+      // Fixed synthetic times make the API's chronological contract independent
+      // of machine speed and Date serialization precision.
+      await pool.query(
+        "UPDATE project_creation_events SET occurred_at = $1::timestamptz + $2::integer * interval '1 second' WHERE project_id = $3",
+        ['2030-03-01T10:00:00Z', index, project.id],
+      );
+    }
+    await pool.query(
+      "UPDATE project_creation_events SET id = '00000000-0000-4000-8000-000000000050', occurred_at = '2030-03-01T12:00:00Z' WHERE project_id = $1",
+      [projectIds[50]],
+    );
+    await pool.query(
+      "UPDATE activity_log_events SET occurred_at = '2030-03-01T09:00:00Z'",
+    );
+    await pool.query(
+      "UPDATE activity_log_events SET id = 'ffffffff-ffff-4fff-8fff-ffffffffffff', occurred_at = '2030-03-01T12:00:00Z' WHERE action = 'company_project_assignment.granted' AND target_company_id = $1",
+      [setup.company.id],
+    );
+    const response = await request('/activity-log', setup.company.id);
+    expect(response.status).toBe(200);
+    const body: unknown = await response.json();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('events' in body) ||
+      !Array.isArray(body.events)
+    )
+      throw new Error('Expected Activity Log events.');
+    const events: unknown[] = body.events;
+    const dated = events.filter(
+      (event) =>
+        typeof event === 'object' && event !== null && 'occurredAt' in event,
+    );
+    expect(dated).toHaveLength(50);
+    expect(dated[0]).toMatchObject({
+      action: 'company_project_assignment.granted',
+      occurredAt: '2030-03-01T12:00:00.000Z',
+    });
+    expect(dated[1]).toMatchObject({
+      action: 'project.created',
+      target: { projectId: projectIds[50] },
+    });
+    expect(dated[2]).toMatchObject({
+      action: 'project.created',
+      target: { projectId: projectIds[49] },
+    });
+    expect(dated[49]).toMatchObject({
+      action: 'project.created',
+      target: { projectId: projectIds[2] },
+    });
+    expect(events).toHaveLength(51);
+    expect(events[50]).toEqual({
+      action: 'client.union_confirmed',
+      projectionReference,
+      companyId: setup.company.id,
+      actor: { kind: 'authorized_resolver' },
+      target: {
+        type: 'client_union_operation',
+        projectionReference,
+        companyId: setup.company.id,
+      },
+    });
+  });
+
   it('denies Company-only, Client-only, other-Company and revoked access without exposing Projects or events', async () => {
     const company = await command(
       '/companies',
