@@ -14,7 +14,7 @@ import {
   taskPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  DOCUMENT_V1_PERMISSIONS,
+  documentPermissionsFor,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_V1_PERMISSIONS,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
@@ -195,7 +195,7 @@ export class CompanyContextAuthorization {
           ),
           eq(companyRoleAssignments.companyId, companyId),
           eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
@@ -226,6 +226,36 @@ export class CompanyContextAuthorization {
         : await clientQuery;
       if (clientRows.length === 0) throw new ForbiddenException();
     }
+    return companyId;
+  }
+
+  async requireDocumentCorrection(actor: ActorContext): Promise<string> {
+    const companyId = await this.requireDocumentAccess(actor, true);
+    if (
+      !actor.activeCompany?.documentPermissions?.includes('document.correct') ||
+      !actor.activeCompany.documentPermissions.includes(
+        'document.reference.read',
+      )
+    )
+      throw new ForbiddenException();
+    const [assignment] = await this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v2'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      )
+      .for('share');
+    if (!assignment) throw new ForbiddenException();
     return companyId;
   }
 
@@ -401,11 +431,17 @@ export class CompanyContextAuthorization {
         ];
       }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
-        if (row.permissionSetVersion !== 'v1') continue;
+        if (
+          row.permissionSetVersion !== 'v1' &&
+          row.permissionSetVersion !== 'v2'
+        )
+          continue;
+        const permissions = documentPermissionsFor(row.permissionSetVersion);
         company.documentPermissions = [
           ...(company.documentPermissions ?? []),
-          ...DOCUMENT_V1_PERMISSIONS,
+          ...permissions,
         ];
+        company.documentPermissionSetVersion = row.permissionSetVersion;
       }
       if (
         row.bundle === COMPANY_PROJECT_ACCESS_BUNDLE &&

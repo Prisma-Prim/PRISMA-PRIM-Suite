@@ -29,8 +29,10 @@ export interface ActorContext {
       | 'document.read'
       | 'document.register'
       | 'document.reference.read'
+      | 'document.correct'
       | 'document.project.manage'
     >;
+    documentPermissionSetVersion?: 'v1' | 'v2';
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';
   };

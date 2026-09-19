@@ -1,6 +1,7 @@
 import type {
   CompanyClientPermission,
   DocumentPermission,
+  DocumentPermissionSetVersion,
   CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
 
@@ -22,6 +23,7 @@ export interface ActiveCompanyContext {
   displayName: string;
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
+  documentPermissionSetVersion?: DocumentPermissionSetVersion;
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';

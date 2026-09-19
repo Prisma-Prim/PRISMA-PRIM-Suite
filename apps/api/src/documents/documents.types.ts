@@ -10,6 +10,7 @@ export interface WorkingDocument {
   confidentiality: 'company-confidential';
   createdAt: string;
   createdByMembershipId: string;
+  workingRevision: number;
   version: {
     id: string;
     status: 'draft';

@@ -8,6 +8,7 @@ export interface WorkingDocument {
   type: 'questionnaire';
   confidentiality: 'company-confidential';
   createdAt: string;
+  workingRevision: number;
   version: {
     id: string;
     status: 'draft';
@@ -25,6 +26,11 @@ function record(value: unknown): Record<string, unknown> {
 }
 function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid response');
+  return value;
+}
+function positiveInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
+    throw new Error('Invalid response');
   return value;
 }
 export function readDocument(value: unknown): WorkingDocument {
@@ -74,6 +80,7 @@ export function readDocument(value: unknown): WorkingDocument {
     type: row.type,
     confidentiality: row.confidentiality,
     createdAt: string(row.createdAt),
+    workingRevision: positiveInteger(row.workingRevision),
     version: {
       id: string(version.id),
       status: version.status,
@@ -84,6 +91,23 @@ export function readDocument(value: unknown): WorkingDocument {
 export function readDocuments(value: unknown): WorkingDocument[] {
   if (!Array.isArray(value)) throw new Error('Invalid list');
   return value.map(readDocument);
+}
+export type DocumentCorrectionReceipt = {
+  documentId: string;
+  revision: number;
+  outcome: 'corrected' | 'unchanged';
+};
+export function readDocumentCorrectionReceipt(
+  value: unknown,
+): DocumentCorrectionReceipt {
+  const row = record(value);
+  if (row.outcome !== 'corrected' && row.outcome !== 'unchanged')
+    throw new Error('Unknown correction outcome');
+  return {
+    documentId: string(row.documentId),
+    revision: positiveInteger(row.revision),
+    outcome: row.outcome,
+  };
 }
 export function readClients(
   value: unknown,

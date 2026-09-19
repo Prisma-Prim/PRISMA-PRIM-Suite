@@ -20,6 +20,7 @@ export const workingDocuments = pgTable(
     clientId: uuid('client_id').notNull(),
     projectId: uuid('project_id'),
     projectRevision: integer('project_revision').notNull().default(0),
+    workingRevision: integer('working_revision').notNull().default(1),
     title: text('title').notNull(),
     purpose: text('purpose').notNull(),
     type: text('type').notNull().default('questionnaire'),
@@ -37,6 +38,10 @@ export const workingDocuments = pgTable(
     check(
       'working_documents_project_revision_check',
       sql`${table.projectRevision} >= 0`,
+    ),
+    check(
+      'working_documents_working_revision_check',
+      sql`${table.workingRevision} >= 1`,
     ),
     foreignKey({
       name: 'working_documents_project_fk',
@@ -176,6 +181,62 @@ export const documentRegistrationEvents = pgTable(
         workspaceMemberships.id,
       ],
     }),
+  ],
+);
+
+export const documentCorrectionCommands = pgTable(
+  'document_correction_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    requestFingerprint: text('request_fingerprint').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    revision: integer('revision').notNull(),
+    outcome: text('outcome', { enum: ['corrected', 'unchanged'] }).notNull(),
+    beforeTitle: text('before_title').notNull(),
+    beforePurpose: text('before_purpose').notNull(),
+    beforeUrl: text('before_url').notNull(),
+    afterTitle: text('after_title').notNull(),
+    afterPurpose: text('after_purpose').notNull(),
+    afterUrl: text('after_url').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('document_correction_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('document_correction_commands_revision_unique')
+      .on(table.workspaceId, table.companyId, table.documentId, table.revision)
+      .where(sql`${table.outcome} = 'corrected'`),
+    foreignKey({
+      name: 'document_correction_commands_document_fk',
+      columns: [table.workspaceId, table.companyId, table.documentId],
+      foreignColumns: [
+        workingDocuments.workspaceId,
+        workingDocuments.companyId,
+        workingDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_correction_commands_actor_fk',
+      columns: [table.workspaceId, table.actorMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    check(
+      'document_correction_commands_state_check',
+      sql`${table.expectedRevision} >= 1 AND ((${table.outcome} = 'corrected' AND ${table.revision} = ${table.expectedRevision} + 1) OR (${table.outcome} = 'unchanged' AND ${table.revision} = ${table.expectedRevision}))`,
+    ),
   ],
 );
 

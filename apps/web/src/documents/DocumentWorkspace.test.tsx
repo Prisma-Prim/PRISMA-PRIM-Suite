@@ -20,6 +20,7 @@ const actor: ActorContext = {
       'document.read',
       'document.register',
       'document.reference.read',
+      'document.correct',
     ],
   },
 };
@@ -41,6 +42,7 @@ const document = {
   type: 'questionnaire',
   confidentiality: 'company-confidential',
   createdAt: '2026-09-19T12:00:00.000Z',
+  workingRevision: 1,
   version: {
     id: 'version',
     status: 'draft',
@@ -96,6 +98,156 @@ it('registers and reopens an unverified Company-confidential questionnaire refer
   expect(
     screen.getByText(/The external content is unverified/),
   ).toBeInTheDocument();
+});
+it('corrects an existing working reference and reloads its authoritative values', async () => {
+  const requests: Array<{ body: string | null; key: string | null }> = [];
+  let corrected = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (init?.method === 'PATCH') {
+        requests.push({
+          body: typeof init.body === 'string' ? init.body : null,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        corrected = true;
+        return Response.json({
+          documentId: document.id,
+          revision: 2,
+          outcome: 'corrected',
+        });
+      }
+      if (url.endsWith('/documents/document'))
+        return Response.json(
+          corrected
+            ? {
+                ...document,
+                title: 'Corrected questionnaire',
+                purpose: 'Corrected purpose',
+                workingRevision: 2,
+                version: {
+                  ...document.version,
+                  representation: {
+                    ...document.version.representation,
+                    url: 'https://example.test/corrected',
+                  },
+                },
+              }
+            : document,
+        );
+      return Response.json([document]);
+    }),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Corrected questionnaire' },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: 'Corrected purpose' },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: 'https://example.test/corrected' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  expect(
+    await screen.findByText('Corrected questionnaire'),
+  ).toBeInTheDocument();
+  expect(requests).toHaveLength(1);
+  expect(JSON.parse(requests[0]?.body ?? '')).toEqual({
+    expectedRevision: 1,
+    title: 'Corrected questionnaire',
+    purpose: 'Corrected purpose',
+    url: 'https://example.test/corrected',
+  });
+  expect(requests[0]?.key).toBeTruthy();
+});
+it('retries an uncertain correction with the exact same command', async () => {
+  const patches: Array<{ body: string | null; key: string | null }> = [];
+  let corrected = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (init?.method === 'PATCH') {
+        patches.push({
+          body: typeof init.body === 'string' ? init.body : null,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        corrected = true;
+        return patches.length === 1
+          ? new Response(null, { status: 500 })
+          : Response.json({
+              documentId: document.id,
+              revision: 2,
+              outcome: 'corrected',
+            });
+      }
+      const current = corrected
+        ? { ...document, title: 'Retried correction', workingRevision: 2 }
+        : document;
+      return Response.json(
+        url.endsWith('/documents/document') ? current : [current],
+      );
+    }),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Retried correction' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'result is uncertain',
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Retry same correction' }),
+  );
+  expect(await screen.findByText('Retried correction')).toBeInTheDocument();
+  expect(patches).toHaveLength(2);
+  expect(patches[0]).toEqual(patches[1]);
+});
+it('requires reload after a correction revision conflict', async () => {
+  let reloaded = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (init?.method === 'PATCH') return new Response(null, { status: 409 });
+      if (url.endsWith('/documents/document')) {
+        if (reloaded)
+          return Response.json({
+            ...document,
+            title: 'Concurrent correction',
+            workingRevision: 2,
+          });
+        return Response.json(document);
+      }
+      return Response.json([document]);
+    }),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Competing correction' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'changed. Reload it',
+  );
+  reloaded = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Reload reference' }));
+  expect(await screen.findByText('Concurrent correction')).toBeInTheDocument();
 });
 it('denies Client-only users without requesting Document records', async () => {
   const fetcher = vi.fn();

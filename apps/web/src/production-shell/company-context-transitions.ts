@@ -139,6 +139,14 @@ export interface DocumentRegisteredActivityLogEvent {
   target: { type: 'document'; documentId: string; companyId: string };
   metadata: Record<string, never>;
 }
+export interface DocumentCorrectedActivityLogEvent {
+  id: string;
+  action: 'document.corrected';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: { type: 'document'; documentId: string; companyId: string };
+  metadata: Record<string, never>;
+}
 export interface DocumentProjectActivityLogEvent {
   id: string;
   action: 'document.project.linked' | 'document.project.unlinked';
@@ -157,7 +165,8 @@ export type ActivityLogEvent =
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
-  | DocumentRegisteredActivityLogEvent;
+  | DocumentRegisteredActivityLogEvent
+  | DocumentCorrectedActivityLogEvent;
 
 export type ActivityLogState =
   | { status: 'loading' }

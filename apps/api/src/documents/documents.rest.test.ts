@@ -132,7 +132,7 @@ describe.skipIf(!databaseUrl)(
       expect(response.status).toBe(201);
       expect(await body(response)).toMatchObject({
         bundle: 'Company Document Registrar',
-        permissionSetVersion: 'v1',
+        permissionSetVersion: 'v2',
       });
     }
     it('requires an explicit grant, registers one draft reference and reopens it after reload', async () => {
@@ -153,6 +153,7 @@ describe.skipIf(!databaseUrl)(
         purpose: 'Prepare the first assessment',
         type: 'questionnaire',
         confidentiality: 'company-confidential',
+        workingRevision: 1,
         version: {
           status: 'draft',
           representation: {
@@ -176,6 +177,188 @@ describe.skipIf(!databaseUrl)(
           }),
         ]),
       );
+    });
+    it('requires Registrar v2 and corrects the existing working identities atomically', async () => {
+      await grant();
+      const document = await body(await request('/documents', 'POST', input()));
+      const version = object(document.version);
+      const representation = object(version.representation);
+      const beforeClient = await body(await request(`/clients/${clientId}`));
+      const response = await request(
+        `/documents/${text(document.id)}`,
+        'PATCH',
+        {
+          expectedRevision: 1,
+          title: ' Corrected questionnaire ',
+          purpose: ' Corrected purpose ',
+          url: 'https://example.test/corrected',
+        },
+      );
+      expect(response.status).toBe(200);
+      expect(await body(response)).toEqual({
+        documentId: document.id,
+        revision: 2,
+        outcome: 'corrected',
+      });
+      const corrected = await body(
+        await request(`/documents/${text(document.id)}`),
+      );
+      expect(corrected).toMatchObject({
+        id: document.id,
+        clientId,
+        title: 'Corrected questionnaire',
+        purpose: 'Corrected purpose',
+        workingRevision: 2,
+        version: {
+          id: version.id,
+          representation: {
+            id: representation.id,
+            url: 'https://example.test/corrected',
+          },
+        },
+      });
+      expect((await body(await request(`/clients/${clientId}`))).version).toBe(
+        Number(beforeClient.version) + 1,
+      );
+      const activity = await body(await request('/activity-log'));
+      if (!Array.isArray(activity.events)) throw new Error('Expected events');
+      expect(activity.events.map(object)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: 'document.corrected',
+            metadata: {},
+            target: { type: 'document', documentId: document.id, companyId },
+          }),
+        ]),
+      );
+      expect(JSON.stringify(activity)).not.toContain('Corrected purpose');
+      expect(JSON.stringify(activity)).not.toContain('example.test/corrected');
+    });
+    it('records a stable no-op receipt and rejects stale or conflicting retries', async () => {
+      await grant();
+      const document = await body(await request('/documents', 'POST', input()));
+      const beforeClient = await body(await request(`/clients/${clientId}`));
+      const key = randomUUID();
+      const unchanged = {
+        expectedRevision: 1,
+        title: 'Initial assessment questionnaire',
+      };
+      expect(
+        await body(
+          await request(
+            `/documents/${text(document.id)}`,
+            'PATCH',
+            unchanged,
+            key,
+          ),
+        ),
+      ).toEqual({ documentId: document.id, revision: 1, outcome: 'unchanged' });
+      expect(
+        await body(
+          await request(
+            `/documents/${text(document.id)}`,
+            'PATCH',
+            unchanged,
+            key,
+          ),
+        ),
+      ).toEqual({ documentId: document.id, revision: 1, outcome: 'unchanged' });
+      expect(
+        (
+          await request(
+            `/documents/${text(document.id)}`,
+            'PATCH',
+            { ...unchanged, title: 'Different intent' },
+            key,
+          )
+        ).status,
+      ).toBe(409);
+      expect((await body(await request(`/clients/${clientId}`))).version).toBe(
+        beforeClient.version,
+      );
+      expect(
+        (
+          await request(`/documents/${text(document.id)}`, 'PATCH', {
+            expectedRevision: 2,
+            title: 'Stale',
+          })
+        ).status,
+      ).toBe(409);
+      const events = JSON.stringify(await body(await request('/activity-log')));
+      expect(events).not.toContain('document.corrected');
+    });
+    it('keeps legacy v1 assignments read-only until a fresh v2 grant', async () => {
+      await grant();
+      const document = await body(await request('/documents', 'POST', input()));
+      expect(
+        (
+          await request(
+            `/company-document-registrar-assignments/${membershipId}/${companyId}`,
+            'DELETE',
+          )
+        ).status,
+      ).toBe(200);
+      await harness.pool.query(
+        `INSERT INTO company_role_assignments(workspace_id, company_id, workspace_membership_id, bundle, permission_set_version) SELECT workspace_id, $1, $2, 'company_document_registrar', 'v1' FROM workspace_memberships WHERE id=$2`,
+        [companyId, membershipId],
+      );
+      expect(
+        (
+          await request(`/documents/${text(document.id)}`, 'PATCH', {
+            expectedRevision: 1,
+            title: 'Denied to v1',
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await request(
+            `/company-document-registrar-assignments/${membershipId}/${companyId}`,
+            'DELETE',
+          )
+        ).status,
+      ).toBe(200);
+      await grant();
+      expect(
+        (
+          await request(`/documents/${text(document.id)}`, 'PATCH', {
+            expectedRevision: 1,
+            title: 'Allowed to v2',
+          })
+        ).status,
+      ).toBe(200);
+    });
+    it('rolls back field, fence and revision changes if correction history cannot commit', async () => {
+      await grant();
+      const document = await body(await request('/documents', 'POST', input()));
+      const beforeClient = await body(await request(`/clients/${clientId}`));
+      await harness.pool.query(
+        `CREATE FUNCTION reject_document_correction() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'forced correction failure'; END; $$ LANGUAGE plpgsql; CREATE TRIGGER reject_document_correction BEFORE INSERT ON document_correction_commands FOR EACH ROW EXECUTE FUNCTION reject_document_correction();`,
+      );
+      try {
+        expect(
+          (
+            await request(`/documents/${text(document.id)}`, 'PATCH', {
+              expectedRevision: 1,
+              title: 'Must roll back',
+            })
+          ).status,
+        ).toBe(500);
+        const current = await body(
+          await request(`/documents/${text(document.id)}`),
+        );
+        expect(current).toMatchObject({
+          title: 'Initial assessment questionnaire',
+          workingRevision: 1,
+        });
+        expect(
+          (await body(await request(`/clients/${clientId}`))).version,
+        ).toBe(beforeClient.version);
+      } finally {
+        await harness.pool.query(
+          'DROP TRIGGER reject_document_correction ON document_correction_commands; DROP FUNCTION reject_document_correction();',
+        );
+      }
     });
     it('registers and reopens a valid HTTPS reference longer than 4000 characters', async () => {
       await grant();

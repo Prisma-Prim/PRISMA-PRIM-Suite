@@ -123,6 +123,16 @@ authority. Its holder must independently possess the owning Project's context an
 read prerequisites before reading Tasks; `task.manage` additionally permits their
 bounded manual mutations under the Project/Task PRD.
 
+The [working-reference correction slice](release-1-document-registry-prd.md#19-approved-unverified-working-reference-correction-250)
+adds `document.correct` only through captured **Company Document Registrar v2**.
+Registrar v1 remains exactly `document.read`, `document.register` and
+`document.reference.read`; existing v1 assignments never expand in place. A fresh
+grant after explicit revocation captures v2, whose permission set is v1 plus
+`document.correct`, and the existing attributable grant/revoke commands record the
+transition. Runtime authorization requires the live v2 assignment and all read
+prerequisites; null or unknown versions fail closed. No other Client, Project,
+Workspace or Company permission substitutes for correction authority.
+
 Access owns a narrow eligible-assignee query for the manager's authorized Project
 scope. It filters active Internal Users and active same-Workspace memberships by
 effective captured Company-context, Project-read, Task-read and Client-read grants,

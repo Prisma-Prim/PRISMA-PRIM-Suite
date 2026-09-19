@@ -20,6 +20,7 @@ import {
   clientAccounts,
   clientCompanyRelationships,
   documentRepresentations,
+  documentCorrectionCommands,
   documentVersions,
   workingDocuments,
 } from '../database/schema/index.js';
@@ -204,6 +205,7 @@ export class DocumentsService {
       confidentiality: 'company-confidential',
       createdAt: row.document.createdAt.toISOString(),
       createdByMembershipId: row.document.createdByMembershipId,
+      workingRevision: row.document.workingRevision,
       version: {
         id: row.version.id,
         status: 'draft',
@@ -218,6 +220,148 @@ export class DocumentsService {
           : { ...representation, access: 'denied' },
       },
     };
+  }
+
+  async correct(
+    actor: ActorContext,
+    documentIdValue: unknown,
+    value: unknown,
+    key: string | undefined,
+  ) {
+    const documentId = requireUuid(documentIdValue);
+    const command = correction(value);
+    const idempotencyKey = requireIdempotencyKey(key);
+    return this.database.transaction(async () => {
+      const companyId =
+        await this.authorization.requireDocumentCorrection(actor);
+      const lockKey = JSON.stringify([
+        'document.correction',
+        actor.workspaceId,
+        actor.workspaceMembershipId,
+        idempotencyKey,
+      ]);
+      await this.database.connection.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+      );
+      // Visibility is rechecked after any competing retry finishes.
+      const visible = await this.read(actor, documentId);
+      const fingerprint = createHash('sha256')
+        .update(JSON.stringify({ companyId, documentId, ...command }))
+        .digest('hex');
+      const [replay] = await this.database.connection
+        .select()
+        .from(documentCorrectionCommands)
+        .where(
+          and(
+            eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
+            eq(
+              documentCorrectionCommands.actorMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(documentCorrectionCommands.idempotencyKey, idempotencyKey),
+          ),
+        );
+      if (replay) {
+        if (replay.requestFingerprint !== fingerprint)
+          throw new ConflictException(
+            'Idempotency-Key was already used for another correction.',
+          );
+        return correctionReceipt(replay);
+      }
+
+      // Match Client union/reversal lock order and reject a superseded original.
+      await this.clients.lockActiveReferenceClient(actor, visible.clientId);
+      const [current] = await this.database.connection
+        .select({
+          document: workingDocuments,
+          representation: documentRepresentations,
+        })
+        .from(workingDocuments)
+        .innerJoin(
+          documentVersions,
+          and(
+            eq(documentVersions.workspaceId, workingDocuments.workspaceId),
+            eq(documentVersions.companyId, workingDocuments.companyId),
+            eq(documentVersions.documentId, workingDocuments.id),
+          ),
+        )
+        .innerJoin(
+          documentRepresentations,
+          and(
+            eq(
+              documentRepresentations.workspaceId,
+              documentVersions.workspaceId,
+            ),
+            eq(documentRepresentations.companyId, documentVersions.companyId),
+            eq(documentRepresentations.versionId, documentVersions.id),
+          ),
+        )
+        .where(
+          and(
+            eq(workingDocuments.workspaceId, actor.workspaceId),
+            eq(workingDocuments.companyId, companyId),
+            eq(workingDocuments.id, documentId),
+          ),
+        )
+        .for('update');
+      if (!current) throw new NotFoundException();
+      if (
+        current.document.workingRevision !== command.expectedRevision ||
+        current.document.workingRevision >= 2147483647
+      )
+        throw new ConflictException(
+          'The working Document changed. Reload before correcting it.',
+        );
+      const after = {
+        title: command.title ?? current.document.title,
+        purpose: command.purpose ?? current.document.purpose,
+        url: command.url ?? current.representation.url,
+      };
+      const changed =
+        after.title !== current.document.title ||
+        after.purpose !== current.document.purpose ||
+        after.url !== current.representation.url;
+      const revision = changed
+        ? current.document.workingRevision + 1
+        : current.document.workingRevision;
+      if (changed) {
+        await this.clients.recordReferenceUse(actor, current.document.clientId);
+        await this.database.connection
+          .update(workingDocuments)
+          .set({
+            title: after.title,
+            purpose: after.purpose,
+            workingRevision: revision,
+          })
+          .where(eq(workingDocuments.id, documentId));
+        await this.database.connection
+          .update(documentRepresentations)
+          .set({ url: after.url })
+          .where(eq(documentRepresentations.id, current.representation.id));
+      }
+      const [recorded] = await this.database.connection
+        .insert(documentCorrectionCommands)
+        .values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          documentId,
+          actorMembershipId: actor.workspaceMembershipId,
+          idempotencyKey,
+          requestFingerprint: fingerprint,
+          expectedRevision: command.expectedRevision,
+          revision,
+          outcome: changed ? 'corrected' : 'unchanged',
+          beforeTitle: current.document.title,
+          beforePurpose: current.document.purpose,
+          beforeUrl: current.representation.url,
+          afterTitle: after.title,
+          afterPurpose: after.purpose,
+          afterUrl: after.url,
+        })
+        .returning();
+      if (!recorded) throw new Error('Document correction was not recorded.');
+      return correctionReceipt(recorded);
+    });
   }
 }
 function requirePermission(
@@ -244,7 +388,42 @@ function registration(value: unknown) {
   const purpose = requiredText(row.purpose, 2000);
   if (typeof row.url !== 'string' || !row.url.trim())
     throw new BadRequestException('An HTTPS reference is required.');
-  const urlText = row.url.trim();
+  const url = referenceUrl(row.url);
+  return { clientId, title, purpose, url };
+}
+function correction(value: unknown): {
+  expectedRevision: number;
+  title?: string;
+  purpose?: string;
+  url?: string;
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new BadRequestException('Document correction is required.');
+  const row: Record<string, unknown> = Object.fromEntries(
+    Object.entries(value),
+  );
+  if (
+    Object.keys(row).some(
+      (key) => !['expectedRevision', 'title', 'purpose', 'url'].includes(key),
+    ) ||
+    typeof row.expectedRevision !== 'number' ||
+    !Number.isInteger(row.expectedRevision) ||
+    row.expectedRevision < 1 ||
+    row.expectedRevision > 2147483646 ||
+    !['title', 'purpose', 'url'].some((key) => key in row)
+  )
+    throw new BadRequestException('Invalid Document correction.');
+  return {
+    expectedRevision: row.expectedRevision,
+    ...('title' in row ? { title: requiredText(row.title, 200) } : {}),
+    ...('purpose' in row ? { purpose: requiredText(row.purpose, 2000) } : {}),
+    ...('url' in row ? { url: referenceUrl(row.url) } : {}),
+  };
+}
+function referenceUrl(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new BadRequestException('An HTTPS reference is required.');
+  const urlText = value.trim();
   let url: URL;
   try {
     url = new URL(urlText);
@@ -255,10 +434,19 @@ function registration(value: unknown) {
     throw new BadRequestException(
       'An HTTPS reference without credentials is required.',
     );
-  return { clientId, title, purpose, url: url.href };
+  return url.href;
 }
 function requiredText(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max)
     throw new BadRequestException('Document fields are missing or too long.');
   return value.trim();
+}
+function correctionReceipt(
+  command: typeof documentCorrectionCommands.$inferSelect,
+) {
+  return {
+    documentId: command.documentId,
+    revision: command.revision,
+    outcome: command.outcome,
+  };
 }

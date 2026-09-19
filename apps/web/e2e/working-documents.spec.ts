@@ -16,6 +16,7 @@ test('registers and reopens a Company-confidential working reference', async ({
     type: 'questionnaire',
     confidentiality: 'company-confidential',
     createdAt: '2026-09-19T00:00:00.000Z',
+    workingRevision: 1,
     version: {
       id: 'version-239',
       status: 'draft',
@@ -31,6 +32,9 @@ test('registers and reopens a Company-confidential working reference', async ({
   let saved = false;
   let denied = false;
   let loadError = false;
+  let currentDocument = document;
+  const correctionRequests: Array<{ body: unknown; key: string | undefined }> =
+    [];
   await page.route('**/api/**', (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -48,6 +52,7 @@ test('registers and reopens a Company-confidential working reference', async ({
                     'document.read',
                     'document.register',
                     'document.reference.read',
+                    'document.correct',
                   ],
                 },
               }
@@ -61,6 +66,25 @@ test('registers and reopens a Company-confidential working reference', async ({
           events:
             saved && !denied
               ? [
+                  ...(currentDocument.workingRevision === 2
+                    ? [
+                        {
+                          id: 'event-250',
+                          action: 'document.corrected',
+                          occurredAt: '2026-09-19T01:00:00.000Z',
+                          actor: {
+                            internalUserId: actorContextFixture.internalUserId,
+                            displayName: 'Document Registrar',
+                          },
+                          target: {
+                            type: 'document',
+                            documentId: document.id,
+                            companyId: company.id,
+                          },
+                          metadata: {},
+                        },
+                      ]
+                    : []),
                   {
                     id: 'event-239',
                     action: 'document.registered',
@@ -96,12 +120,36 @@ test('registers and reopens a Company-confidential working reference', async ({
         saved = true;
         return route.fulfill({ status: 201, json: document });
       }
+      if (request.method() === 'PATCH') {
+        correctionRequests.push({
+          body: request.postDataJSON(),
+          key: request.headers()['idempotency-key'],
+        });
+        currentDocument = {
+          ...document,
+          title: 'Corrected assessment questionnaire',
+          purpose: 'Prepare the corrected assessment',
+          workingRevision: 2,
+          version: {
+            ...document.version,
+            representation: {
+              ...document.version.representation,
+              url: 'https://example.test/corrected-questionnaire',
+            },
+          },
+        };
+        if (correctionRequests.length === 1)
+          return route.fulfill({ status: 500 });
+        return route.fulfill({
+          json: { documentId: document.id, revision: 2, outcome: 'corrected' },
+        });
+      }
       return route.fulfill({
         json: path.endsWith('/documents')
           ? saved
-            ? [document]
+            ? [currentDocument]
             : []
-          : document,
+          : currentDocument,
       });
     }
     return route.fulfill({ status: 404 });
@@ -146,13 +194,35 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-reopened.png'),
     fullPage: true,
   });
+  await page.getByRole('button', { name: 'Edit reference' }).click();
+  await page
+    .getByLabel('Title', { exact: true })
+    .fill('Corrected assessment questionnaire');
+  await page
+    .locator('article textarea')
+    .fill('Prepare the corrected assessment');
+  await page
+    .getByLabel('External HTTPS link')
+    .fill('https://example.test/corrected-questionnaire');
+  await page.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByRole('alert')).toContainText('result is uncertain');
+  await page.getByRole('button', { name: 'Retry same correction' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Corrected assessment questionnaire' }),
+  ).toBeVisible();
+  expect(correctionRequests).toHaveLength(2);
+  expect(correctionRequests[0]).toEqual(correctionRequests[1]);
+  await page.screenshot({
+    path: testInfo.outputPath('documents-corrected.png'),
+    fullPage: true,
+  });
   loadError = true;
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('could not be loaded');
   loadError = false;
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: document.title }),
+    page.getByRole('button', { name: currentDocument.title }),
   ).toBeVisible();
   denied = true;
   await page.reload();

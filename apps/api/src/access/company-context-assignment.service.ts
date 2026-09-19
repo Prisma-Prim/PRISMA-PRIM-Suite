@@ -39,6 +39,7 @@ import {
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
+  type DocumentPermissionSetVersion,
 } from './company-permissions.js';
 import type {
   CompanyAccessAdministrationState,
@@ -58,7 +59,10 @@ type BundleDefinition = {
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
-  permissionSetVersion: CompanyDirectorClientPermissionSetVersion | null;
+  permissionSetVersion:
+    | CompanyDirectorClientPermissionSetVersion
+    | DocumentPermissionSetVersion
+    | null;
 };
 
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
@@ -84,7 +88,7 @@ const DOCUMENT_PROJECT_ORGANIZER_BUNDLE: BundleDefinition = {
 const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   label: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const PROJECT_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -545,7 +549,10 @@ export class CompanyContextAssignmentService {
     workspaceMembershipId: string,
     companyId: string,
     bundle: Bundle,
-    permissionSetVersion: CompanyDirectorClientPermissionSetVersion | null,
+    permissionSetVersion:
+      | CompanyDirectorClientPermissionSetVersion
+      | DocumentPermissionSetVersion
+      | null,
   ) {
     const active = await this.findActiveAssignment(
       workspaceId,
@@ -769,12 +776,15 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        assignment.permissionSetVersion !== 'v1' &&
+        assignment.permissionSetVersion !== 'v2'
+      )
         throw new Error('Invalid Document Registrar version.');
       return {
         ...base,
         bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_PROJECT_ACCESS_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
