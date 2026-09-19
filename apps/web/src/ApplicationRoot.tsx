@@ -27,7 +27,7 @@ function withPublicWelcome(
   pathname: string,
 ): BrowserIdentity {
   const signedOutView = getPublicSignedOutView(pathname);
-  if (!signedOutView || !identity.loaded || identity.signedIn) return identity;
+  if (!signedOutView) return identity;
   return { ...identity, signedOutView };
 }
 

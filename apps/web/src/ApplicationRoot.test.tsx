@@ -55,6 +55,26 @@ describe('ApplicationRoot', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('returns a server-rejected root session to the public welcome', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 401 })),
+    );
+
+    render(
+      <ApplicationRoot
+        pathname="/"
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Make every decision traceable.',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the protected production shell with local identity', async () => {
     render(
       <ApplicationRoot

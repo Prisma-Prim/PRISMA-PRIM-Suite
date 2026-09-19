@@ -20,8 +20,10 @@ it('clears the prior Workspace selection when the server rejects the session', a
   render(
     <ApplicationRoot pathname="/" identity={deterministicBrowserIdentity()} />,
   );
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Sign in is required',
-  );
+  expect(
+    await screen.findByRole('heading', {
+      name: 'Make every decision traceable.',
+    }),
+  ).toBeInTheDocument();
   expect(sessionStorage.getItem('prisma-workspace-context')).toBeNull();
 });
