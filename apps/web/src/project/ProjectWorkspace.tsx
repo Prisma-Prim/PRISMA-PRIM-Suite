@@ -302,15 +302,23 @@ export function ProjectWorkspace({
           className={isPrisme ? 'project-detail-card' : undefined}
           aria-labelledby="selected-project-title"
         >
-          <div className={isPrisme ? 'project-detail-overview' : undefined}>
-            <p className={isPrisme ? 'prisme-eyebrow' : undefined}>
-              {copy.status}
-            </p>
-            <h3 id="selected-project-title">{selected.title}</h3>
-            <p>
-              {copy.clientPrefix} {selected.clientDisplayName}
-            </p>
-          </div>
+          {isPrisme ? (
+            <div className="project-detail-overview">
+              <p className="prisme-eyebrow">{copy.status}</p>
+              <h3 id="selected-project-title">{selected.title}</h3>
+              <p>
+                {copy.clientPrefix} {selected.clientDisplayName}
+              </p>
+            </div>
+          ) : (
+            <>
+              <h3 id="selected-project-title">{selected.title}</h3>
+              <p>{copy.status}</p>
+              <p>
+                {copy.clientPrefix} {selected.clientDisplayName}
+              </p>
+            </>
+          )}
           <ProjectDocuments
             actor={actor}
             identity={identity}

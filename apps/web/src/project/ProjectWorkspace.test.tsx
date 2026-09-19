@@ -66,6 +66,12 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeInTheDocument();
+  const projectDetail = screen.getByRole('article', {
+    name: 'ISO preparation',
+  });
+  expect(projectDetail.firstElementChild).toBe(
+    screen.getByRole('heading', { name: 'ISO preparation' }),
+  );
   view.unmount();
   render(<ProjectWorkspace {...props} />);
   fireEvent.click(
