@@ -18,6 +18,21 @@ test('keeps Classic as an explicit reload-stable rollback and accepts legacy Pri
   await page.reload();
   await expect(page).toHaveURL(/\?source=preserved&frame=classic#companies$/);
   await expect(page.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
+  const classicHome = '/?frame=classic';
+  await expect(page.locator('.production-brand')).toHaveAttribute(
+    'href',
+    classicHome,
+  );
+  const openNavigation = page.getByRole('button', { name: 'Open navigation' });
+  if (await openNavigation.isVisible()) await openNavigation.click();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Home Current' }),
+  ).toHaveAttribute('href', classicHome);
+  await page.locator('.production-brand').click();
+  await expect(page).toHaveURL(/\/\?frame=classic$/);
+  await expect(page.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
 
   await page.goto('/?source=preserved&frame=prisme#companies');
   await expect(

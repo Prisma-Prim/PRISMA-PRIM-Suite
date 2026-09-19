@@ -72,6 +72,7 @@ export function ApplicationShell({
   const previousHash = useRef(window.location.hash);
   const url = new URL(location);
   const isPrisme = getApplicationPresentation(url) === 'prisme';
+  const classicHome = '/?frame=classic';
   const previousPresentation = useRef(isPrisme);
   // URL fragments only select from the sections already authorized by App.
   const selected = sections.find((section) => `#${section.id}` === url.hash);
@@ -211,7 +212,7 @@ export function ApplicationShell({
           <>
             <a
               className="production-brand"
-              href="/"
+              href={classicHome}
               aria-label={copy.brandHome}
             >
               <span className="production-brand-mark" aria-hidden="true">
@@ -258,7 +259,7 @@ export function ApplicationShell({
           <ul>
             <li>
               <a
-                href={isPrisme ? '#overview' : '/'}
+                href={isPrisme ? '#overview' : classicHome}
                 aria-current={!isPrisme || !selected ? 'page' : undefined}
                 onClick={navigate}
               >
