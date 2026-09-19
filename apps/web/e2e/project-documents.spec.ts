@@ -23,7 +23,6 @@ const project = {
   title: 'ISO 9001 consulting preparation',
   status: 'preparatory',
   createdAt: '2026-09-19T00:00:00.000Z',
-  workingRevision: 1,
 };
 const workingDocument = {
   id: 'document-245',
@@ -35,6 +34,7 @@ const workingDocument = {
   type: 'questionnaire',
   confidentiality: 'company-confidential',
   createdAt: '2026-09-19T00:00:00.000Z',
+  workingRevision: 1,
   version: {
     id: 'version-245',
     status: 'draft',
