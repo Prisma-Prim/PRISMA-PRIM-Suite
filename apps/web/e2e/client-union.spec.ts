@@ -169,7 +169,7 @@ test('compares existing Clients, confirms their union and reverses it', async ({
     return route.fulfill({ status: 404 });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=classic');
   await page.getByRole('button', { name: 'Open dossier', exact: true }).click();
   const union = page.getByRole('region', { name: 'Governed Client union' });
   await union

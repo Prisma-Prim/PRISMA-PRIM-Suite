@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
 
 const auth = vi.hoisted(() => ({ signedIn: false }));
@@ -36,6 +36,24 @@ const actor = {
   active: true,
   workspacePermissions: [],
 };
+beforeEach(() => {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(
+      (query: string) =>
+        ({
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(() => false),
+        }) satisfies MediaQueryList,
+    ),
+  );
+});
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
@@ -98,7 +116,7 @@ for (const entry of ['Sign in', 'Create your invited account']) {
     fireEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
     expect(
       await screen.findByRole('heading', {
-        name: 'Welcome to PRISMA-PRIM Suite',
+        name: 'Hello, Recipient.',
       }),
     ).toBeVisible();
     expect(fetch).toHaveBeenCalled();

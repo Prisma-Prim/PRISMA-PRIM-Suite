@@ -13,7 +13,11 @@ import {
   SectionIcon,
 } from './prisme/PrismeOverview';
 import { prismeCopy as copy } from './prisme/prisme.copy';
-import { ApplicationPresentation } from './application-presentation';
+import {
+  ApplicationPresentation,
+  getApplicationPresentation,
+  getPresentationUrl,
+} from './application-presentation';
 import './application-shell.css';
 import './prisme/prisme-frame.css';
 
@@ -67,7 +71,8 @@ export function ApplicationShell({
   const presentationControlRef = useRef<HTMLButtonElement>(null);
   const previousHash = useRef(window.location.hash);
   const url = new URL(location);
-  const isPrisme = url.searchParams.get('frame') === 'prisme';
+  const isPrisme = getApplicationPresentation(url) === 'prisme';
+  const classicHome = '/?frame=classic';
   const previousPresentation = useRef(isPrisme);
   // URL fragments only select from the sections already authorized by App.
   const selected = sections.find((section) => `#${section.id}` === url.hash);
@@ -100,9 +105,10 @@ export function ApplicationShell({
   }, [isPrisme, url.hash]);
 
   function changePresentation() {
-    const nextUrl = new URL(window.location.href);
-    if (isPrisme) nextUrl.searchParams.delete('frame');
-    else nextUrl.searchParams.set('frame', 'prisme');
+    const nextUrl = getPresentationUrl(
+      new URL(window.location.href),
+      isPrisme ? 'classic' : 'prisme',
+    );
     window.history.replaceState(window.history.state, '', nextUrl);
     setLocation(nextUrl.href);
     setIsNavigationOpen(false);
@@ -206,7 +212,7 @@ export function ApplicationShell({
           <>
             <a
               className="production-brand"
-              href="/"
+              href={classicHome}
               aria-label={copy.brandHome}
             >
               <span className="production-brand-mark" aria-hidden="true">
@@ -253,7 +259,7 @@ export function ApplicationShell({
           <ul>
             <li>
               <a
-                href={isPrisme ? '#overview' : '/'}
+                href={isPrisme ? '#overview' : classicHome}
                 aria-current={!isPrisme || !selected ? 'page' : undefined}
                 onClick={navigate}
               >

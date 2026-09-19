@@ -69,7 +69,7 @@ test('authenticated members enter the protected application directly', async ({
   await page.goto('/');
 
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Make every decision traceable.' }),

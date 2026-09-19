@@ -13,6 +13,7 @@ import { workspaceMembershipSuspensionCopy } from './access/workspace-membership
 
 describe('App', () => {
   beforeEach(() => {
+    window.history.replaceState(null, '', '/?frame=classic');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((input: RequestInfo | URL) => {
@@ -61,6 +62,7 @@ describe('App', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    window.history.replaceState(null, '', '/');
   });
 
   it('renders the production application shell', async () => {

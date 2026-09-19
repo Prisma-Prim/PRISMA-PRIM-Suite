@@ -6,6 +6,22 @@ import { ApplicationRoot } from './ApplicationRoot';
 describe('ApplicationRoot', () => {
   beforeEach(() => {
     vi.stubGlobal(
+      'matchMedia',
+      vi.fn(
+        (query: string) =>
+          ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(() => false),
+          }) satisfies MediaQueryList,
+      ),
+    );
+    vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((input: RequestInfo | URL) =>
         Promise.resolve(
@@ -85,12 +101,12 @@ describe('ApplicationRoot', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Welcome to PRISMA-PRIM Suite',
+        name: 'Hello, Ada Ionescu.',
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByText('Ada Ionescu')).toBeInTheDocument();
     expect(screen.getByText('ada@example.test')).toBeInTheDocument();
-    expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(2);
+    expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(4);
   });
 });

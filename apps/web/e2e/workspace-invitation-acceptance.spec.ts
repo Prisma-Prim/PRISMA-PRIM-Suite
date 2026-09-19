@@ -51,13 +51,11 @@ test('session rejection clears the prior account Workspace before another accoun
   );
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Recipient.' }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByLabel('Company context')
-      .getByText('Invited Workspace', { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.prisme-breadcrumb')).toContainText(
+    'Invited Workspace',
+  );
 });
 
 for (const deniedAt of ['acceptance', 'current access']) {
@@ -178,15 +176,15 @@ test('recipient retries an uncertain acceptance and enters only the server-autho
   await page.reload();
   await page.getByRole('button', { name: 'Retry acceptance' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Hello, Recipient.' }),
   ).toBeVisible();
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
   expect(keys[0]).toBeTruthy();
   expect(keys[1]).toBe(keys[0]);
-  await expect(
-    page
-      .getByLabel('Company context')
-      .getByText('Invited Workspace', { exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('.prisme-breadcrumb')).toContainText(
+    'Invited Workspace',
+  );
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
   ).toHaveCount(0);
@@ -291,18 +289,18 @@ for (const failureAt of ['after capture', 'after commit', 'before replay']) {
       expect(keys[1]).toBe(keys[0]);
     }
     await expect(
-      page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+      page.getByRole('heading', { name: 'Hello, Recipient.' }),
     ).toBeVisible();
     expect(actorReads).toBeGreaterThanOrEqual(2);
     await page.reload();
     await expect(
-      page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+      page.getByRole('heading', { name: 'Hello, Recipient.' }),
     ).toBeVisible();
-    await expect(
-      page
-        .getByLabel('Company context')
-        .getByText('Invited Workspace', { exact: true }),
-    ).toBeVisible();
+    if (testInfo.project.name === 'narrow')
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(page.locator('.prisme-breadcrumb')).toContainText(
+      'Invited Workspace',
+    );
     await expect(
       page.getByText('No Company is assigned to you.', { exact: false }),
     ).toBeVisible();

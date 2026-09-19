@@ -4,7 +4,7 @@
 
 ## Entry and composition
 
-The production default is the classic frame. An admitted user can choose **Try Prisme**, or open `/?frame=prisme`. **Use classic frame** removes that query parameter. Both controls preserve the other URL parameters and current section. In-frame links carry the current opaque history state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#clients`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
+The production default for an admitted user is Prisme. `?frame=classic` is the explicit, reload-stable Classic rollback, while existing `?frame=prisme` links remain compatible. **Use classic frame** adds only `frame=classic`; **Try Prisme** removes only `frame`. Both controls preserve every other URL parameter, the current section, the URL fragment and opaque history state. In-frame links carry that state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
 
 `App` still owns `useProductionShellContext(identity)` and the existing permission gates, callbacks and feature keys. `ApplicationShell` receives real identity/context, the existing Company selector and an authorized section composition. Section panels remain mounted when hidden or when changing presentation, so drafts and idempotent retry commands survive navigation. Identity, session, Company and permission-version changes still use the existing feature keys and session owner. No API transport, authorization or business workflow is implemented by the frame.
 
@@ -42,7 +42,7 @@ Pause/resume preserves accumulated phase. Reduced motion, hidden documents and o
 
 ## Reproduce and inspect
 
-With the usual authenticated frontend/API environment, run `pnpm --filter @prisma-prim/web dev --host 127.0.0.1 --port 5186` and open `http://127.0.0.1:5186/?frame=prisme`. Authentication and API configuration remain the normal prerequisites. Use **Use classic frame** to return.
+With the usual authenticated frontend/API environment, run `pnpm --filter @prisma-prim/web dev --host 127.0.0.1 --port 5186` and open `http://127.0.0.1:5186/`. Authentication and API configuration remain the normal prerequisites. Use **Use classic frame** for the explicit rollback; `/?frame=prisme` remains a compatible Prisme entry.
 
 For deterministic contract-backed evidence without a live backend:
 
@@ -151,3 +151,9 @@ live Clerk, backend or external-provider smoke tests.
 [Issue #262](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/262) completes the Project detail delivered by #254 with Prisme-local Tasks and Working Documents tabs. The two existing owners remain mounted; the inactive panel is hidden with `hidden`. A tab or Classic/Prisme frame change does not issue a new Task or Document request, so drafts, conflicts, retry identities and separate permission states remain with their current owners. Classic keeps both sections expanded.
 
 `e2e/prisme-projects.spec.ts` proves Project creation, both mounted panels, retained Task draft, unchanged request counts, Classic/Prisme continuity, focus on the selected tab, opaque-ID absence and horizontal fit at 1440px and 390px. Existing Projects, Tasks and Project Documents journeys remain the detailed permission and retry evidence. Their API responses are intercepted contract fixtures; this is not a live Clerk/backend smoke test. Screenshots originate from `testInfo.outputPath` and remain outside Git.
+
+## Authenticated default promotion — issue #275
+
+[Issue #275](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/275) promotes Prisme only at the presentation selector. Signed-out welcome, invitation entry, Clerk composition, authorization, `/ui-baseline`, APIs and business owners are unchanged. Changing frame uses `replaceState` with the existing opaque state, keeps mounted section owners and therefore preserves drafts and exact-retry commands.
+
+`application-presentation.test.ts` proves the URL selection and rewrite contract. `e2e/prisme-frame.spec.ts` proves the authenticated default, explicit Classic reload, legacy Prisme links, authorized MVP destinations, keyboard focus, narrow fit and state/draft/retry continuity at 1440px and 390px. Invitation acceptance coverage proves that the server-authorized Workspace reaches the same default frame and keeps recovery state.
