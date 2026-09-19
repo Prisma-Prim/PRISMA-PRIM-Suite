@@ -92,6 +92,25 @@ Document title, purpose or URL. Visible relationship events participate in the
 existing dated, bounded page rather than an appended unsorted list. Removal is a
 new attributable event and never erases earlier relationship history.
 
+For [manual preparation Tasks](release-1-project-task-prd.md#18-approved-manual-preparation-tasks-246),
+Accountability records `task.created`, `task.updated`, `task.completed` and
+`task.reopened` through its public recording boundary. Each material action has
+one event targeting the original Company-owned Task, with server actor membership,
+time and resulting Task version. Typed facts retain the initial title/assignee/date,
+the prior and new values of corrected fields, and completion/reopening transitions.
+Task state/version, command outcome, required history and original Client fence
+commit together. Rejected commands, normalized no-op edits and exact committed
+replays create no new success event or fence advance.
+
+Task detail exposes ordered immutable history only through current `task.read`
+plus the same Project and original Client/Company read boundary. Activity Log
+projection also preserves its existing authorization boundary and date/page order;
+ordinary Workspace ownership or Client visibility alone cannot disclose Task
+events. Assignment grant/revoke uses
+`company_task_manager_assignment.granted` and
+`company_task_manager_assignment.revoked` with existing administration visibility.
+No event mutation/deletion route or general member-directory exposure is added.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.

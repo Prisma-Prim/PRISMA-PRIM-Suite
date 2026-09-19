@@ -1,5 +1,7 @@
+import type { TaskEvent } from '../task/task.types.js';
 import type { ActorContext } from '../access/access.types.js';
 import type {
+  COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
@@ -77,6 +79,8 @@ export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
       action:
+        | 'company_task_manager_assignment.granted'
+        | 'company_task_manager_assignment.revoked'
         | 'company_document_project_organizer_assignment.granted'
         | 'company_document_project_organizer_assignment.revoked'
         | 'company_document_registrar_assignment.granted'
@@ -96,6 +100,7 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
@@ -147,6 +152,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
     | typeof COMPANY_REGISTERED_ACTION
+    | 'company_task_manager_assignment.granted'
+    | 'company_task_manager_assignment.revoked'
     | 'company_document_project_organizer_assignment.granted'
     | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
@@ -211,6 +218,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
@@ -259,6 +267,7 @@ export interface DocumentProjectActivityEvent {
   metadata: Record<string, never>;
 }
 export type ActivityLogEvent =
+  | TaskEvent
   | DocumentProjectActivityEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent

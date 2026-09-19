@@ -15,6 +15,9 @@ export interface ActorContext {
   activeCompany?: {
     id: string;
     displayName: string;
+    taskPermissions?: Array<'task.read' | 'task.manage'>;
+    taskPermissionAssignmentId?: string;
+    taskPermissionSetVersion?: 'v1';
     projectPermissions?: Array<'project.read' | 'project.create'>;
     clientPermissions?: Array<
       | 'client.read'

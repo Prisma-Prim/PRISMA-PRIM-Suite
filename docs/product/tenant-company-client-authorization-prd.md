@@ -113,6 +113,25 @@ read, and Client read/relationship authority; it grants none of those prerequisi
 and no Representation-read authority. The owning Document PRD defines link and
 removal state, original Client constraints and record visibility.
 
+The [manual preparation Task slice](release-1-project-task-prd.md#18-approved-manual-preparation-tasks-246)
+adds **Company Task Manager v1**, containing exactly `task.read` and `task.manage`.
+An administrator with `company.assignment.manage` explicitly grants or revokes the
+captured v1 bundle for an active membership and Company in the same Workspace.
+Existing assignments receive no new permission; unknown versions fail closed.
+The bundle grants no Company context, Project, Client, administration or execution
+authority. Its holder must independently possess the owning Project's context and
+read prerequisites before reading Tasks; `task.manage` additionally permits their
+bounded manual mutations under the Project/Task PRD.
+
+Access owns a narrow eligible-assignee query for the manager's authorized Project
+scope. It filters active Internal Users and active same-Workspace memberships by
+effective captured Company-context, Project-read, Task-read and Client-read grants,
+returning only membership identifiers and display labels. It never exposes email,
+unrelated members, denied-candidate counts or exclusion reasons. A non-null new
+assignment is revalidated transactionally, including direct submitted identifiers;
+assignment itself grants no access. The Project/Task PRD owns the lifecycle and
+preserved attribution when a responsible member later becomes ineligible.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.

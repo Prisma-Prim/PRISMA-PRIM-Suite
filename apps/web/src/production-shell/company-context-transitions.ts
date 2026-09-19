@@ -1,3 +1,4 @@
+import type { TaskEvent } from '../project/task-response';
 import type { ActorContext } from '../access-types';
 
 export interface VisibleCompany {
@@ -46,6 +47,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
     | 'project.created'
+    | 'company_task_manager_assignment.granted'
+    | 'company_task_manager_assignment.revoked'
     | 'company_project_assignment.granted'
     | 'company_project_assignment.revoked'
     | 'company.registered'
@@ -105,6 +108,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | 'Company Task Manager'
           | 'Company Context Access'
           | 'Company Director Client Access'
           | 'Company Document Project Organizer'
@@ -149,6 +153,7 @@ export interface DocumentProjectActivityLogEvent {
   metadata: Record<string, never>;
 }
 export type ActivityLogEvent =
+  | TaskEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent

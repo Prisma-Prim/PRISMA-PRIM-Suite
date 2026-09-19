@@ -50,7 +50,7 @@ export class ClientOperationalReferenceService {
   }
 
   /** Call inside the owning command transaction, once for a new reference. */
-  async recordReferenceUse(actor: ActorContext, clientId: string) {
+  async lockActiveReferenceClient(actor: ActorContext, clientId: string) {
     const companyId = this.requireClientRead(actor);
     // Union and reversal lock Client identities before relationships. Use the same
     // order and recheck status after waiting, so a concurrent reversal cannot pass
@@ -79,6 +79,12 @@ export class ClientOperationalReferenceService {
       )
       .for('share');
     if (!relationship) throw new NotFoundException();
+    return client;
+  }
+
+  /** Advance the reversal fence only for a material operation in this transaction. */
+  async recordReferenceUse(actor: ActorContext, clientId: string) {
+    const client = await this.lockActiveReferenceClient(actor, clientId);
     if (client.version >= 2147483647)
       throw new ConflictException('Client reference version is exhausted.');
     await this.databaseContext.connection

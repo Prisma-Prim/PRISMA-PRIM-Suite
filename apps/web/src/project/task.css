@@ -1,0 +1,110 @@
+.project-tasks {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  color: #15233b;
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.75rem;
+  min-width: 0;
+}
+.project-tasks h4,
+.project-tasks h5,
+.project-tasks h6 {
+  font-size: 1rem;
+  margin: 0 0 0.65rem;
+}
+.project-tasks p {
+  line-height: 1.5;
+}
+.task-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.task-header p {
+  margin: 0;
+  max-width: 42rem;
+}
+.task-layout {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.project-tasks .task-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 0;
+}
+.task-list li {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e6eaf1;
+}
+.task-list button {
+  text-align: left;
+}
+.task-list button[aria-current] {
+  font-weight: 700;
+}
+.task-status {
+  color: #5c557d;
+  font-size: 0.875rem;
+}
+.task-panel {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+.task-panel > p {
+  margin: 0;
+}
+.task-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+.task-facts dt,
+.task-history dt {
+  font-size: 0.8rem;
+  color: #54617a;
+}
+.task-facts dd,
+.task-history dd {
+  margin: 0.3rem 0 0;
+  overflow-wrap: anywhere;
+}
+.task-notice {
+  padding: 0.75rem;
+  background: #f7f9fc;
+  border-left: 3px solid #8371bc;
+}
+.task-history {
+  border-top: 1px solid #e6eaf1;
+  padding-top: 1rem;
+}
+.task-history ol {
+  padding-left: 1.25rem;
+}
+.task-history li {
+  padding-bottom: 1rem;
+}
+.task-history p {
+  font-size: 0.875rem;
+}
+@media (max-width: 650px) {
+  .project-tasks {
+    padding: 1rem;
+  }
+  .task-header {
+    display: grid;
+  }
+  .task-layout,
+  .task-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

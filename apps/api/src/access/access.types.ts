@@ -22,6 +22,9 @@ export interface ActiveCompanyContext {
   displayName: string;
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
+  taskPermissions?: Array<'task.read' | 'task.manage'>;
+  taskPermissionAssignmentId?: string;
+  taskPermissionSetVersion?: 'v1';
   projectPermissions?: Array<'project.read' | 'project.create'>;
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;

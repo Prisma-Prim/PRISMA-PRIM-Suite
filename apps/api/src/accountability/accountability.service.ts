@@ -1,8 +1,12 @@
+import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
+import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  taskEvents,
+  tasks,
   projectCreationEvents,
   projects,
   activityLogEvents,
@@ -34,6 +38,105 @@ const INITIAL_PAGE_SIZE = 50;
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
+  async recordTaskEvent(input: {
+    actor: ActorContext;
+    taskId: string;
+    companyId: string;
+    occurredAt: Date;
+    meaning: TaskEventMeaning;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(taskEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      taskId: input.taskId,
+      version: input.meaning.metadata.version,
+      actorInternalUserId: input.actor.internalUserId,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      actorDisplayName: input.actor.displayName,
+      occurredAt: input.occurredAt,
+      meaning: input.meaning,
+    });
+  }
+  async readTaskHistory(
+    actor: ActorContext,
+    taskId?: string,
+  ): Promise<TaskEvent[]> {
+    if (
+      !actor.activeCompany?.taskPermissions?.includes('task.read') ||
+      !actor.activeCompany.projectPermissions?.includes('project.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const query = this.databaseContext.connection
+      .select({ event: taskEvents })
+      .from(taskEvents)
+      .innerJoin(
+        tasks,
+        and(
+          eq(tasks.workspaceId, taskEvents.workspaceId),
+          eq(tasks.companyId, taskEvents.companyId),
+          eq(tasks.id, taskEvents.taskId),
+        ),
+      )
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.workspaceId, tasks.workspaceId),
+          eq(projects.companyId, tasks.companyId),
+          eq(projects.id, tasks.projectId),
+          eq(projects.clientAccountId, tasks.clientAccountId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, tasks.workspaceId),
+          eq(clientAccounts.id, tasks.clientAccountId),
+          or(
+            eq(clientAccounts.status, 'active'),
+            eq(clientAccounts.status, 'superseded'),
+          ),
+        ),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, tasks.workspaceId),
+          eq(clientCompanyRelationships.clientAccountId, tasks.clientAccountId),
+          eq(clientCompanyRelationships.companyId, tasks.companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(taskEvents.workspaceId, actor.workspaceId),
+          eq(taskEvents.companyId, actor.activeCompany.id),
+          taskId ? eq(taskEvents.taskId, taskId) : undefined,
+        ),
+      )
+      .orderBy(
+        taskId ? asc(taskEvents.version) : desc(taskEvents.occurredAt),
+        desc(taskEvents.version),
+        desc(taskEvents.id),
+      );
+    const rows = taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
+    return rows.map(({ event }) => ({
+      ...readTaskMeaning(event.meaning),
+      id: event.id,
+      occurredAt: event.occurredAt.toISOString(),
+      actor: {
+        internalUserId: event.actorInternalUserId,
+        workspaceMembershipId: event.actorMembershipId,
+        displayName: event.actorDisplayName,
+      },
+      target: {
+        type: 'task',
+        taskId: event.taskId,
+        companyId: event.companyId,
+      },
+    }));
+  }
   async recordProjectCreated(input: {
     actor: ActorContext;
     projectId: string;
@@ -714,6 +817,7 @@ export class AccountabilityService {
         target: canonicalTarget(event),
         metadata: event.metadata,
       })),
+      ...(await this.readTaskHistory(actor)),
       ...(await this.projectEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
@@ -779,6 +883,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
+    case 'company_task_manager_assignment.granted':
+    case 'company_task_manager_assignment.revoked':
     case 'company_document_project_organizer_assignment.granted':
     case 'company_document_project_organizer_assignment.revoked':
     case 'company_document_registrar_assignment.granted':

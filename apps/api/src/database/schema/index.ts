@@ -6,3 +6,5 @@ export * from './workspace-invitation-acceptance.js';
 export * from './documents.js';
 
 export * from './project.js';
+
+export * from './task.js';
