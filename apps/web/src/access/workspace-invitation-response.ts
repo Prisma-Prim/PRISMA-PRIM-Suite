@@ -9,6 +9,7 @@ export interface WorkspaceInvitation {
   expiresAt: string;
   createdAt: string;
   revokedAt: string | null;
+  consumedAt: string | null;
   nextCheckAt: string;
 }
 export interface InvitationPage {
@@ -26,6 +27,11 @@ export function invitationResponse(value: unknown): WorkspaceInvitation {
     !date(value.expiresAt) ||
     !date(value.createdAt) ||
     !(value.revokedAt === null || date(value.revokedAt)) ||
+    !(
+      value.consumedAt === undefined ||
+      value.consumedAt === null ||
+      date(value.consumedAt)
+    ) ||
     !date(value.nextCheckAt)
   )
     throw new Error('Invalid invitation response.');
@@ -37,6 +43,7 @@ export function invitationResponse(value: unknown): WorkspaceInvitation {
     expiresAt: value.expiresAt,
     createdAt: value.createdAt,
     revokedAt: value.revokedAt,
+    consumedAt: value.consumedAt ?? null,
     nextCheckAt: value.nextCheckAt,
   };
 }

@@ -44,6 +44,8 @@ A canonical event contains:
 
 The public interface accepts business meaning, not arbitrary log prose or persistence details.
 
+For Workspace invitation consumption, [#163](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/163) records Dan's approved policy: every committed consumption creates one `workspace_invitation.accepted` event, attributed to the verified recipient and targeting that invitation in its intended Workspace. A newly created Internal User additionally receives exactly one `internal_user.provisioned` event; resolving an existing identity does not repeat creation history. Admission and both required events commit together. Rejected attempts and exact replays create neither event. Invitation event visibility remains subject to the invitation-management permission.
+
 ## 5. Invariants
 
 1. Successful critical actions create exactly the required event.
@@ -121,7 +123,7 @@ Retention and authorized export require a later policy based on business and leg
 
 ## 12. Acceptance journey
 
-A fresh user is provisioned through Access and sees exactly one event. Reconnection and concurrent resolution create no duplicate. A failed provisioning leaves no success history. For duplicate resolution, one authorized union and one reversal each create one logical action with exactly one visible projection in every affected Company scope, while failed, partial-authority and replay attempts create none. Later capability slices record canonical events through the same public interface, and unauthorized users cannot infer them.
+A fresh user receives exactly one identity-provisioning event through Access. Invitation consumption additionally follows the event contract above. Reconnection and concurrent resolution create no duplicate. A failed provisioning leaves no success history. For duplicate resolution, one authorized union and one reversal each create one logical action with exactly one visible projection in every affected Company scope, while failed, partial-authority and replay attempts create none. Later capability slices record canonical events through the same public interface, and unauthorized users cannot infer them.
 
 ## 13. Evidence and dependencies
 

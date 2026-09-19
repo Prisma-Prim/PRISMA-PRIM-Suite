@@ -92,6 +92,38 @@
   text-align: center;
 }
 
+.invitation-entry {
+  display: grid;
+  color: var(--shell-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  gap: 1rem;
+  width: min(100%, 36rem);
+}
+
+.invitation-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.invitation-entry button,
+.invitation-entry-actions a {
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--shell-blue);
+  border-radius: 0.35rem;
+  background: var(--shell-blue);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+}
+
+.invitation-entry button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .production-menu-button {
   display: none;
   width: 2.75rem;
