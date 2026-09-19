@@ -35,6 +35,7 @@ export function SectionIcon({
     clients: Users,
     access: ShieldCheck,
     companies: Building2,
+    documents: Mail,
     activity: Activity,
     invitations: Mail,
   };

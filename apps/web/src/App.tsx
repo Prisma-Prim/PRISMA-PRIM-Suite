@@ -6,6 +6,8 @@ import {
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
 import { useState } from 'react';
+import { DocumentWorkspace } from './documents/DocumentWorkspace';
+import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
@@ -68,6 +70,20 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       true;
 
   const sections: ApplicationSection[] = [];
+  if (access.actor.activeCompany && canAccessClients)
+    sections.push({
+      id: 'documents',
+      label: documentsCopy.title,
+      description: documentsCopy.description,
+      content: (
+        <DocumentWorkspace
+          key={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
   if (canAccessClients)
     sections.push({
       id: 'clients',
@@ -236,6 +252,7 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
 
 function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
+    'document.registered': documentsCopy.activity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
     'company.registered': 'registered a Company',
@@ -252,6 +269,8 @@ function activityDescription(event: ActivityLogEvent): string {
 
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
+    case 'document':
+      return event.target.documentId;
     case 'project':
       return event.target.projectId;
     case 'workspace_invitation':

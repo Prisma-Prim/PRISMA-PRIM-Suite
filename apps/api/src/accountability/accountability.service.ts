@@ -6,6 +6,8 @@ import {
   projectCreationEvents,
   projects,
   activityLogEvents,
+  documentRegistrationEvents,
+  workingDocuments,
   clientAccounts,
   clientCompanyRelationships,
   companies,
@@ -18,6 +20,7 @@ import {
 import type { ActorContext } from '../access/access.types.js';
 import type {
   ActivityLogPage,
+  DocumentRegisteredActivityEvent,
   CanonicalActivityEvent,
   ClientUnionActivityEvent,
   ProjectCreatedActivityEvent,
@@ -228,6 +231,118 @@ export class AccountabilityService {
     );
   }
 
+  async recordDocumentRegistered(input: {
+    actor: ActorContext;
+    companyId: string;
+    documentId: string;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(documentRegistrationEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        documentId: input.documentId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+      });
+  }
+  async documentEvents(
+    actor: ActorContext,
+  ): Promise<DocumentRegisteredActivityEvent[]> {
+    if (
+      !actor.active ||
+      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: documentRegistrationEvents.id,
+        documentId: documentRegistrationEvents.documentId,
+        companyId: documentRegistrationEvents.companyId,
+        occurredAt: documentRegistrationEvents.occurredAt,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(documentRegistrationEvents)
+      .innerJoin(
+        workingDocuments,
+        and(
+          eq(
+            workingDocuments.workspaceId,
+            documentRegistrationEvents.workspaceId,
+          ),
+          eq(workingDocuments.companyId, documentRegistrationEvents.companyId),
+          eq(workingDocuments.id, documentRegistrationEvents.documentId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
+          eq(clientAccounts.id, workingDocuments.clientId),
+          sql`${clientAccounts.status} IN ('active','superseded')`,
+        ),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            workingDocuments.workspaceId,
+          ),
+          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            workingDocuments.clientId,
+          ),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            documentRegistrationEvents.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            documentRegistrationEvents.actorMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          eq(documentRegistrationEvents.workspaceId, actor.workspaceId),
+          eq(documentRegistrationEvents.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(documentRegistrationEvents.occurredAt),
+        desc(documentRegistrationEvents.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row) => ({
+      id: row.id,
+      action: 'document.registered',
+      occurredAt: row.occurredAt.toISOString(),
+      actor: {
+        internalUserId: row.internalUserId,
+        displayName: row.displayName,
+      },
+      target: {
+        type: 'document',
+        documentId: row.documentId,
+        companyId: row.companyId,
+      },
+      metadata: {},
+    }));
+  }
   async record(event: CanonicalActivityEvent): Promise<void> {
     if (
       event.target.type === 'internal_user' &&
@@ -490,6 +605,7 @@ export class AccountabilityService {
         metadata: event.metadata,
       })),
       ...(await this.projectEvents(actor)),
+      ...(await this.documentEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>
@@ -552,6 +668,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
+    case 'company_document_registrar_assignment.granted':
+    case 'company_document_registrar_assignment.revoked':
     case 'company_project_assignment.granted':
     case 'company_project_assignment.revoked':
     case 'company_context_assignment.granted':

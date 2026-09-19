@@ -5,7 +5,18 @@ export const COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE =
   'company_director_client_access' as const;
 export const COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL =
   'Company Director Client Access' as const;
+export const COMPANY_DOCUMENT_REGISTRAR_BUNDLE =
+  'company_document_registrar' as const;
+export const COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL =
+  'Company Document Registrar' as const;
+export const DOCUMENT_V1_PERMISSIONS = [
+  'document.read',
+  'document.register',
+  'document.reference.read',
+] as const;
+export type DocumentPermission = (typeof DOCUMENT_V1_PERMISSIONS)[number];
 export const COMPANY_CONTEXT_USE_BUNDLES = [
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
 ] as const;

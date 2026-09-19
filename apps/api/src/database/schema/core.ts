@@ -34,6 +34,7 @@ export const workspacePermission = pgEnum('workspace_permission', [
 export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_context_access',
   'company_director_client_access',
+  'company_document_registrar',
   'company_project_access',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
@@ -307,9 +308,9 @@ export const companyRoleAssignments = pgTable(
           AND ${table.permissionSetVersion} IS NOT NULL
           AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text = 'company_project_access' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        (${table.bundle}::text IN ('company_document_registrar', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
         OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_project_access')
+        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_document_registrar', 'company_project_access')
           AND ${table.permissionSetVersion} IS NULL)
       )`,
     ),
@@ -654,6 +655,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_context_assignment.revoked',
   'company_director_client_assignment.granted',
   'company_director_client_assignment.revoked',
+  'company_document_registrar_assignment.granted',
+  'company_document_registrar_assignment.revoked',
   'company_project_assignment.granted',
   'company_project_assignment.revoked',
   'client.created',
@@ -701,6 +704,7 @@ export const activityLogEvents = pgTable(
             bundle:
               | 'Company Context Access'
               | 'Company Director Client Access'
+              | 'Company Document Registrar'
               | 'Company Project Access';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }

@@ -14,10 +14,12 @@ import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
 type Submission = 'grant' | 'revoke';
-type AssignmentBundle = 'company-context' | 'director-client' | 'project';
+type AssignmentBundle =
+  'company-context' | 'director-client' | 'document-registrar' | 'project';
 type AssignmentBundleLabel =
   | 'Company Context Access'
   | 'Company Director Client Access'
+  | 'Company Document Registrar'
   | 'Company Project Access';
 type AdministrationState = {
   members: Array<{
@@ -193,11 +195,13 @@ export function CompanyContextAccess({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const assignmentPath =
-        bundle === 'project'
-          ? '/company-project-assignments'
-          : bundle === 'director-client'
-            ? '/company-director-client-assignments'
-            : '/company-context-assignments';
+        bundle === 'document-registrar'
+          ? '/company-document-registrar-assignments'
+          : bundle === 'project'
+            ? '/company-project-assignments'
+            : bundle === 'director-client'
+              ? '/company-director-client-assignments'
+              : '/company-context-assignments';
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
@@ -228,8 +232,7 @@ export function CompanyContextAccess({
       let activityRefreshedByRecovery = false;
       if (
         result.status === 'ok' &&
-        (command.bundle === 'director-client' ||
-          command.bundle === 'project') &&
+        command.bundle !== 'company-context' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase() &&
         command.companyId.toLowerCase() ===
@@ -264,8 +267,7 @@ export function CompanyContextAccess({
 
       if (
         result.status === 'ok' &&
-        (command.bundle === 'director-client' ||
-          command.bundle === 'project') &&
+        command.bundle !== 'company-context' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {
@@ -420,6 +422,7 @@ export function CompanyContextAccess({
               if (
                 value === 'company-context' ||
                 value === 'director-client' ||
+                value === 'document-registrar' ||
                 value === 'project'
               )
                 setBundle(value);
@@ -427,6 +430,9 @@ export function CompanyContextAccess({
           >
             <option value="company-context">{copy.companyContextBundle}</option>
             <option value="director-client">{copy.directorClientBundle}</option>
+            <option value="document-registrar">
+              {copy.documentRegistrarBundle}
+            </option>
             <option value="project">{copy.projectBundle}</option>
           </select>
 
@@ -500,11 +506,13 @@ export function CompanyContextAccess({
 }
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  return bundle === 'project'
-    ? copy.projectBundle
-    : bundle === 'director-client'
-      ? 'Company Director Client Access'
-      : 'Company Context Access';
+  return bundle === 'document-registrar'
+    ? 'Company Document Registrar'
+    : bundle === 'project'
+      ? copy.projectBundle
+      : bundle === 'director-client'
+        ? 'Company Director Client Access'
+        : 'Company Context Access';
 }
 
 function memberLabel(member: AdministrationState['members'][number]): string {

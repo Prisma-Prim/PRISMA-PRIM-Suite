@@ -26,6 +26,8 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
@@ -46,6 +48,7 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 type BundleDefinition = {
   value: Bundle;
   label:
+    | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
@@ -62,12 +65,18 @@ const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
   label: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
+  value: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  label: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const PROJECT_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_ACCESS_BUNDLE,
   label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
@@ -280,6 +289,35 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  async grantDocumentRegistrar(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      DOCUMENT_REGISTRAR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeDocumentRegistrar(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      DOCUMENT_REGISTRAR_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
   private async mutate(
     actor: ActorContext,
     bundle: BundleDefinition,
@@ -358,17 +396,21 @@ export class CompanyContextAssignmentService {
         await this.accountability.record({
           actor,
           action:
-            bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
+            bundle.value === COMPANY_DOCUMENT_REGISTRAR_BUNDLE
               ? operation === 'grant'
-                ? 'company_project_assignment.granted'
-                : 'company_project_assignment.revoked'
-              : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+                ? 'company_document_registrar_assignment.granted'
+                : 'company_document_registrar_assignment.revoked'
+              : bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
                 ? operation === 'grant'
-                  ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-                  : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
-                : operation === 'grant'
-                  ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
-                  : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
+                  ? 'company_project_assignment.granted'
+                  : 'company_project_assignment.revoked'
+                : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+                  ? operation === 'grant'
+                    ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+                    : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+                  : operation === 'grant'
+                    ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+                    : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -628,6 +670,14 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Document Registrar version.');
+      return {
+        ...base,
+        bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
     case COMPANY_PROJECT_ACCESS_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Company Project assignment version.');

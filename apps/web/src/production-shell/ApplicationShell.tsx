@@ -19,6 +19,7 @@ import './prisme/prisme-frame.css';
 
 export interface ApplicationSection {
   id:
+    | 'documents'
     | 'projects'
     | 'clients'
     | 'access'

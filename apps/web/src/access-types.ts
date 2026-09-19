@@ -22,6 +22,9 @@ export interface ActorContext {
       | 'client.update'
       | 'client.duplicate.resolve'
     >;
+    documentPermissions?: Array<
+      'document.read' | 'document.register' | 'document.reference.read'
+    >;
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';
   };

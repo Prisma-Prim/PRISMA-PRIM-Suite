@@ -3,6 +3,9 @@ import { ProjectModule } from './project/project.module.js';
 import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
+import { CompanyDocumentRegistrarAssignmentController } from './access/company-document-registrar-assignment.controller.js';
+import { DocumentsController } from './documents/documents.controller.js';
+import { DocumentsModule } from './documents/documents.module.js';
 import { Module } from '@nestjs/common';
 import { VerifiedPrincipalAdapter } from './access/verified-principal.adapter.js';
 import { WorkspaceInvitationAcceptanceController } from './access/workspace-invitation-acceptance.controller.js';
@@ -34,6 +37,7 @@ import { DatabaseModule } from './database/database.module.js';
 
 @Module({
   imports: [
+    DocumentsModule,
     ProjectModule,
     AccessModule,
     AccountabilityModule,
@@ -42,6 +46,8 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    DocumentsController,
+    CompanyDocumentRegistrarAssignmentController,
     ProjectController,
     CompanyProjectAssignmentController,
     WorkspaceInvitationAcceptanceController,
