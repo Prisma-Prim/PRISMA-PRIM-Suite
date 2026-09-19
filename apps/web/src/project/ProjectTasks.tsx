@@ -36,7 +36,7 @@ type Load =
   | { kind: 'loading' | 'error' | 'denied' }
   | { kind: 'ready'; listing: Listing };
 type Detail =
-  | { kind: 'loading' | 'error' }
+  | { kind: 'loading' | 'error' | 'missing' }
   | { kind: 'ready'; task: TaskView; mutable: boolean; events: TaskEvent[] };
 type Command = { key: string } & (
   | {
@@ -101,7 +101,7 @@ function TaskProjects(props: Props) {
   ));
 }
 class ReadFailure extends Error {
-  constructor(readonly kind: 'denied' | 'error') {
+  constructor(readonly kind: 'denied' | 'error' | 'missing') {
     super(kind);
   }
 }
@@ -142,13 +142,16 @@ function TaskProject({
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
 
-  async function resultValue(result: ApiResult<unknown>): Promise<unknown> {
+  async function resultValue(
+    result: ApiResult<unknown>,
+    notFound: 'denied' | 'missing' = 'denied',
+  ): Promise<unknown> {
     if (result.status === 'unauthorized') {
       await identity.rejectSession();
       throw new ReadFailure('denied');
     }
-    if (result.status === 'forbidden' || result.status === 'notFound')
-      throw new ReadFailure('denied');
+    if (result.status === 'forbidden') throw new ReadFailure('denied');
+    if (result.status === 'notFound') throw new ReadFailure(notFound);
     if (result.status !== 'ok') throw new ReadFailure('error');
     return result.value;
   }
@@ -180,13 +183,23 @@ function TaskProject({
         ),
       ]);
       if (controller.signal.aborted) return;
-      const task = readTaskDetail(await resultValue(taskResult), scope, taskId);
-      const events = readTaskHistory(
-        await resultValue(historyResult),
-        scope,
-        taskId,
-      );
-      nextDetail = { kind: 'ready', ...task, events };
+      try {
+        const task = readTaskDetail(
+          await resultValue(taskResult, 'missing'),
+          scope,
+          taskId,
+        );
+        const events = readTaskHistory(
+          await resultValue(historyResult, 'missing'),
+          scope,
+          taskId,
+        );
+        nextDetail = { kind: 'ready', ...task, events };
+      } catch (error: unknown) {
+        if (!(error instanceof ReadFailure) || error.kind !== 'missing')
+          throw error;
+        nextDetail = { kind: 'missing' };
+      }
     }
     if (controller.signal.aborted) return;
     setLoad({ kind: 'ready', listing });
@@ -208,7 +221,7 @@ function TaskProject({
     if (
       canManage &&
       listing.mutable &&
-      (!nextDetail || nextDetail.kind !== 'ready' || nextDetail.mutable)
+      (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
     ) {
       try {
         const result = await api.request<unknown>(
@@ -459,6 +472,7 @@ function TaskProject({
                 <p role="status">{copy.loading}</p>
               )}
               {detail?.kind === 'error' && <p role="alert">{copy.error}</p>}
+              {detail?.kind === 'missing' && <p role="alert">{copy.missing}</p>}
               {current && (
                 <>
                   <h5>{current.task.title}</h5>

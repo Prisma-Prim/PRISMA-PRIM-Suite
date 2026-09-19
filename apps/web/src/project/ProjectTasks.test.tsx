@@ -470,12 +470,12 @@ it('preserves an ineligible historical assignee while allowing a title-only corr
   expect(command).toEqual({ expectedVersion: 1, title: 'Corrected title' });
 });
 
-it('removes Task detail and history when the server denies a reload', async () => {
-  let denied = false;
+it('shows a missing Task without stale detail or actions and allows another listed Task to open', async () => {
+  let missing = false;
   fixture({
     read: (url) =>
-      denied && url.includes('/tasks')
-        ? new Response(null, { status: 403 })
+      missing && url === '/api/tasks/task'
+        ? new Response(null, { status: 404 })
         : undefined,
   });
   render(
@@ -485,18 +485,66 @@ it('removes Task detail and history when the server denies a reload', async () =
     />,
   );
   const tasks = await openSavedTask();
-  denied = true;
+  missing = true;
   fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Task' }));
   await within(tasks).findByText(
-    'Task, Project and Client read access are required for this Company.',
+    'This Task could not be found. Reload the Task or choose another Task from the list.',
   );
+  expect(
+    within(tasks).queryByText(
+      'Task, Project and Client read access are required for this Company.',
+    ),
+  ).not.toBeInTheDocument();
   expect(
     within(tasks).queryByRole('heading', { name: savedTask.title }),
   ).not.toBeInTheDocument();
   expect(
     within(tasks).queryByRole('region', { name: 'Task history' }),
   ).not.toBeInTheDocument();
+  expect(within(tasks).queryByLabelText('Task title')).not.toBeInTheDocument();
+  expect(
+    within(tasks).queryByRole('button', {
+      name: /Save Task|Mark done|Reopen Task/,
+    }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Another preparation Task' }),
+  );
+  await within(tasks).findByRole('heading', {
+    name: 'Another preparation Task',
+  });
 });
+
+it.each(['/api/projects/project/tasks', '/api/tasks/task'])(
+  'removes Task detail and history when the server denies a reload at %s',
+  async (deniedPath) => {
+    let denied = false;
+    fixture({
+      read: (url) =>
+        denied && url === deniedPath
+          ? new Response(null, { status: 403 })
+          : undefined,
+    });
+    render(
+      <ProjectWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    const tasks = await openSavedTask();
+    denied = true;
+    fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Task' }));
+    await within(tasks).findByText(
+      'Task, Project and Client read access are required for this Company.',
+    );
+    expect(
+      within(tasks).queryByRole('heading', { name: savedTask.title }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(tasks).queryByRole('region', { name: 'Task history' }),
+    ).not.toBeInTheDocument();
+  },
+);
 
 it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
   'suppresses a pending Task mutation response after %s replacement',

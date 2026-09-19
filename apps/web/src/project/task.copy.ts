@@ -11,6 +11,8 @@ export const taskCopy = {
   loading: 'Loading Tasks…',
   error: 'Tasks could not be loaded. Reload to try again.',
   denied: 'Task, Project and Client read access are required for this Company.',
+  missing:
+    'This Task could not be found. Reload the Task or choose another Task from the list.',
   empty: 'No manual Tasks for this Project yet.',
   immutable:
     'Read-only: the original Client has been superseded. Task history remains available.',
