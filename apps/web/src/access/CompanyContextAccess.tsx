@@ -1,6 +1,7 @@
 import {
   type FormEvent,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -9,9 +10,11 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { companyContextAccessCopy as copy } from './company-context-access.copy';
 import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
+import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
@@ -69,6 +72,7 @@ export function CompanyContextAccess({
   onClientAuthorityChanged?: () => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [bundle, setBundle] = useState<AssignmentBundle>('company-context');
@@ -319,7 +323,12 @@ export function CompanyContextAccess({
 
   if (administration.status === 'loading') {
     return (
-      <section aria-labelledby="company-context-access-title">
+      <section
+        aria-labelledby="company-context-access-title"
+        className={
+          isPrisme ? 'company-access company-access--prisme' : undefined
+        }
+      >
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="company-context-access-title">{copy.title}</h2>
         <p role="status">{copy.loading}</p>
@@ -329,11 +338,20 @@ export function CompanyContextAccess({
 
   if (administration.status === 'error') {
     return (
-      <section aria-labelledby="company-context-access-title">
+      <section
+        aria-labelledby="company-context-access-title"
+        className={
+          isPrisme ? 'company-access company-access--prisme' : undefined
+        }
+      >
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="company-context-access-title">{copy.title}</h2>
         <p role="alert">{copy.error}</p>
-        <button type="button" onClick={retryAdministration}>
+        <button
+          type="button"
+          className={isPrisme ? 'company-access-primary-action' : undefined}
+          onClick={retryAdministration}
+        >
           {copy.retry}
         </button>
       </section>
@@ -366,13 +384,20 @@ export function CompanyContextAccess({
       : undefined;
 
   return (
-    <section aria-labelledby="company-context-access-title">
+    <section
+      aria-labelledby="company-context-access-title"
+      className={isPrisme ? 'company-access company-access--prisme' : undefined}
+    >
       <p className="eyebrow">{copy.eyebrow}</p>
       <h2 id="company-context-access-title">{copy.title}</h2>
       <p>{copy.description}</p>
       {!hasSelectableTargets && <p>{copy.empty}</p>}
       {hasSelectableTargets && (
-        <form noValidate onSubmit={(event) => void submit(event, 'grant')}>
+        <form
+          className={isPrisme ? 'company-access-form' : undefined}
+          noValidate
+          onSubmit={(event) => void submit(event, 'grant')}
+        >
           <label htmlFor="context-access-member">
             {copy.workspaceMemberLabel}
           </label>
@@ -467,6 +492,7 @@ export function CompanyContextAccess({
 
           <button
             type="submit"
+            className={isPrisme ? 'company-access-primary-action' : undefined}
             disabled={
               busy ||
               !workspaceMembershipId ||
@@ -478,6 +504,7 @@ export function CompanyContextAccess({
           </button>
           <button
             type="button"
+            className={isPrisme ? 'company-access-secondary-action' : undefined}
             disabled={
               busy ||
               !workspaceMembershipId ||

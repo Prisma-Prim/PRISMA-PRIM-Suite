@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -7,6 +7,8 @@ import {
   type WorkingDocument,
 } from '../documents/document-response';
 import { projectDocumentsCopy as copy } from './project-documents.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
+import './project-documents.css';
 
 type Props = {
   actor: ActorContext;
@@ -46,6 +48,7 @@ function ProjectDocumentSession({
   projectId,
   onActivityRecorded,
 }: Props) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selector, setSelector] = useState<Load | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
@@ -229,7 +232,7 @@ function ProjectDocumentSession({
         {state.listing.documents.length === 0 && (
           <p>{eligible ? copy.noEligible : copy.empty}</p>
         )}
-        <ul>
+        <ul className={isPrisme ? 'project-document-list' : undefined}>
           {state.listing.documents.map((row) => (
             <li key={row.document.id}>
               <h5>{row.document.title}</h5>
@@ -263,7 +266,10 @@ function ProjectDocumentSession({
     );
   }
   return (
-    <section aria-label={copy.title} className="project-documents">
+    <section
+      aria-label={copy.title}
+      className={`project-documents${isPrisme ? ' project-documents--prisme' : ''}`}
+    >
       <h4>{copy.title}</h4>
       <p>{copy.warning}</p>
       {renderState(load, false)}
@@ -283,7 +289,10 @@ function ProjectDocumentSession({
         </button>
       )}
       {selector && (
-        <div aria-label={copy.choose}>
+        <div
+          aria-label={copy.choose}
+          className={isPrisme ? 'project-document-selector' : undefined}
+        >
           {renderState(selector, true)}
           <button
             type="button"

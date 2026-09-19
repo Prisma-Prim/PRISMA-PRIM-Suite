@@ -1,0 +1,159 @@
+.prisme-shell .workspace-invitations--prisme {
+  display: grid;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 76rem;
+  min-width: 0;
+}
+
+.prisme-shell .workspace-invitations--prisme > h2 {
+  margin: -0.9rem 0 0;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  letter-spacing: -0.045em;
+}
+
+.prisme-shell .workspace-invitations--prisme > p {
+  max-width: 54rem;
+  margin: 0;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .workspace-invitations-form {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.45fr) minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: center;
+  min-width: 0;
+  padding: 1.15rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  background: var(--shell-surface);
+}
+
+.prisme-shell .workspace-invitations-form > button {
+  grid-column: 1 / -1;
+}
+
+.prisme-shell .workspace-invitations--prisme input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  color: var(--shell-ink);
+  background: #fff;
+}
+
+.prisme-shell .workspace-invitations--prisme button {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.48rem 0.78rem;
+  color: var(--shell-ink);
+  background: #fff;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.prisme-shell .workspace-invitations--prisme button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.prisme-shell .workspace-invitations--prisme button:focus-visible,
+.prisme-shell .workspace-invitations--prisme input:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
+.prisme-shell
+  .workspace-invitations--prisme
+  .workspace-invitation-primary-action {
+  border-color: #6652e7;
+  color: #fff;
+  background: #6451e8;
+}
+
+.prisme-shell
+  .workspace-invitations--prisme
+  .workspace-invitation-secondary-action {
+  background: #faf9ff;
+}
+
+.prisme-shell
+  .workspace-invitations--prisme
+  .workspace-invitation-danger-action {
+  border-color: #a9342a;
+  color: #8d281f;
+  background: #fff8f7;
+}
+
+.prisme-shell .workspace-invitation-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prisme-shell .workspace-invitation-list > li {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-left: 4px solid #d4ca72;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.prisme-shell .workspace-invitation-list > li[data-status='accepted'] {
+  border-left-color: #4d9a74;
+}
+
+.prisme-shell .workspace-invitation-list > li[data-status='revoked'],
+.prisme-shell .workspace-invitation-list > li[data-status='expired'] {
+  border-left-color: #8b96a8;
+}
+
+.prisme-shell .workspace-invitation-list > li[data-status='rejected'],
+.prisme-shell .workspace-invitation-list > li[data-status='uncertain'] {
+  border-left-color: #c55c50;
+}
+
+.prisme-shell .workspace-invitation-list strong {
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell .workspace-invitation-list p {
+  margin: 0;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .workspace-invitation-list [role='region'] {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid #e0b4af;
+  border-radius: 7px;
+  background: #fff8f7;
+}
+
+@media (max-width: 650px) {
+  .prisme-shell .workspace-invitations-form {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1rem;
+  }
+
+  .prisme-shell .workspace-invitations-form > button {
+    grid-column: 1;
+  }
+}

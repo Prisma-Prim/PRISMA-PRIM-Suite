@@ -119,6 +119,33 @@ create/edit/complete/reopen/history; uncertain exact retry; conflict/reload;
 superseded-original read-only history; and denied state. Screenshots are written with
 `testInfo.outputPath(...)`; these tests do not claim a live Clerk or backend smoke.
 
+## Working Documents and Project attachments — issue #258
+
+`DocumentWorkspace` remains the owner of the real working-reference list, registration,
+detail, correction and retry contracts. Prisme adds a bounded registry heading, warning,
+responsive cards and form treatment while Classic retains its existing markup. The
+unverified mutable HTTPS-reference meaning, server-owned correction capability, original
+Client and responsible Company identities, exact uncertain retry, conflict reload and
+confirmed-versus-refresh-failure behavior are unchanged.
+
+`ProjectDocuments` remains the owner of the existing attachment list, eligible selector,
+link/removal commands and association refresh. Prisme adds only local cards, fine borders,
+action hierarchy and visible focus. Separate organizer and reference-read permissions,
+the stored original Client, association revision and exact retry continue to control the
+journey; removal never deletes the Document.
+
+`e2e/working-documents.spec.ts` and `e2e/project-documents.spec.ts` prove the real App
+composition at desktop and 390px with intercepted authenticated contracts, including
+safe external opening, correction, attach/remove, uncertain retry, conflict/reload,
+read-only and denied states. Screenshots use `testInfo.outputPath(...)`; these are not
+live Clerk, backend or external-provider smoke tests.
+
+## Global Activity Log — issue #257
+
+[Issue #257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/257) presents the existing global Activity Log as a compact Prisme ledger with fine dividers, restrained violet markers and readable desktop and narrow spacing. The real projection remains in server order with its existing action labels, target descriptions and timestamps. Loading, error and empty results remain distinct real states.
+
+`App` and the production-shell session remain the data, Company-scope, refresh and request-lifecycle owners. This slice adds no filter, search, pagination, detail action, transport, permission or synthetic event. Classic retains its existing markup and styles because every visual rule is scoped under `.prisme-shell`. `e2e/prisme-activity-log.spec.ts` proves populated data, server order, frame switching and horizontal fit at 1440px and 390px. Its API responses are intercepted contract fixtures, not a live Clerk/backend smoke; screenshots originate from `testInfo.outputPath` and remain outside Git.
+
 ## Project detail navigation — issue #262
 
 [Issue #262](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/262) completes the Project detail delivered by #254 with Prisme-local Tasks and Working Documents tabs. The two existing owners remain mounted; the inactive panel is hidden with `hidden`. A tab or Classic/Prisme frame change does not issue a new Task or Document request, so drafts, conflicts, retry identities and separate permission states remain with their current owners. Classic keeps both sections expanded.
