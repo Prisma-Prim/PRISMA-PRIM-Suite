@@ -107,13 +107,13 @@ test('presents real Activity Log events in server order and preserves them acros
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Use classic frame' }).click();
-  await expect(page).toHaveURL(/\/#activity$/);
+  await expect(page).toHaveURL(/\?frame=classic#activity$/);
   await expect(activity).toBeVisible();
   await expect(rows).toHaveCount(events.length);
   expect(activityReads).toBe(1);
 
   await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(page).toHaveURL(/frame=prisme#activity$/);
+  await expect(page).toHaveURL(/\/#activity$/);
   await expect(rows).toHaveCount(events.length);
   expect(activityReads).toBe(1);
 });
