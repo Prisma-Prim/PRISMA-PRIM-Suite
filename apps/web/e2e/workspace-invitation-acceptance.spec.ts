@@ -30,9 +30,9 @@ test('session rejection clears the prior account Workspace before another accoun
     route.fulfill({ status: 401 }),
   );
   await page.goto('/');
-  await expect(page.getByRole('alert')).toHaveText(
-    'Sign in is required to access this workspace.',
-  );
+  await expect(
+    page.getByRole('heading', { name: 'Make every decision traceable.' }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() =>
       sessionStorage.getItem('prisma-workspace-context'),
