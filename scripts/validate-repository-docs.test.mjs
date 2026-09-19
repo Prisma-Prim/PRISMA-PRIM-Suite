@@ -81,10 +81,18 @@ test('rejects traversal and symlink targets outside the repository', async (t) =
   });
   const outsidePath = join(container, 'outside.md');
   await writeFile(outsidePath, '# Outside\n');
-  await symlink(
-    outsidePath,
-    join(repositoryRoot, 'docs/agents/outside-link.md'),
-  );
+  if (process.platform === 'win32') {
+    await symlink(
+      container,
+      join(repositoryRoot, 'docs/agents/outside-link.md'),
+      'junction',
+    );
+  } else {
+    await symlink(
+      outsidePath,
+      join(repositoryRoot, 'docs/agents/outside-link.md'),
+    );
+  }
 
   assert.deepEqual(await validateRepositoryDocs(repositoryRoot), [
     'docs/agents/guide.md:1: local Markdown link target escapes repository "../../../outside.md"',
@@ -96,7 +104,12 @@ test('reports cyclic symlink targets without aborting validation', async (t) => 
   const { repositoryRoot } = await createFixture(t, {
     'docs/agents/guide.md': '[Loop](loop.md)\n',
   });
-  await symlink('loop.md', join(repositoryRoot, 'docs/agents/loop.md'));
+  const link = join(repositoryRoot, 'docs/agents/loop.md');
+  await symlink(
+    process.platform === 'win32' ? link : 'loop.md',
+    link,
+    process.platform === 'win32' ? 'junction' : 'file',
+  );
 
   assert.deepEqual(await validateRepositoryDocs(repositoryRoot), [
     'docs/agents/guide.md:1: broken local Markdown link target "loop.md"',
@@ -113,7 +126,11 @@ test('does not follow directory symlinks while scanning documentation', async (t
     join(outsideDirectory, 'obsolete.md'),
     'Dan-Popescu/PRISMA-PRIM-Suite\n',
   );
-  await symlink(outsideDirectory, join(repositoryRoot, 'docs/agents/external'));
+  await symlink(
+    outsideDirectory,
+    join(repositoryRoot, 'docs/agents/external'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  );
 
   assert.deepEqual(await validateRepositoryDocs(repositoryRoot), []);
 });

@@ -9,18 +9,27 @@ const scriptPath = fileURLToPath(
 );
 const script = await readFile(scriptPath, 'utf8');
 
-test('accepts only the --start and --install modes', () => {
-  for (const args of [['--reset'], ['--start', '--install'], ['start']]) {
-    const result = spawnSync('bash', [scriptPath, ...args], {
-      encoding: 'utf8',
-    });
-    assert.equal(result.status, 2, args.join(' '));
-    assert.match(
-      result.stderr,
-      /Usage: bash scripts\/codex-cloud-postgres\.sh/,
-    );
-  }
-});
+test(
+  'Linux installer accepts only the --start and --install modes',
+  {
+    skip:
+      process.platform === 'win32'
+        ? 'Linux installer execution belongs to Linux CI'
+        : false,
+  },
+  () => {
+    for (const args of [['--reset'], ['--start', '--install'], ['start']]) {
+      const result = spawnSync('bash', [scriptPath, ...args], {
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 2, args.join(' '));
+      assert.match(
+        result.stderr,
+        /Usage: bash scripts\/codex-cloud-postgres\.sh/,
+      );
+    }
+  },
+);
 
 test('installs PostgreSQL 17 from the PGDG apt repository without a source build', () => {
   assert.match(script, /apt\.postgresql\.org\/pub\/repos\/apt/);

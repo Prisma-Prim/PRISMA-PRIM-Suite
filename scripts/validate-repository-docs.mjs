@@ -151,7 +151,9 @@ export async function validateRepositoryDocs(repositoryRoot) {
 
   for (const absolutePath of referenceFiles) {
     const contents = await contentsFor(absolutePath);
-    const source = relative(resolvedRepositoryRoot, absolutePath);
+    const source = relative(resolvedRepositoryRoot, absolutePath)
+      .split(sep)
+      .join('/');
     const obsoleteIndex = contents.indexOf(OBSOLETE_REPOSITORY);
 
     if (obsoleteIndex !== -1) {
@@ -163,7 +165,9 @@ export async function validateRepositoryDocs(repositoryRoot) {
 
   for (const absolutePath of markdownFiles) {
     const contents = await contentsFor(absolutePath);
-    const source = relative(resolvedRepositoryRoot, absolutePath);
+    const source = relative(resolvedRepositoryRoot, absolutePath)
+      .split(sep)
+      .join('/');
 
     for (const { line, target } of markdownTargets(contents)) {
       if (isExternal(target)) continue;
