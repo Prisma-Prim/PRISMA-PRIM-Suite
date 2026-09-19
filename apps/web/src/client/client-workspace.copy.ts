@@ -2,6 +2,26 @@ export const clientWorkspaceCopy = {
   navigationLabel: 'Clients',
   eyebrow: 'Shared Client',
   title: 'Clients',
+  newClient: 'New Client',
+  closeRegistration: 'Close registration',
+  registrationTitle: 'Register a Client',
+  registrationHint:
+    'Closing keeps your draft. If you have started creating a Client, creation continues.',
+  directoryCompany: (companyName: string) => `Clients in ${companyName}`,
+  directoryClient: 'Client',
+  directoryRelationship: 'Active Company relationship',
+  directoryActions: 'Actions',
+  resultsShown: (count: number) =>
+    `${count} ${count === 1 ? 'Client' : 'Clients'} shown`,
+  workspaceSearchHint:
+    'Search by name. Results may include Clients not yet linked to this Company.',
+  companySearchHint: 'Search by name among the active Company’s Clients.',
+  searchLimitHint: 'Search returns a limited set of matching Clients.',
+  showCompanyClients: 'Back to Company Clients',
+  createRetry:
+    'The Client creation could not be confirmed. Retry the same details safely.',
+  created: 'Client created and linked to the active Company.',
+  addingToCompany: (companyName: string) => `Adding to ${companyName}…`,
   description:
     'Create, view and correct the approved shared Client dossier for the active Company.',
   displayNameLabel: 'Client display name',
@@ -27,6 +47,8 @@ export const clientWorkspaceCopy = {
   searching: 'Searching…',
   searchRequired: 'Enter a Client name to search.',
   noSearchResults: 'No shared Client matches this search.',
+  notYetLinkedToCompany: (companyName: string) =>
+    `Not yet linked to ${companyName}`,
   notAvailableInCompany: 'This Client is not available in the active Company.',
   searchResultsTitle: 'Search results',
   clientId: (id: string) => `Client ID: ${id}`,

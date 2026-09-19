@@ -1,6 +1,7 @@
 import {
   type FormEvent,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -26,12 +27,10 @@ import {
   type ClientContactDraft,
 } from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
-
-interface ClientAccountView {
-  id: string;
-  displayName: string;
-  relatedToActiveCompany: boolean;
-}
+import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { ClientDirectory, type ClientAccountView } from './ClientDirectory';
+import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
+import './client-directory.css';
 
 type ListState =
   | { status: 'loading' }
@@ -39,7 +38,7 @@ type ListState =
   | { status: 'forbidden' | 'error' };
 
 type CreateState =
-  | { status: 'idle' | 'submitting' }
+  | { status: 'idle' | 'submitting' | 'success' }
   | {
       status: 'validation';
       message: string;
@@ -67,6 +66,13 @@ export function ClientWorkspace({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const registrationTrigger = useRef<HTMLButtonElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (isPrisme && registrationOpen) nameInput.current?.focus();
+  }, [isPrisme, registrationOpen]);
   const [displayName, setDisplayName] = useState('');
   const [taxId, setTaxId] = useState('');
   const [address, setAddress] = useState('');
@@ -295,7 +301,7 @@ export function ClientWorkspace({
         setGeneralEmail('');
         setContacts([]);
         setBusinessActivity('');
-        setCreateState({ status: 'idle' });
+        setCreateState({ status: 'success' });
         void onActivityRecorded();
         await loadClients(activeCompany.id);
       },
@@ -384,14 +390,16 @@ export function ClientWorkspace({
   if (!canReadClients) {
     return (
       <section className="client-workspace">
-        <p role="alert">{copy.permissionDenied}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.permissionDenied}
+        </ClientDirectoryFeedback>
       </section>
     );
   }
   if (!activeCompany) {
     return (
       <section className="client-workspace">
-        <p>{copy.missingCompany}</p>
+        <ClientDirectoryFeedback>{copy.missingCompany}</ClientDirectoryFeedback>
       </section>
     );
   }
@@ -402,98 +410,342 @@ export function ClientWorkspace({
       className="client-workspace"
       aria-labelledby="client-workspace-title"
     >
-      <div>
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 id="client-workspace-title">{copy.title}</h2>
-        <p>{copy.description}</p>
+      <div className="client-directory-heading">
+        <div className={isPrisme ? 'client-directory-context' : undefined}>
+          <p className="eyebrow">{copy.eyebrow}</p>
+          <h2 id="client-workspace-title">{copy.title}</h2>
+          <p>
+            {isPrisme
+              ? copy.directoryCompany(activeCompany.displayName)
+              : copy.description}
+          </p>
+        </div>
+        {isPrisme && canCreateClients && (
+          <button
+            ref={registrationTrigger}
+            type="button"
+            aria-expanded={registrationOpen}
+            aria-controls="client-registration"
+            onClick={() => {
+              setRegistrationOpen((open) => !open);
+            }}
+          >
+            {copy.newClient}
+          </button>
+        )}
       </div>
       {canCreateClients && (
-        <form onSubmit={(event) => void createClient(event)} noValidate>
-          <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
-          <div>
-            <input
-              id="client-display-name"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              aria-invalid={
-                createState.status === 'validation' &&
-                createState.field === 'displayName'
-              }
-              aria-describedby={
-                createState.status === 'validation' &&
-                createState.field === 'displayName'
-                  ? 'client-create-validation'
-                  : undefined
-              }
-            />
-          </div>
-          {canCreateEnrichedClients && (
-            <div className="client-dossier-fields">
-              <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
-              <input
-                id="client-tax-id"
-                value={taxId}
-                onChange={(event) => setTaxId(event.target.value)}
-              />
-              <label htmlFor="client-address">{copy.addressLabel}</label>
-              <input
-                id="client-address"
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-              />
-              <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
-              <input
-                id="client-telephone"
-                value={telephone}
-                onChange={(event) => setTelephone(event.target.value)}
-              />
-              <label htmlFor="client-general-email">
-                {copy.generalEmailLabel}
-              </label>
-              <input
-                id="client-general-email"
-                type="email"
-                value={generalEmail}
-                onChange={(event) => setGeneralEmail(event.target.value)}
-              />
-              <label htmlFor="client-business-activity">
-                {copy.businessActivityLabel}
-              </label>
-              <input
-                id="client-business-activity"
-                value={businessActivity}
-                onChange={(event) => setBusinessActivity(event.target.value)}
-              />
-              <ClientContactEditor
-                contacts={contacts}
-                idPrefix="client-create-contact"
-                invalid={
-                  createState.status === 'validation' &&
-                  createState.field === 'contacts'
-                }
-                errorId="client-create-validation"
-                onChange={setContacts}
-              />
+        <div
+          id="client-registration"
+          className="client-registration"
+          hidden={isPrisme && !registrationOpen}
+        >
+          {isPrisme && (
+            <div className="client-registration-heading">
+              <div>
+                <h3>{copy.registrationTitle}</h3>
+                <p>{copy.registrationHint}</p>
+              </div>
+              <button
+                type="button"
+                className="client-secondary-action"
+                onClick={() => {
+                  setRegistrationOpen(false);
+                  registrationTrigger.current?.focus();
+                }}
+              >
+                {copy.closeRegistration}
+              </button>
             </div>
           )}
-          <button type="submit" disabled={createState.status === 'submitting'}>
-            {createState.status === 'submitting' ? copy.creating : copy.create}
-          </button>
-        </form>
+          <form onSubmit={(event) => void createClient(event)} noValidate>
+            <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
+            <div>
+              <input
+                id="client-display-name"
+                ref={nameInput}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                aria-invalid={
+                  createState.status === 'validation' &&
+                  createState.field === 'displayName'
+                }
+                aria-describedby={
+                  createState.status === 'validation' &&
+                  createState.field === 'displayName'
+                    ? 'client-create-validation'
+                    : undefined
+                }
+              />
+            </div>
+            {canCreateEnrichedClients && (
+              <div className="client-dossier-fields">
+                <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
+                <input
+                  id="client-tax-id"
+                  value={taxId}
+                  onChange={(event) => setTaxId(event.target.value)}
+                />
+                <label htmlFor="client-address">{copy.addressLabel}</label>
+                <input
+                  id="client-address"
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                />
+                <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
+                <input
+                  id="client-telephone"
+                  value={telephone}
+                  onChange={(event) => setTelephone(event.target.value)}
+                />
+                <label htmlFor="client-general-email">
+                  {copy.generalEmailLabel}
+                </label>
+                <input
+                  id="client-general-email"
+                  type="email"
+                  value={generalEmail}
+                  onChange={(event) => setGeneralEmail(event.target.value)}
+                />
+                <label htmlFor="client-business-activity">
+                  {copy.businessActivityLabel}
+                </label>
+                <input
+                  id="client-business-activity"
+                  value={businessActivity}
+                  onChange={(event) => setBusinessActivity(event.target.value)}
+                />
+                <ClientContactEditor
+                  contacts={contacts}
+                  idPrefix="client-create-contact"
+                  invalid={
+                    createState.status === 'validation' &&
+                    createState.field === 'contacts'
+                  }
+                  errorId="client-create-validation"
+                  onChange={setContacts}
+                />
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={createState.status === 'submitting'}
+            >
+              {createState.status === 'submitting'
+                ? copy.creating
+                : copy.create}
+            </button>
+          </form>
+        </div>
+      )}
+      {createState.status === 'submitting' && (
+        <ClientDirectoryFeedback role="status" tone="pending">
+          {copy.creating}
+        </ClientDirectoryFeedback>
+      )}
+      {createState.status === 'success' && (
+        <ClientDirectoryFeedback role="status" tone="success">
+          {copy.created}
+        </ClientDirectoryFeedback>
       )}
       {createState.status === 'validation' && (
-        <p id="client-create-validation" role="alert">
+        <ClientDirectoryFeedback
+          id="client-create-validation"
+          role="alert"
+          tone="error"
+        >
           {createState.message}
-        </p>
+        </ClientDirectoryFeedback>
       )}
       {createState.status === 'forbidden' && (
-        <p role="alert">{copy.permissionDenied}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.permissionDenied}
+        </ClientDirectoryFeedback>
       )}
       {createState.status === 'error' && (
-        <p role="alert">{copy.retryableError}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {isPrisme ? copy.createRetry : copy.retryableError}
+        </ClientDirectoryFeedback>
       )}
       {createState.status === 'possibleDuplicate' && (
-        <p role="alert">{copy.possibleDuplicate}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.possibleDuplicate}
+        </ClientDirectoryFeedback>
+      )}
+      <form
+        className="client-directory-search"
+        onSubmit={(event) => void searchClients(event)}
+        noValidate
+      >
+        <label htmlFor="client-search">{copy.searchLabel}</label>
+        <div>
+          <input
+            id="client-search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            aria-invalid={searchState.status === 'validation'}
+            aria-describedby={
+              searchState.status === 'validation'
+                ? 'client-search-validation'
+                : isPrisme
+                  ? 'client-search-hint'
+                  : undefined
+            }
+          />
+          <button
+            type="submit"
+            disabled={
+              searchState.status === 'submitting' ||
+              attachingClientId !== undefined
+            }
+          >
+            {searchState.status === 'submitting' ? copy.searching : copy.search}
+          </button>
+        </div>
+        {isPrisme && (
+          <p id="client-search-hint">
+            {canAttachClients
+              ? copy.workspaceSearchHint
+              : copy.companySearchHint}{' '}
+            {copy.searchLimitHint}
+          </p>
+        )}
+      </form>
+      {isPrisme && searchState.status !== 'idle' && (
+        <button
+          className="client-secondary-action client-directory-return"
+          type="button"
+          disabled={attachingClientId !== undefined}
+          onClick={() => {
+            pendingSearch.current?.abort();
+            setSearchState({ status: 'idle' });
+            setSearchQuery('');
+          }}
+        >
+          {copy.showCompanyClients}
+        </button>
+      )}
+      {searchState.status === 'submitting' && (
+        <ClientDirectoryFeedback role="status" tone="pending">
+          {copy.searching}
+        </ClientDirectoryFeedback>
+      )}
+      {searchState.status === 'validation' && (
+        <ClientDirectoryFeedback
+          id="client-search-validation"
+          role="alert"
+          tone="error"
+        >
+          {copy.searchRequired}
+        </ClientDirectoryFeedback>
+      )}
+      {searchState.status === 'forbidden' && (
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.permissionDenied}
+        </ClientDirectoryFeedback>
+      )}
+      {searchState.status === 'error' && (
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.retryableError}
+        </ClientDirectoryFeedback>
+      )}
+      {searchState.status === 'ready' && searchState.clients.length === 0 && (
+        <ClientDirectoryFeedback>
+          {copy.noSearchResults}
+        </ClientDirectoryFeedback>
+      )}
+      {searchState.status === 'ready' && searchState.clients.length > 0 && (
+        <section aria-labelledby="client-search-results-title">
+          <h3 id="client-search-results-title">{copy.searchResultsTitle}</h3>
+          {isPrisme ? (
+            <ClientDirectory
+              clients={searchState.clients}
+              companyName={activeCompany.displayName}
+              onOpenDossier={
+                canReadClientDossiers ? setSelectedClientId : undefined
+              }
+              onAttach={
+                canAttachClients ? (id) => void attachClient(id) : undefined
+              }
+              attachingClientId={attachingClientId}
+            />
+          ) : (
+            <ol className="client-search-results">
+              {searchState.clients.map((client) => (
+                <li key={client.id}>
+                  <h4>{client.displayName}</h4>
+                  <p>{copy.clientId(client.id)}</p>
+                  {client.relatedToActiveCompany ? (
+                    <p>{copy.availableInCompany(activeCompany.displayName)}</p>
+                  ) : canAttachClients ? (
+                    <button
+                      type="button"
+                      disabled={attachingClientId !== undefined}
+                      onClick={() => void attachClient(client.id)}
+                    >
+                      {copy.addToCompany(activeCompany.displayName)}
+                    </button>
+                  ) : (
+                    <p>{copy.notAvailableInCompany}</p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
+      {(!isPrisme || searchState.status === 'idle') && (
+        <>
+          {listState.status === 'loading' && (
+            <ClientDirectoryFeedback role="status" tone="pending">
+              {copy.loading}
+            </ClientDirectoryFeedback>
+          )}
+          {listState.status === 'forbidden' && (
+            <ClientDirectoryFeedback role="alert" tone="error">
+              {copy.permissionDenied}
+            </ClientDirectoryFeedback>
+          )}
+          {listState.status === 'error' && (
+            <ClientDirectoryFeedback role="alert" tone="error">
+              {copy.retryableError}
+            </ClientDirectoryFeedback>
+          )}
+          {listState.status === 'ready' && listState.clients.length === 0 && (
+            <ClientDirectoryFeedback>
+              {copy.empty(activeCompany.displayName)}
+            </ClientDirectoryFeedback>
+          )}
+          {listState.status === 'ready' &&
+            listState.clients.length > 0 &&
+            (isPrisme ? (
+              <ClientDirectory
+                clients={listState.clients}
+                companyName={activeCompany.displayName}
+                onOpenDossier={
+                  canReadClientDossiers ? setSelectedClientId : undefined
+                }
+                attachingClientId={attachingClientId}
+              />
+            ) : (
+              <ol className="client-list">
+                {listState.clients.map((client) => (
+                  <li key={client.id}>
+                    <h3>{client.displayName}</h3>
+                    <p>{copy.clientId(client.id)}</p>
+                    {canReadClientDossiers && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClientId(client.id)}
+                      >
+                        {copy.openDossier}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            ))}
+        </>
       )}
       {canResolveDuplicateClients && (
         <ClientDuplicateReviewPanel
@@ -508,92 +760,6 @@ export function ClientWorkspace({
           onActivityRecorded={onActivityRecorded}
           onClientsChanged={() => loadClients(activeCompany.id)}
         />
-      )}
-      <form onSubmit={(event) => void searchClients(event)} noValidate>
-        <label htmlFor="client-search">{copy.searchLabel}</label>
-        <div>
-          <input
-            id="client-search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            aria-invalid={searchState.status === 'validation'}
-          />
-          <button
-            type="submit"
-            disabled={
-              searchState.status === 'submitting' ||
-              attachingClientId !== undefined
-            }
-          >
-            {searchState.status === 'submitting' ? copy.searching : copy.search}
-          </button>
-        </div>
-      </form>
-      {searchState.status === 'validation' && (
-        <p role="alert">{copy.searchRequired}</p>
-      )}
-      {searchState.status === 'forbidden' && (
-        <p role="alert">{copy.permissionDenied}</p>
-      )}
-      {searchState.status === 'error' && (
-        <p role="alert">{copy.retryableError}</p>
-      )}
-      {searchState.status === 'ready' && searchState.clients.length === 0 && (
-        <p>{copy.noSearchResults}</p>
-      )}
-      {searchState.status === 'ready' && searchState.clients.length > 0 && (
-        <section aria-labelledby="client-search-results-title">
-          <h3 id="client-search-results-title">{copy.searchResultsTitle}</h3>
-          <ol className="client-search-results">
-            {searchState.clients.map((client) => (
-              <li key={client.id}>
-                <h4>{client.displayName}</h4>
-                <p>{copy.clientId(client.id)}</p>
-                {client.relatedToActiveCompany ? (
-                  <p>{copy.availableInCompany(activeCompany.displayName)}</p>
-                ) : canAttachClients ? (
-                  <button
-                    type="button"
-                    disabled={attachingClientId !== undefined}
-                    onClick={() => void attachClient(client.id)}
-                  >
-                    {copy.addToCompany(activeCompany.displayName)}
-                  </button>
-                ) : (
-                  <p>{copy.notAvailableInCompany}</p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-      {listState.status === 'loading' && <p role="status">{copy.loading}</p>}
-      {listState.status === 'forbidden' && (
-        <p role="alert">{copy.permissionDenied}</p>
-      )}
-      {listState.status === 'error' && (
-        <p role="alert">{copy.retryableError}</p>
-      )}
-      {listState.status === 'ready' && listState.clients.length === 0 && (
-        <p>{copy.empty(activeCompany.displayName)}</p>
-      )}
-      {listState.status === 'ready' && listState.clients.length > 0 && (
-        <ol className="client-list">
-          {listState.clients.map((client) => (
-            <li key={client.id}>
-              <h3>{client.displayName}</h3>
-              <p>{copy.clientId(client.id)}</p>
-              {canReadClientDossiers && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedClientId(client.id)}
-                >
-                  {copy.openDossier}
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
       )}
       {canReadClientDossiers && (
         <ClientDossierPanel
