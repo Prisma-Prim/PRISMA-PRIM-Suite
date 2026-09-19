@@ -996,11 +996,18 @@ describe.skipIf(!databaseUrl)(
       const before = await persistence();
       expect(await list()).toEqual({
         mutable: false,
-        documents: [{ document, revision: 1 }],
+        documents: [
+          { document: { ...document, correction: 'read-only' }, revision: 1 },
+        ],
       });
       expect(await list(true)).toEqual({
         mutable: false,
-        documents: [{ document: unlinked, revision: 0 }],
+        documents: [
+          {
+            document: { ...unlinked, correction: 'read-only' },
+            revision: 0,
+          },
+        ],
       });
       expect((await mutate('unlink', 1)).status).toBe(404);
       expect(
