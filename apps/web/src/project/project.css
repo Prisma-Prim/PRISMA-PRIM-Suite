@@ -1,0 +1,40 @@
+.project-workspace {
+  display: grid;
+  gap: 1rem;
+  max-width: 64rem;
+  min-width: 0;
+}
+.project-workspace form {
+  display: grid;
+  gap: 1rem;
+  max-width: 36rem;
+}
+.project-workspace label {
+  display: grid;
+  gap: 0.5rem;
+}
+.project-workspace input,
+.project-workspace select {
+  padding: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.project-workspace button {
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.project-workspace article,
+.project-warning {
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.project-workspace ul {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+}

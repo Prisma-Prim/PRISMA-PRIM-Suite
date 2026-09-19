@@ -45,6 +45,9 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_membership.suspended'
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
+    | 'project.created'
+    | 'company_project_assignment.granted'
+    | 'company_project_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -56,6 +59,7 @@ export interface OrdinaryActivityLogEvent {
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
+    | { type: 'project'; projectId: string; companyId: string }
     | { type: 'workspace_invitation'; invitationId: string }
     | {
         type: 'internal_user';
@@ -96,7 +100,10 @@ export interface OrdinaryActivityLogEvent {
   metadata:
     | { identityProvider: string }
     | {
-        bundle: 'Company Context Access' | 'Company Director Client Access';
+        bundle:
+          | 'Company Context Access'
+          | 'Company Director Client Access'
+          | 'Company Project Access';
       }
     | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;

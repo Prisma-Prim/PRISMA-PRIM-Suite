@@ -26,6 +26,8 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  COMPANY_PROJECT_ACCESS_BUNDLE,
+  COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
@@ -44,6 +46,7 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 type BundleDefinition = {
   value: Bundle;
   label:
+    | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
   permissionSetVersion: CompanyDirectorClientPermissionSetVersion | null;
@@ -59,7 +62,13 @@ const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
   label: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+const PROJECT_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROJECT_ACCESS_BUNDLE,
+  label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
 ] as const;
@@ -209,6 +218,36 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  async grantProjectAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PROJECT_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeProjectAccess(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      PROJECT_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
   async revoke(
     actor: ActorContext,
     workspaceMembershipIdValue: unknown,
@@ -319,13 +358,17 @@ export class CompanyContextAssignmentService {
         await this.accountability.record({
           actor,
           action:
-            bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+            bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
               ? operation === 'grant'
-                ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-                : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
-              : operation === 'grant'
-                ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
-                : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
+                ? 'company_project_assignment.granted'
+                : 'company_project_assignment.revoked'
+              : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
+                ? operation === 'grant'
+                  ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+                  : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
+                : operation === 'grant'
+                  ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+                  : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -585,6 +628,15 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_PROJECT_ACCESS_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Project assignment version.');
+      return {
+        ...base,
+        bundle: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+
     case COMPANY_CONTEXT_ACCESS_BUNDLE:
       return {
         ...base,

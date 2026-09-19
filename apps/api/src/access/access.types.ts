@@ -20,6 +20,7 @@ export interface ActiveCompanyContext {
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];
+  projectPermissions?: Array<'project.read' | 'project.create'>;
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }

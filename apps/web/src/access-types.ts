@@ -15,6 +15,7 @@ export interface ActorContext {
   activeCompany?: {
     id: string;
     displayName: string;
+    projectPermissions?: Array<'project.read' | 'project.create'>;
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

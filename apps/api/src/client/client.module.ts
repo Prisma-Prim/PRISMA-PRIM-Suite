@@ -1,3 +1,4 @@
+import { ClientOperationalReferenceService } from './client-operational-reference.service.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
@@ -11,12 +12,18 @@ import { ClientUnionService } from './client-union.service.js';
 @Module({
   imports: [AccessModule, AccountabilityModule, DatabaseModule],
   providers: [
+    ClientOperationalReferenceService,
     ClientIdentifierIndex,
     ClientUnionService,
     ClientDossierService,
     ClientDuplicateReviewService,
     ClientService,
   ],
-  exports: [ClientDuplicateReviewService, ClientService, ClientUnionService],
+  exports: [
+    ClientOperationalReferenceService,
+    ClientDuplicateReviewService,
+    ClientService,
+    ClientUnionService,
+  ],
 })
 export class ClientModule {}

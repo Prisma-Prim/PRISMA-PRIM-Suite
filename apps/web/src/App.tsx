@@ -1,3 +1,5 @@
+import { ProjectWorkspace } from './project/ProjectWorkspace';
+import { projectCopy } from './project/project.copy';
 import {
   ApplicationContentSurface,
   ApplicationShell,
@@ -78,6 +80,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onCompanyContextRejected={rejectCompanyContext}
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
+  if (
+    access.actor.activeCompany?.projectPermissions?.includes('project.read') &&
+    canAccessClients
+  )
+    sections.push({
+      id: 'projects',
+      label: projectCopy.title,
+      description: projectCopy.navDescription,
+      content: (
+        <ProjectWorkspace
+          key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+          actor={access.actor}
+          identity={identity}
           onActivityRecorded={refreshActivityLog}
         />
       ),
@@ -218,6 +237,7 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
 function activityDescription(event: ActivityLogEvent): string {
   const actionLabels: Record<ActivityLogEvent['action'], string> = {
     'internal_user.provisioned': 'was provisioned',
+    'project.created': projectCopy.activityAction,
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
@@ -232,6 +252,8 @@ function activityDescription(event: ActivityLogEvent): string {
 
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
+    case 'project':
+      return event.target.projectId;
     case 'workspace_invitation':
       return event.target.invitationId;
     case 'client_union_operation':

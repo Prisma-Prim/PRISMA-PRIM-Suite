@@ -1,10 +1,12 @@
 import type {
+  COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from './company-permissions.js';
 import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
+  | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
 
@@ -16,6 +18,10 @@ interface CompanyContextAssignmentRecordBase {
 }
 
 export type CompanyContextAssignmentRecord =
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL;
+      permissionSetVersion: 'v1';
+    })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL;
       permissionSetVersion: null;

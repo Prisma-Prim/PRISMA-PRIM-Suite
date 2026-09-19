@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from 'react';
 import { FiberMotion } from '../fiber/FiberMotion';
 import {
+  FolderKanban,
   Activity,
   ArrowRight,
   Building2,
@@ -30,6 +31,7 @@ export function SectionIcon({
 }) {
   const icons = {
     overview: LayoutGrid,
+    projects: FolderKanban,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,

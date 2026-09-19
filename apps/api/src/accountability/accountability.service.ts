@@ -3,6 +3,8 @@ import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  projectCreationEvents,
+  projects,
   activityLogEvents,
   clientAccounts,
   clientCompanyRelationships,
@@ -18,6 +20,7 @@ import type {
   ActivityLogPage,
   CanonicalActivityEvent,
   ClientUnionActivityEvent,
+  ProjectCreatedActivityEvent,
 } from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
@@ -25,6 +28,86 @@ const INITIAL_PAGE_SIZE = 50;
 @Injectable()
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordProjectCreated(input: {
+    actor: ActorContext;
+    projectId: string;
+    companyId: string;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(projectCreationEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      projectId: input.projectId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+    });
+  }
+
+  private async projectEvents(
+    actor: ActorContext,
+  ): Promise<ProjectCreatedActivityEvent[]> {
+    if (
+      !actor.activeCompany?.projectPermissions?.includes('project.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        event: projectCreationEvents,
+        actorName: internalUsers.displayName,
+      })
+      .from(projectCreationEvents)
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.workspaceId, projectCreationEvents.workspaceId),
+          eq(projects.id, projectCreationEvents.projectId),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, projectCreationEvents.actorInternalUserId),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            projects.clientAccountId,
+          ),
+          eq(clientCompanyRelationships.companyId, projects.companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(projectCreationEvents.workspaceId, actor.workspaceId),
+          eq(projectCreationEvents.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(projectCreationEvents.occurredAt),
+        desc(projectCreationEvents.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map(({ event, actorName }) => ({
+      id: event.id,
+      action: 'project.created',
+      occurredAt: event.occurredAt.toISOString(),
+      actor: {
+        internalUserId: event.actorInternalUserId,
+        displayName: actorName,
+      },
+      target: {
+        type: 'project',
+        projectId: event.projectId,
+        companyId: event.companyId,
+      },
+      metadata: {},
+    }));
+  }
 
   async recordClientUnion(input: {
     actor: ActorContext;
@@ -408,6 +491,7 @@ export class AccountabilityService {
           metadata: event.metadata,
         })),
         ...(await this.clientUnionEvents(actor)),
+        ...(await this.projectEvents(actor)),
       ],
     };
   }
@@ -458,6 +542,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
+    case 'company_project_assignment.granted':
+    case 'company_project_assignment.revoked':
     case 'company_context_assignment.granted':
     case 'company_context_assignment.revoked':
     case 'company_director_client_assignment.granted':
