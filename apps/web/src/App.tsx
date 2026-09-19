@@ -1,8 +1,10 @@
 import {
   ApplicationContentSurface,
   ApplicationShell,
+  type ApplicationSection,
 } from './production-shell/ApplicationShell';
 import { useState } from 'react';
+import { prismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { WorkspaceInvitations } from './access/WorkspaceInvitations';
@@ -63,15 +65,92 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
       true;
 
+  const sections: ApplicationSection[] = [];
+  if (canAccessClients)
+    sections.push({
+      id: 'clients',
+      ...prismeCopy.sections.clients,
+      content: (
+        <ClientWorkspace
+          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${access.actor.activeCompany?.clientPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany?.clientPermissionSetVersion ?? 'no-version'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
+  if (access.actor.workspacePermissions.includes('company.assignment.manage'))
+    sections.push({
+      id: 'access',
+      ...prismeCopy.sections.access,
+      content: (
+        <CompanyContextAccess
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+          onClientAuthorityChanged={() =>
+            setClientAuthorityGeneration((generation) => generation + 1)
+          }
+        />
+      ),
+    });
+  if (access.actor.workspacePermissions.includes('company.manage'))
+    sections.push({
+      id: 'companies',
+      ...prismeCopy.sections.companies,
+      content: (
+        <CompanyRegistration
+          key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onCompanyRegistered={includeCompany}
+        />
+      ),
+    });
+  sections.push({
+    id: 'activity',
+    ...prismeCopy.sections.activity,
+    content: <ActivityLog state={access.activityLog} />,
+  });
+  if (access.actor.workspacePermissions.includes('member.invite'))
+    sections.push({
+      id: 'invitations',
+      ...prismeCopy.sections.invitations,
+      content: (
+        <WorkspaceInvitations
+          key={`invitations:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
+
   return (
     <ApplicationShell
-      activeHref="/"
-      navigationItems={[
-        { href: '/', label: 'Home' },
-        ...(canAccessClients
-          ? [{ href: '#clients', label: clientWorkspaceCopy.navigationLabel }]
-          : []),
-      ]}
+      context={{
+        actorName: access.actor.displayName,
+        workspaceName: access.actor.workspaceName,
+        companyName: access.actor.activeCompany?.displayName,
+      }}
+      sections={sections}
+      companyContext={
+        <CompanyContextSelector
+          actor={access.actor}
+          state={access.companyContext}
+          onSelect={selectCompany}
+        />
+      }
       userArea={
         <span>
           <strong>{access.actor.displayName}</strong>
@@ -90,62 +169,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           they become available.
         </p>
       </ApplicationContentSurface>
-      <CompanyContextSelector
-        actor={access.actor}
-        state={access.companyContext}
-        onSelect={selectCompany}
-      />
-      {canAccessClients && (
-        <ClientWorkspace
-          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${access.actor.activeCompany?.clientPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany?.clientPermissionSetVersion ?? 'no-version'}`}
-          actor={access.actor}
-          identity={identity}
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onActivityRecorded={refreshActivityLog}
-        />
-      )}
-      {access.actor.workspacePermissions.includes(
-        'company.assignment.manage',
-      ) && (
-        <CompanyContextAccess
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onActivityRecorded={refreshActivityLog}
-          onClientAuthorityChanged={() =>
-            setClientAuthorityGeneration((generation) => generation + 1)
-          }
-        />
-      )}
-      {access.actor.workspacePermissions.includes('company.manage') && (
-        <CompanyRegistration
-          key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
-          actor={access.actor}
-          identity={identity}
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onCompanyRegistered={includeCompany}
-        />
-      )}
-      <ActivityLog state={access.activityLog} />
-      {access.actor.workspacePermissions.includes('member.invite') && (
-        <WorkspaceInvitations
-          key={`invitations:${access.sessionGeneration}`}
-          actor={access.actor}
-          identity={identity}
-          onActivityRecorded={refreshActivityLog}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      )}
     </ApplicationShell>
   );
 }
-
 function ActivityLog({ state }: { state: ActivityLogState }) {
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">

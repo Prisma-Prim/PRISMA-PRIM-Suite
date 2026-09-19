@@ -1,0 +1,84 @@
+.fiber-motion,
+.fiber-canvas-host,
+.fiber-canvas-host canvas,
+.fiber-fallback,
+.fiber-fallback img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.fiber-motion {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.fiber-fallback img {
+  object-fit: cover;
+}
+
+.fiber-canvas-host {
+  z-index: 1;
+}
+
+.fiber-motion[data-motion-state='animated'] .fiber-fallback,
+.fiber-motion[data-motion-state='still'] .fiber-fallback {
+  visibility: hidden;
+}
+
+.fiber-motion .fiber-motion-control {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  right: 15px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #e8e2f8;
+  border-radius: 7px;
+  color: #61587d;
+  background: #ffffffd9;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.fiber-motion-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fiber-motion-control:disabled {
+  cursor: default;
+}
+
+.prisme-hero::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    #fff 0%,
+    #fffffff5 37%,
+    #ffffff78 57%,
+    transparent 76%
+  );
+}
+
+@media (max-width: 700px) {
+  .prisme-hero::after {
+    background: linear-gradient(
+      90deg,
+      #fff 0%,
+      #fffffffa 67%,
+      #ffffffeb 80%,
+      #ffffff30 100%
+    );
+  }
+}

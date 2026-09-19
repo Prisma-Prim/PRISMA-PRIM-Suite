@@ -1,0 +1,51 @@
+export const prismeCopy = {
+  optIn: 'Try Prisme',
+  returnToClassic: 'Use classic frame',
+  presentation: 'Prisme & lumière',
+  home: 'Home',
+  overview: 'Overview',
+  navigation: 'Primary navigation',
+  openNavigation: 'Open navigation',
+  closeNavigation: 'Close navigation',
+  skipToContent: 'Skip to content',
+  workspace: 'Workspace',
+  company: 'Active Company',
+  noCompany: 'No active Company',
+  brandHome: 'PRISMA-PRIM Suite home',
+  brandTagline: 'Expertise, connected.',
+  greeting: (name: string) => `Hello, ${name}.`,
+  introduction: 'Your workspace, with a clearer perspective.',
+  heroEyebrow: 'Every detail. A clearer perspective.',
+  heroTitle: 'Clarity to move forward.',
+  heroDescription:
+    'Find your Clients, manage access and follow recorded activity from one workspace.',
+  capabilities: 'Your workspace',
+  capabilitiesDescription:
+    'Open an available capability to continue your work.',
+  contextTitle: 'Your current context',
+  contextDescription:
+    'Choose an available Company from the navigation to change your current context.',
+  sections: {
+    clients: {
+      label: 'Clients',
+      description: 'Find Clients and work with their shared dossiers.',
+    },
+    access: {
+      label: 'Team & access',
+      description:
+        'Manage Company access, membership suspension and session recovery.',
+    },
+    companies: {
+      label: 'Companies',
+      description: 'Register a Company in your Workspace.',
+    },
+    activity: {
+      label: 'Activity Log',
+      description: 'Read the activity available in your current context.',
+    },
+    invitations: {
+      label: 'Invitations',
+      description: 'Manage invitations to your Workspace.',
+    },
+  },
+};

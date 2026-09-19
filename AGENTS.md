@@ -10,9 +10,9 @@ While product reconciliation is active, read `docs/product/consolidated-product-
 
 When drafting, reviewing or decomposing product work, also read `docs/product/prd-index.md` and `docs/product/specification-and-ticketing-standard.md`. Treat the linked PRD as the canonical behaviour source, keep tracker issues concise, and create only vertical implementation issues whose readiness blockers are closed.
 
-The complete current Atlas Blue frontend mockup is preserved at `/ui-baseline`. Treat it as the preferred, evolving visual and interaction baseline, not as proof of implemented business behavior. Production UI may evolve from it deliberately in narrow feature slices; preserve `/ui-baseline` as the recoverable snapshot and do not silently replace synthetic interactions while implementing an unrelated issue.
+The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Preserve the Atlas Blue mockup at `/ui-baseline` as a recoverable synthetic snapshot; neither visual reference proves implemented business behavior.
 
-For product UI work, ground visual decisions in `/ui-baseline` and the assigned issue. Do not revive rejected historical directions or invent an independent visual system. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
+For product UI work under #225, ground visual decisions in its accepted reference and the assigned issue; read the [delivered frame provenance](apps/web/src/production-shell/prisme/README.md) when continuing that integration. Do not revive rejected historical directions or invent an independent visual system. The former design gate and T00 no longer block production work. Implement the assigned vertical feature issue without treating the baseline as a frozen final design or smuggling in unrequested business behaviour.
 
 ## Repository knowledge system
 

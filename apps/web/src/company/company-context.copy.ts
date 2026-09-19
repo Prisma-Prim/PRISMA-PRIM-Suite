@@ -4,7 +4,7 @@ export const companyContextCopy = {
   workspace: 'Workspace',
   activeCompany: 'Active Company',
   selectCompany: 'Select a Company',
-  chooseCompany: 'Choose an active Company',
+  chooseCompany: 'Select a Company',
   loading: 'Loading Company context…',
   noCompanies:
     'No active Companies are available. Register a Company before choosing a context.',

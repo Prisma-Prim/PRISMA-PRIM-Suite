@@ -52,6 +52,7 @@ export function CompanyContextSelector({
           <label htmlFor="active-company-context">{copy.activeCompany}</label>
           <select
             id="active-company-context"
+            title={actor.activeCompany?.displayName ?? copy.chooseCompany}
             value={actor.activeCompany?.id ?? ''}
             disabled={state.selection.status === 'pending'}
             onChange={(event) => {
