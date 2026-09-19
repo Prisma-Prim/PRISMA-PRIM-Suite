@@ -771,6 +771,7 @@ export function ClientWorkspace({
       )}
       {canResolveDuplicateClients && (
         <ClientDuplicateReviewPanel
+          key={`${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}`}
           companyContextId={activeCompany.id}
           identity={identity}
           canAttach={canAttachClients}

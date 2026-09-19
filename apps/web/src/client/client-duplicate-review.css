@@ -1,0 +1,180 @@
+.prisme-shell .client-duplicate-review {
+  padding: 0;
+  gap: 0;
+  min-width: 0;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  overflow: visible;
+}
+.prisme-shell .client-review-heading {
+  padding: 24px 28px;
+}
+.prisme-shell .client-review-heading h3,
+.prisme-shell .client-review-heading h4 {
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.prisme-shell .client-review-heading p {
+  margin-top: 7px;
+  max-width: 760px;
+  color: var(--shell-muted);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+.prisme-shell .client-duplicate-review > p {
+  margin: 0 28px 24px;
+}
+.prisme-shell .client-review-list {
+  padding: 0;
+  list-style: none;
+  gap: 0;
+}
+.prisme-shell .client-review-list > li {
+  border-top: 1px solid var(--shell-line);
+}
+.prisme-shell .client-review-list button {
+  width: 100%;
+  min-height: 56px;
+  text-align: left;
+  padding: 18px 28px;
+  border: 0;
+  border-radius: 0;
+  background: #fafbfe;
+  color: #5943bd;
+  font-weight: 550;
+}
+.prisme-shell .client-review-list button:hover:not(:disabled) {
+  background: #f2effe;
+}
+.prisme-shell .client-review-continuation {
+  justify-self: start;
+  margin: 20px 28px;
+}
+.prisme-shell .client-review-comparison {
+  min-width: 0;
+  border-top: 1px solid var(--shell-line);
+}
+.prisme-shell .client-review-comparison table {
+  margin: 0;
+  table-layout: fixed;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+}
+.prisme-shell .client-review-comparison th,
+.prisme-shell .client-review-comparison td {
+  border: 0;
+  border-top: 1px solid var(--shell-line);
+  vertical-align: top;
+  padding: 20px 24px;
+  white-space: pre-wrap;
+}
+.prisme-shell .client-review-comparison thead th:first-child {
+  width: 20%;
+}
+.prisme-shell .client-review-comparison thead th {
+  background: #fafbfe;
+  font-weight: 650;
+}
+.prisme-shell .client-review-comparison tbody th {
+  background: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--shell-muted);
+}
+.prisme-shell .client-review-comparison td + td {
+  border-left: 1px solid var(--shell-line);
+}
+.client-review-contacts dl,
+.client-review-contacts dd {
+  margin: 0;
+}
+.client-review-contacts dt {
+  font-size: 0.75rem;
+  color: var(--shell-muted);
+}
+.prisme-shell .client-review-contacts {
+  padding: 0;
+  list-style: none;
+  gap: 20px;
+}
+.prisme-shell .client-review-contacts li + li {
+  border-top: 1px solid var(--shell-line);
+  padding-top: 20px;
+}
+.prisme-shell .client-review-contacts dl {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.prisme-shell .client-review-actions {
+  display: grid;
+  gap: 14px;
+  padding: 24px 28px;
+  border-top: 1px solid var(--shell-line);
+  border-radius: 0 0 9px 9px;
+  background: #fafbfe;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+.prisme-shell .client-review-actions button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+@media (max-width: 760px) {
+  .prisme-shell .client-review-heading,
+  .prisme-shell .client-review-actions {
+    padding: 20px;
+  }
+  .prisme-shell .client-duplicate-review > p {
+    margin: 0 20px 20px;
+  }
+  .prisme-shell .client-review-list button {
+    padding: 18px 20px;
+  }
+  .prisme-shell .client-review-continuation {
+    margin: 20px;
+    max-width: calc(100% - 40px);
+    white-space: normal;
+  }
+  .prisme-shell .client-review-comparison tr {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--shell-line);
+  }
+  .prisme-shell .client-review-comparison th,
+  .prisme-shell .client-review-comparison td {
+    padding: 14px 20px;
+    border: 0;
+  }
+  .prisme-shell .client-review-comparison tbody th {
+    color: var(--shell-ink);
+    font-weight: 650;
+    background: #fafbfe;
+  }
+  .prisme-shell .client-review-comparison td + td {
+    border: 0;
+    border-top: 1px dashed var(--shell-line);
+  }
+  .prisme-shell .client-review-comparison td::before {
+    font-size: 0.7rem;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 7px;
+  }
+}
+.prisme-shell .client-review-list-error {
+  display: grid;
+  gap: 12px;
+  padding: 0 28px 24px;
+}
+.prisme-shell .client-review-list-error button {
+  justify-self: start;
+}
+@media (max-width: 760px) {
+  .prisme-shell .client-review-list-error {
+    padding: 0 20px 20px;
+  }
+}
