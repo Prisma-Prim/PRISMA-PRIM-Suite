@@ -166,15 +166,28 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
   await expect(
     union.getByText(companyB.displayName, { exact: true }),
   ).toBeVisible();
-  await captureUnion(page, testInfo, 'union-detail-authorized');
   const reversal = union.getByRole('form', { name: 'Reverse union' });
-  await reversal
-    .getByLabel('Reason for reversal')
-    .fill('Restore the separate dossiers deliberately.');
-  await reversal.getByRole('checkbox').check();
-  await reversal.getByRole('button', { name: 'Reverse union' }).click();
+  const reason = reversal.getByLabel('Reason for reversal');
+  const acknowledgement = reversal.getByRole('checkbox');
+  const reverse = reversal.getByRole('button', { name: 'Reverse union' });
+  await reverse.click();
+  await expect(reversal.getByRole('alert')).toContainText(
+    'Give a reason and confirm the complete captured Company set before reversing.',
+  );
+  await expect(reason).toHaveAttribute('aria-invalid', 'true');
+  await expect(acknowledgement).toHaveAttribute('aria-invalid', 'true');
+  expect(state.reversalCommands).toHaveLength(0);
+  await captureUnion(page, testInfo, 'union-detail-authorized');
+  await reason.fill('Restore the separate dossiers deliberately.');
+  await acknowledgement.check();
+  await reverse.click();
   await expect(reversal.getByRole('alert')).toContainText(
     'No confirmation has been received for this reversal.',
+  );
+  const fieldsetBox = await reversal.locator('fieldset').boundingBox();
+  expect(fieldsetBox).not.toBeNull();
+  expect(fieldsetBox?.width).toBeGreaterThan(
+    testInfo.project.name === 'desktop' ? 600 : 280,
   );
   expect(state.reversalCommands).toHaveLength(1);
   await captureUnion(page, testInfo, 'union-reversal-uncertain');
