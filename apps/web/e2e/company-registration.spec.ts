@@ -59,6 +59,11 @@ test('registers, reads and server-activates the first Company after an exact unc
     name: 'Provider Company',
   });
   await expect(registration).toHaveClass(/company-registration--prisme/);
+  expect(
+    await registration
+      .getByRole('heading', { name: 'Provider Company' })
+      .evaluate((element) => getComputedStyle(element).fontFamily),
+  ).toContain('Manrope');
   const submit = registration.getByRole('button', {
     name: 'Register Company',
   });
