@@ -96,6 +96,74 @@
 .task-history p {
   font-size: 0.875rem;
 }
+.prisme-shell .project-tasks--prisme {
+  margin-top: 1.2rem;
+  padding: 1.2rem;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.prisme-shell .project-tasks--prisme .task-header h4 {
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.15rem;
+}
+.prisme-shell .project-tasks--prisme .task-header > button,
+.prisme-shell .project-tasks--prisme .task-panel > button,
+.prisme-shell .project-tasks--prisme form button,
+.prisme-shell .project-tasks--prisme nav > button {
+  min-height: 36px;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  color: var(--shell-ink);
+  background: #fff;
+  cursor: pointer;
+}
+.prisme-shell .project-tasks--prisme .task-panel > button,
+.prisme-shell .project-tasks--prisme form button {
+  border-color: #6652e7;
+  color: #fff;
+  background: #6451e8;
+}
+.prisme-shell .project-tasks--prisme button:focus-visible,
+.prisme-shell .project-tasks--prisme input:focus-visible,
+.prisme-shell .project-tasks--prisme select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--shell-focus) 42%, transparent);
+  outline-offset: 2px;
+}
+.prisme-shell .project-tasks--prisme .task-list li {
+  padding: 0.85rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fff;
+}
+.prisme-shell .project-tasks--prisme .task-list button {
+  padding: 0;
+  border: 0;
+  color: var(--shell-ink);
+  background: transparent;
+}
+.prisme-shell .project-tasks--prisme .task-list button[aria-current] {
+  color: #5944c5;
+}
+.prisme-shell .project-tasks--prisme .task-panel {
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fbfcff;
+}
+.prisme-shell .project-tasks--prisme .task-panel form {
+  display: grid;
+  gap: 0.8rem;
+}
+.prisme-shell .project-tasks--prisme .task-panel input,
+.prisme-shell .project-tasks--prisme .task-panel select {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.65rem;
+  background: #fff;
+}
 @media (max-width: 650px) {
   .project-tasks {
     padding: 1rem;

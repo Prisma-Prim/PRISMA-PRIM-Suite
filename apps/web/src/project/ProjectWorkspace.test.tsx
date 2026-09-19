@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectWorkspace } from './ProjectWorkspace';
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -65,6 +66,12 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeInTheDocument();
+  const projectDetail = screen.getByRole('article', {
+    name: 'ISO preparation',
+  });
+  expect(projectDetail.firstElementChild).toBe(
+    screen.getByRole('heading', { name: 'ISO preparation' }),
+  );
   view.unmount();
   render(<ProjectWorkspace {...props} />);
   fireEvent.click(
@@ -167,4 +174,47 @@ it('reuses a stable request key after an uncertain create result', async () => {
   await screen.findByRole('heading', { name: project.title });
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
+});
+
+it('presents the existing preparatory Project detail in Prisme without changing its public controls', async () => {
+  const project = {
+    id: 'project',
+    title: 'ISO preparation',
+    status: 'preparatory',
+    companyId: 'company',
+    clientAccountId: 'client',
+    clientDisplayName: 'Synthetic Client',
+    createdAt: '2026-09-19T00:00:00.000Z',
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/api/clients')
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      if (url === '/api/projects') return Response.json([project]);
+      if (url === '/api/projects/project') return Response.json(project);
+      return new Response(null, { status: 403 });
+    }),
+  );
+  render(
+    <ApplicationPresentation value="prisme">
+      <ProjectWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+      />
+    </ApplicationPresentation>,
+  );
+  const workspace = await screen.findByRole('region', { name: 'Projects' });
+  expect(workspace).toHaveClass('project-workspace--prisme');
+  fireEvent.click(
+    within(workspace).getByRole('button', { name: project.title }),
+  );
+  expect(
+    await within(workspace).findByRole('article', { name: project.title }),
+  ).toHaveClass('project-detail-card');
+  expect(
+    await within(workspace).findByRole('region', { name: 'Tasks' }),
+  ).toHaveClass('project-tasks--prisme');
 });

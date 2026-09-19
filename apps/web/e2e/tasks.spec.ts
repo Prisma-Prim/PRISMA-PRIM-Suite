@@ -32,6 +32,7 @@ test('manages manual Tasks through the production shell with retained retry and 
   let task: TaskView | null = null;
   let superseded = false;
   let denied = false;
+  let conflict = false;
   let completionUncertain = true;
   const events: TaskEvent[] = [];
   const receipts = new Map<string, TaskView>();
@@ -72,6 +73,8 @@ test('manages manual Tasks through the production shell with retained retry and 
       const key = request.headers()['idempotency-key'];
       expect(key).toBeTruthy();
       if (!key) throw new Error('Missing request key');
+      if (conflict && path.endsWith('/complete'))
+        return route.fulfill({ status: 409 });
       if (path.endsWith('/complete')) completionKeys.push(key);
       const receipt = receipts.get(key);
       if (receipt) return route.fulfill({ json: receipt });
@@ -302,6 +305,14 @@ test('manages manual Tasks through the production shell with retained retry and 
     path: testInfo.outputPath('tasks-history.png'),
     fullPage: true,
   });
+  conflict = true;
+  await tasks.getByRole('button', { name: 'Mark done' }).click();
+  await expect(tasks.getByRole('status')).toHaveText(
+    'This Task or its permissions changed. Reload the Task before making another change.',
+  );
+  await expect(tasks.getByRole('button', { name: 'Mark done' })).toBeDisabled();
+  await tasks.getByRole('button', { name: 'Reload Task' }).click();
+  await expect(tasks.getByRole('button', { name: 'Mark done' })).toBeEnabled();
   superseded = true;
   await tasks.getByRole('button', { name: 'Reload Task' }).click();
   await expect(
