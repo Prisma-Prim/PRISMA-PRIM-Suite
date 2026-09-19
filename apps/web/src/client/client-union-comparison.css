@@ -1,0 +1,232 @@
+.prisme-shell .client-union {
+  min-width: 0;
+  padding: 24px 28px;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+}
+.prisme-shell .client-union > h3,
+.prisme-shell .client-union-review h4,
+.prisme-shell .client-union-review h5 {
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+}
+.prisme-shell .client-union > h3 {
+  font-size: 1rem;
+}
+.prisme-shell .client-union-actions {
+  gap: 10px;
+}
+.prisme-shell .client-union-actions button {
+  color: #5943bd;
+  background: #f5f2fe;
+  border: 1px solid #e5def8;
+  font-size: 0.8125rem;
+  white-space: normal;
+}
+.client-union-review {
+  min-width: 0;
+}
+.prisme-shell .client-union-review {
+  margin: 12px -28px -24px;
+  border-top: 1px solid var(--shell-line);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+.prisme-shell .client-union-review-heading {
+  padding: 24px 28px;
+}
+.prisme-shell .client-union-review-heading h4 {
+  font-size: 1rem;
+  margin: 6px 0;
+}
+.prisme-shell .client-union-review-heading > p:last-child,
+.prisme-shell .client-union-choice-hint {
+  color: var(--shell-muted);
+}
+.client-union-dossiers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.client-union-dossiers article {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--shell-line);
+  padding: 16px;
+}
+.prisme-shell .client-union-dossiers article {
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--shell-line);
+  border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .client-union-dossiers article + article {
+  border-left: 1px solid var(--shell-line);
+}
+.prisme-shell .client-union-dossiers article > header {
+  padding: 20px 28px;
+  background: #fafbfe;
+}
+.prisme-shell .client-union-dossiers h5 {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+.prisme-shell .client-union-dossiers article > header p {
+  color: var(--shell-muted);
+  margin: 6px 0 0;
+}
+.client-union-values,
+.client-union-contacts dl {
+  margin: 0;
+}
+.prisme-shell .client-union-values > div {
+  padding: 14px 28px;
+  border-top: 1px solid var(--shell-line);
+}
+.prisme-shell .client-union-review dt {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+.client-union-review dd {
+  margin: 3px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.prisme-shell .client-union-contacts {
+  border-top: 1px solid var(--shell-line);
+  padding: 20px 28px;
+}
+.client-union-contacts ol {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.prisme-shell .client-union-review .client-union-contacts li {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+.prisme-shell .client-union-contacts li + li {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--shell-line);
+}
+.prisme-shell .client-union-source-label {
+  color: #5943bd;
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+.prisme-shell .client-union-contacts dl {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.prisme-shell .client-union-scope {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--shell-line);
+}
+.client-union-scope ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+.prisme-shell .client-union-scope h5 {
+  margin: 0;
+  font-size: 0.875rem;
+}
+.prisme-shell .client-union form.client-union-confirmation {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 24px 28px;
+  gap: 18px;
+  background: #fafbfe;
+}
+.prisme-shell .client-union-confirmation fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  gap: 16px;
+}
+.prisme-shell .client-union-confirmation legend {
+  padding: 0 0 18px;
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 650;
+}
+.client-union-field-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.client-union-field-choices > div {
+  min-width: 0;
+}
+.client-union-retained-value {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.prisme-shell .client-union-retained-value {
+  padding: 10px 12px;
+  border-left: 2px solid #e5def8;
+  background: white;
+}
+.prisme-shell .client-union-retained-value span {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+.client-union-retained-value strong {
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+.prisme-shell .client-union-confirmation select,
+.prisme-shell .client-union-confirmation textarea {
+  min-height: 44px;
+  border: 1px solid #d3d9e4;
+  border-radius: 6px;
+  background: white;
+  font: inherit;
+}
+.prisme-shell .client-union-confirmation textarea {
+  min-height: 108px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.prisme-shell .client-union-confirmation [aria-invalid='true'] {
+  border-color: #b42318;
+}
+.prisme-shell .client-union-notice {
+  margin: 20px 28px;
+}
+.prisme-shell .client-union form.client-union-confirmation > button {
+  grid-column: 1;
+  justify-self: start;
+  padding: 12px 20px;
+}
+@media (max-width: 760px) {
+  .client-union-dossiers,
+  .client-union-field-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .prisme-shell .client-union {
+    padding: 20px;
+  }
+  .prisme-shell .client-union-review {
+    margin: 12px -20px -20px;
+  }
+  .prisme-shell .client-union-review-heading,
+  .prisme-shell .client-union-dossiers article > header,
+  .prisme-shell .client-union-values > div,
+  .prisme-shell .client-union-contacts,
+  .prisme-shell .client-union-scope,
+  .prisme-shell .client-union form.client-union-confirmation {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 18px 20px;
+  }
+  .prisme-shell .client-union-dossiers article + article {
+    border-left: 0;
+    border-top: 3px solid #e5def8;
+  }
+  .prisme-shell .client-union-notice {
+    margin: 18px 20px;
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -22,6 +22,11 @@ import {
 } from './client-union-contract';
 import { clientUnionCopy as copy } from './client-union.copy';
 import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { ClientUnionComparison } from './ClientUnionComparison';
+import './client-union-comparison.css';
+
+type UnionFailureFeedback = 'error' | 'confirmationUncertain';
 
 type UnionView =
   | { kind: 'idle' }
@@ -47,6 +52,7 @@ export function ClientUnionPanel({
   identity,
   canResolve,
   onChanged,
+  onConfirmed,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -56,13 +62,31 @@ export function ClientUnionPanel({
   identity: BrowserIdentity;
   canResolve: boolean;
   onChanged: (canonicalClientId?: string) => Promise<void>;
+  onConfirmed?: (canonicalClientId: string) => void;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+  const openingTrigger = useRef<Element | null>(null);
+  const receiveComparisonHeading = useCallback(
+    (heading: HTMLHeadingElement | null) => {
+      if (!heading) return;
+      const trigger = openingTrigger.current;
+      openingTrigger.current = null;
+      if (
+        isPrisme &&
+        trigger &&
+        document.activeElement === trigger &&
+        !heading.closest('[hidden]')
+      )
+        heading.focus();
+    },
+    [isPrisme],
+  );
   const [view, setView] = useState<UnionView>({ kind: 'idle' });
   const [feedback, setFeedback] = useState<
-    'idle' | 'busy' | 'error' | 'unavailable'
+    UnionFailureFeedback | 'idle' | 'busy' | 'unavailable' | 'refreshError'
   >('idle');
   const pending = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ path: string; command: RetryCommand } | undefined>(
@@ -70,12 +94,14 @@ export function ClientUnionPanel({
   );
   const callbacks = useRef({
     onChanged,
+    onConfirmed,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
   });
   callbacks.current = {
     onChanged,
+    onConfirmed,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
@@ -84,6 +110,7 @@ export function ClientUnionPanel({
   useEffect(() => {
     pending.current?.abort();
     retry.current = undefined;
+    openingTrigger.current = null;
     setView({ kind: 'idle' });
     setFeedback('idle');
     return () => pending.current?.abort();
@@ -94,11 +121,13 @@ export function ClientUnionPanel({
     parse,
     receive,
     input,
+    failureFeedback = 'error',
   }: {
     path: string;
     parse: (value: unknown) => T;
-    receive: (value: T) => Promise<void> | void;
+    receive: (value: T, signal: AbortSignal) => Promise<void> | void;
     input?: unknown;
+    failureFeedback?: UnionFailureFeedback;
   }) {
     const serializedBody =
       input === undefined ? undefined : JSON.stringify(input);
@@ -149,15 +178,15 @@ export function ClientUnionPanel({
           return;
         }
         if (result.status !== 'ok') {
-          setFeedback('error');
+          setFeedback(failureFeedback);
           return;
         }
         const parsed = parse(result.value);
         retry.current = undefined;
         setFeedback('idle');
-        await receive(parsed);
+        await receive(parsed, signal);
       },
-      onError: () => setFeedback('error'),
+      onError: () => setFeedback(failureFeedback),
     });
   }
 
@@ -178,6 +207,7 @@ export function ClientUnionPanel({
   function close() {
     pending.current?.abort();
     retry.current = undefined;
+    openingTrigger.current = null;
     setView({ kind: 'idle' });
     setFeedback('idle');
   }
@@ -189,8 +219,11 @@ export function ClientUnionPanel({
         {canResolve && clientId && (
           <button
             type="button"
-            disabled={busy}
-            onClick={() =>
+            aria-disabled={busy}
+            aria-expanded={view.kind === 'comparison'}
+            onClick={() => {
+              if (busy) return;
+              openingTrigger.current = isPrisme ? document.activeElement : null;
               void run({
                 path: `/clients/${encodeURIComponent(clientId)}/union-reviews`,
                 input: {},
@@ -201,8 +234,8 @@ export function ClientUnionPanel({
                       ? { kind: 'comparison', comparison: review }
                       : { kind: 'remediation' },
                   ),
-              })
-            }
+              });
+            }}
           >
             {copy.review}
           </button>
@@ -237,17 +270,21 @@ export function ClientUnionPanel({
       </div>
       {feedback === 'busy' && <p role="status">{copy.loading}</p>}
       {feedback === 'error' && <p role="alert">{copy.error}</p>}
+      {feedback === 'refreshError' && <p role="alert">{copy.refreshError}</p>}
       {feedback === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
       {view.kind === 'remediation' && <p role="alert">{copy.remediation}</p>}
       {view.kind === 'comparison' && (
-        <UnionComparisonForm
+        <ClientUnionComparison
           key={view.comparison.reviewReference}
           comparison={view.comparison}
           busy={busy}
+          uncertain={feedback === 'confirmationUncertain'}
+          onHeadingReady={receiveComparisonHeading}
           onConfirm={(input) =>
             run({
               path: `/client-union-reviews/${encodeURIComponent(view.comparison.reviewReference)}/confirm`,
               input,
+              failureFeedback: 'confirmationUncertain',
               parse: (value) => {
                 const row = unionObject(value);
                 if (row.outcome !== 'united')
@@ -257,9 +294,14 @@ export function ClientUnionPanel({
                   canonicalClientId: unionString(row.canonicalClientId),
                 };
               },
-              receive: async (result) => {
+              receive: async (result, signal) => {
                 setView({ kind: 'saved', reference: result.reference });
-                await callbacks.current.onChanged(result.canonicalClientId);
+                callbacks.current.onConfirmed?.(result.canonicalClientId);
+                try {
+                  await callbacks.current.onChanged(result.canonicalClientId);
+                } catch {
+                  if (!signal.aborted) setFeedback('refreshError');
+                }
               },
             })
           }
@@ -267,7 +309,7 @@ export function ClientUnionPanel({
       )}
       {view.kind === 'saved' && (
         <div>
-          <p role="status">{copy.saved}</p>
+          {!onConfirmed && <p role="status">{copy.saved}</p>}
           <button
             type="button"
             disabled={busy}
@@ -352,138 +394,6 @@ export function ClientUnionPanel({
         />
       )}
     </section>
-  );
-}
-
-function UnionComparisonForm({
-  comparison,
-  busy,
-  onConfirm,
-}: {
-  comparison: UnionComparison;
-  busy: boolean;
-  onConfirm: (value: unknown) => Promise<void>;
-}) {
-  const [canonicalClientId, setCanonical] = useState('');
-  const [fields, setFields] = useState<Record<UnionField, string>>({
-    displayName: '',
-    taxId: '',
-    address: '',
-    telephone: '',
-    generalEmail: '',
-    businessActivity: '',
-  });
-  const [reason, setReason] = useState('');
-  const [reviewed, setReviewed] = useState(false);
-  const [companiesConfirmed, setCompaniesConfirmed] = useState(false);
-  const capacityExceeded =
-    comparison.clients.reduce(
-      (count, client) => count + client.contacts.length,
-      0,
-    ) > 50;
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (
-      busy ||
-      capacityExceeded ||
-      !canonicalClientId ||
-      !reason.trim() ||
-      !reviewed ||
-      !companiesConfirmed ||
-      unionFields.some((field) => !fields[field])
-    )
-      return;
-    void onConfirm({
-      canonicalClientId,
-      fields,
-      reason,
-      reviewedDifferences: reviewed,
-      companyIds: comparison.companies.map((company) => company.id),
-    });
-  }
-  return (
-    <div>
-      <h4>{copy.compare}</h4>
-      <p>{copy.preserved}</p>
-      <Dossiers clients={comparison.clients} />
-      {capacityExceeded && <p role="alert">{copy.capacity}</p>}
-      <form
-        aria-label={copy.confirm}
-        onSubmit={submit}
-        className="client-union-form"
-      >
-        <fieldset disabled={busy || capacityExceeded}>
-          <legend>{copy.canonical}</legend>
-          <label>
-            {copy.canonical}
-            <select
-              required
-              value={canonicalClientId}
-              onChange={(event) => setCanonical(event.target.value)}
-            >
-              <option value="">{copy.choose}</option>
-              {comparison.clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          {unionFields.map((field) => (
-            <label key={field}>
-              {labels[field]}
-              <select
-                required
-                value={fields[field]}
-                onChange={(event) =>
-                  setFields({ ...fields, [field]: event.target.value })
-                }
-              >
-                <option value="">{copy.choose}</option>
-                {comparison.clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.displayName}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-          <label>
-            {copy.reason}
-            <textarea
-              required
-              maxLength={2000}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
-          <label className="client-union-check">
-            <input
-              type="checkbox"
-              checked={reviewed}
-              onChange={(event) => setReviewed(event.target.checked)}
-              required
-            />
-            {copy.reviewed}
-          </label>
-          <label className="client-union-check">
-            <input
-              type="checkbox"
-              checked={companiesConfirmed}
-              onChange={(event) => setCompaniesConfirmed(event.target.checked)}
-              required
-            />
-            {copy.confirmedCompanies}{' '}
-            {comparison.companies
-              .map((company) => company.displayName)
-              .join(', ')}
-          </label>
-        </fieldset>
-        <button type="submit" disabled={busy || capacityExceeded}>
-          {busy ? copy.saving : copy.confirm}
-        </button>
-      </form>
-    </div>
   );
 }
 

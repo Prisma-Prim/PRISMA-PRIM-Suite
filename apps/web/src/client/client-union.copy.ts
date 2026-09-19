@@ -6,6 +6,26 @@ export const clientUnionCopy = {
   noSources: 'No superseded Client dossiers are related to the active Company.',
   openCanonical: 'Open canonical Client dossier',
   compare: 'Compare the two existing Clients',
+  comparisonEyebrow: 'Saved Client dossiers',
+  source: ({ number, name }: { number: number; name: string }) =>
+    `Source ${number} \u00b7 ${name}`,
+  contactSource: ({ source, contact }: { source: number; contact: number }) =>
+    `Source ${source} \u00b7 Contact ${contact}`,
+  noContacts: 'No Contacts provided.',
+  affectedCompanies: 'Complete affected Company set',
+  contactCount: (count: number) =>
+    `Contact entries from both sources: ${count}. Maximum: 50.`,
+  retainedSource: (source: number) => `Value to retain from Source ${source}`,
+  decisions: 'Choose the retained dossier and values',
+  chooseFields:
+    'For each field, choose the saved source whose current value will be retained. Values cannot be edited here.',
+  reasonLimit: 'Required. Maximum 2,000 characters.',
+  incomplete:
+    'Choose a canonical Client and a source for every field, give a reason and confirm both acknowledgements.',
+  uncertain:
+    'No confirmation has been received. Your choices and reason are retained. Confirm again to retry this intention, or close the review to discard the local choices. Closing does not cancel a command already received by the server.',
+  refreshError:
+    'The command was confirmed, but a subsequent refresh failed. Reload the list or Activity Log to see the latest data.',
   canonical: 'Canonical Client dossier',
   choose: 'Choose a source',
   keep: 'Keep the current value from',
