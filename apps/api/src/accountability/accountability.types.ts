@@ -2,6 +2,7 @@ import type { ActorContext } from '../access/access.types.js';
 import type {
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 
@@ -75,6 +76,8 @@ export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
       action:
+        | 'company_document_registrar_assignment.granted'
+        | 'company_document_registrar_assignment.revoked'
         | 'company_project_assignment.granted'
         | 'company_project_assignment.revoked'
         | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
@@ -90,6 +93,7 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
@@ -139,6 +143,8 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
     | typeof COMPANY_REGISTERED_ACTION
+    | 'company_document_registrar_assignment.granted'
+    | 'company_document_registrar_assignment.revoked'
     | 'company_project_assignment.granted'
     | 'company_project_assignment.revoked'
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
@@ -199,6 +205,7 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL;
@@ -223,9 +230,18 @@ export interface ClientUnionActivityEvent {
   };
 }
 
+export interface DocumentRegisteredActivityEvent {
+  id: string;
+  action: 'document.registered';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: { type: 'document'; documentId: string; companyId: string };
+  metadata: Record<string, never>;
+}
 export type ActivityLogEvent =
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent
+  | DocumentRegisteredActivityEvent
   | ProjectCreatedActivityEvent;
 
 export interface ProjectCreatedActivityEvent {

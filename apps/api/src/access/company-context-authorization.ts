@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -10,6 +10,8 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  DOCUMENT_V1_PERMISSIONS,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_V1_PERMISSIONS,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
@@ -109,6 +111,88 @@ export class CompanyContextAuthorization {
       );
     const rows = lock ? await query.for('share') : await query;
     return new Set(rows.map((row) => row.companyId));
+  }
+
+  async requireDocumentAccess(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const companyId = actor.activeCompany?.id;
+    if (!companyId) throw new ForbiddenException();
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            companyRoleAssignments.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            companyRoleAssignments.workspaceMembershipId,
+          ),
+          eq(workspaceMemberships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        and(
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+          eq(internalUsers.id, actor.internalUserId),
+          eq(internalUsers.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        companies,
+        and(
+          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+          eq(companies.id, companyRoleAssignments.companyId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    const rows = lock ? await query.for('share') : await query;
+    if (rows.length === 0) throw new ForbiddenException();
+    if (!actor.workspacePermissions.includes('client.manage')) {
+      const clientQuery = this.databaseContext.connection
+        .select({ id: companyRoleAssignments.id })
+        .from(companyRoleAssignments)
+        .where(
+          and(
+            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+            eq(
+              companyRoleAssignments.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(companyRoleAssignments.companyId, companyId),
+            eq(
+              companyRoleAssignments.bundle,
+              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+            ),
+            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+            isNull(companyRoleAssignments.revokedAt),
+          ),
+        );
+      const clientRows = lock
+        ? await clientQuery.for('share')
+        : await clientQuery;
+      if (clientRows.length === 0) throw new ForbiddenException();
+    }
+    return companyId;
   }
 
   async requireProjectAccess(
@@ -269,6 +353,10 @@ export class CompanyContextAuthorization {
         company.clientPermissions = [...clientPermissions];
         company.clientPermissionAssignmentId = row.assignmentId;
         company.clientPermissionSetVersion = row.permissionSetVersion;
+      }
+      if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
+        if (row.permissionSetVersion !== 'v1') continue;
+        company.documentPermissions = [...DOCUMENT_V1_PERMISSIONS];
       }
       if (
         row.bundle === COMPANY_PROJECT_ACCESS_BUNDLE &&

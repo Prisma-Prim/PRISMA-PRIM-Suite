@@ -1,0 +1,22 @@
+export const documentsCopy = {
+  title: 'Working Documents',
+  description: 'Company-confidential questionnaire references',
+  loading: 'Loading working references…',
+  empty: 'No working references registered yet.',
+  error: 'Working references could not be loaded or saved. Please retry.',
+  denied: 'You do not have access to working Documents in this Company.',
+  client: 'Client',
+  selectClient: 'Select a Client',
+  titleLabel: 'Title',
+  purpose: 'Purpose',
+  url: 'External HTTPS link',
+  register: 'Register working reference',
+  retry: 'Retry',
+  back: 'Back to references',
+  warning:
+    'The external content is unverified and may change. This draft reference is not an official preserved original.',
+  draft: 'Draft questionnaire · Company-confidential',
+  open: 'Open external reference',
+  referenceDenied: 'You do not have permission to open this reference.',
+  activity: 'registered a working Document reference',
+} as const;
