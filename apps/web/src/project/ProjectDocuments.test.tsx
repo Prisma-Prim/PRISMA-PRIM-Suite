@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectDocuments } from './ProjectDocuments';
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -48,6 +49,46 @@ const document = {
   },
 };
 afterEach(() => vi.unstubAllGlobals());
+it('presents real Project Documents in Prisme while preserving the Classic public markup', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      Response.json({
+        mutable: true,
+        documents: [{ document, revision: 1 }],
+      }),
+    ),
+  );
+  const props = {
+    actor,
+    identity: deterministicBrowserIdentity(),
+    projectId: 'project',
+  };
+  const classic = render(<ProjectDocuments {...props} />);
+  const classicSection = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  expect(classicSection).toHaveClass('project-documents');
+  expect(classicSection).not.toHaveClass('project-documents--prisme');
+  expect(classicSection.firstElementChild).toBe(
+    within(classicSection).getByRole('heading', { name: 'Working Documents' }),
+  );
+  classic.unmount();
+
+  render(
+    <ApplicationPresentation value="prisme">
+      <ProjectDocuments {...props} />
+    </ApplicationPresentation>,
+  );
+  const section = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  expect(section).toHaveClass('project-documents--prisme');
+  expect(section.querySelector('ul')).toHaveClass('project-document-list');
+  expect(
+    within(section).getByRole('link', { name: 'Open external reference' }),
+  ).toHaveAttribute('rel', 'noopener noreferrer');
+});
 it('attaches an existing reference, retries the unchanged uncertain command, reloads, opens and removes it', async () => {
   let linked = false;
   let revision = 0;

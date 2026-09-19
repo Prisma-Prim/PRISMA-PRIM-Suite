@@ -167,6 +167,13 @@ test('registers and reopens a Company-confidential working reference', async ({
   await expect(
     page.getByText('No working references registered yet.'),
   ).toBeVisible();
+  const workspace = page.getByRole('region', { name: 'Working Documents' });
+  await expect(workspace).toHaveClass(/working-documents--prisme/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath('documents-empty.png'),
     fullPage: true,
@@ -177,9 +184,17 @@ test('registers and reopens a Company-confidential working reference', async ({
   await page
     .getByLabel('External HTTPS link')
     .fill(document.version.representation.url);
-  await page
-    .getByRole('button', { name: 'Register working reference' })
-    .click();
+  const register = page.getByRole('button', {
+    name: 'Register working reference',
+  });
+  await page.keyboard.press('Tab');
+  await expect(register).toBeFocused();
+  expect(
+    await register.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  await register.click();
   await expect(
     page.getByRole('heading', { name: document.title }),
   ).toBeVisible();
