@@ -9,6 +9,7 @@ export interface WorkingDocument {
   confidentiality: 'company-confidential';
   createdAt: string;
   workingRevision: number;
+  correction: 'allowed' | 'read-only';
   version: {
     id: string;
     status: 'draft';
@@ -42,7 +43,8 @@ export function readDocument(value: unknown): WorkingDocument {
     row.confidentiality !== 'company-confidential' ||
     version.status !== 'draft' ||
     representation.kind !== 'external-reference' ||
-    representation.verification !== 'unverified'
+    representation.verification !== 'unverified' ||
+    (row.correction !== 'allowed' && row.correction !== 'read-only')
   )
     throw new Error('Unknown Document state');
   const base = {
@@ -81,6 +83,7 @@ export function readDocument(value: unknown): WorkingDocument {
     confidentiality: row.confidentiality,
     createdAt: string(row.createdAt),
     workingRevision: positiveInteger(row.workingRevision),
+    correction: row.correction,
     version: {
       id: string(version.id),
       status: version.status,

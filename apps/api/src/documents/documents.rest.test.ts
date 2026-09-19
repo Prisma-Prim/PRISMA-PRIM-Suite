@@ -154,6 +154,7 @@ describe.skipIf(!databaseUrl)(
         type: 'questionnaire',
         confidentiality: 'company-confidential',
         workingRevision: 1,
+        correction: 'allowed',
         version: {
           status: 'draft',
           representation: {
@@ -548,9 +549,8 @@ describe.skipIf(!databaseUrl)(
       );
       const { reference } = await unionSetup(true);
       expect(
-        (await body(await request(`/documents/${text(registered.id)}`)))
-          .clientId,
-      ).toBe(clientId);
+        await body(await request(`/documents/${text(registered.id)}`)),
+      ).toMatchObject({ clientId, correction: 'read-only' });
       expect((await reverse(reference)).status).toBe(201);
       expect(
         (await body(await request(`/documents/${text(registered.id)}`)))

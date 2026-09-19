@@ -206,6 +206,7 @@ export class DocumentsService {
       createdAt: row.document.createdAt.toISOString(),
       createdByMembershipId: row.document.createdByMembershipId,
       workingRevision: row.document.workingRevision,
+      correction: client.status === 'active' ? 'allowed' : 'read-only',
       version: {
         id: row.version.id,
         status: 'draft',

@@ -17,6 +17,7 @@ test('registers and reopens a Company-confidential working reference', async ({
     confidentiality: 'company-confidential',
     createdAt: '2026-09-19T00:00:00.000Z',
     workingRevision: 1,
+    correction: 'allowed',
     version: {
       id: 'version-239',
       status: 'draft',

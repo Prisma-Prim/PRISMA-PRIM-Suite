@@ -11,6 +11,7 @@ export interface WorkingDocument {
   createdAt: string;
   createdByMembershipId: string;
   workingRevision: number;
+  correction: 'allowed' | 'read-only';
   version: {
     id: string;
     status: 'draft';

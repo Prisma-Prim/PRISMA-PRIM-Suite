@@ -43,6 +43,7 @@ const document = {
   confidentiality: 'company-confidential',
   createdAt: '2026-09-19T12:00:00.000Z',
   workingRevision: 1,
+  correction: 'allowed',
   version: {
     id: 'version',
     status: 'draft',
@@ -207,12 +208,38 @@ it('retries an uncertain correction with the exact same command', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'result is uncertain',
   );
+  const lockedTitle = screen.getByLabelText('Title');
+  expect(lockedTitle).toBeDisabled();
+  fireEvent.change(lockedTitle, {
+    target: { value: 'Changed after uncertainty' },
+  });
   fireEvent.click(
     screen.getByRole('button', { name: 'Retry same correction' }),
   );
   expect(await screen.findByText('Retried correction')).toBeInTheDocument();
   expect(patches).toHaveLength(2);
   expect(patches[0]).toEqual(patches[1]);
+});
+it('keeps a superseded original Client reference readable but correction read-only', async () => {
+  const readOnly = { ...document, correction: 'read-only' };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/clients')
+          ? []
+          : url.endsWith('/documents/document')
+            ? readOnly
+            : [readOnly],
+      ),
+    ),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  expect(await screen.findByText(document.purpose)).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Edit reference' }),
+  ).not.toBeInTheDocument();
 });
 it('requires reload after a correction revision conflict', async () => {
   let reloaded = false;

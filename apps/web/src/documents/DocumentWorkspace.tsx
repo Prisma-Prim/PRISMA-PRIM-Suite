@@ -166,7 +166,13 @@ export function DocumentWorkspace({
     }
   }
   function beginCorrection() {
-    if (!detail || detail.version.representation.access !== 'granted') return;
+    if (
+      !detail ||
+      !canCorrect ||
+      detail.correction !== 'allowed' ||
+      detail.version.representation.access !== 'granted'
+    )
+      return;
     setTitle(detail.title);
     setPurpose(detail.purpose);
     setUrl(detail.version.representation.url);
@@ -174,20 +180,27 @@ export function DocumentWorkspace({
     setCorrection('idle');
     correctionRetry.current = undefined;
   }
-  async function submitCorrection(event: FormEvent) {
+  async function submitCorrection(event: FormEvent, retryStored = false) {
     event.preventDefault();
     if (!companyId || !detail || correction === 'pending') return;
-    const payload = JSON.stringify({
-      expectedRevision: detail.workingRevision,
-      title,
-      purpose,
-      url,
-    });
     const previous = correctionRetry.current;
-    const command =
-      previous?.documentId === detail.id && previous.payload === payload
+    const command = retryStored
+      ? previous?.documentId === detail.id && correction === 'uncertain'
         ? previous
-        : { documentId: detail.id, payload, key: crypto.randomUUID() };
+        : undefined
+      : (() => {
+          const payload = JSON.stringify({
+            expectedRevision: detail.workingRevision,
+            title,
+            purpose,
+            url,
+          });
+          return previous?.documentId === detail.id &&
+            previous.payload === payload
+            ? previous
+            : { documentId: detail.id, payload, key: crypto.randomUUID() };
+        })();
+    if (!command) return;
     correctionRetry.current = command;
     pending.current?.abort();
     const request = new AbortController();
@@ -345,6 +358,9 @@ export function DocumentWorkspace({
                     <input
                       required
                       maxLength={200}
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
                       value={title}
                       onChange={(event) => setTitle(event.target.value)}
                     />
@@ -354,6 +370,9 @@ export function DocumentWorkspace({
                     <textarea
                       required
                       maxLength={2000}
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
                       value={purpose}
                       onChange={(event) => setPurpose(event.target.value)}
                     />
@@ -363,11 +382,18 @@ export function DocumentWorkspace({
                     <input
                       required
                       type="url"
+                      disabled={
+                        correction === 'pending' || correction === 'uncertain'
+                      }
                       value={url}
                       onChange={(event) => setUrl(event.target.value)}
                     />
                   </label>
-                  <button disabled={correction === 'pending'}>
+                  <button
+                    disabled={
+                      correction === 'pending' || correction === 'uncertain'
+                    }
+                  >
                     {copy.save}
                   </button>
                   <button
@@ -404,6 +430,7 @@ export function DocumentWorkspace({
               ) : null}
               {!editing &&
                 canCorrect &&
+                detail.correction === 'allowed' &&
                 detail.version.representation.access === 'granted' && (
                   <button onClick={beginCorrection}>{copy.edit}</button>
                 )}
@@ -431,7 +458,9 @@ export function DocumentWorkspace({
               {correction === 'uncertain' && (
                 <>
                   <p role="alert">{copy.uncertain}</p>
-                  <button onClick={(event) => void submitCorrection(event)}>
+                  <button
+                    onClick={(event) => void submitCorrection(event, true)}
+                  >
                     {copy.retryCorrection}
                   </button>
                 </>
