@@ -537,7 +537,7 @@
 
 .prisme-shell .activity-log-list span {
   margin-top: 5px;
-  color: var(--shell-muted);
+  color: #5b6574;
   font-size: 0.75rem;
   line-height: 1.55;
 }

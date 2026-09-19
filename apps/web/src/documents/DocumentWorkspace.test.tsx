@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
 const actor: ActorContext = {
   internalUserId: 'user',
@@ -57,6 +58,53 @@ const document = {
   },
 };
 afterEach(() => vi.unstubAllGlobals());
+it('presents real Working Documents in Prisme while preserving the Classic public markup', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/clients')
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [document],
+      ),
+    ),
+  );
+  const classic = render(
+    <DocumentWorkspace actor={actor} identity={identity} />,
+  );
+  const classicWorkspace = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  expect(classicWorkspace).toHaveClass('working-documents');
+  expect(classicWorkspace).not.toHaveClass('working-documents--prisme');
+  expect(classicWorkspace.firstElementChild).toBe(
+    within(classicWorkspace).getByRole('heading', {
+      name: 'Working Documents',
+    }),
+  );
+  classic.unmount();
+
+  render(
+    <ApplicationPresentation value="prisme">
+      <DocumentWorkspace actor={actor} identity={identity} />
+    </ApplicationPresentation>,
+  );
+  const workspace = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  expect(workspace).toHaveClass('working-documents--prisme');
+  expect(
+    within(workspace)
+      .getByRole('heading', { name: 'Working Documents' })
+      .closest('header'),
+  ).toHaveClass('working-documents-heading');
+  expect(workspace.querySelector('ul')).toHaveClass('working-document-list');
+  expect(
+    within(workspace)
+      .getByRole('button', { name: 'Register working reference' })
+      .closest('form'),
+  ).toHaveClass('working-document-registration');
+});
 it('registers and reopens an unverified Company-confidential questionnaire reference', async () => {
   let saved = false;
   vi.stubGlobal(
@@ -272,9 +320,13 @@ it('requires reload after a correction revision conflict', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'changed. Reload it',
   );
+  expect(
+    screen.queryByRole('button', { name: 'Edit reference' }),
+  ).not.toBeInTheDocument();
   reloaded = true;
   fireEvent.click(screen.getByRole('button', { name: 'Reload reference' }));
   expect(await screen.findByText('Concurrent correction')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Edit reference' })).toBeEnabled();
 });
 it('denies Client-only users without requesting Document records', async () => {
   const fetcher = vi.fn();

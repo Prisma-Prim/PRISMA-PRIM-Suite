@@ -23,7 +23,7 @@ const events = [
   {
     id: 'event-document',
     action: 'document.registered',
-    occurredAt: '2026-09-19T09:35:00.000Z',
+    occurredAt: '2026-09-19T12:35:00.000Z',
     actor: {
       internalUserId: actorContextFixture.internalUserId,
       displayName: actorContextFixture.displayName,
@@ -116,4 +116,48 @@ test('presents real Activity Log events in server order and preserves them acros
   await expect(page).toHaveURL(/frame=prisme#activity$/);
   await expect(rows).toHaveCount(events.length);
   expect(activityReads).toBe(1);
+});
+
+test('keeps the real Activity Log loading and empty states distinct in Prisme', async ({
+  page,
+}) => {
+  let releaseActivity: (() => void) | undefined;
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/access/current-actor'))
+      return route.fulfill({ json: actorContextFixture });
+    if (path.endsWith('/activity-log')) {
+      await new Promise<void>((resolve) => {
+        releaseActivity = resolve;
+      });
+      return route.fulfill({ json: { events: [] } });
+    }
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto('/?frame=prisme#activity');
+  const activity = page.getByRole('region', { name: 'Activity Log' });
+  await expect(activity.getByRole('status')).toHaveText('Loading activity…');
+  if (!releaseActivity) throw new Error('Expected the Activity Log request.');
+  releaseActivity();
+  await expect(activity).toContainText(
+    'No activity has been recorded in this workspace yet.',
+  );
+});
+
+test('keeps the real Activity Log error state distinct in Prisme', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/access/current-actor'))
+      return route.fulfill({ json: actorContextFixture });
+    if (path.endsWith('/activity-log')) return route.fulfill({ status: 503 });
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto('/?frame=prisme#activity');
+  await expect(
+    page.getByRole('region', { name: 'Activity Log' }).getByRole('alert'),
+  ).toHaveText('We could not load the Activity Log. Please try again.');
 });

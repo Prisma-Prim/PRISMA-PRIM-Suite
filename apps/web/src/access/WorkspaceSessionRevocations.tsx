@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { sessionRevocationCopy as copy } from './workspace-session-revocation.copy';
 
 type Status = keyof typeof copy.status;
@@ -26,6 +27,7 @@ export function WorkspaceSessionRevocations({
   onWorkspaceAccessRejected: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void> | void;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<State>({ kind: 'idle' });
   const pending = useRef<AbortController | undefined>(undefined);
   const canManage = actor.workspacePermissions.includes(
@@ -96,11 +98,17 @@ export function WorkspaceSessionRevocations({
 
   if (!canManage) return null;
   return (
-    <section aria-label={copy.title}>
+    <section
+      aria-label={copy.title}
+      className={
+        isPrisme ? 'session-revocations session-revocations--prisme' : undefined
+      }
+    >
       <h3>{copy.title}</h3>
       <p>{copy.description}</p>
       <button
         type="button"
+        className={isPrisme ? 'company-access-secondary-action' : undefined}
         disabled={state.kind === 'loading'}
         onClick={() => void load()}
       >
@@ -111,15 +119,21 @@ export function WorkspaceSessionRevocations({
       {state.kind === 'ready' && (
         <>
           {state.page.records.length === 0 && <p>{copy.empty}</p>}
-          <ul>
+          <ul className={isPrisme ? 'session-revocation-list' : undefined}>
             {state.page.records.map((row) => (
-              <li key={row.workspaceMembershipId}>
+              <li
+                key={row.workspaceMembershipId}
+                data-status={isPrisme ? row.status : undefined}
+              >
                 <strong>{row.displayName}</strong>
                 <p>{copy.status[row.status]}</p>
                 {(row.status === 'pending' ||
                   row.status === 'retry_required') && (
                   <button
                     type="button"
+                    className={
+                      isPrisme ? 'company-access-primary-action' : undefined
+                    }
                     onClick={() =>
                       void load(undefined, row.workspaceMembershipId)
                     }
@@ -133,6 +147,9 @@ export function WorkspaceSessionRevocations({
           {state.page.nextCursor && (
             <button
               type="button"
+              className={
+                isPrisme ? 'company-access-secondary-action' : undefined
+              }
               onClick={() => {
                 if (state.page.nextCursor) void load(state.page.nextCursor);
               }}

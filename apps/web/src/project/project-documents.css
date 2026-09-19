@@ -1,0 +1,101 @@
+.prisme-shell .project-documents--prisme {
+  min-width: 0;
+  margin-top: 1.2rem;
+  padding: 1.2rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  background: #fbfcff;
+}
+
+.prisme-shell .project-documents--prisme > h4 {
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.15rem;
+}
+
+.prisme-shell .project-documents--prisme > p:first-of-type {
+  max-width: 52rem;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .project-documents--prisme .project-document-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.prisme-shell .project-documents--prisme .project-document-list li {
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.prisme-shell .project-documents--prisme .project-document-list h5,
+.prisme-shell .project-documents--prisme .project-document-list p {
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell .project-documents--prisme button,
+.prisme-shell .project-documents--prisme a {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  color: var(--shell-ink);
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell .project-documents--prisme a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.prisme-shell .project-documents--prisme button {
+  cursor: pointer;
+}
+
+.prisme-shell .project-documents--prisme button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.prisme-shell
+  .project-workspace--prisme
+  .project-documents--prisme
+  button:focus-visible,
+.prisme-shell
+  .project-workspace--prisme
+  .project-documents--prisme
+  a:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
+.prisme-shell .project-documents--prisme > button:last-of-type,
+.prisme-shell .project-document-selector .project-document-list button {
+  border-color: #6652e7;
+  color: #fff;
+  background: #6451e8;
+}
+
+.prisme-shell .project-document-selector {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+@media (max-width: 650px) {
+  .prisme-shell .project-documents--prisme {
+    padding: 1rem;
+  }
+}

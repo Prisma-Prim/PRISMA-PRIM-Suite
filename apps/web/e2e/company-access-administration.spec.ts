@@ -18,7 +18,7 @@ const ownerActor: ActorContext = {
 
 test('administers both existing Company access bundles by member and Company name', async ({
   page,
-}) => {
+}, testInfo) => {
   let contextGranted = false;
   let directorGranted = false;
   const events: Array<Record<string, unknown>> = [];
@@ -100,45 +100,55 @@ test('administers both existing Company access bundles by member and Company nam
     },
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=prisme#access');
+  const access = page.getByRole('region', { name: 'Company access' });
+  await expect(access).toHaveClass(/company-access--prisme/);
   await expect(
     page.getByRole('heading', { name: 'Company access' }),
   ).toBeVisible();
-  await page.getByLabel('Workspace member').selectOption({
-    label: 'Mila Popescu — mila@example.test',
-  });
-  await page
-    .getByLabel('Company', { exact: true })
-    .selectOption({ label: 'BIC' });
+  await selectTargets('Company Context Access');
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
   await expect(page.getByText(memberId)).toHaveCount(0);
   await expect(page.getByText(companyId)).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 
-  await page.getByRole('button', { name: 'Grant access' }).click();
+  const grant = page.getByRole('button', { name: 'Grant access' });
+  await grant.focus();
+  await expect(grant).toBeFocused();
+  expect(
+    await grant.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe('solid');
+  await grant.click();
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Granted',
   );
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
+  await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu granted Company Context Access'),
   ).toBeVisible();
   await expect(page.getByText('Target: Mila Popescu — BIC')).toBeVisible();
+  await page.goto('/?frame=prisme#access');
+  await selectTargets('Company Context Access');
 
   await page.getByRole('button', { name: 'Revoke access' }).click();
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
+  await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu revoked Company Context Access'),
   ).toBeVisible();
-
-  await page
-    .getByLabel('Access bundle')
-    .selectOption({ label: 'Company Director Client Access' });
+  await page.goto('/?frame=prisme#access');
+  await selectTargets('Company Director Client Access');
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
@@ -146,17 +156,39 @@ test('administers both existing Company access bundles by member and Company nam
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Granted',
   );
+  await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu granted Company Director Client Access'),
   ).toBeVisible();
+  await page.goto('/?frame=prisme#access');
+  await selectTargets('Company Director Client Access');
 
   await page.getByRole('button', { name: 'Revoke access' }).click();
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );
+  await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu revoked Company Director Client Access'),
   ).toBeVisible();
+  await page.goto('/?frame=prisme#access');
+  await expect(access).toHaveClass(/company-access--prisme/);
+  await page.screenshot({
+    path: testInfo.outputPath(`company-access-${testInfo.project.name}.png`),
+    fullPage: true,
+  });
+
+  async function selectTargets(
+    bundle: 'Company Context Access' | 'Company Director Client Access',
+  ) {
+    await page.getByLabel('Workspace member').selectOption({
+      label: 'Mila Popescu — mila@example.test',
+    });
+    await page
+      .getByLabel('Company', { exact: true })
+      .selectOption({ label: 'BIC' });
+    await page.getByLabel('Access bundle').selectOption({ label: bundle });
+  }
 
   function administrationState() {
     return {
@@ -292,7 +324,7 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
     });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=prisme#access');
   await page
     .getByLabel('Member to suspend')
     .selectOption({ label: 'Mila Popescu — mila@example.test' });
@@ -310,10 +342,12 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   await expect(
     page.getByText('Member suspended. Server state refreshed.'),
   ).toBeVisible();
+  await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu suspended Workspace access for'),
   ).toBeVisible();
   await expect(page.getByText('Target: Mila Popescu')).toBeVisible();
+  await page.goto('/?frame=prisme#access');
   await expect(
     page
       .getByLabel('Member to suspend')
@@ -362,7 +396,7 @@ test('leaves an already-open shell when the next protected request confirms peer
     (route) => route.fulfill({ status: 403, json: { message: 'Forbidden' } }),
   );
 
-  await page.goto('/');
+  await page.goto('/?frame=prisme#access');
 
   await expect(
     page.getByRole('alert').filter({
@@ -381,10 +415,9 @@ test('leaves an already-open shell when the next protected request confirms peer
   });
 });
 
-test('recovers from a stale suspension target without reporting success', async ({
+test('recovers from last-holder suspension protection without reporting success', async ({
   page,
 }, testInfo) => {
-  let targetIsStale = false;
   let administrationRequests = 0;
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({ json: ownerActor }),
@@ -405,15 +438,11 @@ test('recovers from a stale suspension target without reporting success', async 
               displayName: 'Ada Ionescu',
               email: 'ada@example.test',
             },
-            ...(targetIsStale
-              ? []
-              : [
-                  {
-                    workspaceMembershipId: memberId,
-                    displayName: 'Mila Popescu',
-                    email: 'mila@example.test',
-                  },
-                ]),
+            {
+              workspaceMembershipId: memberId,
+              displayName: 'Mila Popescu',
+              email: 'mila@example.test',
+            },
           ],
           companies: [],
           assignments: [],
@@ -422,11 +451,10 @@ test('recovers from a stale suspension target without reporting success', async 
     },
   );
   await page.route('**/api/workspace-membership-suspensions', (route) => {
-    targetIsStale = true;
-    return route.fulfill({ status: 403, json: { message: 'Forbidden' } });
+    return route.fulfill({ status: 409, json: { message: 'Conflict' } });
   });
 
-  await page.goto('/');
+  await page.goto('/?frame=prisme#access');
   await page
     .getByLabel('Member to suspend')
     .selectOption({ label: 'Mila Popescu — mila@example.test' });
@@ -446,14 +474,98 @@ test('recovers from a stale suspension target without reporting success', async 
     page
       .getByLabel('Member to suspend')
       .getByRole('option', { name: 'Mila Popescu — mila@example.test' }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await expect(
     page.getByRole('heading', { name: 'Company access' }),
   ).toBeVisible();
   expect(administrationRequests).toBe(2);
+  await page.getByRole('heading', { name: 'Team & access' }).focus();
+  await expect(page.locator('.prisme-skip-link')).not.toBeFocused();
   await page.screenshot({
     path: testInfo.outputPath(
-      `workspace-membership-stale-suspension-${testInfo.project.name}.png`,
+      `workspace-membership-last-holder-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+});
+
+test('keeps suspension committed while provider-session revocation fails and retries safely', async ({
+  page,
+}, testInfo) => {
+  let complete = false;
+  await page.route('**/api/access/current-actor', (route) =>
+    route.fulfill({ json: ownerActor }),
+  );
+  await page.route('**/api/companies', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/activity-log', (route) =>
+    route.fulfill({ json: { events: [] } }),
+  );
+  await page.route(
+    '**/api/company-context-assignments/administration',
+    (route) =>
+      route.fulfill({ json: { members: [], companies: [], assignments: [] } }),
+  );
+  await page.route(
+    /\/api\/workspace-session-revocations(?:\/[^/]+\/retry)?$/,
+    (route) => {
+      if (route.request().method() === 'POST') {
+        expect(new URL(route.request().url()).pathname).toBe(
+          `/api/workspace-session-revocations/${memberId}/retry`,
+        );
+        complete = true;
+        return route.fulfill({ status: 201, json: { status: 'checked' } });
+      }
+      return route.fulfill({
+        json: {
+          records: [
+            {
+              workspaceMembershipId: memberId,
+              displayName: 'Suspended Member',
+              status: complete ? 'complete' : 'retry_required',
+            },
+          ],
+          nextCursor: null,
+        },
+      });
+    },
+  );
+
+  await page.goto('/?frame=prisme#access');
+  await page.getByRole('button', { name: 'Check session revocations' }).click();
+  const record = page.getByRole('listitem').filter({
+    hasText: 'Suspended Member',
+  });
+  await expect(record).toHaveAttribute('data-status', 'retry_required');
+  await expect(
+    record.getByText(
+      'Session revocation needs another attempt. Retry after 30 seconds.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  const retry = record.getByRole('button', {
+    name: 'Retry session revocation',
+  });
+  await retry.focus();
+  await expect(retry).toBeFocused();
+  await retry.click();
+  await expect(record).toHaveAttribute('data-status', 'complete');
+  await expect(
+    record.getByText(
+      'Existing provider sessions revoked. Workspace access remains suspended.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    record.getByRole('button', { name: 'Retry session revocation' }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-session-revocation-${testInfo.project.name}.png`,
     ),
     fullPage: true,
   });

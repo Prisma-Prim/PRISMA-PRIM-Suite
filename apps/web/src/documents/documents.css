@@ -25,3 +25,154 @@
 .working-documents a {
   overflow-wrap: anywhere;
 }
+
+.prisme-shell .working-documents--prisme {
+  gap: 1.35rem;
+  width: 100%;
+  max-width: 76rem;
+  min-width: 0;
+}
+
+.prisme-shell .working-documents-heading h2 {
+  margin: 0.2rem 0 0.45rem;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  letter-spacing: -0.045em;
+}
+
+.prisme-shell .working-documents-heading p:last-child {
+  margin: 0;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .working-documents-warning {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid #ded8f4;
+  border-radius: 8px;
+  color: #51447e;
+  background: #faf9ff;
+}
+
+.prisme-shell .working-documents--prisme .working-document-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prisme-shell .working-document-list li {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.prisme-shell .working-document-list button {
+  width: 100%;
+  text-align: left;
+  font-weight: 650;
+}
+
+.prisme-shell .working-document-registration,
+.prisme-shell .working-document-detail {
+  min-width: 0;
+  max-width: none;
+  padding: 1.2rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  background: var(--shell-surface);
+}
+
+.prisme-shell .working-document-registration {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.prisme-shell .working-document-registration > label:first-of-type,
+.prisme-shell .working-document-registration > label:nth-of-type(3),
+.prisme-shell .working-document-registration > button {
+  grid-column: 1 / -1;
+}
+
+.prisme-shell .working-document-detail > h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.prisme-shell .working-document-detail > p,
+.prisme-shell .working-document-detail > h3 {
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell .working-documents--prisme button,
+.prisme-shell .working-documents--prisme a {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  color: var(--shell-ink);
+  background: #fff;
+}
+
+.prisme-shell .working-documents--prisme a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.prisme-shell .working-documents--prisme button {
+  cursor: pointer;
+}
+
+.prisme-shell .working-documents--prisme button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.prisme-shell .working-documents--prisme button:focus-visible,
+.prisme-shell .working-documents--prisme input:focus-visible,
+.prisme-shell .working-documents--prisme textarea:focus-visible,
+.prisme-shell .working-documents--prisme select:focus-visible,
+.prisme-shell .working-documents--prisme a:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
+.prisme-shell .working-documents--prisme .prisme-primary-action {
+  border-color: #6652e7;
+  color: #fff;
+  background: #6451e8;
+}
+
+.prisme-shell .working-document-registration input,
+.prisme-shell .working-document-registration textarea,
+.prisme-shell .working-document-registration select,
+.prisme-shell .working-document-correction input,
+.prisme-shell .working-document-correction textarea {
+  min-width: 0;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+@media (max-width: 650px) {
+  .prisme-shell .working-document-registration {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prisme-shell .working-document-registration > label,
+  .prisme-shell .working-document-registration > button {
+    grid-column: 1;
+  }
+
+  .prisme-shell .working-document-registration,
+  .prisme-shell .working-document-detail {
+    padding: 1rem;
+  }
+}

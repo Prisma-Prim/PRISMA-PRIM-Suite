@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -10,6 +10,7 @@ import {
   type WorkingDocument,
 } from './document-response';
 import { documentsCopy as copy } from './documents.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
 type Load =
   | { status: 'loading' | 'error' | 'denied' }
@@ -27,6 +28,7 @@ export function DocumentWorkspace({
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [detail, setDetail] = useState<WorkingDocument>();
   const [revision, setRevision] = useState(0);
@@ -333,10 +335,25 @@ export function DocumentWorkspace({
     }
   }
   return (
-    <section className="working-documents" aria-label={copy.title}>
-      <h2>{copy.title}</h2>
-      <p>{actor.activeCompany?.displayName}</p>
-      <p>{copy.warning}</p>
+    <section
+      className={`working-documents${isPrisme ? ' working-documents--prisme' : ''}`}
+      aria-label={copy.title}
+    >
+      {isPrisme ? (
+        <header className="working-documents-heading">
+          <p className="prisme-eyebrow">{copy.eyebrow}</p>
+          <h2>{copy.title}</h2>
+          <p>{actor.activeCompany?.displayName}</p>
+        </header>
+      ) : (
+        <>
+          <h2>{copy.title}</h2>
+          <p>{actor.activeCompany?.displayName}</p>
+        </>
+      )}
+      <p className={isPrisme ? 'working-documents-warning' : undefined}>
+        {copy.warning}
+      </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
       {state.status === 'error' && (
@@ -350,9 +367,16 @@ export function DocumentWorkspace({
       {state.status === 'ready' && (
         <>
           {detail ? (
-            <article>
+            <article
+              className={isPrisme ? 'working-document-detail' : undefined}
+            >
               {editing ? (
-                <form onSubmit={(event) => void submitCorrection(event)}>
+                <form
+                  className={
+                    isPrisme ? 'working-document-correction' : undefined
+                  }
+                  onSubmit={(event) => void submitCorrection(event)}
+                >
                   <label>
                     {copy.titleLabel}
                     <input
@@ -390,6 +414,7 @@ export function DocumentWorkspace({
                     />
                   </label>
                   <button
+                    className={isPrisme ? 'prisme-primary-action' : undefined}
                     disabled={
                       correction === 'pending' || correction === 'uncertain'
                     }
@@ -430,9 +455,15 @@ export function DocumentWorkspace({
               ) : null}
               {!editing &&
                 canCorrect &&
+                correction !== 'conflict' &&
                 detail.correction === 'allowed' &&
                 detail.version.representation.access === 'granted' && (
-                  <button onClick={beginCorrection}>{copy.edit}</button>
+                  <button
+                    className={isPrisme ? 'prisme-primary-action' : undefined}
+                    onClick={beginCorrection}
+                  >
+                    {copy.edit}
+                  </button>
                 )}
               {!editing && (
                 <button onClick={() => setDetail(undefined)}>
@@ -468,7 +499,7 @@ export function DocumentWorkspace({
             </article>
           ) : (
             <>
-              <ul>
+              <ul className={isPrisme ? 'working-document-list' : undefined}>
                 {state.documents.map((document) => (
                   <li key={document.id}>
                     <button
@@ -483,7 +514,12 @@ export function DocumentWorkspace({
               </ul>
               {state.documents.length === 0 && <p>{copy.empty}</p>}
               {canRegister && (
-                <form onSubmit={(event) => void submit(event)}>
+                <form
+                  className={
+                    isPrisme ? 'working-document-registration' : undefined
+                  }
+                  onSubmit={(event) => void submit(event)}
+                >
                   <label htmlFor="document-client">{copy.client}</label>
                   <select
                     id="document-client"
@@ -525,7 +561,10 @@ export function DocumentWorkspace({
                       onChange={(event) => setUrl(event.target.value)}
                     />
                   </label>
-                  <button disabled={mutation === 'pending'}>
+                  <button
+                    className={isPrisme ? 'prisme-primary-action' : undefined}
+                    disabled={mutation === 'pending'}
+                  >
                     {copy.register}
                   </button>
                 </form>
