@@ -67,6 +67,13 @@ export const clientWorkspaceCopy = {
   removeContact: 'Remove Contact',
   contactsInvalid: 'Each Contact must have a name.',
   correctionFormLabel: 'Correct Client dossier',
+  sharedDetails: 'Shared details',
+  closeCorrection: 'Close correction',
+  correctionHint:
+    'Closing keeps your draft. A correction already being saved continues.',
+  reloadCorrectionHint:
+    'Reloading replaces your draft with the current saved details.',
+  dossierLoadError: 'We could not load this Client dossier. Please try again.',
   correctionInvalid: 'The Client correction is invalid.',
   saveCorrection: 'Save correction',
   savingCorrection: 'Saving…',

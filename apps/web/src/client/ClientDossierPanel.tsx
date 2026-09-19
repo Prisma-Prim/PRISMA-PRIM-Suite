@@ -1,5 +1,7 @@
 import {
   type FormEvent,
+  type Ref,
+  useContext,
   useCallback,
   useEffect,
   useRef,
@@ -19,6 +21,9 @@ import {
   type ClientContactDraft,
 } from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
+import './client-dossier.css';
 
 interface ClientDossierView {
   id: string;
@@ -58,7 +63,11 @@ type CorrectionState =
         | 'possibleDuplicate'
         | 'error';
     }
-  | { status: 'validation'; message: string };
+  | {
+      status: 'validation';
+      message: string;
+      field?: 'displayName' | 'contacts';
+    };
 
 export function ClientDossierPanel({
   clientAccountId,
@@ -71,6 +80,7 @@ export function ClientDossierPanel({
   onActivityRecorded,
   onClientsChanged,
   onDuplicateReviewRequired = () => undefined,
+  onHeadingReady,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -82,7 +92,15 @@ export function ClientDossierPanel({
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
   onDuplicateReviewRequired?: () => void;
+  onHeadingReady?: (heading: HTMLHeadingElement | null) => void;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const correctionTrigger = useRef<HTMLButtonElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (correctionOpen) nameInput.current?.focus();
+  }, [correctionOpen]);
   const [dossierState, setDossierState] = useState<DossierState>({
     status: 'idle',
   });
@@ -153,6 +171,7 @@ export function ClientDossierPanel({
     pendingCorrection.current?.abort();
     correctionRetryCommand.current = undefined;
     setCorrectionState({ status: 'idle' });
+    setCorrectionOpen(false);
     setDraft(emptyDraft());
     if (!clientAccountId) {
       setDossierState({ status: 'idle' });
@@ -172,6 +191,7 @@ export function ClientDossierPanel({
       setCorrectionState({
         status: 'validation',
         message: copy.displayNameRequired,
+        field: 'displayName',
       });
       return;
     }
@@ -180,6 +200,7 @@ export function ClientDossierPanel({
       setCorrectionState({
         status: 'validation',
         message: copy.contactsInvalid,
+        field: 'contacts',
       });
       return;
     }
@@ -274,86 +295,196 @@ export function ClientDossierPanel({
 
   if (dossierState.status === 'idle') return null;
   if (dossierState.status === 'loading') {
-    return <p role="status">{copy.loadingDossier}</p>;
+    return (
+      <ClientDirectoryFeedback role="status" tone="pending">
+        {copy.loadingDossier}
+      </ClientDirectoryFeedback>
+    );
   }
   if (dossierState.status === 'notFound') {
-    return <p role="alert">{copy.dossierNotFound}</p>;
+    return (
+      <ClientDirectoryFeedback role="alert" tone="error">
+        {copy.dossierNotFound}
+      </ClientDirectoryFeedback>
+    );
   }
   if (dossierState.status === 'forbidden') {
-    return <p role="alert">{copy.permissionDenied}</p>;
+    return (
+      <ClientDirectoryFeedback role="alert" tone="error">
+        {copy.permissionDenied}
+      </ClientDirectoryFeedback>
+    );
   }
   if (dossierState.status === 'error') {
-    return <p role="alert">{copy.retryableError}</p>;
+    return (
+      <ClientDirectoryFeedback role="alert" tone="error">
+        {copy.dossierLoadError}
+      </ClientDirectoryFeedback>
+    );
   }
   if (dossierState.status !== 'ready') return null;
 
   const dossier = dossierState.dossier;
-  return (
-    <section className="client-dossier" aria-labelledby="client-dossier-title">
-      <div>
-        <p className="eyebrow">{copy.dossierEyebrow}</p>
-        <h3 id="client-dossier-title">{dossier.displayName}</h3>
-        <p>{copy.version(dossier.version)}</p>
-      </div>
-      <dl>
-        <DossierValue label={copy.taxIdLabel} value={dossier.taxId} />
-        <DossierValue label={copy.addressLabel} value={dossier.address} />
-        <DossierValue label={copy.telephoneLabel} value={dossier.telephone} />
-        <DossierValue
-          label={copy.generalEmailLabel}
-          value={dossier.generalEmail}
-        />
-        <DossierValue
-          label={copy.businessActivityLabel}
-          value={dossier.businessActivity}
-        />
-        <DossierValue
-          label={copy.involvedCompaniesLabel}
-          value={dossier.involvedCompanyDisplayNames.join(', ')}
-        />
-      </dl>
-      <section aria-labelledby="client-contacts-title">
-        <h4 id="client-contacts-title">{copy.contactsLabel}</h4>
-        {dossier.contacts.length === 0 ? (
-          <p>{copy.noContacts}</p>
-        ) : (
-          <ul>
-            {dossier.contacts.map((contact, index) => (
-              <li key={`${contact.name}-${index}`}>
-                <strong>{contact.name}</strong>
-                {contact.telephone && <span>{contact.telephone}</span>}
-                {contact.email && <span>{contact.email}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {canUpdate && (
-        <CorrectionForm
-          draft={draft}
-          pending={correctionState.status === 'submitting'}
-          onDraftChange={setDraft}
-          onSubmit={correctDossier}
-        />
+  const correctionFeedback = (
+    <div key="correction-feedback" className="client-correction-feedback">
+      {correctionState.status === 'submitting' && (
+        <ClientDirectoryFeedback role="status" tone="pending">
+          {copy.savingCorrection}
+        </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'validation' && (
-        <p role="alert">{correctionState.message}</p>
+        <ClientDirectoryFeedback
+          id="client-correction-validation"
+          role="alert"
+          tone="error"
+        >
+          {correctionState.message}
+        </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'success' && (
-        <p role="status">{copy.correctionSaved}</p>
+        <ClientDirectoryFeedback role="status" tone="success">
+          {copy.correctionSaved}
+        </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'error' && (
-        <p role="alert">{copy.correctionRetry}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.correctionRetry}
+        </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'possibleDuplicate' && (
-        <p role="alert">{copy.possibleDuplicate}</p>
+        <ClientDirectoryFeedback role="alert" tone="error">
+          {copy.possibleDuplicate}
+        </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'stale' && (
-        <div role="alert">
-          <p>{copy.staleCorrection}</p>
-          <button type="button" onClick={() => void loadDossier(dossier.id)}>
+        <div className="client-correction-stale">
+          <ClientDirectoryFeedback role="alert" tone="error">
+            {copy.staleCorrection}
+          </ClientDirectoryFeedback>
+          <p>{copy.reloadCorrectionHint}</p>
+          <button
+            type="button"
+            className="client-secondary-action"
+            onClick={() => void loadDossier(dossier.id)}
+          >
             {copy.reloadDossier}
           </button>
+        </div>
+      )}
+    </div>
+  );
+  return (
+    <section
+      className="client-dossier client-dossier-detail"
+      aria-labelledby="client-dossier-title"
+    >
+      <div className="client-dossier-heading">
+        <div>
+          <p className="eyebrow">{copy.dossierEyebrow}</p>
+          <h3 id="client-dossier-title" tabIndex={-1} ref={onHeadingReady}>
+            {dossier.displayName}
+          </h3>
+          <p className="client-dossier-version">
+            {copy.version(dossier.version)}
+          </p>
+        </div>
+        {isPrisme && canUpdate && (
+          <button
+            type="button"
+            ref={correctionTrigger}
+            aria-expanded={correctionOpen}
+            aria-controls="client-correction"
+            onClick={() => setCorrectionOpen((open) => !open)}
+          >
+            {copy.correctionFormLabel}
+          </button>
+        )}
+      </div>
+      {isPrisme && !correctionOpen && correctionFeedback}
+      <div className="client-dossier-reading">
+        <section
+          aria-labelledby="client-details-title"
+          className="client-dossier-information"
+        >
+          <h4 id="client-details-title">{copy.sharedDetails}</h4>
+          <dl>
+            <DossierValue label={copy.taxIdLabel} value={dossier.taxId} />
+            <DossierValue label={copy.addressLabel} value={dossier.address} />
+            <DossierValue
+              label={copy.telephoneLabel}
+              value={dossier.telephone}
+            />
+            <DossierValue
+              label={copy.generalEmailLabel}
+              value={dossier.generalEmail}
+            />
+            <DossierValue
+              label={copy.businessActivityLabel}
+              value={dossier.businessActivity}
+            />
+            <DossierValue
+              label={copy.involvedCompaniesLabel}
+              value={dossier.involvedCompanyDisplayNames.join(', ')}
+            />
+          </dl>
+        </section>
+        <section
+          aria-labelledby="client-contacts-title"
+          className="client-dossier-contacts"
+        >
+          <h4 id="client-contacts-title">{copy.contactsLabel}</h4>
+          {dossier.contacts.length === 0 ? (
+            <p>{copy.noContacts}</p>
+          ) : (
+            <ul>
+              {dossier.contacts.map((contact, index) => (
+                <li key={`${contact.name}-${index}`}>
+                  <strong>{contact.name}</strong>
+                  {contact.telephone && <span>{contact.telephone}</span>}
+                  {contact.email && <span>{contact.email}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+      {(!isPrisme || correctionOpen) && correctionFeedback}
+      {canUpdate && (
+        <div
+          id="client-correction"
+          className="client-correction"
+          hidden={isPrisme && !correctionOpen}
+        >
+          {isPrisme && (
+            <div className="client-correction-heading">
+              <div>
+                <h4>{copy.correctionFormLabel}</h4>
+                <p>{copy.correctionHint}</p>
+              </div>
+              <button
+                type="button"
+                className="client-secondary-action"
+                onClick={() => {
+                  setCorrectionOpen(false);
+                  correctionTrigger.current?.focus();
+                }}
+              >
+                {copy.closeCorrection}
+              </button>
+            </div>
+          )}
+          <CorrectionForm
+            draft={draft}
+            pending={correctionState.status === 'submitting'}
+            validation={
+              correctionState.status === 'validation'
+                ? correctionState
+                : undefined
+            }
+            nameInput={nameInput}
+            onDraftChange={setDraft}
+            onSubmit={correctDossier}
+          />
         </div>
       )}
     </section>
@@ -378,11 +509,15 @@ function DossierValue({
 function CorrectionForm({
   draft,
   pending,
+  validation,
+  nameInput,
   onDraftChange,
   onSubmit,
 }: {
   draft: DossierDraft;
   pending: boolean;
+  validation: Extract<CorrectionState, { status: 'validation' }> | undefined;
+  nameInput: Ref<HTMLInputElement>;
   onDraftChange: (draft: DossierDraft) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
@@ -395,7 +530,12 @@ function CorrectionForm({
     ['businessActivity', copy.businessActivityLabel],
   ] as const;
   return (
-    <form aria-label={copy.correctionFormLabel} onSubmit={onSubmit} noValidate>
+    <form
+      aria-label={copy.correctionFormLabel}
+      aria-describedby={validation ? 'client-correction-validation' : undefined}
+      onSubmit={onSubmit}
+      noValidate
+    >
       {fields.map(([field, label]) => (
         <InputField
           key={field}
@@ -403,12 +543,18 @@ function CorrectionForm({
           label={label}
           type={field === 'generalEmail' ? 'email' : 'text'}
           value={draft[field]}
+          inputRef={field === 'displayName' ? nameInput : undefined}
+          invalid={
+            validation?.field === 'displayName' && field === 'displayName'
+          }
           onChange={(value) => onDraftChange({ ...draft, [field]: value })}
         />
       ))}
       <ClientContactEditor
         contacts={draft.contacts}
         idPrefix="dossier-contact"
+        invalid={validation?.field === 'contacts'}
+        errorId="client-correction-validation"
         onChange={(contacts) => onDraftChange({ ...draft, contacts })}
       />
       <button type="submit" disabled={pending}>
@@ -423,12 +569,16 @@ function InputField({
   label,
   type,
   value,
+  inputRef,
+  invalid,
   onChange,
 }: {
   id: string;
   label: string;
   type: 'email' | 'text';
   value: string;
+  inputRef: Ref<HTMLInputElement> | undefined;
+  invalid: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -436,6 +586,9 @@ function InputField({
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
+        ref={inputRef}
+        aria-invalid={invalid}
+        aria-describedby={invalid ? 'client-correction-validation' : undefined}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}

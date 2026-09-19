@@ -1,0 +1,219 @@
+.prisme-shell .client-dossier-detail {
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  min-width: 0;
+}
+.prisme-shell .client-dossier-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px;
+  border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .client-dossier-heading > div {
+  min-width: 0;
+}
+.prisme-shell .client-dossier-heading h3 {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  letter-spacing: -0.5px;
+  margin: 8px 0;
+  scroll-margin-top: 24px;
+}
+.prisme-shell .client-dossier-heading > button {
+  flex: 0 0 auto;
+}
+.prisme-shell .client-dossier-version {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+.prisme-shell .client-dossier-reading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+.prisme-shell .client-dossier-information,
+.prisme-shell .client-dossier-contacts {
+  padding: 28px;
+  min-width: 0;
+}
+.prisme-shell .client-dossier-contacts {
+  border-left: 1px solid var(--shell-line);
+}
+.prisme-shell .client-dossier-reading h4 {
+  font-size: 0.9375rem;
+  margin-bottom: 22px;
+}
+.prisme-shell .client-dossier-detail dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.prisme-shell .client-dossier-detail dt {
+  text-transform: none;
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+.prisme-shell .client-dossier-detail dd {
+  font-size: 0.875rem;
+  line-height: 1.8;
+  margin-top: 7px;
+  white-space: pre-wrap;
+}
+.prisme-shell .client-dossier-contacts ul {
+  gap: 18px;
+}
+.prisme-shell .client-dossier-contacts li {
+  display: grid;
+  gap: 5px;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+}
+.prisme-shell .client-dossier-contacts li + li {
+  border-top: 1px solid var(--shell-line);
+  padding-top: 18px;
+}
+.prisme-shell .client-dossier-contacts li span,
+.prisme-shell .client-dossier-contacts > p {
+  color: var(--shell-muted);
+}
+.prisme-shell .client-correction-feedback:empty {
+  display: none;
+}
+.prisme-shell .client-correction-feedback {
+  padding: 0 28px 24px;
+}
+.prisme-shell
+  .client-dossier-heading
+  + .client-correction-feedback:not(:empty) {
+  padding-top: 24px;
+}
+.prisme-shell .client-correction-stale {
+  display: grid;
+  gap: 12px;
+}
+.prisme-shell .client-correction-stale > p {
+  color: var(--shell-muted);
+  font-size: 0.8125rem;
+}
+.prisme-shell .client-correction-stale > button {
+  justify-self: start;
+}
+.prisme-shell .client-correction {
+  padding: 28px;
+  border-top: 1px solid var(--shell-line);
+  background: #fafbfe;
+  border-radius: 0 0 9px 9px;
+}
+.client-correction[hidden] {
+  display: none;
+}
+.prisme-shell .client-correction-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.prisme-shell .client-correction-heading h4 {
+  font-size: 1rem;
+}
+.prisme-shell .client-correction-heading p {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+  line-height: 1.65;
+  margin-top: 7px;
+}
+.prisme-shell .client-correction-heading > button {
+  flex: 0 0 auto;
+}
+.prisme-shell .client-correction form {
+  padding: 0;
+  border: 0;
+  gap: 14px 24px;
+}
+.prisme-shell .client-correction input,
+.prisme-shell .client-correction textarea {
+  width: 100%;
+  border-color: #b6c0cf;
+}
+.prisme-shell .client-correction .client-contact-editor textarea {
+  min-height: 3rem;
+  height: 3rem;
+}
+.prisme-shell .client-correction .client-contact-editor fieldset {
+  padding: 20px;
+  background: white;
+  border-radius: 7px;
+  gap: 12px 20px;
+}
+.prisme-shell .client-correction .client-contact-editor legend {
+  padding-inline: 6px;
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+.prisme-shell .client-correction .client-contact-editor > button {
+  justify-self: start;
+  background: white;
+  color: #5943bd;
+  border: 1px solid #d8d3eb;
+}
+.prisme-shell .client-correction .client-contact-editor fieldset > button {
+  justify-self: start;
+  background: transparent;
+  color: #526077;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+.prisme-shell .client-correction .client-contact-editor button:hover {
+  background: #f0ecfa;
+}
+.prisme-shell .client-correction form > button {
+  justify-self: start;
+}
+.prisme-shell .client-dossier-detail :focus-visible,
+.prisme-shell .client-dossier-heading h3:focus {
+  outline: 2px solid var(--shell-focus);
+  outline-offset: 4px;
+}
+@media (max-width: 680px) {
+  .prisme-shell .client-dossier-heading,
+  .prisme-shell .client-correction-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+  .prisme-shell .client-dossier-heading,
+  .prisme-shell .client-dossier-information,
+  .prisme-shell .client-dossier-contacts,
+  .prisme-shell .client-correction {
+    padding: 22px 18px;
+  }
+  .prisme-shell .client-dossier-heading h3 {
+    font-size: 1.25rem;
+  }
+  .prisme-shell .client-dossier-reading,
+  .prisme-shell .client-dossier-detail dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .prisme-shell .client-dossier-contacts {
+    border-left: 0;
+    border-top: 1px solid var(--shell-line);
+  }
+  .prisme-shell .client-correction-feedback {
+    padding: 0 18px 22px;
+  }
+  .prisme-shell
+    .client-dossier-heading
+    + .client-correction-feedback:not(:empty) {
+    padding-top: 22px;
+  }
+  .prisme-shell .client-correction .client-contact-editor fieldset {
+    padding: 16px 12px;
+  }
+  .prisme-shell .client-correction form > button {
+    justify-self: stretch;
+  }
+}
