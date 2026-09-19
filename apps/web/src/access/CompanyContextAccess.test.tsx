@@ -9,6 +9,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
@@ -50,6 +51,56 @@ describe('CompanyContextAccess', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('presents access administration in Prisme while preserving the Classic public markup', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(administration())),
+    );
+
+    const classic = render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    const classicAccess = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    expect(classicAccess).not.toHaveClass('company-access--prisme');
+    expect(classicAccess.firstElementChild).toHaveClass('eyebrow');
+    expect(classicAccess.querySelector('form')).not.toHaveClass(
+      'company-access-form',
+    );
+    expect(
+      within(classicAccess).getByRole('region', {
+        name: 'Identity-provider sessions',
+      }),
+    ).not.toHaveClass('session-revocations--prisme');
+    classic.unmount();
+
+    render(
+      <ApplicationPresentation value="prisme">
+        <CompanyContextAccess
+          actor={ownerActor}
+          identity={deterministicBrowserIdentity()}
+        />
+      </ApplicationPresentation>,
+    );
+    const access = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    expect(access).toHaveClass('company-access--prisme');
+    expect(access.querySelector('form')).toHaveClass('company-access-form');
+    expect(
+      within(access).getByRole('region', {
+        name: 'Identity-provider sessions',
+      }),
+    ).toHaveClass('session-revocations--prisme');
+    expect(
+      within(access).getByRole('region', { name: 'Workspace access' }),
+    ).toHaveClass('membership-suspension--prisme');
   });
 
   it('loads only human-readable member and Company choices without UUID entry fields', async () => {
