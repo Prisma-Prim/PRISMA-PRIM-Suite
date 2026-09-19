@@ -99,6 +99,18 @@ test('registers and reopens a Company preparatory Project after reload', async (
   await expect(
     page.getByText('No preparatory Projects for this Company yet.'),
   ).toBeVisible();
+  const clientLabel = page.locator('label[for="project-client"]');
+  const clientSelect = page.getByLabel('Client', { exact: true });
+  const [clientLabelBounds, clientSelectBounds] = await Promise.all([
+    clientLabel.boundingBox(),
+    clientSelect.boundingBox(),
+  ]);
+  if (!clientLabelBounds || !clientSelectBounds)
+    throw new Error('The Project Client field must be visible');
+  expect(Math.abs(clientLabelBounds.x - clientSelectBounds.x)).toBeLessThan(2);
+  expect(clientSelectBounds.y).toBeGreaterThanOrEqual(
+    clientLabelBounds.y + clientLabelBounds.height,
+  );
   await page.screenshot({
     path: testInfo.outputPath('projects-empty.png'),
     fullPage: true,
