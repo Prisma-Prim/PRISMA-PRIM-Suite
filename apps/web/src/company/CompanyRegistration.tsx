@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -11,7 +11,9 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { companyRegistrationCopy as copy } from './company-registration.copy';
+import './company-registration.css';
 
 interface CompanyRecord {
   id: string;
@@ -45,6 +47,7 @@ export function CompanyRegistration({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
+  const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
   const retryCommand = useRef<IdempotentDisplayNameCommand | undefined>(
@@ -64,7 +67,9 @@ export function CompanyRegistration({
 
   if (!actor.workspacePermissions.includes('company.manage')) {
     return (
-      <section className="company-registration company-registration-denied">
+      <section
+        className={`company-registration company-registration-denied${isPrisme ? ' company-registration--prisme' : ''}`}
+      >
         <p role="alert">{copy.permissionDenied}</p>
       </section>
     );
@@ -168,7 +173,7 @@ export function CompanyRegistration({
 
   return (
     <section
-      className="company-registration"
+      className={`company-registration${isPrisme ? ' company-registration--prisme' : ''}`}
       aria-labelledby="company-registration-title"
     >
       <div className="company-registration-heading">
@@ -176,7 +181,11 @@ export function CompanyRegistration({
         <h2 id="company-registration-title">{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
-      <form onSubmit={(event) => void submit(event)} noValidate>
+      <form
+        className={isPrisme ? 'company-registration-form' : undefined}
+        onSubmit={(event) => void submit(event)}
+        noValidate
+      >
         <label htmlFor="company-display-name">{copy.displayNameLabel}</label>
         <div className="company-registration-controls">
           <input
@@ -190,7 +199,13 @@ export function CompanyRegistration({
             }
             aria-invalid={state.status === 'validation'}
           />
-          <button type="submit" disabled={state.status === 'submitting'}>
+          <button
+            className={
+              isPrisme ? 'company-registration-primary-action' : undefined
+            }
+            type="submit"
+            disabled={state.status === 'submitting'}
+          >
             {state.status === 'submitting' ? copy.submitting : copy.submit}
           </button>
         </div>
@@ -205,7 +220,10 @@ export function CompanyRegistration({
       )}
       {state.status === 'error' && <p role="alert">{copy.retryableError}</p>}
       {state.status === 'ready' && (
-        <article className="company-record" aria-live="polite">
+        <article
+          className={`company-record${isPrisme ? ' company-registration-result' : ''}`}
+          aria-live="polite"
+        >
           <div>
             <p className="company-status">{copy.active}</p>
             <h2>{state.company.displayName}</h2>
