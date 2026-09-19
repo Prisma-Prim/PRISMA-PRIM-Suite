@@ -214,7 +214,25 @@ it('presents the existing preparatory Project detail in Prisme without changing 
   expect(
     await within(workspace).findByRole('article', { name: project.title }),
   ).toHaveClass('project-detail-card');
-  expect(
-    await within(workspace).findByRole('region', { name: 'Tasks' }),
-  ).toHaveClass('project-tasks--prisme');
+  const tasksPanel = await within(workspace).findByRole('tabpanel', {
+    name: 'Tasks',
+  });
+  const documentsPanel = workspace.querySelector<HTMLElement>(
+    '#project-documents-panel',
+  );
+  expect(documentsPanel).not.toBeNull();
+  if (!documentsPanel) throw new Error('Working Documents panel is missing.');
+  expect(within(tasksPanel).getByRole('region', { name: 'Tasks' })).toHaveClass(
+    'project-tasks--prisme',
+  );
+  expect(tasksPanel).toBeVisible();
+  expect(documentsPanel).not.toBeVisible();
+
+  fireEvent.click(
+    within(workspace).getByRole('tab', { name: 'Working Documents' }),
+  );
+  expect(tasksPanel).not.toBeVisible();
+  expect(documentsPanel).toBeVisible();
+  expect(tasksPanel).toBeInTheDocument();
+  expect(documentsPanel).toBeInTheDocument();
 });

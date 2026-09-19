@@ -158,3 +158,40 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.project-detail-panel:not([role]) {
+  display: contents;
+}
+.prisme-shell .project-detail-tabs {
+  display: flex;
+  gap: 1.1rem;
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .project-workspace--prisme .project-detail-tabs > button {
+  min-height: 42px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding-inline: 0.15rem;
+  color: var(--shell-muted);
+  background: transparent;
+  font-weight: 600;
+}
+.prisme-shell
+  .project-workspace--prisme
+  .project-detail-tabs
+  > button[aria-selected='true'] {
+  border-bottom-color: #6652e7;
+  color: var(--shell-ink);
+}
+.prisme-shell .project-detail-panel[role='tabpanel'] {
+  min-width: 0;
+}
+.prisme-shell .project-detail-card > .project-detail-panel[role='tabpanel'] {
+  padding-top: 0.35rem;
+}
+.prisme-shell .project-detail-panel[role='tabpanel'][hidden] {
+  display: none;
+}

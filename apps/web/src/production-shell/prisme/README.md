@@ -118,3 +118,9 @@ desktop and 390px with intercepted contracts: Project create/reopen; Task
 create/edit/complete/reopen/history; uncertain exact retry; conflict/reload;
 superseded-original read-only history; and denied state. Screenshots are written with
 `testInfo.outputPath(...)`; these tests do not claim a live Clerk or backend smoke.
+
+## Project detail navigation — issue #262
+
+[Issue #262](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/262) completes the Project detail delivered by #254 with Prisme-local Tasks and Working Documents tabs. The two existing owners remain mounted; the inactive panel is hidden with `hidden`. A tab or Classic/Prisme frame change does not issue a new Task or Document request, so drafts, conflicts, retry identities and separate permission states remain with their current owners. Classic keeps both sections expanded.
+
+`e2e/prisme-projects.spec.ts` proves Project creation, both mounted panels, retained Task draft, unchanged request counts, Classic/Prisme continuity, focus on the selected tab, opaque-ID absence and horizontal fit at 1440px and 390px. Existing Projects, Tasks and Project Documents journeys remain the detailed permission and retry evidence. Their API responses are intercepted contract fixtures; this is not a live Clerk/backend smoke test. Screenshots originate from `testInfo.outputPath` and remain outside Git.

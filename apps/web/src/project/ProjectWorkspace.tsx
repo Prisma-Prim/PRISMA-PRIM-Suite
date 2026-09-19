@@ -8,7 +8,9 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { projectCopy as copy } from './project.copy';
+import { projectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { taskCopy } from './task.copy';
 import './project.css';
 
 type ProjectView = {
@@ -35,6 +37,9 @@ export function ProjectWorkspace({
   onActivityRecorded?: () => void | Promise<void>;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+  const [detailPanel, setDetailPanel] = useState<'tasks' | 'documents'>(
+    'tasks',
+  );
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
@@ -166,6 +171,7 @@ export function ProjectWorkspace({
         return;
       }
       setSelected(result.value);
+      setDetailPanel('tasks');
       if (command) {
         const project = result.value;
         setLoad((current) =>
@@ -340,20 +346,60 @@ export function ProjectWorkspace({
               </p>
             </>
           )}
-          <ProjectDocuments
-            actor={actor}
-            identity={identity}
-            projectId={selected.id}
-            onActivityRecorded={onActivityRecorded}
-          />
+          {isPrisme && (
+            <div className="project-detail-tabs" role="tablist">
+              <button
+                id="project-tasks-tab"
+                type="button"
+                role="tab"
+                aria-selected={detailPanel === 'tasks'}
+                aria-controls="project-tasks-panel"
+                onClick={() => setDetailPanel('tasks')}
+              >
+                {taskCopy.title}
+              </button>
+              <button
+                id="project-documents-tab"
+                type="button"
+                role="tab"
+                aria-selected={detailPanel === 'documents'}
+                aria-controls="project-documents-panel"
+                onClick={() => setDetailPanel('documents')}
+              >
+                {projectDocumentsCopy.title}
+              </button>
+            </div>
+          )}
+          <div
+            className="project-detail-panel"
+            id="project-documents-panel"
+            role={isPrisme ? 'tabpanel' : undefined}
+            aria-labelledby={isPrisme ? 'project-documents-tab' : undefined}
+            hidden={isPrisme && detailPanel !== 'documents'}
+          >
+            <ProjectDocuments
+              actor={actor}
+              identity={identity}
+              projectId={selected.id}
+              onActivityRecorded={onActivityRecorded}
+            />
+          </div>
         </article>
       )}
-      <ProjectTasks
-        actor={actor}
-        identity={identity}
-        projectId={selected?.id ?? null}
-        onActivityRecorded={onActivityRecorded}
-      />
+      <div
+        className="project-detail-panel"
+        id="project-tasks-panel"
+        role={isPrisme ? 'tabpanel' : undefined}
+        aria-labelledby={isPrisme ? 'project-tasks-tab' : undefined}
+        hidden={isPrisme && (!selected || detailPanel !== 'tasks')}
+      >
+        <ProjectTasks
+          actor={actor}
+          identity={identity}
+          projectId={selected?.id ?? null}
+          onActivityRecorded={onActivityRecorded}
+        />
+      </div>
     </section>
   );
 }
