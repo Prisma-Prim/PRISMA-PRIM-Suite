@@ -180,3 +180,58 @@ test('keeps registration retries, section selection and focus across presentatio
     ),
   ).toBe(true);
 });
+
+for (const startInPrisme of [false, true]) {
+  test(`restores keyboard focus when switching to ${startInPrisme ? 'classic' : 'Prisme'}`, async ({
+    page,
+  }, testInfo) => {
+    await page.route('**/api/**', (route) => {
+      expect(route.request().method()).toBe('GET');
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith('/access/current-actor'))
+        return route.fulfill({ json: actorContextFixture });
+      if (path.endsWith('/activity-log'))
+        return route.fulfill({ json: { events: [] } });
+      return route.fulfill({ json: [] });
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(startInPrisme ? '/?frame=prisme#companies' : '/#companies');
+    if (startInPrisme && testInfo.project.name === 'narrow') {
+      await page.getByRole('button', { name: 'Open navigation' }).focus();
+      await page.keyboard.press('Enter');
+    }
+    await page
+      .getByRole('button', {
+        name: startInPrisme ? 'Use classic frame' : 'Try Prisme',
+      })
+      .focus();
+    await page.keyboard.press('Enter');
+
+    const focusTarget = startInPrisme
+      ? page.getByRole('button', {
+          name:
+            testInfo.project.name === 'narrow'
+              ? 'Open navigation'
+              : 'Try Prisme',
+        })
+      : page.getByRole('heading', { name: 'Companies', exact: true });
+    await expect(focusTarget).toBeFocused();
+    await expect(focusTarget).toBeVisible();
+    await expect(focusTarget).toHaveCSS('outline-style', 'solid');
+    if (testInfo.project.name === 'narrow')
+      await expect(
+        page.getByRole('button', { name: 'Open navigation' }),
+      ).toHaveAttribute('aria-expanded', 'false');
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `frame-focus-${startInPrisme ? 'classic' : 'prisme'}-${testInfo.project.name}.png`,
+      ),
+    });
+    await page.keyboard.press('Tab');
+    const nextControl =
+      startInPrisme && testInfo.project.name === 'desktop'
+        ? page.getByRole('link', { name: /^Home\b/ })
+        : page.getByLabel('Company display name');
+    await expect(nextControl).toBeFocused();
+  });
+}

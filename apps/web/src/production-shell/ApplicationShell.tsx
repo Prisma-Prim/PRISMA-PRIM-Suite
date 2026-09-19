@@ -56,9 +56,11 @@ export function ApplicationShell({
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const presentationControlRef = useRef<HTMLButtonElement>(null);
   const previousHash = useRef(window.location.hash);
   const url = new URL(location);
   const isPrisme = url.searchParams.get('frame') === 'prisme';
+  const previousPresentation = useRef(isPrisme);
   // URL fragments only select from the sections already authorized by App.
   const selected = sections.find((section) => `#${section.id}` === url.hash);
 
@@ -76,8 +78,16 @@ export function ApplicationShell({
   }, []);
 
   useEffect(() => {
-    if (previousHash.current !== url.hash && isPrisme)
+    const presentationChanged = previousPresentation.current !== isPrisme;
+    if (isPrisme && (presentationChanged || previousHash.current !== url.hash))
       titleRef.current?.focus();
+    else if (presentationChanged) {
+      const menuButton = menuButtonRef.current;
+      if (menuButton && menuButton.getClientRects().length > 0)
+        menuButton.focus();
+      else presentationControlRef.current?.focus();
+    }
+    previousPresentation.current = isPrisme;
     previousHash.current = url.hash;
   }, [isPrisme, url.hash]);
 
@@ -129,6 +139,7 @@ export function ApplicationShell({
 
   const presentationControl = (
     <button
+      ref={presentationControlRef}
       className="frame-presentation-control"
       type="button"
       onClick={changePresentation}
