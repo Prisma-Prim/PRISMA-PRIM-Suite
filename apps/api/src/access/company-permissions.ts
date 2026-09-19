@@ -14,7 +14,12 @@ export const DOCUMENT_V1_PERMISSIONS = [
   'document.register',
   'document.reference.read',
 ] as const;
-export type DocumentPermission = (typeof DOCUMENT_V1_PERMISSIONS)[number];
+export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE =
+  'company_document_project_organizer';
+export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL =
+  'Company Document Project Organizer';
+export type DocumentPermission =
+  (typeof DOCUMENT_V1_PERMISSIONS)[number] | 'document.project.manage';
 export const COMPANY_CONTEXT_USE_BUNDLES = [
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,

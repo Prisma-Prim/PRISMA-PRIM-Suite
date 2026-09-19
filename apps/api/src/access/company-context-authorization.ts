@@ -10,6 +10,7 @@ import {
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
 import {
   COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   DOCUMENT_V1_PERMISSIONS,
   COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -113,6 +114,37 @@ export class CompanyContextAuthorization {
     return new Set(rows.map((row) => row.companyId));
   }
 
+  async requireDocumentProjectManage(actor: ActorContext): Promise<void> {
+    const companyId = await this.requireDocumentAccess(actor, true);
+    await this.requireProjectAccess(actor, true);
+    if (
+      !actor.activeCompany?.documentPermissions?.includes(
+        'document.project.manage',
+      )
+    )
+      throw new ForbiddenException();
+    const [assignment] = await this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(
+            companyRoleAssignments.bundle,
+            COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
+          ),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      )
+      .for('share');
+    if (!assignment) throw new ForbiddenException();
+  }
   async requireDocumentAccess(
     actor: ActorContext,
     lock = false,
@@ -308,6 +340,7 @@ export class CompanyContextAuthorization {
       inArray(companyRoleAssignments.bundle, [
         ...COMPANY_CONTEXT_USE_BUNDLES,
         COMPANY_PROJECT_ACCESS_BUNDLE,
+        COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -333,6 +366,7 @@ export class CompanyContextAuthorization {
       )
       .where(and(...conditions));
     const companiesById = new Map<string, ActiveCompanyContext>();
+    const independentlyAuthorizedCompanies = new Set<string>();
     for (const row of rows) {
       const existing = companiesById.get(row.id);
       const company: ActiveCompanyContext = existing ?? {
@@ -354,9 +388,21 @@ export class CompanyContextAuthorization {
         company.clientPermissionAssignmentId = row.assignmentId;
         company.clientPermissionSetVersion = row.permissionSetVersion;
       }
+      if (
+        row.bundle === COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          'document.project.manage',
+        ];
+      }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
         if (row.permissionSetVersion !== 'v1') continue;
-        company.documentPermissions = [...DOCUMENT_V1_PERMISSIONS];
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...DOCUMENT_V1_PERMISSIONS,
+        ];
       }
       if (
         row.bundle === COMPANY_PROJECT_ACCESS_BUNDLE &&
@@ -364,9 +410,18 @@ export class CompanyContextAuthorization {
       ) {
         company.projectPermissions = [...COMPANY_PROJECT_V1_PERMISSIONS];
       }
+      if (row.bundle !== COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE) {
+        independentlyAuthorizedCompanies.add(row.id);
+      }
       companiesById.set(row.id, company);
     }
-    return [...companiesById.values()];
+    // Organizer contributes only its mutation permission. Company context must
+    // already follow from another assignment or Workspace Company management.
+    return [...companiesById.values()].filter(
+      (company) =>
+        actor.workspacePermissions.includes('company.manage') ||
+        independentlyAuthorizedCompanies.has(company.id),
+    );
   }
 }
 

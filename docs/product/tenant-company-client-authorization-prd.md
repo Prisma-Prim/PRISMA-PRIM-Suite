@@ -100,6 +100,19 @@ Before resolver authorization is enabled, an additive migration adds a required 
 
 The `client.duplicate.resolve` predicate above gates full candidate comparison, resolver-only pending-review listing and `duplicate_review_reference` lookup in every Company in the live candidate review scope defined by the Shared Client PRD, including the selected Company of a rejected create or correction attempt. Union and reversal require it in every affected Company defined there, while restricted operation detail requires it in every affected Company recorded by the Activity Log authority. Partial authority fails closed without hidden metadata. The [Shared Client PRD](release-1-shared-client-prd.md#11-governed-duplicate-resolution) solely owns warning and reference contents, candidate and conflict outcomes, concurrency behavior, stale-review handling and Document-evidence exclusions.
 
+The separately approved [working Document–Project association slice](release-1-document-registry-prd.md#18-approved-working-project-associations-245)
+introduces **Company Document Project Organizer v1**, containing only
+`document.project.manage`. An active administrator with `company.assignment.manage`
+may explicitly grant or revoke its captured v1 assignment for an active
+same-Workspace membership in an active Company, through the existing Company
+assignment administration and attributable grant/revoke history. Existing bundles
+and assignments receive no added permission or migration backfill grant. Unknown
+captured versions fail closed. This bundle authorizes association mutation only
+when the actor independently has current Company context, Project and Document
+read, and Client read/relationship authority; it grants none of those prerequisites
+and no Representation-read authority. The owning Document PRD defines link and
+removal state, original Client constraints and record visibility.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.

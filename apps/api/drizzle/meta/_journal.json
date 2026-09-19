@@ -162,6 +162,13 @@
       "when": 1789805848745,
       "tag": "0022_working_document_references",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789811843006,
+      "tag": "0023_document_project_associations",
+      "breakpoints": true
     }
   ]
 }

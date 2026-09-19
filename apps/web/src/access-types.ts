@@ -23,7 +23,10 @@ export interface ActorContext {
       | 'client.duplicate.resolve'
     >;
     documentPermissions?: Array<
-      'document.read' | 'document.register' | 'document.reference.read'
+      | 'document.read'
+      | 'document.register'
+      | 'document.reference.read'
+      | 'document.project.manage'
     >;
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';
