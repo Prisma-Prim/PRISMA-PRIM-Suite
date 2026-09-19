@@ -118,3 +118,9 @@ desktop and 390px with intercepted contracts: Project create/reopen; Task
 create/edit/complete/reopen/history; uncertain exact retry; conflict/reload;
 superseded-original read-only history; and denied state. Screenshots are written with
 `testInfo.outputPath(...)`; these tests do not claim a live Clerk or backend smoke.
+
+## Global Activity Log — issue #257
+
+[Issue #257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/257) presents the existing global Activity Log as a compact Prisme ledger with fine dividers, restrained violet markers and readable desktop and narrow spacing. The real projection remains in server order with its existing action labels, target descriptions and timestamps. Loading, error and empty results remain distinct real states.
+
+`App` and the production-shell session remain the data, Company-scope, refresh and request-lifecycle owners. This slice adds no filter, search, pagination, detail action, transport, permission or synthetic event. Classic retains its existing markup and styles because every visual rule is scoped under `.prisme-shell`. `e2e/prisme-activity-log.spec.ts` proves populated data, server order, frame switching and horizontal fit at 1440px and 390px. Its API responses are intercepted contract fixtures, not a live Clerk/backend smoke; screenshots originate from `testInfo.outputPath` and remain outside Git.

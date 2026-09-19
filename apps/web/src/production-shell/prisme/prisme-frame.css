@@ -466,6 +466,106 @@
   top: 12px;
 }
 
+.prisme-shell .activity-log {
+  min-width: 0;
+  padding: 0;
+  border-color: var(--shell-line);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.prisme-shell .activity-log-heading {
+  padding: 22px 26px;
+  border-bottom: 1px solid var(--shell-line);
+}
+
+.prisme-shell .activity-log-heading .eyebrow {
+  margin-bottom: 7px;
+  color: #6550af;
+  font-size: 0.58rem;
+  letter-spacing: 0.17em;
+}
+
+.prisme-shell .activity-log-heading h2 {
+  color: var(--shell-ink);
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.prisme-shell .activity-log-list {
+  margin: 0;
+}
+
+.prisme-shell .activity-log-list li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 17px;
+  min-width: 0;
+  padding: 19px 26px;
+  border-top: 0;
+  border-bottom: 1px solid var(--shell-line);
+}
+
+.prisme-shell .activity-log-list li:last-child {
+  border-bottom: 0;
+}
+
+.prisme-shell .activity-log-list li::before {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.38rem;
+  border: 2px solid #ded8f7;
+  border-radius: 50%;
+  background: #6e58d6;
+  box-shadow: 0 0 0 4px #f5f2ff;
+  content: '';
+}
+
+.prisme-shell .activity-log-list li > div {
+  min-width: 0;
+}
+
+.prisme-shell .activity-log-list strong {
+  color: var(--shell-ink);
+  font-size: 0.82rem;
+  font-weight: 620;
+  line-height: 1.55;
+}
+
+.prisme-shell .activity-log-list span {
+  margin-top: 5px;
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.prisme-shell .activity-log-list time {
+  color: #7b8799;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+.prisme-shell .activity-log > p {
+  margin: 24px 26px;
+  padding: 17px 19px;
+  border: 1px solid var(--shell-line);
+  border-radius: 8px;
+  color: var(--shell-muted);
+  background: #fafbfe;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.prisme-shell .activity-log > p[role='alert'] {
+  border-color: #ead8dc;
+  color: #8a4051;
+  background: #fff9fa;
+}
+
 @media (max-width: 980px) {
   .prisme-overview-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -533,5 +633,23 @@
   .prisme-capabilities,
   .prisme-context-card {
     padding: 20px;
+  }
+
+  .prisme-shell .activity-log-heading {
+    padding: 19px 20px;
+  }
+
+  .prisme-shell .activity-log-list li {
+    grid-template-columns: 9px minmax(0, 1fr);
+    padding: 17px 20px;
+  }
+
+  .prisme-shell .activity-log-list time {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .prisme-shell .activity-log > p {
+    margin: 20px;
   }
 }
