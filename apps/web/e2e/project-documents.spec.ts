@@ -224,6 +224,9 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   expect(
     await attach.evaluate((element) => getComputedStyle(element).outlineStyle),
   ).toBe('solid');
+  expect(
+    await attach.evaluate((element) => getComputedStyle(element).outlineColor),
+  ).toBe('rgb(121, 98, 237)');
   await capture(page, testInfo, 'project-documents-empty.png');
   await attach.click();
   await expect(documents.getByText(workingDocument.purpose)).toBeVisible();

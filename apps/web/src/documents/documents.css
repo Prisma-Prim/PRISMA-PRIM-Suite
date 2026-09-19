@@ -140,7 +140,7 @@
 .prisme-shell .working-documents--prisme textarea:focus-visible,
 .prisme-shell .working-documents--prisme select:focus-visible,
 .prisme-shell .working-documents--prisme a:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--shell-focus) 42%, transparent);
+  outline: 3px solid var(--shell-focus);
   outline-offset: 2px;
 }
 

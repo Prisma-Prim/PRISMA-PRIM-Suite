@@ -67,9 +67,15 @@
   opacity: 0.55;
 }
 
-.prisme-shell .project-documents--prisme button:focus-visible,
-.prisme-shell .project-documents--prisme a:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--shell-focus) 42%, transparent);
+.prisme-shell
+  .project-workspace--prisme
+  .project-documents--prisme
+  button:focus-visible,
+.prisme-shell
+  .project-workspace--prisme
+  .project-documents--prisme
+  a:focus-visible {
+  outline: 3px solid var(--shell-focus);
   outline-offset: 2px;
 }
 

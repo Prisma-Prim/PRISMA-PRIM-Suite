@@ -196,6 +196,11 @@ test('registers and reopens a Company-confidential working reference', async ({
       (element) => getComputedStyle(element).outlineStyle,
     ),
   ).toBe('solid');
+  expect(
+    await register.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(121, 98, 237)');
   await register.click();
   await expect(
     page.getByRole('heading', { name: document.title }),
