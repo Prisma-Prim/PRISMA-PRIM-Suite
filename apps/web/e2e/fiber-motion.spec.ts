@@ -76,14 +76,14 @@ test('uses the original local artwork when WebGL is unavailable', async ({
 test('recovers from context loss and disposes the previous canvas on navigation', async ({
   page,
 }) => {
-  await page.goto('/?frame=prisme');
+  await page.goto('/?frame=prisme', { timeout: 5_000 });
   await expect(
     page.getByRole('button', { name: 'Pause animation' }),
   ).toBeVisible();
   const canvas = page.locator('.fiber-motion canvas');
   const oldCanvas = await canvas.elementHandle();
   if (!oldCanvas) throw new Error('Expected mounted fiber canvas');
-  const extension = await canvas.evaluateHandle((element) => {
+  const extension = await oldCanvas.evaluateHandle((element) => {
     if (!(element instanceof HTMLCanvasElement))
       throw new Error('Expected canvas');
     const loseContext = element
@@ -106,7 +106,7 @@ test('recovers from context loss and disposes the previous canvas on navigation'
     await page
       .locator('.prisme-capabilities')
       .getByRole('link', { name: /Companies/ })
-      .click();
+      .click({ timeout: 5_000 });
     await expect(page.getByLabel('Company display name')).toBeVisible();
     await expect(canvas).toHaveCount(0);
     await page.evaluate(() => {

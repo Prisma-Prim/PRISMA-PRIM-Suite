@@ -348,25 +348,25 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
     fullPage: true,
   });
 });
-test('keeps modifier and middle clicks as native new-tab navigation', async ({
-  page,
-  context,
-}) => {
-  await context.route('**/api/**', (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith('/access/current-actor'))
-      return route.fulfill({ json: actorContextFixture });
-    if (path.endsWith('/activity-log'))
-      return route.fulfill({ json: { events: [] } });
-    return route.fulfill({ json: [] });
-  });
-  await page.goto('/?frame=prisme');
-  const companies = page
-    .locator('.prisme-capabilities')
-    .getByRole('link', { name: /Companies/ });
-  await expect(companies).toBeVisible();
-  const initialUrl = page.url();
-  for (const gesture of ['modifier', 'middle']) {
+for (const gesture of ['modifier', 'middle'] as const) {
+  test(`keeps ${gesture} click as native new-tab navigation`, async ({
+    page,
+    context,
+  }) => {
+    await context.route('**/api/**', (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith('/access/current-actor'))
+        return route.fulfill({ json: actorContextFixture });
+      if (path.endsWith('/activity-log'))
+        return route.fulfill({ json: { events: [] } });
+      return route.fulfill({ json: [] });
+    });
+    await page.goto('/?frame=prisme');
+    const companies = page
+      .locator('.prisme-capabilities')
+      .getByRole('link', { name: /Companies/ });
+    await expect(companies).toBeVisible();
+    const initialUrl = page.url();
     const opened = context.waitForEvent('page');
     if (gesture === 'modifier')
       await companies.click({ modifiers: ['ControlOrMeta'] });
@@ -376,5 +376,5 @@ test('keeps modifier and middle clicks as native new-tab navigation', async ({
     await expect(nextPage.getByLabel('Company display name')).toBeVisible();
     await expect(page).toHaveURL(initialUrl);
     await nextPage.close();
-  }
-});
+  });
+}

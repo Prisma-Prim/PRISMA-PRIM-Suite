@@ -464,19 +464,10 @@ export function probePostgres(
   runner = spawnSync,
 ) {
   if (!databaseUrl || !testDatabaseUrl) return { state: 'not-run' };
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const command = run(
-    executable,
-    [
-      '--filter',
-      '@prisma-prim/api',
-      'exec',
-      'node',
-      '--input-type=module',
-      '--eval',
-      createPostgresChildSource(),
-    ],
+  const command = runPnpmNode(
+    createPostgresChildSource(),
     {
+      workspace: '@prisma-prim/api',
       timeout: POSTGRES_TIMEOUT,
       env: {
         ...process.env,
@@ -489,37 +480,44 @@ export function probePostgres(
   return classifyPostgresCommand(command);
 }
 
+function runPnpmNode(
+  source,
+  { workspace, ...options } = {},
+  runner = spawnSync,
+) {
+  const args = [
+    ...(workspace ? ['--filter', workspace] : []),
+    'exec',
+    'node',
+    '--input-type=module',
+  ];
+  // Windows .cmd launchers require cmd.exe. Only fixed command words enter the
+  // shell; JavaScript travels over stdin so quotes and metacharacters stay data.
+  return process.platform === 'win32'
+    ? run(
+        'pnpm.cmd ' + args.join(' '),
+        [],
+        { ...options, shell: true, input: source },
+        runner,
+      )
+    : run('pnpm', args, { ...options, input: source }, runner);
+}
+
 function probePnpm() {
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   return classifyPnpmCommand(
-    run(executable, [
-      'exec',
-      'node',
-      '--input-type=module',
-      '--eval',
+    runPnpmNode(
       'process.stdout.write(process.env.npm_config_user_agent ?? "")',
-    ]),
+    ),
   );
 }
 
 function playwrightChromiumIsAvailable() {
-  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const probe = [
     'import { existsSync } from "node:fs";',
     'import { chromium } from "@playwright/test";',
     'process.exit(existsSync(chromium.executablePath()) ? 0 : 1);',
   ].join(' ');
-  return (
-    run(executable, [
-      '--filter',
-      '@prisma-prim/web',
-      'exec',
-      'node',
-      '--input-type=module',
-      '--eval',
-      probe,
-    ]).status === 0
-  );
+  return runPnpmNode(probe, { workspace: '@prisma-prim/web' }).status === 0;
 }
 
 export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {

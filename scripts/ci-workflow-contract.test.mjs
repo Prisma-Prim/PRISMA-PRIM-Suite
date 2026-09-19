@@ -72,3 +72,20 @@ test('CI preserves every verification seam in order and fails formatting first',
     'formatting, lint, type-check, and test steps must be unconditional',
   );
 });
+
+test('Windows CI proves the same Doctor, verification and real browser/database suites', async () => {
+  const workflow = await readFile(workflowUrl, 'utf8');
+  const windows = workflow.slice(workflow.indexOf('  windows:'));
+  assert.match(windows, /runs-on: windows-2025/);
+  assert.match(windows, /initdb.exe/);
+  assert.match(windows, /pg_ctl.exe/);
+  assert.match(windows, /uses: \.\/\.github\/actions\/setup-verification/);
+  assert.match(windows, /run: pnpm agent:doctor:web-postgres/);
+  assert.match(windows, /run: pnpm verify/);
+  assert.match(windows, /run: pnpm test\n/);
+  assert.match(
+    windows,
+    /TEST_DATABASE_URL: postgresql:\/\/.*127\.0\.0\.1:55432\/prisma_prim_test/,
+  );
+  assert.doesNotMatch(windows, /continue-on-error|test-ignore|test-skip/);
+});

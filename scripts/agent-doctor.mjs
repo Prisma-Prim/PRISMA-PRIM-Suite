@@ -1,4 +1,5 @@
-import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -183,7 +184,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
       snapshot.dependenciesInstalled
         ? 'The root node_modules directory is present.'
         : 'The root node_modules directory is missing.',
-      'Run bash scripts/agent-pnpm.sh install --frozen-lockfile.',
+      'Run pnpm install --frozen-lockfile.',
       { ciRecoverable: true },
     ),
     result(
@@ -194,7 +195,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
           ? 'Playwright Chromium is installed and executable.'
           : 'Playwright Chromium is missing or not executable.'
         : 'Playwright Chromium is not required by the selected profile.',
-      `Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium.`,
+      `Run pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium.`,
       { ciRecoverable: true },
     ),
     result(
@@ -256,7 +257,7 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
       'pnpm',
       'FAIL',
       `pnpm is not installed or not on PATH; repository expects ${requiredPnpm}.`,
-      `Install a pnpm launcher, then run bash scripts/agent-pnpm.sh --version to activate ${requiredPnpm}.`,
+      `Follow docs/agents/environment.md to install pnpm ${requiredPnpm}.`,
       { ciRecoverable: true },
     );
   }
@@ -283,7 +284,7 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
     probe.state === 'available'
       ? `pnpm ${probe.version}; repository expects ${requiredPnpm}.`
       : `pnpm could not report its version (${probe.detail ?? 'unknown subprocess failure'}).`,
-    `Run repository commands through bash scripts/agent-pnpm.sh to activate pnpm ${requiredPnpm} without a system-global install.`,
+    `Follow the Windows or Linux setup in docs/agents/environment.md to activate pnpm ${requiredPnpm}.`,
     { ciRecoverable: probe.state === 'available' },
   );
 }
@@ -414,10 +415,34 @@ function main() {
     return;
   }
 
+  const checkoutPath = dirname(dirname(scriptPath));
+  const git = (args) =>
+    spawnSync('git', args, {
+      cwd: checkoutPath,
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+  const head = git(['rev-parse', 'HEAD']);
+  const changes = git(['status', '--short']);
+  const checkout = {
+    path: checkoutPath,
+    head: head.status === 0 ? head.stdout.trim() : 'unavailable',
+    changes: changes.status === 0 ? changes.stdout.trim() : 'unavailable',
+  };
+  if (!json)
+    process.stdout.write(
+      'Checkout: ' +
+        checkout.path +
+        '\nHEAD: ' +
+        checkout.head +
+        '\nWorking tree: ' +
+        (checkout.changes || 'clean') +
+        '\n',
+    );
   const report = inspectEnvironment(profile);
   const results = report.checks;
   process.stdout.write(
-    `${json ? JSON.stringify({ profile, results }, null, 2) : formatResults(results)}\n`,
+    `${json ? JSON.stringify({ checkout, profile, results }, null, 2) : formatResults(results)}\n`,
   );
 
   if (results.some((check) => check.status === 'FAIL')) {

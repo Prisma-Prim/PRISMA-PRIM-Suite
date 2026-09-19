@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // Avoid exhausting Windows process/IO capacity on high-core local machines.
+    maxWorkers: process.platform === 'win32' ? 2 : undefined,
     exclude: [...configDefaults.exclude, 'e2e/**'],
     setupFiles: ['./src/test/setup.ts'],
   },

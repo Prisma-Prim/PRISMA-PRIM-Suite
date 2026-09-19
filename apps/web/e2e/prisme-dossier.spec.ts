@@ -433,12 +433,23 @@ for (const outcome of [
   }) => {
     const state = await installDossierFixture(page);
     let release: (() => Promise<void>) | undefined;
-    state.read = (route) => {
+    let continueRead: (() => void) | undefined;
+    const readMayFinish = new Promise<void>((resolve) => {
+      continueRead = () => resolve();
+    });
+    let readIntercepted = false;
+    state.read = async (route) => {
+      readIntercepted = true;
+      await readMayFinish;
       release = () => route.fulfill({ status: outcome.status, json: {} });
     };
     await page.goto('/?frame=prisme#clients');
     await page.getByRole('button', { name: 'Open dossier' }).click();
     await expect(page.getByText('Loading Client dossier…')).toBeVisible();
+    await expect.poll(() => readIntercepted).toBe(true);
+    if (!continueRead) throw new Error('Expected the dossier read boundary');
+    continueRead();
+    await expect.poll(() => Boolean(release)).toBe(true);
     if (!release) throw new Error('Expected a dossier read');
     if (outcome.status === 403) state.actorStatus = 403;
     await release();

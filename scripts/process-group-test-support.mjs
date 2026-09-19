@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { probeDetachedProcessGroupCapability } from './process-group.mjs';
 
 export async function skipWithoutDetachedProcessGroups(context) {
+  if (process.platform === 'win32') {
+    context.skip(
+      'POSIX process groups belong to the Linux CI job; Windows uses an explicit local PostgreSQL service.',
+    );
+    return true;
+  }
   const capability = await probeDetachedProcessGroupCapability();
   if (capability.supported) {
     return false;
