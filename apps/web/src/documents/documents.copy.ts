@@ -1,4 +1,5 @@
 export const documentsCopy = {
+  eyebrow: 'Document registry',
   title: 'Working Documents',
   description: 'Company-confidential questionnaire references',
   loading: 'Loading working references…',

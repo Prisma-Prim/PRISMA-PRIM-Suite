@@ -157,7 +157,12 @@ async function openProject(page: Page, testInfo: TestInfo) {
   await expect(
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
-  return page.getByRole('region', { name: 'Working Documents', exact: true });
+  const documents = page.getByRole('region', {
+    name: 'Working Documents',
+    exact: true,
+  });
+  await expect(documents).toHaveClass(/project-documents--prisme/);
+  return documents;
 }
 
 async function capture(page: Page, testInfo: TestInfo, filename: string) {
@@ -184,6 +189,7 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
       expectedRevision: action === 'link' ? 0 : 1,
     });
     expect(route.request().headers()['idempotency-key']).toBeTruthy();
+    if (state.commands.length === 3) return route.fulfill({ status: 409 });
     state.linked = action === 'link';
     state.revision = action === 'link' ? 1 : 2;
     // The first link commits but its response fails; replay confirms that same
@@ -207,10 +213,22 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
       'Draft questionnaires with unverified external references. Attachments are working material, not accepted evidence or permission to start work.',
     ),
   ).toBeVisible();
+  const attach = documents.getByRole('button', {
+    name: 'Attach working Document',
+    exact: true,
+  });
+  await attach.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(attach).toBeFocused();
+  expect(
+    await attach.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe('solid');
+  expect(
+    await attach.evaluate((element) => getComputedStyle(element).outlineColor),
+  ).toBe('rgb(121, 98, 237)');
   await capture(page, testInfo, 'project-documents-empty.png');
-  await documents
-    .getByRole('button', { name: 'Attach working Document', exact: true })
-    .click();
+  await attach.click();
   await expect(documents.getByText(workingDocument.purpose)).toBeVisible();
   await capture(page, testInfo, 'project-documents-selector.png');
   await documents
@@ -243,22 +261,48 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
 
   await page.reload();
   await page.getByRole('button', { name: project.title, exact: true }).click();
+  state.document = {
+    ...state.document,
+    title: 'Corrected preparation questionnaire',
+    purpose: 'Prepare the corrected Client interview',
+    workingRevision: 2,
+    version: {
+      ...state.document.version,
+      representation: {
+        ...state.document.version.representation,
+        url: 'https://example.test/corrected-project-questionnaire',
+      },
+    },
+  };
+  await documents
+    .getByRole('button', { name: 'Reload working Documents' })
+    .click();
+  await expect(
+    documents.getByRole('heading', { name: state.document.title }),
+  ).toBeVisible();
+  await expect(
+    documents.getByRole('button', {
+      name: `Remove ${state.document.title}`,
+      exact: true,
+    }),
+  ).toBeVisible();
   const reference = documents.getByRole('link', {
     name: 'Open external reference',
   });
-  await expect(
-    documents.getByRole('heading', { name: workingDocument.title }),
-  ).toBeVisible();
   await expect(reference).toHaveAttribute(
     'href',
-    workingDocument.version.representation.url,
+    state.document.version.representation.url,
   );
   await expect(reference).toHaveAttribute('target', '_blank');
   await expect(reference).toHaveAttribute('rel', 'noopener noreferrer');
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement)
+      document.activeElement.blur();
+  });
   await capture(page, testInfo, 'project-documents-reopened.png');
   await page
     .context()
-    .route(workingDocument.version.representation.url, (route) =>
+    .route(state.document.version.representation.url, (route) =>
       route.fulfill({
         contentType: 'text/html',
         body: '<title>Synthetic questionnaire</title>',
@@ -269,22 +313,31 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
     reference.click(),
   ]);
   await expect(externalReference).toHaveURL(
-    workingDocument.version.representation.url,
+    state.document.version.representation.url,
   );
   expect(await externalReference.evaluate(() => window.opener)).toBeNull();
   await externalReference.close();
+  const remove = documents.getByRole('button', {
+    name: `Remove ${state.document.title}`,
+    exact: true,
+  });
+  await remove.click();
+  await expect(documents.getByRole('status')).toHaveText(
+    'The association changed or this command is no longer valid. Reload before choosing another action.',
+  );
+  await expect(remove).toBeDisabled();
   await documents
-    .getByRole('button', {
-      name: `Remove ${workingDocument.title}`,
-      exact: true,
-    })
+    .getByRole('button', { name: 'Reload working Documents' })
     .click();
+  await expect(remove).toBeEnabled();
+  await remove.click();
   await expect(
     documents.getByText('No working Documents attached.'),
   ).toBeVisible();
   await expect(documents.getByRole('link')).toHaveCount(0);
-  expect(state.commands).toHaveLength(3);
+  expect(state.commands).toHaveLength(4);
   expect(state.commands[2]?.key).not.toBe(state.commands[0]?.key);
+  expect(state.commands[3]?.key).not.toBe(state.commands[2]?.key);
   await capture(page, testInfo, 'project-documents-removed.png');
   await page.reload();
   await page.getByRole('button', { name: project.title, exact: true }).click();
@@ -295,7 +348,7 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
     .getByRole('button', { name: 'Attach working Document', exact: true })
     .click();
   await expect(
-    documents.getByRole('heading', { name: workingDocument.title }),
+    documents.getByRole('heading', { name: state.document.title }),
   ).toBeVisible();
 });
 

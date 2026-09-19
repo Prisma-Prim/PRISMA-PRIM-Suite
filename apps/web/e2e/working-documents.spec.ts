@@ -33,6 +33,7 @@ test('registers and reopens a Company-confidential working reference', async ({
   let saved = false;
   let denied = false;
   let loadError = false;
+  let correctionConflict = false;
   let currentDocument = document;
   const correctionRequests: Array<{ body: unknown; key: string | undefined }> =
     [];
@@ -126,6 +127,7 @@ test('registers and reopens a Company-confidential working reference', async ({
           body: request.postDataJSON(),
           key: request.headers()['idempotency-key'],
         });
+        if (correctionConflict) return route.fulfill({ status: 409 });
         currentDocument = {
           ...document,
           title: 'Corrected assessment questionnaire',
@@ -167,6 +169,13 @@ test('registers and reopens a Company-confidential working reference', async ({
   await expect(
     page.getByText('No working references registered yet.'),
   ).toBeVisible();
+  const workspace = page.getByRole('region', { name: 'Working Documents' });
+  await expect(workspace).toHaveClass(/working-documents--prisme/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath('documents-empty.png'),
     fullPage: true,
@@ -177,9 +186,22 @@ test('registers and reopens a Company-confidential working reference', async ({
   await page
     .getByLabel('External HTTPS link')
     .fill(document.version.representation.url);
-  await page
-    .getByRole('button', { name: 'Register working reference' })
-    .click();
+  const register = page.getByRole('button', {
+    name: 'Register working reference',
+  });
+  await page.keyboard.press('Tab');
+  await expect(register).toBeFocused();
+  expect(
+    await register.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await register.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(121, 98, 237)');
+  await register.click();
   await expect(
     page.getByRole('heading', { name: document.title }),
   ).toBeVisible();
@@ -217,6 +239,31 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-corrected.png'),
     fullPage: true,
   });
+  await page.getByRole('button', { name: 'Edit reference' }).click();
+  await page
+    .getByLabel('Title', { exact: true })
+    .fill('Competing correction intention');
+  correctionConflict = true;
+  await page.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'This reference changed. Reload it before correcting it again.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Edit reference' }),
+  ).toHaveCount(0);
+  correctionConflict = false;
+  currentDocument = {
+    ...currentDocument,
+    title: 'Concurrent server correction',
+    workingRevision: 3,
+  };
+  await page.getByRole('button', { name: 'Reload reference' }).click();
+  await expect(
+    page.getByRole('heading', { name: currentDocument.title }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Edit reference' }),
+  ).toBeEnabled();
   loadError = true;
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('could not be loaded');
