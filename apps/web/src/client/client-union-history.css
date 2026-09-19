@@ -81,7 +81,25 @@
 }
 
 .prisme-shell .client-union-history-form {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
   padding: 20px 0 0;
+}
+
+.prisme-shell .client-union form.client-union-history-form > * {
+  min-width: 0;
+  grid-column: 1;
+}
+
+.prisme-shell .client-union-history-form fieldset {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.prisme-shell .client-union form.client-union-history-form > button {
+  justify-self: start;
 }
 
 .prisme-shell .client-union-history-form textarea {
