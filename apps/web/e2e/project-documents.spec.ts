@@ -189,6 +189,7 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
       expectedRevision: action === 'link' ? 0 : 1,
     });
     expect(route.request().headers()['idempotency-key']).toBeTruthy();
+    if (state.commands.length === 3) return route.fulfill({ status: 409 });
     state.linked = action === 'link';
     state.revision = action === 'link' ? 1 : 2;
     // The first link commits but its response fails; replay confirms that same
@@ -313,18 +314,27 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   );
   expect(await externalReference.evaluate(() => window.opener)).toBeNull();
   await externalReference.close();
+  const remove = documents.getByRole('button', {
+    name: `Remove ${state.document.title}`,
+    exact: true,
+  });
+  await remove.click();
+  await expect(documents.getByRole('status')).toHaveText(
+    'The association changed or this command is no longer valid. Reload before choosing another action.',
+  );
+  await expect(remove).toBeDisabled();
   await documents
-    .getByRole('button', {
-      name: `Remove ${state.document.title}`,
-      exact: true,
-    })
+    .getByRole('button', { name: 'Reload working Documents' })
     .click();
+  await expect(remove).toBeEnabled();
+  await remove.click();
   await expect(
     documents.getByText('No working Documents attached.'),
   ).toBeVisible();
   await expect(documents.getByRole('link')).toHaveCount(0);
-  expect(state.commands).toHaveLength(3);
+  expect(state.commands).toHaveLength(4);
   expect(state.commands[2]?.key).not.toBe(state.commands[0]?.key);
+  expect(state.commands[3]?.key).not.toBe(state.commands[2]?.key);
   await capture(page, testInfo, 'project-documents-removed.png');
   await page.reload();
   await page.getByRole('button', { name: project.title, exact: true }).click();

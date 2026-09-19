@@ -455,6 +455,7 @@ export function DocumentWorkspace({
               ) : null}
               {!editing &&
                 canCorrect &&
+                correction !== 'conflict' &&
                 detail.correction === 'allowed' &&
                 detail.version.representation.access === 'granted' && (
                   <button

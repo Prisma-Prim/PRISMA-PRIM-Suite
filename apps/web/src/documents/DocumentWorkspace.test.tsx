@@ -320,9 +320,13 @@ it('requires reload after a correction revision conflict', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'changed. Reload it',
   );
+  expect(
+    screen.queryByRole('button', { name: 'Edit reference' }),
+  ).not.toBeInTheDocument();
   reloaded = true;
   fireEvent.click(screen.getByRole('button', { name: 'Reload reference' }));
   expect(await screen.findByText('Concurrent correction')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Edit reference' })).toBeEnabled();
 });
 it('denies Client-only users without requesting Document records', async () => {
   const fetcher = vi.fn();

@@ -33,6 +33,7 @@ test('registers and reopens a Company-confidential working reference', async ({
   let saved = false;
   let denied = false;
   let loadError = false;
+  let correctionConflict = false;
   let currentDocument = document;
   const correctionRequests: Array<{ body: unknown; key: string | undefined }> =
     [];
@@ -126,6 +127,7 @@ test('registers and reopens a Company-confidential working reference', async ({
           body: request.postDataJSON(),
           key: request.headers()['idempotency-key'],
         });
+        if (correctionConflict) return route.fulfill({ status: 409 });
         currentDocument = {
           ...document,
           title: 'Corrected assessment questionnaire',
@@ -232,6 +234,31 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-corrected.png'),
     fullPage: true,
   });
+  await page.getByRole('button', { name: 'Edit reference' }).click();
+  await page
+    .getByLabel('Title', { exact: true })
+    .fill('Competing correction intention');
+  correctionConflict = true;
+  await page.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'This reference changed. Reload it before correcting it again.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Edit reference' }),
+  ).toHaveCount(0);
+  correctionConflict = false;
+  currentDocument = {
+    ...currentDocument,
+    title: 'Concurrent server correction',
+    workingRevision: 3,
+  };
+  await page.getByRole('button', { name: 'Reload reference' }).click();
+  await expect(
+    page.getByRole('heading', { name: currentDocument.title }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Edit reference' }),
+  ).toBeEnabled();
   loadError = true;
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('could not be loaded');
