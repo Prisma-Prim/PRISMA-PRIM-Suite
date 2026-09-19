@@ -131,6 +131,20 @@ test('creates and opens a Project, then switches local panels without reloading 
   await expect(tasksTab).toHaveAttribute('aria-selected', 'true');
   await expect(tasksPanel).toBeVisible();
   await expect(documentsPanel).toBeHidden();
+
+  await tasksTab.focus();
+  await tasksTab.press('End');
+  await expect(documentsTab).toBeFocused();
+  await expect(documentsPanel).toBeVisible();
+  await documentsTab.press('Home');
+  await expect(tasksTab).toBeFocused();
+  await expect(tasksPanel).toBeVisible();
+  await tasksTab.press('ArrowRight');
+  await expect(documentsTab).toBeFocused();
+  await documentsTab.press('ArrowLeft');
+  await expect(tasksTab).toBeFocused();
+  await expect(tasksPanel).toBeVisible();
+
   await expect(
     tasksPanel.getByText('No manual Tasks for this Project yet.'),
   ).toBeVisible();

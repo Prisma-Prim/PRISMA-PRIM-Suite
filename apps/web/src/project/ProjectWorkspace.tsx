@@ -1,6 +1,13 @@
 import { ProjectDocuments } from './ProjectDocuments';
 import { ProjectTasks } from './ProjectTasks';
-import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -23,6 +30,7 @@ type ProjectView = {
   createdAt: string;
 };
 type ClientChoice = { id: string; displayName: string };
+type DetailPanel = 'tasks' | 'documents';
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error' | 'denied' }
@@ -37,9 +45,7 @@ export function ProjectWorkspace({
   onActivityRecorded?: () => void | Promise<void>;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
-  const [detailPanel, setDetailPanel] = useState<'tasks' | 'documents'>(
-    'tasks',
-  );
+  const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
@@ -211,6 +217,33 @@ export function ProjectWorkspace({
     retry.current = command;
     void run('/projects', command);
   }
+  function moveDetailTab(
+    event: KeyboardEvent<HTMLButtonElement>,
+    current: DetailPanel,
+  ) {
+    let next: DetailPanel;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = current === 'tasks' ? 'documents' : 'tasks';
+        break;
+      case 'ArrowLeft':
+        next = current === 'tasks' ? 'documents' : 'tasks';
+        break;
+      case 'Home':
+        next = 'tasks';
+        break;
+      case 'End':
+        next = 'documents';
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    setDetailPanel(next);
+    event.currentTarget.parentElement
+      ?.querySelector<HTMLButtonElement>(`#project-${next}-tab`)
+      ?.focus();
+  }
   return (
     <section
       className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
@@ -354,7 +387,9 @@ export function ProjectWorkspace({
                 role="tab"
                 aria-selected={detailPanel === 'tasks'}
                 aria-controls="project-tasks-panel"
+                tabIndex={detailPanel === 'tasks' ? 0 : -1}
                 onClick={() => setDetailPanel('tasks')}
+                onKeyDown={(event) => moveDetailTab(event, 'tasks')}
               >
                 {taskCopy.title}
               </button>
@@ -364,7 +399,9 @@ export function ProjectWorkspace({
                 role="tab"
                 aria-selected={detailPanel === 'documents'}
                 aria-controls="project-documents-panel"
+                tabIndex={detailPanel === 'documents' ? 0 : -1}
                 onClick={() => setDetailPanel('documents')}
+                onKeyDown={(event) => moveDetailTab(event, 'documents')}
               >
                 {projectDocumentsCopy.title}
               </button>
