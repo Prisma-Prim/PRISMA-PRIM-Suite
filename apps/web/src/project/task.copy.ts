@@ -14,6 +14,11 @@ export const taskCopy = {
   missing:
     'This Task could not be found. Reload the Task or choose another Task from the list.',
   empty: 'No manual Tasks for this Project yet.',
+  searchLabel: 'Search Tasks',
+  statusFilterLabel: 'Task status',
+  all: 'All',
+  completedFilter: 'Completed',
+  noMatch: 'No Tasks match the current filters.',
   immutable:
     'Read-only: the original Client has been superseded. Task history remains available.',
   reload: 'Reload Tasks',
