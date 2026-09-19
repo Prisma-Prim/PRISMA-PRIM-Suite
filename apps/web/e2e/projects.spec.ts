@@ -130,11 +130,19 @@ test('registers and reopens a Company preparatory Project after reload', async (
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: project.title }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    })
+    .click();
   await expect(
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
-  await expect(page.getByText(`Client: ${client.displayName}`)).toBeVisible();
+  await expect(
+    page
+      .getByRole('article', { name: project.title })
+      .getByText(`Client: ${client.displayName}`),
+  ).toBeVisible();
   await expect(
     page.getByText(
       'Preparation only. This record does not authorize work to start.',
@@ -152,7 +160,11 @@ test('registers and reopens a Company preparatory Project after reload', async (
   ).toBeVisible();
   await expect(page.getByText(`Target: ${project.id}`)).toBeVisible();
   await page.goto('/?frame=prisme#projects');
-  await page.getByRole('button', { name: project.title }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    })
+    .click();
   denied = true;
   await page.getByRole('button', { name: 'Reload Projects' }).click();
   await expect(

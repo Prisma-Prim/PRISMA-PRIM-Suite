@@ -112,7 +112,11 @@ test('creates and opens a Project, then switches local panels without reloading 
     exact: true,
   });
   await expect(projectHeading).toBeVisible();
-  await expect(page.getByText(`Client: ${client.displayName}`)).toBeVisible();
+  await expect(
+    page
+      .getByRole('article', { name: createdProject.title })
+      .getByText(`Client: ${client.displayName}`),
+  ).toBeVisible();
   await expect(
     page.getByText(
       'Preparation only. This record does not authorize work to start.',

@@ -43,7 +43,11 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
-  await page.getByRole('button', { name: project.title }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    })
+    .click();
 
   const region = page.getByRole('region', { name: 'Tasks', exact: true });
   const navigation = region.getByRole('navigation', { name: 'Tasks' });

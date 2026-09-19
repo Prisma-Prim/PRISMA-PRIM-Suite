@@ -23,7 +23,7 @@ for (const frame of ['classic', 'prisme'] as const) {
       companyId: company.id,
       clientAccountId: clients[1].id,
       clientDisplayName: clients[1].displayName,
-      title: 'Food safety review',
+      title: 'ISO preparation',
       status: 'preparatory',
       createdAt: '2026-09-19T08:00:00.000Z',
     };
@@ -115,32 +115,43 @@ for (const frame of ['classic', 'prisme'] as const) {
 
     const list = page.getByRole('list', { name: 'Projects' });
     await expect(list.getByRole('button')).toHaveCount(2);
-    expect(
-      await list
-        .getByRole('button')
-        .evaluateAll((buttons) =>
-          buttons.map((button) => button.getAttribute('aria-label')),
-        ),
-    ).toEqual([firstProject.title, secondProject.title]);
+    expect(await list.getByRole('button').allTextContents()).toEqual([
+      `${firstProject.title} Client: ${firstProject.clientDisplayName}`,
+      `${secondProject.title} Client: ${secondProject.clientDisplayName}`,
+    ]);
     await expect(list.getByText(/Alpha Advisory/)).toBeVisible();
     await expect(list.getByText(/Beta Certification/)).toBeVisible();
 
     const search = page.getByRole('searchbox', { name: 'Find Projects' });
     await search.fill('aLpHa');
     await expect(
-      list.getByRole('button', { name: secondProject.title }),
+      list.getByRole('button', {
+        name: `${secondProject.title} Client: ${secondProject.clientDisplayName}`,
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(
-      list.getByRole('button', { name: firstProject.title }),
+      list.getByRole('button', {
+        name: `${firstProject.title} Client: ${firstProject.clientDisplayName}`,
+        exact: true,
+      }),
     ).toHaveCount(0);
     expect(projectReads).toBe(1);
 
-    await list.getByRole('button', { name: secondProject.title }).click();
+    await list
+      .getByRole('button', {
+        name: `${secondProject.title} Client: ${secondProject.clientDisplayName}`,
+        exact: true,
+      })
+      .click();
     await expect(
       page.getByRole('heading', { name: reopenedProject.title }),
     ).toBeVisible();
     await expect(
-      list.getByRole('button', { name: reopenedProject.title }),
+      list.getByRole('button', {
+        name: `${reopenedProject.title} Client: ${reopenedProject.clientDisplayName}`,
+        exact: true,
+      }),
     ).toBeVisible();
     const taskDraft = 'Keep this draft while its Project row is hidden';
     await page.getByLabel('Task title').fill(taskDraft);
@@ -174,7 +185,10 @@ for (const frame of ['classic', 'prisme'] as const) {
       .getByRole('button', { name: 'Create Project', exact: true })
       .click();
     await expect(
-      list.getByRole('button', { name: createdProject.title }),
+      list.getByRole('button', {
+        name: `${createdProject.title} Client: ${createdProject.clientDisplayName}`,
+        exact: true,
+      }),
     ).toBeVisible();
     expect(createKeys).toHaveLength(2);
     expect(createKeys[0]).toBe(createKeys[1]);

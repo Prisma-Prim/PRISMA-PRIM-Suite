@@ -318,13 +318,12 @@ export function ProjectWorkspace({
               <li key={project.id}>
                 <button
                   type="button"
-                  aria-label={project.title}
                   disabled={pending}
                   onClick={() =>
                     void run(`/projects/${encodeURIComponent(project.id)}`)
                   }
                 >
-                  <span>{project.title}</span>
+                  <span>{project.title}</span>{' '}
                   <span className="project-list-client">
                     {copy.clientPrefix} {project.clientDisplayName}
                   </span>

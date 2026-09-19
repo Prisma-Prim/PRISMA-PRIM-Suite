@@ -153,7 +153,12 @@ async function openProject(page: Page, testInfo: TestInfo) {
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
-  await page.getByRole('button', { name: project.title, exact: true }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
@@ -263,7 +268,12 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   expect(state.commands[1]).toEqual(state.commands[0]);
 
   await page.reload();
-  await page.getByRole('button', { name: project.title, exact: true }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+      exact: true,
+    })
+    .click();
   await page
     .getByRole('tab', { name: 'Working Documents', exact: true })
     .click();
@@ -346,7 +356,12 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   expect(state.commands[3]?.key).not.toBe(state.commands[2]?.key);
   await capture(page, testInfo, 'project-documents-removed.png');
   await page.reload();
-  await page.getByRole('button', { name: project.title, exact: true }).click();
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+      exact: true,
+    })
+    .click();
   await page
     .getByRole('tab', { name: 'Working Documents', exact: true })
     .click();

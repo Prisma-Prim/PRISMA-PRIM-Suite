@@ -34,7 +34,7 @@ it('filters loaded Projects by visible title or Client without requesting again 
     },
     {
       id: 'project-second',
-      title: 'Food safety review',
+      title: 'ISO preparation',
       status: 'preparatory',
       companyId: 'company',
       clientAccountId: 'client-second',
@@ -65,8 +65,11 @@ it('filters loaded Projects by visible title or Client without requesting again 
   expect(
     within(projectList)
       .getAllByRole('button')
-      .map((button) => button.getAttribute('aria-label')),
-  ).toEqual(['ISO preparation', 'Food safety review']);
+      .map((button) => button.textContent),
+  ).toEqual([
+    'ISO preparation Client: Alpha Advisory',
+    'ISO preparation Client: Beta Certification',
+  ]);
   expect(within(projectList).getByText(/Alpha Advisory/)).toBeInTheDocument();
   expect(
     within(projectList).getByText(/Beta Certification/),
@@ -77,11 +80,11 @@ it('filters loaded Projects by visible title or Client without requesting again 
     target: { value: 'bEtA' },
   });
   expect(
-    within(projectList).queryByRole('button', { name: 'ISO preparation' }),
-  ).not.toBeInTheDocument();
-  expect(
-    within(projectList).getByRole('button', { name: 'Food safety review' }),
+    within(projectList).getByRole('button', {
+      name: 'ISO preparation Client: Beta Certification',
+    }),
   ).toBeInTheDocument();
+  expect(within(projectList).getAllByRole('button')).toHaveLength(1);
   expect(fetch).toHaveBeenCalledTimes(readsAfterLoad);
 
   fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
@@ -131,7 +134,11 @@ it('keeps an opened detail while filtering and reflects its authoritative reopen
     await screen.findByRole('searchbox', { name: 'Find Projects' }),
     { target: { value: 'ISO' } },
   );
-  fireEvent.click(screen.getByRole('button', { name: listedProject.title }));
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: `${listedProject.title} Client: ${listedProject.clientDisplayName}`,
+    }),
+  );
 
   expect(
     await screen.findByRole('heading', { name: reopenedProject.title }),
@@ -149,7 +156,9 @@ it('keeps an opened detail while filtering and reflects its authoritative reopen
     target: { value: 'beta' },
   });
   expect(
-    screen.getByRole('button', { name: reopenedProject.title }),
+    screen.getByRole('button', {
+      name: `${reopenedProject.title} Client: ${reopenedProject.clientDisplayName}`,
+    }),
   ).toBeInTheDocument();
 });
 
@@ -209,7 +218,9 @@ it('resets the local Project filter when the active Company changes', async () =
   );
 
   expect(
-    await screen.findByRole('button', { name: 'Second Company Project' }),
+    await screen.findByRole('button', {
+      name: 'Second Company Project Client: Beta Certification',
+    }),
   ).toBeInTheDocument();
   expect(screen.getByRole('searchbox', { name: 'Find Projects' })).toHaveValue(
     '',
@@ -271,7 +282,9 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
   view.unmount();
   render(<ProjectWorkspace {...props} />);
   fireEvent.click(
-    await screen.findByRole('button', { name: 'ISO preparation' }),
+    await screen.findByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
   );
   expect(
     await screen.findByRole('heading', { name: 'ISO preparation' }),
@@ -313,7 +326,11 @@ it('clears a previously opened Project when the server revokes access', async ()
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.click(await screen.findByRole('button', { name: project.title }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
   expect(
     await screen.findByRole('heading', { name: project.title }),
   ).toBeInTheDocument();
@@ -418,7 +435,9 @@ it('presents the existing preparatory Project detail in Prisme without changing 
   const workspace = await screen.findByRole('region', { name: 'Projects' });
   expect(workspace).toHaveClass('project-workspace--prisme');
   fireEvent.click(
-    within(workspace).getByRole('button', { name: project.title }),
+    within(workspace).getByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
   );
   expect(
     await within(workspace).findByRole('article', { name: project.title }),
