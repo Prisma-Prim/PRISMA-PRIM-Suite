@@ -2,18 +2,18 @@
 
 This document is the canonical repository environment contract. Product-specific services, variables, and secrets still belong to their owning issue and must not be guessed or committed.
 
-Last validated: 2026-09-03.
+Last validated locally: 2026-09-19 (Windows). Both supported operating systems are checked by CI.
 
 ## Canonical baseline
 
-| Concern      | Contract                                                | Source of truth                         |
-| ------------ | ------------------------------------------------------- | --------------------------------------- |
-| Node.js      | `>=24.0.0 <25.0.0`                                      | root `package.json` and `.node-version` |
-| pnpm         | `11.20.0`                                               | root `packageManager` and lockfile      |
-| Dependencies | `pnpm install --frozen-lockfile`                        | `pnpm-lock.yaml`                        |
-| Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI               |
-| Database     | on demand locally; PostgreSQL 17 in CI                  | profile scripts and CI workflow         |
-| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17            | `.github/workflows/ci.yml`              |
+| Concern      | Contract                                                 | Source of truth                         |
+| ------------ | -------------------------------------------------------- | --------------------------------------- |
+| Node.js      | `>=24.0.0 <25.0.0`                                       | root `package.json` and `.node-version` |
+| pnpm         | `11.20.0`                                                | root `packageManager` and lockfile      |
+| Dependencies | `pnpm install --frozen-lockfile`                         | `pnpm-lock.yaml`                        |
+| Browser      | on demand and in CI; excluded from standard Codex setup  | `@prisma-prim/web` and CI               |
+| Database     | on demand locally; PostgreSQL 17 in CI                   | profile scripts and CI workflow         |
+| CI           | Ubuntu and Windows, Node 24, pnpm 11.20.0, PostgreSQL 17 | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
 
@@ -149,6 +149,60 @@ After changing the standard environment, launch a fresh issue task and require `
 4. Install Playwright Chromium when browser tests are required.
 5. Start an isolated local PostgreSQL instance and set explicit development and `_test` URLs when database tests are required.
 6. Run the matching doctor profile before implementation.
+
+### Windows (native PowerShell)
+
+Keep the checkout on Windows and run Node, pnpm and Playwright directly there. WSL and a Linux copy of the application are not required. Install native Node 24 and pnpm 11.20.0 on PATH using their official installers/package tooling; the Linux-only pnpm bootstrap is not a Windows prerequisite. Check `node --version` and `pnpm --version` before installing the frozen dependencies:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm --filter @prisma-prim/web exec playwright install chromium
+node scripts/agent-doctor.mjs
+```
+
+For database tests, use PostgreSQL 17 with a dedicated local role and separate development and `_test` databases. The role needs CREATEDB for isolated migration suites. One supported option is Docker Desktop in Linux-container mode for **the database only**. From this checkout, this PowerShell block creates a disposable database on a random loopback port, runs the shared Windows commands and removes only its own container:
+
+```powershell
+$container = 'prisma-verify-' + [Guid]::NewGuid().ToString('N')
+docker run --detach --rm --name $container --publish 127.0.0.1::5432 --env POSTGRES_USER=prisma_prim --env POSTGRES_PASSWORD=prisma_prim --env POSTGRES_DB=prisma_prim_dev postgres:17-alpine
+if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL container could not start.' }
+try {
+  $ready = $false
+  for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    docker exec $container pg_isready -h 127.0.0.1 -U prisma_prim -d prisma_prim_dev
+    if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+    Start-Sleep -Seconds 1
+  }
+  if (-not $ready) { throw 'PostgreSQL did not become ready.' }
+  docker exec $container createdb -U prisma_prim prisma_prim_test
+  if ($LASTEXITCODE -ne 0) { throw 'Test database could not be created.' }
+  $port = ((docker port $container 5432/tcp) -split ':')[-1]
+  $env:DATABASE_URL = "postgresql://prisma_prim:prisma_prim@127.0.0.1:${port}/prisma_prim_dev"
+  $env:TEST_DATABASE_URL = "postgresql://prisma_prim:prisma_prim@127.0.0.1:${port}/prisma_prim_test"
+  $env:PLAYWRIGHT_PORT = '4228' # Choose an unused port for this checkout.
+  node scripts/agent-doctor.mjs --profile web-postgres
+  if ($LASTEXITCODE -ne 0) { throw 'Doctor failed.' }
+  pnpm verify
+  if ($LASTEXITCODE -ne 0) { throw 'Verification failed.' }
+  pnpm test
+  if ($LASTEXITCODE -ne 0) { throw 'Database/browser suites failed.' }
+} finally {
+  docker stop $container
+  Remove-Item Env:DATABASE_URL, Env:TEST_DATABASE_URL, Env:PLAYWRIGHT_PORT -ErrorAction SilentlyContinue
+}
+```
+
+The credentials above are synthetic and belong only to that disposable local database. Do not use this recipe against a shared database or copy application secrets into the checkout. Native PostgreSQL installations can supply the same two safe URLs without Docker. The managed PostgreSQL **process runner** remains POSIX-only; its Windows rejection remains tested.
+
+Doctor prints its actual checkout path, HEAD and changed-file status, even when invoked from another directory. It checks the working files in that checkout. Review this identity before trusting a result; fetch current main before final verification and rerun after changing the tree. Missing dependencies, browser or database prerequisites fail the requested Doctor profile.
+
+### Line endings and platform coverage
+
+`.gitattributes` enforces LF for repository text on both operating systems, independently of global Git configuration. Fresh clones/worktrees receive LF. For an older CRLF checkout, preserve local work and create a fresh worktree after this rule is available; do not change global `core.autocrlf` or reformat unchanged files to hide the problem.
+
+Both CI jobs run the shared Doctor and application suites with PostgreSQL 17 and Chromium. Windows CI uses the runner's PostgreSQL 17 binaries to start an isolated cluster. Only Linux executes the Bash launcher's permission tests, the Linux installer command and real POSIX process-group tests; their explicit Windows skip reasons identify Linux CI as their owner. Deterministic lifecycle and escalation tests still run on both systems. Linux CI must fail if real process-group coverage is unavailable. Filesystem containment tests use Windows junctions where unprivileged file symlinks are unavailable, and retain file symlinks on Linux.
+
+### Linux
 
 On Ubuntu or WSL2 with systemd, the same PGDG package gives a local PostgreSQL 17 in a few minutes:
 

@@ -361,6 +361,19 @@ describeWithPostgres('Company REST API', () => {
     expect(retryResponse.status).toBe(201);
     expect(retry).toEqual(first);
 
+    // Equal database timestamps are ordered by random IDs. Give this fixture
+    // distinct times so the assertion does not depend on host clock resolution.
+    await pool.query(
+      `UPDATE activity_log_events
+       SET occurred_at = CASE action
+         WHEN 'internal_user.provisioned' THEN '2026-01-01T00:00:00Z'::timestamptz
+         ELSE '2026-01-01T00:00:01Z'::timestamptz
+       END
+       WHERE workspace_id = $1
+         AND action IN ('internal_user.provisioned', 'company.registered')`,
+      [WORKSPACE_ID],
+    );
+
     const activityResponse = await fetch(`${origin}/api/activity-log`, {
       headers: identityHeaders('workspace-owner', 'Ada Ionescu'),
     });

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Preserve vendored font license bytes.
+apps/web/public/prisme/fonts/*-OFL.txt -text

@@ -69,3 +69,63 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:55432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:55432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:55432/postgres
+      PGPASSWORD: prisma_prim
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Start isolated PostgreSQL 17
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bin = Join-Path $env:PGROOT 'bin'
+          $data = Join-Path $env:RUNNER_TEMP 'prisma-prim-postgres'
+          $password = Join-Path $env:RUNNER_TEMP 'prisma-prim-postgres-password'
+          Set-Content -LiteralPath $password -Value 'prisma_prim' -Encoding ascii
+          & "$bin/initdb.exe" -D $data -U prisma_prim --pwfile=$password --auth=scram-sha-256 --encoding=UTF8 --locale=C
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$bin/pg_ctl.exe" -D $data -l "$env:RUNNER_TEMP/postgres.log" -o '-h 127.0.0.1 -p 55432' -w start
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$bin/createdb.exe" -h 127.0.0.1 -p 55432 -U prisma_prim prisma_prim_dev
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:web-postgres
+
+      - name: Verify
+        run: pnpm verify
+
+      - name: Test
+        run: pnpm test
+
+      - name: Upload browser evidence
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence-windows-pr-${{ github.event.pull_request.number }}
+          path: apps/web/test-results/**/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop isolated PostgreSQL
+        if: ${{ always() }}
+        run: |
+          $data = Join-Path $env:RUNNER_TEMP 'prisma-prim-postgres'
+          if (Test-Path -LiteralPath "$data/postmaster.pid") {
+            & "$env:PGROOT/bin/pg_ctl.exe" -D $data -m immediate -w stop
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

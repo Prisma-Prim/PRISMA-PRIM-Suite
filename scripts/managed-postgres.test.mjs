@@ -5,10 +5,16 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 
 import {
-  createManagedPostgresRunner,
+  createManagedPostgresRunner as createRunner,
   createSystemAdapter,
 } from './managed-postgres.mjs';
 import { skipWithoutDetachedProcessGroups } from './process-group-test-support.mjs';
+
+// The injected lifecycle models Linux on every host. Real process groups remain
+// covered by the Linux integration tests; Windows rejection is tested explicitly.
+function createManagedPostgresRunner(adapter, options = {}) {
+  return createRunner(adapter, { platform: 'linux', ...options });
+}
 
 const environmentDocumentation = await readFile(
   new URL('../docs/agents/environment.md', import.meta.url),
@@ -150,6 +156,7 @@ test('rejects Windows before temporary or Docker resource creation', async () =>
 test('rejects a lexical temporary root inside the repository before creating state', async () => {
   let temporaryDirectoryCreated = false;
   const adapter = createSystemAdapter({
+    platform: 'linux',
     canonicalizePath: async (path) => path,
     makeTemporaryDirectory: async () => {
       temporaryDirectoryCreated = true;
@@ -172,6 +179,7 @@ test('rejects a canonical temporary root that resolves through a link into the r
   );
   const canonicalRepositoryRoot = resolve(process.cwd());
   const adapter = createSystemAdapter({
+    platform: 'linux',
     canonicalizePath: async (path) =>
       path === apparentTemporaryRoot
         ? join(canonicalRepositoryRoot, '.managed-postgres-temp')
@@ -394,7 +402,7 @@ test('removes the readiness abort listener when the delay timer settles', async 
     },
   };
 
-  await createSystemAdapter().delay(0, signal);
+  await createSystemAdapter({ platform: 'linux' }).delay(0, signal);
 
   assert.equal(added, 1);
   assert.equal(removed, 1);
@@ -411,6 +419,7 @@ test('interrupts and awaits a SIGTERM-resistant verification process tree before
   const pidFile = join(fixtureDirectory, 'pids');
   const controller = new AbortController();
   const systemAdapter = createSystemAdapter({
+    platform: 'linux',
     terminationGraceMilliseconds: 50,
   });
   let childPids = [];

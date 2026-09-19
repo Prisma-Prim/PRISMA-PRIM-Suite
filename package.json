@@ -19,7 +19,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "test": "pnpm test:scripts && pnpm --recursive test",
+    "test": "pnpm test:scripts && pnpm --workspace-concurrency=1 --recursive test",
     "test:unit": "pnpm test:scripts && pnpm --filter @prisma-prim/api test && pnpm --filter @prisma-prim/web exec vitest run",
     "test:access:postgres": "pnpm --filter @prisma-prim/api test:access:postgres",
     "test:company:postgres": "pnpm --filter @prisma-prim/api test:company:postgres",

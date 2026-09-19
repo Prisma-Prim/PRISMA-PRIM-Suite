@@ -12,7 +12,21 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import test from 'node:test';
+import { test as nodeTest } from 'node:test';
+
+// These exercise the POSIX-only launcher, including Unix permissions.
+function test(name, run) {
+  return nodeTest(
+    name,
+    {
+      skip:
+        process.platform === 'win32'
+          ? 'POSIX pnpm launcher is proved by Linux CI'
+          : false,
+    },
+    run,
+  );
+}
 
 const launcher = new URL('./agent-pnpm.sh', import.meta.url);
 
