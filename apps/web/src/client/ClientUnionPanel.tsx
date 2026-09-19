@@ -26,6 +26,8 @@ import { ApplicationPresentation } from '../production-shell/application-present
 import { ClientUnionComparison } from './ClientUnionComparison';
 import './client-union-comparison.css';
 
+type UnionFailureFeedback = 'error' | 'confirmationUncertain';
+
 type UnionView =
   | { kind: 'idle' }
   | { kind: 'comparison'; comparison: UnionComparison }
@@ -84,7 +86,7 @@ export function ClientUnionPanel({
   );
   const [view, setView] = useState<UnionView>({ kind: 'idle' });
   const [feedback, setFeedback] = useState<
-    'idle' | 'busy' | 'error' | 'unavailable' | 'refreshError'
+    UnionFailureFeedback | 'idle' | 'busy' | 'unavailable' | 'refreshError'
   >('idle');
   const pending = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ path: string; command: RetryCommand } | undefined>(
@@ -119,11 +121,13 @@ export function ClientUnionPanel({
     parse,
     receive,
     input,
+    failureFeedback = 'error',
   }: {
     path: string;
     parse: (value: unknown) => T;
     receive: (value: T, signal: AbortSignal) => Promise<void> | void;
     input?: unknown;
+    failureFeedback?: UnionFailureFeedback;
   }) {
     const serializedBody =
       input === undefined ? undefined : JSON.stringify(input);
@@ -174,7 +178,7 @@ export function ClientUnionPanel({
           return;
         }
         if (result.status !== 'ok') {
-          setFeedback('error');
+          setFeedback(failureFeedback);
           return;
         }
         const parsed = parse(result.value);
@@ -182,7 +186,7 @@ export function ClientUnionPanel({
         setFeedback('idle');
         await receive(parsed, signal);
       },
-      onError: () => setFeedback('error'),
+      onError: () => setFeedback(failureFeedback),
     });
   }
 
@@ -265,9 +269,7 @@ export function ClientUnionPanel({
         )}
       </div>
       {feedback === 'busy' && <p role="status">{copy.loading}</p>}
-      {feedback === 'error' && view.kind !== 'comparison' && (
-        <p role="alert">{copy.error}</p>
-      )}
+      {feedback === 'error' && <p role="alert">{copy.error}</p>}
       {feedback === 'refreshError' && <p role="alert">{copy.refreshError}</p>}
       {feedback === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
       {view.kind === 'remediation' && <p role="alert">{copy.remediation}</p>}
@@ -276,12 +278,13 @@ export function ClientUnionPanel({
           key={view.comparison.reviewReference}
           comparison={view.comparison}
           busy={busy}
-          uncertain={feedback === 'error'}
+          uncertain={feedback === 'confirmationUncertain'}
           onHeadingReady={receiveComparisonHeading}
           onConfirm={(input) =>
             run({
               path: `/client-union-reviews/${encodeURIComponent(view.comparison.reviewReference)}/confirm`,
               input,
+              failureFeedback: 'confirmationUncertain',
               parse: (value) => {
                 const row = unionObject(value);
                 if (row.outcome !== 'united')

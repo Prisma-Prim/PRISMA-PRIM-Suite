@@ -260,6 +260,46 @@ describe('Client union UI public journey', () => {
     },
   );
 
+  describe.each([
+    {
+      action: 'Review existing duplicates',
+      path: '/api/clients/client-1/union-reviews',
+    },
+    { action: 'Union history', path: '/api/clients/client-1/union-history' },
+    { action: 'Superseded Client history', path: '/api/client-union-sources' },
+  ])('$action load failures with an open comparison', ({ action, path }) => {
+    it.each(['response', 'network'])(
+      'keeps a %s failure separate from union confirmation',
+      async (failure) => {
+        const fetcher = vi
+          .fn()
+          .mockResolvedValueOnce(response(comparison, 201));
+        if (failure === 'response')
+          fetcher.mockResolvedValueOnce(response({}, 503));
+        else
+          fetcher.mockRejectedValueOnce(new TypeError('Network unavailable'));
+        vi.stubGlobal('fetch', fetcher);
+        render(<ClientUnionPanel {...props()} />);
+        const form = await completeComparison();
+        fireEvent.click(screen.getByRole('button', { name: action }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          /^The request could not be completed\. You can retry safely\.$/,
+        );
+        expect(
+          screen.queryByText(/No confirmation has been received/),
+        ).not.toBeInTheDocument();
+        expect(screen.getByRole('form', { name: 'Confirm union' })).toBe(form);
+        expect(
+          within(form).getByLabelText('Reason for this union'),
+        ).toHaveValue('Same verified legal identity.');
+        for (const select of within(form).getAllByRole('combobox'))
+          expect(select).toHaveValue(first.id);
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(fetcher).toHaveBeenNthCalledWith(2, path, expect.any(Object));
+      },
+    );
+  });
+
   it('retries only on an explicit action and preserves the same command key', async () => {
     const fetcher = vi
       .fn()

@@ -225,6 +225,45 @@ test('separates unavailable, recoverable load failure, authorized remediation an
   expect(state.commands).toHaveLength(0);
 });
 
+test('separates a failed history read from any union confirmation', async ({
+  page,
+}, testInfo) => {
+  const state = await installUnionFixture(page);
+  await page.route('**/clients/*/union-history', (route) =>
+    route.fulfill({ status: 503 }),
+  );
+  await openUnion(page);
+  await chooseUnion(page);
+  await unionPanel(page)
+    .getByRole('button', { name: 'Union history', exact: true })
+    .click();
+  await expect(unionPanel(page).getByRole('alert')).toHaveText(
+    'The request could not be completed. You can retry safely.',
+  );
+  await expect(
+    unionForm(page).getByText('No confirmation has been received.', {
+      exact: false,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    unionForm(page).getByRole('combobox', {
+      name: 'Canonical Client dossier',
+      exact: true,
+    }),
+  ).toHaveValue(secondId);
+  await expect(
+    unionForm(page).getByRole('combobox', { name: 'Telephone', exact: true }),
+  ).toHaveValue(firstId);
+  await expect(unionForm(page).getByLabel('Reason for this union')).toHaveValue(
+    'Reviewed both saved dossiers and all affected Companies.',
+  );
+  expect(state.commands).toHaveLength(0);
+  await unionPanel(page)
+    .getByRole('heading', { name: 'Governed Client union', exact: true })
+    .evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await captureUnion(page, testInfo, 'union-read-failure');
+});
+
 test('keeps a confirmed command distinct from failed list and Activity Log refreshes', async ({
   page,
 }, testInfo) => {
