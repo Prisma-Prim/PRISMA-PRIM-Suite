@@ -1,3 +1,6 @@
+import { ProjectController } from './project/project.controller.js';
+import { ProjectModule } from './project/project.module.js';
+import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
 import { Module } from '@nestjs/common';
@@ -31,6 +34,7 @@ import { DatabaseModule } from './database/database.module.js';
 
 @Module({
   imports: [
+    ProjectModule,
     AccessModule,
     AccountabilityModule,
     ClientModule,
@@ -38,6 +42,8 @@ import { DatabaseModule } from './database/database.module.js';
     DatabaseModule,
   ],
   controllers: [
+    ProjectController,
+    CompanyProjectAssignmentController,
     WorkspaceInvitationAcceptanceController,
     WorkspaceInvitationController,
     ClientUnionController,

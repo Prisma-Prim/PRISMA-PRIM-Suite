@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Draft — audited interview evidence received; workflow examples pending  
-**Version:** 0.3  
+**Status:** Preparatory registration approved by #238; remaining capability Draft  
+**Version:** 0.4  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -113,7 +113,7 @@ The current audited evidence supports the following direction strongly enough to
 - later sessions support controlled Project start, kickoff and start-dossier concepts, but they do not define a complete universal gate;
 - one interview statement suggests a precontract requirement before Project start, but this conflicts with approved DEC-026, which also permits preparation, migration, free/internal work and delayed-paperwork cases. That evidence remains subject to PRD arbitration and does not create an exclusive precontract rule.
 
-Still blocking ticket decomposition:
+Still blocking broader workflow/Task ticket decomposition:
 
 - bounded first-release Project categories and one representative anonymized case per category;
 - representative Project Templates and exact required Tasks;
@@ -136,10 +136,23 @@ Question source: S02. Provenance owner: `docs/product/iurie-business-answer-cove
 - state-machine and template-version decisions;
 - highest stable Project acceptance seam.
 
-## 15. Readiness
+## 15. Approved preparatory registration slice (#238)
 
-Ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary but does not make an implementation child ready. This capability follows Company/RBAC and Shared Client.
+Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and DEC-025–026. It is a preparation record only, not permission to execute operational work. This synthesis does not claim that Iurie supplied an exact permission matrix.
 
-## 16. Evidence authority boundary
+- The user supplies a trimmed title (1–200 characters) and an existing active Client related to the selected active Company. Workspace, Company, identifier, creator and timestamp are server-established. Status is always `preparatory`; creator is attribution, not operational responsibility.
+- Explicit Company Project Access v1 grants `project.read` and `project.create` through the existing Company-assignment administrator. Grants capture v1 and attributable grant/revoke history. Existing users and assignments receive no automatic grant, including Workspace Owner, Company Context Access and Company Director Client Access.
+- Project access additionally requires current Client read authority (`client.manage` for the delivered minimal owner flow or Company `client.read`) and the selected Client–Company relationship. Project authority never follows from Client visibility alone. Read/list/create revalidate active access; immutable Company/Client links cannot be edited.
+- An authenticated REST create/list/detail seam and production page let the user create, reload and reopen a Project with its Company, Client and preparation warning. No Task, template, category, Standard, owner, deadline, activation, Contract or external integration is created.
+- Exactly one `project.created` event targets each successful Project. Server actor/time and Company scope are appended atomically with the Project, with empty metadata. Event visibility requires Project read and the same Client relationship/read boundary; Workspace ownership alone does not expose it.
+- A stable idempotency key is scoped to actor and Workspace. An identical normalized retry revalidates authority and returns the original Project; a different input or Company conflicts. No duplicate Project or history is created.
+- Original Company and Client references survive union/reversal. Reads retain the original Client identity (including a superseded identity) and its original Company relationship, without revealing canonical union detail or other-Company activity. New registration uses an active Client, locks its identity before relationship checks and increments its version in the same transaction, so new post-union activity invalidates the existing reversal fence.
+- Real PostgreSQL REST tests own isolation, idempotency, atomic history and union/reversal races. Component and desktop/narrow browser journeys own create/reload/reopen, empty and denied states. No new test harness is required.
+
+## 16. Remaining readiness
+
+The preparatory registration slice is ready independently. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; only the bounded preparation slice above is implementation-ready. This capability follows Company/RBAC and Shared Client.
+
+## 17. Evidence authority boundary
 
 Issue #81 preserves raw business evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes lifecycle transitions, automation, permissions or start gates by itself. Any implementation issue must cite this PRD after the relevant evidence has been normalized here.

@@ -41,3 +41,12 @@ export function companyDirectorClientPermissionsFor(
       return [];
   }
 }
+
+export const COMPANY_PROJECT_ACCESS_BUNDLE = 'company_project_access';
+export const COMPANY_PROJECT_ACCESS_BUNDLE_LABEL = 'Company Project Access';
+export const COMPANY_PROJECT_V1_PERMISSIONS = [
+  'project.read',
+  'project.create',
+] as const;
+export type CompanyProjectPermission =
+  (typeof COMPANY_PROJECT_V1_PERMISSIONS)[number];
