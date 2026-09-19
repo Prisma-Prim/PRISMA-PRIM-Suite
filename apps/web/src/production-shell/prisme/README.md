@@ -8,7 +8,7 @@ The production default is the classic frame. An admitted user can choose **Try P
 
 `App` still owns `useProductionShellContext(identity)` and the existing permission gates, callbacks and feature keys. `ApplicationShell` receives real identity/context, the existing Company selector and an authorized section composition. Section panels remain mounted when hidden or when changing presentation, so drafts and idempotent retry commands survive navigation. Identity, session, Company and permission-version changes still use the existing feature keys and session owner. No API transport, authorization or business workflow is implemented by the frame.
 
-The overview contains identity, active Company and available capability links. Existing Client/union/admin panel interiors are intentionally retained. There are no synthesized records, KPI totals, Projects, Tasks or Documents. `/ui-baseline` remains the unchanged Atlas Blue snapshot. No invitation acceptance entry is added by this slice.
+The overview contains identity, active Company and available capability links. Existing Client dossier, union and administration panel interiors are intentionally retained. There are no synthesized records, KPI totals, Projects, Tasks or Documents. `/ui-baseline` remains the unchanged Atlas Blue snapshot. No invitation acceptance entry is added by this slice.
 
 ## Accepted visual source
 
@@ -51,3 +51,9 @@ pnpm --filter @prisma-prim/web test:browser e2e/prisme-frame.spec.ts e2e/prisme-
 ```
 
 The browser harness owns port 4173, builds in existing `local-demo` test mode and intercepts API responses. These tests are not a live Clerk/backend smoke. They exercise both 1440px and 390px, confirm local font loading, and save overview, Client, context-recovery, long-name, paused-fiber and no-WebGL screenshots via `testInfo.outputPath`. Static overview captures use reduced motion; animation tests compare phase behavior, not pixel equality. Generated screenshots stay in ignored test output and CI evidence artifacts.
+
+## Client directory — issue #231
+
+[Issue #231](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/231) adapts the supplied `final-clients.jpg` and Client composition in `app.js`/`style.css` to the delivered identity and active-Company relationship projection. The directory has submitted name search and an authorized registration disclosure; it adds no prototype fields, filters or business permissions. The existing dossier, correction, duplicate-review and union panels remain available under their existing gates.
+
+`ClientWorkspace` retains all drafts, requests, retry commands and callbacks. The shell supplies only its presentation value through `ApplicationPresentation`. Closing registration hides controls and returns focus without canceling the operation; App's existing Company, session and assignment/version keys still invalidate the owner. Classic presentation keeps its expanded form. `e2e/prisme-clients.spec.ts` proves the minimal/enriched journeys, attachment, uncertain retry and negative states at both viewports, saving screenshots through `testInfo.outputPath`. `App.clients.test.tsx` proves the authority boundaries through the real App composition. These are intercepted API fixtures, not a live Clerk/database smoke.

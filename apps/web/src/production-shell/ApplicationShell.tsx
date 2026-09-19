@@ -13,6 +13,7 @@ import {
   SectionIcon,
 } from './prisme/PrismeOverview';
 import { prismeCopy as copy } from './prisme/prisme.copy';
+import { ApplicationPresentation } from './application-presentation';
 import './application-shell.css';
 import './prisme/prisme-frame.css';
 
@@ -304,17 +305,19 @@ export function ApplicationShell({
             children
           )}
           {!isPrisme && companyContext}
-          <div className="application-sections">
-            {sections.map((section) => (
-              <div
-                className="application-section"
-                key={section.id}
-                hidden={isPrisme && selected?.id !== section.id}
-              >
-                {section.content}
-              </div>
-            ))}
-          </div>
+          <ApplicationPresentation value={isPrisme ? 'prisme' : 'classic'}>
+            <div className="application-sections">
+              {sections.map((section) => (
+                <div
+                  className="application-section"
+                  key={section.id}
+                  hidden={isPrisme && selected?.id !== section.id}
+                >
+                  {section.content}
+                </div>
+              ))}
+            </div>
+          </ApplicationPresentation>
         </main>
       </div>
     </div>
