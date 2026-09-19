@@ -1,0 +1,118 @@
+.prisme-shell .company-registration--prisme {
+  display: grid;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 76rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.prisme-shell .company-registration--prisme .company-registration-heading h2 {
+  margin: 0.2rem 0 0.45rem;
+  font-family: inherit;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+}
+
+.prisme-shell
+  .company-registration--prisme
+  .company-registration-heading
+  > p:last-child {
+  max-width: 54rem;
+  margin: 0;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .company-registration-form {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1.15rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  background: var(--shell-surface);
+}
+
+.prisme-shell .company-registration--prisme input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  color: var(--shell-ink);
+  background: #fff;
+}
+
+.prisme-shell .company-registration--prisme button {
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  color: var(--shell-ink);
+  background: #fff;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.prisme-shell .company-registration--prisme button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.prisme-shell .company-registration--prisme button:focus-visible,
+.prisme-shell .company-registration--prisme input:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
+.prisme-shell
+  .company-registration--prisme
+  .company-registration-primary-action {
+  border-color: #6652e7;
+  color: #fff;
+  background: #6451e8;
+}
+
+.prisme-shell .company-registration-result {
+  min-width: 0;
+  margin: 0;
+  padding: 1.15rem;
+  border: 1px solid var(--shell-line);
+  border-left: 4px solid #4d9a74;
+  border-radius: 9px;
+  background: var(--shell-surface);
+}
+
+.prisme-shell .company-registration-result h2,
+.prisme-shell .company-registration-result dd,
+.prisme-shell .company-registration-result > p {
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell .company-registration--prisme[aria-labelledby] > [role='alert'],
+.prisme-shell .company-registration-denied.company-registration--prisme {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e0b4af;
+  border-radius: 7px;
+  color: #7e2e28;
+  background: #fff8f7;
+}
+
+@media (max-width: 650px) {
+  .prisme-shell .company-registration-form,
+  .prisme-shell .company-registration-result {
+    padding: 1rem;
+  }
+
+  .prisme-shell .company-registration-result dl {
+    display: grid;
+    gap: 0.85rem;
+  }
+}
