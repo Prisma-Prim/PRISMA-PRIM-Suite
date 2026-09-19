@@ -340,7 +340,11 @@ test('selects and restores one server-validated Company context', async ({
     name: 'Company context',
   });
   await expect(companyContext.getByText('PRISMA Workspace')).toBeVisible();
-  await expect(companyContext.getByText('Select a Company')).toBeVisible();
+  await expect(
+    companyContext
+      .getByRole('definition')
+      .filter({ hasText: 'Select a Company' }),
+  ).toBeVisible();
 
   await companyContext
     .getByLabel('Active Company')

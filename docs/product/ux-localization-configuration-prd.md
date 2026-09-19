@@ -15,7 +15,7 @@ Use the Client dossier as the central operational view, keep Workspace and Compa
 
 Deliver responsive web, WCAG 2.2 AA intent, localization from Release 1, stable internal semantics, bounded typed configuration, durable event-derived notifications and governed dashboard metrics.
 
-Atlas Blue in /ui-baseline is the preferred evolving visual reference, not proof of implemented behaviour or a frozen final design.
+The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Atlas Blue in /ui-baseline remains a recoverable synthetic snapshot. Neither reference proves implemented behaviour or freezes the final design.
 
 ## 3. User stories
 
@@ -119,7 +119,7 @@ Bulk work is permission-checked per target, previewable, partially failure-aware
 
 ## 12. Implementation decisions
 
-- evolve production slices from Atlas Blue rather than rebuilding an unrelated system;
+- evolve the #225 production slices from the accepted Prisme & lumière reference;
 - preserve /ui-baseline as a recoverable synthetic snapshot;
 - keep user-facing text localization-ready;
 - centralize semantic design primitives without building a universal design platform;
