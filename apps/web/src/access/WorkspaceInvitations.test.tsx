@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { WorkspaceInvitations } from './WorkspaceInvitations';
 
 const actor: ActorContext = {
@@ -35,6 +36,58 @@ const invitation = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Workspace invitation controls', () => {
+  it('presents invitation administration in Prisme while preserving the Classic public markup', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({ invitations: [invitation], nextCursor: null }),
+      ),
+    );
+
+    const classic = render(
+      <WorkspaceInvitations
+        actor={actor}
+        identity={identity}
+        onActivityRecorded={() => {}}
+        onWorkspaceAccessRejected={() => {}}
+      />,
+    );
+    const classicInvitations = await screen.findByRole('region', {
+      name: 'Workspace invitations',
+    });
+    expect(classicInvitations).toHaveClass('production-content-surface');
+    expect(classicInvitations).not.toHaveClass('workspace-invitations--prisme');
+    expect(classicInvitations.firstElementChild?.tagName).toBe('H2');
+    expect(classicInvitations.querySelector('form')).not.toHaveClass(
+      'workspace-invitations-form',
+    );
+    expect(classicInvitations.querySelector('ul')).not.toHaveClass(
+      'workspace-invitation-list',
+    );
+    classic.unmount();
+
+    render(
+      <ApplicationPresentation value="prisme">
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />
+      </ApplicationPresentation>,
+    );
+    const prismeInvitations = await screen.findByRole('region', {
+      name: 'Workspace invitations',
+    });
+    expect(prismeInvitations).toHaveClass('workspace-invitations--prisme');
+    expect(prismeInvitations.querySelector('form')).toHaveClass(
+      'workspace-invitations-form',
+    );
+    expect(prismeInvitations.querySelector('ul')).toHaveClass(
+      'workspace-invitation-list',
+    );
+  });
+
   it.each([false, true])(
     'distinguishes provider use from local consumption = %s',
     async (consumed) => {
