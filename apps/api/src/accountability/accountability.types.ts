@@ -250,7 +250,12 @@ export interface DocumentRegisteredActivityEvent {
   action: 'document.registered';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: { type: 'document'; documentId: string; companyId: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    documentTitle: string;
+    companyId: string;
+  };
   metadata: Record<string, never>;
 }
 export interface DocumentCorrectedActivityEvent {
@@ -258,7 +263,11 @@ export interface DocumentCorrectedActivityEvent {
   action: 'document.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: { type: 'document'; documentId: string; companyId: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    companyId: string;
+  };
   metadata: Record<string, never>;
 }
 export interface DocumentProjectActivityEvent {
@@ -269,7 +278,9 @@ export interface DocumentProjectActivityEvent {
   target: {
     type: 'document_project';
     documentId: string;
+    documentTitle: string;
     projectId: string;
+    projectTitle: string;
     companyId: string;
   };
   metadata: Record<string, never>;
@@ -288,6 +299,11 @@ export interface ProjectCreatedActivityEvent {
   action: 'project.created';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: { type: 'project'; projectId: string; companyId: string };
+  target: {
+    type: 'project';
+    projectId: string;
+    projectTitle: string;
+    companyId: string;
+  };
   metadata: Record<string, never>;
 }

@@ -174,7 +174,12 @@ describe.skipIf(!databaseUrl)(
           expect.objectContaining({
             action: 'document.registered',
             metadata: {},
-            target: { type: 'document', documentId: document.id, companyId },
+            target: {
+              type: 'document',
+              documentId: document.id,
+              documentTitle: document.title,
+              companyId,
+            },
           }),
         ]),
       );
@@ -223,16 +228,24 @@ describe.skipIf(!databaseUrl)(
       );
       const activity = await body(await request('/activity-log'));
       if (!Array.isArray(activity.events)) throw new Error('Expected events');
-      expect(activity.events.map(object)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            action: 'document.corrected',
-            metadata: {},
-            target: { type: 'document', documentId: document.id, companyId },
-          }),
-        ]),
+      const correctedEvent = activity.events
+        .map(object)
+        .find((event) => event.action === 'document.corrected');
+      expect(correctedEvent).toEqual(
+        expect.objectContaining({
+          action: 'document.corrected',
+          metadata: {},
+          target: {
+            type: 'document',
+            documentId: document.id,
+            companyId,
+          },
+        }),
       );
       expect(JSON.stringify(activity)).not.toContain('Corrected purpose');
+      expect(JSON.stringify(correctedEvent)).not.toContain(
+        'Corrected questionnaire',
+      );
       expect(JSON.stringify(activity)).not.toContain('example.test/corrected');
     });
     it('records a stable no-op receipt and rejects stale or conflicting retries', async () => {

@@ -114,6 +114,7 @@ withPostgres('Preparatory Project REST', () => {
         target: {
           type: 'project',
           projectId: project.id,
+          projectTitle: project.title,
           companyId: company.id,
         },
         metadata: {},

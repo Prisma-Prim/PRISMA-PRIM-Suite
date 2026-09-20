@@ -31,6 +31,8 @@ const events = [
     target: {
       type: 'document',
       documentId: 'DOC-2026-0257',
+      documentTitle: 'Initial assessment questionnaire',
+      companyId: 'company-257',
     },
     metadata: {},
   },
@@ -84,6 +86,9 @@ test('presents real Activity Log events in server order and preserves them acros
   );
   await expect(rows.nth(1)).toContainText(
     'Ada Ionescu registered a working Document reference',
+  );
+  await expect(rows.nth(1)).toContainText(
+    'Target: Working Document: Initial assessment questionnaire',
   );
   await expect(rows.nth(2)).toContainText('Ada Ionescu registered a Company');
   await expect(rows.nth(0).getByRole('time')).toHaveAttribute(

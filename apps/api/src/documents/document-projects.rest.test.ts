@@ -322,14 +322,15 @@ describe.skipIf(!databaseUrl)(
           target: {
             type: 'document_project',
             documentId,
+            documentTitle: document.title,
             projectId,
+            projectTitle: 'ISO preparation',
             companyId,
           },
           actor: { internalUserId, displayName: 'Document Project Organizer' },
           metadata: {},
         });
         expect(Number.isNaN(Date.parse(text(event.occurredAt)))).toBe(false);
-        expect(JSON.stringify(event)).not.toContain(document.title);
         expect(JSON.stringify(event)).not.toContain(document.purpose);
         expect(JSON.stringify(event)).not.toContain('https://');
       }

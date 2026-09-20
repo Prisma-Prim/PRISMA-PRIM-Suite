@@ -309,6 +309,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
     )
     .toEqual(expectedVisibleActions);
   const activityText = await activity.textContent();
+  expect(activityText).toContain(projectTitle);
+  expect(activityText).toContain(taskTitle);
+  expect(activityText).toContain(documentTitle);
   expect(activityText).not.toMatch(
     /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu,
   );

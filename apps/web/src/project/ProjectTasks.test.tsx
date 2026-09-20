@@ -68,7 +68,12 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
             action: 'task.created',
             occurredAt: task.createdAt,
             actor: attribution,
-            target: { type: 'task', taskId: 'task', companyId: 'company' },
+            target: {
+              type: 'task',
+              taskId: 'task',
+              taskTitle: task.title,
+              companyId: 'company',
+            },
             metadata: {
               version: 1,
               initial: { title: task.title, assignee: null, dueDate: null },
@@ -81,7 +86,12 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
             action: 'task.updated',
             occurredAt: task.updatedAt,
             actor: attribution,
-            target: { type: 'task', taskId: 'task', companyId: 'company' },
+            target: {
+              type: 'task',
+              taskId: 'task',
+              taskTitle: task.title,
+              companyId: 'company',
+            },
             metadata: {
               version: 2,
               changes: {
@@ -104,7 +114,12 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
             action: complete ? 'task.completed' : 'task.reopened',
             occurredAt: task.updatedAt,
             actor: attribution,
-            target: { type: 'task', taskId: 'task', companyId: 'company' },
+            target: {
+              type: 'task',
+              taskId: 'task',
+              taskTitle: task.title,
+              companyId: 'company',
+            },
             metadata: {
               version: task.version,
               before: complete ? 'todo' : 'done',
@@ -862,6 +877,7 @@ it('fails closed for malformed Task history', async () => {
                 target: {
                   type: 'task',
                   taskId: 'other-company-task',
+                  taskTitle: 'Other Company Task',
                   companyId: 'other-company',
                 },
                 metadata: { version: 2, before: 'todo', after: 'done' },
