@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
+import { COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE } from '../access/company-permissions.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
@@ -13,6 +14,8 @@ import {
   clientUnionOperations,
   clientUnionReviews,
   clientUnionReversals,
+  companyRoleAssignments,
+  workspacePermissionGrants,
 } from '../database/schema/index.js';
 
 export interface ProjectClientReference {
@@ -61,8 +64,10 @@ export class ClientOperationalReferenceService {
   async readProjectReferences(
     actor: ActorContext,
     originalClientIds: readonly string[],
+    lockAuthority = false,
   ): Promise<Map<string, ProjectClientReference>> {
     const companyId = this.requireClientRead(actor);
+    if (lockAuthority) await this.lockClientReadAuthority(actor, companyId);
     const uniqueOriginalIds = [...new Set(originalClientIds)];
     if (uniqueOriginalIds.length === 0) return new Map();
 
@@ -251,6 +256,7 @@ export class ClientOperationalReferenceService {
   /** Call inside the owning command transaction, once for a new reference. */
   async lockActiveReferenceClient(actor: ActorContext, clientId: string) {
     const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId);
     // Union and reversal lock Client identities before relationships. Use the same
     // order and recheck status after waiting, so a concurrent reversal cannot pass
     // its snapshot fence after a successful new operational reference.
@@ -306,5 +312,59 @@ export class ClientOperationalReferenceService {
     )
       throw new ForbiddenException();
     return actor.activeCompany.id;
+  }
+
+  private async lockClientReadAuthority(
+    actor: ActorContext,
+    companyId: string,
+  ): Promise<void> {
+    if (actor.workspacePermissions.includes('client.manage')) {
+      const managerGrants = await this.databaseContext.connection
+        .select({ id: workspacePermissionGrants.id })
+        .from(workspacePermissionGrants)
+        .where(
+          and(
+            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+            eq(
+              workspacePermissionGrants.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(workspacePermissionGrants.permission, 'client.manage'),
+          ),
+        )
+        .for('share');
+      if (managerGrants.length > 0) return;
+    }
+
+    const assignmentId = actor.activeCompany?.clientPermissionAssignmentId;
+    if (
+      assignmentId &&
+      actor.activeCompany?.clientPermissions.includes('client.read')
+    ) {
+      const assignments = await this.databaseContext.connection
+        .select({ id: companyRoleAssignments.id })
+        .from(companyRoleAssignments)
+        .where(
+          and(
+            eq(companyRoleAssignments.id, assignmentId),
+            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+            eq(
+              companyRoleAssignments.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(companyRoleAssignments.companyId, companyId),
+            eq(
+              companyRoleAssignments.bundle,
+              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+            ),
+            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+            sql`${companyRoleAssignments.revokedAt} IS NULL`,
+          ),
+        )
+        .for('share');
+      if (assignments.length > 0) return;
+    }
+
+    throw new ForbiddenException();
   }
 }

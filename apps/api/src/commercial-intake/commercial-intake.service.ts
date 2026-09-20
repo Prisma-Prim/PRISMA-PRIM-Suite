@@ -46,6 +46,7 @@ export class CommercialIntakeService {
     value: unknown,
     key: string | undefined,
   ): Promise<CommercialIntakeDetail> {
+    await this.authorization.requireCommercialIntakeAccess(actor, 'create');
     const command = readCreateCommercialIntakeCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = commandFingerprint(command);
@@ -246,11 +247,25 @@ export class CommercialIntakeService {
       if (requireClientVisibility) throw clientUnavailable();
       return detailView(row.request, row.opportunity);
     }
-    const reference = (
-      await this.clients.readProjectReferences(actor, [
-        row.request.clientAccountId,
-      ])
-    ).get(row.request.clientAccountId);
+    let reference;
+    try {
+      reference = (
+        await this.clients.readProjectReferences(
+          actor,
+          [row.request.clientAccountId],
+          requireClientVisibility,
+        )
+      ).get(row.request.clientAccountId);
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
+        if (requireClientVisibility) throw clientUnavailable();
+        return detailView(row.request, row.opportunity);
+      }
+      throw error;
+    }
     if (!reference) {
       if (requireClientVisibility) throw clientUnavailable();
       return detailView(row.request, row.opportunity);

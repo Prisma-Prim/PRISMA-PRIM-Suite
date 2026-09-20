@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createIsolatedPostgresTestDatabase,
@@ -401,6 +401,158 @@ withPostgres('Company commercial intake REST', () => {
       [created.id],
     );
     expect(rows.rowCount).toBe(2);
+  });
+
+  it('authorizes before reporting command validation errors', async () => {
+    const company = entity(
+      await command(
+        '/companies',
+        { displayName: 'PRISMA-PRIM' },
+        'validation-authority-company',
+      ),
+    );
+
+    expect(
+      (await postIntake(company.id, {}, 'unauthorized-invalid')).status,
+    ).toBe(403);
+  });
+
+  it('rejects a create when independent Company context is revoked while the transaction waits', async () => {
+    const setup = await preparedRestrictedMember();
+    const lock = await lockAssignment(
+      setup.member.workspaceMembershipId,
+      setup.company.id,
+      'company_commercial_intake',
+    );
+    let lockReleased = false;
+    try {
+      const pending = postIntakeAs(
+        setup.company.id,
+        representativeBody(),
+        'revoked-company-context-race',
+        setup.memberHeaders,
+      );
+      await waitForBlockedBy(lock.backendPid);
+      await pool.query(
+        `UPDATE company_role_assignments
+            SET revoked_at = clock_timestamp()
+          WHERE workspace_id = $1
+            AND workspace_membership_id = $2
+            AND company_id = $3
+            AND bundle = 'company_context_access'
+            AND revoked_at IS NULL`,
+        [WORKSPACE_ID, setup.member.workspaceMembershipId, setup.company.id],
+      );
+      await lock.connection.query('COMMIT');
+      lockReleased = true;
+
+      expect((await pending).status).toBe(403);
+      await expectCommercialIntakeCount(0);
+    } finally {
+      if (!lockReleased) await lock.connection.query('ROLLBACK');
+      lock.connection.release();
+    }
+  });
+
+  it('rejects a linked create when Client authority is revoked while the transaction waits', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Concurrent revocation Client' },
+        'concurrent-revocation-client',
+        setup.company.id,
+      ),
+    );
+    const lock = await lockAssignment(
+      setup.member.workspaceMembershipId,
+      setup.company.id,
+      'company_commercial_intake',
+    );
+    let lockReleased = false;
+    try {
+      const pending = postIntakeAs(
+        setup.company.id,
+        { ...representativeBody(), clientAccountId: client.id },
+        'revoked-client-race',
+        setup.memberHeaders,
+      );
+      await waitForBlockedBy(lock.backendPid);
+      await pool.query(
+        `UPDATE company_role_assignments
+            SET revoked_at = clock_timestamp()
+          WHERE workspace_id = $1
+            AND workspace_membership_id = $2
+            AND company_id = $3
+            AND bundle = 'company_director_client_access'
+            AND revoked_at IS NULL`,
+        [WORKSPACE_ID, setup.member.workspaceMembershipId, setup.company.id],
+      );
+      await lock.connection.query('COMMIT');
+      lockReleased = true;
+
+      expect((await pending).status).toBe(404);
+      await expectCommercialIntakeCount(0);
+    } finally {
+      if (!lockReleased) await lock.connection.query('ROLLBACK');
+      lock.connection.release();
+    }
+  });
+
+  it('rejects an exact linked retry when Client authority is revoked while the transaction waits', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Concurrent retry Client' },
+        'concurrent-retry-client',
+        setup.company.id,
+      ),
+    );
+    const body = { ...representativeBody(), clientAccountId: client.id };
+    expect(
+      (
+        await postIntakeAs(
+          setup.company.id,
+          body,
+          'revoked-client-retry-race',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(201);
+    const lock = await lockAssignment(
+      setup.member.workspaceMembershipId,
+      setup.company.id,
+      'company_commercial_intake',
+    );
+    let lockReleased = false;
+    try {
+      const pending = postIntakeAs(
+        setup.company.id,
+        body,
+        'revoked-client-retry-race',
+        setup.memberHeaders,
+      );
+      await waitForBlockedBy(lock.backendPid);
+      await pool.query(
+        `UPDATE company_role_assignments
+            SET revoked_at = clock_timestamp()
+          WHERE workspace_id = $1
+            AND workspace_membership_id = $2
+            AND company_id = $3
+            AND bundle = 'company_director_client_access'
+            AND revoked_at IS NULL`,
+        [WORKSPACE_ID, setup.member.workspaceMembershipId, setup.company.id],
+      );
+      await lock.connection.query('COMMIT');
+      lockReleased = true;
+
+      expect((await pending).status).toBe(404);
+      await expectCommercialIntakeCount(1);
+    } finally {
+      if (!lockReleased) await lock.connection.query('ROLLBACK');
+      lock.connection.release();
+    }
   });
 
   it('uses the Client owner for an authorized association and one safe unavailable response', async () => {
@@ -980,6 +1132,112 @@ withPostgres('Company commercial intake REST', () => {
       },
       body: JSON.stringify(body),
     });
+  }
+
+  function postIntakeAs(
+    companyId: string,
+    body: unknown,
+    key: string,
+    headers: Record<string, string>,
+  ) {
+    return request('/commercial-intake/requests', companyId, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'content-type': 'application/json',
+        'idempotency-key': key,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function preparedRestrictedMember(clientAccess = false) {
+    const setup = await prepared();
+    const memberHeaders = {
+      'x-test-external-subject': 'commercial-only-member',
+      'x-test-display-name': 'Commercial Member',
+      'x-test-email': 'commercial-member@example.test',
+    };
+    const member = actorRecord(
+      await (
+        await request('/access/current-actor', undefined, {
+          headers: memberHeaders,
+        })
+      ).json(),
+    );
+    const paths = [
+      '/company-context-assignments',
+      '/company-commercial-intake-assignments',
+      ...(clientAccess ? ['/company-director-client-assignments'] : []),
+    ];
+    for (const path of paths)
+      await command(
+        path,
+        {
+          companyId: setup.company.id,
+          workspaceMembershipId: member.workspaceMembershipId,
+        },
+        `${path}-${crypto.randomUUID()}`,
+      );
+    return { ...setup, member, memberHeaders };
+  }
+
+  async function lockAssignment(
+    workspaceMembershipId: string,
+    companyId: string,
+    bundle: string,
+  ): Promise<{ connection: PoolClient; backendPid: number }> {
+    const connection = await pool.connect();
+    try {
+      await connection.query('BEGIN');
+      const backend = await connection.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = backend.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      const assignment = await connection.query(
+        `SELECT id
+           FROM company_role_assignments
+          WHERE workspace_id = $1
+            AND workspace_membership_id = $2
+            AND company_id = $3
+            AND bundle = $4
+            AND revoked_at IS NULL
+          FOR UPDATE`,
+        [WORKSPACE_ID, workspaceMembershipId, companyId, bundle],
+      );
+      if (assignment.rowCount !== 1)
+        throw new Error('Expected one active assignment to lock.');
+      return { connection, backendPid };
+    } catch (error) {
+      await connection.query('ROLLBACK');
+      connection.release();
+      throw error;
+    }
+  }
+
+  async function waitForBlockedBy(backendPid: number): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ blocked: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND $1::integer = ANY(pg_blocking_pids(pid))
+         ) AS blocked`,
+        [backendPid],
+      );
+      if (blocked.rows[0]?.blocked) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The intake transaction did not reach the lock barrier.');
+  }
+
+  async function expectCommercialIntakeCount(expected: number): Promise<void> {
+    const count = await pool.query<{ count: string }>(
+      'SELECT count(*) AS count FROM client_requests',
+    );
+    expect(count.rows).toEqual([{ count: String(expected) }]);
   }
 
   async function unionSetup() {

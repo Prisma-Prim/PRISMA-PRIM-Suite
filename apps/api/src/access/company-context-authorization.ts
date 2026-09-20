@@ -5,6 +5,7 @@ import {
   companies,
   companyRoleAssignments,
   internalUsers,
+  workspacePermissionGrants,
   workspaceMemberships,
 } from '../database/schema/index.js';
 import type { ActiveCompanyContext, ActorContext } from './access.types.js';
@@ -23,6 +24,11 @@ import {
   commercialIntakePermissionsFor,
   type CompanyCommercialIntakePermission,
 } from './company-permissions.js';
+
+const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
+  ...COMPANY_CONTEXT_USE_BUNDLES,
+  COMPANY_PROJECT_ACCESS_BUNDLE,
+] as const;
 
 @Injectable()
 export class CompanyContextAuthorization {
@@ -408,7 +414,57 @@ export class CompanyContextAuthorization {
       );
     const rows = lock ? await query.for('share') : await query;
     if (rows.length === 0) throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, companyId, lock);
     return companyId;
+  }
+
+  private async requireLiveCompanyContext(
+    actor: ActorContext,
+    companyId: string,
+    lock: boolean,
+  ): Promise<void> {
+    if (actor.workspacePermissions.includes('company.manage')) {
+      const managerQuery = this.databaseContext.connection
+        .select({ id: workspacePermissionGrants.id })
+        .from(workspacePermissionGrants)
+        .where(
+          and(
+            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+            eq(
+              workspacePermissionGrants.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(workspacePermissionGrants.permission, 'company.manage'),
+          ),
+        );
+      const managerGrants = lock
+        ? await managerQuery.for('share')
+        : await managerQuery;
+      if (managerGrants.length > 0) return;
+    }
+
+    const contextQuery = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          inArray(
+            companyRoleAssignments.bundle,
+            COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
+          ),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    const contextAssignments = lock
+      ? await contextQuery.for('share')
+      : await contextQuery;
+    if (contextAssignments.length === 0) throw new ForbiddenException();
   }
 
   private async findActiveCompany(
@@ -440,10 +496,9 @@ export class CompanyContextAuthorization {
         actor.workspaceMembershipId,
       ),
       inArray(companyRoleAssignments.bundle, [
-        ...COMPANY_CONTEXT_USE_BUNDLES,
+        ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
-        COMPANY_PROJECT_ACCESS_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
@@ -541,9 +596,9 @@ export class CompanyContextAuthorization {
         company.commercialIntakePermissionSetVersion = 'v1';
       }
       if (
-        row.bundle !== COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE &&
-        row.bundle !== COMPANY_TASK_MANAGER_BUNDLE &&
-        row.bundle !== COMPANY_COMMERCIAL_INTAKE_BUNDLE
+        COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
+          (bundle) => row.bundle === bundle,
+        )
       ) {
         independentlyAuthorizedCompanies.add(row.id);
       }
