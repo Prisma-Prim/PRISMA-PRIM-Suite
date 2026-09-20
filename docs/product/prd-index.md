@@ -60,9 +60,9 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 ## 6. Release 3 capability PRD
 
-| Capability PRD                                              | Document status          | Depends on                                                                              |
-| ----------------------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md) | Ready for product review | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration |
+| Capability PRD                                              | Document status                                               | Depends on                                                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration |
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 

@@ -1,11 +1,12 @@
 # PRD — Release 3 Commercial Workflow
 
-**Status:** Ready for product review  
+**Status:** Provisional MVP execution scope — business validation pending  
 **Version:** 0.1  
 **Owner:** Dan Popescu  
 **Release:** 3  
 **Decisions:** DEC-100–DEC-123  
-**Owner direction:** [Dan, 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981)
+**Owner direction:** [Dan, 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981)  
+**Deferred business validation:** [Iurie, after a demonstrable MVP](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/288#issuecomment-5749968989)
 
 ## 1. Authority and purpose
 
@@ -16,6 +17,8 @@ This PRD is the canonical observable-behaviour authority for the reusable commer
 It inherits the [Product Vision](product-vision-prd.md), [consolidated decision record](consolidated-product-decision-record.md) sections 14.1–14.15 and DEC-100–DEC-122, [Tenant/Company/Client Authorization](tenant-company-client-authorization-prd.md), [Activity Log](activity-log-accountability-prd.md), [Governed Documents](governed-documents-prd.md), [Platform Operations](platform-security-reliability-operations-prd.md), [UX/Configuration](ux-localization-configuration-prd.md) and [AI Governance](ai-knowledge-governance-prd.md). This PRD states only the commercial consequences.
 
 The [historical MVP PRD](mvp-prd.md) remains source material. Where it assumes one Workspace with equal user authority or makes the commercial pilot the whole product, this PRD and the current cross-cutting authorities prevail.
+
+This provisional contract is the technical and product execution authority for agents to build the MVP. It does not claim that Dan or Iurie approved its exact first-tenant fields, limits, permission bundle or workflow details as business policy. Iurie will validate or correct those choices against a usable demonstration; later corrections preserve already-recorded evidence and use explicit versions or focused follow-up issues.
 
 ## 2. Problem and outcomes
 
@@ -90,6 +93,8 @@ This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R
 
 ## 8. R3A1 — manual Request with initial Opportunity
 
+The field limits, captured bundle, creator-as-initial-responsible rule and bounded list below are reversible provisional MVP choices. They make the first useful slice executable and testable before business validation; they do not become approved first-tenant policy by being implemented.
+
 ### 8.1 Observable outcome
 
 An authorized user in an active Company enters a real request and immediately receives a reloadable Request detail with one initial Opportunity. The command succeeds without a Client association. When an existing Client is selected, the server revalidates current Client visibility and the active Company relationship before committing.
@@ -131,7 +136,7 @@ The command requires an idempotency key. An exact retry by the same actor and Co
 
 The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
 
-Client association is resolved and locked through the Client module's existing public authorization and operational-reference fence. The commercial contract adds no Client version field, lookup path, duplicate rule or union logic. Unknown, inaccessible, inactive, cross-Company, superseded or concurrently changed Client references all return the same safe unavailable response, create nothing and ask the user to refresh Client search before retrying. A successful commit records the original/current Client reference through the Client owner so a later union or reversal cannot silently strand commercial use.
+Client association is resolved and locked through the Client module's existing public authorization and operational-reference fence. The commercial contract adds no Client version field, lookup path, duplicate rule or union logic. Unknown, inaccessible, inactive, cross-Company, superseded or concurrently invalidated Client references all return the same safe unavailable response, create nothing and ask the user to refresh Client search before retrying. A harmless concurrent correction that leaves the authorized association valid need not block. A successful commit records the original/current Client reference through the Client owner so a later union or reversal cannot silently strand commercial use.
 
 ### 8.5 Activity and history
 
@@ -144,7 +149,7 @@ Failed commands, safe denials and exact retries create no success event. Activit
 - missing verified identity returns `401`;
 - inactive membership, missing bundle or invalid active Company returns safe `403` without hidden metadata;
 - unknown or inaccessible Request detail uses the same safe not-found response;
-- every rejected Client reference uses one uniform safe unavailable response whether the identifier is unknown, inaccessible, inactive, cross-Company, superseded or changed concurrently;
+- every rejected Client reference uses one uniform safe unavailable response whether the identifier is unknown, inaccessible, inactive, cross-Company, superseded or invalidated concurrently;
 - invalid fields return field-specific validation without persistence;
 - a changed idempotency payload returns a safe conflict;
 - another Company cannot infer a Request, Opportunity, Client association, event, count or label by direct identifier.
@@ -201,7 +206,7 @@ The first vertical issue proves:
 6. atomic rollback on validation, denial, unavailable Client and persistence conflict;
 7. direct-id denial and no list/count/event leakage across Company and Workspace boundaries;
 8. no implicit permission from an existing bundle or assignment;
-9. Client union/correction race resolved by the Client owner's operational-reference fence rather than commercial duplicate logic;
+9. Client union, reversal or relationship races that invalidate the association are rejected by the Client owner's operational-reference fence rather than commercial duplicate logic, while harmless current-state corrections may proceed;
 10. usable empty list, validation, success, unavailable-reference and permission states at desktop and narrow width.
 
 R3B–R3D later add deterministic pricing, provenance propagation, version immutability, approval and Project-linking tests at their public seams.
@@ -214,8 +219,10 @@ Release 3 excludes mass marketing automation, a universal CRM or CPQ engine, AI-
 
 ## 15. Evidence dependencies and readiness
 
-The R3A1 product contract is decided. Its implementation issue may be published only after this PRD is merged, owner product review is complete and the issue restates the permission bundle, public seams, tests and exclusions above. It does not depend on real Tariffs or Templates.
+R3A1 is an authorized provisional MVP execution scope. Its implementation issue may be published after this PRD is merged and the normal technical readiness gates pass; it does not wait for real Tariffs, Templates or Iurie's later business validation. Agents implement the bounded contract above, preserve provenance and keep the provisional choices replaceable.
+
+Iurie validates the demonstrated workflow and first-tenant configuration once the MVP is usable. That future review may confirm or correct fields, limits, role allocation and later commercial configuration. Until then, implementation proves the reusable behavior and safety boundaries, not business approval.
 
 Later slices name only the evidence they consume. Illustrative, versioned inputs may support a decided reversible implementation slice and its complete internal workflow when provenance remains visible at every step, simulated evidence is explicit and no real external or operational authority is produced. Real business evidence remains required before affected Tariffs, calculations, Templates, clauses, approval thresholds, numbering or generated artifacts can be approved or used operationally.
 
-No statement here claims that Iurie supplied those materials or approved illustrative values. Live GitHub trackers own current ticket readiness and delivery status.
+No statement here claims that Dan approved the exact provisional rules, or that Iurie supplied the missing materials or approved illustrative values. Live GitHub trackers own current ticket readiness and delivery status.
