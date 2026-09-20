@@ -24,6 +24,7 @@ import './prisme/prisme-frame.css';
 export interface ApplicationSection {
   id:
     | 'documents'
+    | 'requests'
     | 'projects'
     | 'clients'
     | 'access'

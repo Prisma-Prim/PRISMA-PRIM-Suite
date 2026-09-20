@@ -1,0 +1,60 @@
+export interface CreateCommercialIntakeCommand {
+  readonly originalText: string;
+  readonly sourceLabel: string | null;
+  readonly reportedReceivedAt: Date | null;
+  readonly reportedReceivedAtInput: string | null;
+  readonly subject: string | null;
+  readonly clientAccountId: string | null;
+  readonly opportunity: {
+    readonly title: string;
+    readonly scope: string | null;
+    readonly nextAction: string;
+  };
+}
+
+export interface CommercialIntakeDetail {
+  readonly id: string;
+  readonly companyId: string;
+  readonly sourceKind: 'MANUAL_TEXT';
+  readonly sourceLabel: string | null;
+  readonly reportedReceivedAt: string | null;
+  readonly subject: string | null;
+  readonly originalText: string;
+  readonly capturedByWorkspaceMembershipId: string;
+  readonly capturedAt: string;
+  readonly version: 1;
+  readonly clientReference?: {
+    readonly originalClientId: string;
+    readonly currentClientId?: string;
+    readonly displayName: string;
+  };
+  readonly initialOpportunity: {
+    readonly id: string;
+    readonly title: string;
+    readonly scope: string | null;
+    readonly nextAction: string;
+    readonly status: 'OPEN';
+    readonly responsibleWorkspaceMembershipId: string;
+    readonly createdAt: string;
+    readonly version: 1;
+  };
+}
+
+export interface CommercialIntakeListItem {
+  readonly id: string;
+  readonly subject: string | null;
+  readonly capturedAt: string;
+  readonly initialOpportunity: {
+    readonly title: string;
+    readonly nextAction: string;
+    readonly responsibleActor: {
+      readonly workspaceMembershipId: string;
+      readonly displayName: string;
+    };
+  };
+}
+
+export interface CommercialIntakeListPage {
+  readonly items: CommercialIntakeListItem[];
+  readonly nextCursor?: string;
+}
