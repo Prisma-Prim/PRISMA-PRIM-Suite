@@ -2,8 +2,8 @@
 
 **Product:** PRISMA-PRIM Suite  
 **Status:** Reconciliation complete — decisions `DEC-001` through `DEC-213` approved  
-**Record version:** 1.3  
-**Last updated:** 2026-08-24  
+**Record version:** 1.4  
+**Last updated:** 2026-09-20  
 **Source discussion language:** French  
 **Repository language:** English
 
@@ -1671,7 +1671,9 @@ Release 3 is split into independently testable capabilities:
 - **R3C — Offers:** complete versions, generated documents, quality checks, approval, transmission, response evidence and negotiation history;
 - **R3D — Contracts:** controlled origins, versions, legal content, signature evidence, post-signature instruments and Project creation or linking.
 
-No detailed commercial implementation ticket becomes `ready-for-agent` until real services, tariffs, calculation examples, templates, approval thresholds, numbering rules and representative negotiations and Contracts have been inventoried. Mass marketing automation, a universal CRM or CPQ engine, AI-determined pricing, an internally implemented qualified-signature service and a Client portal remain outside this release.
+Commercial readiness is evaluated per vertical slice. Real manually entered Requests and Opportunities may be implemented without later pricing or document material. When a decided slice needs unavailable Tariffs, calculation examples, Templates or clauses, versioned illustrative inputs may prove the reusable mechanics only when their provenance remains visible and every derived artifact is prevented from being represented as approved for real use. The same workflow may exercise its human approval, acceptance and signature-recording steps with clearly simulated evidence; those states retain provisional provenance and confer no real external or operational authority. Real evidence is still required before the affected configuration, approval threshold, numbering rule, generated artifact, acceptance or execution is approved for operational use. This is one architecture, not a separate demo mode, and real Requests or Opportunities are not labelled illustrative merely because a later input is provisional.
+
+This scoped gate follows [Dan's Product Owner direction of 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981). The canonical observable behaviour and per-slice readiness assessment are owned by the [Release 3 Commercial Workflow PRD](release-3-commercial-workflow-prd.md). Mass marketing automation, a universal CRM or CPQ engine, AI-determined pricing, an internally implemented qualified-signature service and a Client portal remain outside this release.
 
 ## 15. Historical migration and global search architecture
 
@@ -2449,9 +2451,11 @@ Offer and Contract numbering is configurable by Company and document type. Alloc
 
 Intake, pricing, discount, approval, transmission, acceptance confirmation, Contract execution and configuration are distinct Company-scoped capabilities. Critical actions produce attributed Activity Log events and governed records are not hard-deleted.
 
-#### DEC-123 — Inventory real commercial workflows before implementation tickets
+#### DEC-123 — Scope commercial evidence readiness to the affected slice
 
-No detailed Release 3 ticket becomes `ready-for-agent` until real services, tariffs, calculation examples, templates, approvals, numbering, negotiations, Contracts and exceptions have been inventoried.
+The original 2026-08 decision required the complete real commercial inventory before any detailed Release 3 ticket became `ready-for-agent`. [Dan's Product Owner direction of 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981) replaces that blanket gate while preserving its reason: illustrative prices, clauses, calculations and Templates must never be mistaken for approved business rules.
+
+Effective rule: evaluate each vertical slice against only the business evidence it consumes. A decided reversible slice may use explicit versioned illustrative inputs when their provenance propagates to every derived artifact and the product prevents those inputs or artifacts from being represented as approved for real use. It may exercise the same internal workflow end to end with clearly simulated evidence, without a parallel mode or real external side effect. Real evidence remains required before the affected configuration, document, approval, transmission, acceptance or execution is authorized operationally. Missing later commercial material does not block manual Request/Opportunity work or the reusable version/provenance architecture.
 
 ### Evidence and interview protocol
 
@@ -3154,6 +3158,8 @@ Never request private signing keys, passwords, unrestricted personnel files, com
 
 This section deliberately uses ordinary operational language. It can be translated and edited into the Romanian interview for Iurie. Parenthetical explanations clarify the situation; internal entity names are not required from him. The interviewer should ask for concrete recent examples rather than abstract definitions.
 
+These answers configure and approve the affected first-tenant behaviour; they are not a blanket prerequisite for unrelated Release 3 slices. Until a requested Tariff, calculation or Template is supplied, DEC-123 permits only explicit replaceable illustrative input with provisional derived artifacts. It does not convert a demonstration example into Iurie evidence.
+
 ### 22.1 Incoming requests and responsibility
 
 1. **How can a new request for work arrive today?** For example by phone, email, recommendation, website, messaging application or an existing Client conversation.
@@ -3452,11 +3458,11 @@ A PRD may be drafted with open questions, but an epic or issue is not `ready-for
 3. required actors, permissions and approvals are known;
 4. lifecycle, versions, corrections and deletion behaviour are testable;
 5. source-of-truth and provider boundaries are explicit;
-6. representative real examples exist;
+6. representative inputs exist for the slice: real evidence where the behaviour claims real-use approval, or explicit versioned illustrative inputs when the slice keeps them and every derived artifact visibly provisional and replaceable;
 7. security, audit, observability and failure behaviour are included;
 8. dependencies and migration consequences are identified;
 9. acceptance criteria cover success and important exceptions;
-10. unresolved business dependencies are blockers rather than hidden assumptions.
+10. unresolved business dependencies are scoped to the behaviour they affect and remain explicit blockers, configuration dependencies or deferred choices rather than hidden assumptions.
 
 This record now preserves the complete reasoning needed for a context-free future agent to verify the analysis, make evidence-based adjustments and begin the PRD hierarchy without reconstructing the reconciliation conversation.
 

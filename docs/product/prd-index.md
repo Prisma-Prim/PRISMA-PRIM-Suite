@@ -58,26 +58,33 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
 
-## 6. Later releases
+## 6. Release 3 capability PRD
 
-Release 2–7 capability PRDs remain intentionally skeletal in the Product Vision until priority business evidence arrives. Their current order is:
+| Capability PRD                                              | Document status                                               | Depends on                                                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration |
+
+The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
+
+## 7. Other later releases
+
+Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision until priority business evidence arrives. Their current order is:
 
 1. Release 2 — Google Drive, Calendar, assisted email, conditional Gmail and document generation;
-2. Release 3 — commercial intake, catalogue/pricing, Offers and Contracts;
-3. Release 4 — audit, Findings, certification, credentials and Training;
-4. Release 5 — operational financial tracking;
-5. Release 6 — historical migration, global search and export;
-6. Release 7 — approved Knowledge Base, RAG and measured copilots.
+2. Release 4 — audit, Findings, certification, credentials and Training;
+3. Release 5 — operational financial tracking;
+4. Release 6 — historical migration, global search and export;
+5. Release 7 — approved Knowledge Base, RAG and measured copilots.
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
-## 7. Delivered foundation and live work routing
+## 8. Delivered foundation and live work routing
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.
 
 Current readiness—including whether an implementation issue is `ready-for-agent`—blockers, progress and delivery children are owned by the [Product Vision tracker #51](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51) and its linked tracker hierarchy. The Workspace-authority compatibility cleanup is tracked separately in [#71](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/71). Find candidate executable work through the [live open `ready-for-agent` query](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues?q=is%3Aissue%20is%3Aopen%20label%3Aready-for-agent), then open the selected issue and verify every readiness gate before starting. This index intentionally does not copy current issue state.
 
-## 8. Tracker policy
+## 9. Tracker policy
 
 The repository maintains one Product Vision tracker and one tracker for each cross-cutting and Release 1 capability PRD. Tracker issues:
 

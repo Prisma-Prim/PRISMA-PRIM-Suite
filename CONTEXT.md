@@ -45,6 +45,10 @@ _Avoid_: Client user, lead
 The original expression of a need, preserved with its sources and analysis history; it may precede association with a Client Account.
 _Avoid_: Lead, inquiry, intake case
 
+**Opportunity**:
+A Company-owned qualified commercial case created from a Client Request, with one responsible actor, a stable outcome status and a next action.
+_Avoid_: Client Request, configurable sales stage, Offer
+
 **Request Source**:
 An original text or file submitted as evidence for a Client Request.
 _Avoid_: Attachment, upload
