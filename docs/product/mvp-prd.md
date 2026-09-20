@@ -1,9 +1,10 @@
 # PRISMA-PRIM Suite MVP Product Requirements
 
 **Status:** Superseded — historical commercial-pilot specification  
-**Successor navigation:** [Product Requirements Index](./prd-index.md)
+**Commercial successor:** [Release 3 Commercial Workflow PRD](./release-3-commercial-workflow-prd.md)  
+**Product navigation:** [Product Requirements Index](./prd-index.md)
 
-This document remains a historical commercial capability source. It is not an implementation-ready roadmap. Current product scope and observable behaviour are owned by the [Product Vision PRD](./product-vision-prd.md) and applicable owning PRDs; the Product Requirements Index and ticketing standard route agents to the applicable gates, while current readiness and work status are owned by live GitHub trackers.
+This document remains historical commercial source material. It is not an implementation-ready roadmap. Current commercial behaviour is owned by the [Release 3 Commercial Workflow PRD](./release-3-commercial-workflow-prd.md); product-wide scope remains owned by the [Product Vision PRD](./product-vision-prd.md). The Product Requirements Index and ticketing standard route agents to the applicable gates, while live GitHub trackers own current readiness and work status.
 
 **Version:** 0.2  
 **Date:** 2026-08-07  
