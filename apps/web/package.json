@@ -8,8 +8,8 @@
     "dev": "vite",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
-    "test": "vitest run && playwright test",
-    "test:browser": "playwright test",
+    "test": "vitest run && pnpm test:browser",
+    "test:browser": "playwright test && playwright test --config playwright.acceptance.config.ts",
     "test:preflight:playwright": "playwright test e2e/production-shell.spec.ts --grep \"renders the production shell\""
   },
   "dependencies": {

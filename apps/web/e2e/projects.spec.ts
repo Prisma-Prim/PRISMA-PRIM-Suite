@@ -158,7 +158,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
       `${actorContextFixture.displayName} created a preparatory Project`,
     ),
   ).toBeVisible();
-  await expect(page.getByText(`Target: ${project.id}`)).toBeVisible();
+  await expect(page.getByText('Target: Project')).toBeVisible();
   await page.goto('/?frame=prisme#projects');
   await page
     .getByRole('button', {

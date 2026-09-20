@@ -1,3 +1,14 @@
+.company-access {
+  min-width: 0;
+}
+
+.company-access select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .prisme-shell .company-access--prisme {
   display: grid;
   gap: 1.25rem;

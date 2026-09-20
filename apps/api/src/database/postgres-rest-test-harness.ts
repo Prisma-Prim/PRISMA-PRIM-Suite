@@ -29,6 +29,8 @@ export interface CreatePostgresRestTestHarnessOptions {
   readonly sessionRevoker?: IdentitySessionRevoker;
   readonly databaseUrl: string;
   readonly environment: Readonly<Record<string, string>>;
+  readonly listenPort?: number;
+  readonly migrationsFolder?: string;
 }
 
 class ApplicationQueryCounter implements Logger {
@@ -55,6 +57,8 @@ class ApplicationQueryCounter implements Logger {
 export async function createPostgresRestTestHarness({
   databaseUrl,
   environment,
+  listenPort = 0,
+  migrationsFolder = './drizzle',
   sessionRevoker,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
@@ -90,10 +94,10 @@ export async function createPostgresRestTestHarness({
 
     app.setGlobalPrefix('api');
     await app.init();
-    await app.listen(0, '127.0.0.1');
+    await app.listen(listenPort, '127.0.0.1');
     const origin = await app.getUrl();
 
-    await migrate(database, { migrationsFolder: './drizzle' });
+    await migrate(database, { migrationsFolder });
     const pool = new Pool({ connectionString: databaseUrl });
     ownedResources.unshift({
       name: 'raw PostgreSQL pool',

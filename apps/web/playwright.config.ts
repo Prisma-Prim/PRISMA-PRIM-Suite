@@ -10,6 +10,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
+      testIgnore: /operational-foundation\.acceptance\.spec\.ts/u,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
@@ -17,6 +18,7 @@ export default defineConfig({
     },
     {
       name: 'narrow',
+      testIgnore: /operational-foundation\.acceptance\.spec\.ts/u,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 390, height: 844 },
