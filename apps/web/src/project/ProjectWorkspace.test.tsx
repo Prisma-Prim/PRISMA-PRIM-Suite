@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -164,10 +170,17 @@ it('uses an authorized dossier identity for navigation and an exact loaded filte
   );
   expect(openDossier).toHaveBeenCalledWith('canonical-client');
 
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-    target: { value: '' },
-  });
-  expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Reload Projects' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+    ).toHaveValue(''),
+  );
+  expect(
+    within(screen.getByRole('list', { name: 'Projects' })).getAllByRole(
+      'button',
+    ),
+  ).toHaveLength(2);
 });
 
 it('does not expose Project-to-dossier navigation without a derived authorized dossier', async () => {

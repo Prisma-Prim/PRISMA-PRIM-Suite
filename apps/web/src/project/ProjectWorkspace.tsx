@@ -79,6 +79,7 @@ export function ProjectWorkspace({
     request.current = controller;
     setSelected(null);
     setQuery('');
+    setFilteredClientDossierId(undefined);
     setFeedback('');
     setPending(false);
     setTitle('');
@@ -277,6 +278,8 @@ export function ProjectWorkspace({
       : [];
   return (
     <section
+      id="projects"
+      tabIndex={-1}
       className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
       aria-labelledby="project-title"
     >

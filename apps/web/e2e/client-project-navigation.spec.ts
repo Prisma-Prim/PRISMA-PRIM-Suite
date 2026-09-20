@@ -11,6 +11,11 @@ for (const frame of ['classic', 'prisme'] as const) {
       displayName: 'Navigation Client',
       relatedToActiveCompany: true,
     };
+    const otherClient = {
+      id: 'other-client-navigation',
+      displayName: 'Other Navigation Client',
+      relatedToActiveCompany: true,
+    };
     const dossier = {
       ...client,
       taxId: null,
@@ -31,6 +36,17 @@ for (const frame of ['classic', 'prisme'] as const) {
       title: 'Navigation preparation',
       status: 'preparatory',
       createdAt: '2026-09-19T08:00:00.000Z',
+    };
+    const otherDossier = {
+      ...otherClient,
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+      version: 1,
+      involvedCompanyDisplayNames: [company.displayName],
     };
     let projectReads = 0;
 
@@ -60,9 +76,12 @@ for (const frame of ['classic', 'prisme'] as const) {
       if (path === '/api/companies') return route.fulfill({ json: [company] });
       if (path === '/api/activity-log')
         return route.fulfill({ json: { events: [] } });
-      if (path === '/api/clients') return route.fulfill({ json: [client] });
+      if (path === '/api/clients')
+        return route.fulfill({ json: [client, otherClient] });
       if (path === `/api/clients/${client.id}`)
         return route.fulfill({ json: dossier });
+      if (path === `/api/clients/${otherClient.id}`)
+        return route.fulfill({ json: otherDossier });
       if (path === '/api/projects') {
         projectReads += 1;
         return route.fulfill({ json: [project] });
@@ -90,7 +109,16 @@ for (const frame of ['classic', 'prisme'] as const) {
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#clients`);
 
-    await page.getByRole('button', { name: 'Open dossier' }).click();
+    await page
+      .getByRole('listitem')
+      .filter({
+        has: page.getByRole('heading', {
+          name: client.displayName,
+          exact: true,
+        }),
+      })
+      .getByRole('button', { name: 'Open dossier' })
+      .click();
     const dossierRegion = page.locator('.client-dossier-detail');
     await expect(
       dossierRegion.getByRole('heading', {
@@ -123,6 +151,40 @@ for (const frame of ['classic', 'prisme'] as const) {
     await page.getByLabel('Task title').fill(taskDraft);
     await page.getByRole('button', { name: 'Open Client dossier' }).click();
 
+    await expect(page.locator('#clients')).toBeFocused();
+    await expect(
+      dossierRegion.getByRole('heading', {
+        name: client.displayName,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole('listitem')
+      .filter({
+        has: page.getByRole('heading', {
+          name: otherClient.displayName,
+          exact: true,
+        }),
+      })
+      .getByRole('button', { name: 'Open dossier' })
+      .click();
+    await expect(
+      dossierRegion.getByRole('heading', {
+        name: otherClient.displayName,
+        exact: true,
+      }),
+    ).toBeVisible();
+    if (testInfo.project.name === 'narrow')
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('link', { name: 'Projects', exact: true }).click();
+    await expect(projectsTarget).toBeFocused();
+    expect(
+      await projectsTarget.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.top < window.innerHeight && bounds.bottom > 0;
+      }),
+    ).toBe(true);
+    await page.getByRole('button', { name: 'Open Client dossier' }).click();
     await expect(page.locator('#clients')).toBeFocused();
     await expect(
       dossierRegion.getByRole('heading', {

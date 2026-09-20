@@ -60,7 +60,7 @@ export function ClientWorkspace({
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
   onOpenProjects,
-  requestedClientDossierId,
+  requestedClientDossierRequest,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -69,7 +69,10 @@ export function ClientWorkspace({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
-  requestedClientDossierId?: string;
+  requestedClientDossierRequest?: {
+    clientDossierId: string;
+    requestId: number;
+  };
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
@@ -158,9 +161,9 @@ export function ClientWorkspace({
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
 
   useEffect(() => {
-    if (requestedClientDossierId && canReadClientDossiers)
-      openDossier(requestedClientDossierId);
-  }, [requestedClientDossierId, canReadClientDossiers]);
+    if (requestedClientDossierRequest && canReadClientDossiers)
+      openDossier(requestedClientDossierRequest.clientDossierId);
+  }, [requestedClientDossierRequest, canReadClientDossiers]);
 
   const handleAccessRejection = useCallback(
     async (
@@ -447,6 +450,7 @@ export function ClientWorkspace({
   return (
     <section
       id="clients"
+      tabIndex={-1}
       className="client-workspace"
       aria-labelledby="client-workspace-title"
     >

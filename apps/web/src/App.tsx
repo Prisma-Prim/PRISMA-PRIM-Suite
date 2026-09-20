@@ -39,6 +39,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedClientDossier, setRequestedClientDossier] = useState<{
     companyId: string;
     clientDossierId: string;
+    requestId: number;
   }>();
   const navigateToSection = useCallback((section: 'clients' | 'projects') => {
     const nextUrl = new URL(window.location.href);
@@ -96,11 +97,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
       true &&
     canAccessClients;
-  const requestedClientDossierId =
+  const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
       : requestedClientDossier.companyId === activeCompanyId
-        ? requestedClientDossier.clientDossierId
+        ? requestedClientDossier
         : undefined;
 
   const sections: ApplicationSection[] = [];
@@ -131,7 +132,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
-          requestedClientDossierId={requestedClientDossierId}
+          requestedClientDossierRequest={requestedClientDossierRequest}
           onOpenProjects={
             canAccessProjects && activeCompanyId
               ? (client) => {
@@ -164,10 +165,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               : undefined
           }
           onOpenClientDossier={(clientDossierId) => {
-            setRequestedClientDossier({
+            setRequestedClientDossier((current) => ({
               companyId: activeCompanyId,
               clientDossierId,
-            });
+              requestId: (current?.requestId ?? 0) + 1,
+            }));
             navigateToSection('clients');
           }}
         />
