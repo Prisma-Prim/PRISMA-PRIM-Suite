@@ -30,6 +30,7 @@ export function DocumentWorkspace({
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
+  const [filterQuery, setFilterQuery] = useState('');
   const [detail, setDetail] = useState<WorkingDocument>();
   const [revision, setRevision] = useState(0);
   const [clientId, setClientId] = useState('');
@@ -67,6 +68,7 @@ export function DocumentWorkspace({
     actor.activeCompany.documentPermissions.includes('document.reference.read');
   useEffect(() => {
     setDetail(undefined);
+    setFilterQuery('');
     setClientId('');
     setTitle('');
     setPurpose('');
@@ -334,6 +336,18 @@ export function DocumentWorkspace({
       if (!request.signal.aborted) setMutation('error');
     }
   }
+  const normalizedFilterQuery = filterQuery.trim().toLowerCase();
+  const filteredDocuments =
+    state.status === 'ready'
+      ? state.documents.filter(
+          (document) =>
+            normalizedFilterQuery.length === 0 ||
+            document.title.toLowerCase().includes(normalizedFilterQuery) ||
+            document.clientDisplayName
+              .toLowerCase()
+              .includes(normalizedFilterQuery),
+        )
+      : [];
   return (
     <section
       className={`working-documents${isPrisme ? ' working-documents--prisme' : ''}`}
@@ -366,6 +380,17 @@ export function DocumentWorkspace({
       )}
       {state.status === 'ready' && (
         <>
+          {state.documents.length > 0 && (
+            <label className={isPrisme ? 'working-document-filter' : undefined}>
+              {copy.filterLabel}
+              <input
+                type="search"
+                value={filterQuery}
+                placeholder={copy.filterPlaceholder}
+                onChange={(event) => setFilterQuery(event.target.value)}
+              />
+            </label>
+          )}
           {detail ? (
             <article
               className={isPrisme ? 'working-document-detail' : undefined}
@@ -499,8 +524,11 @@ export function DocumentWorkspace({
             </article>
           ) : (
             <>
+              {state.documents.length > 0 && filteredDocuments.length === 0 && (
+                <p role="status">{copy.noMatches}</p>
+              )}
               <ul className={isPrisme ? 'working-document-list' : undefined}>
-                {state.documents.map((document) => (
+                {filteredDocuments.map((document) => (
                   <li key={document.id}>
                     <button
                       onClick={() => void open(document.id)}

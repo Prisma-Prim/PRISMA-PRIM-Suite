@@ -105,6 +105,126 @@ it('presents real Working Documents in Prisme while preserving the Classic publi
       .closest('form'),
   ).toHaveClass('working-document-registration');
 });
+it('filters only loaded visible fields in server order and resets for a new Company', async () => {
+  const firstCompanyDocuments = [
+    document,
+    {
+      ...document,
+      id: 'document-second',
+      clientId: 'client-second',
+      clientDisplayName: 'Alpha Advisory',
+      title: 'Supplier evidence checklist',
+    },
+    {
+      ...document,
+      id: 'opaque-match',
+      clientId: 'client-third',
+      clientDisplayName: 'Beta Industries',
+      title: 'Annual review notes',
+    },
+  ];
+  const secondCompanyDocument = {
+    ...document,
+    id: 'document-other-company',
+    companyId: 'company-other',
+    clientDisplayName: 'Other Company Client',
+    title: 'Other Company questionnaire',
+  };
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    const companyContextId = new Headers(init?.headers).get(
+      'x-company-context-id',
+    );
+    if (url.endsWith('/clients')) return Response.json([]);
+    if (url.endsWith('/documents/document')) return Response.json(document);
+    return Response.json(
+      companyContextId === 'company-other'
+        ? [secondCompanyDocument]
+        : firstCompanyDocuments,
+    );
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(<DocumentWorkspace actor={actor} identity={identity} />);
+  const workspace = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  const filter = await within(workspace).findByRole('searchbox', {
+    name: 'Filter working Documents',
+  });
+  const list = within(workspace).getByRole('list');
+  expect(
+    within(list)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Initial assessment questionnaire',
+    'Supplier evidence checklist',
+    'Annual review notes',
+  ]);
+  const initialRequestCount = fetcher.mock.calls.length;
+
+  fireEvent.change(filter, { target: { value: 'ALPHA advisory' } });
+  expect(
+    within(list).getByRole('button', { name: 'Supplier evidence checklist' }),
+  ).toBeInTheDocument();
+  expect(
+    within(list).queryByRole('button', {
+      name: 'Initial assessment questionnaire',
+    }),
+  ).not.toBeInTheDocument();
+
+  fireEvent.change(filter, { target: { value: 'opaque-match' } });
+  expect(within(list).queryByRole('button')).not.toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'No loaded working Documents match this filter.',
+  );
+  expect(
+    screen.queryByText('No working references registered yet.'),
+  ).not.toBeInTheDocument();
+
+  fireEvent.change(filter, { target: { value: '' } });
+  expect(
+    within(list)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Initial assessment questionnaire',
+    'Supplier evidence checklist',
+    'Annual review notes',
+  ]);
+  expect(fetcher).toHaveBeenCalledTimes(initialRequestCount);
+
+  fireEvent.click(
+    within(list).getByRole('button', {
+      name: 'Initial assessment questionnaire',
+    }),
+  );
+  expect(await screen.findByText(document.purpose)).toBeInTheDocument();
+  fireEvent.change(filter, { target: { value: 'does not match' } });
+  expect(screen.getByText(document.purpose)).toBeInTheDocument();
+
+  view.rerender(
+    <DocumentWorkspace
+      actor={{
+        ...actor,
+        activeCompany: {
+          ...actor.activeCompany,
+          id: 'company-other',
+          displayName: 'Other Company',
+        },
+      }}
+      identity={identity}
+    />,
+  );
+  expect(
+    await screen.findByRole('button', {
+      name: secondCompanyDocument.title,
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('searchbox', { name: 'Filter working Documents' }),
+  ).toHaveValue('');
+  expect(screen.queryByText(document.purpose)).not.toBeInTheDocument();
+});
 it('registers and reopens an unverified Company-confidential questionnaire reference', async () => {
   let saved = false;
   vi.stubGlobal(
@@ -256,6 +376,12 @@ it('retries an uncertain correction with the exact same command', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'result is uncertain',
   );
+  fireEvent.change(screen.getByLabelText('Filter working Documents'), {
+    target: { value: 'unrelated filter' },
+  });
+  fireEvent.change(screen.getByLabelText('Filter working Documents'), {
+    target: { value: '' },
+  });
   const lockedTitle = screen.getByLabelText('Title');
   expect(lockedTitle).toBeDisabled();
   fireEvent.change(lockedTitle, {

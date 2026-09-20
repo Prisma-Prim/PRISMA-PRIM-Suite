@@ -26,6 +26,10 @@
   overflow-wrap: anywhere;
 }
 
+.working-document-filter {
+  max-width: 28rem;
+}
+
 .prisme-shell .working-documents--prisme {
   gap: 1.35rem;
   width: 100%;
@@ -154,7 +158,8 @@
 .prisme-shell .working-document-registration textarea,
 .prisme-shell .working-document-registration select,
 .prisme-shell .working-document-correction input,
-.prisme-shell .working-document-correction textarea {
+.prisme-shell .working-document-correction textarea,
+.prisme-shell .working-document-filter input {
   min-width: 0;
   border: 1px solid var(--shell-line);
   border-radius: 6px;
