@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -150,6 +150,10 @@ export class CommercialIntakeService {
         request: clientRequests,
         opportunity: opportunities,
         responsibleDisplayName: internalUsers.displayName,
+        capturedAtCursor: sql<string>`to_char(
+          ${clientRequests.capturedAt} AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+        )`.as('captured_at_cursor'),
       })
       .from(clientRequests)
       .innerJoin(
@@ -170,13 +174,8 @@ export class CommercialIntakeService {
           eq(clientRequests.workspaceId, actor.workspaceId),
           eq(clientRequests.companyId, companyId),
           cursor
-            ? or(
-                lt(clientRequests.capturedAt, cursor.capturedAt),
-                and(
-                  eq(clientRequests.capturedAt, cursor.capturedAt),
-                  lt(clientRequests.id, cursor.id),
-                ),
-              )
+            ? sql<boolean>`(${clientRequests.capturedAt}, ${clientRequests.id})
+                < (${cursor.capturedAt}::timestamptz, ${cursor.id}::uuid)`
             : undefined,
         ),
       )
@@ -204,7 +203,7 @@ export class CommercialIntakeService {
       ...(rows.length > limit && last
         ? {
             nextCursor: commercialIntakeCursor({
-              capturedAt: last.request.capturedAt,
+              capturedAt: last.capturedAtCursor,
               id: last.request.id,
             }),
           }

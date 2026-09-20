@@ -532,6 +532,15 @@ withPostgres('Company commercial intake REST', () => {
       'local-time-without-zone',
     );
     expect(localTime.status).toBe(400);
+    const invalidCalendarDate = await postIntake(
+      setup.company.id,
+      {
+        ...representativeBody(),
+        reportedReceivedAt: '2024-02-30T10:00:00Z',
+      },
+      'invalid-calendar-date',
+    );
+    expect(invalidCalendarDate.status).toBe(400);
     const unavailable = await postIntake(
       setup.company.id,
       {
@@ -645,6 +654,15 @@ withPostgres('Company commercial intake REST', () => {
         `page-${index}`,
         setup.company.id,
       );
+    await pool.query(
+      `UPDATE client_requests
+       SET captured_at = CASE
+         WHEN subject = 'Request 24' THEN TIMESTAMPTZ '2026-09-20 10:00:00.000900+00'
+         WHEN subject = 'Request 25' THEN TIMESTAMPTZ '2026-09-20 10:00:00.000800+00'
+         WHEN subject = 'Request 26' THEN TIMESTAMPTZ '2026-09-20 10:00:00.000700+00'
+         ELSE TIMESTAMPTZ '2026-09-20 10:00:01+00'
+       END`,
+    );
     const expected = await pool.query<{ id: string }>(
       'SELECT id FROM client_requests ORDER BY captured_at DESC, id DESC',
     );

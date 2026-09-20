@@ -25,7 +25,7 @@ const createdRequest = {
   companyId: 'company-1',
   sourceKind: 'MANUAL_TEXT',
   sourceLabel: 'Manual entry from a phone request',
-  reportedReceivedAt: null,
+  reportedReceivedAt: '2026-09-20T09:30:00.000Z',
   subject: 'Quality process preparation',
   originalText:
     'Please help us prepare our internal quality processes before our planned review.',
@@ -159,6 +159,15 @@ describe('CommercialIntakeWorkspace', () => {
     expect(
       await screen.findByText(createdRequest.originalText),
     ).toBeInTheDocument();
+    expect(screen.getByText('Manual entry from a phone request')).toBeVisible();
+    const receivedTime = screen
+      .getByText('Reported received at')
+      .nextElementSibling?.querySelector('time');
+    expect(receivedTime).toHaveAttribute(
+      'datetime',
+      '2026-09-20T09:30:00.000Z',
+    );
+    expect(receivedTime).toHaveTextContent('2026');
   });
 
   it('keeps entered fields after correctable validation fails', async () => {

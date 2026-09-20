@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 
 export interface CommercialIntakeCursor {
-  readonly capturedAt: Date;
+  readonly capturedAt: string;
   readonly id: string;
 }
 
@@ -34,9 +34,13 @@ export function readCommercialIntakeCursor(
     typeof decoded.id !== 'string'
   )
     invalidPage();
-  const capturedAt = new Date(decoded.capturedAt);
+  const capturedAt = decoded.capturedAt;
+  const millisecondTimestamp = capturedAt.replace(/(\.\d{3})\d{3}Z$/u, '$1Z');
+  const parsedTimestamp = new Date(millisecondTimestamp);
   if (
-    Number.isNaN(capturedAt.getTime()) ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u.test(capturedAt) ||
+    Number.isNaN(parsedTimestamp.getTime()) ||
+    parsedTimestamp.toISOString() !== millisecondTimestamp ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       decoded.id,
     )
@@ -48,7 +52,7 @@ export function readCommercialIntakeCursor(
 export function commercialIntakeCursor(value: CommercialIntakeCursor): string {
   return Buffer.from(
     JSON.stringify({
-      capturedAt: value.capturedAt.toISOString(),
+      capturedAt: value.capturedAt,
       id: value.id,
     }),
   ).toString('base64url');

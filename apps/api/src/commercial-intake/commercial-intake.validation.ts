@@ -24,15 +24,14 @@ export function readCreateCommercialIntakeCommand(
     'reportedReceivedAt',
     Number.POSITIVE_INFINITY,
   );
+  if (
+    reportedReceivedAtInput &&
+    !isValidZonedTimestamp(reportedReceivedAtInput)
+  )
+    invalid('reportedReceivedAt', 'Enter a valid received time.');
   const reportedReceivedAt = reportedReceivedAtInput
     ? new Date(reportedReceivedAtInput)
     : null;
-  if (
-    reportedReceivedAt &&
-    (!/(?:Z|[+-]\d{2}:\d{2})$/u.test(reportedReceivedAtInput ?? '') ||
-      Number.isNaN(reportedReceivedAt.getTime()))
-  )
-    invalid('reportedReceivedAt', 'Enter a valid received time.');
 
   return {
     originalText: requiredString(body.originalText, 'originalText', 20_000),
@@ -54,6 +53,22 @@ export function readCreateCommercialIntakeCommand(
       ),
     },
   };
+}
+
+function isValidZonedTimestamp(value: string): boolean {
+  const match =
+    /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u.exec(
+      value,
+    );
+  const calendarDate = match?.[1];
+  if (!calendarDate || calendarDate.startsWith('0000-')) return false;
+  const parsedCalendarDate = new Date(`${calendarDate}T00:00:00.000Z`);
+  if (
+    Number.isNaN(parsedCalendarDate.getTime()) ||
+    parsedCalendarDate.toISOString().slice(0, 10) !== calendarDate
+  )
+    return false;
+  return !Number.isNaN(new Date(value).getTime());
 }
 
 function record(value: unknown, field: string): Record<string, unknown> {

@@ -649,6 +649,32 @@ function RequestDetail({
           <dt>{copy.source}</dt>
           <dd>{request.sourceKind}</dd>
         </div>
+        {request.sourceLabel ? (
+          <div>
+            <dt>{copy.sourceLabel}</dt>
+            <dd>{request.sourceLabel}</dd>
+          </div>
+        ) : null}
+        {request.reportedReceivedAt ? (
+          <div>
+            <dt>{copy.reportedReceivedAt}</dt>
+            <dd>
+              <time dateTime={request.reportedReceivedAt}>
+                {new Date(request.reportedReceivedAt).toLocaleString(
+                  undefined,
+                  {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZoneName: 'short',
+                  },
+                )}
+              </time>
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>{copy.originalText}</dt>
           <dd>{request.originalText}</dd>
