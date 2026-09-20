@@ -183,6 +183,13 @@
       "when": 1789819690232,
       "tag": "0025_sweet_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789922553209,
+      "tag": "0026_flawless_black_crow",
+      "breakpoints": true
     }
   ]
 }

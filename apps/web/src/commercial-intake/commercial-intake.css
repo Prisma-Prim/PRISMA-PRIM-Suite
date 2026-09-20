@@ -1,0 +1,138 @@
+.commercial-intake-workspace {
+  display: grid;
+  gap: 1rem;
+  max-width: 70rem;
+  min-width: 0;
+}
+
+.commercial-intake-heading p,
+.commercial-intake-source p,
+.commercial-intake-detail p,
+.commercial-intake-detail h3,
+.commercial-intake-detail h4,
+.commercial-intake-detail dl {
+  margin: 0;
+}
+
+.commercial-intake-heading > p:first-child {
+  color: var(--shell-muted, currentColor);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.commercial-intake-source,
+.commercial-intake-detail,
+.commercial-intake-form,
+.commercial-intake-list button {
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, transparent);
+}
+
+.commercial-intake-source,
+.commercial-intake-detail,
+.commercial-intake-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.commercial-intake-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.commercial-intake-form label,
+.commercial-intake-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.commercial-intake-form label:first-child,
+.commercial-intake-form label:nth-of-type(7),
+.commercial-intake-form > button {
+  grid-column: 1 / -1;
+}
+
+.commercial-intake-form input,
+.commercial-intake-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.commercial-intake-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.commercial-intake-form button,
+.commercial-intake-detail button,
+.commercial-intake-list button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.commercial-intake-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.commercial-intake-list button {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  text-align: left;
+}
+
+.commercial-intake-list span,
+.commercial-intake-list small {
+  overflow-wrap: anywhere;
+}
+
+.commercial-intake-detail {
+  overflow-wrap: anywhere;
+}
+
+.commercial-intake-detail dl,
+.commercial-intake-detail dl > div,
+.commercial-intake-detail section {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.commercial-intake-detail dt {
+  font-weight: 700;
+}
+
+.commercial-intake-workspace button:focus-visible,
+.commercial-intake-workspace input:focus-visible,
+.commercial-intake-workspace textarea:focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--shell-focus, currentColor) 42%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 650px) {
+  .commercial-intake-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .commercial-intake-form label:first-child,
+  .commercial-intake-form label:nth-of-type(7),
+  .commercial-intake-form > button {
+    grid-column: auto;
+  }
+}

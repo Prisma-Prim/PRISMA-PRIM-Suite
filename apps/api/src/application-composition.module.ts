@@ -39,6 +39,9 @@ import { ClientDuplicateReviewController } from './client/client-duplicate-revie
 import { ClientModule } from './client/client.module.js';
 import { ClientUnionController } from './client/client-union.controller.js';
 import { DatabaseModule } from './database/database.module.js';
+import { CommercialIntakeModule } from './commercial-intake/commercial-intake.module.js';
+import { CommercialIntakeController } from './commercial-intake/commercial-intake.controller.js';
+import { CompanyCommercialIntakeAssignmentController } from './access/company-commercial-intake-assignment.controller.js';
 
 @Module({
   imports: [
@@ -50,6 +53,7 @@ import { DatabaseModule } from './database/database.module.js';
     ClientModule,
     CompanyModule,
     DatabaseModule,
+    CommercialIntakeModule,
   ],
   controllers: [
     TaskController,
@@ -72,6 +76,8 @@ import { DatabaseModule } from './database/database.module.js';
     CompanyDirectorClientAssignmentController,
     WorkspaceMembershipSuspensionController,
     WorkspaceSessionRevocationController,
+    CommercialIntakeController,
+    CompanyCommercialIntakeAssignmentController,
   ],
   providers: [
     VerifiedPrincipalAdapter,
