@@ -17,6 +17,14 @@ Use this workflow for Codex Cloud, Codex CLI, Claude Code, and other AI coding h
 5. Inspect the current implementation and the highest stable public test seam.
 6. Restate the observable outcome, exclusions, decisions that require escalation, public module boundary, and first failing test in a short execution note.
 
+Before coding, extend that note with the sensitive cases relevant to the assigned behavior: expected outcome from the issue or its authorities, and the public test seam that will prove it. Consider access loss or Company mismatch, invalidated related records, concurrent writes, retries after failure, and list boundaries only where affected. For a concurrency risk, name the dangerous ordering and a deterministic way to reproduce it. The note is ready when each identified case has an expected outcome and a test seam, or a genuine unresolved blocker. Reuse the issue's existing cases; documentation-only work needs no behavioral scenarios. This preparation adds no review round or product requirement.
+
+## Coordination and context reuse
+
+- Name one session to own routine CI and review monitoring in the existing issue claim. Other agents use its updates rather than polling the same work. Transfer that responsibility explicitly on handoff; independent reviewers still inspect the evidence needed for their review.
+- Reuse unchanged material already read in the current session. Read relevant changes when sources change, refresh uncertain facts, and follow the required reading route in a fresh session. Reuse never waives ownership, publication, or final-head merge checks.
+- Keep handoffs compact: issue and branch, current commit, decisions with source links, checks and their tested revision, unresolved findings, next action, and monitoring owner. Link to evidence instead of copying full transcripts or logs. Report a changed result or needed action; while a run is unchanged, wait with bounded checks instead of launching duplicate watchers. Report continued waiting honestly when an update is due or the user asks.
+
 ## Implementation
 
 - Own exactly one issue. Do not start blocked or follow-on work.
