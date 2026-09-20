@@ -41,7 +41,7 @@ Use `postgres` for ordinary backend or persistent-data work. Use `web` only when
 
 ## Verification commands
 
-`pnpm verify` is the single pre-publication gate: formatting, lint, type-check, the unit and script suites, and the production build. PostgreSQL-backed API suites run inside it only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium.
+`pnpm verify` is the complete local gate: formatting, lint, type-check, the unit and script suites, and the production build. Use it for sensitive changes and difficult diagnosis, or whenever the broader local gate adds useful confidence. Ordinary publication follows the targeted local checks defined in `issue-execution.md`. PostgreSQL-backed API suites run inside `pnpm verify` only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium and is the authoritative integration gate before merge.
 
 Narrow seams for targeted runs:
 
@@ -175,7 +175,7 @@ Claude Code reads the root `CLAUDE.md`, which imports `AGENTS.md`. Harnesses tha
 | Claude Code     | Yes                          | Depends on local permissions | Depends on local authentication | Via available GitHub tooling | Only with applicable explicit or standing authorization |
 | Generic harness | Must be verified             | Must be verified             | Must be verified                | Must be verified             | Never assume                                            |
 
-A harness that cannot run `pnpm verify` may draft issues, documentation, and reviews; it must not publish code.
+A harness that cannot run the local checks required by the issue may draft issues, documentation, and reviews; it must not publish code.
 
 ## Updating this contract
 

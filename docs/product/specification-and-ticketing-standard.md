@@ -202,7 +202,7 @@ Implementation follows docs/agents/issue-execution.md:
 - confirm blockers before editing;
 - red-green-refactor at the named seam;
 - one focused branch and PR;
-- `pnpm verify` and one self-review against Standards and the originating issue before publication;
+- the targeted local checks required by `docs/agents/issue-execution.md` and one self-review against Standards and the originating issue before publication;
 - complete verification and browser evidence where applicable;
 - at most one review round with the blocking-only triage rule;
 - squash merge only after green checks and the completed review round.

@@ -46,12 +46,12 @@ Before creating or restructuring documentation, reconciliation artifacts, eviden
 ## Delivery workflow
 
 - Use a fresh AI-agent session for one GitHub issue and deliver only that issue as one narrow, end-to-end tracer bullet. A slice may cross schema, API, UI, and tests when that makes the behaviour complete.
-- Work from a harness that can run the repository checks itself. The default is Codex Cloud launched from an `@codex` comment on the originating issue; a local harness with a shell, such as Codex CLI or Claude Code, is equivalent. A harness that cannot execute `pnpm verify`, such as a GitHub connector without a shell, must not publish code. It may draft issues, documentation, and reviews.
+- Work from a harness that can run the local checks required by the issue and `docs/agents/issue-execution.md`. The default is Codex Cloud launched from an `@codex` comment on the originating issue; a local harness with a shell, such as Codex CLI or Claude Code, is equivalent. A harness that cannot execute those checks, such as a GitHub connector without a shell, must not publish code. It may draft issues, documentation, and reviews.
 - Follow [AI agent issue execution](docs/agents/issue-execution.md), beginning with its [issue ownership check and session claim](docs/agents/issue-execution.md#before-changing-anything). Its implementation, verification, and review rules are invariant; Git, GitHub, CI, and merge actions remain capability- and authorization-dependent.
 - Run `node scripts/agent-doctor.mjs` before editing. Use `--profile postgres` for PostgreSQL work, `--profile web` for browser work, and `--profile web-postgres` only when the same slice needs both.
 - Start with a failing test at the highest stable seam that can prove the issue's behaviour, then follow red-green-refactor.
 - Give each owning module the narrowest stable public interface that completes the slice. Prefer tests through that interface, the API, or the user interface over tests coupled to implementation details.
-- Run `pnpm verify` before every publication. Publish one focused commit and one pull request per issue.
+- Run the targeted local verification required by `docs/agents/issue-execution.md` before publication. Publish one focused commit and one pull request per issue.
 - Keep the branch green after every coherent step. Do not begin blocked or follow-on issues.
 - Keep scope explicit. Record valuable follow-up work as a separate issue rather than implementing it silently.
 - Do not create process, tooling, or environment work from inside a product issue. Note avoidable environment friction in the pull request as described in `docs/agents/environment-friction.md`; open an `agent-friction` issue only when the same friction blocked a required check twice, and implement it only after the repository owner prioritizes it.
@@ -77,14 +77,15 @@ Each pull request receives one self-review and at most one review round. `docs/a
 
 ## Required verification
 
-Run the doctor and the single verification gate before publishing:
+Run the doctor before editing:
 
 ```bash
 node scripts/agent-doctor.mjs
-pnpm verify
 ```
 
-`pnpm verify` runs formatting, lint, type-check, the unit and script suites, and the production build. PostgreSQL-backed suites run inside it only when `TEST_DATABASE_URL` names a safe local `_test` database; otherwise they skip and GitHub Actions proves them. Browser journeys run through `pnpm test` where Chromium is installed and always in GitHub Actions. Use the matching doctor profile for PostgreSQL or browser work, and report any check that could not run with the exact sanitized reason in the pull request.
+Before publication, run the appropriate local format, lint, and type checks, focused behavioral tests, and every affected PostgreSQL or browser check. For authorization, tenancy, migrations, data integrity, Activity Log, other sensitive changes, or difficult diagnosis, use `pnpm verify` as the stronger complete local gate when the environment supports it. Use the matching doctor profile for PostgreSQL or browser work, and report every relevant check that could not run with the exact sanitized reason in the pull request.
+
+The published head must pass the complete GitHub Actions workflow before merge. GitHub CI is the authoritative integration gate; targeted local checks provide fast evidence and do not waive any CI, review, scope, or merge requirement.
 
 ## Agent skills
 
