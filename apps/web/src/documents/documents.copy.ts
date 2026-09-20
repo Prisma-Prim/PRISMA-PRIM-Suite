@@ -34,6 +34,7 @@ export const documentsCopy = {
   uncertain:
     'The correction result is uncertain. Retry the exact same correction safely.',
   retryCorrection: 'Retry same correction',
+  activityTarget: 'Working Document',
   activity: 'registered a working Document reference',
   correctionActivity: 'corrected a working Document reference',
 } as const;

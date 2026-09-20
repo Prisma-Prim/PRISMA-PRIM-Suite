@@ -49,5 +49,10 @@ export type TaskEvent = TaskEventMeaning & {
   id: string;
   occurredAt: string;
   actor: TaskActor;
-  target: { type: 'task'; taskId: string; companyId: string };
+  target: {
+    type: 'task';
+    taskId: string;
+    taskTitle: string;
+    companyId: string;
+  };
 };

@@ -71,7 +71,7 @@ export class AccountabilityService {
     )
       return [];
     const query = this.databaseContext.connection
-      .select({ event: taskEvents })
+      .select({ event: taskEvents, taskTitle: tasks.title })
       .from(taskEvents)
       .innerJoin(
         tasks,
@@ -123,7 +123,7 @@ export class AccountabilityService {
         desc(taskEvents.id),
       );
     const rows = taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
-    return rows.map(({ event }) => ({
+    return rows.map(({ event, taskTitle }) => ({
       ...readTaskMeaning(event.meaning),
       id: event.id,
       occurredAt: event.occurredAt.toISOString(),
@@ -135,6 +135,7 @@ export class AccountabilityService {
       target: {
         type: 'task',
         taskId: event.taskId,
+        taskTitle,
         companyId: event.companyId,
       },
     }));
@@ -166,6 +167,7 @@ export class AccountabilityService {
       .select({
         event: projectCreationEvents,
         actorName: internalUsers.displayName,
+        projectTitle: projects.title,
       })
       .from(projectCreationEvents)
       .innerJoin(
@@ -202,7 +204,7 @@ export class AccountabilityService {
         desc(projectCreationEvents.id),
       )
       .limit(INITIAL_PAGE_SIZE);
-    return rows.map(({ event, actorName }) => ({
+    return rows.map(({ event, actorName, projectTitle }) => ({
       id: event.id,
       action: 'project.created',
       occurredAt: event.occurredAt.toISOString(),
@@ -213,6 +215,7 @@ export class AccountabilityService {
       target: {
         type: 'project',
         projectId: event.projectId,
+        projectTitle,
         companyId: event.companyId,
       },
       metadata: {},
@@ -366,6 +369,7 @@ export class AccountabilityService {
       .select({
         id: documentRegistrationEvents.id,
         documentId: documentRegistrationEvents.documentId,
+        documentTitle: workingDocuments.title,
         companyId: documentRegistrationEvents.companyId,
         occurredAt: documentRegistrationEvents.occurredAt,
         internalUserId: internalUsers.id,
@@ -445,6 +449,7 @@ export class AccountabilityService {
       target: {
         type: 'document',
         documentId: row.documentId,
+        documentTitle: row.documentTitle,
         companyId: row.companyId,
       },
       metadata: {},
@@ -564,7 +569,9 @@ export class AccountabilityService {
       .select({
         id: documentProjectEvents.id,
         documentId: documentProjectEvents.documentId,
+        documentTitle: workingDocuments.title,
         projectId: documentProjectEvents.projectId,
+        projectTitle: projects.title,
         action: documentProjectEvents.action,
         companyId: documentProjectEvents.companyId,
         occurredAt: documentProjectEvents.occurredAt,
@@ -651,7 +658,9 @@ export class AccountabilityService {
       target: {
         type: 'document_project',
         projectId: row.projectId,
+        projectTitle: row.projectTitle,
         documentId: row.documentId,
+        documentTitle: row.documentTitle,
         companyId: row.companyId,
       },
       metadata: {},

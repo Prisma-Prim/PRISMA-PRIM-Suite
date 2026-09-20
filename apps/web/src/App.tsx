@@ -332,13 +332,13 @@ function activityDescription(event: ActivityLogEvent): string {
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
     case 'document_project':
-      return `${event.target.documentId} — ${event.target.projectId}`;
+      return `${documentsCopy.activityTarget}: ${event.target.documentTitle} — ${projectCopy.activityTarget}: ${event.target.projectTitle}`;
     case 'document':
-      return event.target.documentId;
+      return `${documentsCopy.activityTarget}: ${event.action === 'document.corrected' ? event.target.documentId : event.target.documentTitle}`;
     case 'project':
-      return event.target.projectId;
+      return `${projectCopy.activityTarget}: ${event.target.projectTitle}`;
     case 'task':
-      return event.target.taskId;
+      return `${taskCopy.activityTarget}: ${event.target.taskTitle}`;
     case 'workspace_invitation':
       return event.target.invitationId;
     case 'client_union_operation':

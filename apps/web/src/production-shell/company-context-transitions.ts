@@ -66,7 +66,12 @@ export interface OrdinaryActivityLogEvent {
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
-    | { type: 'project'; projectId: string; companyId: string }
+    | {
+        type: 'project';
+        projectId: string;
+        projectTitle: string;
+        companyId: string;
+      }
     | { type: 'workspace_invitation'; invitationId: string }
     | {
         type: 'internal_user';
@@ -136,7 +141,12 @@ export interface DocumentRegisteredActivityLogEvent {
   action: 'document.registered';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: { type: 'document'; documentId: string; companyId: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    documentTitle: string;
+    companyId: string;
+  };
   metadata: Record<string, never>;
 }
 export interface DocumentCorrectedActivityLogEvent {
@@ -144,7 +154,11 @@ export interface DocumentCorrectedActivityLogEvent {
   action: 'document.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
-  target: { type: 'document'; documentId: string; companyId: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    companyId: string;
+  };
   metadata: Record<string, never>;
 }
 export interface DocumentProjectActivityLogEvent {
@@ -155,7 +169,9 @@ export interface DocumentProjectActivityLogEvent {
   target: {
     type: 'document_project';
     documentId: string;
+    documentTitle: string;
     projectId: string;
+    projectTitle: string;
     companyId: string;
   };
   metadata: Record<string, never>;

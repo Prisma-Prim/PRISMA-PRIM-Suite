@@ -106,7 +106,12 @@ test('manages manual Tasks through the production shell with retained retry and 
           action: 'task.created',
           occurredAt: project.createdAt,
           actor,
-          target: { type: 'task', taskId: task.id, companyId: company.id },
+          target: {
+            type: 'task',
+            taskId: task.id,
+            taskTitle: task.title,
+            companyId: company.id,
+          },
           metadata: {
             version: 1,
             initial: { title: task.title, assignee: null, dueDate: null },
@@ -123,6 +128,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           target: {
             type: 'task',
             taskId: task.id,
+            taskTitle: task.title,
             companyId: company.id,
           } satisfies TaskEvent['target'],
         };

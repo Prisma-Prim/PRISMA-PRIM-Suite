@@ -81,6 +81,7 @@ test('registers and reopens a Company-confidential working reference', async ({
                           target: {
                             type: 'document',
                             documentId: document.id,
+                            documentTitle: currentDocument.title,
                             companyId: company.id,
                           },
                           metadata: {},
@@ -98,6 +99,7 @@ test('registers and reopens a Company-confidential working reference', async ({
                     target: {
                       type: 'document',
                       documentId: document.id,
+                      documentTitle: currentDocument.title,
                       companyId: company.id,
                     },
                     metadata: {},

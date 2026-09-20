@@ -46,6 +46,7 @@ it('merges Document and ordinary events into one newest-first dated page', async
         rows = Array.from({ length: 50 }, (_, index) => [
           `document-event-${String(50 - index).padStart(2, '0')}`,
           `document-${index}`,
+          `Document ${index}`,
           'company',
           index === 49
             ? '2026-09-17T12:00:00.000Z'

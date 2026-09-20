@@ -25,5 +25,6 @@ export const projectCopy = {
   status: 'Preparatory',
   noClients:
     'Create or relate a Client to this Company before registering a Project.',
+  activityTarget: 'Project',
   activityAction: 'created a preparatory Project',
 };

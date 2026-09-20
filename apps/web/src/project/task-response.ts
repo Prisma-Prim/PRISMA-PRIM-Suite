@@ -27,7 +27,12 @@ export type TaskEvent = {
   id: string;
   occurredAt: string;
   actor: TaskActor;
-  target: { type: 'task'; taskId: string; companyId: string };
+  target: {
+    type: 'task';
+    taskId: string;
+    taskTitle: string;
+    companyId: string;
+  };
 } & (
   | {
       action: 'task.created';
@@ -202,6 +207,7 @@ export function readTaskHistory(
     if (
       target.type !== 'task' ||
       target.taskId !== taskId ||
+      typeof target.taskTitle !== 'string' ||
       target.companyId !== scope.companyId
     )
       throw new Error('Invalid Task history context');
@@ -212,6 +218,7 @@ export function readTaskHistory(
       target: {
         type: 'task',
         taskId,
+        taskTitle: title(target.taskTitle),
         companyId: scope.companyId,
       } satisfies TaskEvent['target'],
     };

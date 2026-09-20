@@ -325,9 +325,7 @@ export function CompanyContextAccess({
     return (
       <section
         aria-labelledby="company-context-access-title"
-        className={
-          isPrisme ? 'company-access company-access--prisme' : undefined
-        }
+        className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
       >
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="company-context-access-title">{copy.title}</h2>
@@ -340,9 +338,7 @@ export function CompanyContextAccess({
     return (
       <section
         aria-labelledby="company-context-access-title"
-        className={
-          isPrisme ? 'company-access company-access--prisme' : undefined
-        }
+        className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
       >
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="company-context-access-title">{copy.title}</h2>
@@ -386,7 +382,7 @@ export function CompanyContextAccess({
   return (
     <section
       aria-labelledby="company-context-access-title"
-      className={isPrisme ? 'company-access company-access--prisme' : undefined}
+      className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
     >
       <p className="eyebrow">{copy.eyebrow}</p>
       <h2 id="company-context-access-title">{copy.title}</h2>

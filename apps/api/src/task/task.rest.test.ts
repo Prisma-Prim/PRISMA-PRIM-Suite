@@ -419,7 +419,12 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     for (const event of events) {
       expect(event).toMatchObject({
         actor,
-        target: { type: 'task', taskId: id, companyId },
+        target: {
+          type: 'task',
+          taskId: id,
+          taskTitle: 'Collect revised notes',
+          companyId,
+        },
       });
       expect(Number.isNaN(Date.parse(string(event.occurredAt)))).toBe(false);
     }

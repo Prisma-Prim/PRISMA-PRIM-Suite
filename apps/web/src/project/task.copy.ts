@@ -1,4 +1,5 @@
 export const taskCopy = {
+  activityTarget: 'Task',
   activityActionLabels: {
     'task.created': 'created a Task',
     'task.updated': 'updated a Task',
