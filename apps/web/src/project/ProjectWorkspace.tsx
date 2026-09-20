@@ -24,6 +24,7 @@ type ProjectView = {
   id: string;
   companyId: string;
   clientAccountId: string;
+  clientDossierId?: string;
   clientDisplayName: string;
   title: string;
   status: 'preparatory';
@@ -39,10 +40,14 @@ export function ProjectWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
+  clientFilter,
+  onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
+  clientFilter?: { clientDossierId: string; displayName: string };
+  onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
@@ -50,6 +55,9 @@ export function ProjectWorkspace({
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<ProjectView | null>(null);
   const [query, setQuery] = useState('');
+  const [filteredClientDossierId, setFilteredClientDossierId] = useState<
+    string | undefined
+  >();
   const [title, setTitle] = useState('');
   const [clientAccountId, setClientAccountId] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -71,6 +79,7 @@ export function ProjectWorkspace({
     request.current = controller;
     setSelected(null);
     setQuery('');
+    setFilteredClientDossierId(undefined);
     setFeedback('');
     setPending(false);
     setTitle('');
@@ -135,6 +144,12 @@ export function ProjectWorkspace({
     generation,
     identity,
   ]);
+
+  useEffect(() => {
+    if (!clientFilter) return;
+    setQuery(clientFilter.displayName);
+    setFilteredClientDossierId(clientFilter.clientDossierId);
+  }, [clientFilter]);
 
   async function run(
     path: string,
@@ -253,15 +268,18 @@ export function ProjectWorkspace({
   const normalizedQuery = query.trim().toLowerCase();
   const filteredProjects =
     load.kind === 'ready'
-      ? load.projects.filter(
-          (project) =>
-            normalizedQuery.length === 0 ||
-            project.title.toLowerCase().includes(normalizedQuery) ||
-            project.clientDisplayName.toLowerCase().includes(normalizedQuery),
+      ? load.projects.filter((project) =>
+          filteredClientDossierId
+            ? project.clientDossierId === filteredClientDossierId
+            : normalizedQuery.length === 0 ||
+              project.title.toLowerCase().includes(normalizedQuery) ||
+              project.clientDisplayName.toLowerCase().includes(normalizedQuery),
         )
       : [];
   return (
     <section
+      id="projects"
+      tabIndex={-1}
       className={`project-workspace${isPrisme ? ' project-workspace--prisme' : ''}`}
       aria-labelledby="project-title"
     >
@@ -302,7 +320,10 @@ export function ProjectWorkspace({
                 type="search"
                 value={query}
                 placeholder={copy.searchPlaceholder}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setFilteredClientDossierId(undefined);
+                }}
                 disabled={pending}
               />
             </label>
@@ -406,6 +427,12 @@ export function ProjectWorkspace({
               <p>
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              {selected.clientDossierId && onOpenClientDossier && (
+                <ClientDossierButton
+                  clientDossierId={selected.clientDossierId}
+                  onOpen={onOpenClientDossier}
+                />
+              )}
             </div>
           ) : (
             <>
@@ -414,6 +441,12 @@ export function ProjectWorkspace({
               <p>
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              {selected.clientDossierId && onOpenClientDossier && (
+                <ClientDossierButton
+                  clientDossierId={selected.clientDossierId}
+                  onOpen={onOpenClientDossier}
+                />
+              )}
             </>
           )}
           {isPrisme && (
@@ -477,6 +510,19 @@ export function ProjectWorkspace({
     </section>
   );
 }
+function ClientDossierButton({
+  clientDossierId,
+  onOpen,
+}: {
+  clientDossierId: string;
+  onOpen: (clientDossierId: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onOpen(clientDossierId)}>
+      {copy.openDossier}
+    </button>
+  );
+}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -498,7 +544,9 @@ function isProject(value: unknown): value is ProjectView {
       'title',
       'createdAt',
     ].every((key) => typeof value[key] === 'string') &&
-    value.status === 'preparatory'
+    value.status === 'preparatory' &&
+    (value.clientDossierId === undefined ||
+      typeof value.clientDossierId === 'string')
   );
 }
 function messageFor(result: ApiResult<unknown>) {

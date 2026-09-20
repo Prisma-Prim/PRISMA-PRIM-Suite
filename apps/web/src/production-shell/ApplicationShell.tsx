@@ -92,7 +92,12 @@ export function ApplicationShell({
 
   useEffect(() => {
     const presentationChanged = previousPresentation.current !== isPrisme;
-    if (isPrisme && (presentationChanged || previousHash.current !== url.hash))
+    const fragmentChanged = previousHash.current !== url.hash;
+    if (fragmentChanged && selected) {
+      const destination = document.getElementById(selected.id);
+      destination?.scrollIntoView?.({ block: 'start' });
+      destination?.focus();
+    } else if (isPrisme && (presentationChanged || fragmentChanged))
       titleRef.current?.focus();
     else if (presentationChanged) {
       const menuButton = menuButtonRef.current;
@@ -329,6 +334,16 @@ export function ApplicationShell({
                 <div
                   className="application-section"
                   key={section.id}
+                  id={
+                    section.id === 'clients' || section.id === 'projects'
+                      ? undefined
+                      : section.id
+                  }
+                  tabIndex={
+                    section.id === 'clients' || section.id === 'projects'
+                      ? undefined
+                      : -1
+                  }
                   hidden={isPrisme && selected?.id !== section.id}
                 >
                   {section.content}

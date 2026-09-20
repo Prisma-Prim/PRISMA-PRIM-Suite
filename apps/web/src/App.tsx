@@ -7,7 +7,7 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { DocumentWorkspace } from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
@@ -31,6 +31,27 @@ import {
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
+  const [projectClientFilter, setProjectClientFilter] = useState<{
+    companyId: string;
+    clientDossierId: string;
+    displayName: string;
+  }>();
+  const [requestedClientDossier, setRequestedClientDossier] = useState<{
+    companyId: string;
+    clientDossierId: string;
+    requestId: number;
+  }>();
+  const navigateToSection = useCallback((section: 'clients' | 'projects') => {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.hash = section;
+    window.history.pushState(window.history.state, '', nextUrl);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.requestAnimationFrame(() => {
+      const destination = document.getElementById(section);
+      destination?.scrollIntoView({ block: 'start' });
+      destination?.focus();
+    });
+  }, []);
   const {
     shellContext: access,
     selectCompany,
@@ -70,6 +91,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.workspacePermissions.includes('client.manage') ||
     access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
       true;
+  const activeCompanyId = access.actor.activeCompany?.id;
+  const canAccessProjects =
+    activeCompanyId !== undefined &&
+    access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
+      true &&
+    canAccessClients;
+  const requestedClientDossierRequest =
+    requestedClientDossier === undefined
+      ? undefined
+      : requestedClientDossier.companyId === activeCompanyId
+        ? requestedClientDossier
+        : undefined;
 
   const sections: ApplicationSection[] = [];
   if (access.actor.activeCompany && canAccessClients)
@@ -99,13 +132,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
+          requestedClientDossierRequest={requestedClientDossierRequest}
+          onOpenProjects={
+            canAccessProjects && activeCompanyId
+              ? (client) => {
+                  setProjectClientFilter({
+                    companyId: activeCompanyId,
+                    clientDossierId: client.id,
+                    displayName: client.displayName,
+                  });
+                  navigateToSection('projects');
+                }
+              : undefined
+          }
         />
       ),
     });
-  if (
-    access.actor.activeCompany?.projectPermissions?.includes('project.read') &&
-    canAccessClients
-  )
+  if (canAccessProjects && access.actor.activeCompany)
     sections.push({
       id: 'projects',
       label: projectCopy.title,
@@ -116,6 +159,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}
+          clientFilter={
+            projectClientFilter?.companyId === activeCompanyId
+              ? projectClientFilter
+              : undefined
+          }
+          onOpenClientDossier={(clientDossierId) => {
+            setRequestedClientDossier((current) => ({
+              companyId: activeCompanyId,
+              clientDossierId,
+              requestId: (current?.requestId ?? 0) + 1,
+            }));
+            navigateToSection('clients');
+          }}
         />
       ),
     });

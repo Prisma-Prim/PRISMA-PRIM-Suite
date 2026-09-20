@@ -38,15 +38,13 @@ export class ProjectService {
         ),
       )
       .orderBy(asc(projects.createdAt), asc(projects.id));
-    const visible = [];
-    for (const row of rows) {
-      try {
-        visible.push(await this.view(actor, row));
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) throw error;
-      }
-    }
-    return visible;
+    const references = await this.clients.readProjectReferences(actor, [
+      ...new Set(rows.map((row) => row.clientAccountId)),
+    ]);
+    return rows.flatMap((row) => {
+      const reference = references.get(row.clientAccountId);
+      return reference ? [this.projectView(row, reference)] : [];
+    });
   }
 
   async read(actor: ActorContext, id: string) {
@@ -143,14 +141,27 @@ export class ProjectService {
   }
 
   private async view(actor: ActorContext, row: ProjectRow) {
-    const client = await this.clients.readReferenceClient(
-      actor,
-      row.clientAccountId,
-    );
+    const client = (
+      await this.clients.readProjectReferences(actor, [row.clientAccountId])
+    ).get(row.clientAccountId);
+    if (!client) throw new NotFoundException();
+    return this.projectView(row, client);
+  }
+
+  private projectView(
+    row: ProjectRow,
+    client: {
+      displayName: string;
+      clientDossierId?: string;
+    },
+  ) {
     return {
       id: row.id,
       companyId: row.companyId,
       clientAccountId: row.clientAccountId,
+      ...(client.clientDossierId
+        ? { clientDossierId: client.clientDossierId }
+        : {}),
       clientDisplayName: client.displayName,
       title: row.title,
       status: row.status,

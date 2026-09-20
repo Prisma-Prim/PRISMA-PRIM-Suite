@@ -90,6 +90,7 @@ withPostgres('Preparatory Project REST', () => {
       companyId: company.id,
       clientAccountId: client.id,
     });
+    expect(project).not.toHaveProperty('clientDossierId');
     expect(await (await request('/projects', company.id)).json()).toEqual([
       project,
     ]);
@@ -437,11 +438,19 @@ withPostgres('Preparatory Project REST', () => {
     const reference = await setup.unite();
     expect(
       await (await request(`/projects/${original.id}`, setup.other.id)).json(),
-    ).toEqual(original);
+    ).toEqual({
+      ...original,
+      clientAccountId: setup.second.id,
+      clientDossierId: setup.client.id,
+    });
     expect((await setup.reverse(reference)).status).toBe(201);
     expect(
       await (await request(`/projects/${original.id}`, setup.other.id)).json(),
-    ).toEqual(original);
+    ).toEqual({
+      ...original,
+      clientAccountId: setup.second.id,
+      clientDossierId: setup.second.id,
+    });
     const next = await setup.unite();
     await command(
       '/projects',
@@ -452,7 +461,11 @@ withPostgres('Preparatory Project REST', () => {
     expect((await setup.reverse(next)).status).toBe(409);
     expect(
       await (await request(`/projects/${original.id}`, setup.other.id)).json(),
-    ).toEqual(original);
+    ).toEqual({
+      ...original,
+      clientAccountId: setup.second.id,
+      clientDossierId: setup.client.id,
+    });
   });
 
   it('serializes a new Project against concurrent union reversal without losing references', async () => {
