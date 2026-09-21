@@ -20,6 +20,7 @@ export const commercialIntakeCopy = {
   clientSearchDenied:
     'Client search is not available. You can capture this Request without a Client.',
   clientSearchError: 'The Client search could not be loaded. Please try again.',
+  client: 'Client',
   opportunityTitle: 'Opportunity title',
   opportunityScope: 'Opportunity scope',
   nextAction: 'Next action',
@@ -35,6 +36,10 @@ export const commercialIntakeCopy = {
   initialOpportunity: 'Initial Opportunity',
   source: 'Source',
   status: 'Status',
+  // Indexing these by the validated identifier makes an unmapped variant a
+  // type error instead of a missing or invented label.
+  sourceKindLabels: { MANUAL_TEXT: 'Manual text' },
+  opportunityStatusLabels: { OPEN: 'Open' },
   responsible: 'Responsible actor',
   validation: 'Enter the required request and Opportunity fields.',
   unavailableClient:
