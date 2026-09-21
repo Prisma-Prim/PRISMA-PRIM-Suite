@@ -225,6 +225,221 @@ it('filters only loaded visible fields in server order and resets for a new Comp
   ).toHaveValue('');
   expect(screen.queryByText(document.purpose)).not.toBeInTheDocument();
 });
+const dossierDocuments = [
+  {
+    ...document,
+    id: 'document-historical',
+    clientId: 'historical-client',
+    clientDossierId: 'canonical-client',
+    clientDisplayName: 'Shared display name',
+    title: 'Historical questionnaire',
+  },
+  {
+    ...document,
+    id: 'document-homonym',
+    clientId: 'other-client',
+    clientDossierId: 'other-client',
+    clientDisplayName: 'Shared display name',
+    title: 'Homonym questionnaire',
+  },
+  {
+    ...document,
+    id: 'document-unprojected',
+    clientId: 'unprojected-client',
+    clientDisplayName: 'Shared display name',
+    title: 'Unprojected questionnaire',
+  },
+];
+function dossierFetcher(documents = dossierDocuments) {
+  return vi.fn(async (url: string) => {
+    if (url.endsWith('/clients')) return Response.json([]);
+    const opened = documents.find((candidate) =>
+      url.endsWith(`/documents/${candidate.id}`),
+    );
+    return Response.json(opened ?? documents);
+  });
+}
+it('restricts loaded working Documents to one dossier identity and returns to that dossier', async () => {
+  const openClientDossier = vi.fn();
+  const fetcher = dossierFetcher();
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(
+    <DocumentWorkspace
+      actor={actor}
+      identity={identity}
+      clientFilter={{
+        clientDossierId: 'canonical-client',
+        displayName: 'Shared display name',
+      }}
+      onOpenClientDossier={openClientDossier}
+    />,
+  );
+  const workspace = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  const filter = await within(workspace).findByRole('searchbox', {
+    name: 'Filter working Documents',
+  });
+  const list = within(workspace).getByRole('list');
+  expect(
+    within(list)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Historical questionnaire']);
+  expect(filter).toHaveValue('Shared display name');
+  const requestsAfterRestriction = fetcher.mock.calls.length;
+
+  fireEvent.click(
+    within(list).getByRole('button', { name: 'Historical questionnaire' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'Historical questionnaire' }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Open Client dossier' }));
+  expect(openClientDossier).toHaveBeenCalledWith('canonical-client');
+  expect(openClientDossier).toHaveBeenCalledTimes(1);
+
+  // A renewed restriction shows the restricted references again.
+  view.rerender(
+    <DocumentWorkspace
+      actor={actor}
+      identity={identity}
+      clientFilter={{
+        clientDossierId: 'canonical-client',
+        displayName: 'Shared display name',
+      }}
+      onOpenClientDossier={openClientDossier}
+    />,
+  );
+  expect(
+    within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Historical questionnaire']);
+
+  fireEvent.change(filter, { target: { value: 'Shared display' } });
+  expect(
+    within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Historical questionnaire',
+    'Homonym questionnaire',
+    'Unprojected questionnaire',
+  ]);
+  fireEvent.change(filter, { target: { value: '' } });
+  expect(
+    within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Historical questionnaire',
+    'Homonym questionnaire',
+    'Unprojected questionnaire',
+  ]);
+  expect(fetcher.mock.calls.length).toBe(requestsAfterRestriction + 1);
+
+  view.rerender(
+    <DocumentWorkspace
+      actor={{
+        ...actor,
+        activeCompany: {
+          ...actor.activeCompany,
+          id: 'company-other',
+          displayName: 'Other Company',
+        },
+      }}
+      identity={identity}
+      onOpenClientDossier={openClientDossier}
+    />,
+  );
+  expect(
+    await screen.findByRole('searchbox', { name: 'Filter working Documents' }),
+  ).toHaveValue('');
+  expect(
+    within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Historical questionnaire',
+    'Homonym questionnaire',
+    'Unprojected questionnaire',
+  ]);
+});
+it('keeps an open correction draft when a dossier restriction arrives', async () => {
+  vi.stubGlobal('fetch', dossierFetcher());
+  const view = render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Homonym questionnaire' }),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Unsaved correction draft' },
+  });
+
+  view.rerender(
+    <DocumentWorkspace
+      actor={actor}
+      identity={identity}
+      clientFilter={{
+        clientDossierId: 'canonical-client',
+        displayName: 'Shared display name',
+      }}
+    />,
+  );
+  expect(screen.getByLabelText('Title')).toHaveValue(
+    'Unsaved correction draft',
+  );
+  expect(
+    screen.getByRole('searchbox', { name: 'Filter working Documents' }),
+  ).toHaveValue('Shared display name');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+  expect(
+    within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Historical questionnaire']);
+});
+it('does not offer dossier navigation for a Document without a derived dossier identity', async () => {
+  vi.stubGlobal('fetch', dossierFetcher());
+  render(
+    <DocumentWorkspace
+      actor={actor}
+      identity={identity}
+      onOpenClientDossier={vi.fn()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Unprojected questionnaire' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'Unprojected questionnaire' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Open Client dossier' }),
+  ).not.toBeInTheDocument();
+});
+it('hides no readable Document from the unfiltered view without a dossier projection', async () => {
+  vi.stubGlobal('fetch', dossierFetcher());
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  const list = await screen.findByRole('list');
+  expect(
+    within(list)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual([
+    'Historical questionnaire',
+    'Homonym questionnaire',
+    'Unprojected questionnaire',
+  ]);
+  expect(
+    screen.queryByRole('button', { name: 'Open Client dossier' }),
+  ).not.toBeInTheDocument();
+});
 it('registers and reopens an unverified Company-confidential questionnaire reference', async () => {
   let saved = false;
   vi.stubGlobal(

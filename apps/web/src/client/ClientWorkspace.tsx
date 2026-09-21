@@ -60,6 +60,7 @@ export function ClientWorkspace({
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded,
   onOpenProjects,
+  onOpenDocuments,
   requestedClientDossierRequest,
 }: {
   actor: ActorContext;
@@ -69,6 +70,7 @@ export function ClientWorkspace({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void>;
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
+  onOpenDocuments?: (client: { id: string; displayName: string }) => void;
   requestedClientDossierRequest?: {
     clientDossierId: string;
     requestId: number;
@@ -815,6 +817,7 @@ export function ClientWorkspace({
           clientAccountId={selectedClientId}
           onHeadingReady={receiveDossierHeading}
           onOpenProjects={onOpenProjects}
+          onOpenDocuments={onOpenDocuments}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}

@@ -19,18 +19,29 @@ type Load =
       documents: WorkingDocument[];
       clients: Array<{ id: string; displayName: string }>;
     };
+/** Either the existing free-text filter or one exact dossier identity is active. */
+type DocumentFilter =
+  | { kind: 'text'; query: string }
+  | { kind: 'client'; clientDossierId: string; displayName: string };
 export function DocumentWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
+  clientFilter,
+  onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
+  clientFilter?: { clientDossierId: string; displayName: string };
+  onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filter, setFilter] = useState<DocumentFilter>({
+    kind: 'text',
+    query: '',
+  });
   const [detail, setDetail] = useState<WorkingDocument>();
   const [revision, setRevision] = useState(0);
   const [clientId, setClientId] = useState('');
@@ -50,6 +61,9 @@ export function DocumentWorkspace({
     | 'conflict'
     | 'denied'
   >('idle');
+  const correctionInProgress = useRef(false);
+  correctionInProgress.current =
+    editing || correction === 'pending' || correction === 'uncertain';
   const pending = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const correctionRetry = useRef<
@@ -68,7 +82,7 @@ export function DocumentWorkspace({
     actor.activeCompany.documentPermissions.includes('document.reference.read');
   useEffect(() => {
     setDetail(undefined);
-    setFilterQuery('');
+    setFilter({ kind: 'text', query: '' });
     setClientId('');
     setTitle('');
     setPurpose('');
@@ -136,6 +150,13 @@ export function DocumentWorkspace({
     actor.workspaceMembershipId,
     revision,
   ]);
+  useEffect(() => {
+    if (!clientFilter) return;
+    setFilter({ kind: 'client', ...clientFilter });
+    // Show the restricted references, but never discard an open correction
+    // draft or a retryable correction command owned by this module.
+    if (!correctionInProgress.current) setDetail(undefined);
+  }, [clientFilter]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
@@ -336,20 +357,24 @@ export function DocumentWorkspace({
       if (!request.signal.aborted) setMutation('error');
     }
   }
-  const normalizedFilterQuery = filterQuery.trim().toLowerCase();
+  const normalizedFilterQuery =
+    filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
   const filteredDocuments =
     state.status === 'ready'
-      ? state.documents.filter(
-          (document) =>
-            normalizedFilterQuery.length === 0 ||
-            document.title.toLowerCase().includes(normalizedFilterQuery) ||
-            document.clientDisplayName
-              .toLowerCase()
-              .includes(normalizedFilterQuery),
+      ? state.documents.filter((document) =>
+          filter.kind === 'client'
+            ? document.clientDossierId === filter.clientDossierId
+            : normalizedFilterQuery.length === 0 ||
+              document.title.toLowerCase().includes(normalizedFilterQuery) ||
+              document.clientDisplayName
+                .toLowerCase()
+                .includes(normalizedFilterQuery),
         )
       : [];
   return (
     <section
+      id="documents"
+      tabIndex={-1}
       className={`working-documents${isPrisme ? ' working-documents--prisme' : ''}`}
       aria-label={copy.title}
     >
@@ -385,9 +410,13 @@ export function DocumentWorkspace({
               {copy.filterLabel}
               <input
                 type="search"
-                value={filterQuery}
+                value={
+                  filter.kind === 'client' ? filter.displayName : filter.query
+                }
                 placeholder={copy.filterPlaceholder}
-                onChange={(event) => setFilterQuery(event.target.value)}
+                onChange={(event) =>
+                  setFilter({ kind: 'text', query: event.target.value })
+                }
               />
             </label>
           )}
@@ -463,6 +492,12 @@ export function DocumentWorkspace({
                   <h3>{detail.title}</h3>
                   <p>{copy.draft}</p>
                   <p>{detail.clientDisplayName}</p>
+                  {detail.clientDossierId && onOpenClientDossier && (
+                    <ClientDossierButton
+                      clientDossierId={detail.clientDossierId}
+                      onOpen={onOpenClientDossier}
+                    />
+                  )}
                   <p>{detail.purpose}</p>
                 </>
               )}
@@ -603,5 +638,18 @@ export function DocumentWorkspace({
         </>
       )}
     </section>
+  );
+}
+function ClientDossierButton({
+  clientDossierId,
+  onOpen,
+}: {
+  clientDossierId: string;
+  onOpen: (clientDossierId: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onOpen(clientDossierId)}>
+      {copy.openDossier}
+    </button>
   );
 }

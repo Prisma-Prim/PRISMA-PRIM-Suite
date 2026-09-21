@@ -37,22 +37,30 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     displayName: string;
   }>();
+  const [documentClientFilter, setDocumentClientFilter] = useState<{
+    companyId: string;
+    clientDossierId: string;
+    displayName: string;
+  }>();
   const [requestedClientDossier, setRequestedClientDossier] = useState<{
     companyId: string;
     clientDossierId: string;
     requestId: number;
   }>();
-  const navigateToSection = useCallback((section: 'clients' | 'projects') => {
-    const nextUrl = new URL(window.location.href);
-    nextUrl.hash = section;
-    window.history.pushState(window.history.state, '', nextUrl);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    window.requestAnimationFrame(() => {
-      const destination = document.getElementById(section);
-      destination?.scrollIntoView({ block: 'start' });
-      destination?.focus();
-    });
-  }, []);
+  const navigateToSection = useCallback(
+    (section: 'clients' | 'projects' | 'documents') => {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.hash = section;
+      window.history.pushState(window.history.state, '', nextUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      window.requestAnimationFrame(() => {
+        const destination = document.getElementById(section);
+        destination?.scrollIntoView({ block: 'start' });
+        destination?.focus();
+      });
+    },
+    [],
+  );
   const {
     shellContext: access,
     selectCompany,
@@ -98,6 +106,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
       true &&
     canAccessClients;
+  const canReadDocuments =
+    access.actor.activeCompany?.documentPermissions?.includes(
+      'document.read',
+    ) === true;
   const commercialPermissions =
     access.actor.activeCompany?.commercialIntakePermissions ?? [];
   const canAccessCommercial =
@@ -112,6 +124,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       : requestedClientDossier.companyId === activeCompanyId
         ? requestedClientDossier
         : undefined;
+
+  // The shell owns one authorized navigation intent for both mounted modules.
+  const openClientDossier = activeCompanyId
+    ? (clientDossierId: string) => {
+        setRequestedClientDossier((current) => ({
+          companyId: activeCompanyId,
+          clientDossierId,
+          requestId: (current?.requestId ?? 0) + 1,
+        }));
+        navigateToSection('clients');
+      }
+    : undefined;
 
   const sections: ApplicationSection[] = [];
   if (canAccessCommercial && access.actor.activeCompany)
@@ -141,6 +165,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onActivityRecorded={refreshActivityLog}
+          clientFilter={
+            documentClientFilter?.companyId === activeCompanyId
+              ? documentClientFilter
+              : undefined
+          }
+          onOpenClientDossier={openClientDossier}
         />
       ),
     });
@@ -170,6 +200,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                 }
               : undefined
           }
+          onOpenDocuments={
+            canReadDocuments && activeCompanyId
+              ? (client) => {
+                  setDocumentClientFilter({
+                    companyId: activeCompanyId,
+                    clientDossierId: client.id,
+                    displayName: client.displayName,
+                  });
+                  navigateToSection('documents');
+                }
+              : undefined
+          }
         />
       ),
     });
@@ -189,14 +231,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               ? projectClientFilter
               : undefined
           }
-          onOpenClientDossier={(clientDossierId) => {
-            setRequestedClientDossier((current) => ({
-              companyId: activeCompanyId,
-              clientDossierId,
-              requestId: (current?.requestId ?? 0) + 1,
-            }));
-            navigateToSection('clients');
-          }}
+          onOpenClientDossier={openClientDossier}
         />
       ),
     });
