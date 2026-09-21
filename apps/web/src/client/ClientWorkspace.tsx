@@ -61,6 +61,7 @@ export function ClientWorkspace({
   onActivityRecorded,
   onOpenProjects,
   onOpenDocuments,
+  onClientIdentityChanged,
   requestedClientDossierRequest,
 }: {
   actor: ActorContext;
@@ -71,6 +72,8 @@ export function ClientWorkspace({
   onActivityRecorded: () => Promise<void>;
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
+  /** Reported when a union or reversal changes the current Client identities. */
+  onClientIdentityChanged?: () => void;
   requestedClientDossierRequest?: {
     clientDossierId: string;
     requestId: number;
@@ -846,6 +849,7 @@ export function ClientWorkspace({
             if (canonicalClientId) setSelectedClientId(canonicalClientId);
             else setConfirmedUnionClientId(undefined);
             setUnionRevision((revision) => revision + 1);
+            onClientIdentityChanged?.();
             await Promise.all([
               loadClients(activeCompany.id),
               onActivityRecorded(),

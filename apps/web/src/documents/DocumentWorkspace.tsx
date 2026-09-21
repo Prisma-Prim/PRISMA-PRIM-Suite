@@ -28,12 +28,15 @@ export function DocumentWorkspace({
   identity,
   onActivityRecorded = () => undefined,
   clientFilter,
+  clientIdentityRevision = 0,
   onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
   clientFilter?: { clientDossierId: string; displayName: string };
+  /** Increases when Client identities change, so derived targets are re-read. */
+  clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
@@ -64,7 +67,11 @@ export function DocumentWorkspace({
   const correctionInProgress = useRef(false);
   correctionInProgress.current =
     editing || correction === 'pending' || correction === 'uncertain';
+  const openedDocument = useRef<WorkingDocument | undefined>(undefined);
+  openedDocument.current = detail;
   const pending = useRef<AbortController | undefined>(undefined);
+  const identityRefresh = useRef<AbortController | undefined>(undefined);
+  const knownClientIdentityRevision = useRef(clientIdentityRevision);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const correctionRetry = useRef<
     { documentId: string; payload: string; key: string } | undefined
@@ -150,6 +157,66 @@ export function DocumentWorkspace({
     actor.workspaceMembershipId,
     revision,
   ]);
+  useEffect(() => {
+    if (knownClientIdentityRevision.current === clientIdentityRevision) return;
+    knownClientIdentityRevision.current = clientIdentityRevision;
+    if (!companyId || !canRead) return;
+    // A confirmed Client union or reversal moves the derived dossier target of
+    // already loaded rows. Re-read them on a separate request, so an open
+    // correction draft and its retryable command keep their exact identity.
+    const reopenedId = correctionInProgress.current
+      ? undefined
+      : openedDocument.current?.id;
+    identityRefresh.current?.abort();
+    const request = new AbortController();
+    identityRefresh.current = request;
+    void (async () => {
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (request.signal.aborted) return;
+        const [documents, reopened] = await Promise.all([
+          api.request<unknown>('/documents', {
+            companyContextId: companyId,
+            signal: request.signal,
+          }),
+          reopenedId === undefined
+            ? undefined
+            : api.request<unknown>(
+                `/documents/${encodeURIComponent(reopenedId)}`,
+                { companyContextId: companyId, signal: request.signal },
+              ),
+        ]);
+        if (request.signal.aborted) return;
+        if (
+          documents.status === 'unauthorized' ||
+          reopened?.status === 'unauthorized'
+        ) {
+          await identity.rejectSession();
+          return;
+        }
+        if (documents.status === 'forbidden') {
+          setState({ status: 'denied' });
+          return;
+        }
+        if (documents.status !== 'ok') throw new Error('Refresh failed');
+        const refreshed = readDocuments(documents.value);
+        setState((current) =>
+          current.status === 'ready'
+            ? { ...current, documents: refreshed }
+            : current,
+        );
+        if (reopened?.status === 'ok') {
+          const reloaded = readDocument(reopened.value);
+          setDetail((current) =>
+            current?.id === reloaded.id ? reloaded : current,
+          );
+        }
+      } catch {
+        if (!request.signal.aborted) setMutation('error');
+      }
+    })();
+    return () => request.abort();
+  }, [clientIdentityRevision, companyId, canRead, identity]);
   useEffect(() => {
     if (!clientFilter) return;
     setFilter({ kind: 'client', ...clientFilter });

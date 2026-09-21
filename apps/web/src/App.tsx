@@ -7,7 +7,7 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DocumentWorkspace } from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
@@ -37,8 +37,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     displayName: string;
   }>();
+  const [clientIdentityGeneration, setClientIdentityGeneration] = useState(0);
   const [documentClientFilter, setDocumentClientFilter] = useState<{
-    companyId: string;
+    navigationContext: string;
     clientDossierId: string;
     displayName: string;
   }>();
@@ -71,6 +72,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     includeCompany,
     refreshActivityLog,
   } = useProductionShellContext(identity);
+
+  // One authorized navigation intent belongs to exactly one Company, session
+  // and Client authority. Any change retires it instead of masking it.
+  const navigationContext =
+    access.status === 'active'
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
+      : 'inactive';
+  useEffect(() => {
+    setDocumentClientFilter(undefined);
+  }, [navigationContext]);
 
   if (!identity.loaded)
     return (
@@ -166,10 +177,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           identity={identity}
           onActivityRecorded={refreshActivityLog}
           clientFilter={
-            documentClientFilter?.companyId === activeCompanyId
+            documentClientFilter?.navigationContext === navigationContext
               ? documentClientFilter
               : undefined
           }
+          clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
         />
       ),
@@ -204,13 +216,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             canReadDocuments && activeCompanyId
               ? (client) => {
                   setDocumentClientFilter({
-                    companyId: activeCompanyId,
+                    navigationContext,
                     clientDossierId: client.id,
                     displayName: client.displayName,
                   });
                   navigateToSection('documents');
                 }
               : undefined
+          }
+          onClientIdentityChanged={() =>
+            setClientIdentityGeneration((generation) => generation + 1)
           }
         />
       ),
