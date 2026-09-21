@@ -23,6 +23,14 @@ const attribution = {
   workspaceMembershipId: actorContextFixture.workspaceMembershipId,
   displayName: actorContextFixture.displayName,
 };
+const anaPop = {
+  workspaceMembershipId: 'filter-membership-ana',
+  displayLabel: 'Ana Pop',
+};
+const ionRadu = {
+  workspaceMembershipId: 'filter-membership-ion',
+  displayLabel: 'Ion Radu',
+};
 
 test('finds loaded Tasks locally and keeps detail state through authoritative status refreshes', async ({
   page,
@@ -59,6 +67,45 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     'Archive preparation evidence',
     'Review archive notes',
   ]);
+  expect(listReads).toBe(1);
+
+  const responsible = navigation.getByLabel('Task responsible member');
+  await expect(responsible).toHaveValue('all');
+  // The eligible-member query answers with no member, so these options come from the loaded rows.
+  await expect(responsible.getByRole('option')).toHaveText([
+    'All',
+    'Unassigned',
+    'Ana Pop',
+    'Ion Radu',
+  ]);
+  await responsible.selectOption({ label: 'Unassigned' });
+  await expect(navigation.getByRole('button')).toHaveText([
+    'Review archive notes',
+  ]);
+  await responsible.selectOption({ label: 'Ana Pop' });
+  await expect(navigation.getByRole('button')).toHaveText([
+    'Collect preparation notes',
+  ]);
+  await status.selectOption('done');
+  await expect(
+    navigation.getByText('No Tasks match the current filters.'),
+  ).toBeVisible();
+  await status.selectOption('all');
+  await search.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(responsible).toBeFocused();
+  expect(
+    await responsible.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await responsible.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(75, 54, 181)');
+  await responsible.selectOption({ label: 'All' });
   expect(listReads).toBe(1);
 
   await search.focus();
@@ -187,6 +234,27 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
       .getByLabel('Search Tasks')
       .evaluate((element) => getComputedStyle(element).outlineColor),
   ).toBe('rgb(75, 54, 181)');
+
+  const classicResponsible = page.getByLabel('Task responsible member');
+  await expect(classicResponsible).toHaveValue('all');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(classicResponsible).toBeFocused();
+  expect(
+    await classicResponsible.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await classicResponsible.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(75, 54, 181)');
+  await classicResponsible.selectOption({ label: 'Unassigned' });
+  await expect(
+    page.getByRole('navigation', { name: 'Tasks' }).getByRole('button'),
+  ).toHaveText(['Review archive notes', 'New Task']);
+  await classicResponsible.selectOption({ label: 'All' });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -218,13 +286,14 @@ function taskFixtures(): TaskView[] {
     createdBy: attribution,
   };
   return [
-    base,
+    { ...base, assignee: anaPop },
     {
       ...base,
       id: 'archive-task',
       title: 'Archive preparation evidence',
       status: 'done',
       completion: { actor: attribution, occurredAt: project.createdAt },
+      assignee: ionRadu,
     },
     { ...base, id: 'review-task', title: 'Review archive notes' },
   ];

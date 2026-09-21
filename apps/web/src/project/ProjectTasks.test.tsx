@@ -376,6 +376,275 @@ it('filters loaded Tasks locally by title and current status while preserving se
   expect(fetcher).toHaveBeenCalledTimes(fetchCount);
 });
 
+const anaPop = {
+  workspaceMembershipId: 'membership-ana',
+  displayLabel: 'Ana Pop',
+};
+const ionRadu = {
+  workspaceMembershipId: 'membership-ion',
+  displayLabel: 'Ion Radu',
+};
+const responsibleTasks = [
+  {
+    ...savedTask,
+    id: 'ana-todo',
+    title: 'Collect Ana evidence',
+    assignee: anaPop,
+  },
+  {
+    ...savedTask,
+    id: 'ana-done',
+    title: 'Archive Ana evidence',
+    assignee: anaPop,
+    status: 'done',
+    completion: { actor: attribution, occurredAt: savedTask.updatedAt },
+  },
+  {
+    ...savedTask,
+    id: 'ion-todo',
+    title: 'Collect Ion evidence',
+    assignee: ionRadu,
+  },
+  {
+    ...savedTask,
+    id: 'unassigned-todo',
+    title: 'Review pending evidence',
+    assignee: null,
+  },
+];
+// Loading a Task detail remounts the list, so every helper queries the current nodes.
+function listedTitles(tasks: HTMLElement) {
+  return within(within(tasks).getByRole('navigation', { name: 'Tasks' }))
+    .getAllByRole('button')
+    .map((button) => button.textContent);
+}
+function responsibleFilter(tasks: HTMLElement) {
+  return within(tasks).getByLabelText('Task responsible member');
+}
+function responsibleLabels(tasks: HTMLElement) {
+  return within(responsibleFilter(tasks))
+    .getAllByRole('option')
+    .map((option) => option.textContent);
+}
+function responsibleValue(select: HTMLElement, label: string, occurrence = 0) {
+  const option = within(select)
+    .getAllByRole('option')
+    .flatMap((candidate) =>
+      candidate instanceof HTMLOptionElement && candidate.textContent === label
+        ? [candidate]
+        : [],
+    )[occurrence];
+  if (!option) throw new Error(`Missing responsible member option ${label}`);
+  return option.value;
+}
+function selectResponsible(
+  tasks: HTMLElement,
+  label: string,
+  occurrence = 0,
+): void {
+  const select = responsibleFilter(tasks);
+  fireEvent.change(select, {
+    target: { value: responsibleValue(select, label, occurrence) },
+  });
+}
+async function openFilteredTasks(
+  taskActor: ActorContext = actor,
+): Promise<HTMLElement> {
+  render(
+    <ProjectWorkspace
+      actor={taskActor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  await within(tasks).findByRole('navigation', { name: 'Tasks' });
+  return tasks;
+}
+
+it('filters loaded Tasks by responsible member and combines it with the title and status filters', async () => {
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: responsibleTasks })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  expect(responsibleFilter(tasks)).toHaveValue('all');
+  // The eligible-member directory answers with no member, so every option below comes from loaded rows.
+  expect(responsibleLabels(tasks)).toEqual([
+    'All',
+    'Unassigned',
+    'Ana Pop',
+    'Ion Radu',
+  ]);
+  expect(listedTitles(tasks)).toEqual([
+    'Collect Ana evidence',
+    'Archive Ana evidence',
+    'Collect Ion evidence',
+    'Review pending evidence',
+  ]);
+  const fetchCount = fetcher.mock.calls.length;
+
+  selectResponsible(tasks, 'Unassigned');
+  expect(listedTitles(tasks)).toEqual(['Review pending evidence']);
+
+  selectResponsible(tasks, 'Ana Pop');
+  expect(listedTitles(tasks)).toEqual([
+    'Collect Ana evidence',
+    'Archive Ana evidence',
+  ]);
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'todo' },
+  });
+  expect(listedTitles(tasks)).toEqual(['Collect Ana evidence']);
+
+  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
+    target: { value: 'Ion' },
+  });
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).queryByText('No manual Tasks for this Project yet.'),
+  ).not.toBeInTheDocument();
+  expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+});
+
+it('offers the responsible-member filter to a task.read-only actor without any eligible-member request', async () => {
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: responsibleTasks })
+        : undefined,
+  });
+  const activeCompany = actor.activeCompany;
+  if (!activeCompany) throw new Error('Missing fixture Company');
+  const reader: ActorContext = {
+    ...actor,
+    activeCompany: { ...activeCompany, taskPermissions: ['task.read'] },
+  };
+  const tasks = await openFilteredTasks(reader);
+  // No member is eligible for this actor, yet every assigned member stays filterable.
+  selectResponsible(tasks, 'Ion Radu');
+  expect(listedTitles(tasks)).toEqual(['Collect Ion evidence']);
+  expect(
+    fetcher.mock.calls.some(([url]) => url.includes('eligible-task-assignees')),
+  ).toBe(false);
+  expect(screen.queryByLabelText('Task title')).not.toBeInTheDocument();
+});
+
+it('separates homonymous responsible members and keeps the open detail and draft when the filter hides its row', async () => {
+  const homonym = {
+    workspaceMembershipId: 'membership-ana-second',
+    displayLabel: 'Ana Pop',
+  };
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: true,
+          tasks: [
+            responsibleTasks[0],
+            {
+              ...savedTask,
+              id: 'homonym-todo',
+              title: 'Draft homonym report',
+              assignee: homonym,
+            },
+          ],
+        });
+      if (url === '/api/tasks/ana-todo')
+        return Response.json({
+          mutable: true,
+          task: responsibleTasks[0],
+        });
+      return undefined;
+    },
+  });
+  const tasks = await openFilteredTasks();
+  expect(responsibleLabels(tasks)).toEqual([
+    'All',
+    'Unassigned',
+    'Ana Pop',
+    'Ana Pop',
+  ]);
+  const select = responsibleFilter(tasks);
+  expect(responsibleValue(select, 'Ana Pop', 0)).not.toEqual(
+    responsibleValue(select, 'Ana Pop', 1),
+  );
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Collect Ana evidence' }),
+  );
+  await within(tasks).findByRole('heading', { name: 'Collect Ana evidence' });
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: 'Unsaved correction' },
+  });
+
+  selectResponsible(tasks, 'Ana Pop', 1);
+  expect(listedTitles(tasks)).toEqual(['Draft homonym report', 'New Task']);
+  expect(
+    within(tasks).getByRole('heading', { name: 'Collect Ana evidence' }),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+    'Unsaved correction',
+  );
+});
+
+it('resets the responsible-member filter to All when an authoritative refresh removes that member', async () => {
+  let reassigned = false;
+  const anaRow = () =>
+    reassigned
+      ? {
+          ...responsibleTasks[0],
+          assignee: null,
+          status: 'done',
+          completion: { actor: attribution, occurredAt: savedTask.updatedAt },
+          version: 2,
+        }
+      : responsibleTasks[0];
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: true,
+          tasks: [anaRow(), responsibleTasks[2]],
+        });
+      if (url === '/api/tasks/ana-todo')
+        return Response.json({ mutable: true, task: anaRow() });
+      return undefined;
+    },
+    mutate: () => {
+      reassigned = true;
+      return Response.json(anaRow());
+    },
+  });
+  const tasks = await openFilteredTasks();
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'todo' },
+  });
+  selectResponsible(tasks, 'Ana Pop');
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Collect Ana evidence' }),
+  );
+  await within(tasks).findByRole('heading', { name: 'Collect Ana evidence' });
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await within(tasks).findByRole('button', { name: 'Reopen Task' });
+  expect(responsibleFilter(tasks)).toHaveValue('all');
+  expect(within(tasks).getByLabelText('Task status')).toHaveValue('todo');
+  expect(responsibleLabels(tasks)).toEqual(['All', 'Unassigned', 'Ion Radu']);
+  expect(listedTitles(tasks)).toEqual(['Collect Ion evidence', 'New Task']);
+  expect(
+    within(tasks).getByRole('heading', { name: 'Collect Ana evidence' }),
+  ).toBeInTheDocument();
+});
+
 it('keeps the selected detail, draft and exact retry command when filters hide its list item', async () => {
   const commands: { key: string | null; body: unknown }[] = [];
   let replayed = false;
