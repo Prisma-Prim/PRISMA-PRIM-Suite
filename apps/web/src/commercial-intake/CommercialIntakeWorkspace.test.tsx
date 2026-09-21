@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
+import { commercialIntakeCopy } from './commercial-intake.copy';
 
 const actor: ActorContext = {
   internalUserId: 'user-1',
@@ -597,6 +598,63 @@ describe('CommercialIntakeWorkspace', () => {
       }),
     );
     expect(await screen.findByText('Managed Client')).toBeVisible();
+  });
+
+  it('reads the reopened detail with readable source, status, and Client labels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            items: [
+              {
+                id: createdRequest.id,
+                subject: createdRequest.subject,
+                capturedAt: createdRequest.capturedAt,
+                initialOpportunity: {
+                  title: createdRequest.initialOpportunity.title,
+                  nextAction: createdRequest.initialOpportunity.nextAction,
+                  responsibleActor: {
+                    workspaceMembershipId: 'membership-1',
+                    displayName: 'Iurie',
+                  },
+                },
+              },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            ...createdRequest,
+            clientReference: {
+              originalClientId: 'managed-client',
+              displayName: 'Managed Client',
+            },
+          }),
+        ),
+    );
+    renderWorkspace();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /Quality process preparation/u,
+      }),
+    );
+    const detail = await screen.findByRole('article', {
+      name: 'Quality process preparation',
+    });
+
+    expect(within(detail).getByText('Manual text')).toBeVisible();
+    expect(within(detail).getByText('Status: Open')).toBeVisible();
+    expect(within(detail).getByText(commercialIntakeCopy.client)).toBeVisible();
+    expect(within(detail).getByText('Managed Client')).toBeVisible();
+    expect(within(detail).getByText(createdRequest.originalText)).toBeVisible();
+    expect(
+      within(detail).getByText('Manual entry from a phone request'),
+    ).toBeVisible();
+    expect(
+      within(detail).queryByText(/MANUAL_TEXT|OPEN/u),
+    ).not.toBeInTheDocument();
   });
 
   it('pages past the newest 25 Requests and reopens an older one', async () => {

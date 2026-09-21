@@ -809,7 +809,7 @@ function RequestDetail({
       <dl>
         <div>
           <dt>{copy.source}</dt>
-          <dd>{request.sourceKind}</dd>
+          <dd>{copy.sourceKindLabels[request.sourceKind]}</dd>
         </div>
         {request.sourceLabel ? (
           <div>
@@ -843,7 +843,7 @@ function RequestDetail({
         </div>
         {request.clientReference ? (
           <div>
-            <dt>Client</dt>
+            <dt>{copy.client}</dt>
             <dd>{request.clientReference.displayName}</dd>
           </div>
         ) : null}
@@ -856,7 +856,8 @@ function RequestDetail({
         ) : null}
         <p>{request.initialOpportunity.nextAction}</p>
         <p>
-          {copy.status}: {request.initialOpportunity.status}
+          {copy.status}:{' '}
+          {copy.opportunityStatusLabels[request.initialOpportunity.status]}
         </p>
       </section>
     </article>
