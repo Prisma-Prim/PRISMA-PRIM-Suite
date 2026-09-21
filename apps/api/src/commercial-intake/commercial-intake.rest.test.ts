@@ -198,29 +198,11 @@ withPostgres('Company commercial intake REST', () => {
     const activity = record(
       await (await request('/activity-log', company.id)).json(),
     );
-    expect(activity.events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          action: 'client_request.created',
-          target: {
-            type: 'client_request',
-            clientRequestId: created.id,
-            companyId: company.id,
-          },
-          metadata: { requestVersion: 1 },
-        }),
-        expect.objectContaining({
-          action: 'opportunity.created',
-          target: {
-            type: 'opportunity',
-            opportunityId: created.initialOpportunity.id,
-            clientRequestId: created.id,
-            companyId: company.id,
-          },
-          metadata: { opportunityVersion: 1 },
-        }),
-      ]),
-    );
+    const visibleActivity = JSON.stringify(activity.events);
+    expect(visibleActivity).not.toContain('client_request.created');
+    expect(visibleActivity).not.toContain('opportunity.created');
+    expect(visibleActivity).not.toContain(created.id);
+    expect(visibleActivity).not.toContain(created.initialOpportunity.id);
 
     await harness.close();
     await openHarness();
@@ -348,6 +330,31 @@ withPostgres('Company commercial intake REST', () => {
     expect(counts.rows).toEqual([
       { requests: '0', opportunities: '0', commands: '0', events: '0' },
     ]);
+    const createdResponse = await postIntakeAs(
+      company.id,
+      representativeBody(),
+      'commercial-restricted-history',
+      memberHeaders,
+    );
+    expect(createdResponse.status).toBe(201);
+    const created = detail(await createdResponse.json());
+    await expectCommercialIntakeCount(1);
+    const recordedEvents = await pool.query<{ count: string }>(
+      'SELECT count(*) AS count FROM commercial_intake_events',
+    );
+    expect(recordedEvents.rows).toEqual([{ count: '2' }]);
+    const memberActivity = record(
+      await (
+        await request('/activity-log', company.id, {
+          headers: memberHeaders,
+        })
+      ).json(),
+    );
+    const visibleActivity = JSON.stringify(memberActivity.events);
+    expect(visibleActivity).not.toContain('client_request.created');
+    expect(visibleActivity).not.toContain('opportunity.created');
+    expect(visibleActivity).not.toContain(created.id);
+    expect(visibleActivity).not.toContain(created.initialOpportunity.id);
   });
 
   it('revalidates current authority on retry and conflicts on any changed payload', async () => {

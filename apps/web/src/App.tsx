@@ -24,7 +24,6 @@ import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
-import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -342,8 +341,6 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.corrected': documentsCopy.correctionActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
-    'client_request.created': commercialIntakeCopy.requestActivity,
-    'opportunity.created': commercialIntakeCopy.opportunityActivity,
     ...taskCopy.activityActionLabels,
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
@@ -365,10 +362,6 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${documentsCopy.activityTarget}: ${event.action === 'document.corrected' ? event.target.documentId : event.target.documentTitle}`;
     case 'project':
       return `${projectCopy.activityTarget}: ${event.target.projectTitle}`;
-    case 'client_request':
-      return commercialIntakeCopy.title;
-    case 'opportunity':
-      return commercialIntakeCopy.initialOpportunity;
     case 'task':
       return `${taskCopy.activityTarget}: ${event.target.taskTitle}`;
     case 'workspace_invitation':

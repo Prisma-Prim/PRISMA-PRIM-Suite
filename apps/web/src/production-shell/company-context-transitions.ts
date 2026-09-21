@@ -179,33 +179,13 @@ export interface DocumentProjectActivityLogEvent {
   };
   metadata: Record<string, never>;
 }
-export interface CommercialIntakeActivityLogEvent {
-  id: string;
-  action: 'client_request.created' | 'opportunity.created';
-  occurredAt: string;
-  actor: { internalUserId: string; displayName: string };
-  target:
-    | {
-        type: 'client_request';
-        clientRequestId: string;
-        companyId: string;
-      }
-    | {
-        type: 'opportunity';
-        opportunityId: string;
-        clientRequestId: string;
-        companyId: string;
-      };
-  metadata: { requestVersion: 1 } | { opportunityVersion: 1 };
-}
 export type ActivityLogEvent =
   | TaskEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
   | DocumentRegisteredActivityLogEvent
-  | DocumentCorrectedActivityLogEvent
-  | CommercialIntakeActivityLogEvent;
+  | DocumentCorrectedActivityLogEvent;
 
 export type ActivityLogState =
   | { status: 'loading' }

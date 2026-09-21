@@ -33,8 +33,6 @@ export const commercialIntakeCopy = {
   back: 'Back to Requests',
   detail: 'Client Request detail',
   initialOpportunity: 'Initial Opportunity',
-  requestActivity: 'captured a Client Request',
-  opportunityActivity: 'created an initial Opportunity',
   source: 'Source',
   status: 'Status',
   responsible: 'Responsible actor',

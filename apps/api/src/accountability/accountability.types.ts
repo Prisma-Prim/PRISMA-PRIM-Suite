@@ -299,8 +299,7 @@ export type ActivityLogEvent =
   | ClientUnionActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
-  | ProjectCreatedActivityEvent
-  | CommercialIntakeActivityEvent;
+  | ProjectCreatedActivityEvent;
 
 export interface ProjectCreatedActivityEvent {
   id: string;
@@ -315,32 +314,3 @@ export interface ProjectCreatedActivityEvent {
   };
   metadata: Record<string, never>;
 }
-
-interface CommercialIntakeActivityEventBase {
-  id: string;
-  occurredAt: string;
-  actor: { internalUserId: string; displayName: string };
-}
-
-export type CommercialIntakeActivityEvent = CommercialIntakeActivityEventBase &
-  (
-    | {
-        action: 'client_request.created';
-        target: {
-          type: 'client_request';
-          clientRequestId: string;
-          companyId: string;
-        };
-        metadata: { requestVersion: 1 };
-      }
-    | {
-        action: 'opportunity.created';
-        target: {
-          type: 'opportunity';
-          opportunityId: string;
-          clientRequestId: string;
-          companyId: string;
-        };
-        metadata: { opportunityVersion: 1 };
-      }
-  );

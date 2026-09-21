@@ -137,22 +137,17 @@ test('captures and reopens manual Client Requests through the real API and Postg
 
   await navigate(page, navigation, 'Activity Log', narrow);
   const activity = page.locator('.activity-log');
-  await expect
-    .poll(() =>
-      activity
-        .getByText('Ada Ionescu captured a Client Request', { exact: true })
-        .count(),
-    )
-    .toBeGreaterThanOrEqual(2);
-  await expect
-    .poll(() =>
-      activity
-        .getByText('Ada Ionescu created an initial Opportunity', {
-          exact: true,
-        })
-        .count(),
-    )
-    .toBeGreaterThanOrEqual(2);
+  await expect(
+    activity.getByText('Ada Ionescu captured a Client Request', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    activity.getByText('Ada Ionescu created an initial Opportunity', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+
   await expectNoHorizontalOverflow(page);
   await page.screenshot({
     path: testInfo.outputPath(`commercial-intake-${suffix.toLowerCase()}.png`),
