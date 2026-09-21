@@ -22,6 +22,7 @@ import {
   clientUnionOperations,
   clientUnionReversals,
   clientUnionProjections,
+  commercialIntakeEvents,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import type {
@@ -32,6 +33,7 @@ import type {
   CanonicalActivityEvent,
   ClientUnionActivityEvent,
   ProjectCreatedActivityEvent,
+  CommercialIntakeActivityEvent,
 } from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
@@ -154,6 +156,36 @@ export class AccountabilityService {
     });
   }
 
+  async recordCommercialIntakeCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+  }): Promise<void> {
+    const base = {
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      clientRequestId: input.clientRequestId,
+      opportunityId: input.opportunityId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+    };
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values([
+        {
+          ...base,
+          action: 'client_request.created',
+          metadata: { requestVersion: 1 },
+        },
+        {
+          ...base,
+          action: 'opportunity.created',
+          metadata: { opportunityVersion: 1 },
+        },
+      ]);
+  }
+
   private async projectEvents(
     actor: ActorContext,
   ): Promise<ProjectCreatedActivityEvent[]> {
@@ -220,6 +252,81 @@ export class AccountabilityService {
       },
       metadata: {},
     }));
+  }
+
+  private async commercialEvents(
+    actor: ActorContext,
+  ): Promise<CommercialIntakeActivityEvent[]> {
+    if (
+      !actor.activeCompany?.commercialIntakePermissions?.includes(
+        'commercial.request.read',
+      ) ||
+      !actor.activeCompany.commercialIntakePermissions.includes(
+        'commercial.opportunity.read',
+      )
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        event: commercialIntakeEvents,
+        actorName: internalUsers.displayName,
+      })
+      .from(commercialIntakeEvents)
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, commercialIntakeEvents.actorInternalUserId),
+      )
+      .where(
+        and(
+          eq(commercialIntakeEvents.workspaceId, actor.workspaceId),
+          eq(commercialIntakeEvents.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(commercialIntakeEvents.occurredAt),
+        desc(commercialIntakeEvents.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map<CommercialIntakeActivityEvent>(({ event, actorName }) => {
+      const common = {
+        id: event.id,
+        occurredAt: event.occurredAt.toISOString(),
+        actor: {
+          internalUserId: event.actorInternalUserId,
+          displayName: actorName,
+        },
+      };
+      switch (event.action) {
+        case 'client_request.created':
+          return {
+            ...common,
+            action: event.action,
+            target: {
+              type: 'client_request',
+              clientRequestId: event.clientRequestId,
+              companyId: event.companyId,
+            },
+            metadata: commercialEventMetadata(event.metadata, 'requestVersion'),
+          };
+        case 'opportunity.created':
+          return {
+            ...common,
+            action: event.action,
+            target: {
+              type: 'opportunity',
+              opportunityId: event.opportunityId,
+              clientRequestId: event.clientRequestId,
+              companyId: event.companyId,
+            },
+            metadata: commercialEventMetadata(
+              event.metadata,
+              'opportunityVersion',
+            ),
+          };
+        default:
+          return assertNever(event.action);
+      }
+    });
   }
 
   async recordClientUnion(input: {
@@ -929,6 +1036,7 @@ export class AccountabilityService {
       })),
       ...(await this.readTaskHistory(actor)),
       ...(await this.projectEvents(actor)),
+      ...(await this.commercialEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
@@ -1006,6 +1114,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_context_assignment.revoked':
     case 'company_director_client_assignment.granted':
     case 'company_director_client_assignment.revoked':
+    case 'company_commercial_intake_assignment.granted':
+    case 'company_commercial_intake_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
@@ -1194,6 +1304,35 @@ function required(value: string | null, field: string): string {
   if (value === null)
     throw new Error(`Activity Log event is missing ${field}.`);
   return value;
+}
+
+function commercialEventMetadata(
+  value: unknown,
+  key: 'requestVersion',
+): { requestVersion: 1 };
+function commercialEventMetadata(
+  value: unknown,
+  key: 'opportunityVersion',
+): { opportunityVersion: 1 };
+function commercialEventMetadata(
+  value: unknown,
+  key: 'requestVersion' | 'opportunityVersion',
+): { requestVersion: 1 } | { opportunityVersion: 1 } {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 1
+  )
+    throw new Error('Commercial Intake Activity metadata is invalid.');
+  if (key === 'requestVersion') {
+    if (!('requestVersion' in value) || value.requestVersion !== 1)
+      throw new Error('Commercial Intake Activity metadata is invalid.');
+    return { requestVersion: 1 };
+  }
+  if (!('opportunityVersion' in value) || value.opportunityVersion !== 1)
+    throw new Error('Commercial Intake Activity metadata is invalid.');
+  return { opportunityVersion: 1 };
 }
 
 function assertNever(value: never): never {

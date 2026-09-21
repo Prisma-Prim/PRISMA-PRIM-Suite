@@ -23,6 +23,8 @@ import { ClientWorkspace } from './client/ClientWorkspace';
 import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
+import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
+import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -97,6 +99,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
       true &&
     canAccessClients;
+  const commercialPermissions =
+    access.actor.activeCompany?.commercialIntakePermissions ?? [];
+  const canAccessCommercial =
+    activeCompanyId !== undefined &&
+    commercialPermissions.includes('commercial.request.read') &&
+    commercialPermissions.includes('commercial.request.create') &&
+    commercialPermissions.includes('commercial.opportunity.read') &&
+    commercialPermissions.includes('commercial.opportunity.create');
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -105,6 +115,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         : undefined;
 
   const sections: ApplicationSection[] = [];
+  if (canAccessCommercial && access.actor.activeCompany)
+    sections.push({
+      id: 'requests',
+      ...prismeCopy.sections.requests,
+      content: (
+        <CommercialIntakeWorkspace
+          key={`commercial-intake:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.commercialIntakePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.commercialIntakePermissionSetVersion ?? 'no-version'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
   if (access.actor.activeCompany && canAccessClients)
     sections.push({
       id: 'documents',
@@ -316,6 +342,8 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.corrected': documentsCopy.correctionActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
+    'client_request.created': commercialIntakeCopy.requestActivity,
+    'opportunity.created': commercialIntakeCopy.opportunityActivity,
     ...taskCopy.activityActionLabels,
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
@@ -337,6 +365,10 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${documentsCopy.activityTarget}: ${event.action === 'document.corrected' ? event.target.documentId : event.target.documentTitle}`;
     case 'project':
       return `${projectCopy.activityTarget}: ${event.target.projectTitle}`;
+    case 'client_request':
+      return commercialIntakeCopy.title;
+    case 'opportunity':
+      return commercialIntakeCopy.initialOpportunity;
     case 'task':
       return `${taskCopy.activityTarget}: ${event.target.taskTitle}`;
     case 'workspace_invitation':

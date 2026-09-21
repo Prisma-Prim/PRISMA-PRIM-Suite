@@ -17,7 +17,7 @@ const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const companyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-const administration = (bundle?: 'context' | 'director') => ({
+const administration = (bundle?: 'context' | 'director' | 'commercial') => ({
   members: [
     {
       workspaceMembershipId: memberId,
@@ -40,7 +40,9 @@ const administration = (bundle?: 'context' | 'director') => ({
           bundle:
             bundle === 'director'
               ? 'Company Director Client Access'
-              : 'Company Context Access',
+              : bundle === 'commercial'
+                ? 'Company Commercial Intake'
+                : 'Company Context Access',
           active: true,
         },
       ]
@@ -825,6 +827,52 @@ describe('CompanyContextAccess', () => {
       screen.getByText('Access granted. Server state refreshed.'),
     ).toBeInTheDocument();
     expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('grants Company Commercial Intake through the existing administration', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration()))
+        .mockResolvedValueOnce(
+          Response.json(
+            {
+              id: 'commercial-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Commercial Intake',
+              permissionSetVersion: 'v1',
+              active: true,
+            },
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(Response.json(administration('commercial'))),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'commercial-intake' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/company-commercial-intake-assignments',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Granted',
+    );
   });
 
   it('revokes Company Director Client Access and reloads the canonical server state', async () => {

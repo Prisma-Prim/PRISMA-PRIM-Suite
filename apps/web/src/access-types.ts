@@ -19,6 +19,14 @@ export interface ActorContext {
     taskPermissionAssignmentId?: string;
     taskPermissionSetVersion?: 'v1';
     projectPermissions?: Array<'project.read' | 'project.create'>;
+    commercialIntakePermissions?: Array<
+      | 'commercial.request.read'
+      | 'commercial.request.create'
+      | 'commercial.opportunity.read'
+      | 'commercial.opportunity.create'
+    >;
+    commercialIntakePermissionAssignmentId?: string;
+    commercialIntakePermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

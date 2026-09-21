@@ -22,6 +22,23 @@ export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE =
   'company_document_project_organizer';
 export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL =
   'Company Document Project Organizer';
+export const COMPANY_COMMERCIAL_INTAKE_BUNDLE =
+  'company_commercial_intake' as const;
+export const COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL =
+  'Company Commercial Intake' as const;
+export const COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS = [
+  'commercial.request.read',
+  'commercial.request.create',
+  'commercial.opportunity.read',
+  'commercial.opportunity.create',
+] as const;
+export type CompanyCommercialIntakePermission =
+  (typeof COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS)[number];
+export function commercialIntakePermissionsFor(
+  version: unknown,
+): readonly CompanyCommercialIntakePermission[] {
+  return version === 'v1' ? COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS : [];
+}
 export type DocumentPermission =
   (typeof DOCUMENT_V2_PERMISSIONS)[number] | 'document.project.manage';
 export type DocumentPermissionSetVersion = 'v1' | 'v2';

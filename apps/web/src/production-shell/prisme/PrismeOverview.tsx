@@ -5,6 +5,7 @@ import {
   Activity,
   ArrowRight,
   Building2,
+  ClipboardList,
   LayoutGrid,
   Mail,
   ShieldCheck,
@@ -36,6 +37,7 @@ export function SectionIcon({
     access: ShieldCheck,
     companies: Building2,
     documents: Mail,
+    requests: ClipboardList,
     activity: Activity,
     invitations: Mail,
   };
