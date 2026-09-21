@@ -110,7 +110,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     tasks.getByRole('heading', { name: taskTitle, exact: true }),
   ).toBeVisible();
-  const responsibleMember = tasks.getByLabel('Responsible member');
+  const responsibleMember = tasks
+    .locator('form')
+    .getByLabel('Responsible member');
   await responsibleMember.selectOption({ index: 1 });
   await expect(responsibleMember.locator('option:checked')).toContainText(
     'Ada Ionescu',

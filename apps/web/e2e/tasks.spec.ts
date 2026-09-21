@@ -253,6 +253,7 @@ test('manages manual Tasks through the production shell with retained retry and 
     .getByRole('button', { name: 'Collect preparation notes', exact: true })
     .click();
   await tasks
+    .locator('form')
     .getByLabel('Responsible member')
     .selectOption(member.workspaceMembershipId);
   await tasks.getByLabel('Due date').fill('2026-10-15');

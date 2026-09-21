@@ -17,6 +17,7 @@ export const taskCopy = {
   empty: 'No manual Tasks for this Project yet.',
   searchLabel: 'Search Tasks',
   statusFilterLabel: 'Task status',
+  assigneeFilterLabel: 'Task responsible member',
   all: 'All',
   completedFilter: 'Completed',
   noMatch: 'No Tasks match the current filters.',

@@ -69,7 +69,35 @@ type Mutation =
   | { kind: 'idle' | 'blocked' }
   | { kind: 'pending' | 'uncertain'; command: Command };
 type TaskFilter = 'all' | TaskView['status'];
+// Responsible members are matched by membership identity so homonymous members stay distinct.
+type AssigneeFilter =
+  | { kind: 'all' }
+  | { kind: 'unassigned' }
+  | { kind: 'member'; workspaceMembershipId: string };
 const emptyDraft: Draft = { title: '', assigneeMembershipId: '', dueDate: '' };
+const everyAssignee: AssigneeFilter = { kind: 'all' };
+const memberValuePrefix = 'member:';
+function assigneeFilterValue(filter: AssigneeFilter): string {
+  return filter.kind === 'member'
+    ? `${memberValuePrefix}${filter.workspaceMembershipId}`
+    : filter.kind;
+}
+function matchesAssignee(task: TaskView, filter: AssigneeFilter): boolean {
+  switch (filter.kind) {
+    case 'all':
+      return true;
+    case 'unassigned':
+      return task.assignee === null;
+    case 'member':
+      return (
+        task.assignee?.workspaceMembershipId === filter.workspaceMembershipId
+      );
+    default: {
+      const exhaustive: never = filter;
+      return exhaustive;
+    }
+  }
+}
 
 export function ProjectTasks(props: Props) {
   const { actor } = props;
@@ -123,6 +151,8 @@ function TaskProject({
   const [feedback, setFeedback] = useState('');
   const [taskSearch, setTaskSearch] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
+  const [assigneeFilter, setAssigneeFilter] =
+    useState<AssigneeFilter>(everyAssignee);
   const drafts = useRef(
     new Map<string, { version: number | null; draft: Draft }>(),
   );
@@ -152,9 +182,28 @@ function TaskProject({
       ? load.listing.tasks.filter(
           (task) =>
             (taskFilter === 'all' || task.status === taskFilter) &&
+            matchesAssignee(task, assigneeFilter) &&
             task.title.toLowerCase().includes(normalizedTaskSearch),
         )
       : [];
+  // Options come only from the loaded rows the reader already sees, never from the eligible-member query.
+  const assigneeOptions = new Map<string, Assignee>();
+  if (load.kind === 'ready')
+    for (const task of load.listing.tasks)
+      if (
+        task.assignee &&
+        !assigneeOptions.has(task.assignee.workspaceMembershipId)
+      )
+        assigneeOptions.set(task.assignee.workspaceMembershipId, task.assignee);
+  function selectAssigneeFilter(value: string) {
+    if (value === 'all') setAssigneeFilter(everyAssignee);
+    else if (value === 'unassigned') setAssigneeFilter({ kind: 'unassigned' });
+    else if (value.startsWith(memberValuePrefix)) {
+      const workspaceMembershipId = value.slice(memberValuePrefix.length);
+      if (assigneeOptions.has(workspaceMembershipId))
+        setAssigneeFilter({ kind: 'member', workspaceMembershipId });
+    }
+  }
 
   async function resultValue(
     result: ApiResult<unknown>,
@@ -217,6 +266,17 @@ function TaskProject({
     }
     if (controller.signal.aborted) return;
     setLoad({ kind: 'ready', listing });
+    // A member the authoritative listing no longer references cannot stay selected.
+    setAssigneeFilter((previous) =>
+      previous.kind === 'member' &&
+      !listing.tasks.some(
+        (task) =>
+          task.assignee?.workspaceMembershipId ===
+          previous.workspaceMembershipId,
+      )
+        ? everyAssignee
+        : previous,
+    );
     setDetail(nextDetail);
     const saved = drafts.current.get(taskId ?? 'create');
     const task = nextDetail?.kind === 'ready' ? nextDetail.task : null;
@@ -480,6 +540,26 @@ function TaskProject({
                       <option value="all">{copy.all}</option>
                       <option value="todo">{copy.todo}</option>
                       <option value="done">{copy.completedFilter}</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{copy.assigneeFilterLabel}</span>
+                    <select
+                      value={assigneeFilterValue(assigneeFilter)}
+                      onChange={(event) =>
+                        selectAssigneeFilter(event.target.value)
+                      }
+                    >
+                      <option value="all">{copy.all}</option>
+                      <option value="unassigned">{copy.unassigned}</option>
+                      {[...assigneeOptions.values()].map((member) => (
+                        <option
+                          key={member.workspaceMembershipId}
+                          value={`${memberValuePrefix}${member.workspaceMembershipId}`}
+                        >
+                          {member.displayLabel}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
