@@ -22,6 +22,7 @@ import {
   clientUnionOperations,
   clientUnionReversals,
   clientUnionProjections,
+  commercialIntakeEvents,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import type {
@@ -152,6 +153,37 @@ export class AccountabilityService {
       actorInternalUserId: input.actor.internalUserId,
       actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
     });
+  }
+
+  // Activity projection waits for independent Activity Log read authorization (#53).
+  async recordCommercialIntakeCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+  }): Promise<void> {
+    const base = {
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      clientRequestId: input.clientRequestId,
+      opportunityId: input.opportunityId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+    };
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values([
+        {
+          ...base,
+          action: 'client_request.created',
+          metadata: { requestVersion: 1 },
+        },
+        {
+          ...base,
+          action: 'opportunity.created',
+          metadata: { opportunityVersion: 1 },
+        },
+      ]);
   }
 
   private async projectEvents(
@@ -1006,6 +1038,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_context_assignment.revoked':
     case 'company_director_client_assignment.granted':
     case 'company_director_client_assignment.revoked':
+    case 'company_commercial_intake_assignment.granted':
+    case 'company_commercial_intake_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

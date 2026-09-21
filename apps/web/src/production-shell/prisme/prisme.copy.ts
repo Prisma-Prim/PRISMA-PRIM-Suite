@@ -30,6 +30,10 @@ export const prismeCopy = {
       label: 'Clients',
       description: 'Find Clients and work with their shared dossiers.',
     },
+    requests: {
+      label: 'Client Requests',
+      description: 'Capture manual requests and their initial Opportunities.',
+    },
     access: {
       label: 'Team & access',
       description:

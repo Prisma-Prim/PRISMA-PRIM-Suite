@@ -23,6 +23,7 @@ import { ClientWorkspace } from './client/ClientWorkspace';
 import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
+import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -97,6 +98,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
       true &&
     canAccessClients;
+  const commercialPermissions =
+    access.actor.activeCompany?.commercialIntakePermissions ?? [];
+  const canAccessCommercial =
+    activeCompanyId !== undefined &&
+    commercialPermissions.includes('commercial.request.read') &&
+    commercialPermissions.includes('commercial.request.create') &&
+    commercialPermissions.includes('commercial.opportunity.read') &&
+    commercialPermissions.includes('commercial.opportunity.create');
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -105,6 +114,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         : undefined;
 
   const sections: ApplicationSection[] = [];
+  if (canAccessCommercial && access.actor.activeCompany)
+    sections.push({
+      id: 'requests',
+      ...prismeCopy.sections.requests,
+      content: (
+        <CommercialIntakeWorkspace
+          key={`commercial-intake:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.commercialIntakePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.commercialIntakePermissionSetVersion ?? 'no-version'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
   if (access.actor.activeCompany && canAccessClients)
     sections.push({
       id: 'documents',

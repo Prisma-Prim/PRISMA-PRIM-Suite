@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
+import { COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE } from '../access/company-permissions.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
@@ -13,6 +14,8 @@ import {
   clientUnionOperations,
   clientUnionReviews,
   clientUnionReversals,
+  companyRoleAssignments,
+  workspacePermissionGrants,
 } from '../database/schema/index.js';
 
 export interface ProjectClientReference {
@@ -61,8 +64,10 @@ export class ClientOperationalReferenceService {
   async readProjectReferences(
     actor: ActorContext,
     originalClientIds: readonly string[],
+    lockAuthority = false,
   ): Promise<Map<string, ProjectClientReference>> {
     const companyId = this.requireClientRead(actor);
+    if (lockAuthority) await this.lockClientReadAuthority(actor, companyId);
     const uniqueOriginalIds = [...new Set(originalClientIds)];
     if (uniqueOriginalIds.length === 0) return new Map();
 
@@ -97,13 +102,87 @@ export class ClientOperationalReferenceService {
     const activeCompany = actor.activeCompany;
     if (
       !activeCompany ||
-      !activeCompany.clientPermissions.includes('client.read') ||
+      (!activeCompany.clientPermissions.includes('client.read') &&
+        !lockAuthority) ||
       references.size === 0
     )
       return references;
 
+    const { currentDossierByOriginal, invalidOriginalIds, visitedByOriginal } =
+      await this.resolveCurrentDossiers(actor, references.keys());
+
+    const candidateDossierIds = [
+      ...new Set(
+        [...currentDossierByOriginal]
+          .filter(([originalId]) => !invalidOriginalIds.has(originalId))
+          .map(([, dossierId]) => dossierId),
+      ),
+    ];
+    if (candidateDossierIds.length === 0) {
+      if (!lockAuthority) return references;
+      return this.lockAndRecheckReferences(
+        actor,
+        companyId,
+        uniqueOriginalIds,
+        references,
+        [...visitedByOriginal.values()].flatMap((visited) => [...visited]),
+        currentDossierByOriginal,
+        invalidOriginalIds,
+      );
+    }
+    const readableDossiers = await this.databaseContext.connection
+      .select({ id: clientAccounts.id })
+      .from(clientAccounts)
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            clientAccounts.workspaceId,
+          ),
+          eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
+          eq(clientCompanyRelationships.companyId, companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          inArray(clientAccounts.id, candidateDossierIds),
+          eq(clientAccounts.status, 'active'),
+        ),
+      );
+    const readableDossierIds = new Set(
+      readableDossiers.map((dossier) => dossier.id),
+    );
+    for (const [originalId, reference] of references) {
+      const clientDossierId = currentDossierByOriginal.get(originalId);
+      if (
+        clientDossierId &&
+        !invalidOriginalIds.has(originalId) &&
+        readableDossierIds.has(clientDossierId) &&
+        activeCompany.clientPermissions.includes('client.read')
+      )
+        references.set(originalId, { ...reference, clientDossierId });
+    }
+    if (!lockAuthority) return references;
+    return this.lockAndRecheckReferences(
+      actor,
+      companyId,
+      uniqueOriginalIds,
+      references,
+      [...visitedByOriginal.values()].flatMap((visited) => [...visited]),
+      currentDossierByOriginal,
+      invalidOriginalIds,
+    );
+  }
+
+  private async resolveCurrentDossiers(
+    actor: ActorContext,
+    originalIds: Iterable<string>,
+  ) {
     const currentDossierByOriginal = new Map(
-      [...references.keys()].map((clientId) => [clientId, clientId]),
+      [...originalIds].map((clientId) => [clientId, clientId]),
     );
     const unresolvedOriginalIds = new Set(currentDossierByOriginal.keys());
     const invalidOriginalIds = new Set<string>();
@@ -203,54 +282,88 @@ export class ClientOperationalReferenceService {
       }
     }
 
-    const candidateDossierIds = [
-      ...new Set(
-        [...currentDossierByOriginal]
-          .filter(([originalId]) => !invalidOriginalIds.has(originalId))
-          .map(([, dossierId]) => dossierId),
-      ),
-    ];
-    if (candidateDossierIds.length === 0) return references;
-    const readableDossiers = await this.databaseContext.connection
-      .select({ id: clientAccounts.id })
+    return { currentDossierByOriginal, invalidOriginalIds, visitedByOriginal };
+  }
+
+  /**
+   * Exact retries use the same Client identity-before-relationship lock order
+   * as union and reversal. Re-read after waiting so their latest state wins.
+   */
+  private async lockAndRecheckReferences(
+    actor: ActorContext,
+    companyId: string,
+    originalIds: readonly string[],
+    expected: Map<string, ProjectClientReference>,
+    traversedIds: readonly string[],
+    expectedHeads: ReadonlyMap<string, string>,
+    invalidOriginalIds: ReadonlySet<string>,
+  ): Promise<Map<string, ProjectClientReference>> {
+    const clientIds = [...new Set([...originalIds, ...traversedIds])].sort();
+    const lockedClients = await this.databaseContext.connection
+      .select({ id: clientAccounts.id, status: clientAccounts.status })
       .from(clientAccounts)
-      .innerJoin(
-        clientCompanyRelationships,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            clientAccounts.workspaceId,
-          ),
-          eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
-          eq(clientCompanyRelationships.companyId, companyId),
-          eq(clientCompanyRelationships.status, 'active'),
-        ),
-      )
       .where(
         and(
           eq(clientAccounts.workspaceId, actor.workspaceId),
-          inArray(clientAccounts.id, candidateDossierIds),
-          eq(clientAccounts.status, 'active'),
+          inArray(clientAccounts.id, clientIds),
         ),
-      );
-    const readableDossierIds = new Set(
-      readableDossiers.map((dossier) => dossier.id),
-    );
-    for (const [originalId, reference] of references) {
-      const clientDossierId = currentDossierByOriginal.get(originalId);
-      if (
-        clientDossierId &&
-        !invalidOriginalIds.has(originalId) &&
-        readableDossierIds.has(clientDossierId)
       )
-        references.set(originalId, { ...reference, clientDossierId });
+      .orderBy(asc(clientAccounts.id))
+      .for('share');
+    if (lockedClients.length !== clientIds.length)
+      throw new NotFoundException();
+    const lockedRelationships = await this.databaseContext.connection
+      .select({
+        id: clientCompanyRelationships.id,
+        clientAccountId: clientCompanyRelationships.clientAccountId,
+        status: clientCompanyRelationships.status,
+      })
+      .from(clientCompanyRelationships)
+      .where(
+        and(
+          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
+          eq(clientCompanyRelationships.companyId, companyId),
+          inArray(clientCompanyRelationships.clientAccountId, clientIds),
+        ),
+      )
+      .orderBy(asc(clientCompanyRelationships.id))
+      .for('share');
+
+    const currentHeads = await this.resolveCurrentDossiers(actor, originalIds);
+    const current = await this.readProjectReferences(actor, originalIds);
+    for (const originalId of originalIds) {
+      const headId = expectedHeads.get(originalId);
+      if (
+        !headId ||
+        invalidOriginalIds.has(originalId) ||
+        currentHeads.invalidOriginalIds.has(originalId) ||
+        currentHeads.currentDossierByOriginal.get(originalId) !== headId ||
+        !lockedClients.some(
+          (client) => client.id === headId && client.status === 'active',
+        ) ||
+        !lockedRelationships.some(
+          (relationship) =>
+            relationship.clientAccountId === headId &&
+            relationship.status === 'active',
+        )
+      )
+        throw new NotFoundException();
+      const before = expected.get(originalId);
+      const after = current.get(originalId);
+      if (
+        before?.id !== after?.id ||
+        before?.displayName !== after?.displayName ||
+        before?.clientDossierId !== after?.clientDossierId
+      )
+        throw new NotFoundException();
     }
-    return references;
+    return current;
   }
 
   /** Call inside the owning command transaction, once for a new reference. */
   async lockActiveReferenceClient(actor: ActorContext, clientId: string) {
     const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId);
     // Union and reversal lock Client identities before relationships. Use the same
     // order and recheck status after waiting, so a concurrent reversal cannot pass
     // its snapshot fence after a successful new operational reference.
@@ -306,5 +419,59 @@ export class ClientOperationalReferenceService {
     )
       throw new ForbiddenException();
     return actor.activeCompany.id;
+  }
+
+  private async lockClientReadAuthority(
+    actor: ActorContext,
+    companyId: string,
+  ): Promise<void> {
+    if (actor.workspacePermissions.includes('client.manage')) {
+      const managerGrants = await this.databaseContext.connection
+        .select({ id: workspacePermissionGrants.id })
+        .from(workspacePermissionGrants)
+        .where(
+          and(
+            eq(workspacePermissionGrants.workspaceId, actor.workspaceId),
+            eq(
+              workspacePermissionGrants.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(workspacePermissionGrants.permission, 'client.manage'),
+          ),
+        )
+        .for('share');
+      if (managerGrants.length > 0) return;
+    }
+
+    const assignmentId = actor.activeCompany?.clientPermissionAssignmentId;
+    if (
+      assignmentId &&
+      actor.activeCompany?.clientPermissions.includes('client.read')
+    ) {
+      const assignments = await this.databaseContext.connection
+        .select({ id: companyRoleAssignments.id })
+        .from(companyRoleAssignments)
+        .where(
+          and(
+            eq(companyRoleAssignments.id, assignmentId),
+            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+            eq(
+              companyRoleAssignments.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(companyRoleAssignments.companyId, companyId),
+            eq(
+              companyRoleAssignments.bundle,
+              COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
+            ),
+            inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+            sql`${companyRoleAssignments.revokedAt} IS NULL`,
+          ),
+        )
+        .for('share');
+      if (assignments.length > 0) return;
+    }
+
+    throw new ForbiddenException();
   }
 }

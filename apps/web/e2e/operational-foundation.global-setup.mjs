@@ -4,6 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const apiPort = 4174;
 const workspaceId = '00000000-0000-4000-8000-000000000281';
+const administratorIdentity = {
+  provider: 'local-demo',
+  subject: 'workspace-owner',
+  displayName: 'Workspace Owner',
+  email: 'owner@example.test',
+};
 const primaryIdentity = {
   provider: 'local-demo',
   subject: 'local-demonstration-user',
@@ -40,11 +46,16 @@ export default async function globalSetup() {
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
-        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: primaryIdentity.provider,
-        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: primaryIdentity.subject,
+        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: administratorIdentity.provider,
+        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: administratorIdentity.subject,
         ACCESS_BOOTSTRAP_WORKSPACE_ID: workspaceId,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Operational Acceptance Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: primaryIdentity.provider,
+            subject: primaryIdentity.subject,
+            workspaceId,
+          },
           {
             provider: otherCompanyIdentity.provider,
             subject: otherCompanyIdentity.subject,
@@ -76,24 +87,28 @@ export default async function globalSetup() {
 }
 
 async function seedAccessFixture(origin) {
-  const owner = await readActor(origin, primaryIdentity);
+  await readActor(origin, administratorIdentity);
+  const primaryActor = await readActor(origin, primaryIdentity);
   const primaryCompany = await command(
     origin,
-    primaryIdentity,
+    administratorIdentity,
     '/companies',
     { displayName: 'PRISMA-PRIM' },
     'fixture-primary-company',
   );
   const otherCompany = await command(
     origin,
-    primaryIdentity,
+    administratorIdentity,
     '/companies',
     { displayName: 'BIC' },
     'fixture-other-company',
   );
   const primaryCompanyId = stringProperty(primaryCompany, 'id');
   const otherCompanyId = stringProperty(otherCompany, 'id');
-  const ownerMembershipId = stringProperty(owner, 'workspaceMembershipId');
+  const primaryMembershipId = stringProperty(
+    primaryActor,
+    'workspaceMembershipId',
+  );
 
   for (const route of [
     '/company-context-assignments',
@@ -102,13 +117,14 @@ async function seedAccessFixture(origin) {
     '/company-task-manager-assignments',
     '/company-document-registrar-assignments',
     '/company-document-project-organizer-assignments',
+    '/company-commercial-intake-assignments',
   ]) {
     await command(
       origin,
-      primaryIdentity,
+      administratorIdentity,
       route,
       {
-        workspaceMembershipId: ownerMembershipId,
+        workspaceMembershipId: primaryMembershipId,
         companyId: primaryCompanyId,
       },
       `fixture-primary-${route.slice(1)}`,
@@ -124,7 +140,7 @@ async function seedAccessFixture(origin) {
   ]) {
     await command(
       origin,
-      primaryIdentity,
+      administratorIdentity,
       route,
       {
         workspaceMembershipId: otherMembershipId,
@@ -156,6 +172,8 @@ async function seedAccessFixture(origin) {
   process.env.ACCEPTANCE_OTHER_CLIENT_ID = stringProperty(otherClient, 'id');
   process.env.ACCEPTANCE_OTHER_PROJECT_ID = stringProperty(otherProject, 'id');
   process.env.ACCEPTANCE_OTHER_COMPANY_ID = otherCompanyId;
+  process.env.ACCEPTANCE_PRIMARY_COMPANY_ID = primaryCompanyId;
+  process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID = primaryMembershipId;
 }
 
 async function readActor(origin, identity) {

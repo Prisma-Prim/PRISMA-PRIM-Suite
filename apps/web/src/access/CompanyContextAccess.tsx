@@ -23,6 +23,7 @@ type AssignmentBundle =
   | 'director-client'
   | 'document-registrar'
   | 'document-project-organizer'
+  | 'commercial-intake'
   | 'project';
 type AssignmentBundleLabel =
   | 'Company Task Manager'
@@ -30,7 +31,8 @@ type AssignmentBundleLabel =
   | 'Company Director Client Access'
   | 'Company Document Project Organizer'
   | 'Company Document Registrar'
-  | 'Company Project Access';
+  | 'Company Project Access'
+  | 'Company Commercial Intake';
 type AdministrationState = {
   members: Array<{
     workspaceMembershipId: string;
@@ -206,17 +208,19 @@ export function CompanyContextAccess({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const assignmentPath =
-        bundle === 'task-manager'
-          ? '/company-task-manager-assignments'
-          : bundle === 'document-project-organizer'
-            ? '/company-document-project-organizer-assignments'
-            : bundle === 'document-registrar'
-              ? '/company-document-registrar-assignments'
-              : bundle === 'project'
-                ? '/company-project-assignments'
-                : bundle === 'director-client'
-                  ? '/company-director-client-assignments'
-                  : '/company-context-assignments';
+        bundle === 'commercial-intake'
+          ? '/company-commercial-intake-assignments'
+          : bundle === 'task-manager'
+            ? '/company-task-manager-assignments'
+            : bundle === 'document-project-organizer'
+              ? '/company-document-project-organizer-assignments'
+              : bundle === 'document-registrar'
+                ? '/company-document-registrar-assignments'
+                : bundle === 'project'
+                  ? '/company-project-assignments'
+                  : bundle === 'director-client'
+                    ? '/company-director-client-assignments'
+                    : '/company-context-assignments';
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
@@ -453,6 +457,7 @@ export function CompanyContextAccess({
               const value = event.target.value;
               if (
                 value === 'task-manager' ||
+                value === 'commercial-intake' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -463,6 +468,9 @@ export function CompanyContextAccess({
             }}
           >
             <option value="company-context">{copy.companyContextBundle}</option>
+            <option value="commercial-intake">
+              {copy.commercialIntakeBundle}
+            </option>
             <option value="director-client">{copy.directorClientBundle}</option>
             <option value="document-project-organizer">
               {copy.documentProjectOrganizerBundle}
@@ -547,17 +555,19 @@ export function CompanyContextAccess({
 }
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  return bundle === 'task-manager'
-    ? copy.taskManagerBundle
-    : bundle === 'document-project-organizer'
-      ? copy.documentProjectOrganizerBundle
-      : bundle === 'document-registrar'
-        ? 'Company Document Registrar'
-        : bundle === 'project'
-          ? copy.projectBundle
-          : bundle === 'director-client'
-            ? 'Company Director Client Access'
-            : 'Company Context Access';
+  return bundle === 'commercial-intake'
+    ? copy.commercialIntakeBundle
+    : bundle === 'task-manager'
+      ? copy.taskManagerBundle
+      : bundle === 'document-project-organizer'
+        ? copy.documentProjectOrganizerBundle
+        : bundle === 'document-registrar'
+          ? 'Company Document Registrar'
+          : bundle === 'project'
+            ? copy.projectBundle
+            : bundle === 'director-client'
+              ? 'Company Director Client Access'
+              : 'Company Context Access';
 }
 
 function memberLabel(member: AdministrationState['members'][number]): string {
