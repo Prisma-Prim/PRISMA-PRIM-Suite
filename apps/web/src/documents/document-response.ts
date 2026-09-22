@@ -2,6 +2,8 @@ export interface WorkingDocument {
   id: string;
   companyId: string;
   clientId: string;
+  /** Derived navigation target; absence never limits the Document itself. */
+  clientDossierId?: string;
   clientDisplayName: string;
   title: string;
   purpose: string;
@@ -28,6 +30,9 @@ function record(value: unknown): Record<string, unknown> {
 function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid response');
   return value;
+}
+function optionalString(value: unknown): string | undefined {
+  return value === undefined ? undefined : string(value);
 }
 function positiveInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
@@ -72,10 +77,12 @@ export function readDocument(value: unknown): WorkingDocument {
       url: url.href,
     };
   } else throw new Error('Unknown reference access');
+  const clientDossierId = optionalString(row.clientDossierId);
   return {
     id: string(row.id),
     companyId: string(row.companyId),
     clientId: string(row.clientId),
+    ...(clientDossierId === undefined ? {} : { clientDossierId }),
     clientDisplayName: string(row.clientDisplayName),
     title: string(row.title),
     purpose: string(row.purpose),

@@ -3,6 +3,8 @@ export interface WorkingDocument {
   workspaceId: string;
   companyId: string;
   clientId: string;
+  /** Derived navigation target owned by Client; never persisted or accepted as input. */
+  clientDossierId?: string;
   clientDisplayName: string;
   title: string;
   purpose: string;
