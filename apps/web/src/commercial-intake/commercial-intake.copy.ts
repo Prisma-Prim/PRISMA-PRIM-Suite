@@ -28,6 +28,11 @@ export const commercialIntakeCopy = {
   loading: 'Loading Client Requests…',
   empty: (companyName: string) => `No Client Requests for ${companyName} yet.`,
   list: 'Client Requests',
+  filterLabel: 'Filter loaded Client Requests',
+  filterHelp:
+    'Filters only the Client Requests already loaded below, by subject, initial Opportunity title, or responsible actor. It does not search other Requests in this Company or the original request text.',
+  filterNoMatch: 'No loaded Client Requests match this filter.',
+  filterClear: 'Show all loaded Requests',
   showOlder: 'Show older Requests',
   olderLoading: 'Loading older Client Requests…',
   olderError: 'Older Client Requests could not be loaded. Please try again.',
