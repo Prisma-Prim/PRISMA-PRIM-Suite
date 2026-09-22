@@ -1,7 +1,7 @@
 # PRD — Release 3B Illustrative Deterministic Pricing
 
 **Status:** Provisional MVP execution scope — business validation pending  
-**Version:** 0.2  
+**Version:** 0.3  
 **Owner:** Dan Popescu  
 **Release:** 3, slice R3B  
 **Parent authority:** [Release 3 Commercial Workflow PRD](release-3-commercial-workflow-prd.md)  
@@ -30,7 +30,7 @@ Deterministic pricing is the hinge between a qualified Opportunity and any later
 
 These slices must:
 
-1. let an authorized user define a shared Service Definition once and record that a specific Company offers it, without claiming the Company can actually perform it;
+1. let an authorized user define a shared Service Definition once and record a Company Service Offering for it, while the illustrative instance created here claims no authorization to perform;
 2. let an authorized configuration owner publish effective-dated, immutable Tariff Versions per offering and Pricing Rule Versions per Company;
 3. let an authorized pricing user calculate from exactly the versions they declared, over typed values a human confirmed;
 4. store an immutable Pricing Snapshot that names every source identity and version it used and reproduces its own total;
@@ -43,10 +43,10 @@ These slices must:
 - Shared definition and Company offering stay separate (decision record 14.5). A Company offering never becomes the definition, and a definition never implies that any Company may sell or perform the service.
 - Tariffs and Pricing Rules are Company-scoped, versioned and effective-dated (decision record 14.6). Their versions are referenced, never copied in place of a reference.
 - A Pricing Snapshot retains the exact versions and values it used (decision record 14.6), reproduces its own total, and is never recomputed, corrected in place or re-pointed.
-- Immutable source content is distinct from operational selection metadata. Content and declared validity never change after commit; only the selection status changes, and only once.
+- Immutable source content is distinct from operational selection metadata. Content and declared validity never change after commit; only the takeover metadata is written, once, when a successor is published.
 - Money is decimal and never floating-point; unlike currencies are never combined (decision record 12.4).
 - Smallest coherent mechanism. One rule shape is implemented and one declared version is used per input; no resolution engine searches for a substitute version, and no pricing language is introduced.
-- NestJS owns calculation, authorization, version allocation and selection. Clients never submit computed amounts, totals, provenance, version numbers, status or actor identity.
+- NestJS owns calculation, authorization, version allocation and selection. Clients never assign computed amounts, totals, provenance, selection state, record version numbers or actor identity. A client may reference a server-issued version number it displayed, to declare which version it selected and to carry optimistic concurrency; referencing an existing version never creates or renumbers one.
 
 ## 4. Actors and scope
 
@@ -65,7 +65,7 @@ Workspace is the hard isolation boundary. A Service Definition is Workspace-shar
 
 1. As a catalogue user, I want to define a shared Service Definition once, so that several Companies can refer to the same service without copying it.
 2. As a catalogue user, I want to record that my Company offers that service, so that pricing has a Company-owned subject.
-3. As a catalogue user, I want an offering to state availability only, so that nobody reads it as proof that the Company may actually perform the service.
+3. As a catalogue user, I want my illustrative offering to be visibly non-operational, so that nobody reads it as proof that the Company may actually perform the service, while the durable offering record keeps its full meaning for a later governed real instance.
 4. As a configuration owner, I want to publish an illustrative Tariff Version with its unit, amount, currency, tax and validity period, so that a price has an exact, dated, citable source.
 5. As a configuration owner, I want to publish a Pricing Rule Version separately from tariffs, so that rounding and calculation shape change without rewriting rates.
 6. As a configuration owner, I want republishing identical content to change nothing while my retry still returns the same answer.
@@ -86,9 +86,17 @@ Canonical vocabulary is owned by `CONTEXT.md`. Every record below carries `prove
 Every versioned record separates two groups of columns, and tests prove the separation:
 
 - **Immutable source content:** the business values and the declared validity period. They are set once at insert and have no update path in any endpoint.
-- **Operational selection metadata:** `status` (`ACTIVE` or `SUPERSEDED`), `supersededAt` and `supersededByVersionId`. A row moves `ACTIVE → SUPERSEDED` exactly once and never back. Superseding never alters content, declared validity or provenance.
+- **Operational selection metadata:** `supersededByVersionId`, `supersededAt` (when the successor was committed) and `supersededFrom` (the instant from which the successor takes over, equal to the successor's `effectiveFrom`). Each is written once, when a successor is published, and never rewritten or cleared. Superseding never alters content, declared validity or provenance.
 
-An effective-date window states what the business declared. `ACTIVE`/`SUPERSEDED` states which row the product currently selects. A snapshot records both the referenced version id and its number, so a later supersession cannot reinterpret it.
+An effective-date window states what the business declared. The selection metadata states from when another row takes over. A snapshot records both the referenced version id and its number, so neither a later supersession nor a later window can reinterpret it.
+
+**Derived selection state.** Reads expose a state computed at read time from timestamps, never a separately stored flag that could drift:
+
+- `SCHEDULED` — `effectiveFrom` is in the future;
+- `CURRENT` — `effectiveFrom <= now`, `now` is before `effectiveTo` when one is declared, and `supersededFrom` is absent or still in the future;
+- `SUPERSEDED` — `supersededFrom` has passed, or the declared `effectiveTo` has passed.
+
+Exactly one version per scope is `CURRENT` at any instant, and the head of a scope — the one version with no successor — is the only version a publication may supersede.
 
 ### 6.2 Service Definition — Workspace level (decision record 14.5)
 
@@ -111,11 +119,15 @@ A Service Definition carries no money, no unit, no Company and no authority. It 
 | Service Definition | Required reference to a Service Definition in the same Workspace, immutable after commit.        |
 | Commercial label   | Optional Company-specific display text, at most 160 characters; never overrides the shared name. |
 | Availability       | Server-fixed `AVAILABLE` at creation. Withdrawal is deferred; see section 14.                    |
-| Provenance         | Server-fixed `ILLUSTRATIVE`.                                                                     |
-| Uniqueness         | At most one offering per (Company, Service Definition).                                          |
+| Provenance         | Server-fixed `ILLUSTRATIVE` in these slices.                                                     |
+| Uniqueness         | At most one offering per (Company, Service Definition, provenance).                              |
 | Created by, at     | Server-assigned creating membership and commit time.                                             |
 
-**Ability-to-perform boundary.** An offering records only that this Company's catalogue lists the service. It asserts nothing about accreditation, scheme scope, competence, authorization to perform, or the right to quote or contract, and no later feature may treat it as such evidence (decision record 13.3). The illustrative provenance makes this explicit in every read.
+**Durable meaning is preserved.** A Company Service Offering is the durable record that a Company declares it may sell or perform a shared Service Definition, under its own availability, authorization, commercial text, templates and pricing configuration (decision record 14.5, DEC-107). This PRD does not redefine that entity and does not reduce it to a catalogue listing.
+
+**Only the illustrative instance is non-operational.** An offering created by these slices carries `ILLUSTRATIVE` provenance, and that instance alone asserts nothing about accreditation, scheme scope, competence, authorization to perform, or the right to quote or contract; no feature may treat it as such evidence (decision record 13.3). Its illustrative provenance is visible in every read.
+
+**A real offering is a separate, governed record.** Because uniqueness is scoped by provenance, the same Company and Service Definition can later carry a real offering alongside the illustrative one. No illustrative record ever becomes real automatically, by edit, by backfill or by changing a provenance value. Activating a real offering, or migrating an illustrative one, requires a separately reviewed governed transition with its own approved authorization, evidence and acceptance. That transition is deliberately not designed here, and nothing in these slices may be read as its workflow.
 
 ### 6.4 Tariff Version — Company level, versioned and effective-dated (decision record 14.6)
 
@@ -136,7 +148,7 @@ Immutable source content:
 | Provenance       | Server-fixed `ILLUSTRATIVE`.                                                         |
 | Created by, at   | Server-assigned creating membership and commit time.                                 |
 
-Operational selection metadata as in section 6.1. At most one `ACTIVE` Tariff Version per offering, enforced by a partial unique database index.
+Operational selection metadata as in section 6.1. At most one head Tariff Version per offering — one row with no successor — enforced by a partial unique database index on the offering where `supersededByVersionId` is null. At most one version per offering is `CURRENT` at any instant, which follows from that head rule plus the publication rules in section 11.3.
 
 ### 6.5 Pricing Rule Version — Company level, versioned and effective-dated (decision record 14.6)
 
@@ -155,7 +167,7 @@ Immutable source content:
 | Provenance         | Server-fixed `ILLUSTRATIVE`.                                                                                             |
 | Created by, at     | Server-assigned creating membership and commit time.                                                                     |
 
-Operational selection metadata as in section 6.1. At most one `ACTIVE` Pricing Rule Version per Company, enforced by a partial unique database index. Rounding and shape are server-fixed values recorded on the version, not user input: the version exists so that a later change is a new version rather than a reinterpretation of old snapshots.
+Operational selection metadata as in section 6.1. At most one head Pricing Rule Version per Company, enforced by the same partial unique index rule as section 6.4, and at most one `CURRENT` version per Company at any instant. Rounding and shape are server-fixed values recorded on the version, not user input: the version exists so that a later change is a new version rather than a reinterpretation of old snapshots.
 
 ### 6.6 Pricing Snapshot (decision record 14.6)
 
@@ -180,12 +192,14 @@ Selection is declarative, never inferred. A calculation names the Pricing Rule V
 The server then verifies, for every declared version:
 
 1. the version belongs to the active Company (and, for a tariff, to the named offering);
-2. its `status` is `ACTIVE`;
-3. the calculation time falls inside its declared effective window, meaning `effectiveFrom <= now` and either no `effectiveTo` or `now < effectiveTo`.
+2. the calculation time falls inside its declared effective window, meaning `effectiveFrom <= now` and either no `effectiveTo` or `now < effectiveTo`;
+3. the version has not yet been taken over, meaning `supersededFrom` is absent or still in the future.
 
-Any failure is an explicit, named error that commits nothing. The server never searches for another version, never falls back to a neighbouring window and never prices a line with an unnamed version. This keeps the effective-date boundary real while adding no resolution engine.
+Together these mean the declared version is `CURRENT` at the calculation time, by the derived rule in section 6.1. Selection is therefore a comparison of stored timestamps, not a stored flag and not a scheduled job: **a version published today with a future `effectiveFrom` does not interrupt pricing, because the version it will replace stays `CURRENT` until that instant arrives.** Nothing runs at the changeover; the same comparison simply yields the successor from then on.
 
-`ACTIVE` rows used by a calculation are locked `FOR SHARE` for the transaction; a publication that would supersede them takes `FOR UPDATE` on the same rows. A calculation therefore never commits against a version superseded concurrently, and a publication never races an in-flight calculation to an inconsistent result.
+Any failure is an explicit, named error that commits nothing. The server never searches for another version, never falls back to a neighbouring window and never prices a line with an unnamed version. This keeps the effective-date boundary real while adding no resolution engine and no scheduler.
+
+The `CURRENT` rows used by a calculation and the head row of each scope are locked `FOR SHARE` for the transaction; a publication that would supersede a head takes `FOR UPDATE` on the same row. A calculation therefore never commits against a version taken over concurrently, and a publication never races an in-flight calculation to an inconsistent result.
 
 ## 8. Calculation contract
 
@@ -196,8 +210,10 @@ Every monetary, quantity and rate value crosses the API as a string in a closed 
 ```text
 unit amount       ^(0|[1-9][0-9]{0,6})(\.[0-9]{1,4})?$          0.0001 .. 9999999.9999, greater than zero
 quantity          ^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$          0.001 .. 999999999.999, greater than zero
-tax rate percent  ^(100(\.0{1,2})?|[0-9]{1,2}(\.[0-9]{1,2})?)$  0 .. 100
+tax rate percent  ^(100(\.0{1,2})?|(0|[1-9][0-9]?)(\.[0-9]{1,2})?)$  0 .. 100
 ```
+
+The leading-zero rule holds in all three grammars: `00`, `01` and `00.50` are rejected as a tax rate exactly as they are as an amount or a quantity. `0`, `0.50` and `100.00` remain valid.
 
 Arithmetic uses scaled integer values held as JavaScript `BigInt`: amounts scaled by 10^4, quantities by 10^3, rates by 10^2, raw line results by 10^7. No decimal, math or currency dependency is added; `Number` never touches a monetary or quantity path, including serialization and test assertions.
 
@@ -272,12 +288,13 @@ Every command follows this order, and tests assert the order itself:
 
 1. **Authenticate**, then resolve the actor and active Company.
 2. **Revalidate current authority**, reading the membership, Company context and captured bundle assignment with a row lock that serializes against concurrent revocation, so a command can never commit on authority revoked in a concurrent transaction.
-3. **Take the idempotency lock** for the (actor, Company, key) and read any existing receipt. A fingerprint mismatch returns a conflict. A match returns the recorded result.
-4. **Validate** the payload shape and grammars.
-5. **Evaluate expected versions, effective windows and staleness**, locking the rows involved.
-6. **Commit** the durable receipt together with any record and event.
+3. **Revalidate current readability of the command's target** through the boundary that owns it — the Opportunity through the commercial read boundary for a calculation or snapshot read, the offering for a tariff publication, the Service Definition for an offering. A target the actor may no longer read returns the same safe not-found or `403` response as a first attempt.
+4. **Take the idempotency lock** for the (actor, Company, key) and read any existing receipt. A fingerprint mismatch returns a conflict. A match returns the recorded result.
+5. **Validate** the payload shape and grammars.
+6. **Evaluate expected versions, effective windows and staleness**, locking the rows involved.
+7. **Commit** the durable receipt together with any record and event.
 
-Authority revalidation therefore always precedes replay, and replay always precedes stale-version evaluation. A replayed command never re-runs step 5 and never fails because the world moved on; a revoked actor always gets the normal safe denial and no result.
+Authority and target-visibility revalidation therefore always precede replay, and replay always precedes stale-version evaluation. A replayed command never re-runs step 6 and never fails because configuration moved on; an actor who lost the bundle or lost read access to the target always gets the normal safe denial and no result, so a receipt never becomes a channel for disclosing a target the actor can no longer read.
 
 ### 11.2 Durable idempotency receipts, including no-ops
 
@@ -287,21 +304,34 @@ The fingerprint covers the Company and every command field exactly as submitted,
 
 ### 11.3 Publication and the no-op policy
 
-Publishing a Tariff Version or Pricing Rule Version carries `expectedActiveVersionNumber`: `null` when the caller believes none is active, otherwise the exact number it displayed. A mismatch returns a stale-version conflict naming the current number and commits nothing.
+Publishing a Tariff Version or Pricing Rule Version carries `expectedActiveVersionNumber`: the number of the scope's current head as the caller displayed it, or `null` when the caller believes the scope has no version yet. A mismatch returns `STALE_ACTIVE_VERSION` naming the current head number and commits nothing. The field keeps its name; "active" here means the head, which is the only version a successor may follow.
 
-When the submitted immutable content is identical to the current `ACTIVE` version of the same scope — comparing every content field and the declared effective window, with decimals compared by numeric value — the command allocates no version, records no event, writes the durable `UNCHANGED` receipt and returns the current `ACTIVE` version. Otherwise it allocates the next number, moves the previous `ACTIVE` row to `SUPERSEDED` with its `supersededAt` and `supersededByVersionId`, and returns `PUBLISHED`.
+When the submitted immutable content is identical to the head — comparing every content field and the declared effective window, with decimals compared by numeric value — the command allocates no version, records no event, writes the durable `UNCHANGED` receipt and returns the head. Otherwise it allocates the next number and returns `PUBLISHED`.
 
-Creating a Service Definition or an offering behaves the same way: identical content returns `UNCHANGED` with a durable receipt; a different name or description under an existing Workspace code returns a named conflict rather than a silent second definition.
+A publication never interrupts pricing. It writes `supersededByVersionId`, `supersededAt` and `supersededFrom` on the predecessor, where `supersededFrom` equals the successor's `effectiveFrom`. The predecessor therefore stays `CURRENT` until that instant and the successor takes over from it, with no gap and no scheduled job. Publication validates, and rejects with a named error:
+
+- `effectiveFrom` earlier than commit time — back-dating a version is deferred, not silently accepted;
+- `effectiveFrom` not later than the predecessor's `effectiveFrom`, which would make the order of two versions ambiguous;
+- `EFFECTIVE_WINDOW_GAP` when the predecessor declares an `effectiveTo` earlier than the successor's `effectiveFrom`, which would leave an interval with no `CURRENT` version.
+
+Creating a Service Definition or an offering follows the same no-op rule with its own conflict:
+
+- identical content returns `UNCHANGED` with a durable receipt and creates nothing — for a definition, the same code with the same name and description; for an offering, the same (Company, Service Definition, provenance) with the same commercial label;
+- different content on the same identity returns a safe `409` with a named error and commits nothing: `SERVICE_CODE_CONFLICT` for a Workspace code that exists with another name or description, and `OFFERING_CONFLICT` for an existing offering of the same (Company, Service Definition, provenance) submitted with a different commercial label.
+
+Neither conflict discloses anything beyond the fact that the identity is taken in a scope the actor may already read.
 
 ### 11.4 Calculation
 
 Calculating is never a no-op: a deliberate recalculation with a new idempotency key creates a second independent snapshot, because a calculation is a historical fact rather than a current value. Both remain readable.
 
-A replayed calculation returns the original snapshot unchanged **even when the Tariff or Pricing Rule Versions it used have since been superseded or have left their effective window**. Replay reproduces a recorded fact; it does not re-select or re-validate configuration. Only current authority is revalidated, per section 11.1.
+A replayed calculation returns the original snapshot unchanged **even when the Tariff or Pricing Rule Versions it used have since been superseded or have left their effective window**. Replay reproduces a recorded fact; it does not re-select or re-validate configuration.
+
+Replay does, however, re-check who is asking and what they may see: current authority and current readability of the target Opportunity are revalidated first, per section 11.1. An actor whose pricing bundle remains but whose Opportunity read access was revoked receives the safe denial, not the recorded snapshot. The same rule governs reading a stored snapshot.
 
 ### 11.5 Reads
 
-Bounded lists — Workspace Service Definitions, the active Company's offerings, and one Opportunity's snapshots — return newest first with a stable cursor, default 25 items and maximum 50, with no cross-Company count, amount or metadata. Configuration reads return the `ACTIVE` version of an offering or Company and any version by id, including superseded ones, so a snapshot's source stays reachable. Reload after a process restart returns identical ownership, actor, timestamps, versions, lines and totals.
+Bounded lists — Workspace Service Definitions, the active Company's offerings, and one Opportunity's snapshots — return newest first with a stable cursor, default 25 items and maximum 50, with no cross-Company count, amount or metadata. Configuration reads return the `CURRENT` version of an offering or Company, the scheduled successor when one exists, and any version by id including taken-over ones, so a snapshot's source stays reachable and an advance change stays visible before it starts. Reload after a process restart returns identical ownership, actor, timestamps, versions, lines and totals.
 
 ## 12. Activity, errors and interface states
 
@@ -317,12 +347,12 @@ One committed publication, definition, offering or calculation records exactly o
 - inactive membership, missing bundle, unknown captured version, revoked authority or invalid active Company returns a safe `403` with no hidden metadata;
 - an unknown or inaccessible Service Definition, offering, version, Opportunity or snapshot returns the same safe not-found response, whether the identifier is unknown, cross-Company, cross-Workspace or merely unreadable;
 - field-specific validation without persistence for: grammar and range violations, empty or oversized lists, duplicate or malformed codes, duplicate offering in one calculation, unknown offering, effective window inverted, oversized label;
-- named conflicts that commit nothing: `IDEMPOTENCY_CONFLICT`, `STALE_ACTIVE_VERSION`, `STALE_TARIFF_VERSION`, `STALE_PRICING_RULE_VERSION`, `TARIFF_NOT_EFFECTIVE`, `PRICING_RULE_NOT_EFFECTIVE`, `MIXED_CURRENCY`, `SERVICE_CODE_CONFLICT`. A stale conflict names the current version number and nothing else about the other actor;
+- named conflicts that return a safe `409` and commit nothing: `IDEMPOTENCY_CONFLICT`, `STALE_ACTIVE_VERSION`, `STALE_TARIFF_VERSION`, `STALE_PRICING_RULE_VERSION`, `TARIFF_NOT_EFFECTIVE`, `PRICING_RULE_NOT_EFFECTIVE`, `MIXED_CURRENCY`, `SERVICE_CODE_CONFLICT`, `OFFERING_CONFLICT`, `EFFECTIVE_WINDOW_GAP`. A stale conflict names the current head version number and nothing else about the other actor;
 - no Company can infer another Company's offering, configuration, snapshot, count, label, amount or event by direct identifier.
 
 ### 12.3 Interface states
 
-The catalogue screen lists Workspace Service Definitions and the active Company's offerings with a permanent illustrative label, and states plainly that an offering is not evidence of ability to perform. The configuration screen shows the active Tariff Version per offering and the active Pricing Rule Version with their validity windows, and offers publication only to a configuration owner. The pricing panel on an Opportunity shows the declared versions, accepts a quantity per selected offering, renders the resulting snapshot line by line with subtotal, tax and total, and lists earlier snapshots newest first.
+The catalogue screen lists Workspace Service Definitions and the active Company's offerings with a permanent illustrative label, and states plainly that this illustrative offering is not evidence of ability to perform. The configuration screen shows the `CURRENT` Tariff Version per offering and the `CURRENT` Pricing Rule Version with their validity windows, marks a scheduled successor and the instant it takes over, and offers publication only to a configuration owner. The pricing panel on an Opportunity shows the declared versions, accepts a quantity per selected offering, renders the resulting snapshot line by line with subtotal, tax and total, and lists earlier snapshots newest first.
 
 Empty, denied, stale, not-effective, validation and success states are reachable and legible. Every rendered amount or total carries a visible provisional marker in the same view; a total never appears without one. Entered values survive a correctable validation error. Desktop, keyboard and narrow-screen behaviour inherit the UX PRD.
 
@@ -336,7 +366,7 @@ Every item is a reversible MVP choice taken by this PRD, not approved business p
 | 2   | Service Definitions are created through a Company-scoped captured bundle, since no Workspace-permission delegation surface exists | A Workspace catalogue steward role in the authorization PRD      |
 | 3   | Offerings are `AVAILABLE` at creation; withdrawal and re-offering are deferred                                                    | Real catalogue lifecycle evidence                                |
 | 4   | Exactly one rule shape, `UNIT_PRICE_TIMES_QUANTITY`, with server-fixed `HALF_UP` scale 2 and per-line tax                         | Real recurring rule shapes and rounding practice per service     |
-| 5   | One `ACTIVE` Tariff Version per offering and one `ACTIVE` Pricing Rule Version per Company                                        | Real parallel price lists, segments or contract-specific tariffs |
+| 5   | One `CURRENT` Tariff Version per offering and one `CURRENT` Pricing Rule Version per Company at any instant                       | Real parallel price lists, segments or contract-specific tariffs |
 | 6   | Declared expected versions with no fallback resolution                                                                            | A reviewed selection policy if real practice needs one           |
 | 7   | Value grammars, ranges and storage precision in section 8.1                                                                       | Real tariff precision, quantities and invoicing practice         |
 | 8   | Currency allowlist `MDL`, `EUR`, `RON`, `USD`, one per calculation                                                                | Confirmed trading currencies                                     |
@@ -347,6 +377,14 @@ Every item is a reversible MVP choice taken by this PRD, not approved business p
 | 13  | Recalculation with a new key creates a new snapshot rather than replacing one                                                     | Offer-driven snapshot selection rules in R3C                     |
 | 14  | Snapshots attach to an Opportunity and carry its existing Client projection                                                       | Confirmed practice if pricing must precede qualification         |
 | 15  | Human confirmation is the submitting act; no structured assessment record                                                         | The RequestAssessment slice                                      |
+| 16  | Service Definition field policy: code 1–40 characters in the `A-Z`/`0-9`/`_`/`-` grammar, name 1–160, description at most 2,000   | Real catalogue naming and coding practice                        |
+| 17  | Company Service Offering commercial label at most 160 characters and optional                                                     | Real Company commercial text practice                            |
+| 18  | Tariff Version unit 1–24 characters as free text, tax label 1–60 characters                                                       | The real unit vocabulary and tax naming                          |
+| 19  | Pricing Rule Version label 1–120 characters                                                                                       | Real configuration naming practice                               |
+| 20  | Supersession takes effect from the successor's `effectiveFrom`, with back-dating and declared gaps rejected                       | Real advance-scheduling and correction practice                  |
+| 21  | Uniqueness of an offering is scoped by provenance, so a governed real offering may later coexist with the illustrative one        | The approved governed activation or migration transition         |
+
+None of rows 16–19 is a business-approved limit. They are drafting choices that make the slices testable; every one of them is an observable policy an implementation would otherwise invent, and Iurie has approved none of them. No length, code grammar or optionality here is evidence of first-tenant policy.
 
 ## 14. Exclusions
 
@@ -373,10 +411,10 @@ Later real configuration replaces illustrative configuration by publishing new v
 ## 17. Security, reliability and observability
 
 - Enforce Workspace and Company isolation in authorization-aware queries and database relationships, including the Opportunity and offering targets.
-- Serialize authority revalidation against revocation, and `ACTIVE` version selection against publication, with database locks rather than application ordering alone.
+- Serialize authority and target-visibility revalidation against revocation, and version selection against publication, with database locks rather than application ordering alone.
 - Validate every direct identifier server-side and return non-leaking denials.
 - Keep labels, amounts, rates and quantities out of event metadata and diagnostic logs; record safe correlation identifiers instead.
-- Make version allocation, supersession, snapshot creation, receipt writing and event recording atomic, with `ACTIVE` uniqueness enforced in the database.
+- Make version allocation, supersession, snapshot creation, receipt writing and event recording atomic, with head uniqueness per scope enforced in the database and the `CURRENT` state derived from stored timestamps rather than a mutable flag.
 - Keep every slice usable with no AI and no external provider available.
 
 No retention period, legal effect, fiscal validity, real price, ability to perform or approval authority is inferred by this PRD.
@@ -388,23 +426,27 @@ The highest stable seam is the public REST interface against PostgreSQL, followe
 Across the three slices, delivery proves:
 
 1. a shared Service Definition is created once, is visible to another Company of the same Workspace, and grants that Company nothing;
-2. an offering exists per (Company, Service Definition), is rejected as a duplicate, and is never readable by another Company;
-3. identical-content creation or republication returns `UNCHANGED`, writes a durable receipt, allocates no version and records no event; a conflicting definition code returns `SERVICE_CODE_CONFLICT`;
-4. a published Tariff Version and Pricing Rule Version carry immutable content and declared windows; supersession changes only status, `supersededAt` and `supersededByVersionId`, and no endpoint updates content;
-5. stale `expectedActiveVersionNumber` conflicts; concurrent publications leave exactly one `ACTIVE` version per scope;
-6. a calculation prices only declared versions: superseded, not-yet-effective, expired, cross-Company and unknown versions each return their named error and commit nothing, with no fallback selection;
-7. amounts match hand-computed decimal expectations, including a case where per-line `HALF_UP` differs from rounding an untruncated sum, and a maximum-magnitude case at 20 lines with 9-digit quantities and 4-decimal amounts that proves no overflow and no `Number` coercion;
-8. mixed-currency selection returns `MIXED_CURRENCY`;
-9. the stored trace alone reproduces the total, and recomputation from the referenced versions gives the same result;
-10. replay returns the original snapshot after the used versions are superseded and after their window closes, while a revoked actor's replay returns a safe denial and no result;
-11. authority revalidation precedes replay, and replay precedes stale evaluation, proven by a revoked-authority retry and a stale-configuration retry;
-12. a calculation cannot commit against a version superseded by a concurrent publication, and vice versa;
-13. the snapshot's Client projection matches the existing commercial projection, is omitted for a reader who may not see the Client, is absent when no association exists, and the original association is never modified;
-14. exactly one attributed event per committed command, with no amount, rate, quantity or label in metadata, and no pricing event visible through any Activity read surface;
-15. every authority pair is enforced independently in both directions, and no existing bundle or assignment grants any new bundle implicitly;
-16. direct-identifier denial and no list, count, amount or event leakage across Company and Workspace boundaries;
-17. snapshot immutability: no endpoint edits, approves, deletes or re-points a stored snapshot, and none changes any provenance;
-18. usable empty, validation, stale, not-effective, denial and success states at desktop and narrow width, with the provisional marker present wherever an amount is rendered.
+2. an offering exists per (Company, Service Definition, provenance), is never readable by another Company, and its illustrative instance is marked non-operational while the record keeps its durable meaning;
+3. identical-content creation or republication returns `UNCHANGED`, writes a durable receipt, allocates no version and records no event; a definition code that exists with another name or description returns `SERVICE_CODE_CONFLICT`, and an existing offering resubmitted with a different commercial label returns `OFFERING_CONFLICT`, both as safe `409` responses that commit nothing;
+4. a published Tariff Version and Pricing Rule Version carry immutable content and declared windows; supersession writes only `supersededByVersionId`, `supersededAt` and `supersededFrom`, and no endpoint updates content;
+5. stale `expectedActiveVersionNumber` conflicts; concurrent publications leave exactly one head per scope; back-dating and a declared gap are rejected, the latter as `EFFECTIVE_WINDOW_GAP`;
+6. publishing a successor with a future `effectiveFrom` leaves the predecessor `CURRENT` and priceable until that instant, after which the same read yields the successor with no job, no manual step and no interval in which pricing is impossible;
+7. a calculation prices only declared versions: taken-over, not-yet-effective, expired, cross-Company and unknown versions each return their named error and commit nothing, with no fallback selection;
+8. amounts match hand-computed decimal expectations, including a case where per-line `HALF_UP` differs from rounding an untruncated sum, and a maximum-magnitude case at 20 lines with 9-digit quantities and 4-decimal amounts that proves no overflow and no `Number` coercion;
+9. every grammar rejects leading zeros identically, proven for `00`, `01` and `00.50` as a tax rate as well as an amount and a quantity, while `0`, `0.50` and `100.00` remain valid;
+10. mixed-currency selection returns `MIXED_CURRENCY`;
+11. the stored trace alone reproduces the total, and recomputation from the referenced versions gives the same result;
+12. replay returns the original snapshot after the used versions are taken over and after their window closes, while a revoked actor's replay returns a safe denial and no result;
+13. a replay and a stored-snapshot read by an actor who kept the pricing bundle but lost read access to the target Opportunity return the safe denial, not the recorded snapshot;
+14. authority and target-visibility revalidation precede replay, and replay precedes stale evaluation, proven by a revoked-authority retry, a revoked-target-visibility retry and a stale-configuration retry;
+15. a calculation cannot commit against a version taken over by a concurrent publication, and vice versa;
+16. the snapshot's Client projection matches the existing commercial projection, is omitted for a reader who may not see the Client, is absent when no association exists, and the original association is never modified;
+17. exactly one attributed event per committed command, with no amount, rate, quantity or label in metadata, and no pricing event visible through any Activity read surface;
+18. every authority pair is enforced independently in both directions, and no existing bundle or assignment grants any new bundle implicitly;
+19. direct-identifier denial and no list, count, amount or event leakage across Company and Workspace boundaries;
+20. snapshot immutability: no endpoint edits, approves, deletes or re-points a stored snapshot, and none changes any provenance;
+21. no endpoint converts an illustrative record into a real one, and no provenance value is editable;
+22. usable empty, validation, stale, not-effective, denial and success states at desktop and narrow width, with the provisional marker present wherever an amount is rendered.
 
 ## 19. Evidence dependencies and readiness
 
