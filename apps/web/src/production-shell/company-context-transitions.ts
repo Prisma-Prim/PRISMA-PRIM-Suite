@@ -53,6 +53,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_project_assignment.revoked'
     | 'company_commercial_intake_assignment.granted'
     | 'company_commercial_intake_assignment.revoked'
+    | 'company_commercial_activity_reader_assignment.granted'
+    | 'company_commercial_activity_reader_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -121,7 +123,8 @@ export interface OrdinaryActivityLogEvent {
           | 'Company Document Project Organizer'
           | 'Company Document Registrar'
           | 'Company Project Access'
-          | 'Company Commercial Intake';
+          | 'Company Commercial Intake'
+          | 'Company Commercial Activity Reader';
       }
     | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
@@ -179,11 +182,36 @@ export interface DocumentProjectActivityLogEvent {
   };
   metadata: Record<string, never>;
 }
+/**
+ * The authorized Company projection of a recorded commercial event. It never
+ * carries request text, source label, subject, next action or Opportunity
+ * scope.
+ */
+export interface CommercialActivityLogEvent {
+  id: string;
+  action:
+    | 'client_request.created'
+    | 'opportunity.created'
+    | 'opportunity.next_action.updated';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target:
+    | { type: 'client_request'; clientRequestId: string; companyId: string }
+    | {
+        type: 'opportunity';
+        opportunityId: string;
+        clientRequestId: string;
+        companyId: string;
+      };
+  metadata: Record<string, never>;
+}
+
 export type ActivityLogEvent =
   | TaskEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
+  | CommercialActivityLogEvent
   | DocumentRegisteredActivityLogEvent
   | DocumentCorrectedActivityLogEvent;
 

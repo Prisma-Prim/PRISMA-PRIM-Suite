@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  commercialActivityPermissionsFor,
+  commercialIntakePermissionsFor,
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
   type DocumentPermissionSetVersion,
@@ -55,6 +57,27 @@ describe('Company Document Registrar permission sets', () => {
     'fails closed for an unsupported version: %s',
     (version) => {
       expect(documentPermissionsFor(version)).toEqual([]);
+    },
+  );
+});
+
+describe('Company Commercial Activity Reader permission sets', () => {
+  it('resolves exactly the captured v1 read permission', () => {
+    expect(commercialActivityPermissionsFor('v1')).toEqual([
+      'commercial.activity.read',
+    ]);
+  });
+
+  it('is never conferred by Commercial Intake v1', () => {
+    expect(commercialIntakePermissionsFor('v1')).not.toContain(
+      'commercial.activity.read',
+    );
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2'])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(commercialActivityPermissionsFor(version)).toEqual([]);
     },
   );
 });
