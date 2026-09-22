@@ -547,17 +547,16 @@ function isClient(value: unknown): value is ClientChoice {
     typeof value.displayName === 'string'
   );
 }
+function isTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
 function isProject(value: unknown): value is ProjectView {
   return (
     isRecord(value) &&
-    [
-      'id',
-      'companyId',
-      'clientAccountId',
-      'clientDisplayName',
-      'title',
-      'createdAt',
-    ].every((key) => typeof value[key] === 'string') &&
+    ['id', 'companyId', 'clientAccountId', 'clientDisplayName', 'title'].every(
+      (key) => typeof value[key] === 'string',
+    ) &&
+    isTimestamp(value.createdAt) &&
     value.status === 'preparatory' &&
     (value.clientDossierId === undefined ||
       typeof value.clientDossierId === 'string')

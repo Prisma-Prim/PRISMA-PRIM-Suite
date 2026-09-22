@@ -35,6 +35,161 @@ const applicationDateTime = (value: string) =>
     timeStyle: 'short',
   }).format(new Date(value));
 
+const loadOrSaveError =
+  'The Project could not be loaded or saved. Please try again.';
+const validProject = {
+  id: 'project',
+  title: 'ISO preparation',
+  status: 'preparatory',
+  companyId: 'company',
+  clientAccountId: 'client',
+  clientDisplayName: 'Synthetic Client',
+  createdAt: '2026-09-19T08:00:00.000Z',
+};
+
+it('reports the existing load error when a listed Project carries a malformed registration time', async () => {
+  document.documentElement.lang = 'en';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [{ ...validProject, createdAt: 'not-a-timestamp' }],
+      ),
+    ),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(screen.queryByText(/Registered:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'Project access and Client read access are required for this Company.',
+    ),
+  ).not.toBeInTheDocument();
+});
+
+it('keeps the loaded Projects and reports the existing error when a reopened Project carries a malformed registration time', async () => {
+  document.documentElement.lang = 'en';
+  let malformed = true;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/api/clients')
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      if (url === '/api/projects/project')
+        return Response.json(
+          malformed
+            ? { ...validProject, createdAt: '2026-13-45T99:00:00.000Z' }
+            : validProject,
+        );
+      return Response.json([validProject]);
+    }),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const row = await screen.findByRole('button', {
+    name: 'ISO preparation Client: Synthetic Client',
+  });
+  fireEvent.click(row);
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(
+    screen.queryByRole('article', { name: validProject.title }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'Project access and Client read access are required for this Company.',
+    ),
+  ).not.toBeInTheDocument();
+
+  malformed = false;
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  );
+  const detail = await screen.findByRole('article', {
+    name: validProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(validProject.createdAt)}`,
+  );
+});
+
+it('keeps the create draft and the request key when the created Project carries a malformed registration time', async () => {
+  document.documentElement.lang = 'en';
+  const keys: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') {
+        const key = new Headers(options.headers).get('idempotency-key');
+        if (key) keys.push(key);
+        return Response.json(
+          keys.length === 1 ? { ...validProject, createdAt: '' } : validProject,
+          { status: 201 },
+        );
+      }
+      return Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [],
+      );
+    }),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.change(await screen.findByLabelText('Project title'), {
+    target: { value: validProject.title },
+  });
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(screen.getByLabelText('Project title')).toHaveValue(
+    validProject.title,
+  );
+  expect(screen.getByLabelText('Client')).toHaveValue('client');
+  expect(screen.queryByText(/Registered:/)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+  const detail = await screen.findByRole('article', {
+    name: validProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(validProject.createdAt)}`,
+  );
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+});
+
 it('shows the persisted registration time of each loaded Project row and of the reopened detail', async () => {
   document.documentElement.lang = 'en';
   const listedProject = {
