@@ -31,6 +31,8 @@ type Command = {
 type Mutation =
   | { kind: 'idle' | 'blocked' }
   | { kind: 'pending' | 'uncertain'; command: Command };
+// The local query exists only while the selector is open, so closing it removes the query with it.
+type Selector = { load: Load; query: string };
 
 export function ProjectDocuments(props: Props) {
   const authority = JSON.stringify([
@@ -50,7 +52,7 @@ function ProjectDocumentSession({
 }: Props) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const [selector, setSelector] = useState<Load | null>(null);
+  const [selector, setSelector] = useState<Selector | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [feedback, setFeedback] = useState('');
   const [generation, setGeneration] = useState(0);
@@ -116,7 +118,7 @@ function ProjectDocumentSession({
     const controller = new AbortController();
     pending.current?.abort();
     pending.current = controller;
-    setSelector({ kind: 'loading' });
+    setSelector({ load: { kind: 'loading' }, query: '' });
     try {
       const result = await fetchListing(true, controller);
       if (!controller.signal.aborted) {
@@ -124,10 +126,11 @@ function ProjectDocumentSession({
           setLoad(result);
           setSelector(null);
           setMutation({ kind: 'blocked' });
-        } else setSelector(result);
+        } else setSelector({ load: result, query: '' });
       }
     } catch {
-      if (!controller.signal.aborted) setSelector({ kind: 'error' });
+      if (!controller.signal.aborted)
+        setSelector({ load: { kind: 'error' }, query: '' });
     }
   }
   async function run(command: Command) {
@@ -215,6 +218,14 @@ function ProjectDocumentSession({
       key: crypto.randomUUID(),
     });
   }
+  // The query narrows the already authorized eligible rows only; linked rows stay complete.
+  const query = selector ? selector.query.trim().toLowerCase() : '';
+  function matchesQuery(row: Association) {
+    return (
+      row.document.title.toLowerCase().includes(query) ||
+      row.document.purpose.toLowerCase().includes(query)
+    );
+  }
   function renderState(state: Load, eligible: boolean) {
     if (state.kind !== 'ready')
       return (
@@ -226,14 +237,20 @@ function ProjectDocumentSession({
               : copy.error}
         </p>
       );
+    const rows = eligible
+      ? state.listing.documents.filter(matchesQuery)
+      : state.listing.documents;
     return (
       <>
         {!state.listing.mutable && <p>{copy.immutable}</p>}
         {state.listing.documents.length === 0 && (
           <p>{eligible ? copy.noEligible : copy.empty}</p>
         )}
+        {state.listing.documents.length > 0 && rows.length === 0 && (
+          <p>{copy.noMatch}</p>
+        )}
         <ul className={isPrisme ? 'project-document-list' : undefined}>
-          {state.listing.documents.map((row) => (
+          {rows.map((row) => (
             <li key={row.document.id}>
               <h5>{row.document.title}</h5>
               <p>{row.document.purpose}</p>
@@ -293,7 +310,25 @@ function ProjectDocumentSession({
           aria-label={copy.choose}
           className={isPrisme ? 'project-document-selector' : undefined}
         >
-          {renderState(selector, true)}
+          {selector.load.kind === 'ready' &&
+            selector.load.listing.documents.length > 0 && (
+              <label
+                className={isPrisme ? 'project-document-search' : undefined}
+              >
+                {copy.searchLabel}
+                <input
+                  type="search"
+                  value={selector.query}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setSelector((current) =>
+                      current ? { ...current, query: next } : current,
+                    );
+                  }}
+                />
+              </label>
+            )}
+          {renderState(selector.load, true)}
           <button
             type="button"
             disabled={busy}
