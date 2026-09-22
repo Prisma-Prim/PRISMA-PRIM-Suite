@@ -417,6 +417,61 @@ describe('CommercialIntakeWorkspace', () => {
     );
   });
 
+  it('reports a list page with an unusable capture time instead of rendering it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          items: [{ ...listItem(0), capturedAt: 'not-a-timestamp' }],
+        }),
+      ),
+    );
+
+    renderWorkspace();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+    expect(
+      screen.getByRole('button', { name: commercialIntakeCopy.retry }),
+    ).toBeVisible();
+    expect(screen.queryByText('Client Request 0')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['capturedAt', { capturedAt: 'not-a-timestamp' }],
+    ['reportedReceivedAt', { reportedReceivedAt: '31/12/2026' }],
+  ])(
+    'reports a reopened detail with an unusable %s instead of rendering it',
+    async (_field, malformed) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(Response.json({ items: [listItem(0)] }))
+          .mockResolvedValueOnce(
+            Response.json({ ...createdRequest, ...malformed }),
+          ),
+      );
+
+      renderWorkspace();
+      fireEvent.click(
+        await screen.findByRole('button', { name: requestButton(0) }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        commercialIntakeCopy.error,
+      );
+      // The rejected detail never replaces the loaded list.
+      expect(
+        screen.queryByText('Client Request detail'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('list', { name: 'Client Requests' }),
+      ).toBeVisible();
+    },
+  );
+
   it('keeps entered fields after correctable validation fails', async () => {
     vi.stubGlobal(
       'fetch',

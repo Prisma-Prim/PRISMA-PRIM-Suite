@@ -953,7 +953,7 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     isRecord(value) &&
     typeof value.id === 'string' &&
     isNullableString(value.subject) &&
-    typeof value.capturedAt === 'string' &&
+    isDisplayableTimestamp(value.capturedAt) &&
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&
@@ -978,11 +978,12 @@ function isClientRequest(value: unknown): value is ClientRequest {
     typeof value.companyId === 'string' &&
     value.sourceKind === 'MANUAL_TEXT' &&
     isNullableString(value.sourceLabel) &&
-    isNullableString(value.reportedReceivedAt) &&
+    (value.reportedReceivedAt === null ||
+      isDisplayableTimestamp(value.reportedReceivedAt)) &&
     isNullableString(value.subject) &&
     typeof value.originalText === 'string' &&
     typeof value.capturedByWorkspaceMembershipId === 'string' &&
-    typeof value.capturedAt === 'string' &&
+    isDisplayableTimestamp(value.capturedAt) &&
     value.version === 1 &&
     isInitialOpportunity(value.initialOpportunity) &&
     (value.clientReference === undefined ||
@@ -1032,6 +1033,14 @@ function isClientReference(value: unknown): boolean {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
+}
+
+// Every timestamp this workspace hands to the shared application formatter is
+// proved parsable here, at the response boundary that owns it. An unusable
+// instant reaches the existing load or feedback error instead of throwing
+// while the list or detail renders.
+function isDisplayableTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
