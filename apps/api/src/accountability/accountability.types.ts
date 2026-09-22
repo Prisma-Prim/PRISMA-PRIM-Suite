@@ -8,7 +8,9 @@ import type {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
+  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
+import type { CommercialActivityAction } from './commercial-activity-projection.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -93,7 +95,9 @@ export type CanonicalActivityEvent =
         | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
         | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
         | 'company_commercial_intake_assignment.granted'
-        | 'company_commercial_intake_assignment.revoked';
+        | 'company_commercial_intake_assignment.revoked'
+        | 'company_commercial_activity_reader_assignment.granted'
+        | 'company_commercial_activity_reader_assignment.revoked';
       target: {
         type: 'company_role_assignment';
         assignmentId: string;
@@ -109,7 +113,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
       };
       transitionId: string;
     }
@@ -170,6 +175,8 @@ export interface OrdinaryActivityLogEvent {
     | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
     | 'company_commercial_intake_assignment.granted'
     | 'company_commercial_intake_assignment.revoked'
+    | 'company_commercial_activity_reader_assignment.granted'
+    | 'company_commercial_activity_reader_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
     | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
     | typeof CLIENT_CORRECTED_ACTION;
@@ -230,7 +237,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
     | Record<string, never>;
@@ -292,11 +300,37 @@ export interface DocumentProjectActivityEvent {
   };
   metadata: Record<string, never>;
 }
+/**
+ * The authorized Company projection of an already recorded commercial event.
+ * It carries the canonical action, the responsible Company, the existing actor
+ * label, the server time and a target reference only.
+ */
+export interface CommercialActivityEvent {
+  id: string;
+  action: CommercialActivityAction;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target:
+    | {
+        type: 'client_request';
+        clientRequestId: string;
+        companyId: string;
+      }
+    | {
+        type: 'opportunity';
+        opportunityId: string;
+        clientRequestId: string;
+        companyId: string;
+      };
+  metadata: Record<string, never>;
+}
+
 export type ActivityLogEvent =
   | TaskEvent
   | DocumentProjectActivityEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent
+  | CommercialActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
   | ProjectCreatedActivityEvent;

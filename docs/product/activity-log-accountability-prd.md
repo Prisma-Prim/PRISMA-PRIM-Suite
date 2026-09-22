@@ -121,6 +121,34 @@ Project identifier or before/after values. Projection requires the same current
 Document and original Client visibility as registration history and participates
 in the existing newest-first bounded page.
 
+For the approved [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306),
+one committed material update creates exactly one
+`opportunity.next_action.updated` event in the same transaction as the new
+next-action value, the incremented Opportunity version and the durable command
+receipt. The event retains the acting membership, server-authoritative time,
+responsible Company and Opportunity target; its metadata carries the resulting
+version only and contains no previous or new next-action text, request text,
+subject or Client-confidential content. Rejected commands, safe denials,
+byte-identical no-op updates and exact committed replays create no event. The
+owning commercial PRD stores the next action exactly as submitted and applies no
+trimming or normalization, so a no-op here is a byte-identical resubmission
+rather than the normalized comparison used by Tasks. Recording this event grants
+no read of it.
+
+The separately approved [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
+owns the first authorized projection of commercial events, which the intake
+slice deliberately left unprojected. A commercial event appears only inside the
+existing dated, bounded page, in the server-validated active Company that owns
+it, for an actor holding the independent opt-in commercial Activity bundle who
+also retains current read authority for that event's Request or Opportunity
+target. Partial authority and an absent active Company omit the event rather
+than widening it to Workspace scope. The projection returns the canonical action,
+responsible Company, existing actor label, server time and a target reference
+that is linked only where the target is already readable; it returns no request
+text, source label, subject, next-action text, Opportunity scope or
+Client-confidential content, and it adds no commercial filter, export or
+event-mutation route.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
@@ -149,6 +177,11 @@ Retention and authorized export require a later policy based on business and leg
 - The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, `company_context_assignment.revoked`, `company_director_client_assignment.granted`, `company_director_client_assignment.revoked`, `client.created`, `client_company_relationship.established`, and `client.corrected`.
 - The approved but not yet delivered duplicate-resolution actions are `client.union_confirmed` and `client.union_reversed`; one logical cross-Company action has one internal operation identifier plus one Company-scoped projection per affected Company, each with a different unpredictable public projection reference and no public cross-Company correlation key.
 - Client target labels require an applicable Client read permission in addition to the existing Activity Log visibility boundary. A duplicate-resolution projection uses its own redacted Company-scoped `client_union_operation` target representation; restricted detail additionally requires an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every affected Company; the shared bundle label and legacy `v1` are insufficient. Client–Company Relationship, correction and duplicate-resolution projections are returned only within the server-validated active Company scope; without an active Company, Company-scoped Client events are omitted.
+- The delivered commercial intake actions `client_request.created` and
+  `opportunity.created` are recorded but not yet projected; the approved
+  provisional next-action slice adds `opportunity.next_action.updated`, and the
+  approved provisional commercial Activity read adds their authorized Company
+  projection under a separate opt-in permission.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
@@ -162,6 +195,12 @@ Retention and authorized export require a later policy based on business and leg
 - The #66 public Company seam proves that one successful provider-Company registration creates one attributable event and failed, retried, or unauthorized attempts do not create false or duplicate success history.
 - The #141 Client REST seam proves one `client.created` event and one event for each newly established Client–Company Relationship; retries, concurrent attachment and rolled-back mutations do not duplicate or fabricate success history, and another Company's relationship event is not returned.
 - PR #147 proves attributable `client.corrected` history within the responsible Company scope.
+- The next-action slice proves exactly one `opportunity.next_action.updated`
+  event per material update, version-only metadata, and no event for rejected,
+  no-op or replayed commands. The commercial Activity read slice proves that the
+  opt-in bundle plus current target read are both required, that partial
+  authority and another Company or Workspace disclose no event, count or label,
+  and that projection adds no mutation route.
 - The next duplicate-resolution slice must prove exactly one union or reversal projection per affected Company linked server-side to one internal operation, distinct unpredictable public projection references across Companies, no internal operation identifier, actor identity, exact/coarse action time or cross-scope ordering key in redacted reads, independently generated Company-local ordering, complete affected-Company authorization before shared correlation/actor/time is returned, and no success projection for blocked identifiers, disagreement, stale state, cancellation or replay.
 
 ## 12. Acceptance journey
@@ -184,4 +223,4 @@ Technical dependencies:
 
 ## 14. Readiness
 
-Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds the approved Company-context assignment grant and revocation events; [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds Client creation and Client–Company Relationship establishment; and issue #146 / PR #147 adds Company Director Client assignment and Client correction events. After #148 normalization, one next vertical slice may deliver `client.union_confirmed` and `client.union_reversed`. Every other event family remains blocked until its owning capability PRD and permissions are ready.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds the approved Company-context assignment grant and revocation events; [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds Client creation and Client–Company Relationship establishment; and issue #146 / PR #147 adds Company Director Client assignment and Client correction events. After #148 normalization, one next vertical slice may deliver `client.union_confirmed` and `client.union_reversed`. After #306 normalization, one vertical slice may deliver `opportunity.next_action.updated` and a separate vertical slice may deliver the authorized Company projection of commercial intake events; the two are independent in either order. Every other event family remains blocked until its owning capability PRD and permissions are ready.

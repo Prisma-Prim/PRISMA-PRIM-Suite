@@ -133,6 +133,52 @@ transition. Runtime authorization requires the live v2 assignment and all read
 prerequisites; null or unknown versions fail closed. No other Client, Project,
 Workspace or Company permission substitutes for correction authority.
 
+The [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306)
+adds `commercial.opportunity.next_action.update` only through captured
+**Company Commercial Intake v2**. Intake v1 remains exactly the four read and
+create permissions decided by the
+[commercial PRD](release-3-commercial-workflow-prd.md#82-explicit-permission);
+existing v1 assignments never expand in place and receive no migration backfill
+grant. An administrator with `company.assignment.manage` issues a fresh grant
+after explicit revocation to capture v2, whose permission set is v1 plus that
+update permission, and the existing attributable Company assignment
+grant/revoke commands record the transition. Runtime authorization
+evaluates the captured version, never a mutable bundle constant or role-name
+string; null or unknown versions fail closed. The bundle grants no Client,
+Company context, assignment administration, pricing, Offer, Contract, approval,
+Activity Log or cross-Company authority, and holding it neither makes the actor
+the responsible actor nor permits any other Opportunity mutation.
+
+The [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
+adds **Company Commercial Activity Reader v1**, containing exactly
+`commercial.activity.read`. An administrator with `company.assignment.manage`
+explicitly grants or revokes the captured v1 bundle for an active same-Workspace
+membership and active Company through the existing Company assignment
+administration. It is an independent opt-in bundle: no existing bundle,
+assignment or backfill confers it, Commercial Intake v1 and v2 do not include it,
+and unknown captured versions fail closed. It authorizes no mutation and no
+Request, Opportunity, Client or cross-Company read; its holder sees a commercial
+event only when they independently retain current read authority for that event's
+commercial target in the server-validated active Company.
+
+That bundle's assignment lifecycle is exactly
+`company_commercial_activity_reader_assignment.granted` and
+`company_commercial_activity_reader_assignment.revoked`, recorded through the
+existing Company assignment administration and visible under its existing
+administration boundary rather than through any commercial permission. Both
+actions follow the canonical Company-scoped permission-transition convention
+already used by the delivered Company assignment bundles: the acting
+administrator's membership, server-authoritative time, the responsible Company
+scope, a `company_role_assignment` target identifying the affected assignment,
+Company, target membership and Internal User, and metadata limited to the bundle
+label. No permission name, captured version, previous state or other payload is
+added. Exactly one event is recorded per actual assignment state change; a grant
+that repeats an already active assignment, a revocation of an already inactive
+assignment, an exact idempotent replay of either command and every denied or
+failed attempt record none. These events attribute the transition only; neither
+recording nor reading them confers `commercial.activity.read` or any commercial
+read, and the bundle's permission semantics above are unchanged.
+
 Access owns a narrow eligible-assignee query for the manager's authorized Project
 scope. It filters active Internal Users and active same-Workspace memberships by
 effective captured Company-context, Project-read, Task-read and Client-read grants,
@@ -175,6 +221,7 @@ Existing Internal Users receive explicit Workspace Memberships, and existing Act
 - Database constraint tests reject cross-Workspace relationships.
 - Issue #141 uses REST/PostgreSQL and browser seams to prove that the bootstrap Workspace Owner can create one minimal Workspace Client, relate the same identifier to two active Companies deliberately, and receive no other-Company relationship or activity metadata.
 - The next duplicate-resolution slice proves that authorization covers every affected Company as defined by the Shared Client PRD, and that missing, stale, inactive or partial authority denies without revealing hidden activity.
+- The commercial Activity Reader slice proves that one committed grant records exactly one `company_commercial_activity_reader_assignment.granted` event and one committed revocation records exactly one `company_commercial_activity_reader_assignment.revoked` event, each attributed to the acting administrator's membership with server time, Company scope, the `company_role_assignment` target and bundle-label-only metadata; that a repeated grant, a repeated revocation, an exact replay and a denied attempt record none; that the captured version stored by the grant is `v1`; and that these events remain visible only under the existing Company assignment administration boundary while conferring no commercial read.
 
 ## 13. Acceptance journey
 
