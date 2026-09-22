@@ -215,6 +215,8 @@ R3B–R3D later add deterministic pricing, provenance propagation, version immut
 
 R3A1 excludes file uploads, provider ingestion, AI Analysis, Client creation or relationship attachment, Workspace triage, editing, status transitions, configurable stages, reassignment, advanced search, bulk actions, pricing, Offers, Contracts, Project creation, dashboards and external messages.
 
+Sections 16 and 17 decide two separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself.
+
 Release 3 excludes mass marketing automation, a universal CRM or CPQ engine, AI-determined prices or approvals, an internal qualified-signature service and a Client portal.
 
 ## 15. Evidence dependencies and readiness
@@ -226,3 +228,97 @@ Iurie validates the demonstrated workflow and first-tenant configuration once th
 Later slices name only the evidence they consume. Illustrative, versioned inputs may support a decided reversible implementation slice and its complete internal workflow when provenance remains visible at every step, simulated evidence is explicit and no real external or operational authority is produced. Real business evidence remains required before affected Tariffs, calculations, Templates, clauses, approval thresholds, numbering or generated artifacts can be approved or used operationally.
 
 No statement here claims that Dan approved the exact provisional rules, or that Iurie supplied the missing materials or approved illustrative values. Live GitHub trackers own current ticket readiness and delivery status.
+
+## 16. Approved provisional Opportunity next-action update (#306)
+
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides the only Opportunity mutation permitted after R3A1; every other edit, transition and reassignment stays excluded.
+
+### 16.1 Observable outcome
+
+An authorized user working in a server-validated active Company opens a Company-owned Request detail, replaces the next action of its Opportunity and receives the stored new text with an incremented Opportunity version. The Request detail and the bounded active-Company list show the new next action after reload and after a process restart. Nothing else about the Request, the Opportunity or the Client association changes.
+
+### 16.2 Explicit permission
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Intake v2**, whose permission set is v1 plus `commercial.opportunity.next_action.update`. Existing v1 assignments never expand in place; only an explicit revocation followed by a fresh grant captures v2, and null or unknown captured versions fail closed.
+
+Authority to update is not ownership. Any holder of the captured v2 bundle in the responsible Company may update the next action whether or not they are the responsible actor, and the command never transfers responsibility, changes the durable status, assigns a sales stage, reassigns the Opportunity or grants Client, pricing, Offer, Contract, administration or Activity Log authority. The R3A1 rule that the creator remains the responsible actor is preserved unchanged.
+
+### 16.3 Input, immutability and server-owned fields
+
+The command accepts exactly one business field, the next action, under the R3A1 rule: required, 1–500 characters, at least one non-whitespace character, stored exactly as submitted without trimming or normalization. The command carries the Opportunity identifier, the observed Opportunity version and an idempotency key.
+
+Original request text, source kind, source label, reported received time, subject, Opportunity title, scope, status, responsible actor, Client association, Company, Workspace and capture time remain immutable through this command. The server owns the resulting version, the updating actor membership and the update time; a client never submits them.
+
+The Request detail read returns the current Opportunity version so an authorized user can supply it; the Opportunity version stops being a fixed value while the Request version stays fixed. No separate Opportunity read route is introduced.
+
+### 16.4 Expected version, idempotent receipt and concurrency
+
+A material update commits the new next action, the incremented Opportunity version, the durable command receipt and the required Activity event in one transaction. A failed validation, safe denial, stale version or persistence conflict commits none of them.
+
+The observed version must equal the current Opportunity version. A mismatch returns a safe conflict, changes nothing and requires an explicit reload before retrying. Concurrent updates on the same observed version allow at most one material outcome.
+
+The idempotency key is scoped to the Workspace, Company and acting membership. Its fingerprint covers the target Opportunity, the observed version and the next-action text exactly as submitted. An exact retry revalidates the current membership, Company context, captured bundle version and target visibility before returning the original receipt without repeating any write; revoked authority returns the normal safe denial and no new event. The exact retry is resolved before its now-stale observed version is rejected. Reusing the key with any different input returns a safe conflict.
+
+A submitted next action byte-identical to the stored value is a no-op. It must still pass current authorization, target visibility and expected-version checks. It stores an unchanged durable receipt at the same version without an Activity event. Exact no-op replay returns that receipt after current-authority revalidation even if another command has since changed the Opportunity; changed reuse of its key conflicts. A receipt confirms a past command result, not the current state, which is refreshed separately.
+
+Authorization is serialized with relevant membership suspension and assignment revocation through the existing Access boundary. This command does not mutate or newly bind the Client association and requires no additional Client read grant; all responses retain the existing permission-filtered optional Client projection.
+
+### 16.5 Activity and history
+
+One committed material update records exactly one `opportunity.next_action.updated` event, attributed to the acting membership and scoped to the responsible Company. Its metadata contains the resulting Opportunity version only; it contains no previous or new next-action text, request text, subject or Client-confidential content. Failed commands, safe denials, no-ops and exact retries create no event. The [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy) owns the recording boundary and section 17 owns any authorized projection of that event.
+
+### 16.6 Error, permission and UX states
+
+- missing verified identity returns `401`;
+- inactive membership, a missing or legacy-version captured bundle, or an invalid active Company returns a safe `403` without hidden metadata;
+- an unknown, cross-Company or cross-Workspace Opportunity uses the same safe not-found response as Request detail, and no list, count, label or event discloses it;
+- an invalid next action returns field-specific validation without persistence;
+- a stale observed version and a changed idempotency payload each return a safe conflict.
+
+The form edits the next action from the Request detail, keeps the active Company and immutable source fields visible, preserves the entered value after a correctable validation error, preserves the original payload, observed version and key for an explicit retry after an uncertain outcome, and requires an explicit reload after a conflict. Loss of update authority clears the edit draft and any pending command; read-only detail remains only if current read authority is still valid. Broader Company, Workspace, membership or session invalidation clears scoped content and rejects late responses. Loading, denied, missing, conflict and narrow-screen states are explicit and inherit the UX PRD.
+
+### 16.7 Testing and acceptance
+
+The highest stable seam is the public REST interface against PostgreSQL, followed by the existing browser journey for the real edit and reload. The vertical issue proves authorized update and exact persistence; preserved immutable Request, source, title, scope, status and responsible actor; version increment and reload after restart; exactly one attributed event with version-only metadata; stale-version conflict, changed-payload conflict, exact-retry convergence after current-authority revalidation, and no-op behaviour; atomic rollback; cross-Company and cross-Workspace denial without leakage; and no implicit update authority from a legacy v1 assignment.
+
+### 16.8 Exclusions and unresolved ambiguity
+
+This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect.
+
+Unresolved and deliberately not presented as business fact: whether a commercial next action should remain free text or later become a structured, dated commitment owned by the Task capability; whether a future business rule should restrict updates to the responsible actor or a commercial manager; and whether the Opportunity should later expose its own next-action history outside the Activity Log. Iurie's validation under section 15 may correct any of these.
+
+## 17. Approved provisional Company commercial Activity read (#306)
+
+This section normalizes a second reversible MVP execution choice under the same provisional authority. It makes already-recorded commercial history readable without widening any commercial mutation.
+
+### 17.1 Observable outcome
+
+A user who holds the separate opt-in commercial Activity bundle in a server-validated active Company sees that Company's commercial intake events in the existing Activity Log page, newest first, inside its existing dated bounded page. A user without that bundle sees no commercial event, count, label or target reference, and the commercial capability itself gains no new reader.
+
+### 17.2 Explicit permission
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Activity Reader v1**, containing exactly `commercial.activity.read`. It is an independent opt-in bundle: it is neither added to Company Commercial Intake v1 or v2 nor granted by any existing bundle, assignment or migration backfill, and unknown captured versions fail closed. Holding it grants no Request, Opportunity, Client, pricing, Offer, Contract, administration or mutation authority, and no Workspace-wide or cross-Company history.
+
+### 17.3 Projection rule and returned content
+
+A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
+
+Only the known actions client_request.created, opportunity.created and, when implemented, opportunity.next_action.updated are eligible. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice can ship before the update event exists; it adds no producer or lifecycle for that event.
+
+A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target.
+
+### 17.4 Error, empty and permission states
+
+Missing verified identity returns `401`. An actor without the bundle receives the existing Activity Log response with no commercial event and no indication that commercial events exist. An empty authorized Company shows the existing empty state. No count, filter, ordering value or target label discloses another Company's commercial work, and no route creates, modifies or deletes an event.
+
+### 17.5 Testing, exclusions and unresolved ambiguity
+
+REST tests against PostgreSQL prove the opt-in grant, the target-visibility requirement, Company and Workspace isolation, ordering inside the existing page and the absence of sensitive metadata; the existing browser journey proves the readable history and its permission and empty states.
+
+This section excludes commercial filters, search, export, retention rules, Opportunity-level history views, Workspace-wide commercial consolidation and any event family outside this PRD.
+
+Unresolved and deliberately not presented as business fact: whether ordinary Company commercial users should eventually read commercial history without a separate grant, and which commercial actions Iurie will consider dispute-critical. The Activity Log PRD owns the still-open retention and export policy.
+
+### 17.6 Relationship to section 16
+
+Sections 16 and 17 are independently implementable in either order against the delivered R3A1 behaviour. Section 16 owns recording its update event; section 17 owns authorizing projection of commercial events already recorded. Neither depends on the other to be complete, and whichever merges second inherits the other's behaviour through the rules above rather than through a new contract.

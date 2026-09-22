@@ -133,6 +133,34 @@ transition. Runtime authorization requires the live v2 assignment and all read
 prerequisites; null or unknown versions fail closed. No other Client, Project,
 Workspace or Company permission substitutes for correction authority.
 
+The [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306)
+adds `commercial.opportunity.next_action.update` only through captured
+**Company Commercial Intake v2**. Intake v1 remains exactly the four read and
+create permissions decided by the
+[commercial PRD](release-3-commercial-workflow-prd.md#82-explicit-permission);
+existing v1 assignments never expand in place and receive no migration backfill
+grant. An administrator with `company.assignment.manage` issues a fresh grant
+after explicit revocation to capture v2, whose permission set is v1 plus that
+update permission, and the existing attributable Company assignment
+grant/revoke commands record the transition. Runtime authorization
+evaluates the captured version, never a mutable bundle constant or role-name
+string; null or unknown versions fail closed. The bundle grants no Client,
+Company context, assignment administration, pricing, Offer, Contract, approval,
+Activity Log or cross-Company authority, and holding it neither makes the actor
+the responsible actor nor permits any other Opportunity mutation.
+
+The [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
+adds **Company Commercial Activity Reader v1**, containing exactly
+`commercial.activity.read`. An administrator with `company.assignment.manage`
+explicitly grants or revokes the captured v1 bundle for an active same-Workspace
+membership and active Company through the existing Company assignment
+administration. It is an independent opt-in bundle: no existing bundle,
+assignment or backfill confers it, Commercial Intake v1 and v2 do not include it,
+and unknown captured versions fail closed. It authorizes no mutation and no
+Request, Opportunity, Client or cross-Company read; its holder sees a commercial
+event only when they independently retain current read authority for that event's
+commercial target in the server-validated active Company.
+
 Access owns a narrow eligible-assignee query for the manager's authorized Project
 scope. It filters active Internal Users and active same-Workspace memberships by
 effective captured Company-context, Project-read, Task-read and Client-read grants,
