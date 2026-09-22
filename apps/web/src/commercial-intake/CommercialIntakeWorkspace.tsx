@@ -410,15 +410,20 @@ export function CommercialIntakeWorkspace({
     }
   }
 
-  async function selectRequest(id: string): Promise<void> {
+  async function selectRequest(
+    id: string,
+    preserveConflict = false,
+  ): Promise<void> {
     if (!companyId) return;
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
     setPending(true);
     setFeedback('');
-    setNextActionEdit({ kind: 'idle' });
-    nextActionRetry.current = undefined;
+    if (!preserveConflict) {
+      setNextActionEdit({ kind: 'idle' });
+      nextActionRetry.current = undefined;
+    }
     try {
       const result = await request({
         path: `/commercial-intake/requests/${encodeURIComponent(id)}`,
@@ -428,9 +433,11 @@ export function CommercialIntakeWorkspace({
       if (controller.signal.aborted) return;
       if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
         return;
-      if (result.status === 200 && isClientRequest(result.body))
+      if (result.status === 200 && isClientRequest(result.body)) {
         setSelected(result.body);
-      else setFeedback(copy.error);
+        setNextActionEdit({ kind: 'idle' });
+        nextActionRetry.current = undefined;
+      } else setFeedback(copy.error);
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
     } finally {
@@ -687,7 +694,7 @@ export function CommercialIntakeWorkspace({
                     nextActionRetry.current = undefined;
                     setFeedback('');
                   },
-                  onReload: () => void selectRequest(selected.id),
+                  onReload: () => void selectRequest(selected.id, true),
                 }
               : undefined
           }

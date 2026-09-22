@@ -971,6 +971,47 @@ describe('CommercialIntakeWorkspace', () => {
     );
   });
 
+  it('keeps editing blocked when a conflict reload fails, until a valid detail reloads', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(
+        Response.json({ code: 'STALE_VERSION' }, { status: 409 }),
+      )
+      .mockResolvedValueOnce(Response.json({}, { status: 500 }))
+      .mockResolvedValueOnce(
+        Response.json(updatedRequest('Someone else moved first', 2)),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'My stale edit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await screen.findByRole('button', { name: 'Reload Request' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Client Request could not be loaded or saved. Please try again.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Reload Request' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Edit next action' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
+
+    expect(await screen.findByText('Version: 2')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Edit next action' }),
+    ).toBeVisible();
+  });
+
   it('preserves the payload, observed version and key for an explicit retry after an uncertain outcome', async () => {
     const fetchMock = vi
       .fn()
