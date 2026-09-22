@@ -17,6 +17,7 @@ import {
 import { projectCopy as copy } from './project.copy';
 import { projectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { formatApplicationDateTime } from '../presentation/date-time';
 import { taskCopy } from './task.copy';
 import './project.css';
 
@@ -349,6 +350,7 @@ export function ProjectWorkspace({
                     {copy.clientPrefix} {project.clientDisplayName}
                   </span>
                 </button>
+                <ProjectRegistrationTime registeredAt={project.createdAt} />
               </li>
             ))}
           </ul>
@@ -424,9 +426,10 @@ export function ProjectWorkspace({
             <div className="project-detail-overview">
               <p className="prisme-eyebrow">{copy.status}</p>
               <h3 id="selected-project-title">{selected.title}</h3>
-              <p>
+              <p className="project-detail-client">
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              <ProjectRegistrationTime registeredAt={selected.createdAt} />
               {selected.clientDossierId && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={selected.clientDossierId}
@@ -438,9 +441,10 @@ export function ProjectWorkspace({
             <>
               <h3 id="selected-project-title">{selected.title}</h3>
               <p>{copy.status}</p>
-              <p>
+              <p className="project-detail-client">
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              <ProjectRegistrationTime registeredAt={selected.createdAt} />
               {selected.clientDossierId && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={selected.clientDossierId}
@@ -510,6 +514,16 @@ export function ProjectWorkspace({
     </section>
   );
 }
+function ProjectRegistrationTime({ registeredAt }: { registeredAt: string }) {
+  return (
+    <p className="project-registered">
+      {copy.registeredPrefix}{' '}
+      <time dateTime={registeredAt}>
+        {formatApplicationDateTime(registeredAt)}
+      </time>
+    </p>
+  );
+}
 function ClientDossierButton({
   clientDossierId,
   onOpen,
@@ -533,17 +547,20 @@ function isClient(value: unknown): value is ClientChoice {
     typeof value.displayName === 'string'
   );
 }
+function isTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const timestamp = new Date(value);
+  return (
+    Number.isFinite(timestamp.valueOf()) && timestamp.toISOString() === value
+  );
+}
 function isProject(value: unknown): value is ProjectView {
   return (
     isRecord(value) &&
-    [
-      'id',
-      'companyId',
-      'clientAccountId',
-      'clientDisplayName',
-      'title',
-      'createdAt',
-    ].every((key) => typeof value[key] === 'string') &&
+    ['id', 'companyId', 'clientAccountId', 'clientDisplayName', 'title'].every(
+      (key) => typeof value[key] === 'string',
+    ) &&
+    isTimestamp(value.createdAt) &&
     value.status === 'preparatory' &&
     (value.clientDossierId === undefined ||
       typeof value.clientDossierId === 'string')

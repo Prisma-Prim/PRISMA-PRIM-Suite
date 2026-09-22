@@ -24,6 +24,12 @@
   font-weight: 400;
   opacity: 0.78;
 }
+.project-registered {
+  margin: 0.3rem 0 0;
+  color: inherit;
+  font-size: 0.85rem;
+  opacity: 0.78;
+}
 .project-workspace input,
 .project-workspace select {
   padding: 0.75rem;
@@ -115,6 +121,9 @@
   text-align: left;
   font-weight: 600;
 }
+.prisme-shell .project-workspace--prisme .project-list .project-registered {
+  padding-inline: 0.75rem;
+}
 .prisme-shell .project-workspace--prisme .project-search input {
   border: 1px solid var(--shell-line);
   border-radius: 6px;
@@ -165,9 +174,12 @@
   margin: 0.2rem 0 0.4rem;
   font-size: 1.25rem;
 }
-.prisme-shell .project-detail-overview p:last-child {
+.prisme-shell .project-detail-overview p.project-detail-client {
   margin: 0;
   color: var(--shell-muted);
+}
+.prisme-shell .project-detail-overview p.project-registered {
+  margin: 0.3rem 0 0;
 }
 @media (max-width: 650px) {
   .prisme-shell .project-workspace--prisme .project-registration {

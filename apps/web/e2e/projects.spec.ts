@@ -131,24 +131,52 @@ test('registers and reopens a Company preparatory Project after reload', async (
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
   await page.reload();
-  await page
-    .getByRole('button', {
-      name: `${project.title} Client: ${project.clientDisplayName}`,
-    })
-    .click();
+  const projectRow = page
+    .getByRole('list', { name: 'Projects' })
+    .getByRole('listitem')
+    .filter({ hasText: project.title });
+  const rowRegistration = projectRow.getByText('Registered:');
+  await expect(rowRegistration).toBeVisible();
+  await expect(rowRegistration.getByRole('time')).toHaveAttribute(
+    'datetime',
+    project.createdAt,
+  );
+  await expect(projectRow).not.toContainText(project.createdAt);
+  const [rowButtonBounds, rowRegistrationBounds] = await Promise.all([
+    projectRow.getByRole('button').boundingBox(),
+    rowRegistration.boundingBox(),
+  ]);
+  if (!rowButtonBounds || !rowRegistrationBounds)
+    throw new Error(
+      'The Project row and its registration time must be visible',
+    );
+  expect(rowRegistrationBounds.y).toBeGreaterThanOrEqual(
+    rowButtonBounds.y + rowButtonBounds.height,
+  );
+  await projectRow.getByRole('button').click();
   await expect(
     page.getByRole('heading', { name: project.title }),
   ).toBeVisible();
+  const projectDetail = page.getByRole('article', { name: project.title });
   await expect(
-    page
-      .getByRole('article', { name: project.title })
-      .getByText(`Client: ${client.displayName}`),
+    projectDetail.getByText(`Client: ${client.displayName}`),
   ).toBeVisible();
+  const detailRegistration = projectDetail.getByText('Registered:');
+  await expect(detailRegistration).toBeVisible();
+  await expect(detailRegistration.getByRole('time')).toHaveAttribute(
+    'datetime',
+    project.createdAt,
+  );
   await expect(
     page.getByText(
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path: testInfo.outputPath('projects-reopened.png'),
     fullPage: true,

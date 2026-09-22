@@ -25,7 +25,240 @@ const actor: ActorContext = {
     projectPermissions: ['project.read', 'project.create'],
   },
 };
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  document.documentElement.lang = '';
+  vi.unstubAllGlobals();
+});
+const applicationDateTime = (value: string) =>
+  new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+const loadOrSaveError =
+  'The Project could not be loaded or saved. Please try again.';
+const validProject = {
+  id: 'project',
+  title: 'ISO preparation',
+  status: 'preparatory',
+  companyId: 'company',
+  clientAccountId: 'client',
+  clientDisplayName: 'Synthetic Client',
+  createdAt: '2026-09-19T08:00:00.000Z',
+};
+
+it('reports the existing load error when a listed Project carries a non-instant registration time', async () => {
+  document.documentElement.lang = 'en';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [{ ...validProject, createdAt: '0' }],
+      ),
+    ),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(screen.queryByText(/Registered:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'Project access and Client read access are required for this Company.',
+    ),
+  ).not.toBeInTheDocument();
+});
+
+it('keeps the loaded Projects and reports the existing error when a reopened Project carries an impossible registration time', async () => {
+  document.documentElement.lang = 'en';
+  let malformed = true;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/api/clients')
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      if (url === '/api/projects/project')
+        return Response.json(
+          malformed
+            ? { ...validProject, createdAt: '2026-02-30T08:00:00.000Z' }
+            : validProject,
+        );
+      return Response.json([validProject]);
+    }),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const row = await screen.findByRole('button', {
+    name: 'ISO preparation Client: Synthetic Client',
+  });
+  fireEvent.click(row);
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(
+    screen.queryByRole('article', { name: validProject.title }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'Project access and Client read access are required for this Company.',
+    ),
+  ).not.toBeInTheDocument();
+
+  malformed = false;
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  );
+  const detail = await screen.findByRole('article', {
+    name: validProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(validProject.createdAt)}`,
+  );
+});
+
+it('keeps the create draft and the request key when the created Project carries a non-instant registration time', async () => {
+  document.documentElement.lang = 'en';
+  const keys: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') {
+        const key = new Headers(options.headers).get('idempotency-key');
+        if (key) keys.push(key);
+        return Response.json(
+          keys.length === 1
+            ? { ...validProject, createdAt: '2026' }
+            : validProject,
+          { status: 201 },
+        );
+      }
+      return Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [],
+      );
+    }),
+  );
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.change(await screen.findByLabelText('Project title'), {
+    target: { value: validProject.title },
+  });
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+
+  expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+  expect(screen.getByLabelText('Project title')).toHaveValue(
+    validProject.title,
+  );
+  expect(screen.getByLabelText('Client')).toHaveValue('client');
+  expect(screen.queryByText(/Registered:/)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+  const detail = await screen.findByRole('article', {
+    name: validProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(validProject.createdAt)}`,
+  );
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+});
+
+it('shows the persisted registration time of each loaded Project row and of the reopened detail', async () => {
+  document.documentElement.lang = 'en';
+  const listedProject = {
+    id: 'project',
+    title: 'ISO preparation',
+    status: 'preparatory',
+    companyId: 'company',
+    clientAccountId: 'client',
+    clientDisplayName: 'Synthetic Client',
+    createdAt: '2026-09-19T08:00:00.000Z',
+  };
+  const reopenedProject = {
+    ...listedProject,
+    createdAt: '2026-09-20T15:45:00.000Z',
+  };
+  const fetch = vi.fn(async (url: string) =>
+    Response.json(
+      url === '/api/clients'
+        ? [{ id: 'client', displayName: 'Synthetic Client' }]
+        : url === '/api/projects/project'
+          ? reopenedProject
+          : [listedProject],
+    ),
+  );
+  vi.stubGlobal('fetch', fetch);
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+
+  const row = within(
+    await screen.findByRole('list', { name: 'Projects' }),
+  ).getByRole('listitem');
+  expect(row).toHaveTextContent(
+    `Registered: ${applicationDateTime(listedProject.createdAt)}`,
+  );
+  expect(row).not.toHaveTextContent(listedProject.createdAt);
+  expect(row.querySelector('time')).toHaveAttribute(
+    'datetime',
+    listedProject.createdAt,
+  );
+  expect(within(row).getByRole('button').textContent).toBe(
+    'ISO preparation Client: Synthetic Client',
+  );
+  const readsAfterLoad = fetch.mock.calls.length;
+
+  fireEvent.click(
+    within(row).getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  );
+
+  const detail = await screen.findByRole('article', {
+    name: listedProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(reopenedProject.createdAt)}`,
+  );
+  expect(detail.querySelector('time')).toHaveAttribute(
+    'datetime',
+    reopenedProject.createdAt,
+  );
+  expect(fetch).toHaveBeenCalledTimes(readsAfterLoad + 1);
+});
 
 it('filters loaded Projects by visible title or Client without requesting again or changing server order', async () => {
   const projects = [
@@ -528,6 +761,7 @@ it('reuses a stable request key after an uncertain create result', async () => {
 });
 
 it('presents the existing preparatory Project detail in Prisme without changing its public controls', async () => {
+  document.documentElement.lang = 'en';
   const project = {
     id: 'project',
     title: 'ISO preparation',
@@ -564,9 +798,13 @@ it('presents the existing preparatory Project detail in Prisme without changing 
       name: `${project.title} Client: ${project.clientDisplayName}`,
     }),
   );
-  expect(
-    await within(workspace).findByRole('article', { name: project.title }),
-  ).toHaveClass('project-detail-card');
+  const detail = await within(workspace).findByRole('article', {
+    name: project.title,
+  });
+  expect(detail).toHaveClass('project-detail-card');
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(project.createdAt)}`,
+  );
   const tasksPanel = await within(workspace).findByRole('tabpanel', {
     name: 'Tasks',
   });
