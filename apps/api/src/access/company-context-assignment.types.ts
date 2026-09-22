@@ -6,6 +6,7 @@ import type {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
 } from './company-permissions.js';
 import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
 
@@ -16,7 +17,8 @@ export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
   | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
-  | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+  | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+  | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL;
 
 interface CompanyContextAssignmentRecordBase {
   id: string;
@@ -47,6 +49,10 @@ export type CompanyContextAssignmentRecord =
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+      permissionSetVersion: 'v1';
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     });
 

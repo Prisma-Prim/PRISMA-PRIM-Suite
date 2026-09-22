@@ -413,6 +413,10 @@ describe('App', () => {
         'granted Company Commercial Intake',
       'company_commercial_intake_assignment.revoked':
         'revoked Company Commercial Intake',
+      'company_service_catalogue_assignment.granted':
+        'granted Company Service Catalogue',
+      'company_service_catalogue_assignment.revoked':
+        'revoked Company Service Catalogue',
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
       'company_director_client_assignment.granted':

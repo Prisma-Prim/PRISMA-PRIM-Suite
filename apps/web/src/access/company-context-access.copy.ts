@@ -9,6 +9,7 @@ export const companyContextAccessCopy = {
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
   commercialIntakeBundle: 'Company Commercial Intake',
+  serviceCatalogueBundle: 'Company Service Catalogue',
   taskManagerBundle: 'Company Task Manager',
   taskManagerPrerequisites:
     'Company Task Manager v1 grants Task read and management only. Company context, Project read and Client read must already be authorized separately.',
@@ -46,6 +47,10 @@ export const companyContextAccessCopy = {
       'granted Company Commercial Intake',
     'company_commercial_intake_assignment.revoked':
       'revoked Company Commercial Intake',
+    'company_service_catalogue_assignment.granted':
+      'granted Company Service Catalogue',
+    'company_service_catalogue_assignment.revoked':
+      'revoked Company Service Catalogue',
     'company_context_assignment.granted': 'granted Company Context Access',
     'company_context_assignment.revoked': 'revoked Company Context Access',
     'company_director_client_assignment.granted':

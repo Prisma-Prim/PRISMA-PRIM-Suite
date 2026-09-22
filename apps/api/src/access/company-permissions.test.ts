@@ -2,9 +2,28 @@ import { describe, expect, it } from 'vitest';
 import {
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
+  serviceCataloguePermissionsFor,
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Service Catalogue permission sets', () => {
+  it('resolves the immutable v1 catalogue permissions only', () => {
+    expect(serviceCataloguePermissionsFor('v1')).toEqual([
+      'service.definition.read',
+      'service.definition.create',
+      'commercial.offering.read',
+      'commercial.offering.manage',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2'])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(serviceCataloguePermissionsFor(version)).toEqual([]);
+    },
+  );
+});
 
 describe('Company Director Client permission sets', () => {
   it.each([

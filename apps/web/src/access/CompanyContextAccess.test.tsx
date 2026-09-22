@@ -17,7 +17,9 @@ const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const companyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-const administration = (bundle?: 'context' | 'director' | 'commercial') => ({
+const administration = (
+  bundle?: 'context' | 'director' | 'commercial' | 'catalogue',
+) => ({
   members: [
     {
       workspaceMembershipId: memberId,
@@ -42,7 +44,9 @@ const administration = (bundle?: 'context' | 'director' | 'commercial') => ({
               ? 'Company Director Client Access'
               : bundle === 'commercial'
                 ? 'Company Commercial Intake'
-                : 'Company Context Access',
+                : bundle === 'catalogue'
+                  ? 'Company Service Catalogue'
+                  : 'Company Context Access',
           active: true,
         },
       ]
@@ -868,6 +872,52 @@ describe('CompanyContextAccess', () => {
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       '/api/company-commercial-intake-assignments',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
+      'Current server state: Granted',
+    );
+  });
+
+  it('grants Company Service Catalogue through the existing administration', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration()))
+        .mockResolvedValueOnce(
+          Response.json(
+            {
+              id: 'catalogue-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Service Catalogue',
+              permissionSetVersion: 'v1',
+              active: true,
+            },
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(Response.json(administration('catalogue'))),
+    );
+
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'service-catalogue' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/company-service-catalogue-assignments',
       expect.objectContaining({ method: 'POST' }),
     );
     expect(await screen.findByText(/Current server state:/)).toHaveTextContent(

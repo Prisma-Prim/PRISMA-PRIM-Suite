@@ -24,6 +24,7 @@ type AssignmentBundle =
   | 'document-registrar'
   | 'document-project-organizer'
   | 'commercial-intake'
+  | 'service-catalogue'
   | 'project';
 type AssignmentBundleLabel =
   | 'Company Task Manager'
@@ -32,7 +33,8 @@ type AssignmentBundleLabel =
   | 'Company Document Project Organizer'
   | 'Company Document Registrar'
   | 'Company Project Access'
-  | 'Company Commercial Intake';
+  | 'Company Commercial Intake'
+  | 'Company Service Catalogue';
 type AdministrationState = {
   members: Array<{
     workspaceMembershipId: string;
@@ -210,17 +212,19 @@ export function CompanyContextAccess({
       const assignmentPath =
         bundle === 'commercial-intake'
           ? '/company-commercial-intake-assignments'
-          : bundle === 'task-manager'
-            ? '/company-task-manager-assignments'
-            : bundle === 'document-project-organizer'
-              ? '/company-document-project-organizer-assignments'
-              : bundle === 'document-registrar'
-                ? '/company-document-registrar-assignments'
-                : bundle === 'project'
-                  ? '/company-project-assignments'
-                  : bundle === 'director-client'
-                    ? '/company-director-client-assignments'
-                    : '/company-context-assignments';
+          : bundle === 'service-catalogue'
+            ? '/company-service-catalogue-assignments'
+            : bundle === 'task-manager'
+              ? '/company-task-manager-assignments'
+              : bundle === 'document-project-organizer'
+                ? '/company-document-project-organizer-assignments'
+                : bundle === 'document-registrar'
+                  ? '/company-document-registrar-assignments'
+                  : bundle === 'project'
+                    ? '/company-project-assignments'
+                    : bundle === 'director-client'
+                      ? '/company-director-client-assignments'
+                      : '/company-context-assignments';
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
@@ -458,6 +462,7 @@ export function CompanyContextAccess({
               if (
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
+                value === 'service-catalogue' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -470,6 +475,9 @@ export function CompanyContextAccess({
             <option value="company-context">{copy.companyContextBundle}</option>
             <option value="commercial-intake">
               {copy.commercialIntakeBundle}
+            </option>
+            <option value="service-catalogue">
+              {copy.serviceCatalogueBundle}
             </option>
             <option value="director-client">{copy.directorClientBundle}</option>
             <option value="document-project-organizer">
@@ -557,17 +565,19 @@ export function CompanyContextAccess({
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   return bundle === 'commercial-intake'
     ? copy.commercialIntakeBundle
-    : bundle === 'task-manager'
-      ? copy.taskManagerBundle
-      : bundle === 'document-project-organizer'
-        ? copy.documentProjectOrganizerBundle
-        : bundle === 'document-registrar'
-          ? 'Company Document Registrar'
-          : bundle === 'project'
-            ? copy.projectBundle
-            : bundle === 'director-client'
-              ? 'Company Director Client Access'
-              : 'Company Context Access';
+    : bundle === 'service-catalogue'
+      ? copy.serviceCatalogueBundle
+      : bundle === 'task-manager'
+        ? copy.taskManagerBundle
+        : bundle === 'document-project-organizer'
+          ? copy.documentProjectOrganizerBundle
+          : bundle === 'document-registrar'
+            ? 'Company Document Registrar'
+            : bundle === 'project'
+              ? copy.projectBundle
+              : bundle === 'director-client'
+                ? 'Company Director Client Access'
+                : 'Company Context Access';
 }
 
 function memberLabel(member: AdministrationState['members'][number]): string {

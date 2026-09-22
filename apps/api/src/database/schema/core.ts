@@ -39,6 +39,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_document_registrar',
   'company_project_access',
   'company_commercial_intake',
+  'company_service_catalogue',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -313,9 +314,9 @@ export const companyRoleAssignments = pgTable(
         OR
         (${table.bundle}::text = 'company_document_registrar' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_commercial_intake') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
         OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake')
+        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue')
           AND ${table.permissionSetVersion} IS NULL)
       )`,
     ),
@@ -670,6 +671,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_project_assignment.revoked',
   'company_commercial_intake_assignment.granted',
   'company_commercial_intake_assignment.revoked',
+  'company_service_catalogue_assignment.granted',
+  'company_service_catalogue_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -719,7 +722,8 @@ export const activityLogEvents = pgTable(
               | 'Company Document Project Organizer'
               | 'Company Document Registrar'
               | 'Company Project Access'
-              | 'Company Commercial Intake';
+              | 'Company Commercial Intake'
+              | 'Company Service Catalogue';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
         | Record<string, never>

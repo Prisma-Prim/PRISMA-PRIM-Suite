@@ -8,6 +8,7 @@ import type {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
@@ -93,7 +94,9 @@ export type CanonicalActivityEvent =
         | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
         | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
         | 'company_commercial_intake_assignment.granted'
-        | 'company_commercial_intake_assignment.revoked';
+        | 'company_commercial_intake_assignment.revoked'
+        | 'company_service_catalogue_assignment.granted'
+        | 'company_service_catalogue_assignment.revoked';
       target: {
         type: 'company_role_assignment';
         assignmentId: string;
@@ -109,7 +112,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL;
       };
       transitionId: string;
     }
@@ -170,6 +174,8 @@ export interface OrdinaryActivityLogEvent {
     | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
     | 'company_commercial_intake_assignment.granted'
     | 'company_commercial_intake_assignment.revoked'
+    | 'company_service_catalogue_assignment.granted'
+    | 'company_service_catalogue_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
     | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
     | typeof CLIENT_CORRECTED_ACTION;
@@ -230,7 +236,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+          | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
     | Record<string, never>;

@@ -53,6 +53,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_project_assignment.revoked'
     | 'company_commercial_intake_assignment.granted'
     | 'company_commercial_intake_assignment.revoked'
+    | 'company_service_catalogue_assignment.granted'
+    | 'company_service_catalogue_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -121,7 +123,8 @@ export interface OrdinaryActivityLogEvent {
           | 'Company Document Project Organizer'
           | 'Company Document Registrar'
           | 'Company Project Access'
-          | 'Company Commercial Intake';
+          | 'Company Commercial Intake'
+          | 'Company Service Catalogue';
       }
     | { changes: Record<string, { before: unknown; after: unknown }> }
     | Record<string, never>;
