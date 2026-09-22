@@ -52,4 +52,13 @@ export const commercialIntakeCopy = {
   denied: 'You do not have permission to access Commercial Intake.',
   error: 'The Client Request could not be loaded or saved. Please try again.',
   retry: 'Reload Client Requests',
+  // Commercial history is visible only through the opt-in reader grant. The
+  // labels name the action and the target reference, never request content.
+  activityActionLabels: {
+    'client_request.created': 'captured a Client Request',
+    'opportunity.created': 'created an initial Opportunity',
+    'opportunity.next_action.updated': 'updated an Opportunity next action',
+  },
+  activityRequestTarget: 'Client Request',
+  activityOpportunityTarget: 'Opportunity',
 };

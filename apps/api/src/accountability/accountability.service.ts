@@ -25,8 +25,14 @@ import {
   commercialIntakeEvents,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
+import {
+  commercialActivityTargetOf,
+  eligibleCommercialActions,
+  readCommercialActivityAction,
+} from './commercial-activity-projection.js';
 import type {
   ActivityLogPage,
+  CommercialActivityEvent,
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
@@ -155,7 +161,8 @@ export class AccountabilityService {
     });
   }
 
-  // Activity projection waits for independent Activity Log read authorization (#53).
+  // Recording grants no read. The authorized Company projection requires the
+  // opt-in reader bundle and current commercial target read.
   async recordCommercialIntakeCreated(input: {
     actor: ActorContext;
     companyId: string;
@@ -184,6 +191,95 @@ export class AccountabilityService {
           metadata: { opportunityVersion: 1 },
         },
       ]);
+  }
+
+  /**
+   * Commercial events are projected only inside the server-validated active
+   * Company that owns them, for an actor holding the opt-in reader bundle who
+   * also retains current read authority for the event's commercial target.
+   * Authorization narrows the query itself, before the bounded page.
+   */
+  private async commercialEvents(
+    actor: ActorContext,
+  ): Promise<CommercialActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (!actor.active || !company) return [];
+    const actions = eligibleCommercialActions(company);
+    if (actions.length === 0) return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: commercialIntakeEvents.id,
+        action: commercialIntakeEvents.action,
+        metadata: commercialIntakeEvents.metadata,
+        companyId: commercialIntakeEvents.companyId,
+        clientRequestId: commercialIntakeEvents.clientRequestId,
+        opportunityId: commercialIntakeEvents.opportunityId,
+        occurredAt: commercialIntakeEvents.occurredAt,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(commercialIntakeEvents)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            commercialIntakeEvents.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            commercialIntakeEvents.actorWorkspaceMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          eq(commercialIntakeEvents.workspaceId, actor.workspaceId),
+          eq(commercialIntakeEvents.companyId, company.id),
+          or(
+            ...actions.map((action) =>
+              eq(sql<string>`${commercialIntakeEvents.action}::text`, action),
+            ),
+          ),
+        ),
+      )
+      .orderBy(
+        desc(commercialIntakeEvents.occurredAt),
+        desc(commercialIntakeEvents.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.flatMap((row) => {
+      const action = readCommercialActivityAction(row);
+      if (!action) return [];
+      const projected: CommercialActivityEvent = {
+        id: row.id,
+        action,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+        target:
+          commercialActivityTargetOf(action) === 'client_request'
+            ? {
+                type: 'client_request',
+                clientRequestId: row.clientRequestId,
+                companyId: row.companyId,
+              }
+            : {
+                type: 'opportunity',
+                opportunityId: row.opportunityId,
+                clientRequestId: row.clientRequestId,
+                companyId: row.companyId,
+              },
+        metadata: {},
+      };
+      return [projected];
+    });
   }
 
   private async projectEvents(
@@ -964,6 +1060,7 @@ export class AccountabilityService {
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
+      ...(await this.commercialEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>
@@ -1040,6 +1137,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_director_client_assignment.revoked':
     case 'company_commercial_intake_assignment.granted':
     case 'company_commercial_intake_assignment.revoked':
+    case 'company_commercial_activity_reader_assignment.granted':
+    case 'company_commercial_activity_reader_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

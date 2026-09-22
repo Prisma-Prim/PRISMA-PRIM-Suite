@@ -27,6 +27,8 @@ export interface ActorContext {
     >;
     commercialIntakePermissionAssignmentId?: string;
     commercialIntakePermissionSetVersion?: 'v1';
+    commercialActivityPermissions?: Array<'commercial.activity.read'>;
+    commercialActivityPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'
