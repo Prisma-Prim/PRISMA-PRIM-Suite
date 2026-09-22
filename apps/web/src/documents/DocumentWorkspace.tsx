@@ -89,6 +89,17 @@ export function DocumentWorkspace({
   const dossierRefresh = useRef<AbortController | undefined>(undefined);
   const startedListWrites = useRef(0);
   const publishedListWrite = useRef(0);
+  /**
+   * Confirmed registrations missing from a list read that started before the
+   * POST completed. The first list started after confirmation retires the
+   * overlay and owns the row's current derived Client projection.
+   */
+  const confirmedRegistrations = useRef(
+    new Map<
+      string,
+      { document: WorkingDocument; listSequenceAtConfirmation: number }
+    >(),
+  );
   const knownClientIdentityRevision = useRef(clientIdentityRevision);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const correctionRetry = useRef<
@@ -118,6 +129,26 @@ export function DocumentWorkspace({
     if (sequence < publishedListWrite.current) return;
     publishedListWrite.current = sequence;
     setState(next);
+  }
+  function includeConfirmedRegistrations(
+    documents: WorkingDocument[],
+    listSequence?: number,
+  ): WorkingDocument[] {
+    const loadedIds = new Set(documents.map((document) => document.id));
+    const missingConfirmed: WorkingDocument[] = [];
+    for (const [documentId, confirmation] of confirmedRegistrations.current) {
+      if (
+        listSequence !== undefined &&
+        listSequence > confirmation.listSequenceAtConfirmation
+      ) {
+        confirmedRegistrations.current.delete(documentId);
+      } else if (!loadedIds.has(documentId)) {
+        missingConfirmed.push(confirmation.document);
+      }
+    }
+    return missingConfirmed.length === 0
+      ? documents
+      : [...missingConfirmed, ...documents];
   }
   /**
    * A detail read that lands settles the derived-refresh debt only when no
@@ -153,6 +184,7 @@ export function DocumentWorkspace({
     setStaleDossier(undefined);
     retry.current = undefined;
     correctionRetry.current = undefined;
+    confirmedRegistrations.current.clear();
     pending.current?.abort();
     return () => pending.current?.abort();
   }, [
@@ -211,12 +243,13 @@ export function DocumentWorkspace({
           throw new Error('Load failed');
         // Read the payload here: a rejected response must fail closed on this
         // request instead of throwing inside a later React update.
-        const loaded = {
+        const loadedDocuments = readDocuments(documents.value);
+        const loadedClients = readClients(clients.value);
+        publishList(sequence, () => ({
           status: 'ready',
-          documents: readDocuments(documents.value),
-          clients: readClients(clients.value),
-        } satisfies Load;
-        publishList(sequence, () => loaded);
+          documents: includeConfirmedRegistrations(loadedDocuments, sequence),
+          clients: loadedClients,
+        }));
       } catch {
         if (request.signal.aborted) return;
         // A failed refresh keeps the loaded rows, their open detail and their
@@ -318,7 +351,7 @@ export function DocumentWorkspace({
       setMutation('idle');
     }
     setDetail(undefined);
-  }, [clientFilter]);
+  }, [clientFilter, correctionActive]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
@@ -510,19 +543,19 @@ export function DocumentWorkspace({
       retry.current = undefined;
       setDetail(saved);
       setMutation('idle');
-      // The confirmed registration is merged into whatever rows are current,
-      // so its slot is reserved now: a refresh that completed while the
-      // registration was pending stays authoritative and still gains the row.
-      publishList(reserveListWrite(), (current) =>
+      // A confirmed row must survive a list read that began before the POST,
+      // without making that read stale: it may carry newer Client projections
+      // for every existing row. A list started after confirmation retires this
+      // overlay and becomes authoritative for the new row as well.
+      confirmedRegistrations.current.set(saved.id, {
+        document: saved,
+        listSequenceAtConfirmation: startedListWrites.current,
+      });
+      setState((current) =>
         current.status === 'ready'
           ? {
               ...current,
-              documents: [
-                saved,
-                ...current.documents.filter(
-                  (document) => document.id !== saved.id,
-                ),
-              ],
+              documents: includeConfirmedRegistrations(current.documents),
             }
           : current,
       );

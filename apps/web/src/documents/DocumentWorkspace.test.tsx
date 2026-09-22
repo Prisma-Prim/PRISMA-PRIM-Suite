@@ -404,13 +404,93 @@ it('keeps an open correction draft when a dossier restriction arrives', async ()
   ).toHaveValue('Shared display name');
 
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+  expect(
+    screen.queryByRole('heading', { name: 'Homonym questionnaire' }),
+  ).not.toBeInTheDocument();
   expect(
     within(screen.getByRole('list'))
       .getAllByRole('button')
       .map((button) => button.textContent),
   ).toEqual(['Historical questionnaire']);
 });
+it.each([
+  ['save', false],
+  ['retry', true],
+])(
+  'reconciles an arrived dossier restriction after correction %s resolves',
+  async (_completion, failFirstAttempt) => {
+    let patchAttempts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/clients')) return Response.json([]);
+        if (init?.method === 'PATCH') {
+          patchAttempts += 1;
+          if (failFirstAttempt && patchAttempts === 1)
+            return new Response(null, { status: 500 });
+          return Response.json({
+            documentId: 'document-homonym',
+            revision: 2,
+            outcome: 'corrected',
+          });
+        }
+        const opened = dossierDocuments.find((candidate) =>
+          url.endsWith(`/documents/${candidate.id}`),
+        );
+        return Response.json(opened ?? dossierDocuments);
+      }),
+    );
+    const restrictedWorkspace = (clientFilter?: {
+      clientDossierId: string;
+      displayName: string;
+    }) => (
+      <DocumentWorkspace
+        actor={actor}
+        identity={identity}
+        clientFilter={clientFilter}
+      />
+    );
+    const view = render(restrictedWorkspace());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Homonym questionnaire' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Protected correction draft' },
+    });
+
+    if (failFirstAttempt) {
+      fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'result is uncertain',
+      );
+    }
+    view.rerender(
+      restrictedWorkspace({
+        clientDossierId: 'canonical-client',
+        displayName: 'Shared display name',
+      }),
+    );
+    expect(screen.getByLabelText('Title')).toHaveValue(
+      'Protected correction draft',
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: failFirstAttempt ? 'Retry same correction' : 'Save correction',
+      }),
+    );
+
+    const list = await screen.findByRole('list');
+    expect(
+      within(list)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Historical questionnaire']);
+    expect(patchAttempts).toBe(failFirstAttempt ? 2 : 1);
+  },
+);
 const supersededDossierDocument = {
   ...document,
   id: 'document-historical',
@@ -497,62 +577,106 @@ it('keeps the derived-refresh debt when a union completes during a correction re
   expect(openClientDossier).toHaveBeenCalledWith('canonical-client');
   expect(openClientDossier).toHaveBeenCalledTimes(1);
 });
-it('keeps a registration confirmed after an intervening identity refresh in the loaded rows', async () => {
-  const registrations: Array<() => void> = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith('/clients'))
-        return Response.json([
-          { id: 'client', displayName: 'Synthetic Client' },
-        ]);
-      if (init?.method === 'POST') {
-        const post = deferredResponse();
-        registrations.push(() =>
-          post.resolve(Response.json(document, { status: 201 })),
-        );
-        return post.promise;
-      }
-      if (url.endsWith('/documents/document')) return Response.json(document);
-      // The refreshed rows were read before the registration was confirmed.
-      return Response.json([]);
-    }),
-  );
-  const view = render(dossierWorkspace(0));
-  expect(
-    await screen.findByText('No working references registered yet.'),
-  ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: document.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Register working reference' }),
-  );
-  await waitFor(() => expect(registrations).toHaveLength(1));
+it.each([
+  ['identity refresh first', true, true, 'Canonical Registered Client'],
+  ['registration first', false, false, 'Registered Client'],
+])(
+  'keeps the confirmed registration and canonical existing rows with %s',
+  async (
+    _completionOrder,
+    refreshFirst,
+    refreshContainsRegistration,
+    expectedRegisteredClient,
+  ) => {
+    const registration = deferredResponse();
+    const identityRefresh = deferredResponse();
+    const registeredDocument = {
+      ...document,
+      id: 'registered-document',
+      clientDossierId: 'registered-client',
+      clientDisplayName: 'Registered Client',
+      title: 'Newly registered questionnaire',
+    };
+    const canonicalRegisteredDocument = {
+      ...registeredDocument,
+      clientDossierId: 'canonical-registered-client',
+      clientDisplayName: 'Canonical Registered Client',
+    };
+    let listReads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/clients'))
+          return Response.json([
+            { id: 'client', displayName: 'Synthetic Client' },
+          ]);
+        if (init?.method === 'POST') return registration.promise;
+        if (url.endsWith('/documents/registered-document'))
+          return Response.json(registeredDocument);
+        listReads += 1;
+        return listReads === 1
+          ? Response.json([supersededDossierDocument])
+          : identityRefresh.promise;
+      }),
+    );
+    const view = render(dossierWorkspace(0));
+    expect(
+      await screen.findByRole('button', { name: 'Historical questionnaire' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Client'), {
+      target: { value: 'client' },
+    });
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: registeredDocument.title },
+    });
+    fireEvent.change(screen.getByLabelText('Purpose'), {
+      target: { value: registeredDocument.purpose },
+    });
+    fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+      target: { value: registeredDocument.version.representation.url },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Register working reference' }),
+    );
 
-  // A Client identity refresh publishes while the registration is pending.
-  view.rerender(dossierWorkspace(1));
-  await settle();
-  registrations[0]?.();
-  expect(
-    await screen.findByRole('link', { name: 'Open external reference' }),
-  ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
-  expect(
-    within(screen.getByRole('list')).getByRole('button', {
-      name: document.title,
-    }),
-  ).toBeInTheDocument();
-});
+    view.rerender(dossierWorkspace(1));
+    await waitFor(() => expect(listReads).toBe(2));
+    if (refreshFirst) {
+      identityRefresh.resolve(
+        Response.json(
+          refreshContainsRegistration
+            ? [canonicalRegisteredDocument, canonicalDossierDocument]
+            : [canonicalDossierDocument],
+        ),
+      );
+      await settle();
+      registration.resolve(Response.json(registeredDocument, { status: 201 }));
+    } else {
+      registration.resolve(Response.json(registeredDocument, { status: 201 }));
+      await screen.findByRole('link', { name: 'Open external reference' });
+      identityRefresh.resolve(
+        Response.json(
+          refreshContainsRegistration
+            ? [canonicalRegisteredDocument, canonicalDossierDocument]
+            : [canonicalDossierDocument],
+        ),
+      );
+    }
+
+    await screen.findByRole('link', { name: 'Open external reference' });
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    const list = screen.getByRole('list');
+    expect(
+      within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      `Newly registered questionnaire — ${expectedRegisteredClient}`,
+      'Historical questionnaire — Canonical display name',
+    ]);
+  },
+);
 it('retires a pending detail read when a dossier restriction arrives', async () => {
   const detailReads: Array<() => void> = [];
   vi.stubGlobal(
