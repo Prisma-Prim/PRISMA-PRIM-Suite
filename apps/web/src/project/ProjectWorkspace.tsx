@@ -548,7 +548,11 @@ function isClient(value: unknown): value is ClientChoice {
   );
 }
 function isTimestamp(value: unknown): value is string {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+  if (typeof value !== 'string') return false;
+  const timestamp = new Date(value);
+  return (
+    Number.isFinite(timestamp.valueOf()) && timestamp.toISOString() === value
+  );
 }
 function isProject(value: unknown): value is ProjectView {
   return (

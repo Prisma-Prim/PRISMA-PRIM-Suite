@@ -47,7 +47,7 @@ const validProject = {
   createdAt: '2026-09-19T08:00:00.000Z',
 };
 
-it('reports the existing load error when a listed Project carries a malformed registration time', async () => {
+it('reports the existing load error when a listed Project carries a non-instant registration time', async () => {
   document.documentElement.lang = 'en';
   vi.stubGlobal(
     'fetch',
@@ -55,7 +55,7 @@ it('reports the existing load error when a listed Project carries a malformed re
       Response.json(
         url === '/api/clients'
           ? [{ id: 'client', displayName: 'Synthetic Client' }]
-          : [{ ...validProject, createdAt: 'not-a-timestamp' }],
+          : [{ ...validProject, createdAt: '0' }],
       ),
     ),
   );
@@ -76,7 +76,7 @@ it('reports the existing load error when a listed Project carries a malformed re
   ).not.toBeInTheDocument();
 });
 
-it('keeps the loaded Projects and reports the existing error when a reopened Project carries a malformed registration time', async () => {
+it('keeps the loaded Projects and reports the existing error when a reopened Project carries an impossible registration time', async () => {
   document.documentElement.lang = 'en';
   let malformed = true;
   vi.stubGlobal(
@@ -89,7 +89,7 @@ it('keeps the loaded Projects and reports the existing error when a reopened Pro
       if (url === '/api/projects/project')
         return Response.json(
           malformed
-            ? { ...validProject, createdAt: '2026-13-45T99:00:00.000Z' }
+            ? { ...validProject, createdAt: '2026-02-30T08:00:00.000Z' }
             : validProject,
         );
       return Response.json([validProject]);
@@ -136,7 +136,7 @@ it('keeps the loaded Projects and reports the existing error when a reopened Pro
   );
 });
 
-it('keeps the create draft and the request key when the created Project carries a malformed registration time', async () => {
+it('keeps the create draft and the request key when the created Project carries a non-instant registration time', async () => {
   document.documentElement.lang = 'en';
   const keys: string[] = [];
   vi.stubGlobal(
@@ -146,7 +146,9 @@ it('keeps the create draft and the request key when the created Project carries 
         const key = new Headers(options.headers).get('idempotency-key');
         if (key) keys.push(key);
         return Response.json(
-          keys.length === 1 ? { ...validProject, createdAt: '' } : validProject,
+          keys.length === 1
+            ? { ...validProject, createdAt: '2026' }
+            : validProject,
           { status: 201 },
         );
       }
