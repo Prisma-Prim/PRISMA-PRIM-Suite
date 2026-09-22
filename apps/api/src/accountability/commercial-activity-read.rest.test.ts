@@ -235,8 +235,10 @@ withPostgres('Company commercial Activity read REST', () => {
       'opportunity.created',
     ]);
 
+    // The delivered suspension command deactivates the membership, so the
+    // fixture writes that same inactive state rather than inventing one.
     await pool.query(
-      `UPDATE workspace_memberships SET status = 'suspended' WHERE id = $1`,
+      "UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1",
       [member.workspaceMembershipId],
     );
     expect(
@@ -246,6 +248,19 @@ withPostgres('Company commercial Activity read REST', () => {
         })
       ).status,
     ).toBe(403);
+    await pool.query(
+      "UPDATE workspace_memberships SET status = 'active' WHERE id = $1",
+      [member.workspaceMembershipId],
+    );
+    expect(
+      commercialActions(
+        await (
+          await request('/activity-log', setup.company.id, {
+            headers: memberHeaders,
+          })
+        ).json(),
+      ),
+    ).toHaveLength(2);
 
     expect((await fetch(`${origin}/api/activity-log`)).status).toBe(401);
   });
