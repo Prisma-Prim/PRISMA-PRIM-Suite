@@ -58,8 +58,7 @@ export function commercialActivityPermissionsFor(
     : [];
 }
 export type DocumentPermission =
-  | (typeof DOCUMENT_V2_PERMISSIONS)[number]
-  | 'document.project.manage';
+  (typeof DOCUMENT_V2_PERMISSIONS)[number] | 'document.project.manage';
 export type DocumentPermissionSetVersion = 'v1' | 'v2';
 export function documentPermissionsFor(
   version: unknown,

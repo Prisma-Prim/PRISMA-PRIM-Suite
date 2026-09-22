@@ -1137,6 +1137,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_director_client_assignment.revoked':
     case 'company_commercial_intake_assignment.granted':
     case 'company_commercial_intake_assignment.revoked':
+    case 'company_commercial_activity_reader_assignment.granted':
+    case 'company_commercial_activity_reader_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
