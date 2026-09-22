@@ -150,7 +150,12 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
         element.validity.badInput,
     ),
   ).toBe(true);
-  await page.keyboard.press('Tab');
+  // Tab walks the control's own month, day and year fields, so the reader is moved to another control
+  // and focus is proved to have left the rejected entry.
+  await expect(from).toBeFocused();
+  await search.focus();
+  await expect(search).toBeFocused();
+  await expect(from).not.toBeFocused();
   await expect(navigation.getByRole('alert')).toHaveText(
     'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.',
   );
