@@ -58,13 +58,16 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
 
-## 6. Release 3 capability PRD
+## 6. Release 3 capability PRDs
 
-| Capability PRD                                              | Document status                                               | Depends on                                                                              |
-| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration |
+| Capability PRD                                                              | Document status                                               | Depends on                                                                               |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md)                 | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration  |
+| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md) | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
+
+The Illustrative Deterministic Pricing PRD owns the first R3B slices only: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, and the immutable Pricing Snapshot that references them by exact version. It proves the catalogue, versioning, provenance and decimal mechanics with illustrative values, and authorizes no real price, ability to perform, approval or external effect.
 
 ## 7. Other later releases
 
