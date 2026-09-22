@@ -88,9 +88,13 @@ _Avoid_: Mandatory field
 An ISO standard, food-safety scheme, or other named framework relevant to a Client Request.
 _Avoid_: Certification when the framework itself is meant
 
-**Service**:
-A deliverable that a provider Company may provide, optionally related to one or more Standards.
-_Avoid_: Product, package
+**Service Definition**:
+The Workspace-level definition of a deliverable, optionally related to one or more Standards, shared by every Company that offers it.
+_Avoid_: Product, package, Company Service Offering
+
+**Company Service Offering**:
+The record that one Company lists a Service Definition in its catalogue, with its own commercial text and pricing configuration.
+_Avoid_: Service Definition, proof of ability to perform
 
 **Tariff**:
 A versioned monetary rate, unit, currency, tax configuration, and validity period used by pricing.
@@ -101,7 +105,7 @@ A versioned deterministic rule that maps Confirmed inputs and Tariffs to quantit
 _Avoid_: AI pricing, formula prompt
 
 **Pricing Calculation**:
-One immutable execution of the applicable Pricing Rules for a Client Request.
+One immutable execution of the applicable Pricing Rules for one Opportunity, preserving the link to its Client Request.
 _Avoid_: Quote, estimate
 
 **Pricing Snapshot**:
