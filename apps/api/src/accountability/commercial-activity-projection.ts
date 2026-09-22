@@ -48,15 +48,56 @@ export function eligibleCommercialActions(
 }
 
 /**
+ * The exact persisted metadata each action may carry. Both creation events are
+ * recorded by commercial intake and constrained by
+ * `commercial_intake_events_action_metadata_check` to exactly
+ * `{"requestVersion": 1}` and `{"opportunityVersion": 1}`. The next-action
+ * update carries its resulting Opportunity version only, starting at 2 after
+ * the first increment. Every shape is closed: exactly the named field, nothing
+ * else.
+ */
+const COMMERCIAL_ACTIVITY_METADATA = {
+  'client_request.created': { versionField: 'requestVersion', version: 1 },
+  'opportunity.created': { versionField: 'opportunityVersion', version: 1 },
+  'opportunity.next_action.updated': {
+    versionField: 'opportunityVersion',
+    version: 'resulting',
+  },
+} as const satisfies Record<
+  CommercialActivityAction,
+  { versionField: string; version: 1 | 'resulting' }
+>;
+
+/**
  * Persisted commercial event rows are an external boundary. An unrecognized
- * action or malformed metadata is omitted rather than projected.
+ * action, or metadata that is not exactly the shape its action records, is
+ * omitted rather than projected.
  */
 export function readCommercialActivityAction(
   row: unknown,
 ): CommercialActivityAction | undefined {
-  if (!isPlainObject(row) || !isPlainObject(row.metadata)) return undefined;
-  const action = row.action;
-  return COMMERCIAL_ACTIVITY_ACTIONS.find((candidate) => candidate === action);
+  if (!isPlainObject(row)) return undefined;
+  const action = COMMERCIAL_ACTIVITY_ACTIONS.find(
+    (candidate) => candidate === row.action,
+  );
+  if (!action) return undefined;
+  return recordsMetadata(action, row.metadata) ? action : undefined;
+}
+
+function recordsMetadata(
+  action: CommercialActivityAction,
+  metadata: unknown,
+): boolean {
+  if (!isPlainObject(metadata)) return false;
+  const contract = COMMERCIAL_ACTIVITY_METADATA[action];
+  const fields = Object.keys(metadata);
+  if (fields.length !== 1 || fields[0] !== contract.versionField) return false;
+  const version = metadata[contract.versionField];
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1)
+    return false;
+  return contract.version === 'resulting'
+    ? version >= 2
+    : version === contract.version;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

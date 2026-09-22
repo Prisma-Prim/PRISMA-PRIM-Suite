@@ -78,25 +78,107 @@ describe('commercial Activity projection rules', () => {
     ]);
   });
 
-  it('fails closed on an unknown action or malformed metadata', () => {
+  it('projects the exact metadata each producer records', () => {
     expect(
       readCommercialActivityAction({
         action: 'client_request.created',
         metadata: { requestVersion: 1 },
       }),
     ).toBe('client_request.created');
+    expect(
+      readCommercialActivityAction({
+        action: 'opportunity.created',
+        metadata: { opportunityVersion: 1 },
+      }),
+    ).toBe('opportunity.created');
+    // The next-action update records its resulting Opportunity version only.
+    for (const opportunityVersion of [2, 37])
+      expect(
+        readCommercialActivityAction({
+          action: 'opportunity.next_action.updated',
+          metadata: { opportunityVersion },
+        }),
+      ).toBe('opportunity.next_action.updated');
+  });
+
+  it('fails closed on an unknown action', () => {
     for (const row of [
       undefined,
       null,
       'client_request.created',
-      { action: 'client_request.deleted', metadata: {} },
-      { action: 'opportunity.archived', metadata: {} },
-      { action: undefined, metadata: {} },
-      { action: 'opportunity.created', metadata: null },
-      { action: 'opportunity.created', metadata: 'opportunityVersion' },
-      { action: 'opportunity.created', metadata: [1] },
+      ['client_request.created'],
+      { action: 'client_request.deleted', metadata: { requestVersion: 1 } },
+      { action: 'opportunity.archived', metadata: { opportunityVersion: 1 } },
+      { action: 'CLIENT_REQUEST.CREATED', metadata: { requestVersion: 1 } },
+      { action: undefined, metadata: { requestVersion: 1 } },
+      { action: null, metadata: { requestVersion: 1 } },
+      { metadata: { requestVersion: 1 } },
     ])
       expect(readCommercialActivityAction(row)).toBeUndefined();
+  });
+
+  it('fails closed on malformed, empty or foreign metadata', () => {
+    for (const metadata of [
+      undefined,
+      null,
+      {},
+      [],
+      [1],
+      'opportunityVersion',
+      1,
+      { opportunityVersion: 1 },
+      { requestVersion: 1, opportunityVersion: 1 },
+      { requestVersion: 1, nextAction: 'Arrange a qualification call' },
+      { RequestVersion: 1 },
+    ])
+      expect(
+        readCommercialActivityAction({
+          action: 'client_request.created',
+          metadata,
+        }),
+      ).toBeUndefined();
+  });
+
+  it('fails closed on a wrongly typed or invalid recorded version', () => {
+    for (const opportunityVersion of [
+      '1',
+      true,
+      null,
+      undefined,
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      [1],
+      { version: 1 },
+    ])
+      expect(
+        readCommercialActivityAction({
+          action: 'opportunity.created',
+          metadata: { opportunityVersion },
+        }),
+      ).toBeUndefined();
+    // Both creation events record version 1 exactly, in the producer and in the
+    // `commercial_intake_events_action_metadata_check` constraint.
+    expect(
+      readCommercialActivityAction({
+        action: 'opportunity.created',
+        metadata: { opportunityVersion: 2 },
+      }),
+    ).toBeUndefined();
+    expect(
+      readCommercialActivityAction({
+        action: 'client_request.created',
+        metadata: { requestVersion: 2 },
+      }),
+    ).toBeUndefined();
+    expect(
+      readCommercialActivityAction({
+        action: 'opportunity.next_action.updated',
+        metadata: { opportunityVersion: 1 },
+      }),
+    ).toBeUndefined();
   });
 
   it('maps every known action to the target it discloses', () => {
