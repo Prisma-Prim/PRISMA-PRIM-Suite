@@ -81,6 +81,30 @@
   overflow-wrap: anywhere;
 }
 
+.commercial-intake-filter {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.commercial-intake-filter input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 24rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.commercial-intake-filter button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .commercial-intake-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));

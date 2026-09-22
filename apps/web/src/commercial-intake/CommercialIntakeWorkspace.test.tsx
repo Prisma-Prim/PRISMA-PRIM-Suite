@@ -129,7 +129,74 @@ function requestButton(index: number) {
 function visibleRequests(): number {
   return within(
     screen.getByRole('list', { name: 'Client Requests' }),
-  ).getAllByRole('listitem').length;
+  ).queryAllByRole('listitem').length;
+}
+
+const filterableItems = [
+  {
+    id: 'request-quality',
+    subject: 'Quality process preparation',
+    capturedAt: '2026-09-20T10:00:00.000Z',
+    initialOpportunity: {
+      title: 'Prepare quality process review',
+      nextAction: 'Arrange a qualification call',
+      responsibleActor: {
+        workspaceMembershipId: 'membership-1',
+        displayName: 'Iurie',
+      },
+    },
+  },
+  {
+    id: 'request-audit',
+    subject: 'Annual audit support',
+    capturedAt: '2026-09-19T10:00:00.000Z',
+    initialOpportunity: {
+      title: 'Plan the annual audit',
+      nextAction: 'Confirm the audit window',
+      responsibleActor: {
+        workspaceMembershipId: 'membership-2',
+        displayName: 'Ada Ionescu',
+      },
+    },
+  },
+  {
+    id: 'request-training',
+    subject: null,
+    capturedAt: '2026-09-18T10:00:00.000Z',
+    initialOpportunity: {
+      title: 'Operator training programme',
+      nextAction: 'Propose training dates',
+      responsibleActor: {
+        workspaceMembershipId: 'membership-3',
+        displayName: 'Mihai Rusu',
+      },
+    },
+  },
+];
+
+function filterInput(): HTMLElement {
+  return screen.getByLabelText(commercialIntakeCopy.filterLabel);
+}
+
+function applyFilter(value: string) {
+  fireEvent.change(filterInput(), { target: { value } });
+}
+
+function idempotencyKeyOf(init: RequestInit | undefined): string | undefined {
+  const headers = init?.headers;
+  if (
+    !headers ||
+    headers instanceof Headers ||
+    Array.isArray(headers) ||
+    typeof headers !== 'object'
+  )
+    return undefined;
+  const key = headers['idempotency-key'];
+  return typeof key === 'string' ? key : undefined;
+}
+
+function commandBodyOf(init: RequestInit | undefined): string | undefined {
+  return typeof init?.body === 'string' ? init.body : undefined;
 }
 
 function deferredResponse() {
@@ -829,5 +896,260 @@ describe('CommercialIntakeWorkspace', () => {
       screen.queryByRole('button', { name: 'Show older Requests' }),
     ).not.toBeInTheDocument();
     await waitFor(() => expect(rejectedWorkspace).toHaveBeenCalledOnce());
+  });
+
+  it('filters the loaded Requests by subject, Opportunity title or responsible actor', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: filterableItems })),
+    );
+
+    renderWorkspace();
+    expect(await screen.findByText('Annual audit support')).toBeVisible();
+    expect(visibleRequests()).toBe(3);
+
+    applyFilter('  QUALITY ');
+    expect(visibleRequests()).toBe(1);
+    expect(screen.getByText('Quality process preparation')).toBeVisible();
+
+    applyFilter('training');
+    expect(visibleRequests()).toBe(1);
+    expect(screen.getByText('Operator training programme')).toBeVisible();
+
+    applyFilter('ada');
+    expect(visibleRequests()).toBe(1);
+    expect(screen.getByText('Annual audit support')).toBeVisible();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('reports no matching loaded Requests without reading the unloaded original source', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: filterableItems })),
+    );
+
+    renderWorkspace();
+    expect(await screen.findByText('Annual audit support')).toBeVisible();
+
+    applyFilter('internal quality processes');
+    expect(visibleRequests()).toBe(0);
+    expect(
+      screen.getByText(commercialIntakeCopy.filterNoMatch),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('No Client Requests for PRISMA-PRIM yet.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText(commercialIntakeCopy.filterHelp)).toBeVisible();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('offers no filter for a genuinely empty Company list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: [] })),
+    );
+
+    renderWorkspace();
+    expect(
+      await screen.findByText('No Client Requests for PRISMA-PRIM yet.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByLabelText(commercialIntakeCopy.filterLabel),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(commercialIntakeCopy.filterNoMatch),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps older Requests reachable from a filter with no current match and filters the new rows', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({ items: newestPage, nextCursor: 'cursor-page-2' }),
+        )
+        .mockResolvedValueOnce(Response.json({ items: olderPage })),
+    );
+
+    renderWorkspace();
+    expect(
+      await screen.findByRole('button', { name: requestButton(0) }),
+    ).toBeVisible();
+
+    applyFilter('Client Request 26');
+    expect(visibleRequests()).toBe(0);
+    expect(
+      screen.getByText(commercialIntakeCopy.filterNoMatch),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: requestButton(26) }),
+    ).toBeVisible();
+    expect(visibleRequests()).toBe(1);
+    expect(
+      screen.queryByText(commercialIntakeCopy.filterNoMatch),
+    ).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/commercial-intake/requests?limit=25&cursor=cursor-page-2',
+      expect.anything(),
+    );
+  });
+
+  it('separates an older-page failure from a filter with no current match', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({ items: newestPage, nextCursor: 'cursor-page-2' }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 })),
+    );
+
+    renderWorkspace();
+    expect(
+      await screen.findByRole('button', { name: requestButton(0) }),
+    ).toBeVisible();
+    applyFilter('Client Request 26');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Older Client Requests could not be loaded. Please try again.',
+    );
+    expect(
+      screen.getByText(commercialIntakeCopy.filterNoMatch),
+    ).toBeInTheDocument();
+    expect(visibleRequests()).toBe(0);
+    expect(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    ).toBeVisible();
+  });
+
+  it('restores every loaded Request through the clear action', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: filterableItems })),
+    );
+
+    renderWorkspace();
+    expect(await screen.findByText('Annual audit support')).toBeVisible();
+    applyFilter('Annual');
+    expect(visibleRequests()).toBe(1);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: commercialIntakeCopy.filterClear }),
+    );
+    expect(visibleRequests()).toBe(3);
+    expect(filterInput()).toHaveValue('');
+    expect(filterInput()).toHaveFocus();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('preserves the filter while a Request detail is opened and closed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json({ items: filterableItems }))
+        .mockResolvedValueOnce(Response.json(createdRequest)),
+    );
+
+    renderWorkspace();
+    expect(await screen.findByText('Annual audit support')).toBeVisible();
+    applyFilter('Quality');
+    fireEvent.click(
+      screen.getByRole('button', { name: /Quality process preparation/u }),
+    );
+    expect(
+      await screen.findByText(createdRequest.originalText),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
+    expect(filterInput()).toHaveValue('Quality');
+    expect(visibleRequests()).toBe(1);
+  });
+
+  it('keeps an unsaved form and the uncertain retry key when the filter changes', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ items: filterableItems }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWorkspace();
+    expect(await screen.findByText('Annual audit support')).toBeVisible();
+    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText('Source label'), {
+      target: { value: 'Phone note' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Client Request could not be loaded or saved. Please try again.',
+    );
+
+    applyFilter('Annual');
+    expect(visibleRequests()).toBe(1);
+    expect(screen.getByLabelText('Original request text')).toHaveValue(
+      createdRequest.originalText,
+    );
+    expect(screen.getByLabelText('Source label')).toHaveValue('Phone note');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const firstAttempt = idempotencyKeyOf(fetchMock.mock.calls[1]?.[1]);
+    const firstBody = commandBodyOf(fetchMock.mock.calls[1]?.[1]);
+    expect(firstAttempt).toEqual(expect.any(String));
+    expect(firstBody).toEqual(expect.any(String));
+    expect(idempotencyKeyOf(fetchMock.mock.calls[2]?.[1])).toBe(firstAttempt);
+    expect(commandBodyOf(fetchMock.mock.calls[2]?.[1])).toBe(firstBody);
+  });
+
+  it('clears an obsolete filter and ignores a late page when the active Company changes', async () => {
+    const stalePage = deferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ items: newestPage, nextCursor: 'cursor-page-2' }),
+      )
+      .mockReturnValueOnce(stalePage.promise)
+      .mockResolvedValueOnce(
+        Response.json({
+          items: [{ ...listItem(99), subject: 'Second Company request' }],
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { selectCompany } = renderWorkspace();
+    expect(
+      await screen.findByRole('button', { name: requestButton(0) }),
+    ).toBeVisible();
+    applyFilter('Client Request 0');
+    expect(visibleRequests()).toBe(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    selectCompany(actorForCompany('company-2', 'Second Company'));
+
+    expect(await screen.findByText('Second Company request')).toBeVisible();
+    expect(filterInput()).toHaveValue('');
+
+    await act(async () => {
+      stalePage.resolve(Response.json({ items: olderPage }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(visibleRequests()).toBe(1);
+    expect(
+      screen.queryByRole('button', { name: requestButton(26) }),
+    ).not.toBeInTheDocument();
   });
 });

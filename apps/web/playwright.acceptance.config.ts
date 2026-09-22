@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './e2e',
   testMatch:
     /(?:client-document-navigation|commercial-intake|operational-foundation)\.acceptance\.spec\.ts/u,
+  outputDir: './test-results/acceptance',
   globalSetup: './e2e/operational-foundation.global-setup.mjs',
   fullyParallel: false,
   workers: 1,
