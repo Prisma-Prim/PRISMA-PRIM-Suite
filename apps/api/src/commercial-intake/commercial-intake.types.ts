@@ -12,6 +12,16 @@ export interface CreateCommercialIntakeCommand {
   };
 }
 
+/**
+ * The responsible actor label shown by the Request list and detail. It carries
+ * only the membership already scoped to this Company intake read boundary and
+ * its current display name; it is not a member directory.
+ */
+export interface CommercialIntakeResponsibleActor {
+  readonly workspaceMembershipId: string;
+  readonly displayName: string;
+}
+
 export interface CommercialIntakeDetail {
   readonly id: string;
   readonly companyId: string;
@@ -35,6 +45,7 @@ export interface CommercialIntakeDetail {
     readonly nextAction: string;
     readonly status: 'OPEN';
     readonly responsibleWorkspaceMembershipId: string;
+    readonly responsibleActor: CommercialIntakeResponsibleActor;
     readonly createdAt: string;
     readonly version: 1;
   };
@@ -47,10 +58,7 @@ export interface CommercialIntakeListItem {
   readonly initialOpportunity: {
     readonly title: string;
     readonly nextAction: string;
-    readonly responsibleActor: {
-      readonly workspaceMembershipId: string;
-      readonly displayName: string;
-    };
+    readonly responsibleActor: CommercialIntakeResponsibleActor;
   };
 }
 
