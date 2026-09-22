@@ -129,8 +129,11 @@ receipt. The event retains the acting membership, server-authoritative time,
 responsible Company and Opportunity target; its metadata carries the resulting
 version only and contains no previous or new next-action text, request text,
 subject or Client-confidential content. Rejected commands, safe denials,
-normalized no-op updates and exact committed replays create no event. Recording
-this event grants no read of it.
+byte-identical no-op updates and exact committed replays create no event. The
+owning commercial PRD stores the next action exactly as submitted and applies no
+trimming or normalization, so a no-op here is a byte-identical resubmission
+rather than the normalized comparison used by Tasks. Recording this event grants
+no read of it.
 
 The separately approved [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
 owns the first authorized projection of commercial events, which the intake
