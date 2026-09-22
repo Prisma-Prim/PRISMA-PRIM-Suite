@@ -94,6 +94,35 @@
   background: #fff;
 }
 
+.prisme-shell .project-document-selector .project-document-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 24rem;
+  margin-bottom: 0.8rem;
+  color: var(--shell-muted);
+}
+
+.prisme-shell .project-document-selector .project-document-search input {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid var(--shell-line);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  color: var(--shell-ink);
+  background: #fff;
+}
+
+.prisme-shell
+  .project-document-selector
+  .project-document-search
+  input:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
 @media (max-width: 650px) {
   .prisme-shell .project-documents--prisme {
     padding: 1rem;

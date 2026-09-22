@@ -7,6 +7,8 @@ export const projectDocumentsCopy = {
   loading: 'Loading working Documents…',
   empty: 'No working Documents attached.',
   noEligible: 'No eligible working Documents for this original Client.',
+  searchLabel: 'Search eligible working Documents',
+  noMatch: 'No eligible working Documents match this search.',
   denied:
     'Project, Document and Client read access are required to view these Documents.',
   immutable:
