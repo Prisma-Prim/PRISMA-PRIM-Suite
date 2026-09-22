@@ -23,6 +23,13 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await navigate(page, navigation, 'Client Requests', narrow);
 
   const intake = page.locator('.commercial-intake-workspace');
+  const listItems = intake.locator('.commercial-intake-list > li');
+  const filter = intake.getByLabel('Filter loaded Client Requests', {
+    exact: true,
+  });
+  const clearFilter = intake.getByRole('button', {
+    name: 'Show all loaded Requests',
+  });
   if (!narrow)
     await expect(
       intake.getByText('No Client Requests for PRISMA-PRIM yet.', {
@@ -117,6 +124,17 @@ test('captures and reopens manual Client Requests through the real API and Postg
     'Unavailable Client request',
   );
   await expect(intake.getByRole('alert')).toBeVisible();
+  // Both viewport projects share one acceptance database, so only the rows
+  // loaded in this run are a stable expectation.
+  const loadedBeforeFilter = await listItems.count();
+  await filter.click();
+  await page.keyboard.type(linkedSubject);
+  await expect(listItems).toHaveCount(1);
+  await page.keyboard.press('Tab');
+  await expect(clearFilter).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(listItems).toHaveCount(loadedBeforeFilter);
+  await expect(filter).toBeFocused();
   await expectNoHorizontalOverflow(page);
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(
@@ -125,15 +143,39 @@ test('captures and reopens manual Client Requests through the real API and Postg
 
   await seedRequestsPastListBound(page, suffix);
   await page.reload();
-  const listItems = intake.locator('.commercial-intake-list > li');
   await expect(listItems).toHaveCount(25);
+  await filter.fill(`Bounded list Request ${suffix} 7`);
+  await expect(listItems).toHaveCount(1);
+
+  // The oldest Request is only reachable through the unchanged older page.
+  await filter.fill(`Qualify ${suffix} commercial request`);
+  await expect(listItems).toHaveCount(0);
+  await expect(
+    intake.getByText('No loaded Client Requests match this filter.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-filter-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
   await intake.getByRole('button', { name: 'Show older Requests' }).click();
-  await expect(listItems).not.toHaveCount(25);
-  await listItems.nth(25).getByRole('button').click();
+  await expect(listItems).toHaveCount(1);
+  await listItems.first().getByRole('button').click();
   await expect(
     intake.getByText('Client Request detail', { exact: true }),
   ).toBeVisible();
   await intake.getByRole('button', { name: 'Back to Requests' }).click();
+  await expect(filter).toHaveValue(`Qualify ${suffix} commercial request`);
+  await expect(listItems).toHaveCount(1);
+  await clearFilter.click();
+  await expect(
+    intake.getByText(`Bounded list Request ${suffix} 7`, { exact: true }),
+  ).toBeVisible();
+  await expect(filter).toHaveValue('');
 
   await navigate(page, navigation, 'Activity Log', narrow);
   const activity = page.locator('.activity-log');
