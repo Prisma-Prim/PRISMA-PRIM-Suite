@@ -85,6 +85,8 @@ CREATE TABLE "service_definitions" (
 );
 --> statement-breakpoint
 ALTER TABLE "company_role_assignments" DROP CONSTRAINT "company_role_assignments_permission_set_version_check";--> statement-breakpoint
+CREATE UNIQUE INDEX "company_service_offerings_scope_id_unique" ON "company_service_offerings" USING btree ("workspace_id","company_id","id");--> statement-breakpoint
+CREATE UNIQUE INDEX "service_definitions_workspace_id_id_unique" ON "service_definitions" USING btree ("workspace_id","id");--> statement-breakpoint
 ALTER TABLE "commercial_catalogue_commands" ADD CONSTRAINT "commercial_catalogue_commands_company_fk" FOREIGN KEY ("workspace_id","company_id") REFERENCES "public"."companies"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "commercial_catalogue_commands" ADD CONSTRAINT "commercial_catalogue_commands_actor_fk" FOREIGN KEY ("workspace_id","actor_workspace_membership_id") REFERENCES "public"."workspace_memberships"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "commercial_catalogue_commands" ADD CONSTRAINT "commercial_catalogue_commands_definition_fk" FOREIGN KEY ("workspace_id","result_service_definition_id") REFERENCES "public"."service_definitions"("workspace_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -103,10 +105,8 @@ CREATE UNIQUE INDEX "commercial_catalogue_commands_actor_key_unique" ON "commerc
 CREATE UNIQUE INDEX "commercial_catalogue_events_definition_created_unique" ON "commercial_catalogue_events" USING btree ("workspace_id","service_definition_id") WHERE "commercial_catalogue_events"."action" = 'service_definition.created';--> statement-breakpoint
 CREATE UNIQUE INDEX "commercial_catalogue_events_offering_created_unique" ON "commercial_catalogue_events" USING btree ("workspace_id","offering_id") WHERE "commercial_catalogue_events"."action" = 'company_service_offering.created';--> statement-breakpoint
 CREATE UNIQUE INDEX "company_service_offerings_definition_unique" ON "company_service_offerings" USING btree ("workspace_id","company_id","service_definition_id","provenance");--> statement-breakpoint
-CREATE UNIQUE INDEX "company_service_offerings_scope_id_unique" ON "company_service_offerings" USING btree ("workspace_id","company_id","id");--> statement-breakpoint
 CREATE INDEX "company_service_offerings_company_newest_index" ON "company_service_offerings" USING btree ("workspace_id","company_id","created_at","id");--> statement-breakpoint
 CREATE UNIQUE INDEX "service_definitions_workspace_code_unique" ON "service_definitions" USING btree ("workspace_id","code");--> statement-breakpoint
-CREATE UNIQUE INDEX "service_definitions_workspace_id_id_unique" ON "service_definitions" USING btree ("workspace_id","id");--> statement-breakpoint
 CREATE INDEX "service_definitions_workspace_newest_index" ON "service_definitions" USING btree ("workspace_id","created_at","id");--> statement-breakpoint
 ALTER TABLE "company_role_assignments" ADD CONSTRAINT "company_role_assignments_permission_set_version_check" CHECK ((
         ("company_role_assignments"."bundle"::text = 'company_director_client_access'
