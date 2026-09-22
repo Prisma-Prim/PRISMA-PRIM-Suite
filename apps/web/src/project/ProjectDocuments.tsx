@@ -57,6 +57,8 @@ function ProjectDocumentSession({
   const [feedback, setFeedback] = useState('');
   const [generation, setGeneration] = useState(0);
   const pending = useRef<AbortController | null>(null);
+  // Only the selector's own read is tracked here, so closing it never touches a command request.
+  const selectorRequest = useRef<AbortController | null>(null);
   const companyId = actor.activeCompany?.id;
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') &&
@@ -118,6 +120,7 @@ function ProjectDocumentSession({
     const controller = new AbortController();
     pending.current?.abort();
     pending.current = controller;
+    selectorRequest.current = controller;
     setSelector({ load: { kind: 'loading' }, query: '' });
     try {
       const result = await fetchListing(true, controller);
@@ -132,6 +135,12 @@ function ProjectDocumentSession({
       if (!controller.signal.aborted)
         setSelector({ load: { kind: 'error' }, query: '' });
     }
+  }
+  function closeSelector() {
+    // A closed selector must not be reopened by its own late reply; the command keeps its request.
+    selectorRequest.current?.abort();
+    selectorRequest.current = null;
+    setSelector(null);
   }
   async function run(command: Command) {
     const controller = new AbortController();
@@ -329,11 +338,7 @@ function ProjectDocumentSession({
               </label>
             )}
           {renderState(selector.load, true)}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setSelector(null)}
-          >
+          <button type="button" disabled={busy} onClick={closeSelector}>
             {copy.close}
           </button>
         </div>

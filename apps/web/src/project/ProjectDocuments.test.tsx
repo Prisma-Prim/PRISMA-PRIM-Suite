@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -626,6 +633,55 @@ it('cannot restore a stale selector search from a delayed eligible reply', async
   );
   expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
   expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+});
+
+it('closes a loading selector, abandons its request and reopens a fresh one', async () => {
+  const replies: Array<(value: Response) => void> = [];
+  const signals: Array<AbortSignal | null | undefined> = [];
+  const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
+    if (!url.endsWith('/eligible-documents'))
+      return Response.json({ mutable: true, documents: linkedRows });
+    signals.push(options?.signal);
+    return new Promise<Response>((resolve) => {
+      replies.push(resolve);
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  renderSession();
+  await screen.findByText(linkedDocument.title);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Attach working Document' }),
+  );
+  await waitFor(() => expect(replies).toHaveLength(1));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close Document selector' }),
+  );
+  await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+
+  await act(async () => {
+    replies[0]?.(Response.json({ mutable: true, documents: eligibleRows }));
+  });
+  expect(
+    screen.queryByRole('button', { name: 'Close Document selector' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
+  expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Attach working Document' }),
+  );
+  await waitFor(() => expect(replies).toHaveLength(2));
+  expect(signals[1]?.aborted).toBe(false);
+  await act(async () => {
+    replies[1]?.(Response.json({ mutable: true, documents: eligibleRows }));
+  });
+  expect(screen.getByLabelText(searchLabel)).toHaveValue('');
+  expect(headings()).toEqual([
+    linkedDocument.title,
+    siteVisit.title,
+    remoteReview.title,
+    archive.title,
+  ]);
 });
 
 it('clears previously loaded links when the selector discovers revoked read access', async () => {
