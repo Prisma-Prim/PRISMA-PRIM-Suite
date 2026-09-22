@@ -452,6 +452,16 @@ export function ClientWorkspace({
     );
   }
 
+  const activeCompanyId = activeCompany.id;
+  // Shows the canonical dossier after a union outcome or on request from union
+  // history; only the former is a Client identity change.
+  async function showUnionOutcome(canonicalClientId?: string): Promise<void> {
+    if (canonicalClientId) setSelectedClientId(canonicalClientId);
+    else setConfirmedUnionClientId(undefined);
+    setUnionRevision((revision) => revision + 1);
+    await Promise.all([loadClients(activeCompanyId), onActivityRecorded()]);
+  }
+
   return (
     <section
       id="clients"
@@ -845,15 +855,12 @@ export function ClientWorkspace({
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
+          onOpenCanonical={(canonicalClientId) =>
+            void showUnionOutcome(canonicalClientId)
+          }
           onChanged={async (canonicalClientId) => {
-            if (canonicalClientId) setSelectedClientId(canonicalClientId);
-            else setConfirmedUnionClientId(undefined);
-            setUnionRevision((revision) => revision + 1);
             onClientIdentityChanged?.();
-            await Promise.all([
-              loadClients(activeCompany.id),
-              onActivityRecorded(),
-            ]);
+            await showUnionOutcome(canonicalClientId);
           }}
         />
       )}

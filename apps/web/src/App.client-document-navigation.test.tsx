@@ -401,6 +401,41 @@ describe('Client dossier and working Document navigation through App', () => {
     expect(documentFilter()).toHaveValue('');
   });
 
+  it('keeps a dossier restriction when the member merely opens the canonical dossier from union history', async () => {
+    const transport = installTransport({ united: true });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await openLoadedDocuments();
+    const dossier = await openDossier(secondClient.displayName);
+    await openClientDocuments(dossier);
+    await waitFor(() =>
+      expect(documentFilter()).toHaveValue(secondClient.displayName),
+    );
+    const documentReadsBefore = transport.documentReads;
+
+    navigateTo('Clients');
+    fireEvent.click(
+      within(dossier.parentElement ?? dossier).getByRole('button', {
+        name: 'Union history',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View authorized union details',
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open canonical Client dossier',
+      }),
+    );
+    await screen.findByRole('region', { name: secondClient.displayName });
+
+    navigateTo('Working Documents');
+    expect(documentFilter()).toHaveValue(secondClient.displayName);
+    expect(documentTitles()).toHaveLength(2);
+    expect(transport.documentReads).toBe(documentReadsBefore);
+  });
+
   it('does not restore a previous Company restriction when the member returns to that Company', async () => {
     installTransport();
     render(<App identity={deterministicBrowserIdentity()} />);

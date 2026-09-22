@@ -431,6 +431,173 @@ function deferredResponse() {
   });
   return { promise, resolve };
 }
+/** Lets every released response settle before proving what it changed. */
+const settle = () =>
+  act(async () => await new Promise((resolve) => setTimeout(resolve, 0)));
+const dossierWorkspace = (
+  clientIdentityRevision: number,
+  onOpenClientDossier = vi.fn(),
+) => (
+  <DocumentWorkspace
+    actor={actor}
+    identity={identity}
+    clientIdentityRevision={clientIdentityRevision}
+    onOpenClientDossier={onOpenClientDossier}
+  />
+);
+it('keeps the derived-refresh debt when a union completes during a correction reload', async () => {
+  let united = false;
+  const detailReads: Array<() => void> = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      const current = united
+        ? canonicalDossierDocument
+        : supersededDossierDocument;
+      if (init?.method === 'PATCH')
+        return Response.json({
+          documentId: current.id,
+          revision: 2,
+          outcome: 'corrected',
+        });
+      if (url.endsWith(`/documents/${current.id}`)) {
+        const read = deferredResponse();
+        detailReads.push(() => read.resolve(Response.json(current)));
+        return read.promise;
+      }
+      return Response.json([current]);
+    }),
+  );
+  const openClientDossier = vi.fn();
+  const view = render(dossierWorkspace(0, openClientDossier));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Historical questionnaire' }),
+  );
+  await waitFor(() => expect(detailReads).toHaveLength(1));
+  detailReads[0]?.();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Corrected title' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  // The correction is accepted; its detail reload is still pending when the
+  // union completes, so that reload carries the pre-union dossier target.
+  await waitFor(() => expect(detailReads).toHaveLength(2));
+  united = true;
+  view.rerender(dossierWorkspace(1, openClientDossier));
+  detailReads[1]?.();
+
+  await waitFor(() => expect(detailReads).toHaveLength(3));
+  detailReads[2]?.();
+  expect(await screen.findByText('Canonical display name')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Open Client dossier' }));
+  expect(openClientDossier).toHaveBeenCalledWith('canonical-client');
+  expect(openClientDossier).toHaveBeenCalledTimes(1);
+});
+it('keeps a registration confirmed after an intervening identity refresh in the loaded rows', async () => {
+  const registrations: Array<() => void> = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients'))
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      if (init?.method === 'POST') {
+        const post = deferredResponse();
+        registrations.push(() =>
+          post.resolve(Response.json(document, { status: 201 })),
+        );
+        return post.promise;
+      }
+      if (url.endsWith('/documents/document')) return Response.json(document);
+      // The refreshed rows were read before the registration was confirmed.
+      return Response.json([]);
+    }),
+  );
+  const view = render(dossierWorkspace(0));
+  expect(
+    await screen.findByText('No working references registered yet.'),
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: document.title },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: document.purpose },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: document.version.representation.url },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Register working reference' }),
+  );
+  await waitFor(() => expect(registrations).toHaveLength(1));
+
+  // A Client identity refresh publishes while the registration is pending.
+  view.rerender(dossierWorkspace(1));
+  await settle();
+  registrations[0]?.();
+  expect(
+    await screen.findByRole('link', { name: 'Open external reference' }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+  expect(
+    within(screen.getByRole('list')).getByRole('button', {
+      name: document.title,
+    }),
+  ).toBeInTheDocument();
+});
+it('retires a pending detail read when a dossier restriction arrives', async () => {
+  const detailReads: Array<() => void> = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      const opened = dossierDocuments.find((candidate) =>
+        url.endsWith(`/documents/${candidate.id}`),
+      );
+      if (!opened) return Response.json(dossierDocuments);
+      const read = deferredResponse();
+      detailReads.push(() => read.resolve(Response.json(opened)));
+      return read.promise;
+    }),
+  );
+  const view = render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Historical questionnaire' }),
+  );
+  await waitFor(() => expect(detailReads).toHaveLength(1));
+
+  // The member opens another dossier's Documents before that read answers.
+  view.rerender(
+    <DocumentWorkspace
+      actor={actor}
+      identity={identity}
+      clientFilter={{
+        clientDossierId: 'other-client',
+        displayName: 'Shared display name',
+      }}
+    />,
+  );
+  detailReads[0]?.();
+  await settle();
+  expect(
+    screen.queryByRole('heading', { name: 'Historical questionnaire' }),
+  ).not.toBeInTheDocument();
+  const homonym = within(screen.getByRole('list')).getByRole('button', {
+    name: 'Homonym questionnaire',
+  });
+  expect(within(screen.getByRole('list')).getAllByRole('button')).toEqual([
+    homonym,
+  ]);
+  expect(homonym).toBeEnabled();
+});
 it('refreshes the dossier target of a preserved correction once that correction ends', async () => {
   let united = false;
   vi.stubGlobal(

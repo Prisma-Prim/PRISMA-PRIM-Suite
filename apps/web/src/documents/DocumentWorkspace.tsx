@@ -64,9 +64,14 @@ export function DocumentWorkspace({
     | 'conflict'
     | 'denied'
   >('idle');
-  /** The Document a confirmed identity change still owes a derived refresh. */
-  const [staleDossierDocumentId, setStaleDossierDocumentId] =
-    useState<string>();
+  /**
+   * The opened Document still owes a derived refresh for one Client identity
+   * revision. Only a detail read that started under that revision settles it.
+   */
+  const [staleDossier, setStaleDossier] = useState<{
+    documentId: string;
+    revision: number;
+  }>();
   const correctionActive =
     editing || correction === 'pending' || correction === 'uncertain';
   const correctionInProgress = useRef(correctionActive);
@@ -75,7 +80,11 @@ export function DocumentWorkspace({
   openedDocument.current = detail;
   const listReady = useRef(false);
   listReady.current = state.status === 'ready';
+  const identityRevision = useRef(clientIdentityRevision);
+  identityRevision.current = clientIdentityRevision;
   const pending = useRef<AbortController | undefined>(undefined);
+  /** The ordinary detail read in flight, if any; never a mutation. */
+  const detailRead = useRef<AbortController | undefined>(undefined);
   const listRequest = useRef<AbortController | undefined>(undefined);
   const dossierRefresh = useRef<AbortController | undefined>(undefined);
   const startedListWrites = useRef(0);
@@ -110,6 +119,23 @@ export function DocumentWorkspace({
     publishedListWrite.current = sequence;
     setState(next);
   }
+  /**
+   * A detail read that lands settles the derived-refresh debt only when no
+   * Client identity change happened after it started; otherwise the Document
+   * it published may carry a superseded dossier target and stays owed.
+   */
+  function settleDetailRead(
+    documentId: string,
+    startedUnderRevision: number,
+  ): void {
+    setStaleDossier((current) => {
+      const revision = identityRevision.current;
+      if (revision === startedUnderRevision) return undefined;
+      return current?.documentId === documentId && current.revision === revision
+        ? current
+        : { documentId, revision };
+    });
+  }
   // A different Company, member or Document authority retires the presentation
   // owned by this module, including the drafts started under it and the rows
   // loaded under it, which the load below replaces.
@@ -124,7 +150,7 @@ export function DocumentWorkspace({
     setMutation('idle');
     setEditing(false);
     setCorrection('idle');
-    setStaleDossierDocumentId(undefined);
+    setStaleDossier(undefined);
     retry.current = undefined;
     correctionRetry.current = undefined;
     pending.current?.abort();
@@ -213,16 +239,22 @@ export function DocumentWorkspace({
   useEffect(() => {
     if (knownClientIdentityRevision.current === clientIdentityRevision) return;
     knownClientIdentityRevision.current = clientIdentityRevision;
-    setStaleDossierDocumentId(openedDocument.current?.id);
+    const opened = openedDocument.current;
+    setStaleDossier(
+      opened
+        ? { documentId: opened.id, revision: clientIdentityRevision }
+        : undefined,
+    );
   }, [clientIdentityRevision]);
   // The opened Document owes the same derived refresh. An open correction
   // draft and its retryable command keep the exact Document they started from,
   // so the catch-up read waits for that correction to end instead of being
   // skipped and forgotten.
   useEffect(() => {
-    if (staleDossierDocumentId === undefined || correctionActive) return;
-    if (!companyId || !canRead || detail?.id !== staleDossierDocumentId) {
-      setStaleDossierDocumentId(undefined);
+    if (staleDossier === undefined || correctionActive) return;
+    const { documentId, revision } = staleDossier;
+    if (!companyId || !canRead || detail?.id !== documentId) {
+      setStaleDossier(undefined);
       return;
     }
     const request = new AbortController();
@@ -233,7 +265,7 @@ export function DocumentWorkspace({
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return;
         const reopened = await api.request<unknown>(
-          `/documents/${encodeURIComponent(staleDossierDocumentId)}`,
+          `/documents/${encodeURIComponent(documentId)}`,
           { companyContextId: companyId, signal: request.signal },
         );
         if (request.signal.aborted) return;
@@ -243,7 +275,7 @@ export function DocumentWorkspace({
         }
         if (reopened.status === 'forbidden' || reopened.status === 'notFound') {
           publishList(reserveListWrite(), () => ({ status: 'denied' }));
-          setStaleDossierDocumentId(undefined);
+          setStaleDossier(undefined);
           return;
         }
         if (reopened.status !== 'ok') throw new Error('Refresh failed');
@@ -251,14 +283,14 @@ export function DocumentWorkspace({
         setDetail((current) =>
           current?.id === reloaded.id ? reloaded : current,
         );
-        setStaleDossierDocumentId(undefined);
+        settleDetailRead(reloaded.id, revision);
       } catch {
         if (!request.signal.aborted) setMutation('error');
       }
     })();
     return () => request.abort();
   }, [
-    staleDossierDocumentId,
+    staleDossier,
     correctionActive,
     detail?.id,
     companyId,
@@ -276,13 +308,23 @@ export function DocumentWorkspace({
     }
     setFilter({ kind: 'client', ...clientFilter });
     // Show the restricted references, but never discard an open correction
-    // draft or a retryable correction command owned by this module.
-    if (!correctionInProgress.current) setDetail(undefined);
+    // draft or a retryable correction command owned by this module. An
+    // ordinary detail read still in flight is retired with the detail it
+    // would otherwise publish behind the restriction.
+    if (correctionInProgress.current) return;
+    const read = detailRead.current;
+    if (read && !read.signal.aborted) {
+      read.abort();
+      setMutation('idle');
+    }
+    setDetail(undefined);
   }, [clientFilter]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
+    detailRead.current = request;
+    const startedUnderRevision = identityRevision.current;
     setDetail(undefined);
     setMutation('pending');
     try {
@@ -303,14 +345,17 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status !== 'ok') throw new Error('Read failed');
-      setDetail(readDocument(result.value));
-      setStaleDossierDocumentId(undefined);
+      const opened = readDocument(result.value);
+      setDetail(opened);
+      settleDetailRead(opened.id, startedUnderRevision);
       setEditing(false);
       setCorrection('idle');
       correctionRetry.current = undefined;
       setMutation('idle');
     } catch {
       if (!request.signal.aborted) setMutation('error');
+    } finally {
+      if (detailRead.current === request) detailRead.current = undefined;
     }
   }
   function beginCorrection() {
@@ -395,6 +440,7 @@ export function DocumentWorkspace({
       if (receipt.documentId !== detail.id)
         throw new Error('Unexpected correction receipt');
       const sequence = reserveListWrite();
+      const startedUnderRevision = identityRevision.current;
       const [documentResult, documentsResult] = await Promise.all([
         api.request<unknown>(`/documents/${encodeURIComponent(detail.id)}`, {
           companyContextId: companyId,
@@ -411,7 +457,7 @@ export function DocumentWorkspace({
       const saved = readDocument(documentResult.value);
       const documents = readDocuments(documentsResult.value);
       setDetail(saved);
-      setStaleDossierDocumentId(undefined);
+      settleDetailRead(saved.id, startedUnderRevision);
       publishList(sequence, (current) =>
         current.status === 'ready' ? { ...current, documents } : current,
       );
@@ -435,7 +481,6 @@ export function DocumentWorkspace({
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
-    const sequence = reserveListWrite();
     setMutation('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -456,7 +501,7 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status === 'forbidden') {
-        publishList(sequence, () => ({ status: 'denied' }));
+        publishList(reserveListWrite(), () => ({ status: 'denied' }));
         setMutation('idle');
         return;
       }
@@ -465,7 +510,10 @@ export function DocumentWorkspace({
       retry.current = undefined;
       setDetail(saved);
       setMutation('idle');
-      publishList(sequence, (current) =>
+      // The confirmed registration is merged into whatever rows are current,
+      // so its slot is reserved now: a refresh that completed while the
+      // registration was pending stays authoritative and still gains the row.
+      publishList(reserveListWrite(), (current) =>
         current.status === 'ready'
           ? {
               ...current,
