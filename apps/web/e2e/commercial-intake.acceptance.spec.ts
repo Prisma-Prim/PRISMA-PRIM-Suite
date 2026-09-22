@@ -64,6 +64,78 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await requestButton.click();
   await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
 
+  // Real next-action edit at the observed version, then reload and conflict.
+  const editedNextAction = `Confirm the ${suffix} qualification call`;
+  await expect(intake.getByText('Version: 1', { exact: true })).toBeVisible();
+  await intake.getByRole('button', { name: 'Edit next action' }).click();
+  await intake.getByLabel('Next action').fill('   ');
+  await intake.getByRole('button', { name: 'Save next action' }).click();
+  await expect(intake.getByRole('alert')).toHaveText(
+    'Enter a next action between 1 and 500 characters.',
+  );
+  await intake.getByLabel('Next action').fill(editedNextAction);
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/commercial-intake\/opportunities\/[^/]+\/next-action$/u.test(
+        new URL(response.url()).pathname,
+      ),
+  );
+  await intake.getByRole('button', { name: 'Save next action' }).click();
+  expect((await updateResponse).status()).toBe(200);
+  await expect(intake.getByRole('alert')).toHaveText('Next action saved.');
+  await expect(
+    intake.getByText(`Next action: ${editedNextAction}`, { exact: true }),
+  ).toBeVisible();
+  await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+  await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-next-action-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+
+  await page.reload();
+  await requestButton.click();
+  await expect(
+    intake.getByText(`Next action: ${editedNextAction}`, { exact: true }),
+  ).toBeVisible();
+  await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+
+  const opportunityId = await findOpportunityId(page, requestSubject);
+  const concurrentUpdate = await page.request.post(
+    `http://127.0.0.1:4174/api/commercial-intake/opportunities/${opportunityId}/next-action`,
+    {
+      headers: {
+        ...apiIdentityHeaders,
+        'x-company-context-id': requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_COMPANY_ID',
+        ),
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-concurrent-${suffix}`,
+      },
+      data: { expectedVersion: 2, nextAction: `Moved first ${suffix}` },
+    },
+  );
+  expect(concurrentUpdate.status()).toBe(200);
+  await intake.getByRole('button', { name: 'Edit next action' }).click();
+  await intake.getByLabel('Next action').fill(`Stale edit ${suffix}`);
+  await intake.getByRole('button', { name: 'Save next action' }).click();
+  await expect(intake.getByRole('alert')).toHaveText(
+    'This Opportunity changed since you loaded it. Reload the Request before editing again.',
+  );
+  await expect(intake.getByLabel('Next action')).toHaveCount(0);
+  await intake.getByRole('button', { name: 'Reload Request' }).click();
+  await expect(intake.getByText('Version: 3', { exact: true })).toBeVisible();
+  await expect(
+    intake.getByText(`Next action: Moved first ${suffix}`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    intake.getByRole('button', { name: 'Edit next action' }),
+  ).toBeVisible();
+
   await navigate(page, navigation, 'Clients', narrow);
   const clients = page.locator('.client-workspace');
   await clients
@@ -249,6 +321,46 @@ async function seedRequestsPastListBound(
     ),
   );
   expect(responses.every((response) => response.status() === 201)).toBe(true);
+}
+
+async function findOpportunityId(page: Page, subject: string): Promise<string> {
+  const headers = {
+    ...apiIdentityHeaders,
+    'x-company-context-id': requiredEnvironment(
+      'ACCEPTANCE_PRIMARY_COMPANY_ID',
+    ),
+  };
+  const list = await page.request.get(
+    'http://127.0.0.1:4174/api/commercial-intake/requests?limit=25',
+    { headers },
+  );
+  expect(list.status()).toBe(200);
+  const page1: unknown = await list.json();
+  if (!isRecord(page1) || !Array.isArray(page1.items))
+    throw new Error('Expected a Request page.');
+  const item = page1.items.find(
+    (candidate: unknown) =>
+      isRecord(candidate) && candidate.subject === subject,
+  );
+  if (!isRecord(item) || typeof item.id !== 'string')
+    throw new Error(`Expected the Request "${subject}".`);
+  const detail = await page.request.get(
+    `http://127.0.0.1:4174/api/commercial-intake/requests/${item.id}`,
+    { headers },
+  );
+  expect(detail.status()).toBe(200);
+  const request: unknown = await detail.json();
+  if (
+    !isRecord(request) ||
+    !isRecord(request.initialOpportunity) ||
+    typeof request.initialOpportunity.id !== 'string'
+  )
+    throw new Error('Expected the Request detail.');
+  return request.initialOpportunity.id;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function revokeCommercialIntake(page: Page): Promise<void> {

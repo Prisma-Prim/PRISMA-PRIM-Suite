@@ -4,6 +4,7 @@ import type {
   DocumentPermissionSetVersion,
   CompanyDirectorClientPermissionSetVersion,
   CompanyCommercialIntakePermission,
+  CompanyCommercialIntakePermissionSetVersion,
 } from './company-permissions.js';
 
 export interface ExternalPrincipal {
@@ -31,7 +32,7 @@ export interface ActiveCompanyContext {
   projectPermissions?: Array<'project.read' | 'project.create'>;
   commercialIntakePermissions?: CompanyCommercialIntakePermission[];
   commercialIntakePermissionAssignmentId?: string;
-  commercialIntakePermissionSetVersion?: 'v1';
+  commercialIntakePermissionSetVersion?: CompanyCommercialIntakePermissionSetVersion;
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }

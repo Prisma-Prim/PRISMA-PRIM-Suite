@@ -15,6 +15,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   clientRequests,
   commercialIntakeCommands,
+  commercialIntakeNextActionCommands,
   internalUsers,
   opportunities,
 } from '../database/schema/index.js';
@@ -27,11 +28,18 @@ import type {
   CommercialIntakeDetail,
   CommercialIntakeListPage,
   CreateCommercialIntakeCommand,
+  OpportunityNextActionUpdateResult,
+  UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
-import { readCreateCommercialIntakeCommand } from './commercial-intake.validation.js';
+import {
+  readCreateCommercialIntakeCommand,
+  readUpdateOpportunityNextActionCommand,
+} from './commercial-intake.validation.js';
 
 type ClientRequestRow = typeof clientRequests.$inferSelect;
 type OpportunityRow = typeof opportunities.$inferSelect;
+type NextActionCommandRow =
+  typeof commercialIntakeNextActionCommands.$inferSelect;
 
 @Injectable()
 export class CommercialIntakeService {
@@ -136,6 +144,137 @@ export class CommercialIntakeService {
       'read',
     );
     return this.loadDetail(actor, companyId, requestId, false);
+  }
+
+  async updateNextAction(
+    actor: ActorContext,
+    opportunityId: string,
+    value: unknown,
+    key: string | undefined,
+  ): Promise<OpportunityNextActionUpdateResult> {
+    await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'update-next-action',
+    );
+    const command = readUpdateOpportunityNextActionCommand(value);
+    const idempotencyKey = requireIdempotencyKey(key);
+    const fingerprint = nextActionFingerprint(opportunityId, command);
+    return this.databaseContext.transaction(async () => {
+      // Authority is re-read under a share lock so a concurrent revocation
+      // or suspension commits either before this check or after this write.
+      const companyId = await this.authorization.requireCommercialIntakeAccess(
+        actor,
+        'update-next-action',
+        true,
+      );
+      await this.lockNextActionCommand(actor, companyId, idempotencyKey);
+      const replay = await this.findNextActionCommand(
+        actor,
+        companyId,
+        idempotencyKey,
+      );
+      if (replay) {
+        if (replay.fingerprint !== fingerprint)
+          throw new ConflictException({
+            code: 'IDEMPOTENCY_CONFLICT',
+            message: 'Idempotency-Key was already used for another update.',
+          });
+        // An exact retry resolves before its now-stale observed version
+        // could be rejected: target visibility is rechecked, then the
+        // recorded receipt returns without a second write or event.
+        const current = await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return {
+          receipt: receiptView(replay),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            current.clientRequestId,
+            false,
+          ),
+        };
+      }
+
+      const current = await this.requireVisibleOpportunity(
+        actor,
+        companyId,
+        opportunityId,
+        true,
+      );
+      if (current.version !== command.expectedVersion) throw staleVersion();
+      if (current.nextAction === command.nextAction) {
+        const receipt = await this.recordNextActionCommand({
+          actor,
+          companyId,
+          opportunityId,
+          idempotencyKey,
+          fingerprint,
+          command,
+          outcome: 'unchanged',
+          resultVersion: current.version,
+        });
+        return {
+          receipt: receiptView(receipt),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            current.clientRequestId,
+            false,
+          ),
+        };
+      }
+
+      const resultVersion = current.version + 1;
+      const [updated] = await this.databaseContext.connection
+        .update(opportunities)
+        .set({
+          nextAction: command.nextAction,
+          version: resultVersion,
+          lastUpdatedByInternalUserId: actor.internalUserId,
+          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          lastUpdatedAt: sql`now()`,
+        })
+        .where(
+          and(
+            eq(opportunities.workspaceId, actor.workspaceId),
+            eq(opportunities.companyId, companyId),
+            eq(opportunities.id, opportunityId),
+            eq(opportunities.version, command.expectedVersion),
+          ),
+        )
+        .returning();
+      if (!updated) throw staleVersion();
+      await this.accountability.recordOpportunityNextActionUpdated({
+        actor,
+        companyId,
+        clientRequestId: updated.clientRequestId,
+        opportunityId: updated.id,
+        opportunityVersion: updated.version,
+      });
+      const receipt = await this.recordNextActionCommand({
+        actor,
+        companyId,
+        opportunityId,
+        idempotencyKey,
+        fingerprint,
+        command,
+        outcome: 'updated',
+        resultVersion,
+      });
+      return {
+        receipt: receiptView(receipt),
+        request: await this.loadDetail(
+          actor,
+          companyId,
+          updated.clientRequestId,
+          false,
+        ),
+      };
+    });
   }
 
   async list(
@@ -336,6 +475,130 @@ export class CommercialIntakeService {
       );
     return command;
   }
+
+  // The same safe not-found response as Request detail: an unknown,
+  // cross-Company or cross-Workspace Opportunity is indistinguishable.
+  private async requireVisibleOpportunity(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+    lock: boolean,
+  ): Promise<OpportunityRow> {
+    const query = this.databaseContext.connection
+      .select()
+      .from(opportunities)
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          eq(opportunities.id, opportunityId),
+        ),
+      );
+    const [opportunity] = lock ? await query.for('update') : await query;
+    if (!opportunity) throw new NotFoundException();
+    return opportunity;
+  }
+
+  private async recordNextActionCommand(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    idempotencyKey: string;
+    fingerprint: string;
+    command: UpdateOpportunityNextActionCommand;
+    outcome: NextActionCommandRow['outcome'];
+    resultVersion: number;
+  }): Promise<NextActionCommandRow> {
+    const [receipt] = await this.databaseContext.connection
+      .insert(commercialIntakeNextActionCommands)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        idempotencyKey: input.idempotencyKey,
+        fingerprint: input.fingerprint,
+        opportunityId: input.opportunityId,
+        expectedVersion: input.command.expectedVersion,
+        resultVersion: input.resultVersion,
+        outcome: input.outcome,
+        nextAction: input.command.nextAction,
+      })
+      .returning();
+    if (!receipt) throw new Error('The next-action command was not recorded.');
+    return receipt;
+  }
+
+  private async lockNextActionCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'commercial-intake.update-next-action',
+      actor.workspaceId,
+      companyId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.databaseContext.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+  }
+
+  private async findNextActionCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<NextActionCommandRow | undefined> {
+    const [command] = await this.databaseContext.connection
+      .select()
+      .from(commercialIntakeNextActionCommands)
+      .where(
+        and(
+          eq(commercialIntakeNextActionCommands.workspaceId, actor.workspaceId),
+          eq(commercialIntakeNextActionCommands.companyId, companyId),
+          eq(
+            commercialIntakeNextActionCommands.actorWorkspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(commercialIntakeNextActionCommands.idempotencyKey, idempotencyKey),
+        ),
+      );
+    return command;
+  }
+}
+
+function nextActionFingerprint(
+  opportunityId: string,
+  command: UpdateOpportunityNextActionCommand,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        opportunityId,
+        expectedVersion: command.expectedVersion,
+        nextAction: command.nextAction,
+      }),
+    )
+    .digest('hex');
+}
+
+function receiptView(
+  command: NextActionCommandRow,
+): OpportunityNextActionUpdateResult['receipt'] {
+  return {
+    opportunityId: command.opportunityId,
+    nextAction: command.nextAction,
+    version: command.resultVersion,
+    outcome: command.outcome,
+  };
+}
+
+function staleVersion(): ConflictException {
+  return new ConflictException({
+    code: 'STALE_VERSION',
+    message: 'Reload the Request before retrying.',
+  });
 }
 
 function commandFingerprint(command: CreateCommercialIntakeCommand): string {
@@ -358,7 +621,7 @@ function detailView(
   opportunity: OpportunityRow,
   client?: NonNullable<CommercialIntakeDetail['clientReference']>,
 ): CommercialIntakeDetail {
-  if (request.version !== 1 || opportunity.version !== 1)
+  if (request.version !== 1 || opportunity.version < 1)
     throw new Error('Unsupported commercial intake version.');
   return {
     id: request.id,

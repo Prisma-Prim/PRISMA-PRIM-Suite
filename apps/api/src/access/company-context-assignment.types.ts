@@ -7,7 +7,10 @@ import type {
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
 } from './company-permissions.js';
-import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
+import type {
+  CompanyCommercialIntakePermissionSetVersion,
+  CompanyDirectorClientPermissionSetVersion,
+} from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
@@ -47,7 +50,7 @@ export type CompanyContextAssignmentRecord =
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
-      permissionSetVersion: 'v1';
+      permissionSetVersion: CompanyCommercialIntakePermissionSetVersion;
     });
 
 export interface CompanyAccessAdministrationMember {

@@ -40,7 +40,10 @@ import { ClientModule } from './client/client.module.js';
 import { ClientUnionController } from './client/client-union.controller.js';
 import { DatabaseModule } from './database/database.module.js';
 import { CommercialIntakeModule } from './commercial-intake/commercial-intake.module.js';
-import { CommercialIntakeController } from './commercial-intake/commercial-intake.controller.js';
+import {
+  CommercialIntakeController,
+  CommercialIntakeOpportunityController,
+} from './commercial-intake/commercial-intake.controller.js';
 import { CompanyCommercialIntakeAssignmentController } from './access/company-commercial-intake-assignment.controller.js';
 
 @Module({
@@ -77,6 +80,7 @@ import { CompanyCommercialIntakeAssignmentController } from './access/company-co
     WorkspaceMembershipSuspensionController,
     WorkspaceSessionRevocationController,
     CommercialIntakeController,
+    CommercialIntakeOpportunityController,
     CompanyCommercialIntakeAssignmentController,
   ],
   providers: [

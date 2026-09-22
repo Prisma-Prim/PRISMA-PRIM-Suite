@@ -40,6 +40,8 @@ import {
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
+  isCommercialIntakePermissionSetVersion,
+  type CompanyCommercialIntakePermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
 } from './company-permissions.js';
@@ -65,6 +67,7 @@ type BundleDefinition = {
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
+    | CompanyCommercialIntakePermissionSetVersion
     | null;
 };
 
@@ -98,10 +101,12 @@ const PROJECT_BUNDLE: BundleDefinition = {
   label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+// A fresh grant captures v2; existing v1 assignments keep their captured
+// version until explicitly revoked and granted again.
 const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const ADMINISTRABLE_BUNDLES = [
   COMPANY_TASK_MANAGER_BUNDLE,
@@ -592,10 +597,7 @@ export class CompanyContextAssignmentService {
     workspaceMembershipId: string,
     companyId: string,
     bundle: Bundle,
-    permissionSetVersion:
-      | CompanyDirectorClientPermissionSetVersion
-      | DocumentPermissionSetVersion
-      | null,
+    permissionSetVersion: BundleDefinition['permissionSetVersion'],
   ) {
     const active = await this.findActiveAssignment(
       workspaceId,
@@ -859,12 +861,14 @@ function assignmentRecord(
         permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_COMMERCIAL_INTAKE_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        !isCommercialIntakePermissionSetVersion(assignment.permissionSetVersion)
+      )
         throw new Error('Invalid Company Commercial Intake version.');
       return {
         ...base,
         bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
   }
 }

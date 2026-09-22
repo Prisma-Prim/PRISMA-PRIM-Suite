@@ -1,10 +1,50 @@
 import { describe, expect, it } from 'vitest';
 import {
+  commercialIntakePermissionsFor,
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
+  isCommercialIntakePermissionSetVersion,
+  type CompanyCommercialIntakePermissionSetVersion,
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Commercial Intake permission sets', () => {
+  it.each([
+    [
+      'v1',
+      [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+      ],
+    ],
+    [
+      'v2',
+      [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+      ],
+    ],
+  ] satisfies Array<
+    [CompanyCommercialIntakePermissionSetVersion, readonly string[]]
+  >)('resolves immutable %s permissions', (version, expected) => {
+    expect(commercialIntakePermissionsFor(version)).toEqual(expected);
+    expect(isCommercialIntakePermissionSetVersion(version)).toBe(true);
+  });
+
+  it.each([null, undefined, '', 'V2', 'v3'])(
+    'fails closed for an unsupported captured version: %s',
+    (version) => {
+      expect(commercialIntakePermissionsFor(version)).toEqual([]);
+      expect(isCommercialIntakePermissionSetVersion(version)).toBe(false);
+    },
+  );
+});
 
 describe('Company Director Client permission sets', () => {
   it.each([

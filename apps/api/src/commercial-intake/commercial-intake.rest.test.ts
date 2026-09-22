@@ -85,7 +85,7 @@ withPostgres('Company commercial intake REST', () => {
     );
     expect(assignment).toMatchObject({
       bundle: 'Company Commercial Intake',
-      permissionSetVersion: 'v1',
+      permissionSetVersion: 'v2',
       active: true,
     });
 
@@ -285,7 +285,9 @@ withPostgres('Company commercial intake REST', () => {
       'commercial.request.create',
       'commercial.opportunity.read',
       'commercial.opportunity.create',
+      'commercial.opportunity.next_action.update',
     ]);
+    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v2');
     expect(
       (
         await request('/commercial-intake/requests', company.id, {
@@ -1236,6 +1238,705 @@ withPostgres('Company commercial intake REST', () => {
     expect(page.items).toHaveLength(created.status === 201 ? 1 : 0);
   });
 
+  it('updates only the Opportunity next action with one attributed version-only event that survives restart', async () => {
+    const setup = await prepared();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'next-action-source',
+        setup.company.id,
+      ),
+    );
+    const opportunityId = created.initialOpportunity.id;
+    const nextAction = '  Send the qualification summary to the Client  ';
+    const requestRowsBefore = await pool.query(
+      'SELECT to_jsonb(request) AS row FROM client_requests AS request',
+    );
+    const opportunityBefore = await pool.query<JsonRow>(
+      'SELECT to_jsonb(opportunity) AS row FROM opportunities AS opportunity',
+    );
+
+    const response = await updateNextAction(
+      setup.company.id,
+      opportunityId,
+      { expectedVersion: 1, nextAction },
+      'next-action-update',
+    );
+    expect(response.status).toBe(200);
+    const result = record(await response.json());
+    expect(result.receipt).toEqual({
+      opportunityId,
+      nextAction,
+      version: 2,
+      outcome: 'updated',
+    });
+    const expected = {
+      ...created,
+      initialOpportunity: {
+        ...created.initialOpportunity,
+        nextAction,
+        version: 2,
+      },
+    };
+    expect(result.request).toEqual(expected);
+    expect(JSON.stringify(result)).not.toContain('lastUpdated');
+
+    expect(
+      (
+        await pool.query(
+          'SELECT to_jsonb(request) AS row FROM client_requests AS request',
+        )
+      ).rows,
+    ).toEqual(requestRowsBefore.rows);
+    const opportunityAfter = await pool.query<JsonRow>(
+      'SELECT to_jsonb(opportunity) AS row FROM opportunities AS opportunity',
+    );
+    const before = opportunityBefore.rows[0]?.row;
+    const after = opportunityAfter.rows[0]?.row;
+    if (!before || !after) throw new Error('Expected one Opportunity row.');
+    expect(after).toEqual({
+      ...before,
+      next_action: nextAction,
+      version: 2,
+      last_updated_by_internal_user_id: expect.any(String),
+      last_updated_by_workspace_membership_id:
+        setup.actor.workspaceMembershipId,
+      last_updated_at: expect.any(String),
+    });
+
+    const events = await pool.query<{
+      action: string;
+      actor_workspace_membership_id: string;
+      company_id: string;
+      client_request_id: string;
+      metadata: Record<string, unknown>;
+    }>(
+      `SELECT action, actor_workspace_membership_id, company_id,
+              client_request_id, metadata
+         FROM commercial_intake_events
+        WHERE opportunity_id = $1
+        ORDER BY occurred_at, action`,
+      [opportunityId],
+    );
+    expect(events.rows.map((row) => row.action)).toEqual([
+      'client_request.created',
+      'opportunity.created',
+      'opportunity.next_action.updated',
+    ]);
+    expect(events.rows[2]).toEqual({
+      action: 'opportunity.next_action.updated',
+      actor_workspace_membership_id: setup.actor.workspaceMembershipId,
+      company_id: setup.company.id,
+      client_request_id: created.id,
+      metadata: { opportunityVersion: 2 },
+    });
+    const receipts = await pool.query(
+      `SELECT outcome, expected_version, result_version, next_action
+         FROM commercial_intake_next_action_commands`,
+    );
+    expect(receipts.rows).toEqual([
+      {
+        outcome: 'updated',
+        expected_version: 1,
+        result_version: 2,
+        next_action: nextAction,
+      },
+    ]);
+
+    const page = record(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    );
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        id: created.id,
+        initialOpportunity: expect.objectContaining({ nextAction }),
+      }),
+    ]);
+
+    await harness.close();
+    await openHarness();
+    expect(
+      await (
+        await request(
+          `/commercial-intake/requests/${created.id}`,
+          setup.company.id,
+        )
+      ).json(),
+    ).toEqual(expected);
+  });
+
+  it('allows one material outcome per observed version and replays exact receipts before stale-version refusal', async () => {
+    const setup = await prepared();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'next-action-concurrency-source',
+        setup.company.id,
+      ),
+    );
+    const opportunityId = created.initialOpportunity.id;
+
+    const stale = await updateNextAction(
+      setup.company.id,
+      opportunityId,
+      { expectedVersion: 2, nextAction: 'Stale observation' },
+      'stale-observation',
+    );
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({
+      code: 'STALE_VERSION',
+      message: 'Reload the Request before retrying.',
+    });
+
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      await barrier.query(
+        'SELECT id FROM opportunities WHERE id = $1 FOR UPDATE',
+        [opportunityId],
+      );
+      const first = updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 1, nextAction: 'First concurrent writer' },
+        'writer-a',
+      );
+      const second = updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 1, nextAction: 'Second concurrent writer' },
+        'writer-b',
+      );
+      await waitForLockWaiters(2);
+      await barrier.query('COMMIT');
+      released = true;
+      const [firstOutcome, secondOutcome] = await Promise.all([first, second]);
+      expect([firstOutcome.status, secondOutcome.status].sort()).toEqual([
+        200, 409,
+      ]);
+      const firstWon = firstOutcome.status === 200;
+      const winner = {
+        key: firstWon ? 'writer-a' : 'writer-b',
+        nextAction: firstWon
+          ? 'First concurrent writer'
+          : 'Second concurrent writer',
+        body: record(await (firstWon ? firstOutcome : secondOutcome).json()),
+      };
+      expect(winner.body.receipt).toEqual({
+        opportunityId,
+        nextAction: winner.nextAction,
+        version: 2,
+        outcome: 'updated',
+      });
+      await expectOpportunityState(opportunityId, {
+        nextAction: winner.nextAction,
+        version: 2,
+        updateEvents: 1,
+        receipts: [{ outcome: 'updated', result_version: 2 }],
+      });
+
+      const replay = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 1, nextAction: winner.nextAction },
+        winner.key,
+      );
+      expect(replay.status).toBe(200);
+      expect(record(await replay.json()).receipt).toEqual(winner.body.receipt);
+      const changed = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 2, nextAction: winner.nextAction },
+        winner.key,
+      );
+      expect(changed.status).toBe(409);
+      expect(await changed.json()).toEqual({
+        code: 'IDEMPOTENCY_CONFLICT',
+        message: 'Idempotency-Key was already used for another update.',
+      });
+
+      const unchanged = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 2, nextAction: winner.nextAction },
+        'no-op',
+      );
+      expect(unchanged.status).toBe(200);
+      const unchangedBody = record(await unchanged.json());
+      expect(unchangedBody.receipt).toEqual({
+        opportunityId,
+        nextAction: winner.nextAction,
+        version: 2,
+        outcome: 'unchanged',
+      });
+      expect(record(unchangedBody.request).initialOpportunity).toMatchObject({
+        nextAction: winner.nextAction,
+        version: 2,
+      });
+      await expectOpportunityState(opportunityId, {
+        nextAction: winner.nextAction,
+        version: 2,
+        updateEvents: 1,
+        receipts: [
+          { outcome: 'updated', result_version: 2 },
+          { outcome: 'unchanged', result_version: 2 },
+        ],
+      });
+
+      const later = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 2, nextAction: 'Later material update' },
+        'later-update',
+      );
+      expect(later.status).toBe(200);
+      const noOpReplay = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 2, nextAction: winner.nextAction },
+        'no-op',
+      );
+      expect(noOpReplay.status).toBe(200);
+      const noOpReplayBody = record(await noOpReplay.json());
+      expect(noOpReplayBody.receipt).toEqual(unchangedBody.receipt);
+      expect(record(noOpReplayBody.request).initialOpportunity).toMatchObject({
+        nextAction: 'Later material update',
+        version: 3,
+      });
+      expect(
+        (
+          await updateNextAction(
+            setup.company.id,
+            opportunityId,
+            { expectedVersion: 3, nextAction: winner.nextAction },
+            'no-op',
+          )
+        ).status,
+      ).toBe(409);
+      await expectOpportunityState(opportunityId, {
+        nextAction: 'Later material update',
+        version: 3,
+        updateEvents: 2,
+        receipts: [
+          { outcome: 'updated', result_version: 2 },
+          { outcome: 'unchanged', result_version: 2 },
+          { outcome: 'updated', result_version: 3 },
+        ],
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+  });
+
+  it('fails closed for a legacy v1 assignment, another Company, another Workspace and missing identity without leakage', async () => {
+    const setup = await prepared();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'next-action-authority-source',
+        setup.company.id,
+      ),
+    );
+    const opportunityId = created.initialOpportunity.id;
+    const body = { expectedVersion: 1, nextAction: 'Denied attempt' };
+
+    await pool.query(
+      `UPDATE company_role_assignments
+          SET permission_set_version = 'v1'
+        WHERE workspace_id = $1
+          AND workspace_membership_id = $2
+          AND company_id = $3
+          AND bundle = 'company_commercial_intake'
+          AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.actor.workspaceMembershipId, setup.company.id],
+    );
+    const legacyActor = record(
+      await (await request('/access/current-actor', setup.company.id)).json(),
+    );
+    const legacyCompany = record(legacyActor.activeCompany);
+    expect(legacyCompany.commercialIntakePermissionSetVersion).toBe('v1');
+    expect(legacyCompany.commercialIntakePermissions).toEqual([
+      'commercial.request.read',
+      'commercial.request.create',
+      'commercial.opportunity.read',
+      'commercial.opportunity.create',
+    ]);
+    const legacy = await updateNextAction(
+      setup.company.id,
+      opportunityId,
+      body,
+      'legacy-v1',
+    );
+    expect(legacy.status).toBe(403);
+    expect(await legacy.text()).not.toContain(opportunityId);
+    const legacyRead = await request(
+      `/commercial-intake/requests/${created.id}`,
+      setup.company.id,
+    );
+    expect(legacyRead.status).toBe(200);
+    await pool.query(
+      `UPDATE company_role_assignments
+          SET permission_set_version = 'v2'
+        WHERE workspace_id = $1
+          AND workspace_membership_id = $2
+          AND company_id = $3
+          AND bundle = 'company_commercial_intake'
+          AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.actor.workspaceMembershipId, setup.company.id],
+    );
+
+    const other = entity(
+      await command('/companies', { displayName: 'BIC' }, 'next-action-other'),
+    );
+    await command(
+      '/company-commercial-intake-assignments',
+      {
+        companyId: other.id,
+        workspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+      'next-action-other-grant',
+    );
+    const crossCompany = await updateNextAction(
+      other.id,
+      opportunityId,
+      body,
+      'cross-company',
+    );
+    const unknown = await updateNextAction(
+      setup.company.id,
+      '00000000-0000-4000-8000-000000000994',
+      body,
+      'unknown-opportunity',
+    );
+    const missingRequest = await request(
+      '/commercial-intake/requests/00000000-0000-4000-8000-000000000994',
+      setup.company.id,
+    );
+    expect(crossCompany.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(missingRequest.status).toBe(404);
+    const crossCompanyBody = await crossCompany.text();
+    const unknownBody = await unknown.text();
+    expect(crossCompanyBody).toBe(unknownBody);
+    expect(unknownBody).toBe(await missingRequest.text());
+    expect(unknownBody).not.toContain(opportunityId);
+
+    const foreignWorkspace = await request(
+      `/commercial-intake/opportunities/${opportunityId}/next-action`,
+      setup.company.id,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'foreign-workspace',
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000996',
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    expect(foreignWorkspace.status).toBe(403);
+    expect(await foreignWorkspace.text()).not.toContain(opportunityId);
+    expect(
+      (
+        await fetch(
+          `${origin}/api/commercial-intake/opportunities/${opportunityId}/next-action`,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'anonymous',
+            },
+            body: JSON.stringify(body),
+          },
+        )
+      ).status,
+    ).toBe(401);
+    await expectOpportunityState(opportunityId, {
+      nextAction: representativeBody().opportunity.nextAction,
+      version: 1,
+      updateEvents: 0,
+      receipts: [],
+    });
+  });
+
+  it('lets a non-responsible v2 holder update, then serializes the update with revocation and suspension', async () => {
+    const setup = await preparedRestrictedMember();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'next-action-member-source',
+        setup.company.id,
+      ),
+    );
+    const opportunityId = created.initialOpportunity.id;
+    const memberUpdate = await updateNextActionAs(
+      setup.company.id,
+      opportunityId,
+      { expectedVersion: 1, nextAction: 'Member follow-up' },
+      'member-update',
+      setup.memberHeaders,
+    );
+    expect(memberUpdate.status).toBe(200);
+    expect(record(await memberUpdate.json()).request).toMatchObject({
+      initialOpportunity: {
+        nextAction: 'Member follow-up',
+        version: 2,
+        responsibleWorkspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+    });
+    const memberEvent = await pool.query<{
+      actor_workspace_membership_id: string;
+    }>(
+      `SELECT actor_workspace_membership_id
+         FROM commercial_intake_events
+        WHERE opportunity_id = $1 AND action = 'opportunity.next_action.updated'`,
+      [opportunityId],
+    );
+    expect(memberEvent.rows).toEqual([
+      { actor_workspace_membership_id: setup.member.workspaceMembershipId },
+    ]);
+
+    const lock = await lockAssignment(
+      setup.member.workspaceMembershipId,
+      setup.company.id,
+      'company_commercial_intake',
+    );
+    let lockReleased = false;
+    try {
+      const pending = updateNextActionAs(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 2, nextAction: 'Racing revocation' },
+        'member-revocation-race',
+        setup.memberHeaders,
+      );
+      await waitForBlockedBy(lock.backendPid);
+      // The revoking transaction already holds the row lock the update is
+      // waiting on, so the update re-reads the revoked assignment after it.
+      await lock.connection.query(
+        `UPDATE company_role_assignments
+            SET revoked_at = clock_timestamp()
+          WHERE workspace_id = $1
+            AND workspace_membership_id = $2
+            AND company_id = $3
+            AND bundle = 'company_commercial_intake'
+            AND revoked_at IS NULL`,
+        [WORKSPACE_ID, setup.member.workspaceMembershipId, setup.company.id],
+      );
+      await lock.connection.query('COMMIT');
+      lockReleased = true;
+      expect((await pending).status).toBe(403);
+    } finally {
+      if (!lockReleased) await lock.connection.query('ROLLBACK');
+      lock.connection.release();
+    }
+    const exactRetryAfterRevocation = await updateNextActionAs(
+      setup.company.id,
+      opportunityId,
+      { expectedVersion: 1, nextAction: 'Member follow-up' },
+      'member-update',
+      setup.memberHeaders,
+    );
+    expect(exactRetryAfterRevocation.status).toBe(403);
+
+    await pool.query(
+      `UPDATE workspace_memberships SET status = 'inactive' WHERE id = $1`,
+      [setup.member.workspaceMembershipId],
+    );
+    expect(
+      (
+        await updateNextActionAs(
+          setup.company.id,
+          opportunityId,
+          { expectedVersion: 2, nextAction: 'Suspended attempt' },
+          'member-suspended',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    await expectOpportunityState(opportunityId, {
+      nextAction: 'Member follow-up',
+      version: 2,
+      updateEvents: 1,
+      receipts: [{ outcome: 'updated', result_version: 2 }],
+    });
+  });
+
+  it('validates the next action after authorization and rolls back a persistence failure', async () => {
+    const setup = await prepared();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'next-action-validation-source',
+        setup.company.id,
+      ),
+    );
+    const opportunityId = created.initialOpportunity.id;
+    const unassigned = entity(
+      await command(
+        '/companies',
+        { displayName: 'Unassigned' },
+        'next-action-unassigned-company',
+      ),
+    );
+    expect(
+      (await updateNextAction(unassigned.id, opportunityId, {}, 'unauthorized'))
+        .status,
+    ).toBe(403);
+
+    const invalidBodies: Array<[unknown, string]> = [
+      [{ expectedVersion: 1, nextAction: '   ' }, 'nextAction'],
+      [{ expectedVersion: 1, nextAction: 'x'.repeat(501) }, 'nextAction'],
+      [{ expectedVersion: 1 }, 'nextAction'],
+      [
+        { expectedVersion: '1', nextAction: 'Typed version' },
+        'expectedVersion',
+      ],
+      [{ expectedVersion: 0, nextAction: 'Zero version' }, 'expectedVersion'],
+      [{ expectedVersion: 1.5, nextAction: 'Fraction' }, 'expectedVersion'],
+      [{ expectedVersion: 1, nextAction: 'Extra', title: 'Edit' }, 'update'],
+    ];
+    for (const [body, field] of invalidBodies) {
+      const invalid = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        body,
+        `invalid-${field}-${crypto.randomUUID()}`,
+      );
+      expect(invalid.status).toBe(400);
+      expect(await invalid.json()).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field,
+      });
+    }
+    expect(
+      (
+        await request(
+          `/commercial-intake/opportunities/${opportunityId}/next-action`,
+          setup.company.id,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ expectedVersion: 1, nextAction: 'No key' }),
+          },
+        )
+      ).status,
+    ).toBe(400);
+
+    await pool.query(
+      "ALTER TABLE opportunities ADD CONSTRAINT next_action_test_conflict CHECK (next_action <> 'Persistence conflict')",
+    );
+    try {
+      const failure = await updateNextAction(
+        setup.company.id,
+        opportunityId,
+        { expectedVersion: 1, nextAction: 'Persistence conflict' },
+        'persistence-conflict',
+      );
+      expect(failure.status).toBe(500);
+    } finally {
+      await pool.query(
+        'ALTER TABLE opportunities DROP CONSTRAINT next_action_test_conflict',
+      );
+    }
+    await expectOpportunityState(opportunityId, {
+      nextAction: representativeBody().opportunity.nextAction,
+      version: 1,
+      updateEvents: 0,
+      receipts: [],
+    });
+  });
+
+  function updateNextAction(
+    companyId: string,
+    opportunityId: string,
+    body: unknown,
+    key: string,
+  ) {
+    return updateNextActionAs(companyId, opportunityId, body, key, {});
+  }
+
+  function updateNextActionAs(
+    companyId: string,
+    opportunityId: string,
+    body: unknown,
+    key: string,
+    headers: Record<string, string>,
+  ) {
+    return request(
+      `/commercial-intake/opportunities/${opportunityId}/next-action`,
+      companyId,
+      {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async function expectOpportunityState(
+    opportunityId: string,
+    expected: {
+      nextAction: string;
+      version: number;
+      updateEvents: number;
+      receipts: Array<{ outcome: string; result_version: number }>;
+    },
+  ): Promise<void> {
+    const opportunity = await pool.query<{
+      next_action: string;
+      version: number;
+    }>('SELECT next_action, version FROM opportunities WHERE id = $1', [
+      opportunityId,
+    ]);
+    expect(opportunity.rows).toEqual([
+      { next_action: expected.nextAction, version: expected.version },
+    ]);
+    const events = await pool.query<{ count: string }>(
+      `SELECT count(*) AS count FROM commercial_intake_events
+        WHERE opportunity_id = $1 AND action = 'opportunity.next_action.updated'`,
+      [opportunityId],
+    );
+    expect(events.rows).toEqual([{ count: String(expected.updateEvents) }]);
+    const receipts = await pool.query<{
+      outcome: string;
+      result_version: number;
+    }>(
+      `SELECT outcome, result_version FROM commercial_intake_next_action_commands
+        WHERE opportunity_id = $1 ORDER BY created_at, id`,
+      [opportunityId],
+    );
+    expect(receipts.rows).toEqual(expected.receipts);
+  }
+
+  async function waitForLockWaiters(expected: number): Promise<void> {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const waiting = await pool.query<{ count: string }>(
+        `SELECT count(*) AS count
+           FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND wait_event_type = 'Lock'
+            AND query ILIKE '%from "opportunities"%for update%'`,
+      );
+      if (Number(waiting.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The concurrent updates did not reach the lock barrier.');
+  }
+
   function request(path: string, companyId?: string, init: RequestInit = {}) {
     return fetch(`${origin}/api${path}`, {
       ...init,
@@ -1507,6 +2208,8 @@ withPostgres('Company commercial intake REST', () => {
     return { ...setup, client, other, second, unite, reverse };
   }
 });
+
+type JsonRow = { row: Record<string, unknown> };
 
 function representativeBody() {
   return {

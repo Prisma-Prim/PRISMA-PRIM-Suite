@@ -186,6 +186,30 @@ export class AccountabilityService {
       ]);
   }
 
+  // Records the only post-R3A1 Opportunity mutation. Metadata carries the
+  // resulting version only; the caller commits it with the update itself.
+  // Projection of this event is owned by the commercial Activity read slice.
+  async recordOpportunityNextActionUpdated(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+    opportunityVersion: number;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'opportunity.next_action.updated',
+        metadata: { opportunityVersion: input.opportunityVersion },
+      });
+  }
+
   private async projectEvents(
     actor: ActorContext,
   ): Promise<ProjectCreatedActivityEvent[]> {

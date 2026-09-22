@@ -12,6 +12,11 @@ export interface CreateCommercialIntakeCommand {
   };
 }
 
+export interface UpdateOpportunityNextActionCommand {
+  readonly expectedVersion: number;
+  readonly nextAction: string;
+}
+
 export interface CommercialIntakeDetail {
   readonly id: string;
   readonly companyId: string;
@@ -36,8 +41,20 @@ export interface CommercialIntakeDetail {
     readonly status: 'OPEN';
     readonly responsibleWorkspaceMembershipId: string;
     readonly createdAt: string;
-    readonly version: 1;
+    readonly version: number;
   };
+}
+
+// The receipt confirms what one command did; `request` is the current
+// permission-filtered state, refreshed separately from the receipt.
+export interface OpportunityNextActionUpdateResult {
+  readonly receipt: {
+    readonly opportunityId: string;
+    readonly nextAction: string;
+    readonly version: number;
+    readonly outcome: 'updated' | 'unchanged';
+  };
+  readonly request: CommercialIntakeDetail;
 }
 
 export interface CommercialIntakeListItem {
