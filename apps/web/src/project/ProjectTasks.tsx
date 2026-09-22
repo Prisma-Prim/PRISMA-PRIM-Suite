@@ -81,11 +81,14 @@ type AssigneeFilter =
   | { kind: 'all' }
   | { kind: 'unassigned' }
   | { kind: 'member'; workspaceMembershipId: string };
-// Bounds hold the raw control text; an empty bound is open and never a date.
+// A calendar control clears an impossible day such as 30 February, so a cleared bound alone cannot
+// tell an open bound from a rejected one. Each bound keeps that distinction explicitly.
+type DateBound =
+  { kind: 'open' } | { kind: 'date'; value: string } | { kind: 'invalid' };
 type DateFilter =
   | { kind: 'all' }
   | { kind: 'undated' }
-  | { kind: 'range'; from: string; through: string };
+  | { kind: 'range'; from: DateBound; through: DateBound };
 type ResolvedDateFilter =
   | { kind: 'all' }
   | { kind: 'undated' }
@@ -94,6 +97,7 @@ type ResolvedDateFilter =
 const emptyDraft: Draft = { title: '', assigneeMembershipId: '', dueDate: '' };
 const everyAssignee: AssigneeFilter = { kind: 'all' };
 const everyDate: DateFilter = { kind: 'all' };
+const openBound: DateBound = { kind: 'open' };
 const memberValuePrefix = 'member:';
 function assigneeFilterValue(filter: AssigneeFilter): string {
   return filter.kind === 'member'
@@ -116,15 +120,59 @@ function matchesAssignee(task: TaskView, filter: AssigneeFilter): boolean {
     }
   }
 }
+// The control reports a rejected calendar day as bad input with an empty value, so that flag is the
+// only evidence it was entered. Every other bound text is proved here, once, at the control.
+function readDateBound(input: HTMLInputElement): DateBound {
+  if (input.validity.badInput) return { kind: 'invalid' };
+  if (input.value === '') return openBound;
+  return validTaskDate(input.value)
+    ? { kind: 'date', value: input.value }
+    : { kind: 'invalid' };
+}
+function boundText(bound: DateBound): string {
+  return bound.kind === 'date' ? bound.value : '';
+}
+// A rejected day leaves the control empty, so its value can stay unchanged and produce no change event.
+// Leaving the control always reports it, and the reader keeps the entry visible meanwhile.
+function DateBoundField({
+  label,
+  bound,
+  unusable,
+  describedBy,
+  onBound,
+}: {
+  label: string;
+  bound: DateBound;
+  unusable: boolean;
+  describedBy: string;
+  onBound: (bound: DateBound) => void;
+}) {
+  function read(event: { currentTarget: HTMLInputElement }) {
+    onBound(readDateBound(event.currentTarget));
+  }
+  return (
+    <label>
+      <span>{label}</span>
+      <input
+        type="date"
+        min="0001-01-01"
+        max="9999-12-31"
+        value={boundText(bound)}
+        aria-invalid={unusable || undefined}
+        aria-describedby={unusable ? describedBy : undefined}
+        onChange={read}
+        onBlur={read}
+      />
+    </label>
+  );
+}
 function resolveDateFilter(filter: DateFilter): ResolvedDateFilter {
   if (filter.kind !== 'range') return filter;
-  const from = filter.from === '' ? null : filter.from;
-  const through = filter.through === '' ? null : filter.through;
-  if (
-    (from !== null && !validTaskDate(from)) ||
-    (through !== null && !validTaskDate(through)) ||
-    (from !== null && through !== null && from > through)
-  )
+  if (filter.from.kind === 'invalid' || filter.through.kind === 'invalid')
+    return { kind: 'unusable' };
+  const from = filter.from.kind === 'date' ? filter.from.value : null;
+  const through = filter.through.kind === 'date' ? filter.through.value : null;
+  if (from !== null && through !== null && from > through)
     return { kind: 'unusable' };
   return { kind: 'range', from, through };
 }
@@ -266,7 +314,7 @@ function TaskProject({
     else if (value === 'undated') setDateFilter({ kind: 'undated' });
     // Leaving the range discards its bounds, so a reopened range never reuses a hidden selection.
     else if (value === 'range')
-      setDateFilter({ kind: 'range', from: '', through: '' });
+      setDateFilter({ kind: 'range', from: openBound, through: openBound });
   }
 
   async function resultValue(
@@ -642,44 +690,24 @@ function TaskProject({
                     </label>
                     {dateFilter.kind === 'range' && (
                       <>
-                        <label>
-                          <span>{copy.dateFrom}</span>
-                          <input
-                            type="date"
-                            min="0001-01-01"
-                            max="9999-12-31"
-                            value={dateFilter.from}
-                            aria-invalid={unusableRange || undefined}
-                            aria-describedby={
-                              unusableRange ? dateRangeErrorId : undefined
-                            }
-                            onChange={(event) =>
-                              setDateFilter({
-                                ...dateFilter,
-                                from: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>{copy.dateThrough}</span>
-                          <input
-                            type="date"
-                            min="0001-01-01"
-                            max="9999-12-31"
-                            value={dateFilter.through}
-                            aria-invalid={unusableRange || undefined}
-                            aria-describedby={
-                              unusableRange ? dateRangeErrorId : undefined
-                            }
-                            onChange={(event) =>
-                              setDateFilter({
-                                ...dateFilter,
-                                through: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
+                        <DateBoundField
+                          label={copy.dateFrom}
+                          bound={dateFilter.from}
+                          unusable={unusableRange}
+                          describedBy={dateRangeErrorId}
+                          onBound={(from) =>
+                            setDateFilter({ ...dateFilter, from })
+                          }
+                        />
+                        <DateBoundField
+                          label={copy.dateThrough}
+                          bound={dateFilter.through}
+                          unusable={unusableRange}
+                          describedBy={dateRangeErrorId}
+                          onBound={(through) =>
+                            setDateFilter({ ...dateFilter, through })
+                          }
+                        />
                       </>
                     )}
                     <button

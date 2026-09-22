@@ -134,6 +134,36 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     'Archive preparation evidence',
     'Review archive notes',
   ]);
+  // A real calendar control answers 30 February by clearing its value and reporting bad input, which
+  // must not read as the open bound that would apply the remaining through date on its own.
+  await from.fill('');
+  await through.fill('2026-10-31');
+  await expect(listed).toHaveText(['Collect preparation notes']);
+  await from.focus();
+  await from.pressSequentially('02302026');
+  // The control keeps the entry visible while refusing to produce a date.
+  expect(
+    await from.evaluate(
+      (element) =>
+        element instanceof HTMLInputElement &&
+        element.value === '' &&
+        element.validity.badInput,
+    ),
+  ).toBe(true);
+  await page.keyboard.press('Tab');
+  await expect(navigation.getByRole('alert')).toHaveText(
+    'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.',
+  );
+  await expect(listed).toHaveText([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
+  await from.fill('2026-10-01');
+  await expect(navigation.getByRole('alert')).toHaveCount(0);
+  await expect(listed).toHaveText(['Collect preparation notes']);
+  await from.fill('');
+
   await dates.focus();
   await page.keyboard.press('Tab');
   await expect(from).toBeFocused();

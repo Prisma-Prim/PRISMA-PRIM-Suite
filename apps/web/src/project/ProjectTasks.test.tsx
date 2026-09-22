@@ -683,12 +683,37 @@ function selectDateFilter(tasks: HTMLElement, label: string) {
     throw new Error(`Missing date filter option ${label}`);
   fireEvent.change(select, { target: { value: option.value } });
 }
-function enterBound(
-  tasks: HTMLElement,
-  label: 'Task date from' | 'Task date through',
-  value: string,
-) {
-  fireEvent.change(within(tasks).getByLabelText(label), { target: { value } });
+type BoundLabel = 'Task date from' | 'Task date through';
+function boundInput(tasks: HTMLElement, label: BoundLabel) {
+  const input = within(tasks).getByLabelText(label);
+  if (!(input instanceof HTMLInputElement))
+    throw new Error(`Missing date bound ${label}`);
+  return input;
+}
+// The component only reads badInput, and jsdom never raises it, so the control's own report is stubbed.
+function reportBadInput(input: HTMLInputElement, badInput: boolean) {
+  Object.defineProperty(input, 'validity', {
+    configurable: true,
+    value: { badInput },
+  });
+}
+function enterBound(tasks: HTMLElement, label: BoundLabel, value: string) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, false);
+  fireEvent.change(input, { target: { value } });
+}
+// A native calendar control answers an impossible day by keeping its value empty and reporting bad
+// input, so leaving the control is the event that carries it. The browser journey types 30 February
+// in a real control; jsdom applies only the value sanitization.
+function enterImpossibleDay(tasks: HTMLElement, label: BoundLabel) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, true);
+  fireEvent.blur(input);
+}
+function deleteRejectedDay(tasks: HTMLElement, label: BoundLabel) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, false);
+  fireEvent.blur(input);
 }
 const invalidRange =
   'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.';
@@ -771,7 +796,7 @@ it('rejects an impossible or inverted date range without applying a partial rang
   expect(within(tasks).queryByRole('alert')).not.toBeInTheDocument();
   expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
 
-  // The calendar control refuses an impossible day itself; a year outside 0001–9999 still reaches the filter.
+  // A year outside 0001–9999 survives the control's sanitization and still makes the range unusable.
   enterBound(tasks, 'Task date from', '12026-10-05');
   expect(within(tasks).getByRole('alert')).toHaveTextContent(invalidRange);
   expect(listedTitles(tasks)).toEqual([
@@ -790,6 +815,48 @@ it('rejects an impossible or inverted date range without applying a partial rang
     within(tasks).queryByLabelText('Task date filter'),
   ).not.toBeInTheDocument();
 });
+
+const everyTaskTitle = [
+  'Collect October evidence',
+  'Archive November evidence',
+  'Review pending evidence',
+];
+it.each([
+  {
+    rejected: 'Task date from' as const,
+    kept: 'Task date through' as const,
+    value: '2026-10-31',
+    whenOpen: ['Collect October evidence'],
+  },
+  {
+    rejected: 'Task date through' as const,
+    kept: 'Task date from' as const,
+    value: '2026-11-01',
+    whenOpen: ['Archive November evidence'],
+  },
+])(
+  'makes the whole range unusable when $rejected holds an impossible calendar day',
+  async ({ rejected, kept, value, whenOpen }) => {
+    const fetcher = datedFixture();
+    const tasks = await openFilteredTasks();
+    const fetchCount = fetcher.mock.calls.length;
+    selectDateFilter(tasks, 'Date range');
+    enterBound(tasks, kept, value);
+    expect(listedTitles(tasks)).toEqual(whenOpen);
+
+    // The rejected day leaves an empty control, which must not be read as the open bound above.
+    enterImpossibleDay(tasks, rejected);
+    expect(within(tasks).getByRole('alert')).toHaveTextContent(invalidRange);
+    expect(listedTitles(tasks)).toEqual(everyTaskTitle);
+
+    // Deleting the rejected entry stays valid and reopens that bound.
+    deleteRejectedDay(tasks, rejected);
+    expect(within(tasks).queryByRole('alert')).not.toBeInTheDocument();
+    expect(listedTitles(tasks)).toEqual(whenOpen);
+    expect(within(tasks).getByLabelText(kept)).toHaveValue(value);
+    expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+  },
+);
 
 it('resets the date filter explicitly while keeping the other filters', async () => {
   datedFixture();
