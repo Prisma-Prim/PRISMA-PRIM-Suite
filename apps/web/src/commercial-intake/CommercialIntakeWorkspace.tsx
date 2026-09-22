@@ -460,13 +460,17 @@ export function CommercialIntakeWorkspace({
       nextActionEdit.kind !== 'uncertain'
     )
       return;
-    const draft = nextActionEdit.draft;
+    const preservedRetry =
+      nextActionEdit.kind === 'uncertain' ? nextActionRetry.current : undefined;
+    const draft = preservedRetry?.nextAction ?? nextActionEdit.draft;
     if (!draft.trim() || draft.length > 500) {
       setFeedback(copy.nextActionValidation);
       return;
     }
-    const opportunityId = selected.initialOpportunity.id;
-    const expectedVersion = selected.initialOpportunity.version;
+    const opportunityId =
+      preservedRetry?.opportunityId ?? selected.initialOpportunity.id;
+    const expectedVersion =
+      preservedRetry?.expectedVersion ?? selected.initialOpportunity.version;
     const previous = nextActionRetry.current;
     // An explicit retry reuses the key only for the exact same payload and
     // observed version, so the server can replay the original receipt.
@@ -684,7 +688,7 @@ export function CommercialIntakeWorkspace({
                   },
                   onDraftChange: (draft) =>
                     setNextActionEdit((current) =>
-                      current.kind === 'editing' || current.kind === 'uncertain'
+                      current.kind === 'editing'
                         ? { ...current, draft }
                         : current,
                     ),
@@ -1180,7 +1184,7 @@ function NextActionEditForm({
               onChange={(event) => editor.onDraftChange(event.target.value)}
               required
               maxLength={500}
-              disabled={saving}
+              disabled={saving || edit.kind === 'uncertain'}
             />
           </label>
           {saving ? <p role="status">{copy.nextActionSaving}</p> : null}

@@ -23,6 +23,8 @@ import {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   commercialIntakePermissionsFor,
   isCommercialIntakePermissionSetVersion,
+  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+  commercialActivityPermissionsFor,
   type CompanyCommercialIntakePermission,
   type CompanyCommercialIntakePermissionSetVersion,
 } from './company-permissions.js';
@@ -499,6 +501,7 @@ export class CompanyContextAuthorization {
       inArray(companyRoleAssignments.bundle, [
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+        COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
       ]),
@@ -595,6 +598,17 @@ export class CompanyContextAuthorization {
         ];
         company.commercialIntakePermissionAssignmentId = row.assignmentId;
         company.commercialIntakePermissionSetVersion = row.permissionSetVersion;
+      }
+      // The reader bundle carries Activity read only. It never contributes
+      // Company context, so it is resolved but not authorizing.
+      if (
+        row.bundle === COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.commercialActivityPermissions = [
+          ...commercialActivityPermissionsFor(row.permissionSetVersion),
+        ];
+        company.commercialActivityPermissionSetVersion = 'v1';
       }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(

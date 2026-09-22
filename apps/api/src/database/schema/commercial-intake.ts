@@ -263,9 +263,9 @@ export const commercialIntakeNextActionCommands = pgTable(
     }),
     check(
       'commercial_intake_next_action_commands_outcome_check',
-      sql`${table.expectedVersion} >= 1 AND (
+      sql`${table.expectedVersion} BETWEEN 1 AND 2147483646 AND (
         (${table.outcome} = 'updated'
-          AND ${table.resultVersion} = ${table.expectedVersion} + 1)
+          AND ${table.resultVersion} = (${table.expectedVersion})::bigint + 1)
         OR
         (${table.outcome} = 'unchanged'
           AND ${table.resultVersion} = ${table.expectedVersion})

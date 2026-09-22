@@ -334,11 +334,7 @@ it('filters loaded Tasks locally by title and current status while preserving se
   const taskList = await within(tasks).findByRole('navigation', {
     name: 'Tasks',
   });
-  expect(
-    within(taskList)
-      .getAllByRole('button')
-      .map((button) => button.textContent),
-  ).toEqual([
+  expect(listedTitles(tasks)).toEqual([
     'Collect preparation notes',
     'Archive preparation evidence',
     'Review archive notes',
@@ -349,20 +345,15 @@ it('filters loaded Tasks locally by title and current status while preserving se
   fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
     target: { value: 'ARCHIVE' },
   });
-  expect(
-    within(taskList)
-      .getAllByRole('button')
-      .map((button) => button.textContent),
-  ).toEqual(['Archive preparation evidence', 'Review archive notes']);
+  expect(listedTitles(tasks)).toEqual([
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
 
   fireEvent.change(within(taskList).getByLabelText('Task status'), {
     target: { value: 'done' },
   });
-  expect(
-    within(taskList)
-      .getAllByRole('button')
-      .map((button) => button.textContent),
-  ).toEqual(['Archive preparation evidence']);
+  expect(listedTitles(tasks)).toEqual(['Archive preparation evidence']);
 
   fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
     target: { value: 'missing title' },
@@ -415,8 +406,8 @@ const responsibleTasks = [
 // Loading a Task detail remounts the list, so every helper queries the current nodes.
 function listedTitles(tasks: HTMLElement) {
   return within(within(tasks).getByRole('navigation', { name: 'Tasks' }))
-    .getAllByRole('button')
-    .map((button) => button.textContent);
+    .getAllByRole('listitem')
+    .map((item) => within(item).getByRole('button').textContent);
 }
 function responsibleFilter(tasks: HTMLElement) {
   return within(tasks).getByLabelText('Task responsible member');
@@ -587,7 +578,7 @@ it('separates homonymous responsible members and keeps the open detail and draft
   });
 
   selectResponsible(tasks, 'Ana Pop', 1);
-  expect(listedTitles(tasks)).toEqual(['Draft homonym report', 'New Task']);
+  expect(listedTitles(tasks)).toEqual(['Draft homonym report']);
   expect(
     within(tasks).getByRole('heading', { name: 'Collect Ana evidence' }),
   ).toBeInTheDocument();
@@ -639,10 +630,428 @@ it('resets the responsible-member filter to All when an authoritative refresh re
   expect(responsibleFilter(tasks)).toHaveValue('all');
   expect(within(tasks).getByLabelText('Task status')).toHaveValue('todo');
   expect(responsibleLabels(tasks)).toEqual(['All', 'Unassigned', 'Ion Radu']);
-  expect(listedTitles(tasks)).toEqual(['Collect Ion evidence', 'New Task']);
+  expect(listedTitles(tasks)).toEqual(['Collect Ion evidence']);
   expect(
     within(tasks).getByRole('heading', { name: 'Collect Ana evidence' }),
   ).toBeInTheDocument();
+});
+
+const octoberTask = {
+  ...savedTask,
+  id: 'october-task',
+  title: 'Collect October evidence',
+  dueDate: '2026-10-05',
+};
+const novemberTask = {
+  ...savedTask,
+  id: 'november-task',
+  title: 'Archive November evidence',
+  dueDate: '2026-11-20',
+  status: 'done',
+  completion: { actor: attribution, occurredAt: savedTask.updatedAt },
+};
+const undatedTask = {
+  ...savedTask,
+  id: 'undated-task',
+  title: 'Review pending evidence',
+  dueDate: null,
+};
+const datedTasks = [octoberTask, novemberTask, undatedTask];
+function datedFixture() {
+  return fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: datedTasks })
+        : undefined,
+  });
+}
+function dateFilter(tasks: HTMLElement) {
+  const select = within(tasks).getByLabelText('Task date filter');
+  if (!(select instanceof HTMLSelectElement))
+    throw new Error('Missing date filter');
+  return select;
+}
+function selectedDateOption(tasks: HTMLElement) {
+  return dateFilter(tasks).selectedOptions[0]?.textContent;
+}
+function selectDateFilter(tasks: HTMLElement, label: string) {
+  const select = dateFilter(tasks);
+  const option = within(select)
+    .getAllByRole('option')
+    .find((candidate) => candidate.textContent === label);
+  if (!(option instanceof HTMLOptionElement))
+    throw new Error(`Missing date filter option ${label}`);
+  fireEvent.change(select, { target: { value: option.value } });
+}
+type BoundLabel = 'Task date from' | 'Task date through';
+function boundInput(tasks: HTMLElement, label: BoundLabel) {
+  const input = within(tasks).getByLabelText(label);
+  if (!(input instanceof HTMLInputElement))
+    throw new Error(`Missing date bound ${label}`);
+  return input;
+}
+// The component only reads badInput, and jsdom never raises it, so the control's own report is stubbed.
+function reportBadInput(input: HTMLInputElement, badInput: boolean) {
+  Object.defineProperty(input, 'validity', {
+    configurable: true,
+    value: { badInput },
+  });
+}
+function enterBound(tasks: HTMLElement, label: BoundLabel, value: string) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, false);
+  fireEvent.change(input, { target: { value } });
+}
+// A native calendar control answers an impossible day by keeping its value empty and reporting bad
+// input, so leaving the control is the event that carries it. The browser journey types 30 February
+// in a real control; jsdom applies only the value sanitization.
+function enterImpossibleDay(tasks: HTMLElement, label: BoundLabel) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, true);
+  fireEvent.blur(input);
+}
+function deleteRejectedDay(tasks: HTMLElement, label: BoundLabel) {
+  const input = boundInput(tasks, label);
+  reportBadInput(input, false);
+  fireEvent.blur(input);
+}
+const invalidRange =
+  'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.';
+
+it('finds loaded Tasks inside an inclusive calendar date range and combines it with the existing filters', async () => {
+  const fetcher = datedFixture();
+  const tasks = await openFilteredTasks();
+  expect(selectedDateOption(tasks)).toBe('All dates');
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+    'Review pending evidence',
+  ]);
+  const fetchCount = fetcher.mock.calls.length;
+
+  selectDateFilter(tasks, 'Without a date');
+  expect(listedTitles(tasks)).toEqual(['Review pending evidence']);
+
+  // Empty bounds keep every dated Task in server order; an undated Task belongs to no range.
+  selectDateFilter(tasks, 'Date range');
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+  ]);
+
+  enterBound(tasks, 'Task date from', '2026-10-05');
+  enterBound(tasks, 'Task date through', '2026-11-20');
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+  ]);
+
+  enterBound(tasks, 'Task date through', '2026-11-19');
+  expect(listedTitles(tasks)).toEqual(['Collect October evidence']);
+  enterBound(tasks, 'Task date from', '2026-10-06');
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).queryByText('No manual Tasks for this Project yet.'),
+  ).not.toBeInTheDocument();
+
+  enterBound(tasks, 'Task date from', '');
+  enterBound(tasks, 'Task date through', '');
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'todo' },
+  });
+  expect(listedTitles(tasks)).toEqual(['Collect October evidence']);
+  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
+    target: { value: 'november' },
+  });
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+});
+
+it('rejects an impossible or inverted date range without applying a partial range', async () => {
+  let emptied = false;
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: emptied ? [] : datedTasks })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  const fetchCount = fetcher.mock.calls.length;
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-11-01');
+  enterBound(tasks, 'Task date through', '2026-10-01');
+  expect(within(tasks).getByRole('alert')).toHaveTextContent(invalidRange);
+  // The inverted range applies neither bound, so no Task is hidden by an unusable selection.
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+    'Review pending evidence',
+  ]);
+
+  enterBound(tasks, 'Task date through', '2026-12-01');
+  expect(within(tasks).queryByRole('alert')).not.toBeInTheDocument();
+  expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
+
+  // A year outside 0001–9999 survives the control's sanitization and still makes the range unusable.
+  enterBound(tasks, 'Task date from', '12026-10-05');
+  expect(within(tasks).getByRole('alert')).toHaveTextContent(invalidRange);
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+    'Review pending evidence',
+  ]);
+  expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+
+  // An empty Project hides the date controls, so their message cannot outlive them.
+  emptied = true;
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Tasks' }));
+  await within(tasks).findByText('No manual Tasks for this Project yet.');
+  expect(within(tasks).queryByRole('alert')).not.toBeInTheDocument();
+  expect(
+    within(tasks).queryByLabelText('Task date filter'),
+  ).not.toBeInTheDocument();
+});
+
+const everyTaskTitle = [
+  'Collect October evidence',
+  'Archive November evidence',
+  'Review pending evidence',
+];
+it.each([
+  {
+    rejected: 'Task date from' as const,
+    kept: 'Task date through' as const,
+    value: '2026-10-31',
+    whenOpen: ['Collect October evidence'],
+  },
+  {
+    rejected: 'Task date through' as const,
+    kept: 'Task date from' as const,
+    value: '2026-11-01',
+    whenOpen: ['Archive November evidence'],
+  },
+])(
+  'makes the whole range unusable when $rejected holds an impossible calendar day',
+  async ({ rejected, kept, value, whenOpen }) => {
+    const fetcher = datedFixture();
+    const tasks = await openFilteredTasks();
+    const fetchCount = fetcher.mock.calls.length;
+    selectDateFilter(tasks, 'Date range');
+    enterBound(tasks, kept, value);
+    expect(listedTitles(tasks)).toEqual(whenOpen);
+
+    // The rejected day leaves an empty control, which must not be read as the open bound above.
+    enterImpossibleDay(tasks, rejected);
+    expect(within(tasks).getByRole('alert')).toHaveTextContent(invalidRange);
+    expect(listedTitles(tasks)).toEqual(everyTaskTitle);
+
+    // Deleting the rejected entry stays valid and reopens that bound.
+    deleteRejectedDay(tasks, rejected);
+    expect(within(tasks).queryByRole('alert')).not.toBeInTheDocument();
+    expect(listedTitles(tasks)).toEqual(whenOpen);
+    expect(within(tasks).getByLabelText(kept)).toHaveValue(value);
+    expect(fetcher).toHaveBeenCalledTimes(fetchCount);
+  },
+);
+
+it('resets the date filter explicitly while keeping the other filters', async () => {
+  datedFixture();
+  const tasks = await openFilteredTasks();
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-11-01');
+  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
+    target: { value: 'evidence' },
+  });
+  expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Reset date filter' }),
+  );
+  expect(selectedDateOption(tasks)).toBe('All dates');
+  expect(
+    within(tasks).queryByLabelText('Task date from'),
+  ).not.toBeInTheDocument();
+  expect(listedTitles(tasks)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+    'Review pending evidence',
+  ]);
+  expect(within(tasks).getByLabelText('Search Tasks')).toHaveValue('evidence');
+
+  selectDateFilter(tasks, 'Date range');
+  expect(within(tasks).getByLabelText('Task date from')).toHaveValue('');
+});
+
+it('keeps the selected Task, its draft and the exact uncertain command while a date range hides its row', async () => {
+  const commands: { key: string | null; body: unknown }[] = [];
+  const corrected = {
+    ...octoberTask,
+    title: 'Unsaved correction',
+    version: 2,
+  };
+  let replayed = false;
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: datedTasks });
+      if (url === '/api/tasks/october-task')
+        return Response.json({
+          mutable: true,
+          task: replayed ? corrected : octoberTask,
+        });
+      return undefined;
+    },
+    mutate: (_url, request) => {
+      commands.push({
+        key: new Headers(request.headers).get('idempotency-key'),
+        body: JSON.parse(
+          typeof request.body === 'string' ? request.body : '{}',
+        ),
+      });
+      if (commands.length === 1) return new Response(null, { status: 500 });
+      replayed = true;
+      return Response.json(corrected);
+    },
+  });
+  const tasks = await openFilteredTasks();
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Collect October evidence' }),
+  );
+  await within(tasks).findByRole('heading', {
+    name: 'Collect October evidence',
+  });
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: 'Unsaved correction' },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByRole('button', {
+    name: 'Retry pending Task change',
+  });
+
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-11-01');
+  expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
+  expect(
+    within(tasks).getByRole('heading', { name: 'Collect October evidence' }),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+    'Unsaved correction',
+  );
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Retry pending Task change' }),
+  );
+  await within(tasks).findByRole('heading', { name: 'Unsaved correction' });
+  expect(commands).toHaveLength(2);
+  expect(commands[0]).toEqual(commands[1]);
+  expect(commands[0]?.body).toEqual({
+    expectedVersion: 1,
+    title: 'Unsaved correction',
+  });
+  expect(within(tasks).getByLabelText('Task date from')).toHaveValue(
+    '2026-11-01',
+  );
+  expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
+});
+
+it('reapplies the date range to the authoritative rows after a completion refresh', async () => {
+  let done = false;
+  const october = () =>
+    done
+      ? {
+          ...octoberTask,
+          status: 'done',
+          completion: { actor: attribution, occurredAt: savedTask.updatedAt },
+          version: 2,
+        }
+      : octoberTask;
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: true,
+          tasks: [october(), novemberTask, undatedTask],
+        });
+      if (url === '/api/tasks/october-task')
+        return Response.json({ mutable: true, task: october() });
+      return undefined;
+    },
+    mutate: () => {
+      done = true;
+      return Response.json(october());
+    },
+  });
+  const tasks = await openFilteredTasks();
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-10-01');
+  enterBound(tasks, 'Task date through', '2026-10-31');
+  expect(listedTitles(tasks)).toEqual(['Collect October evidence']);
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Collect October evidence' }),
+  );
+  await within(tasks).findByRole('heading', {
+    name: 'Collect October evidence',
+  });
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await within(tasks).findByRole('button', { name: 'Reopen Task' });
+  expect(listedTitles(tasks)).toEqual(['Collect October evidence']);
+  expect(within(tasks).getByLabelText('Task date from')).toHaveValue(
+    '2026-10-01',
+  );
+  expect(within(tasks).getByLabelText('Task date through')).toHaveValue(
+    '2026-10-31',
+  );
+
+  fireEvent.change(within(tasks).getByLabelText('Task status'), {
+    target: { value: 'todo' },
+  });
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByRole('heading', { name: 'Collect October evidence' }),
+  ).toBeInTheDocument();
+});
+
+it('clears an obsolete date filter when the authorization context is replaced', async () => {
+  datedFixture();
+  const identity = deterministicBrowserIdentity();
+  const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  await within(tasks).findByRole('navigation', { name: 'Tasks' });
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-11-01');
+  expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
+
+  view.rerender(
+    <ProjectWorkspace
+      actor={{ ...actor, workspaceMembershipId: 'replacement' }}
+      identity={identity}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  const replaced = await screen.findByRole('region', { name: 'Tasks' });
+  await within(replaced).findByRole('navigation', { name: 'Tasks' });
+  expect(selectedDateOption(replaced)).toBe('All dates');
+  expect(listedTitles(replaced)).toEqual([
+    'Collect October evidence',
+    'Archive November evidence',
+    'Review pending evidence',
+  ]);
 });
 
 it('keeps the selected detail, draft and exact retry command when filters hide its list item', async () => {

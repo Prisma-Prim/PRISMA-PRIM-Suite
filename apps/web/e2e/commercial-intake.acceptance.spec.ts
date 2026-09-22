@@ -262,6 +262,46 @@ test('captures and reopens manual Client Requests through the real API and Postg
     }),
   ).toHaveCount(0);
 
+  await grantCommercialActivityReader(page);
+  try {
+    await page.reload();
+    await navigate(page, navigation, 'Activity Log', narrow);
+    await expect(
+      activity
+        .getByText('Ada Ionescu captured a Client Request', { exact: true })
+        .first(),
+    ).toBeVisible();
+    await expect(
+      activity
+        .getByText('Ada Ionescu created an initial Opportunity', {
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
+    await expect(activity.getByText(originalText, { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(
+      activity.getByText(requestSubject, { exact: true }),
+    ).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `commercial-activity-history-${suffix.toLowerCase()}.png`,
+      ),
+      fullPage: true,
+    });
+  } finally {
+    await revokeCommercialActivityReader(page);
+  }
+  await page.reload();
+  await navigate(page, navigation, 'Activity Log', narrow);
+  await expect(
+    activity.getByText('Ada Ionescu captured a Client Request', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+
   await expectNoHorizontalOverflow(page);
   await page.screenshot({
     path: testInfo.outputPath(`commercial-intake-${suffix.toLowerCase()}.png`),
@@ -394,6 +434,39 @@ async function grantCommercialIntake(page: Page): Promise<void> {
     },
   );
   expect(response.status()).toBe(201);
+}
+
+async function grantCommercialActivityReader(page: Page): Promise<void> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/company-commercial-activity-reader-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-reader-${crypto.randomUUID()}`,
+      },
+      data: {
+        workspaceMembershipId: requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+        ),
+        companyId: requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function revokeCommercialActivityReader(page: Page): Promise<void> {
+  const response = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-commercial-activity-reader-assignments/${requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID')}/${requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID')}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-reader-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
 }
 
 async function revokeClientAccess(page: Page): Promise<void> {

@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -48,6 +55,86 @@ const document = {
     },
   },
 };
+function eligible(id: string, title: string, purpose: string) {
+  return { ...document, id, title, purpose };
+}
+const siteVisit = eligible(
+  'document-site-visit',
+  'Preparation questionnaire site visit',
+  'Prepare the on-site interview',
+);
+const remoteReview = eligible(
+  'document-remote-review',
+  'Preparation questionnaire remote review',
+  'Prepare the remote Client interview',
+);
+const archive = eligible(
+  'document-archive',
+  'Preparation questionnaire archive',
+  'Collect archived answers',
+);
+const eligibleRows = [
+  { document: siteVisit, revision: 2 },
+  { document: remoteReview, revision: 3 },
+  { document: archive, revision: 4 },
+];
+const linkedDocument = {
+  ...document,
+  id: 'document-linked',
+  title: 'Signed intake summary',
+  purpose: 'Record the intake call',
+};
+const linkedRows = [{ document: linkedDocument, revision: 1 }];
+const searchLabel = 'Search eligible working Documents';
+const noMatch = 'No eligible working Documents match this search.';
+const noEligible = 'No eligible working Documents for this original Client.';
+type Command = { url: string; key: string | null; body: unknown };
+function selectorFixture(
+  rows: Array<{ document: typeof document; revision: number }>,
+  // A filtering journey must never reach this default; an unexpected command conflicts.
+  respond: (command: Command) => Response = () =>
+    new Response(null, { status: 409 }),
+) {
+  const commands: Command[] = [];
+  const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
+    if (options?.method === 'POST') {
+      const command = {
+        url,
+        key: new Headers(options.headers).get('idempotency-key'),
+        body: options.body,
+      };
+      commands.push(command);
+      return respond(command);
+    }
+    return Response.json({
+      mutable: true,
+      documents: url.endsWith('/eligible-documents') ? rows : linkedRows,
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  return { commands, fetcher };
+}
+function renderSession(session = deterministicBrowserIdentity()) {
+  return render(
+    <ProjectDocuments actor={actor} identity={session} projectId="project" />,
+  );
+}
+async function openSelector() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Attach working Document' }),
+  );
+  return screen.findByRole('button', { name: 'Close Document selector' });
+}
+function search(query: string) {
+  fireEvent.change(screen.getByLabelText(searchLabel), {
+    target: { value: query },
+  });
+}
+function headings() {
+  return screen
+    .getAllByRole('heading', { level: 5 })
+    .map((heading) => heading.textContent);
+}
 afterEach(() => vi.unstubAllGlobals());
 it('presents real Project Documents in Prisme while preserving the Classic public markup', async () => {
   vi.stubGlobal(
@@ -360,6 +447,241 @@ it('discards late results when Company or actor authority changes', async () => 
   expect(
     screen.queryByText('Preparation questionnaire'),
   ).not.toBeInTheDocument();
+});
+
+it('finds one eligible Document among similar rows and attaches exactly that row', async () => {
+  const { commands, fetcher } = selectorFixture(eligibleRows, () =>
+    Response.json({
+      documentId: remoteReview.id,
+      projectId: 'project',
+      action: 'link',
+      revision: 4,
+    }),
+  );
+  renderSession();
+  await screen.findByText(linkedDocument.title);
+  await openSelector();
+  await screen.findByText(siteVisit.title);
+  const reads = fetcher.mock.calls.length;
+
+  search('  REMOTE  ');
+  expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+  expect(screen.queryByText(archive.title)).not.toBeInTheDocument();
+  expect(screen.getByText(remoteReview.title)).toBeInTheDocument();
+  expect(screen.getByText(linkedDocument.title)).toBeInTheDocument();
+  expect(fetcher.mock.calls).toHaveLength(reads);
+
+  search('archived');
+  expect(headings()).toEqual([linkedDocument.title, archive.title]);
+
+  search('remote');
+  fireEvent.click(
+    screen.getByRole('button', { name: `Attach ${remoteReview.title}` }),
+  );
+  await screen.findByText(
+    'Command confirmed. The list below is refreshed separately.',
+  );
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.url).toContain(
+    `/documents/${remoteReview.id}/project-association`,
+  );
+  expect(JSON.parse(String(commands[0]?.body))).toEqual({
+    projectId: 'project',
+    action: 'link',
+    expectedRevision: 3,
+  });
+});
+
+it('reports a search without matches and restores the server order when cleared', async () => {
+  const { fetcher } = selectorFixture(eligibleRows);
+  renderSession();
+  await openSelector();
+  await screen.findByText(siteVisit.title);
+
+  search('zzz');
+  expect(screen.getByText(noMatch)).toBeInTheDocument();
+  expect(screen.queryByText(noEligible)).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /^Attach Preparation/ }),
+  ).not.toBeInTheDocument();
+
+  // The external reference URL of an eligible row is never searchable material.
+  search('example.test');
+  expect(screen.getByText(noMatch)).toBeInTheDocument();
+
+  search('');
+  expect(headings()).toEqual([
+    linkedDocument.title,
+    siteVisit.title,
+    remoteReview.title,
+    archive.title,
+  ]);
+  expect(fetcher.mock.calls).toHaveLength(2);
+});
+
+it('offers no search when the Client has no eligible working Document', async () => {
+  selectorFixture([]);
+  renderSession();
+  await openSelector();
+  expect(await screen.findByText(noEligible)).toBeInTheDocument();
+  expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
+  expect(screen.queryByText(noMatch)).not.toBeInTheDocument();
+});
+
+it('filters without issuing, changing or discarding an uncertain command', async () => {
+  const { commands, fetcher } = selectorFixture(eligibleRows, () =>
+    commands.length === 1
+      ? new Response(null, { status: 500 })
+      : Response.json({
+          documentId: siteVisit.id,
+          projectId: 'project',
+          action: 'link',
+          revision: 3,
+        }),
+  );
+  renderSession();
+  await openSelector();
+  await screen.findByText(siteVisit.title);
+  fireEvent.click(
+    screen.getByRole('button', { name: `Attach ${siteVisit.title}` }),
+  );
+  await screen.findByText(
+    'The result is uncertain. Retry this same command or reload before choosing another action.',
+  );
+  const reads = fetcher.mock.calls.length;
+
+  search('archive');
+  expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+  expect(fetcher.mock.calls).toHaveLength(reads);
+  expect(
+    screen.getByRole('button', { name: `Attach ${archive.title}` }),
+  ).toBeDisabled();
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Retry unchanged command' }),
+  );
+  await screen.findByText(
+    'Command confirmed. The list below is refreshed separately.',
+  );
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toEqual(commands[0]);
+});
+
+it('clears the query when the selector is reopened or the Company changes', async () => {
+  selectorFixture(eligibleRows);
+  const identity = deterministicBrowserIdentity();
+  const view = renderSession(identity);
+  await openSelector();
+  await screen.findByText(siteVisit.title);
+
+  search('remote');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close Document selector' }),
+  );
+  await openSelector();
+  expect(await screen.findByLabelText(searchLabel)).toHaveValue('');
+  expect(headings()).toEqual([
+    linkedDocument.title,
+    siteVisit.title,
+    remoteReview.title,
+    archive.title,
+  ]);
+
+  search('remote');
+  view.rerender(
+    <ProjectDocuments
+      actor={{ ...actor, activeCompany: { id: 'other', displayName: 'BIC' } }}
+      identity={identity}
+      projectId="project"
+    />,
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'read access are required',
+  );
+  expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
+  expect(screen.queryByText(remoteReview.title)).not.toBeInTheDocument();
+});
+
+it('cannot restore a stale selector search from a delayed eligible reply', async () => {
+  let finish: ((value: Response) => void) | undefined;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url.endsWith('/eligible-documents')
+        ? new Promise<Response>((resolve) => {
+            finish = resolve;
+          })
+        : Response.json({ mutable: true, documents: linkedRows }),
+    ),
+  );
+  const identity = deterministicBrowserIdentity();
+  const view = renderSession(identity);
+  await screen.findByText(linkedDocument.title);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Attach working Document' }),
+  );
+  view.rerender(
+    <ProjectDocuments
+      actor={{ ...actor, activeCompany: { id: 'other', displayName: 'BIC' } }}
+      identity={identity}
+      projectId="project"
+    />,
+  );
+  finish?.(Response.json({ mutable: true, documents: eligibleRows }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'read access are required',
+  );
+  expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
+  expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+});
+
+it('closes a loading selector, abandons its request and reopens a fresh one', async () => {
+  const replies: Array<(value: Response) => void> = [];
+  const signals: Array<AbortSignal | null | undefined> = [];
+  const fetcher = vi.fn(async (url: string, options?: RequestInit) => {
+    if (!url.endsWith('/eligible-documents'))
+      return Response.json({ mutable: true, documents: linkedRows });
+    signals.push(options?.signal);
+    return new Promise<Response>((resolve) => {
+      replies.push(resolve);
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  renderSession();
+  await screen.findByText(linkedDocument.title);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Attach working Document' }),
+  );
+  await waitFor(() => expect(replies).toHaveLength(1));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Close Document selector' }),
+  );
+  await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+
+  await act(async () => {
+    replies[0]?.(Response.json({ mutable: true, documents: eligibleRows }));
+  });
+  expect(
+    screen.queryByRole('button', { name: 'Close Document selector' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(searchLabel)).not.toBeInTheDocument();
+  expect(screen.queryByText(siteVisit.title)).not.toBeInTheDocument();
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Attach working Document' }),
+  );
+  await waitFor(() => expect(replies).toHaveLength(2));
+  expect(signals[1]?.aborted).toBe(false);
+  await act(async () => {
+    replies[1]?.(Response.json({ mutable: true, documents: eligibleRows }));
+  });
+  expect(screen.getByLabelText(searchLabel)).toHaveValue('');
+  expect(headings()).toEqual([
+    linkedDocument.title,
+    siteVisit.title,
+    remoteReview.title,
+    archive.title,
+  ]);
 });
 
 it('clears previously loaded links when the selector discovers revoked read access', async () => {

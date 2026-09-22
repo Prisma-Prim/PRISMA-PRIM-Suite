@@ -1813,6 +1813,10 @@ withPostgres('Company commercial intake REST', () => {
       ],
       [{ expectedVersion: 0, nextAction: 'Zero version' }, 'expectedVersion'],
       [{ expectedVersion: 1.5, nextAction: 'Fraction' }, 'expectedVersion'],
+      [
+        { expectedVersion: 2_147_483_647, nextAction: 'Int4 maximum' },
+        'expectedVersion',
+      ],
       [{ expectedVersion: 1, nextAction: 'Extra', title: 'Edit' }, 'update'],
     ];
     for (const [body, field] of invalidBodies) {
@@ -1828,6 +1832,14 @@ withPostgres('Company commercial intake REST', () => {
         field,
       });
     }
+    const maximumIncrementableVersion = await updateNextAction(
+      setup.company.id,
+      opportunityId,
+      { expectedVersion: 2_147_483_646, nextAction: 'Still representable' },
+      'maximum-incrementable-version',
+    );
+    expect(maximumIncrementableVersion.status).toBe(409);
+
     expect(
       (
         await request(

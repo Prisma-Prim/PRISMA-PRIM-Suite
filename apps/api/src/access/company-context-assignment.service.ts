@@ -10,6 +10,7 @@ import {
   COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION,
   COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION,
   COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
+  type CanonicalActivityEvent,
 } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -42,6 +43,8 @@ import {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   isCommercialIntakePermissionSetVersion,
   type CompanyCommercialIntakePermissionSetVersion,
+  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
 } from './company-permissions.js';
@@ -63,7 +66,8 @@ type BundleDefinition = {
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-    | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+    | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
@@ -108,6 +112,11 @@ const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+  label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -116,6 +125,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
 ] as const;
 
 @Injectable()
@@ -300,6 +310,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_INTAKE_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantCommercialActivityReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeCommercialActivityReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMMERCIAL_ACTIVITY_READER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -517,34 +557,7 @@ export class CompanyContextAssignmentService {
       if (assignment.changed) {
         await this.accountability.record({
           actor,
-          action:
-            bundle.value === COMPANY_TASK_MANAGER_BUNDLE
-              ? operation === 'grant'
-                ? 'company_task_manager_assignment.granted'
-                : 'company_task_manager_assignment.revoked'
-              : bundle.value === COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE
-                ? operation === 'grant'
-                  ? 'company_document_project_organizer_assignment.granted'
-                  : 'company_document_project_organizer_assignment.revoked'
-                : bundle.value === COMPANY_DOCUMENT_REGISTRAR_BUNDLE
-                  ? operation === 'grant'
-                    ? 'company_document_registrar_assignment.granted'
-                    : 'company_document_registrar_assignment.revoked'
-                  : bundle.value === COMPANY_PROJECT_ACCESS_BUNDLE
-                    ? operation === 'grant'
-                      ? 'company_project_assignment.granted'
-                      : 'company_project_assignment.revoked'
-                    : bundle.value === COMPANY_CONTEXT_ACCESS_BUNDLE
-                      ? operation === 'grant'
-                        ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
-                        : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION
-                      : bundle.value === COMPANY_COMMERCIAL_INTAKE_BUNDLE
-                        ? operation === 'grant'
-                          ? 'company_commercial_intake_assignment.granted'
-                          : 'company_commercial_intake_assignment.revoked'
-                        : operation === 'grant'
-                          ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
-                          : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION,
+          action: assignmentAction(bundle.value, operation),
           target: {
             type: 'company_role_assignment',
             assignmentId: assignment.id,
@@ -765,6 +778,54 @@ export class CompanyContextAssignmentService {
   }
 }
 
+// Derived from the recording contract so a new assignment bundle cannot record
+// an action Accountability does not own.
+type CompanyAssignmentAction = Extract<
+  CanonicalActivityEvent,
+  { target: { type: 'company_role_assignment' } }
+>['action'];
+
+function assignmentAction(
+  bundle: Bundle,
+  operation: Operation,
+): CompanyAssignmentAction {
+  const granted = operation === 'grant';
+  switch (bundle) {
+    case COMPANY_TASK_MANAGER_BUNDLE:
+      return granted
+        ? 'company_task_manager_assignment.granted'
+        : 'company_task_manager_assignment.revoked';
+    case COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE:
+      return granted
+        ? 'company_document_project_organizer_assignment.granted'
+        : 'company_document_project_organizer_assignment.revoked';
+    case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
+      return granted
+        ? 'company_document_registrar_assignment.granted'
+        : 'company_document_registrar_assignment.revoked';
+    case COMPANY_PROJECT_ACCESS_BUNDLE:
+      return granted
+        ? 'company_project_assignment.granted'
+        : 'company_project_assignment.revoked';
+    case COMPANY_CONTEXT_ACCESS_BUNDLE:
+      return granted
+        ? COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
+        : COMPANY_CONTEXT_ASSIGNMENT_REVOKED_ACTION;
+    case COMPANY_COMMERCIAL_INTAKE_BUNDLE:
+      return granted
+        ? 'company_commercial_intake_assignment.granted'
+        : 'company_commercial_intake_assignment.revoked';
+    case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
+      return granted
+        ? 'company_commercial_activity_reader_assignment.granted'
+        : 'company_commercial_activity_reader_assignment.revoked';
+    case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
+      return granted
+        ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
+        : COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION;
+  }
+}
+
 function assertSameCommand(
   command: CommandRow,
   bundle: Bundle,
@@ -869,6 +930,14 @@ function assignmentRecord(
         ...base,
         bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
         permissionSetVersion: assignment.permissionSetVersion,
+      };
+    case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Commercial Activity Reader version.');
+      return {
+        ...base,
+        bundle: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
       };
   }
 }

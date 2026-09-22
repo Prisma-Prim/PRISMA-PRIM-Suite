@@ -1034,6 +1034,12 @@ describe('CommercialIntakeWorkspace', () => {
     expect(screen.getByLabelText('Next action')).toHaveValue(
       'Book the site visit',
     );
+    const uncertainInput = screen.getByLabelText('Next action');
+    expect(uncertainInput).toBeDisabled();
+    fireEvent.change(uncertainInput, {
+      target: { value: 'Replace the preserved command' },
+    });
+    expect(uncertainInput).toHaveValue('Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Retry update' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(

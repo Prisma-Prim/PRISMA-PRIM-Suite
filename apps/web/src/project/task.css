@@ -69,6 +69,15 @@
   outline: 3px solid #4b36b5;
   outline-offset: 2px;
 }
+.task-filters button {
+  align-self: end;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.65rem;
+}
+.task-date-error {
+  margin: 0 0 1rem;
+  color: #8a1c10;
+}
 .task-no-match {
   margin: 0 0 1rem;
   color: #54617a;
@@ -143,6 +152,7 @@
   font-size: 1.15rem;
 }
 .prisme-shell .project-tasks--prisme .task-header > button,
+.prisme-shell .project-tasks--prisme .task-filters button,
 .prisme-shell .project-tasks--prisme .task-panel > button,
 .prisme-shell .project-tasks--prisme form button,
 .prisme-shell .project-tasks--prisme nav > button {

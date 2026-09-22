@@ -18,7 +18,7 @@ const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'upgrades 0027 without expanding a captured v1 intake assignment and enforces the next-action contract',
+  'upgrades through 0028 without expanding captured permissions and enforces the next-action contract',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -162,6 +162,19 @@ it.skipIf(!databaseUrl)(
         [WORKSPACE, COMPANY, MEMBERSHIP],
       );
 
+      // Migration 0028 preserves the Activity reader bundle introduced by
+      // 0027 while widening only Commercial Intake to captured v2.
+      await query(
+        "INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version) VALUES ($1, $2, $3, 'company_commercial_activity_reader', 'v1')",
+        [WORKSPACE, COMPANY, MEMBERSHIP],
+      );
+      await expect(
+        query(
+          "INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version) VALUES ($1, $2, $3, 'company_commercial_activity_reader', 'v2')",
+          [WORKSPACE, COMPANY, MEMBERSHIP],
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+
       // The Opportunity version is no longer pinned, but the last-update trace
       // must accompany every version above the captured one.
       await expect(
@@ -271,6 +284,20 @@ it.skipIf(!databaseUrl)(
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       await expect(
         insertReceipt('moving-no-op', 'unchanged', 2, 3),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      await insertReceipt(
+        'maximum-incrementable-version',
+        'updated',
+        2_147_483_646,
+        2_147_483_647,
+      );
+      await expect(
+        insertReceipt(
+          'int4-maximum',
+          'unchanged',
+          2_147_483_647,
+          2_147_483_647,
+        ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
       await migrate(connection, { migrationsFolder: resolve('drizzle') });

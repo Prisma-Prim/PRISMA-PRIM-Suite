@@ -194,8 +194,15 @@
     {
       "idx": 27,
       "version": "7",
-      "when": 1790095131532,
-      "tag": "0027_opportunity_next_action",
+      "when": 1790008953209,
+      "tag": "0027_commercial_activity_reader",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790104856226,
+      "tag": "0028_opportunity_next_action",
       "breakpoints": true
     }
   ]

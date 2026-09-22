@@ -15,6 +15,9 @@ const ROOT_FIELDS = new Set([
 ]);
 const OPPORTUNITY_FIELDS = new Set(['title', 'scope', 'nextAction']);
 const NEXT_ACTION_UPDATE_FIELDS = new Set(['expectedVersion', 'nextAction']);
+// PostgreSQL integer versions may reach 2_147_483_647, but an update must
+// leave room for the command to persist the incremented result.
+const MAX_INCREMENTABLE_OPPORTUNITY_VERSION = 2_147_483_646;
 
 export function readUpdateOpportunityNextActionCommand(
   value: unknown,
@@ -25,7 +28,8 @@ export function readUpdateOpportunityNextActionCommand(
   if (
     typeof expectedVersion !== 'number' ||
     !Number.isInteger(expectedVersion) ||
-    expectedVersion < 1
+    expectedVersion < 1 ||
+    expectedVersion > MAX_INCREMENTABLE_OPPORTUNITY_VERSION
   )
     invalid('expectedVersion', 'Reload the Request before editing.');
   return {
