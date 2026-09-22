@@ -39,8 +39,27 @@ export function commercialIntakePermissionsFor(
 ): readonly CompanyCommercialIntakePermission[] {
   return version === 'v1' ? COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS : [];
 }
+export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
+  'company_commercial_activity_reader' as const;
+export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL =
+  'Company Commercial Activity Reader' as const;
+export const COMPANY_COMMERCIAL_ACTIVITY_READER_V1_PERMISSIONS = [
+  'commercial.activity.read',
+] as const;
+export type CompanyCommercialActivityPermission =
+  (typeof COMPANY_COMMERCIAL_ACTIVITY_READER_V1_PERMISSIONS)[number];
+// The opt-in reader bundle is never inherited: a null or unknown captured
+// version resolves to no permission at all.
+export function commercialActivityPermissionsFor(
+  version: unknown,
+): readonly CompanyCommercialActivityPermission[] {
+  return version === 'v1'
+    ? COMPANY_COMMERCIAL_ACTIVITY_READER_V1_PERMISSIONS
+    : [];
+}
 export type DocumentPermission =
-  (typeof DOCUMENT_V2_PERMISSIONS)[number] | 'document.project.manage';
+  | (typeof DOCUMENT_V2_PERMISSIONS)[number]
+  | 'document.project.manage';
 export type DocumentPermissionSetVersion = 'v1' | 'v2';
 export function documentPermissionsFor(
   version: unknown,

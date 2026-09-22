@@ -24,6 +24,7 @@ type AssignmentBundle =
   | 'document-registrar'
   | 'document-project-organizer'
   | 'commercial-intake'
+  | 'commercial-activity-reader'
   | 'project';
 type AssignmentBundleLabel =
   | 'Company Task Manager'
@@ -32,7 +33,22 @@ type AssignmentBundleLabel =
   | 'Company Document Project Organizer'
   | 'Company Document Registrar'
   | 'Company Project Access'
-  | 'Company Commercial Intake';
+  | 'Company Commercial Intake'
+  | 'Company Commercial Activity Reader';
+// Indexing by the selected bundle makes a new bundle a type error until its
+// route and label are decided here.
+const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'task-manager': '/company-task-manager-assignments',
+  'company-context': '/company-context-assignments',
+  'director-client': '/company-director-client-assignments',
+  'document-registrar': '/company-document-registrar-assignments',
+  'document-project-organizer':
+    '/company-document-project-organizer-assignments',
+  'commercial-intake': '/company-commercial-intake-assignments',
+  'commercial-activity-reader':
+    '/company-commercial-activity-reader-assignments',
+  project: '/company-project-assignments',
+};
 type AdministrationState = {
   members: Array<{
     workspaceMembershipId: string;
@@ -207,20 +223,7 @@ export function CompanyContextAccess({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const assignmentPath =
-        bundle === 'commercial-intake'
-          ? '/company-commercial-intake-assignments'
-          : bundle === 'task-manager'
-            ? '/company-task-manager-assignments'
-            : bundle === 'document-project-organizer'
-              ? '/company-document-project-organizer-assignments'
-              : bundle === 'document-registrar'
-                ? '/company-document-registrar-assignments'
-                : bundle === 'project'
-                  ? '/company-project-assignments'
-                  : bundle === 'director-client'
-                    ? '/company-director-client-assignments'
-                    : '/company-context-assignments';
+      const assignmentPath = ASSIGNMENT_PATHS[bundle];
       const result = await api.request<unknown>(
         submission === 'grant'
           ? assignmentPath
@@ -458,6 +461,7 @@ export function CompanyContextAccess({
               if (
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
+                value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -471,6 +475,9 @@ export function CompanyContextAccess({
             <option value="commercial-intake">
               {copy.commercialIntakeBundle}
             </option>
+            <option value="commercial-activity-reader">
+              {copy.commercialActivityReaderBundle}
+            </option>
             <option value="director-client">{copy.directorClientBundle}</option>
             <option value="document-project-organizer">
               {copy.documentProjectOrganizerBundle}
@@ -483,6 +490,9 @@ export function CompanyContextAccess({
           </select>
 
           {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
+          {bundle === 'commercial-activity-reader' && (
+            <p>{copy.commercialActivityReaderPrerequisites}</p>
+          )}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy.currentStateLabel}:{' '}
@@ -555,19 +565,17 @@ export function CompanyContextAccess({
 }
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  return bundle === 'commercial-intake'
-    ? copy.commercialIntakeBundle
-    : bundle === 'task-manager'
-      ? copy.taskManagerBundle
-      : bundle === 'document-project-organizer'
-        ? copy.documentProjectOrganizerBundle
-        : bundle === 'document-registrar'
-          ? 'Company Document Registrar'
-          : bundle === 'project'
-            ? copy.projectBundle
-            : bundle === 'director-client'
-              ? 'Company Director Client Access'
-              : 'Company Context Access';
+  const labels: Record<AssignmentBundle, AssignmentBundleLabel> = {
+    'commercial-intake': copy.commercialIntakeBundle,
+    'commercial-activity-reader': copy.commercialActivityReaderBundle,
+    'task-manager': copy.taskManagerBundle,
+    'document-project-organizer': copy.documentProjectOrganizerBundle,
+    'document-registrar': 'Company Document Registrar',
+    project: copy.projectBundle,
+    'director-client': 'Company Director Client Access',
+    'company-context': 'Company Context Access',
+  };
+  return labels[bundle];
 }
 
 function memberLabel(member: AdministrationState['members'][number]): string {

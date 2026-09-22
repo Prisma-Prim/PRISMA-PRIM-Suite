@@ -24,6 +24,7 @@ import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
+import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -347,6 +348,7 @@ function activityDescription(event: ActivityLogEvent): string {
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
     ...clientWorkspaceCopy.activityActionLabels,
     ...clientUnionCopy.actionLabels,
+    ...commercialIntakeCopy.activityActionLabels,
     ...workspaceInvitationsCopy.activityActionLabels,
   };
   const actorName =
@@ -368,6 +370,10 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return event.target.invitationId;
     case 'client_union_operation':
       return clientUnionCopy.title;
+    case 'client_request':
+      return `${commercialIntakeCopy.activityRequestTarget}: ${event.target.clientRequestId}`;
+    case 'opportunity':
+      return `${commercialIntakeCopy.activityOpportunityTarget}: ${event.target.opportunityId}`;
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':

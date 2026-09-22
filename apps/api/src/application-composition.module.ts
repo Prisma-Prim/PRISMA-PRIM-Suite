@@ -42,6 +42,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { CommercialIntakeModule } from './commercial-intake/commercial-intake.module.js';
 import { CommercialIntakeController } from './commercial-intake/commercial-intake.controller.js';
 import { CompanyCommercialIntakeAssignmentController } from './access/company-commercial-intake-assignment.controller.js';
+import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { CompanyCommercialIntakeAssignmentController } from './access/company-co
     WorkspaceSessionRevocationController,
     CommercialIntakeController,
     CompanyCommercialIntakeAssignmentController,
+    CompanyCommercialActivityReaderAssignmentController,
   ],
   providers: [
     VerifiedPrincipalAdapter,
