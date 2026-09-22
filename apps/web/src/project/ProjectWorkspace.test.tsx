@@ -25,7 +25,83 @@ const actor: ActorContext = {
     projectPermissions: ['project.read', 'project.create'],
   },
 };
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  document.documentElement.lang = '';
+  vi.unstubAllGlobals();
+});
+const applicationDateTime = (value: string) =>
+  new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+it('shows the persisted registration time of each loaded Project row and of the reopened detail', async () => {
+  document.documentElement.lang = 'en';
+  const listedProject = {
+    id: 'project',
+    title: 'ISO preparation',
+    status: 'preparatory',
+    companyId: 'company',
+    clientAccountId: 'client',
+    clientDisplayName: 'Synthetic Client',
+    createdAt: '2026-09-19T08:00:00.000Z',
+  };
+  const reopenedProject = {
+    ...listedProject,
+    createdAt: '2026-09-20T15:45:00.000Z',
+  };
+  const fetch = vi.fn(async (url: string) =>
+    Response.json(
+      url === '/api/clients'
+        ? [{ id: 'client', displayName: 'Synthetic Client' }]
+        : url === '/api/projects/project'
+          ? reopenedProject
+          : [listedProject],
+    ),
+  );
+  vi.stubGlobal('fetch', fetch);
+
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+
+  const row = within(
+    await screen.findByRole('list', { name: 'Projects' }),
+  ).getByRole('listitem');
+  expect(row).toHaveTextContent(
+    `Registered: ${applicationDateTime(listedProject.createdAt)}`,
+  );
+  expect(row).not.toHaveTextContent(listedProject.createdAt);
+  expect(row.querySelector('time')).toHaveAttribute(
+    'datetime',
+    listedProject.createdAt,
+  );
+  expect(within(row).getByRole('button').textContent).toBe(
+    'ISO preparation Client: Synthetic Client',
+  );
+  const readsAfterLoad = fetch.mock.calls.length;
+
+  fireEvent.click(
+    within(row).getByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  );
+
+  const detail = await screen.findByRole('article', {
+    name: listedProject.title,
+  });
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(reopenedProject.createdAt)}`,
+  );
+  expect(detail.querySelector('time')).toHaveAttribute(
+    'datetime',
+    reopenedProject.createdAt,
+  );
+  expect(fetch).toHaveBeenCalledTimes(readsAfterLoad + 1);
+});
 
 it('filters loaded Projects by visible title or Client without requesting again or changing server order', async () => {
   const projects = [
@@ -528,6 +604,7 @@ it('reuses a stable request key after an uncertain create result', async () => {
 });
 
 it('presents the existing preparatory Project detail in Prisme without changing its public controls', async () => {
+  document.documentElement.lang = 'en';
   const project = {
     id: 'project',
     title: 'ISO preparation',
@@ -564,9 +641,13 @@ it('presents the existing preparatory Project detail in Prisme without changing 
       name: `${project.title} Client: ${project.clientDisplayName}`,
     }),
   );
-  expect(
-    await within(workspace).findByRole('article', { name: project.title }),
-  ).toHaveClass('project-detail-card');
+  const detail = await within(workspace).findByRole('article', {
+    name: project.title,
+  });
+  expect(detail).toHaveClass('project-detail-card');
+  expect(detail).toHaveTextContent(
+    `Registered: ${applicationDateTime(project.createdAt)}`,
+  );
   const tasksPanel = await within(workspace).findByRole('tabpanel', {
     name: 'Tasks',
   });

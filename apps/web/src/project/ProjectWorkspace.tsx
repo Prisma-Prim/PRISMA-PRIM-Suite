@@ -17,6 +17,7 @@ import {
 import { projectCopy as copy } from './project.copy';
 import { projectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { formatApplicationDateTime } from '../presentation/date-time';
 import { taskCopy } from './task.copy';
 import './project.css';
 
@@ -349,6 +350,7 @@ export function ProjectWorkspace({
                     {copy.clientPrefix} {project.clientDisplayName}
                   </span>
                 </button>
+                <ProjectRegistrationTime registeredAt={project.createdAt} />
               </li>
             ))}
           </ul>
@@ -424,9 +426,10 @@ export function ProjectWorkspace({
             <div className="project-detail-overview">
               <p className="prisme-eyebrow">{copy.status}</p>
               <h3 id="selected-project-title">{selected.title}</h3>
-              <p>
+              <p className="project-detail-client">
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              <ProjectRegistrationTime registeredAt={selected.createdAt} />
               {selected.clientDossierId && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={selected.clientDossierId}
@@ -438,9 +441,10 @@ export function ProjectWorkspace({
             <>
               <h3 id="selected-project-title">{selected.title}</h3>
               <p>{copy.status}</p>
-              <p>
+              <p className="project-detail-client">
                 {copy.clientPrefix} {selected.clientDisplayName}
               </p>
+              <ProjectRegistrationTime registeredAt={selected.createdAt} />
               {selected.clientDossierId && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={selected.clientDossierId}
@@ -508,6 +512,16 @@ export function ProjectWorkspace({
         />
       </div>
     </section>
+  );
+}
+function ProjectRegistrationTime({ registeredAt }: { registeredAt: string }) {
+  return (
+    <p className="project-registered">
+      {copy.registeredPrefix}{' '}
+      <time dateTime={registeredAt}>
+        {formatApplicationDateTime(registeredAt)}
+      </time>
+    </p>
   );
 }
 function ClientDossierButton({
