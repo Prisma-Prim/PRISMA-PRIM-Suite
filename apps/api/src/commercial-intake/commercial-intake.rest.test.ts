@@ -1369,7 +1369,11 @@ withPostgres('Company commercial intake REST', () => {
   });
 
   it('allows one material outcome per observed version and replays exact receipts before stale-version refusal', async () => {
-    const setup = await prepared();
+    // Two distinct v2 holders race. Actor resolution updates the acting
+    // internal_users row on every request while an in-flight command holds
+    // that row FOR SHARE, so two commands from one actor would serialize in
+    // the guard instead of both reaching the Opportunity row lock.
+    const setup = await preparedRestrictedMember();
     const created = detail(
       await command(
         '/commercial-intake/requests',
@@ -1406,11 +1410,12 @@ withPostgres('Company commercial intake REST', () => {
         { expectedVersion: 1, nextAction: 'First concurrent writer' },
         'writer-a',
       );
-      const second = updateNextAction(
+      const second = updateNextActionAs(
         setup.company.id,
         opportunityId,
         { expectedVersion: 1, nextAction: 'Second concurrent writer' },
         'writer-b',
+        setup.memberHeaders,
       );
       await waitForLockWaiters(2);
       await barrier.query('COMMIT');
@@ -1420,8 +1425,11 @@ withPostgres('Company commercial intake REST', () => {
         200, 409,
       ]);
       const firstWon = firstOutcome.status === 200;
+      // The idempotency key is scoped to the acting membership, so the exact
+      // replay and the changed reuse must come from the winning actor.
       const winner = {
         key: firstWon ? 'writer-a' : 'writer-b',
+        headers: firstWon ? {} : setup.memberHeaders,
         nextAction: firstWon
           ? 'First concurrent writer'
           : 'Second concurrent writer',
@@ -1440,19 +1448,21 @@ withPostgres('Company commercial intake REST', () => {
         receipts: [{ outcome: 'updated', result_version: 2 }],
       });
 
-      const replay = await updateNextAction(
+      const replay = await updateNextActionAs(
         setup.company.id,
         opportunityId,
         { expectedVersion: 1, nextAction: winner.nextAction },
         winner.key,
+        winner.headers,
       );
       expect(replay.status).toBe(200);
       expect(record(await replay.json()).receipt).toEqual(winner.body.receipt);
-      const changed = await updateNextAction(
+      const changed = await updateNextActionAs(
         setup.company.id,
         opportunityId,
         { expectedVersion: 2, nextAction: winner.nextAction },
         winner.key,
+        winner.headers,
       );
       expect(changed.status).toBe(409);
       expect(await changed.json()).toEqual({
