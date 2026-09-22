@@ -63,6 +63,21 @@ test('captures and reopens manual Client Requests through the real API and Postg
   });
   await requestButton.click();
   await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+  // Traceability survives the reload: the server capture time and the
+  // responsible actor come back from PostgreSQL, not from the browser.
+  const detailCapturedAt = intake
+    .locator('.commercial-intake-detail dl > div')
+    .filter({ hasText: 'Captured at' })
+    .locator('time');
+  await expect(detailCapturedAt).toHaveAttribute(
+    'datetime',
+    /^\d{4}-\d{2}-\d{2}T/u,
+  );
+  await expect(detailCapturedAt).not.toBeEmpty();
+  await expect(
+    intake.getByText('Responsible actor: Ada Ionescu', { exact: true }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 
   await navigate(page, navigation, 'Clients', narrow);
   const clients = page.locator('.client-workspace');
@@ -144,6 +159,12 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await seedRequestsPastListBound(page, suffix);
   await page.reload();
   await expect(listItems).toHaveCount(25);
+  // Each loaded row carries its own capture time next to the responsible actor.
+  await expect(listItems.first().locator('time')).toHaveAttribute(
+    'datetime',
+    /^\d{4}-\d{2}-\d{2}T/u,
+  );
+  await expect(listItems.first().locator('time')).not.toBeEmpty();
   await filter.fill(`Bounded list Request ${suffix} 7`);
   await expect(listItems).toHaveCount(1);
 

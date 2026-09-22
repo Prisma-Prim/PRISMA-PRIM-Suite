@@ -9,8 +9,11 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
+import { formatApplicationDateTime } from '../presentation/date-time';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import './commercial-intake.css';
+
+type ResponsibleActor = { workspaceMembershipId: string; displayName: string };
 
 type RequestListItem = {
   id: string;
@@ -19,7 +22,7 @@ type RequestListItem = {
   initialOpportunity: {
     title: string;
     nextAction: string;
-    responsibleActor: { workspaceMembershipId: string; displayName: string };
+    responsibleActor: ResponsibleActor;
   };
 };
 
@@ -46,6 +49,7 @@ type ClientRequest = {
     nextAction: string;
     status: 'OPEN';
     responsibleWorkspaceMembershipId: string;
+    responsibleActor: ResponsibleActor;
     createdAt: string;
     version: 1;
   };
@@ -804,6 +808,12 @@ function RequestList({
                 {copy.responsible}:{' '}
                 {item.initialOpportunity.responsibleActor.displayName}
               </small>
+              <small>
+                {copy.capturedAt}:{' '}
+                <time dateTime={item.capturedAt}>
+                  {formatApplicationDateTime(item.capturedAt)}
+                </time>
+              </small>
             </button>
           </li>
         ))}
@@ -871,22 +881,21 @@ function RequestDetail({
             <dd>{request.sourceLabel}</dd>
           </div>
         ) : null}
+        <div>
+          <dt>{copy.capturedAt}</dt>
+          <dd>
+            <time dateTime={request.capturedAt}>
+              {formatApplicationDateTime(request.capturedAt)}
+            </time>
+            <small>{copy.capturedAtHelp}</small>
+          </dd>
+        </div>
         {request.reportedReceivedAt ? (
           <div>
             <dt>{copy.reportedReceivedAt}</dt>
             <dd>
               <time dateTime={request.reportedReceivedAt}>
-                {new Date(request.reportedReceivedAt).toLocaleString(
-                  undefined,
-                  {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZoneName: 'short',
-                  },
-                )}
+                {formatApplicationDateTime(request.reportedReceivedAt)}
               </time>
             </dd>
           </div>
@@ -909,6 +918,10 @@ function RequestDetail({
           <p>{request.initialOpportunity.scope}</p>
         ) : null}
         <p>{request.initialOpportunity.nextAction}</p>
+        <p>
+          {copy.responsible}:{' '}
+          {request.initialOpportunity.responsibleActor.displayName}
+        </p>
         <p>
           {copy.status}:{' '}
           {copy.opportunityStatusLabels[request.initialOpportunity.status]}
@@ -944,10 +957,17 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&
-    isRecord(value.initialOpportunity.responsibleActor) &&
-    typeof value.initialOpportunity.responsibleActor.workspaceMembershipId ===
-      'string' &&
-    typeof value.initialOpportunity.responsibleActor.displayName === 'string'
+    isResponsibleActor(value.initialOpportunity.responsibleActor)
+  );
+}
+
+// The list and the detail carry the same actor projection, so an unrecognized
+// shape fails closed in both instead of inferring an identity in the browser.
+function isResponsibleActor(value: unknown): value is ResponsibleActor {
+  return (
+    isRecord(value) &&
+    typeof value.workspaceMembershipId === 'string' &&
+    typeof value.displayName === 'string'
   );
 }
 
@@ -994,6 +1014,7 @@ function isInitialOpportunity(
     typeof value.nextAction === 'string' &&
     value.status === 'OPEN' &&
     typeof value.responsibleWorkspaceMembershipId === 'string' &&
+    isResponsibleActor(value.responsibleActor) &&
     typeof value.createdAt === 'string' &&
     value.version === 1
   );

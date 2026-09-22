@@ -124,6 +124,10 @@ withPostgres('Company commercial intake REST', () => {
         nextAction: body.opportunity.nextAction,
         status: 'OPEN',
         responsibleWorkspaceMembershipId: actor.workspaceMembershipId,
+        responsibleActor: {
+          workspaceMembershipId: actor.workspaceMembershipId,
+          displayName: actor.displayName,
+        },
         version: 1,
       },
     });
@@ -142,14 +146,16 @@ withPostgres('Company commercial intake REST', () => {
       ),
     );
     expect(retry).toEqual(created);
-    expect(
+    const reloaded = detail(
       await (
         await request(`/commercial-intake/requests/${created.id}`, company.id)
       ).json(),
-    ).toEqual(created);
-    expect(
-      await (await request('/commercial-intake/requests', company.id)).json(),
-    ).toEqual({
+    );
+    expect(reloaded).toEqual(created);
+    const listed: unknown = await (
+      await request('/commercial-intake/requests', company.id)
+    ).json();
+    expect(listed).toEqual({
       items: [
         {
           id: created.id,
@@ -166,6 +172,11 @@ withPostgres('Company commercial intake REST', () => {
         },
       ],
     });
+    // The list and the detail must project the same responsible actor, so a
+    // reader never sees two identities for one initial Opportunity.
+    expect(record(reloaded.initialOpportunity).responsibleActor).toEqual(
+      listedResponsibleActor(listed, created.id),
+    );
 
     const eventRows = await pool.query<{
       action: string;
@@ -1553,6 +1564,14 @@ function detail(value: unknown) {
       id: stringField(opportunity, 'id'),
     },
   };
+}
+
+function listedResponsibleActor(value: unknown, requestId: string): unknown {
+  const items = record(value).items;
+  if (!Array.isArray(items)) throw new Error('Expected list items.');
+  const item = items.find((candidate) => record(candidate).id === requestId);
+  if (item === undefined) throw new Error(`Expected Request ${requestId}.`);
+  return record(record(item).initialOpportunity).responsibleActor;
 }
 
 function clientReference(value: unknown): {

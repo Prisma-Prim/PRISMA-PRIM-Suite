@@ -8,6 +8,9 @@ export const commercialIntakeCopy = {
   originalText: 'Original request text',
   sourceLabel: 'Source label',
   reportedReceivedAt: 'Reported received at',
+  capturedAt: 'Captured at',
+  capturedAtHelp:
+    'Recorded by the application when this Request was captured. The reported received time is what the sender declared.',
   subject: 'Subject',
   clientSearch: 'Search Clients by name',
   searchClients: 'Search Clients',
