@@ -1,4 +1,11 @@
-import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -74,8 +81,19 @@ type AssigneeFilter =
   | { kind: 'all' }
   | { kind: 'unassigned' }
   | { kind: 'member'; workspaceMembershipId: string };
+// Bounds hold the raw control text; an empty bound is open and never a date.
+type DateFilter =
+  | { kind: 'all' }
+  | { kind: 'undated' }
+  | { kind: 'range'; from: string; through: string };
+type ResolvedDateFilter =
+  | { kind: 'all' }
+  | { kind: 'undated' }
+  | { kind: 'unusable' }
+  | { kind: 'range'; from: string | null; through: string | null };
 const emptyDraft: Draft = { title: '', assigneeMembershipId: '', dueDate: '' };
 const everyAssignee: AssigneeFilter = { kind: 'all' };
+const everyDate: DateFilter = { kind: 'all' };
 const memberValuePrefix = 'member:';
 function assigneeFilterValue(filter: AssigneeFilter): string {
   return filter.kind === 'member'
@@ -91,6 +109,40 @@ function matchesAssignee(task: TaskView, filter: AssigneeFilter): boolean {
     case 'member':
       return (
         task.assignee?.workspaceMembershipId === filter.workspaceMembershipId
+      );
+    default: {
+      const exhaustive: never = filter;
+      return exhaustive;
+    }
+  }
+}
+function resolveDateFilter(filter: DateFilter): ResolvedDateFilter {
+  if (filter.kind !== 'range') return filter;
+  const from = filter.from === '' ? null : filter.from;
+  const through = filter.through === '' ? null : filter.through;
+  if (
+    (from !== null && !validTaskDate(from)) ||
+    (through !== null && !validTaskDate(through)) ||
+    (from !== null && through !== null && from > through)
+  )
+    return { kind: 'unusable' };
+  return { kind: 'range', from, through };
+}
+function matchesDate(task: TaskView, filter: ResolvedDateFilter): boolean {
+  switch (filter.kind) {
+    case 'all':
+      return true;
+    // An unusable range is reported to the reader instead of hiding rows behind one bound.
+    case 'unusable':
+      return true;
+    case 'undated':
+      return task.dueDate === null;
+    // Exact YYYY-MM-DD values compare as text, so the inclusive bounds stay free of any timezone.
+    case 'range':
+      return (
+        task.dueDate !== null &&
+        (filter.from === null || task.dueDate >= filter.from) &&
+        (filter.through === null || task.dueDate <= filter.through)
       );
     default: {
       const exhaustive: never = filter;
@@ -153,6 +205,8 @@ function TaskProject({
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [assigneeFilter, setAssigneeFilter] =
     useState<AssigneeFilter>(everyAssignee);
+  const [dateFilter, setDateFilter] = useState<DateFilter>(everyDate);
+  const dateRangeErrorId = useId();
   const drafts = useRef(
     new Map<string, { version: number | null; draft: Draft }>(),
   );
@@ -177,12 +231,15 @@ function TaskProject({
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
   const normalizedTaskSearch = taskSearch.trim().toLowerCase();
+  const dateSelection = resolveDateFilter(dateFilter);
+  const unusableRange = dateSelection.kind === 'unusable';
   const visibleTasks =
     load.kind === 'ready'
       ? load.listing.tasks.filter(
           (task) =>
             (taskFilter === 'all' || task.status === taskFilter) &&
             matchesAssignee(task, assigneeFilter) &&
+            matchesDate(task, dateSelection) &&
             task.title.toLowerCase().includes(normalizedTaskSearch),
         )
       : [];
@@ -203,6 +260,13 @@ function TaskProject({
       if (assigneeOptions.has(workspaceMembershipId))
         setAssigneeFilter({ kind: 'member', workspaceMembershipId });
     }
+  }
+  function selectDateFilter(value: string) {
+    if (value === 'all') setDateFilter(everyDate);
+    else if (value === 'undated') setDateFilter({ kind: 'undated' });
+    // Leaving the range discards its bounds, so a reopened range never reuses a hidden selection.
+    else if (value === 'range')
+      setDateFilter({ kind: 'range', from: '', through: '' });
   }
 
   async function resultValue(
@@ -514,55 +578,127 @@ function TaskProject({
             <nav aria-label={copy.title}>
               {load.listing.tasks.length === 0 && <p>{copy.empty}</p>}
               {load.listing.tasks.length > 0 && (
-                <div className="task-filters">
-                  <label>
-                    <span>{copy.searchLabel}</span>
-                    <input
-                      type="search"
-                      value={taskSearch}
-                      onChange={(event) => setTaskSearch(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>{copy.statusFilterLabel}</span>
-                    <select
-                      value={taskFilter}
-                      onChange={(event) => {
-                        const nextFilter = event.target.value;
-                        if (
-                          nextFilter === 'all' ||
-                          nextFilter === 'todo' ||
-                          nextFilter === 'done'
-                        )
-                          setTaskFilter(nextFilter);
-                      }}
+                <>
+                  <div className="task-filters">
+                    <label>
+                      <span>{copy.searchLabel}</span>
+                      <input
+                        type="search"
+                        value={taskSearch}
+                        onChange={(event) => setTaskSearch(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>{copy.statusFilterLabel}</span>
+                      <select
+                        value={taskFilter}
+                        onChange={(event) => {
+                          const nextFilter = event.target.value;
+                          if (
+                            nextFilter === 'all' ||
+                            nextFilter === 'todo' ||
+                            nextFilter === 'done'
+                          )
+                            setTaskFilter(nextFilter);
+                        }}
+                      >
+                        <option value="all">{copy.all}</option>
+                        <option value="todo">{copy.todo}</option>
+                        <option value="done">{copy.completedFilter}</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{copy.assigneeFilterLabel}</span>
+                      <select
+                        value={assigneeFilterValue(assigneeFilter)}
+                        onChange={(event) =>
+                          selectAssigneeFilter(event.target.value)
+                        }
+                      >
+                        <option value="all">{copy.all}</option>
+                        <option value="unassigned">{copy.unassigned}</option>
+                        {[...assigneeOptions.values()].map((member) => (
+                          <option
+                            key={member.workspaceMembershipId}
+                            value={`${memberValuePrefix}${member.workspaceMembershipId}`}
+                          >
+                            {member.displayLabel}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{copy.dateFilterLabel}</span>
+                      <select
+                        value={dateFilter.kind}
+                        onChange={(event) =>
+                          selectDateFilter(event.target.value)
+                        }
+                      >
+                        <option value="all">{copy.allDates}</option>
+                        <option value="undated">{copy.withoutDate}</option>
+                        <option value="range">{copy.dateRange}</option>
+                      </select>
+                    </label>
+                    {dateFilter.kind === 'range' && (
+                      <>
+                        <label>
+                          <span>{copy.dateFrom}</span>
+                          <input
+                            type="date"
+                            min="0001-01-01"
+                            max="9999-12-31"
+                            value={dateFilter.from}
+                            aria-invalid={unusableRange || undefined}
+                            aria-describedby={
+                              unusableRange ? dateRangeErrorId : undefined
+                            }
+                            onChange={(event) =>
+                              setDateFilter({
+                                ...dateFilter,
+                                from: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{copy.dateThrough}</span>
+                          <input
+                            type="date"
+                            min="0001-01-01"
+                            max="9999-12-31"
+                            value={dateFilter.through}
+                            aria-invalid={unusableRange || undefined}
+                            aria-describedby={
+                              unusableRange ? dateRangeErrorId : undefined
+                            }
+                            onChange={(event) =>
+                              setDateFilter({
+                                ...dateFilter,
+                                through: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDateFilter(everyDate)}
                     >
-                      <option value="all">{copy.all}</option>
-                      <option value="todo">{copy.todo}</option>
-                      <option value="done">{copy.completedFilter}</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{copy.assigneeFilterLabel}</span>
-                    <select
-                      value={assigneeFilterValue(assigneeFilter)}
-                      onChange={(event) =>
-                        selectAssigneeFilter(event.target.value)
-                      }
+                      {copy.resetDateFilter}
+                    </button>
+                  </div>
+                  {unusableRange && (
+                    <p
+                      className="task-date-error"
+                      id={dateRangeErrorId}
+                      role="alert"
                     >
-                      <option value="all">{copy.all}</option>
-                      <option value="unassigned">{copy.unassigned}</option>
-                      {[...assigneeOptions.values()].map((member) => (
-                        <option
-                          key={member.workspaceMembershipId}
-                          value={`${memberValuePrefix}${member.workspaceMembershipId}`}
-                        >
-                          {member.displayLabel}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                      {copy.dateRangeInvalid}
+                    </p>
+                  )}
+                </>
               )}
               {load.listing.tasks.length > 0 && visibleTasks.length === 0 && (
                 <p className="task-no-match">{copy.noMatch}</p>

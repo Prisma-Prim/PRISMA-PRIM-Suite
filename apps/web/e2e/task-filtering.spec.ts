@@ -59,10 +59,12 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
 
   const region = page.getByRole('region', { name: 'Tasks', exact: true });
   const navigation = region.getByRole('navigation', { name: 'Tasks' });
+  // Filter controls live beside the list, so listed rows are read through the list items.
+  const listed = navigation.getByRole('listitem').getByRole('button');
   const search = navigation.getByLabel('Search Tasks');
   const status = navigation.getByLabel('Task status');
   await expect(status).toHaveValue('all');
-  await expect(navigation.getByRole('button')).toHaveText([
+  await expect(listed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',
     'Review archive notes',
@@ -79,13 +81,9 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     'Ion Radu',
   ]);
   await responsible.selectOption({ label: 'Unassigned' });
-  await expect(navigation.getByRole('button')).toHaveText([
-    'Review archive notes',
-  ]);
+  await expect(listed).toHaveText(['Review archive notes']);
   await responsible.selectOption({ label: 'Ana Pop' });
-  await expect(navigation.getByRole('button')).toHaveText([
-    'Collect preparation notes',
-  ]);
+  await expect(listed).toHaveText(['Collect preparation notes']);
   await status.selectOption('done');
   await expect(
     navigation.getByText('No Tasks match the current filters.'),
@@ -108,6 +106,54 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await responsible.selectOption({ label: 'All' });
   expect(listReads).toBe(1);
 
+  const dates = navigation.getByLabel('Task date filter');
+  await expect(dates.getByRole('option')).toHaveText([
+    'All dates',
+    'Without a date',
+    'Date range',
+  ]);
+  await dates.selectOption({ label: 'Without a date' });
+  await expect(listed).toHaveText(['Review archive notes']);
+  // A Date range never keeps an undated Task, even while both bounds stay open.
+  await dates.selectOption({ label: 'Date range' });
+  await expect(listed).toHaveText([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+  ]);
+  const from = navigation.getByLabel('Task date from');
+  const through = navigation.getByLabel('Task date through');
+  await from.fill('2026-10-05');
+  await through.fill('2026-10-31');
+  await expect(listed).toHaveText(['Collect preparation notes']);
+  await through.fill('2026-09-30');
+  await expect(navigation.getByRole('alert')).toHaveText(
+    'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.',
+  );
+  await expect(listed).toHaveText([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
+  await dates.focus();
+  await page.keyboard.press('Tab');
+  await expect(from).toBeFocused();
+  expect(
+    await from.evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe('solid');
+  expect(
+    await from.evaluate((element) => getComputedStyle(element).outlineColor),
+  ).toBe('rgb(75, 54, 181)');
+  await navigation.getByRole('button', { name: 'Reset date filter' }).click();
+  await expect(dates).toHaveValue('all');
+  await expect(navigation.getByLabel('Task date from')).toHaveCount(0);
+  await expect(navigation.getByRole('alert')).toHaveCount(0);
+  await expect(listed).toHaveText([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
+  expect(listReads).toBe(1);
+
   await search.focus();
   await expect(search).toBeFocused();
   expect(
@@ -117,9 +163,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     await search.evaluate((element) => getComputedStyle(element).outlineColor),
   ).toBe('rgb(75, 54, 181)');
   await search.fill('EVIDENCE');
-  await expect(navigation.getByRole('button')).toHaveText([
-    'Archive preparation evidence',
-  ]);
+  await expect(listed).toHaveText(['Archive preparation evidence']);
   await status.selectOption('todo');
   await expect(
     navigation.getByText('No Tasks match the current filters.'),
@@ -215,14 +259,18 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await page.getByRole('button', { name: 'Use classic frame' }).click();
   await expect(page.getByLabel('Search Tasks')).toBeVisible();
   await page.getByLabel('Task status').selectOption('all');
-  await expect(
-    page.getByRole('navigation', { name: 'Tasks' }).getByRole('button'),
-  ).toHaveText([
+  const classicNavigation = page.getByRole('navigation', { name: 'Tasks' });
+  const classicListed = classicNavigation
+    .getByRole('listitem')
+    .getByRole('button');
+  await expect(classicListed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',
     'Review archive notes',
-    'New Task',
   ]);
+  await expect(
+    classicNavigation.getByRole('button', { name: 'New Task' }),
+  ).toBeVisible();
   await page.getByLabel('Search Tasks').focus();
   expect(
     await page
@@ -251,10 +299,35 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     ),
   ).toBe('rgb(75, 54, 181)');
   await classicResponsible.selectOption({ label: 'Unassigned' });
-  await expect(
-    page.getByRole('navigation', { name: 'Tasks' }).getByRole('button'),
-  ).toHaveText(['Review archive notes', 'New Task']);
+  await expect(classicListed).toHaveText(['Review archive notes']);
   await classicResponsible.selectOption({ label: 'All' });
+
+  const classicDates = page.getByLabel('Task date filter');
+  await expect(classicDates).toHaveValue('all');
+  await classicDates.selectOption({ label: 'Date range' });
+  const classicFrom = page.getByLabel('Task date from');
+  await classicDates.focus();
+  await page.keyboard.press('Tab');
+  await expect(classicFrom).toBeFocused();
+  expect(
+    await classicFrom.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await classicFrom.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(75, 54, 181)');
+  await classicFrom.fill('2026-11-01');
+  await expect(classicListed).toHaveText(['Archive preparation evidence']);
+  await page.getByRole('button', { name: 'Reset date filter' }).click();
+  await expect(classicDates).toHaveValue('all');
+  await expect(classicListed).toHaveText([
+    'Collect preparation notes',
+    'Archive preparation evidence',
+    'Review archive notes',
+  ]);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -286,7 +359,7 @@ function taskFixtures(): TaskView[] {
     createdBy: attribution,
   };
   return [
-    { ...base, assignee: anaPop },
+    { ...base, assignee: anaPop, dueDate: '2026-10-05' },
     {
       ...base,
       id: 'archive-task',
@@ -294,6 +367,7 @@ function taskFixtures(): TaskView[] {
       status: 'done',
       completion: { actor: attribution, occurredAt: project.createdAt },
       assignee: ionRadu,
+      dueDate: '2026-11-20',
     },
     { ...base, id: 'review-task', title: 'Review archive notes' },
   ];
