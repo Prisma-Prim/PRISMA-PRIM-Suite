@@ -124,6 +124,8 @@ export function CommercialIntakeWorkspace({
   });
   const [feedback, setFeedback] = useState('');
   const [pending, setPending] = useState(false);
+  // Local view state over the already loaded rows; it never reaches the API.
+  const [filter, setFilter] = useState('');
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
@@ -237,6 +239,7 @@ export function CommercialIntakeWorkspace({
           setSelected(undefined);
           setForm(emptyForm);
           setFeedback('');
+          setFilter('');
           retry.current = undefined;
           listRequest.current?.abort();
           commandRequest.current?.abort();
@@ -296,6 +299,7 @@ export function CommercialIntakeWorkspace({
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
     setPending(false);
+    setFilter('');
     if (!companyId) {
       setLoad({ kind: 'denied' });
       return;
@@ -638,6 +642,8 @@ export function CommercialIntakeWorkspace({
           <RequestList
             load={load}
             pending={pending}
+            filter={filter}
+            onFilter={setFilter}
             onSelect={(id) => void selectRequest(id)}
             onReload={() => companyId && void loadRequests(companyId)}
             onLoadOlder={(cursor) =>
@@ -723,6 +729,8 @@ function readyPage({
 function RequestList({
   load,
   pending,
+  filter,
+  onFilter,
   onSelect,
   onReload,
   onLoadOlder,
@@ -730,11 +738,14 @@ function RequestList({
 }: {
   load: LoadState;
   pending: boolean;
+  filter: string;
+  onFilter: (filter: string) => void;
   onSelect: (id: string) => void;
   onReload: () => void;
   onLoadOlder: (cursor: string) => void;
   companyName: string;
 }) {
+  const filterField = useRef<HTMLInputElement>(null);
   if (load.kind === 'loading') return <p>{copy.loading}</p>;
   if (load.kind === 'denied') return <p role="alert">{copy.denied}</p>;
   if (load.kind === 'error')
@@ -748,10 +759,39 @@ function RequestList({
     );
   if (load.items.length === 0) return <p>{copy.empty(companyName)}</p>;
   const nextCursor = load.nextCursor;
+  const matching = load.items.filter((item) =>
+    matchesFilter(item, filter.trim().toLowerCase()),
+  );
   return (
     <>
+      <div className="commercial-intake-filter">
+        <label htmlFor="commercial-intake-filter">{copy.filterLabel}</label>
+        <input
+          id="commercial-intake-filter"
+          ref={filterField}
+          type="search"
+          value={filter}
+          aria-describedby="commercial-intake-filter-help"
+          onChange={(event) => onFilter(event.target.value)}
+          maxLength={200}
+        />
+        {filter ? (
+          // Clearing removes this button, so keyboard focus returns to the field.
+          <button
+            type="button"
+            onClick={() => {
+              onFilter('');
+              filterField.current?.focus();
+            }}
+          >
+            {copy.filterClear}
+          </button>
+        ) : null}
+        <small id="commercial-intake-filter-help">{copy.filterHelp}</small>
+      </div>
+      {matching.length === 0 ? <p>{copy.filterNoMatch}</p> : null}
       <ul className="commercial-intake-list" aria-label={copy.list}>
-        {load.items.map((item) => (
+        {matching.map((item) => (
           <li key={item.id}>
             <button
               type="button"
@@ -785,6 +825,20 @@ function RequestList({
       ) : null}
     </>
   );
+}
+
+// The loaded rows carry no original source text, so the local filter can only
+// match the subject, initial Opportunity title and responsible name shown here.
+function matchesFilter(
+  item: RequestListItem,
+  normalizedFilter: string,
+): boolean {
+  if (!normalizedFilter) return true;
+  return [
+    item.subject ?? '',
+    item.initialOpportunity.title,
+    item.initialOpportunity.responsibleActor.displayName,
+  ].some((value) => value.toLowerCase().includes(normalizedFilter));
 }
 
 function RequestDetail({
