@@ -160,6 +160,9 @@ export function CommercialIntakeWorkspace({
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const nextActionRetry = useRef<NextActionRetry | undefined>(undefined);
+  // The next-action save whose response has not arrived yet; commandRequest
+  // is shared with capture and detail reads.
+  const nextActionCommand = useRef<AbortController | undefined>(undefined);
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
@@ -357,6 +360,24 @@ export function CommercialIntakeWorkspace({
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
 
+  // Losing only update authority keeps the read-only detail and any pending
+  // conflict reload, but retires the draft, the pending command and any
+  // in-flight save, so a later regrant can neither restore nor replay them.
+  useEffect(() => {
+    if (canEditNextAction) return;
+    nextActionRetry.current = undefined;
+    const inFlight = nextActionCommand.current;
+    nextActionCommand.current = undefined;
+    if (inFlight && !inFlight.signal.aborted) {
+      inFlight.abort();
+      setPending(false);
+    }
+    if (nextActionEdit.kind === 'idle' || nextActionEdit.kind === 'conflict')
+      return;
+    setNextActionEdit({ kind: 'idle' });
+    setFeedback(copy.nextActionDenied);
+  }, [canEditNextAction, nextActionEdit.kind]);
+
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -490,6 +511,7 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
+    nextActionCommand.current = controller;
     setNextActionEdit({ kind: 'saving', draft });
     setPending(true);
     setFeedback('');
@@ -502,6 +524,8 @@ export function CommercialIntakeWorkspace({
         body: JSON.stringify({ expectedVersion, nextAction: draft }),
         idempotencyKey: key,
       });
+      if (nextActionCommand.current === controller)
+        nextActionCommand.current = undefined;
       if (controller.signal.aborted) return;
       const access = await handleAccess(
         result,
