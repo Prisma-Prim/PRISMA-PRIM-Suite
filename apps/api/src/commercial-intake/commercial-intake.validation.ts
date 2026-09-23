@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
-import type { CreateCommercialIntakeCommand } from './commercial-intake.types.js';
+import type {
+  CreateCommercialIntakeCommand,
+  UpdateOpportunityNextActionCommand,
+} from './commercial-intake.types.js';
 
 const ROOT_FIELDS = new Set([
   'originalText',
@@ -11,6 +14,32 @@ const ROOT_FIELDS = new Set([
   'opportunity',
 ]);
 const OPPORTUNITY_FIELDS = new Set(['title', 'scope', 'nextAction']);
+const NEXT_ACTION_UPDATE_FIELDS = new Set(['expectedVersion', 'nextAction']);
+// Opportunity versions are PostgreSQL integers. The maximum stays a valid
+// observation so an unchanged or replayed command can confirm it; the command
+// refuses only a material update from it.
+export const MAXIMUM_OPPORTUNITY_VERSION = 2_147_483_647;
+
+export function readUpdateOpportunityNextActionCommand(
+  value: unknown,
+): UpdateOpportunityNextActionCommand {
+  const body = record(value, 'update');
+  rejectExtraFields(body, NEXT_ACTION_UPDATE_FIELDS, 'update');
+  const expectedVersion = body.expectedVersion;
+  if (
+    typeof expectedVersion !== 'number' ||
+    !Number.isInteger(expectedVersion) ||
+    expectedVersion < 1 ||
+    expectedVersion > MAXIMUM_OPPORTUNITY_VERSION
+  )
+    invalid('expectedVersion', 'Reload the Request before editing.');
+  return {
+    expectedVersion,
+    // The next action follows the intake rule exactly: no trimming or
+    // normalization of the submitted text.
+    nextAction: requiredString(body.nextAction, 'nextAction', 500),
+  };
+}
 
 export function readCreateCommercialIntakeCommand(
   value: unknown,

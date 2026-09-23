@@ -32,12 +32,31 @@ export const COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS = [
   'commercial.opportunity.read',
   'commercial.opportunity.create',
 ] as const;
+// Captured v2 adds the only post-R3A1 Opportunity mutation. Existing v1
+// assignments never expand in place; only a fresh grant captures v2.
+export const COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS = [
+  ...COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS,
+  'commercial.opportunity.next_action.update',
+] as const;
 export type CompanyCommercialIntakePermission =
-  (typeof COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS)[number];
+  (typeof COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS)[number];
+export type CompanyCommercialIntakePermissionSetVersion = 'v1' | 'v2';
 export function commercialIntakePermissionsFor(
   version: unknown,
 ): readonly CompanyCommercialIntakePermission[] {
-  return version === 'v1' ? COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS : [];
+  switch (version) {
+    case 'v1':
+      return COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS;
+    case 'v2':
+      return COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS;
+    default:
+      return [];
+  }
+}
+export function isCommercialIntakePermissionSetVersion(
+  version: unknown,
+): version is CompanyCommercialIntakePermissionSetVersion {
+  return version === 'v1' || version === 'v2';
 }
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
   'company_commercial_activity_reader' as const;
