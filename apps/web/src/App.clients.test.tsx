@@ -185,6 +185,113 @@ describe('Client ownership through App', () => {
     },
   );
 
+  it.each([
+    ['Company re-selection', 'settles'],
+    ['Company re-selection', 'loses its response'],
+    ['Access revalidation', 'settles'],
+    ['Access revalidation', 'loses its response'],
+  ] as const)(
+    'keeps a pending Client registration across an equivalent %s when it %s',
+    async (refresh, outcome) => {
+      const actor = directorActor();
+      const created = {
+        id: 'client-refreshed',
+        displayName: 'Refreshed Client',
+        relatedToActiveCompany: true,
+      };
+      const listed: (typeof created)[] = [];
+      const commands: {
+        signal: AbortSignal | null | undefined;
+        body: BodyInit | null | undefined;
+        key: string | null;
+        settle: (response: Response) => void;
+        lose: () => void;
+      }[] = [];
+      let actorReads = 0;
+      let activityReads = 0;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const path = input.toString();
+          if (path.endsWith('/access/current-actor')) {
+            actorReads += 1;
+            return respond(actor);
+          }
+          if (path.endsWith('/companies')) return respond([companyA, companyB]);
+          if (path.endsWith('/activity-log')) {
+            activityReads += 1;
+            return respond({ events: [] });
+          }
+          if (path.includes('/clients/search?'))
+            return respond({ message: 'Forbidden' }, 403);
+          if (path.endsWith('/clients') && init?.method === 'POST')
+            return new Promise<Response>((resolve, reject) => {
+              commands.push({
+                signal: init.signal,
+                body: init.body,
+                key: new Headers(init.headers).get('idempotency-key'),
+                settle: resolve,
+                lose: () => reject(new TypeError('Failed to fetch')),
+              });
+            });
+          if (path.endsWith('/clients')) return respond(listed);
+          throw new Error('Unexpected API request: ' + path);
+        }),
+      );
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await openRegistration();
+      await waitFor(() => expect(activityReads).toBe(1));
+      fillName(created.displayName);
+      fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+      await waitFor(() => expect(commands).toHaveLength(1));
+      const actorReadsBeforeRefresh = actorReads;
+
+      if (refresh === 'Company re-selection') {
+        fireEvent.change(
+          screen.getByLabelText('Active Company', { exact: true }),
+          { target: { value: companyA.id } },
+        );
+      } else {
+        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
+          target: { value: 'Refreshed' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      }
+      await waitFor(() => expect(actorReads).toBe(actorReadsBeforeRefresh + 1));
+      await waitFor(() => expect(activityReads).toBe(2));
+
+      expect(commands[0]?.signal?.aborted).toBe(false);
+      expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
+      expect(screen.getByLabelText('Client display name')).toHaveValue(
+        created.displayName,
+      );
+      listed.push(created);
+      if (outcome === 'loses its response') {
+        await act(async () => commands[0]?.lose());
+        await screen.findByText(
+          'The Client creation could not be confirmed. Retry the same details safely.',
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+        await waitFor(() => expect(commands).toHaveLength(2));
+        expect(commands[1]?.key).toBe(commands[0]?.key);
+        expect(commands[1]?.body).toBe(commands[0]?.body);
+      }
+      const settled = outcome === 'settles' ? commands[0] : commands[1];
+      await act(async () => settled?.settle(respond(created, 201)));
+
+      expect(
+        await screen.findByText(
+          'Client created and linked to the active Company.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByText('Client created and linked to the active Company.'),
+      ).toHaveLength(1);
+      await waitFor(() => expect(activityReads).toBe(3));
+      expect(commands).toHaveLength(outcome === 'settles' ? 1 : 2);
+    },
+  );
+
   it('aborts a pending Client creation on Company change and ignores its late success', async () => {
     const actor = directorActor();
     let release: ((response: Response) => void) | undefined;
