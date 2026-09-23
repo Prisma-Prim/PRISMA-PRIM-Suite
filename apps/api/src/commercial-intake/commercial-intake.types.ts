@@ -12,6 +12,11 @@ export interface CreateCommercialIntakeCommand {
   };
 }
 
+export interface UpdateOpportunityNextActionCommand {
+  readonly expectedVersion: number;
+  readonly nextAction: string;
+}
+
 /**
  * The responsible actor label shown by the Request list and detail. It carries
  * only the membership already scoped to this Company intake read boundary and
@@ -47,8 +52,20 @@ export interface CommercialIntakeDetail {
     readonly responsibleWorkspaceMembershipId: string;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
     readonly createdAt: string;
-    readonly version: 1;
+    readonly version: number;
   };
+}
+
+// The receipt confirms what one command did; `request` is the current
+// permission-filtered state, refreshed separately from the receipt.
+export interface OpportunityNextActionUpdateResult {
+  readonly receipt: {
+    readonly opportunityId: string;
+    readonly nextAction: string;
+    readonly version: number;
+    readonly outcome: 'updated' | 'unchanged';
+  };
+  readonly request: CommercialIntakeDetail;
 }
 
 export interface CommercialIntakeListItem {

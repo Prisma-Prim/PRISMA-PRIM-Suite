@@ -70,11 +70,15 @@ type WorkspaceProps = {
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
 };
 
-function workspaceElement(current: ActorContext, props: WorkspaceProps) {
+function workspaceElement(
+  current: ActorContext,
+  props: WorkspaceProps,
+  identity = deterministicBrowserIdentity(),
+) {
   return (
     <CommercialIntakeWorkspace
       actor={current}
-      identity={deterministicBrowserIdentity()}
+      identity={identity}
       onActivityRecorded={props.onActivityRecorded}
       onCompanyContextRejected={props.onCompanyContextRejected ?? vi.fn()}
       onWorkspaceAccessRejected={props.onWorkspaceAccessRejected}
@@ -206,10 +210,96 @@ function commandBodyOf(init: RequestInit | undefined): string | undefined {
 
 function deferredResponse() {
   let resolve: (response: Response) => void = () => undefined;
-  const promise = new Promise<Response>((settle) => {
+  let reject: (error: Error) => void = () => undefined;
+  const promise = new Promise<Response>((settle, fail) => {
     resolve = settle;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
+}
+
+type DeferredResponse = ReturnType<typeof deferredResponse>;
+
+function editorActor(): ActorContext {
+  return {
+    ...actor,
+    activeCompany: {
+      id: 'company-1',
+      displayName: 'PRISMA-PRIM',
+      clientPermissions: ['client.read'],
+      commercialIntakePermissions: [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+      ],
+      commercialIntakePermissionSetVersion: 'v2',
+    },
+  };
+}
+
+function requestListPage(
+  nextAction = createdRequest.initialOpportunity.nextAction,
+) {
+  return Response.json({
+    items: [
+      {
+        id: createdRequest.id,
+        subject: createdRequest.subject,
+        capturedAt: createdRequest.capturedAt,
+        initialOpportunity: {
+          title: createdRequest.initialOpportunity.title,
+          nextAction,
+          responsibleActor: {
+            workspaceMembershipId: 'membership-1',
+            displayName: 'Iurie',
+          },
+        },
+      },
+    ],
+  });
+}
+
+function updatedRequest(nextAction: string, version: number) {
+  return {
+    ...createdRequest,
+    initialOpportunity: {
+      ...createdRequest.initialOpportunity,
+      nextAction,
+      version,
+    },
+  };
+}
+
+function updateResult(nextAction: string, version: number) {
+  return Response.json({
+    receipt: {
+      opportunityId: createdRequest.initialOpportunity.id,
+      nextAction,
+      version,
+      outcome: 'updated',
+    },
+    request: updatedRequest(nextAction, version),
+  });
+}
+
+async function openDetailForEditing(props: WorkspaceProps = {}) {
+  // Actor revalidation keeps the same session identity.
+  const identity = deterministicBrowserIdentity();
+  const view = render(workspaceElement(editorActor(), props, identity));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: /Quality process preparation/u,
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit next action' }),
+  );
+  return {
+    revalidateActor: (nextActor: ActorContext) =>
+      view.rerender(workspaceElement(nextActor, props, identity)),
+  };
 }
 
 function fillRequiredFields() {
@@ -907,6 +997,476 @@ describe('CommercialIntakeWorkspace', () => {
     ).toBeVisible();
     expect(
       within(detail).queryByText(/MANUAL_TEXT|OPEN/u),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the Opportunity version without an edit when the captured bundle lacks the update', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(requestListPage())
+        .mockResolvedValueOnce(Response.json(createdRequest)),
+    );
+    renderWorkspace();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /Quality process preparation/u,
+      }),
+    );
+    const detail = await screen.findByRole('article', {
+      name: 'Quality process preparation',
+    });
+    expect(
+      within(detail).getByText('Next action: Arrange a qualification call'),
+    ).toBeVisible();
+    expect(within(detail).getByText('Version: 1')).toBeVisible();
+    expect(
+      within(detail).queryByRole('button', { name: 'Edit next action' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('edits the next action at the observed version and shows the stored result', async () => {
+    const activityRecorded = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(updateResult('Send the qualification summary', 2))
+      .mockResolvedValueOnce(requestListPage('Send the qualification summary'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing({ onActivityRecorded: activityRecorded });
+    const input = screen.getByLabelText('Next action');
+    expect(input).toHaveValue('Arrange a qualification call');
+    fireEvent.change(input, {
+      target: { value: 'Send the qualification summary' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Next action saved.',
+    );
+    expect(
+      screen.getByText('Next action: Send the qualification summary'),
+    ).toBeVisible();
+    expect(screen.getByText('Version: 2')).toBeVisible();
+    expect(screen.getByText(createdRequest.originalText)).toBeVisible();
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Edit next action' }),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/commercial-intake/opportunities/opportunity-1/next-action',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          expectedVersion: 1,
+          nextAction: 'Send the qualification summary',
+        }),
+        headers: expect.objectContaining({
+          'content-type': 'application/json',
+          'idempotency-key': expect.any(String),
+          'x-company-context-id': 'company-1',
+        }),
+      }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    expect(activityRecorded).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the entered next action after a correctable validation error', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: '   ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a next action between 1 and 500 characters.',
+    );
+    expect(screen.getByLabelText('Next action')).toHaveValue('   ');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the saving state and blocks a second submit while the update is pending', async () => {
+    const deferred = deferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockReturnValueOnce(deferred.promise)
+      .mockResolvedValueOnce(requestListPage('Call back on Monday'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Call back on Monday' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Saving next action…',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save next action' }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText('Next action')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      deferred.resolve(updateResult('Call back on Monday', 2));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(await screen.findByText('Version: 2')).toBeVisible();
+  });
+
+  it('requires an explicit reload after a stale-version conflict', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(
+        Response.json({ code: 'STALE_VERSION' }, { status: 409 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json(updatedRequest('Someone else moved first', 2)),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'My stale edit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This Opportunity changed since you loaded it. Reload the Request before editing again.',
+    );
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit next action' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
+
+    expect(await screen.findByText('Version: 2')).toBeVisible();
+    expect(
+      screen.getByText('Next action: Someone else moved first'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Edit next action' }),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/commercial-intake/requests/request-1',
+      expect.anything(),
+    );
+  });
+
+  it('keeps editing blocked when a conflict reload fails, until a valid detail reloads', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(
+        Response.json({ code: 'STALE_VERSION' }, { status: 409 }),
+      )
+      .mockResolvedValueOnce(Response.json({}, { status: 500 }))
+      .mockResolvedValueOnce(
+        Response.json(updatedRequest('Someone else moved first', 2)),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'My stale edit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await screen.findByRole('button', { name: 'Reload Request' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Client Request could not be loaded or saved. Please try again.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Reload Request' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Edit next action' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
+
+    expect(await screen.findByText('Version: 2')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Edit next action' }),
+    ).toBeVisible();
+  });
+
+  it('preserves the payload, observed version and key for an explicit retry after an uncertain outcome', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(updateResult('Book the site visit', 2))
+      .mockResolvedValueOnce(requestListPage('Book the site visit'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Book the site visit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The next action update did not complete. Retry to confirm the result.',
+    );
+    expect(screen.getByLabelText('Next action')).toHaveValue(
+      'Book the site visit',
+    );
+    const uncertainInput = screen.getByLabelText('Next action');
+    expect(uncertainInput).toBeDisabled();
+    fireEvent.change(uncertainInput, {
+      target: { value: 'Replace the preserved command' },
+    });
+    expect(uncertainInput).toHaveValue('Book the site visit');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry update' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Next action saved.',
+    );
+    expect(screen.getByText('Version: 2')).toBeVisible();
+    const firstAttempt = fetchMock.mock.calls[2];
+    const retry = fetchMock.mock.calls[3];
+    expect(retry?.[0]).toBe(firstAttempt?.[0]);
+    expect(retry?.[1]).toMatchObject({
+      body: JSON.stringify({
+        expectedVersion: 1,
+        nextAction: 'Book the site visit',
+      }),
+    });
+    expect(idempotencyKeyOf(retry?.[1])).toBeDefined();
+    expect(idempotencyKeyOf(retry?.[1])).toBe(
+      idempotencyKeyOf(firstAttempt?.[1]),
+    );
+  });
+
+  it('drops the draft but keeps the read-only detail when only update authority is lost', async () => {
+    const actorRevalidated = vi.fn();
+    const companyRejected = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(Response.json(actor));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing({
+      onActorRevalidated: actorRevalidated,
+      onCompanyContextRejected: companyRejected,
+    });
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Denied edit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You no longer have permission to update the next action of this Opportunity.',
+    );
+    await waitFor(() => expect(actorRevalidated).toHaveBeenCalledWith(actor));
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(screen.getByText(createdRequest.originalText)).toBeVisible();
+    expect(screen.getByText('Version: 1')).toBeVisible();
+    expect(companyRejected).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not restore an obsolete draft when update authority is regranted in the same scope', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { revalidateActor } = await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Obsolete draft' },
+    });
+    revalidateActor(actor);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'You no longer have permission to update the next action of this Opportunity.',
+    );
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    expect(screen.getByText(createdRequest.originalText)).toBeVisible();
+
+    revalidateActor(editorActor());
+
+    expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit next action' }));
+    expect(screen.getByLabelText('Next action')).toHaveValue(
+      'Arrange a qualification call',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not replay an uncertain command when update authority is regranted in the same scope', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(updateResult('Book the site visit', 2))
+      .mockResolvedValueOnce(requestListPage('Book the site visit'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { revalidateActor } = await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Book the site visit' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await screen.findByRole('button', { name: 'Retry update' });
+
+    revalidateActor(editorActor());
+    expect(screen.getByRole('button', { name: 'Retry update' })).toBeVisible();
+
+    revalidateActor(actor);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'You no longer have permission to update the next action of this Opportunity.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Retry update' }),
+    ).not.toBeInTheDocument();
+
+    revalidateActor(editorActor());
+
+    expect(
+      screen.queryByRole('button', { name: 'Retry update' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit next action' }));
+    const input = screen.getByLabelText('Next action');
+    expect(input).toHaveValue('Arrange a qualification call');
+    fireEvent.change(input, { target: { value: 'Book the site visit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Next action saved.',
+    );
+    const uncertainAttempt = fetchMock.mock.calls[2];
+    const freshCommand = fetchMock.mock.calls[3];
+    expect(freshCommand?.[1]).toMatchObject({
+      body: JSON.stringify({
+        expectedVersion: 1,
+        nextAction: 'Book the site visit',
+      }),
+    });
+    expect(idempotencyKeyOf(freshCommand?.[1])).toBeDefined();
+    expect(idempotencyKeyOf(freshCommand?.[1])).not.toBe(
+      idempotencyKeyOf(uncertainAttempt?.[1]),
+    );
+  });
+
+  it.each([
+    {
+      outcome: 'server error',
+      settle: (save: DeferredResponse) =>
+        save.resolve(Response.json({}, { status: 500 })),
+    },
+    {
+      outcome: 'network failure',
+      settle: (save: DeferredResponse) =>
+        save.reject(new TypeError('Failed to fetch')),
+    },
+    {
+      outcome: 'validation error',
+      settle: (save: DeferredResponse) =>
+        save.resolve(Response.json({ code: 'VALIDATION' }, { status: 400 })),
+    },
+  ])(
+    'retires an in-flight update whose delayed $outcome arrives after update authority is lost and regranted',
+    async ({ settle }) => {
+      const save = deferredResponse();
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(requestListPage())
+        .mockResolvedValueOnce(Response.json(createdRequest))
+        .mockReturnValueOnce(save.promise);
+      vi.stubGlobal('fetch', fetchMock);
+
+      const { revalidateActor } = await openDetailForEditing();
+      fireEvent.change(screen.getByLabelText('Next action'), {
+        target: { value: 'Obsolete in-flight edit' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Saving next action…',
+      );
+
+      revalidateActor(actor);
+      revalidateActor(editorActor());
+
+      expect(
+        screen.getByRole('button', { name: 'Edit next action' }),
+      ).toBeEnabled();
+      await act(async () => {
+        settle(save);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'You no longer have permission to update the next action of this Opportunity.',
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Retry update' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
+      expect(screen.getByText('Version: 1')).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'Back to Requests' }),
+      ).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit next action' }));
+      expect(screen.getByLabelText('Next action')).toHaveValue(
+        'Arrange a qualification call',
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it('returns to the reloaded list when the Opportunity is no longer available', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({ items: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Edit of a vanished Opportunity' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This Request is no longer available in the active Company. Reload the list.',
+    );
+    expect(
+      await screen.findByText('No Client Requests for PRISMA-PRIM yet.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(createdRequest.originalText),
     ).not.toBeInTheDocument();
   });
 

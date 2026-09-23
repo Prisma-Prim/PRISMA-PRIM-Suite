@@ -22,9 +22,11 @@ import {
   companyDirectorClientPermissionsFor,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   commercialIntakePermissionsFor,
+  isCommercialIntakePermissionSetVersion,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   commercialActivityPermissionsFor,
   type CompanyCommercialIntakePermission,
+  type CompanyCommercialIntakePermissionSetVersion,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -354,15 +356,12 @@ export class CompanyContextAuthorization {
 
   async requireCommercialIntakeAccess(
     actor: ActorContext,
-    mode: 'read' | 'create',
+    mode: CommercialIntakeAccessMode,
     lock = false,
   ): Promise<string> {
     const companyId = actor.activeCompany?.id;
     const permissions = actor.activeCompany?.commercialIntakePermissions ?? [];
-    const required: readonly CompanyCommercialIntakePermission[] =
-      mode === 'read'
-        ? ['commercial.request.read', 'commercial.opportunity.read']
-        : ['commercial.request.create', 'commercial.opportunity.create'];
+    const { required, capturedVersions } = commercialIntakeRequirement(mode);
     if (
       !companyId ||
       required.some((permission) => !permissions.includes(permission))
@@ -410,7 +409,9 @@ export class CompanyContextAuthorization {
           ),
           eq(companyRoleAssignments.companyId, companyId),
           eq(companyRoleAssignments.bundle, COMPANY_COMMERCIAL_INTAKE_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...capturedVersions,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
@@ -590,13 +591,13 @@ export class CompanyContextAuthorization {
       }
       if (
         row.bundle === COMPANY_COMMERCIAL_INTAKE_BUNDLE &&
-        row.permissionSetVersion === 'v1'
+        isCommercialIntakePermissionSetVersion(row.permissionSetVersion)
       ) {
         company.commercialIntakePermissions = [
           ...commercialIntakePermissionsFor(row.permissionSetVersion),
         ];
         company.commercialIntakePermissionAssignmentId = row.assignmentId;
-        company.commercialIntakePermissionSetVersion = 'v1';
+        company.commercialIntakePermissionSetVersion = row.permissionSetVersion;
       }
       // The reader bundle carries Activity read only. It never contributes
       // Company context, so it is resolved but not authorizing.
@@ -631,3 +632,45 @@ export class CompanyContextAuthorization {
 export type CompanyContextVisibility =
   | { kind: 'all-active' }
   | { kind: 'assigned-active'; companyIds: readonly string[] };
+
+export type CommercialIntakeAccessMode =
+  'read' | 'create' | 'update-next-action';
+
+// Runtime authorization evaluates the captured assignment version. Reads and
+// creates accept every captured version that carries them; the next-action
+// update exists only in captured v2, so a legacy v1 assignment fails closed.
+function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
+  required: readonly CompanyCommercialIntakePermission[];
+  capturedVersions: readonly CompanyCommercialIntakePermissionSetVersion[];
+} {
+  switch (mode) {
+    case 'read':
+      return {
+        required: ['commercial.request.read', 'commercial.opportunity.read'],
+        capturedVersions: ['v1', 'v2'],
+      };
+    case 'create':
+      return {
+        required: [
+          'commercial.request.create',
+          'commercial.opportunity.create',
+        ],
+        capturedVersions: ['v1', 'v2'],
+      };
+    case 'update-next-action':
+      return {
+        required: [
+          'commercial.request.read',
+          'commercial.opportunity.read',
+          'commercial.opportunity.next_action.update',
+        ],
+        capturedVersions: ['v2'],
+      };
+    default:
+      return assertNeverMode(mode);
+  }
+}
+
+function assertNeverMode(mode: never): never {
+  throw new Error(`Unknown commercial intake access mode: ${String(mode)}`);
+}

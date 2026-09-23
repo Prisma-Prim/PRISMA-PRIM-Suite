@@ -8,7 +8,10 @@ import type {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
 } from './company-permissions.js';
-import type { CompanyDirectorClientPermissionSetVersion } from './company-permissions.js';
+import type {
+  CompanyCommercialIntakePermissionSetVersion,
+  CompanyDirectorClientPermissionSetVersion,
+} from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
@@ -48,9 +51,11 @@ export type CompanyContextAssignmentRecord =
       permissionSetVersion: CompanyDirectorClientPermissionSetVersion;
     })
   | (CompanyContextAssignmentRecordBase & {
-      bundle:
-        | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
-        | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
+      bundle: typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL;
+      permissionSetVersion: CompanyCommercialIntakePermissionSetVersion;
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     });
 

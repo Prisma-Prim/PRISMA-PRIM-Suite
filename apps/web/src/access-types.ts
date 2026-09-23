@@ -24,9 +24,10 @@ export interface ActorContext {
       | 'commercial.request.create'
       | 'commercial.opportunity.read'
       | 'commercial.opportunity.create'
+      | 'commercial.opportunity.next_action.update'
     >;
     commercialIntakePermissionAssignmentId?: string;
-    commercialIntakePermissionSetVersion?: 'v1';
+    commercialIntakePermissionSetVersion?: 'v1' | 'v2';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
     clientPermissions?: Array<

@@ -30,6 +30,19 @@
   max-width: 28rem;
 }
 
+.working-document-registration-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+
+.working-document-registration-time dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .prisme-shell .working-documents--prisme {
   gap: 1.35rem;
   width: 100%;
@@ -109,6 +122,10 @@
 .prisme-shell .working-document-detail > p,
 .prisme-shell .working-document-detail > h3 {
   overflow-wrap: anywhere;
+}
+
+.prisme-shell .working-document-registration-time dt {
+  color: var(--shell-muted);
 }
 
 .prisme-shell .working-documents--prisme button,

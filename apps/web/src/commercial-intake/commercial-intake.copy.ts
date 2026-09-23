@@ -49,6 +49,24 @@ export const commercialIntakeCopy = {
   sourceKindLabels: { MANUAL_TEXT: 'Manual text' },
   opportunityStatusLabels: { OPEN: 'Open' },
   responsible: 'Responsible actor',
+  opportunityVersion: 'Version',
+  editNextAction: 'Edit next action',
+  saveNextAction: 'Save next action',
+  cancelNextAction: 'Cancel',
+  retryNextAction: 'Retry update',
+  reloadRequest: 'Reload Request',
+  nextActionSaving: 'Saving next action…',
+  nextActionSaved: 'Next action saved.',
+  nextActionUnchanged: 'The next action already had this value.',
+  nextActionValidation: 'Enter a next action between 1 and 500 characters.',
+  nextActionConflict:
+    'This Opportunity changed since you loaded it. Reload the Request before editing again.',
+  nextActionMissing:
+    'This Request is no longer available in the active Company. Reload the list.',
+  nextActionDenied:
+    'You no longer have permission to update the next action of this Opportunity.',
+  nextActionUncertain:
+    'The next action update did not complete. Retry to confirm the result.',
   validation: 'Enter the required request and Opportunity fields.',
   unavailableClient:
     'The selected Client is no longer available. Refresh the Client search before trying again.',

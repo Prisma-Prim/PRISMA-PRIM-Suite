@@ -51,8 +51,34 @@ type ClientRequest = {
     responsibleWorkspaceMembershipId: string;
     responsibleActor: ResponsibleActor;
     createdAt: string;
-    version: 1;
+    version: number;
   };
+};
+
+type NextActionUpdateResult = {
+  receipt: {
+    opportunityId: string;
+    nextAction: string;
+    version: number;
+    outcome: 'updated' | 'unchanged';
+  };
+  request: ClientRequest;
+};
+
+// The next-action edit is either closed, being typed, in flight, waiting for
+// an explicit retry after an uncertain outcome, or blocked until a reload.
+type NextActionEdit =
+  | { kind: 'idle' }
+  | { kind: 'editing'; draft: string }
+  | { kind: 'saving'; draft: string }
+  | { kind: 'uncertain'; draft: string }
+  | { kind: 'conflict' };
+
+type NextActionRetry = {
+  opportunityId: string;
+  expectedVersion: number;
+  nextAction: string;
+  key: string;
 };
 
 type RequestPage = { items: RequestListItem[]; nextCursor?: string };
@@ -130,10 +156,17 @@ export function CommercialIntakeWorkspace({
   const [pending, setPending] = useState(false);
   // Local view state over the already loaded rows; it never reaches the API.
   const [filter, setFilter] = useState('');
+  const [nextActionEdit, setNextActionEdit] = useState<NextActionEdit>({
+    kind: 'idle',
+  });
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
+  const nextActionRetry = useRef<NextActionRetry | undefined>(undefined);
+  // The next-action save whose response has not arrived yet; commandRequest
+  // is shared with capture and detail reads.
+  const nextActionCommand = useRef<AbortController | undefined>(undefined);
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
@@ -144,6 +177,10 @@ export function CommercialIntakeWorkspace({
   const canSearchClients =
     actor.workspacePermissions.includes('client.manage') ||
     actor.activeCompany?.clientPermissions?.includes('client.read') === true;
+  const canEditNextAction =
+    actor.activeCompany?.commercialIntakePermissions?.includes(
+      'commercial.opportunity.next_action.update',
+    ) === true;
 
   const request = useCallback(
     async ({
@@ -200,19 +237,22 @@ export function CommercialIntakeWorkspace({
     [identity],
   );
 
+  // 'ok' means the result was not an access rejection. 'retained' means the
+  // rejection concerned only a narrower authority and the intake read stays
+  // valid; 'rejected' means the scoped content was cleared.
   const handleAccess = useCallback(
     async (
       result: HttpResult,
       companyContextId: string,
       signal: AbortSignal,
-      resource: 'intake' | 'client-search' = 'intake',
-    ): Promise<boolean> => {
-      if (signal.aborted) return true;
+      resource: 'intake' | 'client-search' | 'next-action-update' = 'intake',
+    ): Promise<'ok' | 'retained' | 'rejected'> => {
+      if (signal.aborted) return 'rejected';
       if (result.status === 401) {
         await identity.rejectSession();
-        return true;
+        return 'rejected';
       }
-      if (result.status !== 403) return false;
+      if (result.status !== 403) return 'ok';
       let retainAuthorizedIntake = false;
       try {
         await handleAuthenticatedAccessRejection({
@@ -224,7 +264,7 @@ export function CommercialIntakeWorkspace({
           onActorRevalidated: (revalidatedActor) => {
             const company = revalidatedActor.activeCompany;
             retainAuthorizedIntake =
-              resource === 'client-search' &&
+              resource !== 'intake' &&
               company?.id === companyContextId &&
               company.commercialIntakePermissions?.includes(
                 'commercial.request.read',
@@ -244,12 +284,16 @@ export function CommercialIntakeWorkspace({
           setForm(emptyForm);
           setFeedback('');
           setFilter('');
+          setNextActionEdit({ kind: 'idle' });
           retry.current = undefined;
+          nextActionRetry.current = undefined;
           listRequest.current?.abort();
           commandRequest.current?.abort();
         }
       }
-      return true;
+      return retainAuthorizedIntake && !signal.aborted
+        ? 'retained'
+        : 'rejected';
     },
     [identity],
   );
@@ -269,7 +313,10 @@ export function CommercialIntakeWorkspace({
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        if (await handleAccess(result, companyContextId, controller.signal))
+        if (
+          (await handleAccess(result, companyContextId, controller.signal)) !==
+          'ok'
+        )
           return;
         if (controller.signal.aborted) return;
         const page =
@@ -298,7 +345,9 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     clientSearchRequest.current?.abort();
     retry.current = undefined;
+    nextActionRetry.current = undefined;
     setSelected(undefined);
+    setNextActionEdit({ kind: 'idle' });
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
@@ -314,6 +363,24 @@ export function CommercialIntakeWorkspace({
       clientSearchRequest.current?.abort();
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
+
+  // Losing only update authority keeps the read-only detail and any pending
+  // conflict reload, but retires the draft, the pending command and any
+  // in-flight save, so a later regrant can neither restore nor replay them.
+  useEffect(() => {
+    if (canEditNextAction) return;
+    nextActionRetry.current = undefined;
+    const inFlight = nextActionCommand.current;
+    nextActionCommand.current = undefined;
+    if (inFlight && !inFlight.signal.aborted) {
+      inFlight.abort();
+      setPending(false);
+    }
+    if (nextActionEdit.kind === 'idle' || nextActionEdit.kind === 'conflict')
+      return;
+    setNextActionEdit({ kind: 'idle' });
+    setFeedback(copy.nextActionDenied);
+  }, [canEditNextAction, nextActionEdit.kind]);
 
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -368,13 +435,20 @@ export function CommercialIntakeWorkspace({
     }
   }
 
-  async function selectRequest(id: string): Promise<void> {
+  async function selectRequest(
+    id: string,
+    preserveConflict = false,
+  ): Promise<void> {
     if (!companyId) return;
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
     setPending(true);
     setFeedback('');
+    if (!preserveConflict) {
+      setNextActionEdit({ kind: 'idle' });
+      nextActionRetry.current = undefined;
+    }
     try {
       const result = await request({
         path: `/commercial-intake/requests/${encodeURIComponent(id)}`,
@@ -382,12 +456,137 @@ export function CommercialIntakeWorkspace({
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
-      if (await handleAccess(result, companyId, controller.signal)) return;
-      if (result.status === 200 && isClientRequest(result.body))
+      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        return;
+      if (result.status === 200 && isClientRequest(result.body)) {
         setSelected(result.body);
-      else setFeedback(copy.error);
+        setNextActionEdit({ kind: 'idle' });
+        nextActionRetry.current = undefined;
+      } else setFeedback(copy.error);
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
+    } finally {
+      if (!controller.signal.aborted) setPending(false);
+    }
+  }
+
+  function closeDetail(): void {
+    commandRequest.current?.abort();
+    setSelected(undefined);
+    setNextActionEdit({ kind: 'idle' });
+    nextActionRetry.current = undefined;
+    setPending(false);
+  }
+
+  async function saveNextAction(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    if (
+      nextActionEdit.kind !== 'editing' &&
+      nextActionEdit.kind !== 'uncertain'
+    )
+      return;
+    const preservedRetry =
+      nextActionEdit.kind === 'uncertain' ? nextActionRetry.current : undefined;
+    const draft = preservedRetry?.nextAction ?? nextActionEdit.draft;
+    if (!draft.trim() || draft.length > 500) {
+      setFeedback(copy.nextActionValidation);
+      return;
+    }
+    const opportunityId =
+      preservedRetry?.opportunityId ?? selected.initialOpportunity.id;
+    const expectedVersion =
+      preservedRetry?.expectedVersion ?? selected.initialOpportunity.version;
+    const previous = nextActionRetry.current;
+    // An explicit retry reuses the key only for the exact same payload and
+    // observed version, so the server can replay the original receipt.
+    const key =
+      previous &&
+      previous.opportunityId === opportunityId &&
+      previous.expectedVersion === expectedVersion &&
+      previous.nextAction === draft
+        ? previous.key
+        : crypto.randomUUID();
+    nextActionRetry.current = {
+      opportunityId,
+      expectedVersion,
+      nextAction: draft,
+      key,
+    };
+    commandRequest.current?.abort();
+    const controller = new AbortController();
+    commandRequest.current = controller;
+    nextActionCommand.current = controller;
+    setNextActionEdit({ kind: 'saving', draft });
+    setPending(true);
+    setFeedback('');
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/next-action`,
+        companyContextId: companyId,
+        signal: controller.signal,
+        method: 'POST',
+        body: JSON.stringify({ expectedVersion, nextAction: draft }),
+        idempotencyKey: key,
+      });
+      if (nextActionCommand.current === controller)
+        nextActionCommand.current = undefined;
+      if (controller.signal.aborted) return;
+      const access = await handleAccess(
+        result,
+        companyId,
+        controller.signal,
+        'next-action-update',
+      );
+      if (controller.signal.aborted) return;
+      if (access === 'retained') {
+        // Update authority was lost while read authority remains: the draft
+        // and pending command are dropped, the read-only detail stays.
+        setNextActionEdit({ kind: 'idle' });
+        nextActionRetry.current = undefined;
+        setFeedback(copy.nextActionDenied);
+        return;
+      }
+      if (access === 'rejected') return;
+      if (result.status === 404) {
+        setNextActionEdit({ kind: 'idle' });
+        nextActionRetry.current = undefined;
+        setSelected(undefined);
+        setFeedback(copy.nextActionMissing);
+        await loadRequests(companyId);
+        return;
+      }
+      if (result.status === 409) {
+        setNextActionEdit({ kind: 'conflict' });
+        nextActionRetry.current = undefined;
+        setFeedback(copy.nextActionConflict);
+        return;
+      }
+      if (result.status === 400) {
+        setNextActionEdit({ kind: 'editing', draft });
+        setFeedback(copy.nextActionValidation);
+        return;
+      }
+      if (result.status === 200 && isNextActionUpdateResult(result.body)) {
+        const { receipt, request: updated } = result.body;
+        setSelected(updated);
+        setNextActionEdit({ kind: 'idle' });
+        nextActionRetry.current = undefined;
+        setFeedback(
+          receipt.outcome === 'updated'
+            ? copy.nextActionSaved
+            : copy.nextActionUnchanged,
+        );
+        if (receipt.outcome === 'updated') await onActivityRecorded();
+        if (!controller.signal.aborted) await loadRequests(companyId);
+        return;
+      }
+      setNextActionEdit({ kind: 'uncertain', draft });
+      setFeedback(copy.nextActionUncertain);
+    } catch {
+      if (!controller.signal.aborted) {
+        setNextActionEdit({ kind: 'uncertain', draft });
+        setFeedback(copy.nextActionUncertain);
+      }
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -446,7 +645,8 @@ export function CommercialIntakeWorkspace({
         idempotencyKey,
       });
       if (controller.signal.aborted) return;
-      if (await handleAccess(result, companyId, controller.signal)) return;
+      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        return;
       if (isUnavailableClient(result)) {
         setFeedback(copy.unavailableClient);
         return;
@@ -501,7 +701,35 @@ export function CommercialIntakeWorkspace({
       {selected ? (
         <RequestDetail
           request={selected}
-          onBack={() => setSelected(undefined)}
+          onBack={closeDetail}
+          pending={pending}
+          nextAction={
+            canEditNextAction
+              ? {
+                  edit: nextActionEdit,
+                  onEdit: () => {
+                    setFeedback('');
+                    setNextActionEdit({
+                      kind: 'editing',
+                      draft: selected.initialOpportunity.nextAction,
+                    });
+                  },
+                  onDraftChange: (draft) =>
+                    setNextActionEdit((current) =>
+                      current.kind === 'editing'
+                        ? { ...current, draft }
+                        : current,
+                    ),
+                  onSave: () => void saveNextAction(),
+                  onCancel: () => {
+                    setNextActionEdit({ kind: 'idle' });
+                    nextActionRetry.current = undefined;
+                    setFeedback('');
+                  },
+                  onReload: () => void selectRequest(selected.id, true),
+                }
+              : undefined
+          }
         />
       ) : (
         <>
@@ -851,19 +1079,32 @@ function matchesFilter(
   ].some((value) => value.toLowerCase().includes(normalizedFilter));
 }
 
+type NextActionEditor = {
+  edit: NextActionEdit;
+  onEdit: () => void;
+  onDraftChange: (draft: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onReload: () => void;
+};
+
 function RequestDetail({
   request,
   onBack,
+  pending,
+  nextAction,
 }: {
   request: ClientRequest;
   onBack: () => void;
+  pending: boolean;
+  nextAction: NextActionEditor | undefined;
 }) {
   return (
     <article
       className="commercial-intake-detail"
       aria-labelledby="commercial-intake-detail-title"
     >
-      <button type="button" onClick={onBack}>
+      <button type="button" onClick={onBack} disabled={pending}>
         {copy.back}
       </button>
       <p>{copy.detail}</p>
@@ -917,7 +1158,9 @@ function RequestDetail({
         {request.initialOpportunity.scope ? (
           <p>{request.initialOpportunity.scope}</p>
         ) : null}
-        <p>{request.initialOpportunity.nextAction}</p>
+        <p>
+          {copy.nextAction}: {request.initialOpportunity.nextAction}
+        </p>
         <p>
           {copy.responsible}:{' '}
           {request.initialOpportunity.responsibleActor.displayName}
@@ -926,9 +1169,82 @@ function RequestDetail({
           {copy.status}:{' '}
           {copy.opportunityStatusLabels[request.initialOpportunity.status]}
         </p>
+        <p>
+          {copy.opportunityVersion}: {request.initialOpportunity.version}
+        </p>
+        {nextAction ? (
+          <NextActionEditForm editor={nextAction} pending={pending} />
+        ) : null}
       </section>
     </article>
   );
+}
+
+function NextActionEditForm({
+  editor,
+  pending,
+}: {
+  editor: NextActionEditor;
+  pending: boolean;
+}) {
+  const { edit } = editor;
+  switch (edit.kind) {
+    case 'idle':
+      return (
+        <button type="button" onClick={editor.onEdit} disabled={pending}>
+          {copy.editNextAction}
+        </button>
+      );
+    case 'conflict':
+      return (
+        <button type="button" onClick={editor.onReload} disabled={pending}>
+          {copy.reloadRequest}
+        </button>
+      );
+    case 'editing':
+    case 'saving':
+    case 'uncertain': {
+      const saving = edit.kind === 'saving';
+      return (
+        <form
+          className="commercial-intake-next-action"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            editor.onSave();
+          }}
+        >
+          <label>
+            {copy.nextAction}
+            <input
+              value={edit.draft}
+              onChange={(event) => editor.onDraftChange(event.target.value)}
+              required
+              maxLength={500}
+              disabled={saving || edit.kind === 'uncertain'}
+            />
+          </label>
+          {saving ? <p role="status">{copy.nextActionSaving}</p> : null}
+          <div className="commercial-intake-next-action-actions">
+            <button type="submit" disabled={pending}>
+              {edit.kind === 'uncertain'
+                ? copy.retryNextAction
+                : copy.saveNextAction}
+            </button>
+            <button type="button" onClick={editor.onCancel} disabled={saving}>
+              {copy.cancelNextAction}
+            </button>
+          </div>
+        </form>
+      );
+    }
+    default:
+      return assertNeverEdit(edit);
+  }
+}
+
+function assertNeverEdit(edit: never): never {
+  throw new Error(`Unexpected next-action edit state: ${JSON.stringify(edit)}`);
 }
 
 function isUnavailableClient(result: HttpResult): boolean {
@@ -1019,7 +1335,24 @@ function isInitialOpportunity(
     value.responsibleActor.workspaceMembershipId ===
       value.responsibleWorkspaceMembershipId &&
     typeof value.createdAt === 'string' &&
-    value.version === 1
+    typeof value.version === 'number' &&
+    Number.isInteger(value.version) &&
+    value.version >= 1
+  );
+}
+
+function isNextActionUpdateResult(
+  value: unknown,
+): value is NextActionUpdateResult {
+  if (!isRecord(value) || !isRecord(value.receipt)) return false;
+  const receipt = value.receipt;
+  return (
+    typeof receipt.opportunityId === 'string' &&
+    typeof receipt.nextAction === 'string' &&
+    typeof receipt.version === 'number' &&
+    Number.isInteger(receipt.version) &&
+    (receipt.outcome === 'updated' || receipt.outcome === 'unchanged') &&
+    isClientRequest(value.request)
   );
 }
 
