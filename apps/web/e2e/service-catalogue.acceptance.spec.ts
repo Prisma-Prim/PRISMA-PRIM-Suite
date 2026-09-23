@@ -75,8 +75,14 @@ test('defines a shared Service and records a Company offering through the real A
     name: 'Company Service Offerings',
   });
   await expect(offerings.getByText(label, { exact: true })).toBeVisible();
+  // Both viewport projects share one database, so scope the badge to the
+  // offering this run recorded.
+  const recordedOffering = offerings
+    .getByRole('listitem')
+    .filter({ has: page.getByText(label, { exact: true }) });
+  await expect(recordedOffering).toHaveCount(1);
   await expect(
-    offerings.getByText('Illustrative', { exact: true }),
+    recordedOffering.getByText('Illustrative', { exact: true }),
   ).toBeVisible();
 
   await catalogue
