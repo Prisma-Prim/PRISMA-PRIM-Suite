@@ -1209,6 +1209,169 @@ describe('ClientWorkspace', () => {
     },
   );
 
+  it.each([
+    { work: 'duplicate-review detail', refresh: 'equivalent', kept: true },
+    { work: 'duplicate-review detail', refresh: 'narrowed', kept: false },
+    { work: 'duplicate-review attachment', refresh: 'equivalent', kept: true },
+    { work: 'duplicate-review attachment', refresh: 'narrowed', kept: false },
+    { work: 'superseded Client history', refresh: 'equivalent', kept: true },
+    { work: 'superseded Client history', refresh: 'narrowed', kept: false },
+  ] as const)(
+    'bounds pending $work by the Client authority when a refreshed actor is $refresh',
+    async ({ work, kept }) => {
+      const reference = '33333333-3333-4333-8333-333333333333';
+      const heldResponse = deferred<Response>();
+      let heldSignal: AbortSignal | null | undefined;
+      const hold = (init: RequestInit | undefined) => {
+        heldSignal = init?.signal;
+        return heldResponse.promise;
+      };
+      const comparison = {
+        outcome: 'comparison',
+        duplicate_review_reference: reference,
+        proposal: {
+          kind: 'registration',
+          fields: {
+            displayName: 'Proposed Client',
+            taxId: 'IDNO-338',
+            address: null,
+            telephone: null,
+            generalEmail: null,
+            contacts: [],
+            businessActivity: null,
+          },
+        },
+        candidate: {
+          id: 'candidate-1',
+          displayName: 'Existing Client',
+          taxId: 'IDNO-338',
+          address: null,
+          telephone: null,
+          generalEmail: null,
+          contacts: [],
+          businessActivity: null,
+          version: 1,
+          relatedToActiveCompany: false,
+          involvedCompanyDisplayNames: ['BIC'],
+        },
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const path = String(input);
+          if (path === '/api/clients' && !init?.method)
+            return new Response(JSON.stringify([]), { status: 200 });
+          if (path === '/api/client-duplicate-reviews?page_size=20')
+            return new Response(
+              JSON.stringify({
+                items: [{ duplicate_review_reference: reference }],
+                next_cursor: null,
+              }),
+              { status: 200 },
+            );
+          if (path === `/api/client-duplicate-reviews/${reference}`)
+            return work === 'duplicate-review detail'
+              ? hold(init)
+              : new Response(JSON.stringify(comparison), { status: 200 });
+          if (
+            path === '/api/clients/candidate-1/active-company-relationship' &&
+            init?.method === 'PUT'
+          )
+            return hold(init);
+          if (path === '/api/client-union-sources') return hold(init);
+          throw new Error(`Unexpected request: ${path}`);
+        }),
+      );
+      const resolver = (
+        clientPermissions: NonNullable<
+          ActorContext['activeCompany']
+        >['clientPermissions'],
+      ) => assignedActor({ clientPermissions });
+      const identity = deterministicBrowserIdentity();
+      const workspace = (current: ActorContext) => (
+        <ClientWorkspace
+          actor={current}
+          identity={identity}
+          onCompanyContextRejected={vi.fn()}
+          onActivityRecorded={vi.fn(async () => undefined)}
+        />
+      );
+      const { rerender } = render(
+        workspace(
+          resolver([
+            'client.read',
+            'client.create',
+            'client.update',
+            'client.duplicate.resolve',
+          ]),
+        ),
+      );
+      await screen.findByRole('button', {
+        name: 'Review possible duplicate 1',
+      });
+      if (work === 'superseded Client history') {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Superseded Client history' }),
+        );
+      } else {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Review possible duplicate 1' }),
+        );
+        if (work === 'duplicate-review attachment')
+          fireEvent.click(
+            await screen.findByRole('button', {
+              name: 'Use this existing Client in the active Company',
+            }),
+          );
+      }
+      await waitFor(() => expect(heldSignal).toBeDefined());
+
+      rerender(
+        workspace(
+          resolver(
+            kept
+              ? [
+                  'client.read',
+                  'client.create',
+                  'client.update',
+                  'client.duplicate.resolve',
+                ]
+              : ['client.read', 'client.create', 'client.duplicate.resolve'],
+          ),
+        ),
+      );
+      expect(heldSignal?.aborted).toBe(!kept);
+      await act(async () => {
+        heldResponse.resolve(
+          new Response(
+            JSON.stringify(
+              work === 'duplicate-review detail'
+                ? comparison
+                : work === 'duplicate-review attachment'
+                  ? {}
+                  : [{ id: 'source-1', displayName: 'Superseded Source' }],
+            ),
+            { status: 200 },
+          ),
+        );
+        await new Promise((settled) => setTimeout(settled, 0));
+      });
+
+      const published = () =>
+        work === 'duplicate-review detail'
+          ? screen.queryByRole('heading', {
+              name: 'Compare the proposed and existing Client',
+            })
+          : work === 'duplicate-review attachment'
+            ? screen.queryByText(
+                'Existing Client linked to the active Company.',
+              )
+            : screen.queryByRole('button', { name: 'Superseded Source' });
+      if (kept) await waitFor(() => expect(published()).toBeInTheDocument());
+      else expect(published()).not.toBeInTheDocument();
+    },
+  );
+
   it('settles initial loading as retryable error when identity token resolution fails', async () => {
     const identity = {
       ...deterministicBrowserIdentity(),
