@@ -590,11 +590,13 @@ const settle = () =>
 const dossierWorkspace = (
   clientIdentityRevision: number,
   onOpenClientDossier: (clientDossierId: string) => void = vi.fn(),
+  clientFilter?: { clientDossierId: string; displayName: string },
 ) => (
   <DocumentWorkspace
     actor={actor}
     identity={identity}
     clientIdentityRevision={clientIdentityRevision}
+    clientFilter={clientFilter}
     onOpenClientDossier={onOpenClientDossier}
   />
 );
@@ -1177,10 +1179,15 @@ function registerFor(clientId: string, title: string) {
     screen.getByRole('button', { name: 'Register working reference' }),
   );
 }
-const listedTitles = () =>
-  within(screen.getByRole('list'))
-    .getAllByRole('button')
-    .map((button) => button.textContent);
+/** The titles the loaded list offers; none while no list is shown. */
+const listedTitles = () => {
+  const list = screen.queryByRole('list');
+  return list
+    ? within(list)
+        .queryAllByRole('button')
+        .map((button) => button.textContent)
+    : [];
+};
 it.each([
   ['opens dossier B', undefined, [dossierB], ['Dossier B questionnaire']],
   [
@@ -1514,28 +1521,35 @@ it('withholds the superseded dossier target of an open Document after its identi
   expect(readsAfterUnion).toBe(2);
 });
 /**
- * Delivers each Client identity revision as the shell does and records whether
- * the public DOM offers a dossier action in the commit that delivers it. Layout
- * effects run once that commit's DOM is in place and before any of its passive
- * effects, so this is what the member could activate at that moment.
+ * Delivers each Client identity revision as the shell does and records what
+ * the public DOM offers in the commit that delivers it. Layout effects run once
+ * that commit's DOM is in place and before any of its passive effects, so this
+ * is what the member could activate at that moment.
  */
-function IdentityRevisionHost({
+function IdentityRevisionHost<Observation>({
   clientIdentityRevision,
+  clientFilter,
   onOpenClientDossier,
-  dossierActionOnDelivery,
+  observe,
+  deliveries,
 }: {
   clientIdentityRevision: number;
+  clientFilter?: { clientDossierId: string; displayName: string };
   onOpenClientDossier: (clientDossierId: string) => void;
-  dossierActionOnDelivery: Map<number, boolean>;
+  observe: () => Observation;
+  deliveries: Map<number, Observation>;
 }) {
   useLayoutEffect(() => {
-    dossierActionOnDelivery.set(
-      clientIdentityRevision,
-      screen.queryByRole('button', { name: 'Open Client dossier' }) !== null,
-    );
-  }, [clientIdentityRevision, dossierActionOnDelivery]);
-  return dossierWorkspace(clientIdentityRevision, onOpenClientDossier);
+    deliveries.set(clientIdentityRevision, observe());
+  }, [clientIdentityRevision, deliveries, observe]);
+  return dossierWorkspace(
+    clientIdentityRevision,
+    onOpenClientDossier,
+    clientFilter,
+  );
 }
+const offersDossierAction = () =>
+  screen.queryByRole('button', { name: 'Open Client dossier' }) !== null;
 /** Serves every Document with the dossier projection current at that moment. */
 function currentProjectionFetcher() {
   let projection = originalProjection;
@@ -1597,7 +1611,8 @@ it.each([
       <IdentityRevisionHost
         clientIdentityRevision={clientIdentityRevision}
         onOpenClientDossier={openClientDossier}
-        dossierActionOnDelivery={dossierActionOnDelivery}
+        observe={offersDossierAction}
+        deliveries={dossierActionOnDelivery}
       />
     );
     const view = render(host(0));
@@ -1632,6 +1647,226 @@ it.each([
     expect(openClientDossier).toHaveBeenCalledTimes(3);
   },
 );
+/** Holds every Document request, by kind, until the test answers it. */
+function heldDocumentRequests() {
+  const lists: Array<ReturnType<typeof deferredResponse>> = [];
+  const details: Array<ReturnType<typeof deferredResponse>> = [];
+  const commands: Array<ReturnType<typeof deferredResponse>> = [];
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/clients'))
+      return Response.json([{ id: 'client', displayName: 'Synthetic Client' }]);
+    const response = deferredResponse();
+    if (init?.method === 'POST' || init?.method === 'PATCH')
+      commands.push(response);
+    else if (url.endsWith('/documents')) lists.push(response);
+    else details.push(response);
+    return response.promise;
+  });
+  return { fetcher, lists, details, commands };
+}
+const restrictionTo = (projection: typeof originalProjection) => ({
+  clientDossierId: projection.clientDossierId,
+  displayName: projection.clientDisplayName,
+});
+const noMatches = 'No loaded working Documents match this filter.';
+it.each([
+  ['union', 'the active', originalProjection, unitedProjection],
+  ['union', 'a reopened', originalProjection, unitedProjection],
+  ['reversal', 'the active', unitedProjection, originalProjection],
+  ['reversal', 'a reopened', unitedProjection, originalProjection],
+] as const)(
+  'matches no row a Client %s left stale to %s dossier restriction until a current list read lands',
+  async (_transition, restriction, previousProjection, currentProjection) => {
+    const requests = heldDocumentRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const superseded = restrictionTo(previousProjection);
+    const initialRestriction =
+      restriction === 'the active' ? superseded : undefined;
+    const listedOnDelivery = new Map<number, Array<string | null>>();
+    const host = (
+      clientIdentityRevision: number,
+      clientFilter?: typeof superseded,
+    ) => (
+      <IdentityRevisionHost
+        clientIdentityRevision={clientIdentityRevision}
+        clientFilter={clientFilter}
+        onOpenClientDossier={vi.fn()}
+        observe={listedTitles}
+        deliveries={listedOnDelivery}
+      />
+    );
+    const view = render(host(0, initialRestriction));
+    await waitFor(() => expect(requests.lists).toHaveLength(1));
+    requests.lists[0]?.resolve(
+      Response.json([{ ...document, ...previousProjection }]),
+    );
+    expect(
+      await screen.findByRole('button', { name: document.title }),
+    ).toBeInTheDocument();
+
+    view.rerender(host(1, initialRestriction));
+    await waitFor(() => expect(requests.lists).toHaveLength(2));
+    if (restriction === 'the active') {
+      // Not even the commit that delivers the identity change, nor the
+      // pending refresh, lets the superseded projection match.
+      expect(listedOnDelivery.get(1)).toEqual([]);
+      expect(listedTitles()).toEqual([]);
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Loading working references…',
+      );
+    }
+    requests.lists[1]?.resolve(new Response(null, { status: 500 }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'could not be loaded or saved',
+    );
+    if (restriction === 'a reopened') {
+      // The retained rows stay listed without a restriction.
+      expect(listedTitles()).toEqual([document.title]);
+      view.rerender(host(1, superseded));
+    }
+    expect(listedTitles()).toEqual([]);
+    expect(screen.queryByText(noMatches)).not.toBeInTheDocument();
+
+    // Retrying is a current read; only then are dossier identities compared.
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Loading working references…',
+    );
+    await waitFor(() => expect(requests.lists).toHaveLength(3));
+    requests.lists[2]?.resolve(
+      Response.json([{ ...document, ...currentProjection }]),
+    );
+    expect(await screen.findByText(noMatches)).toBeInTheDocument();
+    view.rerender(host(1, restrictionTo(currentProjection)));
+    expect(listedTitles()).toEqual([document.title]);
+  },
+);
+it.each([
+  ['after the failed identity refresh', true],
+  ['before the failed identity refresh', false],
+])(
+  'never matches rows from a correction reload that began before a Client union and landed %s',
+  async (_order, refreshFailsFirst) => {
+    const requests = heldDocumentRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const original = { ...document, ...originalProjection };
+    const corrected = {
+      ...original,
+      title: 'Corrected title',
+      workingRevision: 2,
+    };
+    const view = render(dossierWorkspace(0));
+    await waitFor(() => expect(requests.lists).toHaveLength(1));
+    requests.lists[0]?.resolve(Response.json([original]));
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    await waitFor(() => expect(requests.details).toHaveLength(1));
+    requests.details[0]?.resolve(Response.json(original));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: corrected.title },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+    await waitFor(() => expect(requests.commands).toHaveLength(1));
+    requests.commands[0]?.resolve(
+      Response.json({
+        documentId: document.id,
+        revision: 2,
+        outcome: 'corrected',
+      }),
+    );
+    // The accepted correction's reload began before the union and is held.
+    await waitFor(() => expect(requests.lists).toHaveLength(2));
+    view.rerender(dossierWorkspace(1));
+    await waitFor(() => expect(requests.lists).toHaveLength(3));
+    const failRefresh = () =>
+      requests.lists[2]?.resolve(new Response(null, { status: 500 }));
+    const answerReload = () => {
+      requests.details[1]?.resolve(Response.json(corrected));
+      requests.lists[1]?.resolve(Response.json([corrected]));
+    };
+    if (refreshFailsFirst) {
+      failRefresh();
+      await settle();
+      answerReload();
+    } else {
+      answerReload();
+      await settle();
+      failRefresh();
+    }
+    expect(await screen.findByText('Correction saved.')).toBeInTheDocument();
+    await settle();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expect(listedTitles()).toEqual([corrected.title]);
+    view.rerender(
+      dossierWorkspace(1, vi.fn(), restrictionTo(originalProjection)),
+    );
+    expect(listedTitles()).toEqual([]);
+    expect(screen.queryByText(noMatches)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(requests.lists).toHaveLength(4));
+    requests.lists[3]?.resolve(
+      Response.json([{ ...corrected, ...unitedProjection }]),
+    );
+    expect(await screen.findByText(noMatches)).toBeInTheDocument();
+    view.rerender(
+      dossierWorkspace(1, vi.fn(), restrictionTo(unitedProjection)),
+    );
+    expect(listedTitles()).toEqual([corrected.title]);
+    expect(requests.commands).toHaveLength(1);
+  },
+);
+it('keeps a registration confirmed before a Client union listed but out of its superseded restriction when the refresh fails', async () => {
+  const requests = heldDocumentRequests();
+  vi.stubGlobal('fetch', requests.fetcher);
+  const view = render(dossierWorkspace(0));
+  await waitFor(() => expect(requests.lists).toHaveLength(1));
+  requests.lists[0]?.resolve(Response.json([]));
+  expect(
+    await screen.findByText('No working references registered yet.'),
+  ).toBeInTheDocument();
+  submitLateRegistration();
+  await waitFor(() => expect(requests.commands).toHaveLength(1));
+  requests.commands[0]?.resolve(
+    Response.json(
+      { ...lateRegistration, ...originalProjection },
+      { status: 201 },
+    ),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Back to references' }),
+  );
+  expect(listedTitles()).toEqual([lateRegistration.title]);
+
+  view.rerender(dossierWorkspace(1));
+  await waitFor(() => expect(requests.lists).toHaveLength(2));
+  requests.lists[1]?.resolve(new Response(null, { status: 500 }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'could not be loaded or saved',
+  );
+  // The confirmed row is kept, but its pre-union projection matches nothing.
+  expect(listedTitles()).toEqual([lateRegistration.title]);
+  view.rerender(
+    dossierWorkspace(1, vi.fn(), restrictionTo(originalProjection)),
+  );
+  expect(listedTitles()).toEqual([]);
+  expect(screen.queryByText(noMatches)).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(requests.lists).toHaveLength(3));
+  requests.lists[2]?.resolve(
+    Response.json([{ ...lateRegistration, ...unitedProjection }]),
+  );
+  expect(await screen.findByText(noMatches)).toBeInTheDocument();
+  view.rerender(dossierWorkspace(1, vi.fn(), restrictionTo(unitedProjection)));
+  expect(listedTitles()).toEqual([lateRegistration.title]);
+  expect(requests.commands).toHaveLength(1);
+});
 it('discards a delayed Document load that would republish a superseded projection', async () => {
   let united = false;
   const listReads: Array<() => void> = [];

@@ -19,6 +19,17 @@ type Load =
       status: 'ready';
       documents: WorkingDocument[];
       clients: Array<{ id: string; displayName: string }>;
+      /**
+       * The Client identity revision the rows' derived dossier projections were
+       * read under. Only rows read under the current revision are compared with
+       * a dossier restriction.
+       */
+      identityRevision: number;
+      /**
+       * The list read under this revision failed and the rows above were kept.
+       * It is consulted only while those rows are not current.
+       */
+      refreshFailedUnder?: number;
     };
 /** Either the existing free-text filter or one exact dossier identity is active. */
 type DocumentFilter =
@@ -299,13 +310,23 @@ export function DocumentWorkspace({
           status: 'ready',
           documents: includeConfirmedRegistrations(loadedDocuments, sequence),
           clients: loadedClients,
+          identityRevision: clientIdentityRevision,
         }));
       } catch {
         if (request.signal.aborted) return;
         // A failed refresh keeps the loaded rows, their open detail and their
-        // drafts usable; only a failed first read offers the retry.
-        if (listReady.current) setMutation('error');
-        else publishList(sequence, () => ({ status: 'error' }));
+        // drafts usable. Only a failed first read, or a dossier restriction
+        // that the kept rows can no longer serve, offers the retry.
+        if (!listReady.current) {
+          publishList(sequence, () => ({ status: 'error' }));
+          return;
+        }
+        setMutation('error');
+        setState((current) =>
+          current.status === 'ready'
+            ? { ...current, refreshFailedUnder: clientIdentityRevision }
+            : current,
+        );
       }
     })();
     return () => request.abort();
@@ -549,7 +570,9 @@ export function DocumentWorkspace({
       setDetail(saved);
       settleDetailRead(saved, startedUnderRevision);
       publishList(sequence, (current) =>
-        current.status === 'ready' ? { ...current, documents } : current,
+        current.status === 'ready'
+          ? { ...current, documents, identityRevision: startedUnderRevision }
+          : current,
       );
       setEditing(false);
       setCorrection(receipt.outcome === 'corrected' ? 'saved' : 'unchanged');
@@ -643,10 +666,33 @@ export function DocumentWorkspace({
       if (!request.signal.aborted) setMutation('error');
     }
   }
+  /**
+   * Re-reads the loaded rows through their single owner. The retried read
+   * reports its own outcome, so the failure it answers is no longer shown.
+   */
+  function retryListRead(): void {
+    setMutation((current) => (current === 'error' ? 'idle' : current));
+    setState((current) =>
+      current.status === 'ready'
+        ? { ...current, refreshFailedUnder: undefined }
+        : current,
+    );
+    setRevision((value) => value + 1);
+  }
+  // Derived dossier identities are compared only in rows read under the
+  // current Client identity revision. Until such a read lands, a dossier
+  // restriction matches none of the kept rows, which stay listed without it.
+  const restrictionAwaitsRead =
+    filter.kind === 'client' &&
+    state.status === 'ready' &&
+    state.identityRevision !== clientIdentityRevision;
+  const restrictionReadFailed =
+    restrictionAwaitsRead &&
+    state.refreshFailedUnder === clientIdentityRevision;
   const normalizedFilterQuery =
     filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
   const filteredDocuments =
-    state.status === 'ready'
+    state.status === 'ready' && !restrictionAwaitsRead
       ? state.documents.filter((document) =>
           filter.kind === 'client'
             ? document.clientDossierId === filter.clientDossierId
@@ -684,9 +730,7 @@ export function DocumentWorkspace({
       {state.status === 'error' && (
         <>
           <p role="alert">{copy.error}</p>
-          <button onClick={() => setRevision((value) => value + 1)}>
-            {copy.retry}
-          </button>
+          <button onClick={retryListRead}>{copy.retry}</button>
         </>
       )}
       {state.status === 'ready' && (
@@ -848,8 +892,15 @@ export function DocumentWorkspace({
             </article>
           ) : (
             <>
-              {state.documents.length > 0 && filteredDocuments.length === 0 && (
-                <p role="status">{copy.noMatches}</p>
+              {restrictionReadFailed ? (
+                <button onClick={retryListRead}>{copy.retry}</button>
+              ) : restrictionAwaitsRead ? (
+                <p role="status">{copy.loading}</p>
+              ) : (
+                state.documents.length > 0 &&
+                filteredDocuments.length === 0 && (
+                  <p role="status">{copy.noMatches}</p>
+                )
               )}
               <ul className={isPrisme ? 'working-document-list' : undefined}>
                 {filteredDocuments.map((document) => (
@@ -865,7 +916,9 @@ export function DocumentWorkspace({
                   </li>
                 ))}
               </ul>
-              {state.documents.length === 0 && <p>{copy.empty}</p>}
+              {state.documents.length === 0 && !restrictionAwaitsRead && (
+                <p>{copy.empty}</p>
+              )}
               {canRegister && (
                 <form
                   className={
@@ -924,7 +977,9 @@ export function DocumentWorkspace({
               )}
             </>
           )}
-          {mutation === 'error' && <p role="alert">{copy.error}</p>}
+          {(mutation === 'error' || restrictionReadFailed) && (
+            <p role="alert">{copy.error}</p>
+          )}
           {mutation === 'registered' && <p role="status">{copy.registered}</p>}
         </>
       )}
