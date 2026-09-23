@@ -112,6 +112,10 @@ export function DocumentWorkspace({
   const restrictionAwaitsCorrection = useRef(false);
   const activeFilter = useRef(filter);
   activeFilter.current = filter;
+  const registrationPayload = JSON.stringify({ clientId, title, purpose, url });
+  /** The registration draft as the member holds it now, as a command payload. */
+  const currentRegistrationPayload = useRef(registrationPayload);
+  currentRegistrationPayload.current = registrationPayload;
   const listReady = useRef(false);
   listReady.current = state.status === 'ready';
   const identityRevision = useRef(clientIdentityRevision);
@@ -603,7 +607,7 @@ export function DocumentWorkspace({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!companyId || mutation === 'pending') return;
-    const payload = JSON.stringify({ clientId, title, purpose, url });
+    const payload = registrationPayload;
     const command =
       retry.current?.payload === payload
         ? retry.current
@@ -649,6 +653,15 @@ export function DocumentWorkspace({
           ? saved
           : { ...saved, clientDossierId: undefined };
       retry.current = undefined;
+      // The confirmed command retires the draft it was submitted from, so an
+      // unchanged resubmission cannot register it again. A draft the member
+      // has changed since is newer work and stays, for a command of its own.
+      if (currentRegistrationPayload.current === payload) {
+        setClientId('');
+        setTitle('');
+        setPurpose('');
+        setUrl('');
+      }
       // The confirmed Document opens only in the unchanged view it was
       // submitted from and within its active dossier restriction. A view the
       // member has since moved to is kept, and the confirmation is reported
