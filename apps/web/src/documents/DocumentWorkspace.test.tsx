@@ -493,6 +493,60 @@ it('shows a recoverable load error and retries the public query', async () => {
     await screen.findByText('No working references registered yet.'),
   ).toBeInTheDocument();
 });
+it('shows the persisted registration time of listed and opened working references', async () => {
+  const later = {
+    ...document,
+    id: 'document-later',
+    title: 'Supplier evidence checklist',
+    createdAt: '2026-09-21T06:30:00.000Z',
+  };
+  const applicationDateTime = (value: string) =>
+    new Intl.DateTimeFormat(
+      globalThis.document.documentElement.lang || navigator.language,
+      { dateStyle: 'medium', timeStyle: 'short' },
+    ).format(new Date(value));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/clients')
+          ? []
+          : url.endsWith(`/documents/${document.id}`)
+            ? document
+            : [document, later],
+      ),
+    ),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  const rows = await screen.findAllByRole('listitem');
+  expect(within(rows[0]).getByRole('term')).toHaveTextContent(
+    'Registration time',
+  );
+  expect(within(rows[0]).getByRole('definition')).toHaveTextContent(
+    applicationDateTime(document.createdAt),
+  );
+  expect(within(rows[1]).getByRole('definition')).toHaveTextContent(
+    applicationDateTime(later.createdAt),
+  );
+  expect(
+    within(rows[0]).getByText(applicationDateTime(document.createdAt)),
+  ).toHaveAttribute('datetime', document.createdAt);
+
+  fireEvent.click(screen.getByRole('button', { name: document.title }));
+  const detail = await screen.findByRole('article');
+  expect(
+    within(detail).getByRole('heading', { name: document.title }),
+  ).toBeInTheDocument();
+  expect(within(detail).getByRole('term')).toHaveTextContent(
+    'Registration time',
+  );
+  expect(within(detail).getByRole('definition')).toHaveTextContent(
+    applicationDateTime(document.createdAt),
+  );
+  expect(
+    within(detail).getByText(applicationDateTime(document.createdAt)),
+  ).toHaveAttribute('datetime', document.createdAt);
+});
 it('does not render a denied external reference', async () => {
   const reference = {
     ...document,
@@ -554,4 +608,84 @@ it('fails closed instead of rendering an unsafe external reference returned by t
     'could not be loaded',
   );
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
+});
+it('fails closed instead of rendering a non-instant registration time in the loaded list', async () => {
+  const nonInstant = { ...document, createdAt: '0' };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(url.endsWith('/clients') ? [] : [nonInstant]),
+    ),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'could not be loaded',
+  );
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: document.title }),
+  ).not.toBeInTheDocument();
+});
+it('keeps the loaded list usable when an opened reference carries an impossible registration time', async () => {
+  const impossibleInstant = {
+    ...document,
+    createdAt: '2026-02-30T08:00:00.000Z',
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/clients')
+          ? []
+          : url.endsWith('/documents/document')
+            ? impossibleInstant
+            : [document],
+      ),
+    ),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'could not be loaded',
+  );
+  expect(
+    screen.getByRole('button', { name: document.title }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('article')).not.toBeInTheDocument();
+});
+it('reports a failure instead of presenting a registered reference with a non-instant registration time', async () => {
+  const nonInstant = { ...document, createdAt: '2026' };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients'))
+        return Response.json([{ id: 'client', displayName: 'Client' }]);
+      if (init?.method === 'POST')
+        return Response.json(nonInstant, { status: 201 });
+      return Response.json([]);
+    }),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  expect(
+    await screen.findByText('No working references registered yet.'),
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: document.title },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: document.purpose },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: document.version.representation.url },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Register working reference' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'could not be loaded or saved',
+  );
+  expect(screen.queryByRole('article')).not.toBeInTheDocument();
 });
