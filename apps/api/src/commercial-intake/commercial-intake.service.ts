@@ -107,6 +107,10 @@ export class CommercialIntakeService {
         .returning();
       if (!opportunity)
         throw new Error('The initial Opportunity was not recorded.');
+      // The creator is the initial responsible actor, and this request already
+      // synchronized that internal user's display name, so the create response
+      // carries the same label the list projection reads back.
+      const responsibleDisplayName = actor.displayName;
       await this.accountability.recordCommercialIntakeCreated({
         actor,
         companyId,
@@ -123,7 +127,12 @@ export class CommercialIntakeService {
           fingerprint,
           resultClientRequestId: request.id,
         });
-      return detailView(request, opportunity, clientReference);
+      return detailView({
+        request,
+        opportunity,
+        responsibleDisplayName,
+        client: clientReference,
+      });
     });
   }
 
@@ -222,7 +231,11 @@ export class CommercialIntakeService {
     requireClientVisibility: boolean,
   ): Promise<CommercialIntakeDetail> {
     const [row] = await this.databaseContext.connection
-      .select({ request: clientRequests, opportunity: opportunities })
+      .select({
+        request: clientRequests,
+        opportunity: opportunities,
+        responsibleDisplayName: internalUsers.displayName,
+      })
       .from(clientRequests)
       .innerJoin(
         opportunities,
@@ -233,6 +246,12 @@ export class CommercialIntakeService {
           eq(opportunities.initial, true),
         ),
       )
+      // The same actor projection as the list, so one initial Opportunity
+      // never shows two identities.
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, opportunities.responsibleInternalUserId),
+      )
       .where(
         and(
           eq(clientRequests.workspaceId, actor.workspaceId),
@@ -241,14 +260,22 @@ export class CommercialIntakeService {
         ),
       );
     if (!row) throw new NotFoundException();
-    if (!row.request.clientAccountId)
-      return detailView(row.request, row.opportunity);
+    const view = (
+      client?: NonNullable<CommercialIntakeDetail['clientReference']>,
+    ): CommercialIntakeDetail =>
+      detailView({
+        request: row.request,
+        opportunity: row.opportunity,
+        responsibleDisplayName: row.responsibleDisplayName,
+        ...(client ? { client } : {}),
+      });
+    if (!row.request.clientAccountId) return view();
     const canReadClient =
       actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany?.clientPermissions.includes('client.read') === true;
     if (!canReadClient) {
       if (requireClientVisibility) throw clientUnavailable();
-      return detailView(row.request, row.opportunity);
+      return view();
     }
     let reference;
     try {
@@ -265,19 +292,15 @@ export class CommercialIntakeService {
         error instanceof ForbiddenException
       ) {
         if (requireClientVisibility) throw clientUnavailable();
-        return detailView(row.request, row.opportunity);
+        return view();
       }
       throw error;
     }
     if (!reference) {
       if (requireClientVisibility) throw clientUnavailable();
-      return detailView(row.request, row.opportunity);
+      return view();
     }
-    return detailView(
-      row.request,
-      row.opportunity,
-      clientReferenceView(row.request.clientAccountId, reference),
-    );
+    return view(clientReferenceView(row.request.clientAccountId, reference));
   }
 
   private async recordClientReference(actor: ActorContext, clientId: string) {
@@ -353,11 +376,17 @@ function commandFingerprint(command: CreateCommercialIntakeCommand): string {
     .digest('hex');
 }
 
-function detailView(
-  request: ClientRequestRow,
-  opportunity: OpportunityRow,
-  client?: NonNullable<CommercialIntakeDetail['clientReference']>,
-): CommercialIntakeDetail {
+function detailView({
+  request,
+  opportunity,
+  responsibleDisplayName,
+  client,
+}: {
+  request: ClientRequestRow;
+  opportunity: OpportunityRow;
+  responsibleDisplayName: string;
+  client?: NonNullable<CommercialIntakeDetail['clientReference']>;
+}): CommercialIntakeDetail {
   if (request.version !== 1 || opportunity.version !== 1)
     throw new Error('Unsupported commercial intake version.');
   return {
@@ -384,6 +413,10 @@ function detailView(
       status: opportunity.status,
       responsibleWorkspaceMembershipId:
         opportunity.responsibleWorkspaceMembershipId,
+      responsibleActor: {
+        workspaceMembershipId: opportunity.responsibleWorkspaceMembershipId,
+        displayName: responsibleDisplayName,
+      },
       createdAt: opportunity.createdAt.toISOString(),
       version: opportunity.version,
     },

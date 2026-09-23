@@ -9,6 +9,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { formatApplicationDateTime } from '../presentation/date-time';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy } from './commercial-intake.copy';
 
@@ -53,6 +54,10 @@ const createdRequest = {
     nextAction: 'Arrange a qualification call',
     status: 'OPEN',
     responsibleWorkspaceMembershipId: 'membership-1',
+    responsibleActor: {
+      workspaceMembershipId: 'membership-1',
+      displayName: 'Iurie',
+    },
     createdAt: '2026-09-20T10:00:00.000Z',
     version: 1,
   },
@@ -319,6 +324,187 @@ describe('CommercialIntakeWorkspace', () => {
     );
     expect(receivedTime).toHaveTextContent('2026');
   });
+
+  it('shows the responsible actor and server capture time in the list and the reopened detail', async () => {
+    const listed = {
+      id: createdRequest.id,
+      subject: createdRequest.subject,
+      capturedAt: createdRequest.capturedAt,
+      initialOpportunity: {
+        title: createdRequest.initialOpportunity.title,
+        nextAction: createdRequest.initialOpportunity.nextAction,
+        responsibleActor: createdRequest.initialOpportunity.responsibleActor,
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json({ items: [listed] }))
+        .mockResolvedValueOnce(Response.json(createdRequest)),
+    );
+
+    renderWorkspace();
+
+    const row = await screen.findByRole('button', {
+      name: new RegExp(createdRequest.initialOpportunity.title, 'u'),
+    });
+    const rowCapturedAt = row.querySelector('time');
+    expect(rowCapturedAt).toHaveAttribute(
+      'datetime',
+      createdRequest.capturedAt,
+    );
+    expect(row).toHaveTextContent(
+      `${commercialIntakeCopy.capturedAt}: ${formatApplicationDateTime(
+        createdRequest.capturedAt,
+      )}`,
+    );
+    expect(row).toHaveTextContent(`${commercialIntakeCopy.responsible}: Iurie`);
+
+    fireEvent.click(row);
+    expect(
+      await screen.findByText(createdRequest.originalText),
+    ).toBeInTheDocument();
+    const capturedAt = screen
+      .getByText(commercialIntakeCopy.capturedAt)
+      .nextElementSibling?.querySelector('time');
+    expect(capturedAt).toHaveAttribute('datetime', createdRequest.capturedAt);
+    expect(capturedAt).toHaveTextContent(
+      formatApplicationDateTime(createdRequest.capturedAt),
+    );
+    expect(screen.getByText(commercialIntakeCopy.capturedAtHelp)).toBeVisible();
+    // The server capture time stays a separate labelled fact from the
+    // optional time the sender reported.
+    const reportedReceivedAt = screen
+      .getByText(commercialIntakeCopy.reportedReceivedAt)
+      .nextElementSibling?.querySelector('time');
+    expect(reportedReceivedAt).toHaveAttribute(
+      'datetime',
+      createdRequest.reportedReceivedAt,
+    );
+    expect(reportedReceivedAt).toHaveTextContent(
+      formatApplicationDateTime(createdRequest.reportedReceivedAt),
+    );
+    expect(
+      screen.getByText(`${commercialIntakeCopy.responsible}: Iurie`),
+    ).toBeVisible();
+  });
+
+  it('reports a detail response without the responsible actor as a failure', async () => {
+    const { responsibleActor, ...opportunityWithoutActor } =
+      createdRequest.initialOpportunity;
+    expect(responsibleActor).toBeDefined();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json({ items: [] }))
+        .mockResolvedValueOnce(
+          Response.json(
+            { ...createdRequest, initialOpportunity: opportunityWithoutActor },
+            { status: 201 },
+          ),
+        ),
+    );
+
+    renderWorkspace();
+    await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+    fillRequiredFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+  });
+
+  it('reports a detail response with contradictory responsible identities as a failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json({ items: [] }))
+        .mockResolvedValueOnce(
+          Response.json(
+            {
+              ...createdRequest,
+              initialOpportunity: {
+                ...createdRequest.initialOpportunity,
+                responsibleActor: {
+                  ...createdRequest.initialOpportunity.responsibleActor,
+                  workspaceMembershipId: 'membership-2',
+                },
+              },
+            },
+            { status: 201 },
+          ),
+        ),
+    );
+
+    renderWorkspace();
+    await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
+    fillRequiredFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+  });
+
+  it('reports a list page with a non-canonical capture time instead of rendering it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          items: [{ ...listItem(0), capturedAt: '0' }],
+        }),
+      ),
+    );
+
+    renderWorkspace();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+    expect(
+      screen.getByRole('button', { name: commercialIntakeCopy.retry }),
+    ).toBeVisible();
+    expect(screen.queryByText('Client Request 0')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['capturedAt', { capturedAt: '2026' }],
+    ['capturedAt', { capturedAt: '2024-02-30T10:00:00.000Z' }],
+    ['reportedReceivedAt', { reportedReceivedAt: '2024-02-30T10:00:00.000Z' }],
+  ])(
+    'reports a reopened detail with a non-canonical %s instead of rendering it',
+    async (_field, malformed) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(Response.json({ items: [listItem(0)] }))
+          .mockResolvedValueOnce(
+            Response.json({ ...createdRequest, ...malformed }),
+          ),
+      );
+
+      renderWorkspace();
+      fireEvent.click(
+        await screen.findByRole('button', { name: requestButton(0) }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        commercialIntakeCopy.error,
+      );
+      // The rejected detail never replaces the loaded list.
+      expect(
+        screen.queryByText('Client Request detail'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('list', { name: 'Client Requests' }),
+      ).toBeVisible();
+    },
+  );
 
   it('keeps entered fields after correctable validation fails', async () => {
     vi.stubGlobal(

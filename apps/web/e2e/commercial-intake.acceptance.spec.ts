@@ -49,6 +49,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await captureRequest(page, intake, {
     originalText,
     subject: requestSubject,
+    reportedReceivedAt: '2026-09-20T09:30',
     opportunityTitle,
     nextAction: 'Arrange a qualification call',
   });
@@ -61,8 +62,39 @@ test('captures and reopens manual Client Requests through the real API and Postg
   const requestButton = intake.getByRole('button').filter({
     has: page.getByText(requestSubject, { exact: true }),
   });
+  await expect(requestButton.locator('time')).not.toBeEmpty();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-traceability-list-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
   await requestButton.click();
   await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+  // Traceability survives the reload: the server capture time and the
+  // responsible actor come back from PostgreSQL, not from the browser.
+  const detailCapturedAt = intake
+    .locator('.commercial-intake-detail dl > div')
+    .filter({ hasText: 'Captured at' })
+    .locator('time');
+  await expect(detailCapturedAt).toHaveAttribute(
+    'datetime',
+    /^\d{4}-\d{2}-\d{2}T/u,
+  );
+  await expect(detailCapturedAt).not.toBeEmpty();
+  await expect(
+    intake.getByText('Responsible actor: Ada Ionescu', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    intake.getByText('Reported received at', { exact: true }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-traceability-detail-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
 
   await navigate(page, navigation, 'Clients', narrow);
   const clients = page.locator('.client-workspace');
@@ -144,6 +176,12 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await seedRequestsPastListBound(page, suffix);
   await page.reload();
   await expect(listItems).toHaveCount(25);
+  // Each loaded row carries its own capture time next to the responsible actor.
+  await expect(listItems.first().locator('time')).toHaveAttribute(
+    'datetime',
+    /^\d{4}-\d{2}-\d{2}T/u,
+  );
+  await expect(listItems.first().locator('time')).not.toBeEmpty();
   await filter.fill(`Bounded list Request ${suffix} 7`);
   await expect(listItems).toHaveCount(1);
 
@@ -426,12 +464,17 @@ async function captureRequest(
     originalText: string;
     subject: string;
     clientName?: string;
+    reportedReceivedAt?: string;
     opportunityTitle: string;
     nextAction: string;
   },
 ): Promise<void> {
   await intake.getByLabel('Original request text').fill(input.originalText);
   await intake.getByLabel('Subject').fill(input.subject);
+  if (input.reportedReceivedAt)
+    await intake
+      .getByLabel('Reported received at')
+      .fill(input.reportedReceivedAt);
   if (input.clientName) await searchAndSelectClient(intake, input.clientName);
   await intake.getByLabel('Opportunity title').fill(input.opportunityTitle);
   await intake.getByLabel('Next action').fill(input.nextAction);
