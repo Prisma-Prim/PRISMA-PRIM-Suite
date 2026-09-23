@@ -41,6 +41,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await company.selectOption({ label: 'PRISMA-PRIM' });
+  await expect(company).toBeEnabled();
   await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();

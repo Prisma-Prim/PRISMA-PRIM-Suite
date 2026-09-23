@@ -24,6 +24,7 @@ type AssignmentBundle =
   | 'document-registrar'
   | 'document-project-organizer'
   | 'commercial-intake'
+  | 'service-catalogue'
   | 'commercial-activity-reader'
   | 'project';
 type AssignmentBundleLabel =
@@ -34,6 +35,7 @@ type AssignmentBundleLabel =
   | 'Company Document Registrar'
   | 'Company Project Access'
   | 'Company Commercial Intake'
+  | 'Company Service Catalogue'
   | 'Company Commercial Activity Reader';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
@@ -45,6 +47,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'document-project-organizer':
     '/company-document-project-organizer-assignments',
   'commercial-intake': '/company-commercial-intake-assignments',
+  'service-catalogue': '/company-service-catalogue-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
@@ -461,6 +464,7 @@ export function CompanyContextAccess({
               if (
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
+                value === 'service-catalogue' ||
                 value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
@@ -474,6 +478,9 @@ export function CompanyContextAccess({
             <option value="company-context">{copy.companyContextBundle}</option>
             <option value="commercial-intake">
               {copy.commercialIntakeBundle}
+            </option>
+            <option value="service-catalogue">
+              {copy.serviceCatalogueBundle}
             </option>
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
@@ -567,6 +574,7 @@ export function CompanyContextAccess({
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels: Record<AssignmentBundle, AssignmentBundleLabel> = {
     'commercial-intake': copy.commercialIntakeBundle,
+    'service-catalogue': copy.serviceCatalogueBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,

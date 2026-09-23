@@ -1,0 +1,120 @@
+.service-catalogue {
+  display: grid;
+  gap: 1rem;
+  max-width: 70rem;
+  min-width: 0;
+}
+
+.service-catalogue-heading p,
+.service-catalogue-notice p,
+.service-catalogue-panel p,
+.service-catalogue-panel h3 {
+  margin: 0;
+}
+
+.service-catalogue-heading > p:first-child {
+  color: var(--shell-muted, currentColor);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.service-catalogue-notice,
+.service-catalogue-panel,
+.service-catalogue-list li {
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, transparent);
+}
+
+.service-catalogue-notice,
+.service-catalogue-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.service-catalogue-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.service-catalogue-panel form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.service-catalogue-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.service-catalogue-panel input,
+.service-catalogue-panel textarea,
+.service-catalogue-panel select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.service-catalogue-panel textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.service-catalogue-panel button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.service-catalogue-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.service-catalogue-list li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.service-catalogue-badge {
+  justify-self: start;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.service-catalogue button:focus-visible,
+.service-catalogue input:focus-visible,
+.service-catalogue textarea:focus-visible,
+.service-catalogue select:focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--shell-focus, currentColor) 42%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .service-catalogue-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
