@@ -97,7 +97,11 @@ test('captures and reopens manual Client Requests through the real API and Postg
   });
 
   // Real next-action edit at the observed version, then reload and conflict.
-  const editedNextAction = `Confirm the ${suffix} qualification call`;
+  // The edit uses the maximum length, so the detail and the list row must wrap.
+  const editedNextAction = `Confirm the ${suffix} qualification call`.padEnd(
+    500,
+    ' and prepare the audit evidence',
+  );
   await expect(intake.getByText('Version: 1', { exact: true })).toBeVisible();
   await intake.getByRole('button', { name: 'Edit next action' }).click();
   await intake.getByLabel('Next action').fill('   ');
@@ -129,7 +133,23 @@ test('captures and reopens manual Client Requests through the real API and Postg
     fullPage: true,
   });
 
+  // Going Back shows the saved next action on the Request's own row, and a
+  // browser reload reads it again from PostgreSQL.
+  const rowNextAction = requestButton.getByText(
+    `Next action: ${editedNextAction}`,
+    { exact: true },
+  );
+  await intake.getByRole('button', { name: 'Back to Requests' }).click();
+  await expect(rowNextAction).toBeVisible();
   await page.reload();
+  await expect(rowNextAction).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-next-action-list-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
   await requestButton.click();
   await expect(
     intake.getByText(`Next action: ${editedNextAction}`, { exact: true }),
