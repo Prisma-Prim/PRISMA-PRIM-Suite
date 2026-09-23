@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   Headers,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -46,6 +47,30 @@ export class CommercialIntakeController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ) {
     return this.intake.read(actorFrom(request), requestId);
+  }
+}
+
+// The only Opportunity mutation after R3A1: replace the next action of one
+// Opportunity at an observed version. No Opportunity-level read exists.
+@Controller('commercial-intake/opportunities')
+@UseGuards(ActorContextAdapter)
+export class CommercialIntakeOpportunityController {
+  constructor(private readonly intake: CommercialIntakeService) {}
+
+  @Post(':opportunityId/next-action')
+  @HttpCode(200)
+  updateNextAction(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId', new ParseUUIDPipe()) opportunityId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.intake.updateNextAction(
+      actorFrom(request),
+      opportunityId,
+      body,
+      idempotencyKey,
+    );
   }
 }
 
