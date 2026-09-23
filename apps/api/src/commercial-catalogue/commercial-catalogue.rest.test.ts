@@ -563,10 +563,55 @@ withPostgres('Company Service Catalogue REST', () => {
     expect(concurrentOffers.map((response) => response.status)).toEqual(
       concurrentOffers.map(() => 201),
     );
+    // The new key names content identical to the 'target-replay' offering, so
+    // every concurrent retry converges on that offering as UNCHANGED.
+    const offerResults = await Promise.all(
+      concurrentOffers.map(async (response) =>
+        offeringResult(await response.json()),
+      ),
+    );
+    expect(offerResults).toEqual(
+      offerResults.map(() => ({
+        outcome: 'UNCHANGED',
+        offering: offered.offering,
+      })),
+    );
+
+    // Replays, conflicts and the unreadable target record nothing; each
+    // accepted key, including the UNCHANGED one, holds exactly one receipt.
+    const receipts = await pool.query<{
+      idempotency_key: string;
+      command: string;
+      outcome: string;
+    }>(
+      'SELECT idempotency_key, command, outcome FROM commercial_catalogue_commands ORDER BY idempotency_key',
+    );
+    expect(receipts.rows).toEqual([
+      {
+        idempotency_key: 'concurrent',
+        command: 'service_definition.create',
+        outcome: 'CREATED',
+      },
+      {
+        idempotency_key: 'concurrent-offer',
+        command: 'company_service_offering.create',
+        outcome: 'UNCHANGED',
+      },
+      {
+        idempotency_key: 'replay',
+        command: 'service_definition.create',
+        outcome: 'CREATED',
+      },
+      {
+        idempotency_key: 'target-replay',
+        command: 'company_service_offering.create',
+        outcome: 'CREATED',
+      },
+    ]);
     await expectCounts({
       definitions: 2,
       offerings: 1,
-      receipts: 3,
+      receipts: 4,
       events: 3,
     });
   });
