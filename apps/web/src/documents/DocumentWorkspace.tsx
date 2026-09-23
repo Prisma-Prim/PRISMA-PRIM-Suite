@@ -51,9 +51,10 @@ export function DocumentWorkspace({
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [url, setUrl] = useState('');
-  const [mutation, setMutation] = useState<'idle' | 'pending' | 'error'>(
-    'idle',
-  );
+  /** `registered`: a confirmed registration that did not replace the view. */
+  const [mutation, setMutation] = useState<
+    'idle' | 'pending' | 'error' | 'registered'
+  >('idle');
   const [editing, setEditing] = useState(false);
   const [correction, setCorrection] = useState<
     | 'idle'
@@ -84,6 +85,8 @@ export function DocumentWorkspace({
   const restrictionAwaitsCorrection = useRef(false);
   const openedDocument = useRef<WorkingDocument | undefined>(undefined);
   openedDocument.current = detail;
+  const activeFilter = useRef(filter);
+  activeFilter.current = filter;
   const listReady = useRef(false);
   listReady.current = state.status === 'ready';
   const identityRevision = useRef(clientIdentityRevision);
@@ -566,6 +569,7 @@ export function DocumentWorkspace({
     const request = new AbortController();
     pending.current = request;
     const startedUnderRevision = identityRevision.current;
+    const submittedFrom = activeFilter.current;
     setMutation('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -601,9 +605,20 @@ export function DocumentWorkspace({
           ? saved
           : { ...saved, clientDossierId: undefined };
       retry.current = undefined;
-      setDetail(confirmed);
-      settleDetailRead(confirmed, startedUnderRevision);
-      setMutation('idle');
+      // The confirmed Document opens only in the unchanged view it was
+      // submitted from and within its active dossier restriction. A view the
+      // member has since moved to is kept, and the confirmation is reported
+      // there instead; the confirmed row stays listed either way.
+      const view = activeFilter.current;
+      if (
+        view === submittedFrom &&
+        (view.kind !== 'client' ||
+          confirmed.clientDossierId === view.clientDossierId)
+      ) {
+        setDetail(confirmed);
+        settleDetailRead(confirmed, startedUnderRevision);
+        setMutation('idle');
+      } else setMutation('registered');
       // A confirmed row must survive a list read that began before the POST,
       // without making that read stale: it may carry newer Client projections
       // for every existing row. A list started after confirmation retires this
@@ -905,6 +920,7 @@ export function DocumentWorkspace({
             </>
           )}
           {mutation === 'error' && <p role="alert">{copy.error}</p>}
+          {mutation === 'registered' && <p role="status">{copy.registered}</p>}
         </>
       )}
     </section>

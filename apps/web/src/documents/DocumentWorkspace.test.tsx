@@ -1102,6 +1102,205 @@ it('retries a registration with the exact same command and withholds a target su
   expect(posts[0]?.key).toBeTruthy();
   expect(posts.map((post) => post.key)).toEqual([posts[0]?.key, posts[0]?.key]);
 });
+const dossierA = {
+  clientDossierId: 'client-a',
+  displayName: 'Shared display name',
+};
+const dossierB = {
+  clientDossierId: 'client-b',
+  displayName: 'Shared display name',
+};
+const documentInB = {
+  ...document,
+  id: 'document-b',
+  clientId: 'client-b',
+  clientDossierId: 'client-b',
+  clientDisplayName: 'Shared display name',
+  title: 'Dossier B questionnaire',
+};
+const registeredInA = {
+  ...documentInB,
+  id: 'registered-a',
+  clientId: 'client-a',
+  clientDossierId: 'client-a',
+  title: 'Registered A questionnaire',
+};
+const registeredInB = {
+  ...documentInB,
+  id: 'registered-b',
+  title: 'Registered B questionnaire',
+};
+/** Holds every registration until the test releases it. */
+function scopedRegistrationFetcher() {
+  const posts: Array<{
+    key: string | null;
+    response: ReturnType<typeof deferredResponse>;
+  }> = [];
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/clients'))
+      return Response.json([
+        { id: 'client-a', displayName: 'Shared display name' },
+        { id: 'client-b', displayName: 'Shared display name' },
+      ]);
+    if (init?.method === 'POST') {
+      const response = deferredResponse();
+      posts.push({
+        key: new Headers(init.headers).get('idempotency-key'),
+        response,
+      });
+      return response.promise;
+    }
+    return Response.json([documentInB]);
+  });
+  return { fetcher, posts };
+}
+function registerFor(clientId: string, title: string) {
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: clientId },
+  });
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: title },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: document.purpose },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: document.version.representation.url },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Register working reference' }),
+  );
+}
+const listedTitles = () =>
+  within(screen.getByRole('list'))
+    .getAllByRole('button')
+    .map((button) => button.textContent);
+it.each([
+  ['opens dossier B', undefined, [dossierB], ['Dossier B questionnaire']],
+  [
+    'clears the dossier A restriction',
+    dossierA,
+    [undefined],
+    ['Registered A questionnaire', 'Dossier B questionnaire'],
+  ],
+  [
+    'opens dossier B and then dossier A again',
+    dossierA,
+    [dossierB, dossierA],
+    ['Registered A questionnaire'],
+  ],
+])(
+  'keeps the latest view when the member %s before a registration confirms',
+  async (_navigation, startFilter, navigations, expectedTitles) => {
+    const { fetcher, posts } = scopedRegistrationFetcher();
+    vi.stubGlobal('fetch', fetcher);
+    const onActivityRecorded = vi.fn();
+    const workspace = (clientFilter?: typeof dossierA) => (
+      <DocumentWorkspace
+        actor={actor}
+        identity={identity}
+        clientFilter={clientFilter}
+        onActivityRecorded={onActivityRecorded}
+        onOpenClientDossier={vi.fn()}
+      />
+    );
+    const view = render(workspace(startFilter));
+    await screen.findByRole('button', { name: 'Register working reference' });
+    registerFor('client-a', registeredInA.title);
+    await waitFor(() => expect(posts).toHaveLength(1));
+
+    for (const next of navigations) view.rerender(workspace(next));
+    posts[0]?.response.resolve(Response.json(registeredInA, { status: 201 }));
+
+    // The confirmed registration is reported without replacing the view.
+    await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole('heading', { name: registeredInA.title }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Open Client dossier' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Working reference registered.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(listedTitles()).toEqual(expectedTitles);
+
+    // Leaving the restriction lists the confirmed row with the loaded rows.
+    view.rerender(workspace());
+    expect(listedTitles()).toEqual([
+      'Registered A questionnaire',
+      'Dossier B questionnaire',
+    ]);
+    expect(posts).toHaveLength(1);
+  },
+);
+it.each([
+  ['another Client', 'client-a', registeredInA, false],
+  ['the restricted Client', 'client-b', registeredInB, true],
+])(
+  'retries a registration for %s exactly under an unchanged dossier restriction',
+  async (_client, clientId, registered, opensRegistered) => {
+    const { fetcher, posts } = scopedRegistrationFetcher();
+    vi.stubGlobal('fetch', fetcher);
+    const onActivityRecorded = vi.fn();
+    const openClientDossier = vi.fn();
+    render(
+      <DocumentWorkspace
+        actor={actor}
+        identity={identity}
+        clientFilter={dossierB}
+        onActivityRecorded={onActivityRecorded}
+        onOpenClientDossier={openClientDossier}
+      />,
+    );
+    await screen.findByRole('button', { name: 'Register working reference' });
+    registerFor(clientId, registered.title);
+    await waitFor(() => expect(posts).toHaveLength(1));
+    posts[0]?.response.resolve(new Response(null, { status: 500 }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'could not be loaded or saved',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Register working reference' }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(2));
+    posts[1]?.response.resolve(Response.json(registered, { status: 201 }));
+
+    if (opensRegistered) {
+      expect(
+        await screen.findByRole('heading', { name: registered.title }),
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Open Client dossier' }),
+      );
+      expect(openClientDossier).toHaveBeenCalledWith('client-b');
+    } else {
+      // A Document outside the active restriction is never opened under it.
+      await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledTimes(1));
+      expect(
+        screen.queryByRole('heading', { name: registered.title }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Open Client dossier' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('Working reference registered.'),
+      ).toBeInTheDocument();
+      expect(listedTitles()).toEqual(['Dossier B questionnaire']);
+      expect(
+        screen.getByRole('searchbox', { name: 'Filter working Documents' }),
+      ).toHaveValue('Shared display name');
+    }
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledTimes(1));
+    expect(posts[0]?.key).toBeTruthy();
+    expect(posts.map((post) => post.key)).toEqual([
+      posts[0]?.key,
+      posts[0]?.key,
+    ]);
+  },
+);
 it('retires a pending detail read when a dossier restriction arrives', async () => {
   const detailReads: Array<() => void> = [];
   vi.stubGlobal(

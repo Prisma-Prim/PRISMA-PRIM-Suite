@@ -15,6 +15,7 @@ export const documentsCopy = {
   purpose: 'Purpose',
   url: 'External HTTPS link',
   register: 'Register working reference',
+  registered: 'Working reference registered.',
   retry: 'Retry',
   back: 'Back to references',
   openDossier: 'Open Client dossier',
