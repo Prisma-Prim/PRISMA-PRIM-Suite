@@ -1,6 +1,7 @@
 import {
   act,
   fireEvent,
+  getDefaultNormalizer,
   render,
   screen,
   waitFor,
@@ -119,7 +120,7 @@ function listItem(index: number) {
     capturedAt: `2026-09-20T10:00:00.000Z`,
     initialOpportunity: {
       title: `Opportunity ${index}`,
-      nextAction: 'Arrange a qualification call',
+      nextAction: `Follow up Request ${index}`,
       responsibleActor: {
         workspaceMembershipId: 'membership-1',
         displayName: 'Iurie',
@@ -140,6 +141,17 @@ function visibleRequests(): number {
     screen.getByRole('list', { name: 'Client Requests' }),
   ).queryAllByRole('listitem').length;
 }
+
+function listedRequestButton(name: RegExp): HTMLElement {
+  return within(
+    screen.getByRole('list', { name: 'Client Requests' }),
+  ).getByRole('button', { name });
+}
+
+// Text-matching options that neither trim nor collapse whitespace.
+const unnormalized = {
+  normalizer: getDefaultNormalizer({ trim: false, collapseWhitespace: false }),
+};
 
 const filterableItems = [
   {
@@ -272,13 +284,17 @@ function updatedRequest(nextAction: string, version: number) {
   };
 }
 
-function updateResult(nextAction: string, version: number) {
+function updateResult(
+  nextAction: string,
+  version: number,
+  outcome: 'updated' | 'unchanged' = 'updated',
+) {
   return Response.json({
     receipt: {
       opportunityId: createdRequest.initialOpportunity.id,
       nextAction,
       version,
-      outcome: 'updated',
+      outcome,
     },
     request: updatedRequest(nextAction, version),
   });
@@ -480,6 +496,59 @@ describe('CommercialIntakeWorkspace', () => {
     ).toBeVisible();
   });
 
+  it.each([
+    ['a legacy v1 reader', actor],
+    ['a next-action editor', editorActor()],
+  ])(
+    'shows %s the current next action of each loaded Request exactly as stored',
+    async (_reader, reader) => {
+      const storedNextAction = '  Confirm  the audit window '.padEnd(
+        500,
+        'and prepare the evidence ',
+      );
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          Response.json({
+            items: filterableItems.map((item) =>
+              item.id === 'request-audit'
+                ? {
+                    ...item,
+                    initialOpportunity: {
+                      ...item.initialOpportunity,
+                      nextAction: storedNextAction,
+                    },
+                  }
+                : item,
+            ),
+          }),
+        ),
+      );
+
+      render(workspaceElement(reader, {}));
+
+      await screen.findByRole('list', { name: 'Client Requests' });
+      expect(
+        within(listedRequestButton(/^Annual audit support/u)).getByText(
+          `${commercialIntakeCopy.nextAction}: ${storedNextAction}`,
+          unnormalized,
+        ),
+      ).toBeVisible();
+      expect(
+        within(listedRequestButton(/^Quality process preparation/u)).getByText(
+          `${commercialIntakeCopy.nextAction}: Arrange a qualification call`,
+          unnormalized,
+        ),
+      ).toBeVisible();
+      expect(
+        within(listedRequestButton(/Operator training programme/u)).getByText(
+          `${commercialIntakeCopy.nextAction}: Propose training dates`,
+          unnormalized,
+        ),
+      ).toBeVisible();
+    },
+  );
+
   it('reports a detail response without the responsible actor as a failure', async () => {
     const { responsibleActor, ...opportunityWithoutActor } =
       createdRequest.initialOpportunity;
@@ -560,6 +629,39 @@ describe('CommercialIntakeWorkspace', () => {
     ).toBeVisible();
     expect(screen.queryByText('Client Request 0')).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['missing', undefined],
+    ['non-text', 42],
+  ])(
+    'reports a list page with a %s next action instead of rendering it',
+    async (_case, nextAction) => {
+      const item = listItem(0);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          Response.json({
+            items: [
+              {
+                ...item,
+                initialOpportunity: { ...item.initialOpportunity, nextAction },
+              },
+            ],
+          }),
+        ),
+      );
+
+      renderWorkspace();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        commercialIntakeCopy.error,
+      );
+      expect(
+        screen.getByRole('button', { name: commercialIntakeCopy.retry }),
+      ).toBeVisible();
+      expect(screen.queryByText('Client Request 0')).not.toBeInTheDocument();
+    },
+  );
 
   it.each([
     ['capturedAt', { capturedAt: '2026' }],
@@ -1076,6 +1178,63 @@ describe('CommercialIntakeWorkspace', () => {
     expect(activityRecorded).toHaveBeenCalledOnce();
   });
 
+  it('shows the saved next action on the Request row after going Back', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(updateResult('Send the qualification summary', 2))
+      .mockResolvedValueOnce(requestListPage('Send the qualification summary'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing();
+    fireEvent.change(screen.getByLabelText('Next action'), {
+      target: { value: 'Send the qualification summary' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    const back = await screen.findByRole('button', {
+      name: 'Back to Requests',
+    });
+    await waitFor(() => expect(back).toBeEnabled());
+    fireEvent.click(back);
+
+    const row = listedRequestButton(/^Quality process preparation/u);
+    expect(
+      within(row).getByText(
+        `${commercialIntakeCopy.nextAction}: Send the qualification summary`,
+      ),
+    ).toBeVisible();
+    expect(row).not.toHaveTextContent('Arrange a qualification call');
+  });
+
+  it('keeps the Request row next action after an unchanged receipt and Back', async () => {
+    const activityRecorded = vi.fn();
+    const stored = createdRequest.initialOpportunity.nextAction;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockResolvedValueOnce(updateResult(stored, 1, 'unchanged'))
+      .mockResolvedValueOnce(requestListPage());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await openDetailForEditing({ onActivityRecorded: activityRecorded });
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.nextActionUnchanged,
+    );
+    const back = screen.getByRole('button', { name: 'Back to Requests' });
+    await waitFor(() => expect(back).toBeEnabled());
+    fireEvent.click(back);
+
+    expect(
+      within(listedRequestButton(/^Quality process preparation/u)).getByText(
+        `${commercialIntakeCopy.nextAction}: ${stored}`,
+      ),
+    ).toBeVisible();
+    expect(activityRecorded).not.toHaveBeenCalled();
+  });
+
   it('keeps the entered next action after a correctable validation error', async () => {
     const fetchMock = vi
       .fn()
@@ -1517,6 +1676,17 @@ describe('CommercialIntakeWorkspace', () => {
     expect(
       screen.queryByRole('button', { name: 'Show older Requests' }),
     ).not.toBeInTheDocument();
+    // Appended rows carry their own next action; loaded rows keep theirs.
+    expect(
+      within(listedRequestButton(requestButton(26))).getByText(
+        `${commercialIntakeCopy.nextAction}: Follow up Request 26`,
+      ),
+    ).toBeVisible();
+    expect(
+      within(listedRequestButton(requestButton(0))).getByText(
+        `${commercialIntakeCopy.nextAction}: Follow up Request 0`,
+      ),
+    ).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: requestButton(26) }));
     expect(
@@ -1688,6 +1858,26 @@ describe('CommercialIntakeWorkspace', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText(commercialIntakeCopy.filterHelp)).toBeVisible();
     expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it('does not filter the loaded Requests by the next action shown in each row', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: filterableItems })),
+    );
+
+    renderWorkspace();
+    expect(
+      await screen.findByText(
+        `${commercialIntakeCopy.nextAction}: Confirm the audit window`,
+      ),
+    ).toBeVisible();
+
+    applyFilter('audit window');
+    expect(visibleRequests()).toBe(0);
+    expect(
+      screen.getByText(commercialIntakeCopy.filterNoMatch),
+    ).toBeInTheDocument();
   });
 
   it('offers no filter for a genuinely empty Company list', async () => {

@@ -164,6 +164,16 @@ export function ClientWorkspace({
     'client.duplicate.resolve',
   );
   const canAttachClients = actor.workspacePermissions.includes('client.manage');
+  // Access replaces the actor with an equivalent object when the active Company
+  // is re-selected or revalidated. Client work, including child panels, outlives
+  // such a refresh; it resets when the session, membership, Company or this
+  // Client authority changes.
+  const clientAuthority = JSON.stringify({
+    workspaceClientManagement: canAttachClients,
+    clientPermissions,
+    assignmentId: activeCompany?.clientPermissionAssignmentId,
+    permissionSetVersion: activeCompany?.clientPermissionSetVersion,
+  });
 
   useEffect(() => {
     if (requestedClientDossierRequest && canReadClientDossiers)
@@ -248,14 +258,11 @@ export function ClientWorkspace({
       pendingAttach.current?.abort();
     };
   }, [
-    activeCompany,
+    activeCompany?.id,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
-    canReadClients,
-    canReadClientDossiers,
-    activeCompany?.clientPermissionAssignmentId,
-    activeCompany?.clientPermissionSetVersion,
+    clientAuthority,
     loadClients,
   ]);
 
@@ -809,7 +816,7 @@ export function ClientWorkspace({
           identity={identity}
           canAttach={canAttachClients}
           refreshKey={duplicateReviewRefreshKey}
-          authorityGeneration={`${activeCompany.clientPermissionAssignmentId ?? 'no-assignment'}:${activeCompany.clientPermissionSetVersion ?? 'no-version'}`}
+          authorityGeneration={clientAuthority}
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
@@ -846,7 +853,7 @@ export function ClientWorkspace({
       )}
       {canReadClientDossiers && (
         <ClientUnionPanel
-          key={`${actor.workspaceMembershipId}:${activeCompany.id}:${selectedClientId}`}
+          key={`${actor.workspaceMembershipId}:${activeCompany.id}:${selectedClientId}:${clientAuthority}`}
           clientId={selectedClientId}
           companyContextId={activeCompany.id}
           identity={identity}
