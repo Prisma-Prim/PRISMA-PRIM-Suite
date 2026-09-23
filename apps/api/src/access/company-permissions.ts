@@ -39,6 +39,23 @@ export function commercialIntakePermissionsFor(
 ): readonly CompanyCommercialIntakePermission[] {
   return version === 'v1' ? COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS : [];
 }
+export const COMPANY_SERVICE_CATALOGUE_BUNDLE =
+  'company_service_catalogue' as const;
+export const COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL =
+  'Company Service Catalogue' as const;
+export const COMPANY_SERVICE_CATALOGUE_V1_PERMISSIONS = [
+  'service.definition.read',
+  'service.definition.create',
+  'commercial.offering.read',
+  'commercial.offering.manage',
+] as const;
+export type CompanyServiceCataloguePermission =
+  (typeof COMPANY_SERVICE_CATALOGUE_V1_PERMISSIONS)[number];
+export function serviceCataloguePermissionsFor(
+  version: unknown,
+): readonly CompanyServiceCataloguePermission[] {
+  return version === 'v1' ? COMPANY_SERVICE_CATALOGUE_V1_PERMISSIONS : [];
+}
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
   'company_commercial_activity_reader' as const;
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL =

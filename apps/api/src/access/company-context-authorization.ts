@@ -25,6 +25,9 @@ import {
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   commercialActivityPermissionsFor,
   type CompanyCommercialIntakePermission,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE,
+  serviceCataloguePermissionsFor,
+  type CompanyServiceCataloguePermission,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -420,6 +423,73 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // Company Service Catalogue v1 grants catalogue authority only. Company
+  // context must already follow from an independent assignment, and a locked
+  // read serializes a command against a concurrent revocation of the bundle.
+  async requireServiceCatalogueAccess(
+    actor: ActorContext,
+    required: readonly CompanyServiceCataloguePermission[],
+    lock = false,
+  ): Promise<string> {
+    const companyId = actor.activeCompany?.id;
+    const permissions = actor.activeCompany?.serviceCataloguePermissions ?? [];
+    if (
+      !companyId ||
+      required.some((permission) => !permissions.includes(permission))
+    )
+      throw new ForbiddenException();
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            companyRoleAssignments.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            companyRoleAssignments.workspaceMembershipId,
+          ),
+          eq(workspaceMemberships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        and(
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+          eq(internalUsers.id, actor.internalUserId),
+          eq(internalUsers.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        companies,
+        and(
+          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+          eq(companies.id, companyRoleAssignments.companyId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(companyRoleAssignments.bundle, COMPANY_SERVICE_CATALOGUE_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    const rows = lock ? await query.for('share') : await query;
+    if (rows.length === 0) throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, companyId, lock);
+    return companyId;
+  }
+
   private async requireLiveCompanyContext(
     actor: ActorContext,
     companyId: string,
@@ -500,6 +570,7 @@ export class CompanyContextAuthorization {
       inArray(companyRoleAssignments.bundle, [
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+        COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -608,6 +679,16 @@ export class CompanyContextAuthorization {
           ...commercialActivityPermissionsFor(row.permissionSetVersion),
         ];
         company.commercialActivityPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_SERVICE_CATALOGUE_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.serviceCataloguePermissions = [
+          ...serviceCataloguePermissionsFor(row.permissionSetVersion),
+        ];
+        company.serviceCataloguePermissionAssignmentId = row.assignmentId;
+        company.serviceCataloguePermissionSetVersion = 'v1';
       }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(

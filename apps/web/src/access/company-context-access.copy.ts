@@ -9,6 +9,7 @@ export const companyContextAccessCopy = {
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
   commercialIntakeBundle: 'Company Commercial Intake',
+  serviceCatalogueBundle: 'Company Service Catalogue',
   commercialActivityReaderBundle: 'Company Commercial Activity Reader',
   commercialActivityReaderPrerequisites:
     'Company Commercial Activity Reader v1 grants commercial Activity Log read only. Company context and the commercial target read of each event must already be authorized separately.',
@@ -49,6 +50,10 @@ export const companyContextAccessCopy = {
       'granted Company Commercial Intake',
     'company_commercial_intake_assignment.revoked':
       'revoked Company Commercial Intake',
+    'company_service_catalogue_assignment.granted':
+      'granted Company Service Catalogue',
+    'company_service_catalogue_assignment.revoked':
+      'revoked Company Service Catalogue',
     'company_commercial_activity_reader_assignment.granted':
       'granted Company Commercial Activity Reader',
     'company_commercial_activity_reader_assignment.revoked':
