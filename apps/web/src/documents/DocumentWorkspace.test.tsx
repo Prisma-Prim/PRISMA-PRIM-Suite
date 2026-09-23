@@ -1821,6 +1821,91 @@ it.each([
     expect(requests.commands).toHaveLength(1);
   },
 );
+it.each([
+  ['succeeds', () => Response.json([{ ...document, ...unitedProjection }])],
+  ['is denied', () => new Response(null, { status: 403 })],
+  ['fails', () => new Response(null, { status: 500 })],
+] as const)(
+  'keeps the current rows and outcome when an identity refresh superseded by a newer correction reload %s late',
+  async (_outcome, lateRefreshOutcome) => {
+    const requests = heldDocumentRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const original = { ...document, ...originalProjection };
+    const corrected = {
+      ...document,
+      ...unitedProjection,
+      title: 'Corrected title',
+      workingRevision: 2,
+    };
+    const openClientDossier = vi.fn();
+    const view = render(dossierWorkspace(0, openClientDossier));
+    await waitFor(() => expect(requests.lists).toHaveLength(1));
+    requests.lists[0]?.resolve(Response.json([original]));
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    await waitFor(() => expect(requests.details).toHaveLength(1));
+    requests.details[0]?.resolve(Response.json(original));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: corrected.title },
+    });
+    // The union's identity refresh is held while the correction is saved, so
+    // the accepted correction's reload is the newer read of the same rows.
+    view.rerender(dossierWorkspace(1, openClientDossier));
+    await waitFor(() => expect(requests.lists).toHaveLength(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+    await waitFor(() => expect(requests.commands).toHaveLength(1));
+    requests.commands[0]?.resolve(
+      Response.json({
+        documentId: document.id,
+        revision: 2,
+        outcome: 'corrected',
+      }),
+    );
+    await waitFor(() => expect(requests.lists).toHaveLength(3));
+    requests.details[1]?.resolve(Response.json(corrected));
+    requests.lists[2]?.resolve(Response.json([corrected]));
+    expect(await screen.findByText('Correction saved.')).toBeInTheDocument();
+
+    requests.lists[1]?.resolve(lateRefreshOutcome());
+    await settle();
+
+    // The older refresh answers for rows a newer read already published.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Correction saved.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: corrected.title }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open Client dossier' }),
+    );
+    expect(openClientDossier).toHaveBeenCalledWith(
+      unitedProjection.clientDossierId,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expect(listedTitles()).toEqual([corrected.title]);
+    view.rerender(
+      dossierWorkspace(1, openClientDossier, restrictionTo(unitedProjection)),
+    );
+    expect(listedTitles()).toEqual([corrected.title]);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    // A refresh that fails after every newer read is still reported.
+    view.rerender(
+      dossierWorkspace(2, openClientDossier, restrictionTo(unitedProjection)),
+    );
+    await waitFor(() => expect(requests.lists).toHaveLength(4));
+    requests.lists[3]?.resolve(new Response(null, { status: 500 }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'could not be loaded or saved',
+    );
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(requests.commands).toHaveLength(1);
+  },
+);
 it('keeps a registration confirmed before a Client union listed but out of its superseded restriction when the refresh fails', async () => {
   const requests = heldDocumentRequests();
   vi.stubGlobal('fetch', requests.fetcher);

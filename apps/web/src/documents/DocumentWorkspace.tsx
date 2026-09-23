@@ -163,6 +163,26 @@ export function DocumentWorkspace({
     publishedListWrite.current = sequence;
     setState(next);
   }
+  /**
+   * Reports a failed refresh of the loaded rows in its ordering slot. Once a
+   * newer read has published, the failure is obsolete and reports nothing. It
+   * carries no rows, so it leaves the slot open to an older read's rows.
+   */
+  function publishListRefreshFailure({
+    sequence,
+    startedUnderRevision,
+  }: {
+    sequence: number;
+    startedUnderRevision: number;
+  }): void {
+    if (sequence < publishedListWrite.current) return;
+    setMutation('error');
+    setState((current) =>
+      current.status === 'ready'
+        ? { ...current, refreshFailedUnder: startedUnderRevision }
+        : current,
+    );
+  }
   function includeConfirmedRegistrations(
     documents: WorkingDocument[],
     listSequence?: number,
@@ -321,12 +341,10 @@ export function DocumentWorkspace({
           publishList(sequence, () => ({ status: 'error' }));
           return;
         }
-        setMutation('error');
-        setState((current) =>
-          current.status === 'ready'
-            ? { ...current, refreshFailedUnder: clientIdentityRevision }
-            : current,
-        );
+        publishListRefreshFailure({
+          sequence,
+          startedUnderRevision: clientIdentityRevision,
+        });
       }
     })();
     return () => request.abort();
