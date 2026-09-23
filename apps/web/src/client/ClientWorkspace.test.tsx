@@ -999,6 +999,216 @@ describe('ClientWorkspace', () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it('keeps a pending registration when Access refreshes an equivalent actor', async () => {
+    const api = clientRegistrationApi();
+    const identity = deterministicBrowserIdentity();
+    const refreshActivity = vi.fn(async () => undefined);
+    const workspace = (current: ActorContext) => (
+      <ClientWorkspace
+        actor={current}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />
+    );
+    const { rerender } = render(workspace(assignedActor()));
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Refreshed Client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(api.registrations).toHaveLength(1));
+
+    rerender(workspace(assignedActor()));
+
+    expect(api.registrations[0]?.signal?.aborted).toBe(false);
+    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
+    expect(screen.getByLabelText('Client display name')).toHaveValue(
+      'Refreshed Client',
+    );
+    const created = {
+      id: 'client-refreshed',
+      displayName: 'Refreshed Client',
+      relatedToActiveCompany: true,
+    };
+    api.clients.push(created);
+    await act(async () => {
+      api.registrations[0]?.response.resolve(
+        new Response(JSON.stringify(created), { status: 201 }),
+      );
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Refreshed Client' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Client created and linked to the active Company.'),
+    ).toHaveLength(1);
+    expect(api.registrations).toHaveLength(1);
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it('retries a lost registration response with its original command after equivalent refreshes', async () => {
+    const api = clientRegistrationApi();
+    const identity = deterministicBrowserIdentity();
+    const refreshActivity = vi.fn(async () => undefined);
+    const workspace = (current: ActorContext) => (
+      <ClientWorkspace
+        actor={current}
+        identity={identity}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={refreshActivity}
+      />
+    );
+    const { rerender } = render(workspace(assignedActor()));
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Uncertain Client' },
+    });
+    fireEvent.change(screen.getByLabelText('IDNO / tax code'), {
+      target: { value: 'MD-338' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(api.registrations).toHaveLength(1));
+
+    rerender(workspace(assignedActor()));
+    await act(async () => {
+      api.registrations[0]?.response.reject(new TypeError('Failed to fetch'));
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load Clients. Please try again.',
+    );
+    rerender(workspace(assignedActor()));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(api.registrations).toHaveLength(2));
+
+    const original = api.registrations[0];
+    const retry = api.registrations[1];
+    expect(original?.idempotencyKey).toEqual(expect.any(String));
+    expect(retry?.idempotencyKey).toBe(original?.idempotencyKey);
+    expect(retry?.body).toBe(
+      JSON.stringify({ displayName: 'Uncertain Client', taxId: 'MD-338' }),
+    );
+    expect(retry?.body).toBe(original?.body);
+    const created = {
+      id: 'client-uncertain',
+      displayName: 'Uncertain Client',
+      relatedToActiveCompany: true,
+    };
+    api.clients.push(created);
+    await act(async () => {
+      retry?.response.resolve(
+        new Response(JSON.stringify(created), { status: 201 }),
+      );
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Uncertain Client' }),
+    ).toBeInTheDocument();
+    expect(api.registrations).toHaveLength(2);
+    expect(refreshActivity).toHaveBeenCalledOnce();
+  });
+
+  it.each<{
+    boundary: string;
+    actor: ActorContext;
+    replacesIdentity?: boolean;
+  }>([
+    { boundary: 'session', actor: assignedActor(), replacesIdentity: true },
+    {
+      boundary: 'Internal User',
+      actor: { ...assignedActor(), internalUserId: 'owner-2' },
+    },
+    {
+      boundary: 'Workspace',
+      actor: { ...assignedActor(), workspaceId: 'workspace-2' },
+    },
+    {
+      boundary: 'membership',
+      actor: { ...assignedActor(), workspaceMembershipId: 'membership-2' },
+    },
+    {
+      boundary: 'active Company',
+      actor: assignedActor({ id: 'company-b', displayName: 'BIC' }),
+    },
+    {
+      boundary: 'Client assignment',
+      actor: assignedActor({ clientPermissionAssignmentId: 'assignment-2' }),
+    },
+    {
+      boundary: 'Client permission set version',
+      actor: assignedActor({ clientPermissionSetVersion: 'v1' }),
+    },
+    {
+      boundary: 'Company Client permission',
+      actor: assignedActor({
+        clientPermissions: ['client.read', 'client.create'],
+      }),
+    },
+    {
+      boundary: 'Workspace Client permission',
+      actor: {
+        ...assignedActor(),
+        workspacePermissions: ['company.manage', 'company.assignment.manage'],
+      },
+    },
+  ])(
+    'abandons a pending registration across a changed $boundary',
+    async ({ actor: changedActor, replacesIdentity }) => {
+      const api = clientRegistrationApi();
+      const identity = deterministicBrowserIdentity();
+      const refreshActivity = vi.fn(async () => undefined);
+      const { rerender } = render(
+        <ClientWorkspace
+          actor={assignedActor()}
+          identity={identity}
+          onCompanyContextRejected={vi.fn()}
+          onActivityRecorded={refreshActivity}
+        />,
+      );
+      await screen.findByText('No Clients for PRISMA-PRIM yet.');
+      fireEvent.change(screen.getByLabelText('Client display name'), {
+        target: { value: 'Stale Client' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+      await waitFor(() => expect(api.registrations).toHaveLength(1));
+
+      rerender(
+        <ClientWorkspace
+          actor={changedActor}
+          identity={
+            replacesIdentity ? deterministicBrowserIdentity() : identity
+          }
+          onCompanyContextRejected={vi.fn()}
+          onActivityRecorded={refreshActivity}
+        />,
+      );
+      expect(api.registrations[0]?.signal?.aborted).toBe(true);
+      await act(async () => {
+        api.registrations[0]?.response.resolve(
+          new Response(
+            JSON.stringify({
+              id: 'stale-client',
+              displayName: 'Stale Client',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        );
+      });
+      expect(
+        screen.queryByText('Client created and linked to the active Company.'),
+      ).not.toBeInTheDocument();
+      expect(refreshActivity).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Create Client' }),
+      );
+      await waitFor(() => expect(api.registrations).toHaveLength(2));
+      expect(api.registrations[1]?.idempotencyKey).not.toBe(
+        api.registrations[0]?.idempotencyKey,
+      );
+    },
+  );
+
   it('settles initial loading as retryable error when identity token resolution fails', async () => {
     const identity = {
       ...deterministicBrowserIdentity(),
@@ -1581,10 +1791,63 @@ function resolverActor(assignmentId: string): ActorContext {
   };
 }
 
+function assignedActor(
+  company: Partial<NonNullable<ActorContext['activeCompany']>> = {},
+): ActorContext {
+  return {
+    ...actor,
+    workspacePermissions: [...actor.workspacePermissions],
+    activeCompany: {
+      id: 'company-a',
+      displayName: 'PRISMA-PRIM',
+      clientPermissions: ['client.read', 'client.create', 'client.update'],
+      clientPermissionAssignmentId: 'assignment-1',
+      clientPermissionSetVersion: 'v2',
+      ...company,
+    },
+  };
+}
+
+function clientRegistrationApi() {
+  const clients: {
+    id: string;
+    displayName: string;
+    relatedToActiveCompany: boolean;
+  }[] = [];
+  const registrations: {
+    signal: AbortSignal | null | undefined;
+    idempotencyKey: string | null;
+    body: BodyInit | null | undefined;
+    response: ReturnType<typeof deferred<Response>>;
+  }[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path === '/api/clients' && init?.method === 'POST') {
+        const response = deferred<Response>();
+        registrations.push({
+          signal: init.signal,
+          idempotencyKey: new Headers(init.headers).get('idempotency-key'),
+          body: init.body,
+          response,
+        });
+        return response.promise;
+      }
+      if (path === '/api/clients')
+        return new Response(JSON.stringify(clients), { status: 200 });
+      throw new Error(`Unexpected request: ${path}`);
+    }),
+  );
+  return { clients, registrations };
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
