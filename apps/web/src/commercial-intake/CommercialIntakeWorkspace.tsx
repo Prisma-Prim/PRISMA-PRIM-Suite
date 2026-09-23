@@ -1033,6 +1033,9 @@ function RequestList({
               <strong>{item.subject ?? copy.title}</strong>
               <span>{item.initialOpportunity.title}</span>
               <small>
+                {copy.nextAction}: {item.initialOpportunity.nextAction}
+              </small>
+              <small>
                 {copy.responsible}:{' '}
                 {item.initialOpportunity.responsibleActor.displayName}
               </small>
@@ -1065,8 +1068,9 @@ function RequestList({
   );
 }
 
-// The loaded rows carry no original source text, so the local filter can only
-// match the subject, initial Opportunity title and responsible name shown here.
+// The loaded rows carry no original source text. The local filter matches only
+// the subject, initial Opportunity title and responsible name; the next action
+// shown in each row is deliberately not a filter criterion.
 function matchesFilter(
   item: RequestListItem,
   normalizedFilter: string,
