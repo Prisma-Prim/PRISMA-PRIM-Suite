@@ -25,6 +25,7 @@ export interface ApplicationSection {
   id:
     | 'documents'
     | 'requests'
+    | 'catalogue'
     | 'projects'
     | 'clients'
     | 'access'

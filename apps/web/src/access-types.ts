@@ -28,6 +28,14 @@ export interface ActorContext {
     >;
     commercialIntakePermissionAssignmentId?: string;
     commercialIntakePermissionSetVersion?: 'v1' | 'v2';
+    serviceCataloguePermissions?: Array<
+      | 'service.definition.read'
+      | 'service.definition.create'
+      | 'commercial.offering.read'
+      | 'commercial.offering.manage'
+    >;
+    serviceCataloguePermissionAssignmentId?: string;
+    serviceCataloguePermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
     clientPermissions?: Array<

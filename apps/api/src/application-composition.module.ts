@@ -45,6 +45,9 @@ import {
   CommercialIntakeOpportunityController,
 } from './commercial-intake/commercial-intake.controller.js';
 import { CompanyCommercialIntakeAssignmentController } from './access/company-commercial-intake-assignment.controller.js';
+import { CommercialCatalogueModule } from './commercial-catalogue/commercial-catalogue.module.js';
+import { CommercialCatalogueController } from './commercial-catalogue/commercial-catalogue.controller.js';
+import { CompanyServiceCatalogueAssignmentController } from './access/company-service-catalogue-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 
 @Module({
@@ -58,6 +61,7 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     CompanyModule,
     DatabaseModule,
     CommercialIntakeModule,
+    CommercialCatalogueModule,
   ],
   controllers: [
     TaskController,
@@ -83,6 +87,8 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     CommercialIntakeController,
     CommercialIntakeOpportunityController,
     CompanyCommercialIntakeAssignmentController,
+    CommercialCatalogueController,
+    CompanyServiceCatalogueAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
   ],
   providers: [
