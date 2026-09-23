@@ -10,6 +10,7 @@ import {
   type WorkingDocument,
 } from './document-response';
 import { documentsCopy as copy } from './documents.copy';
+import { formatApplicationDateTime } from '../presentation/date-time';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
 type Load =
@@ -466,6 +467,7 @@ export function DocumentWorkspace({
                   <p>{detail.purpose}</p>
                 </>
               )}
+              <RegistrationTime registeredAt={detail.createdAt} />
               {!editing &&
               detail.version.representation.access === 'granted' ? (
                 <a
@@ -537,6 +539,7 @@ export function DocumentWorkspace({
                       {document.title}
                     </button>{' '}
                     — {document.clientDisplayName}
+                    <RegistrationTime registeredAt={document.createdAt} />
                   </li>
                 ))}
               </ul>
@@ -603,5 +606,21 @@ export function DocumentWorkspace({
         </>
       )}
     </section>
+  );
+}
+/**
+ * The server-established moment this reference entered the registry. It never
+ * describes the external content, its acceptance as evidence or certification.
+ */
+function RegistrationTime({ registeredAt }: { registeredAt: string }) {
+  return (
+    <dl className="working-document-registration-time">
+      <dt>{copy.registrationTime}</dt>
+      <dd>
+        <time dateTime={registeredAt}>
+          {formatApplicationDateTime(registeredAt)}
+        </time>
+      </dd>
+    </dl>
   );
 }

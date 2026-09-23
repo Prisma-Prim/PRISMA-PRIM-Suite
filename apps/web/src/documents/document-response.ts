@@ -29,6 +29,14 @@ function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid response');
   return value;
 }
+/** A server timestamp this module hands to presentation as a formattable instant. */
+function instant(value: unknown): string {
+  const timestamp = string(value);
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.valueOf()) || date.toISOString() !== timestamp)
+    throw new Error('Invalid response');
+  return timestamp;
+}
 function positiveInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
     throw new Error('Invalid response');
@@ -81,7 +89,7 @@ export function readDocument(value: unknown): WorkingDocument {
     purpose: string(row.purpose),
     type: row.type,
     confidentiality: row.confidentiality,
-    createdAt: string(row.createdAt),
+    createdAt: instant(row.createdAt),
     workingRevision: positiveInteger(row.workingRevision),
     correction: row.correction,
     version: {
