@@ -37,6 +37,13 @@ export interface ApplicationSection {
   content: ReactNode;
 }
 
+/**
+ * These sections render their own focusable destination; the layout wrapper
+ * generates no box in either frame, so it cannot receive navigation focus.
+ */
+const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
+  new Set(['clients', 'documents', 'projects']);
+
 export interface FrameContext {
   actorName: string;
   workspaceName: string;
@@ -337,14 +344,12 @@ export function ApplicationShell({
                   className="application-section"
                   key={section.id}
                   id={
-                    section.id === 'clients' || section.id === 'projects'
+                    sectionsOwningFocusTarget.has(section.id)
                       ? undefined
                       : section.id
                   }
                   tabIndex={
-                    section.id === 'clients' || section.id === 'projects'
-                      ? undefined
-                      : -1
+                    sectionsOwningFocusTarget.has(section.id) ? undefined : -1
                   }
                   hidden={isPrisme && selected?.id !== section.id}
                 >

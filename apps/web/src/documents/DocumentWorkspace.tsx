@@ -20,27 +20,42 @@ type Load =
       documents: WorkingDocument[];
       clients: Array<{ id: string; displayName: string }>;
     };
+/** Either the existing free-text filter or one exact dossier identity is active. */
+type DocumentFilter =
+  | { kind: 'text'; query: string }
+  | { kind: 'client'; clientDossierId: string; displayName: string };
 export function DocumentWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
+  clientFilter,
+  clientIdentityRevision = 0,
+  onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
+  clientFilter?: { clientDossierId: string; displayName: string };
+  /** Increases when Client identities change, so derived targets are re-read. */
+  clientIdentityRevision?: number;
+  onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filter, setFilter] = useState<DocumentFilter>({
+    kind: 'text',
+    query: '',
+  });
   const [detail, setDetail] = useState<WorkingDocument>();
   const [revision, setRevision] = useState(0);
   const [clientId, setClientId] = useState('');
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [url, setUrl] = useState('');
-  const [mutation, setMutation] = useState<'idle' | 'pending' | 'error'>(
-    'idle',
-  );
+  /** `registered`: a confirmed registration that did not replace the view. */
+  const [mutation, setMutation] = useState<
+    'idle' | 'pending' | 'error' | 'registered'
+  >('idle');
   const [editing, setEditing] = useState(false);
   const [correction, setCorrection] = useState<
     | 'idle'
@@ -51,7 +66,63 @@ export function DocumentWorkspace({
     | 'conflict'
     | 'denied'
   >('idle');
+  /**
+   * The opened Document still owes a derived refresh for one Client identity
+   * revision. Only a detail read that started under that revision settles it;
+   * until then its dossier target is withheld.
+   */
+  const [staleDossier, setStaleDossier] = useState<{
+    documentId: string;
+    revision: number;
+  }>();
+  /**
+   * The Client identity revision that debt already accounts for. A newer one is
+   * applied while rendering, before anything is committed, so not even the
+   * first commit of a union or reversal offers a superseded dossier target.
+   */
+  const [knownClientIdentityRevision, setKnownClientIdentityRevision] =
+    useState(clientIdentityRevision);
+  if (knownClientIdentityRevision !== clientIdentityRevision) {
+    setKnownClientIdentityRevision(clientIdentityRevision);
+    setStaleDossier(
+      detail
+        ? { documentId: detail.id, revision: clientIdentityRevision }
+        : undefined,
+    );
+  }
+  const correctionActive =
+    editing || correction === 'pending' || correction === 'uncertain';
+  const correctionInProgress = useRef(correctionActive);
+  correctionInProgress.current = correctionActive;
+  /**
+   * A dossier restriction arrived while a protected correction was open; the
+   * detail it would have retired is reconciled once that correction ends.
+   */
+  const restrictionAwaitsCorrection = useRef(false);
+  const activeFilter = useRef(filter);
+  activeFilter.current = filter;
+  const listReady = useRef(false);
+  listReady.current = state.status === 'ready';
+  const identityRevision = useRef(clientIdentityRevision);
+  identityRevision.current = clientIdentityRevision;
   const pending = useRef<AbortController | undefined>(undefined);
+  /** The ordinary detail read in flight, if any; never a mutation. */
+  const detailRead = useRef<AbortController | undefined>(undefined);
+  const listRequest = useRef<AbortController | undefined>(undefined);
+  const dossierRefresh = useRef<AbortController | undefined>(undefined);
+  const startedListWrites = useRef(0);
+  const publishedListWrite = useRef(0);
+  /**
+   * Confirmed registrations missing from a list read that started before the
+   * POST completed. The first list started after confirmation retires the
+   * overlay and owns the row's current derived Client projection.
+   */
+  const confirmedRegistrations = useRef(
+    new Map<
+      string,
+      { document: WorkingDocument; listSequenceAtConfirmation: number }
+    >(),
+  );
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const correctionRetry = useRef<
     { documentId: string; payload: string; key: string } | undefined
@@ -67,9 +138,91 @@ export function DocumentWorkspace({
     actor.activeCompany?.documentPermissions?.includes('document.correct') ===
       true &&
     actor.activeCompany.documentPermissions.includes('document.reference.read');
+  /**
+   * Reserves the ordering slot of a publication that happens after an await.
+   * The loaded rows have one owner and one monotonic order, so a delayed older
+   * response can never overwrite the rows published by a newer one.
+   */
+  function reserveListWrite(): number {
+    startedListWrites.current += 1;
+    return startedListWrites.current;
+  }
+  function publishList(sequence: number, next: (current: Load) => Load): void {
+    if (sequence < publishedListWrite.current) return;
+    publishedListWrite.current = sequence;
+    setState(next);
+  }
+  function includeConfirmedRegistrations(
+    documents: WorkingDocument[],
+    listSequence?: number,
+  ): WorkingDocument[] {
+    const loadedIds = new Set(documents.map((document) => document.id));
+    const missingConfirmed: WorkingDocument[] = [];
+    for (const [documentId, confirmation] of confirmedRegistrations.current) {
+      if (
+        listSequence !== undefined &&
+        listSequence > confirmation.listSequenceAtConfirmation
+      ) {
+        confirmedRegistrations.current.delete(documentId);
+      } else if (!loadedIds.has(documentId)) {
+        missingConfirmed.push(confirmation.document);
+      }
+    }
+    return missingConfirmed.length === 0
+      ? documents
+      : [...missingConfirmed, ...documents];
+  }
+  /**
+   * A detail read that lands settles the derived-refresh debt only when no
+   * Client identity change happened after it started; otherwise the Document
+   * it published may carry a superseded dossier target and stays owed.
+   */
+  function settleDetailRead(
+    document: WorkingDocument,
+    startedUnderRevision: number,
+  ): void {
+    const documentId = document.id;
+    setStaleDossier((current) => {
+      const revision = identityRevision.current;
+      if (revision === startedUnderRevision) return undefined;
+      return current?.documentId === documentId && current.revision === revision
+        ? current
+        : { documentId, revision };
+    });
+    if (identityRevision.current === startedUnderRevision)
+      adoptConfirmedRegistration(document);
+  }
+  /**
+   * A current read of a confirmed registration replaces the projection its
+   * overlay row was published with. Only the row the overlay itself published
+   * is replaced; a row published by a list read stays owned by that read.
+   */
+  function adoptConfirmedRegistration(document: WorkingDocument): void {
+    const confirmation = confirmedRegistrations.current.get(document.id);
+    if (!confirmation) return;
+    const overlaid = confirmation.document;
+    confirmedRegistrations.current.set(document.id, {
+      ...confirmation,
+      document,
+    });
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            documents: current.documents.map((row) =>
+              row === overlaid ? document : row,
+            ),
+          }
+        : current,
+    );
+  }
+  // A different Company, member or Document authority retires the presentation
+  // owned by this module, including the drafts started under it and the rows
+  // loaded under it, which the load below replaces.
   useEffect(() => {
+    publishList(reserveListWrite(), () => ({ status: 'loading' }));
     setDetail(undefined);
-    setFilterQuery('');
+    setFilter({ kind: 'text', query: '' });
     setClientId('');
     setTitle('');
     setPurpose('');
@@ -77,16 +230,36 @@ export function DocumentWorkspace({
     setMutation('idle');
     setEditing(false);
     setCorrection('idle');
+    setStaleDossier(undefined);
+    restrictionAwaitsCorrection.current = false;
     retry.current = undefined;
     correctionRetry.current = undefined;
-    const request = new AbortController();
+    confirmedRegistrations.current.clear();
     pending.current?.abort();
-    pending.current = request;
+    return () => pending.current?.abort();
+  }, [
+    companyId,
+    canRead,
+    canCorrect,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+  ]);
+  // A confirmed Client union or reversal moves the derived dossier target of
+  // already loaded rows. They are re-read here, by their single owner, instead
+  // of through a competing request: an initial or retried read that is still
+  // in flight is superseded rather than raced. Drafts and retryable commands
+  // are untouched, because only the loaded rows are republished.
+  useEffect(() => {
+    const request = new AbortController();
+    listRequest.current?.abort();
+    listRequest.current = request;
+    const sequence = reserveListWrite();
     if (!companyId || !canRead) {
-      setState({ status: 'denied' });
-      return () => pending.current?.abort();
+      publishList(sequence, () => ({ status: 'denied' }));
+      return () => request.abort();
     }
-    setState({ status: 'loading' });
+    if (!listReady.current)
+      publishList(sequence, () => ({ status: 'loading' }));
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
@@ -113,21 +286,29 @@ export function DocumentWorkspace({
           documents.status === 'forbidden' ||
           clients.status === 'forbidden'
         ) {
-          setState({ status: 'denied' });
+          publishList(sequence, () => ({ status: 'denied' }));
           return;
         }
         if (documents.status !== 'ok' || clients.status !== 'ok')
           throw new Error('Load failed');
-        setState({
+        // Read the payload here: a rejected response must fail closed on this
+        // request instead of throwing inside a later React update.
+        const loadedDocuments = readDocuments(documents.value);
+        const loadedClients = readClients(clients.value);
+        publishList(sequence, () => ({
           status: 'ready',
-          documents: readDocuments(documents.value),
-          clients: readClients(clients.value),
-        });
+          documents: includeConfirmedRegistrations(loadedDocuments, sequence),
+          clients: loadedClients,
+        }));
       } catch {
-        if (!request.signal.aborted) setState({ status: 'error' });
+        if (request.signal.aborted) return;
+        // A failed refresh keeps the loaded rows, their open detail and their
+        // drafts usable; only a failed first read offers the retry.
+        if (listReady.current) setMutation('error');
+        else publishList(sequence, () => ({ status: 'error' }));
       }
     })();
-    return () => pending.current?.abort();
+    return () => request.abort();
   }, [
     identity,
     companyId,
@@ -136,11 +317,104 @@ export function DocumentWorkspace({
     actor.workspaceId,
     actor.workspaceMembershipId,
     revision,
+    clientIdentityRevision,
   ]);
+  // The opened Document owes the same derived refresh. An open correction
+  // draft and its retryable command keep the exact Document they started from,
+  // so the catch-up read waits for that correction to end instead of being
+  // skipped and forgotten.
+  useEffect(() => {
+    if (staleDossier === undefined || correctionActive) return;
+    const { documentId, revision } = staleDossier;
+    if (!companyId || !canRead || detail?.id !== documentId) {
+      setStaleDossier(undefined);
+      return;
+    }
+    const request = new AbortController();
+    dossierRefresh.current?.abort();
+    dossierRefresh.current = request;
+    void (async () => {
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (request.signal.aborted) return;
+        const reopened = await api.request<unknown>(
+          `/documents/${encodeURIComponent(documentId)}`,
+          { companyContextId: companyId, signal: request.signal },
+        );
+        if (request.signal.aborted) return;
+        if (reopened.status === 'unauthorized') {
+          await identity.rejectSession();
+          return;
+        }
+        if (reopened.status === 'forbidden' || reopened.status === 'notFound') {
+          publishList(reserveListWrite(), () => ({ status: 'denied' }));
+          setStaleDossier(undefined);
+          return;
+        }
+        if (reopened.status !== 'ok') throw new Error('Refresh failed');
+        const reloaded = readDocument(reopened.value);
+        setDetail((current) =>
+          current?.id === reloaded.id ? reloaded : current,
+        );
+        settleDetailRead(reloaded, revision);
+      } catch {
+        if (!request.signal.aborted) setMutation('error');
+      }
+    })();
+    return () => request.abort();
+  }, [
+    staleDossier,
+    correctionActive,
+    detail?.id,
+    companyId,
+    canRead,
+    identity,
+  ]);
+  /**
+   * Retires the visible detail behind a newly applied dossier restriction,
+   * with any ordinary detail read still in flight that would republish it.
+   */
+  function retireDetailBehindRestriction(): void {
+    const read = detailRead.current;
+    if (read && !read.signal.aborted) {
+      read.abort();
+      setMutation('idle');
+    }
+    setDetail(undefined);
+  }
+  useEffect(() => {
+    if (!clientFilter) {
+      // The shell retired the navigation intent, so a dossier identity that a
+      // union or reversal superseded stops restricting the loaded rows.
+      restrictionAwaitsCorrection.current = false;
+      setFilter((current) =>
+        current.kind === 'client' ? { kind: 'text', query: '' } : current,
+      );
+      return;
+    }
+    setFilter({ kind: 'client', ...clientFilter });
+    // Show the restricted references, but never discard an open correction
+    // draft or a retryable correction command owned by this module.
+    if (correctionInProgress.current) {
+      restrictionAwaitsCorrection.current = true;
+      return;
+    }
+    retireDetailBehindRestriction();
+  }, [clientFilter]);
+  // Only a restriction that arrived during the correction is reconciled when
+  // it ends; a correction ending under an unchanged restriction keeps its
+  // Document and outcome visible.
+  useEffect(() => {
+    if (correctionActive || !restrictionAwaitsCorrection.current) return;
+    restrictionAwaitsCorrection.current = false;
+    retireDetailBehindRestriction();
+  }, [correctionActive]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
+    detailRead.current = request;
+    const startedUnderRevision = identityRevision.current;
     setDetail(undefined);
     setMutation('pending');
     try {
@@ -156,18 +430,22 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
-        setState({ status: 'denied' });
+        publishList(reserveListWrite(), () => ({ status: 'denied' }));
         setMutation('idle');
         return;
       }
       if (result.status !== 'ok') throw new Error('Read failed');
-      setDetail(readDocument(result.value));
+      const opened = readDocument(result.value);
+      setDetail(opened);
+      settleDetailRead(opened, startedUnderRevision);
       setEditing(false);
       setCorrection('idle');
       correctionRetry.current = undefined;
       setMutation('idle');
     } catch {
       if (!request.signal.aborted) setMutation('error');
+    } finally {
+      if (detailRead.current === request) detailRead.current = undefined;
     }
   }
   function beginCorrection() {
@@ -251,6 +529,8 @@ export function DocumentWorkspace({
       const receipt = readDocumentCorrectionReceipt(result.value);
       if (receipt.documentId !== detail.id)
         throw new Error('Unexpected correction receipt');
+      const sequence = reserveListWrite();
+      const startedUnderRevision = identityRevision.current;
       const [documentResult, documentsResult] = await Promise.all([
         api.request<unknown>(`/documents/${encodeURIComponent(detail.id)}`, {
           companyContextId: companyId,
@@ -267,7 +547,8 @@ export function DocumentWorkspace({
       const saved = readDocument(documentResult.value);
       const documents = readDocuments(documentsResult.value);
       setDetail(saved);
-      setState((current) =>
+      settleDetailRead(saved, startedUnderRevision);
+      publishList(sequence, (current) =>
         current.status === 'ready' ? { ...current, documents } : current,
       );
       setEditing(false);
@@ -290,6 +571,8 @@ export function DocumentWorkspace({
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
+    const startedUnderRevision = identityRevision.current;
+    const submittedFrom = activeFilter.current;
     setMutation('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -310,25 +593,48 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status === 'forbidden') {
-        setState({ status: 'denied' });
+        publishList(reserveListWrite(), () => ({ status: 'denied' }));
         setMutation('idle');
         return;
       }
       if (result.status !== 'ok') throw new Error('Registration failed');
       const saved = readDocument(result.value);
+      // A registration confirmed after a Client identity change cannot vouch
+      // for its derived dossier target. Until a current read replaces it, the
+      // confirmed Document offers no dossier navigation and matches no dossier
+      // restriction, like any Document without a derived dossier identity.
+      const confirmed =
+        identityRevision.current === startedUnderRevision
+          ? saved
+          : { ...saved, clientDossierId: undefined };
       retry.current = undefined;
-      setDetail(saved);
-      setMutation('idle');
+      // The confirmed Document opens only in the unchanged view it was
+      // submitted from and within its active dossier restriction. A view the
+      // member has since moved to is kept, and the confirmation is reported
+      // there instead; the confirmed row stays listed either way.
+      const view = activeFilter.current;
+      if (
+        view === submittedFrom &&
+        (view.kind !== 'client' ||
+          confirmed.clientDossierId === view.clientDossierId)
+      ) {
+        setDetail(confirmed);
+        settleDetailRead(confirmed, startedUnderRevision);
+        setMutation('idle');
+      } else setMutation('registered');
+      // A confirmed row must survive a list read that began before the POST,
+      // without making that read stale: it may carry newer Client projections
+      // for every existing row. A list started after confirmation retires this
+      // overlay and becomes authoritative for the new row as well.
+      confirmedRegistrations.current.set(confirmed.id, {
+        document: confirmed,
+        listSequenceAtConfirmation: startedListWrites.current,
+      });
       setState((current) =>
         current.status === 'ready'
           ? {
               ...current,
-              documents: [
-                saved,
-                ...current.documents.filter(
-                  (document) => document.id !== saved.id,
-                ),
-              ],
+              documents: includeConfirmedRegistrations(current.documents),
             }
           : current,
       );
@@ -337,20 +643,24 @@ export function DocumentWorkspace({
       if (!request.signal.aborted) setMutation('error');
     }
   }
-  const normalizedFilterQuery = filterQuery.trim().toLowerCase();
+  const normalizedFilterQuery =
+    filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
   const filteredDocuments =
     state.status === 'ready'
-      ? state.documents.filter(
-          (document) =>
-            normalizedFilterQuery.length === 0 ||
-            document.title.toLowerCase().includes(normalizedFilterQuery) ||
-            document.clientDisplayName
-              .toLowerCase()
-              .includes(normalizedFilterQuery),
+      ? state.documents.filter((document) =>
+          filter.kind === 'client'
+            ? document.clientDossierId === filter.clientDossierId
+            : normalizedFilterQuery.length === 0 ||
+              document.title.toLowerCase().includes(normalizedFilterQuery) ||
+              document.clientDisplayName
+                .toLowerCase()
+                .includes(normalizedFilterQuery),
         )
       : [];
   return (
     <section
+      id="documents"
+      tabIndex={-1}
       className={`working-documents${isPrisme ? ' working-documents--prisme' : ''}`}
       aria-label={copy.title}
     >
@@ -386,9 +696,13 @@ export function DocumentWorkspace({
               {copy.filterLabel}
               <input
                 type="search"
-                value={filterQuery}
+                value={
+                  filter.kind === 'client' ? filter.displayName : filter.query
+                }
                 placeholder={copy.filterPlaceholder}
-                onChange={(event) => setFilterQuery(event.target.value)}
+                onChange={(event) =>
+                  setFilter({ kind: 'text', query: event.target.value })
+                }
               />
             </label>
           )}
@@ -464,6 +778,14 @@ export function DocumentWorkspace({
                   <h3>{detail.title}</h3>
                   <p>{copy.draft}</p>
                   <p>{detail.clientDisplayName}</p>
+                  {detail.clientDossierId &&
+                    onOpenClientDossier &&
+                    staleDossier?.documentId !== detail.id && (
+                      <ClientDossierButton
+                        clientDossierId={detail.clientDossierId}
+                        onOpen={onOpenClientDossier}
+                      />
+                    )}
                   <p>{detail.purpose}</p>
                 </>
               )}
@@ -603,9 +925,23 @@ export function DocumentWorkspace({
             </>
           )}
           {mutation === 'error' && <p role="alert">{copy.error}</p>}
+          {mutation === 'registered' && <p role="status">{copy.registered}</p>}
         </>
       )}
     </section>
+  );
+}
+function ClientDossierButton({
+  clientDossierId,
+  onOpen,
+}: {
+  clientDossierId: string;
+  onOpen: (clientDossierId: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onOpen(clientDossierId)}>
+      {copy.openDossier}
+    </button>
   );
 }
 /**
