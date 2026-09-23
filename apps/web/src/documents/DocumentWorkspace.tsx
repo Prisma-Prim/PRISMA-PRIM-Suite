@@ -465,9 +465,9 @@ export function DocumentWorkspace({
                   <p>{copy.draft}</p>
                   <p>{detail.clientDisplayName}</p>
                   <p>{detail.purpose}</p>
-                  <RegistrationTime registeredAt={detail.createdAt} />
                 </>
               )}
+              <RegistrationTime registeredAt={detail.createdAt} />
               {!editing &&
               detail.version.representation.access === 'granted' ? (
                 <a

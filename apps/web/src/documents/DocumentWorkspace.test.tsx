@@ -547,6 +547,91 @@ it('shows the persisted registration time of listed and opened working reference
     within(detail).getByText(applicationDateTime(document.createdAt)),
   ).toHaveAttribute('datetime', document.createdAt);
 });
+it('keeps the registration time of the opened reference through correction editing, saving, uncertainty, retry and cancel', async () => {
+  const applicationDateTime = new Intl.DateTimeFormat(
+    globalThis.document.documentElement.lang || navigator.language,
+    { dateStyle: 'medium', timeStyle: 'short' },
+  ).format(new Date(document.createdAt));
+  const expectOneRegistrationTime = () => {
+    const detail = screen.getByRole('article');
+    expect(within(detail).getByRole('term')).toHaveTextContent(
+      'Registration time',
+    );
+    expect(within(detail).getByRole('definition')).toHaveTextContent(
+      applicationDateTime,
+    );
+    expect(within(detail).getByText(applicationDateTime)).toHaveAttribute(
+      'datetime',
+      document.createdAt,
+    );
+  };
+  let answerFirstPatch: (response: Response) => void = () => undefined;
+  let patches = 0;
+  let corrected = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (init?.method === 'PATCH') {
+        patches += 1;
+        if (patches === 1)
+          return new Promise<Response>((resolve) => {
+            answerFirstPatch = resolve;
+          });
+        corrected = true;
+        return Response.json({
+          documentId: document.id,
+          revision: 2,
+          outcome: 'corrected',
+        });
+      }
+      const current = corrected
+        ? { ...document, title: 'Corrected questionnaire', workingRevision: 2 }
+        : document;
+      return Response.json(
+        url.endsWith('/documents/document') ? current : [current],
+      );
+    }),
+  );
+  render(<DocumentWorkspace actor={actor} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit reference' }),
+  );
+  expect(screen.getByLabelText('Title')).toBeEnabled();
+  expectOneRegistrationTime();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(
+    screen.getByRole('heading', { name: document.title }),
+  ).toBeInTheDocument();
+  expectOneRegistrationTime();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit reference' }));
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: 'Corrected questionnaire' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+  expect(await screen.findByText('Saving correction…')).toBeInTheDocument();
+  expect(screen.getByLabelText('Title')).toBeDisabled();
+  expectOneRegistrationTime();
+
+  answerFirstPatch(new Response(null, { status: 500 }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'result is uncertain',
+  );
+  expectOneRegistrationTime();
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Retry same correction' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: 'Corrected questionnaire' }),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Correction saved.')).toBeInTheDocument();
+  expectOneRegistrationTime();
+  expect(patches).toBe(2);
+});
 it('does not render a denied external reference', async () => {
   const reference = {
     ...document,
