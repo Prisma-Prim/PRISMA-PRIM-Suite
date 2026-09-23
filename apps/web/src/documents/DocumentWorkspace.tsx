@@ -76,6 +76,11 @@ export function DocumentWorkspace({
     editing || correction === 'pending' || correction === 'uncertain';
   const correctionInProgress = useRef(correctionActive);
   correctionInProgress.current = correctionActive;
+  /**
+   * A dossier restriction arrived while a protected correction was open; the
+   * detail it would have retired is reconciled once that correction ends.
+   */
+  const restrictionAwaitsCorrection = useRef(false);
   const openedDocument = useRef<WorkingDocument | undefined>(undefined);
   openedDocument.current = detail;
   const listReady = useRef(false);
@@ -182,6 +187,7 @@ export function DocumentWorkspace({
     setEditing(false);
     setCorrection('idle');
     setStaleDossier(undefined);
+    restrictionAwaitsCorrection.current = false;
     retry.current = undefined;
     correctionRetry.current = undefined;
     confirmedRegistrations.current.clear();
@@ -330,10 +336,23 @@ export function DocumentWorkspace({
     canRead,
     identity,
   ]);
+  /**
+   * Retires the visible detail behind a newly applied dossier restriction,
+   * with any ordinary detail read still in flight that would republish it.
+   */
+  function retireDetailBehindRestriction(): void {
+    const read = detailRead.current;
+    if (read && !read.signal.aborted) {
+      read.abort();
+      setMutation('idle');
+    }
+    setDetail(undefined);
+  }
   useEffect(() => {
     if (!clientFilter) {
       // The shell retired the navigation intent, so a dossier identity that a
       // union or reversal superseded stops restricting the loaded rows.
+      restrictionAwaitsCorrection.current = false;
       setFilter((current) =>
         current.kind === 'client' ? { kind: 'text', query: '' } : current,
       );
@@ -341,17 +360,21 @@ export function DocumentWorkspace({
     }
     setFilter({ kind: 'client', ...clientFilter });
     // Show the restricted references, but never discard an open correction
-    // draft or a retryable correction command owned by this module. An
-    // ordinary detail read still in flight is retired with the detail it
-    // would otherwise publish behind the restriction.
-    if (correctionInProgress.current) return;
-    const read = detailRead.current;
-    if (read && !read.signal.aborted) {
-      read.abort();
-      setMutation('idle');
+    // draft or a retryable correction command owned by this module.
+    if (correctionInProgress.current) {
+      restrictionAwaitsCorrection.current = true;
+      return;
     }
-    setDetail(undefined);
-  }, [clientFilter, correctionActive]);
+    retireDetailBehindRestriction();
+  }, [clientFilter]);
+  // Only a restriction that arrived during the correction is reconciled when
+  // it ends; a correction ending under an unchanged restriction keeps its
+  // Document and outcome visible.
+  useEffect(() => {
+    if (correctionActive || !restrictionAwaitsCorrection.current) return;
+    restrictionAwaitsCorrection.current = false;
+    retireDetailBehindRestriction();
+  }, [correctionActive]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();

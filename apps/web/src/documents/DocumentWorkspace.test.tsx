@@ -491,6 +491,73 @@ it.each([
     expect(patchAttempts).toBe(failFirstAttempt ? 2 : 1);
   },
 );
+it.each([
+  ['cancel', 'Cancel'],
+  ['save', 'Save correction'],
+])(
+  'keeps the open Document when a correction %s ends under an unchanged dossier restriction',
+  async (completion, action) => {
+    let patchAttempts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/clients')) return Response.json([]);
+        if (init?.method === 'PATCH') {
+          patchAttempts += 1;
+          return Response.json({
+            documentId: 'document-historical',
+            revision: 2,
+            outcome: 'corrected',
+          });
+        }
+        const opened = dossierDocuments.find((candidate) =>
+          url.endsWith(`/documents/${candidate.id}`),
+        );
+        return Response.json(opened ?? dossierDocuments);
+      }),
+    );
+    render(
+      <DocumentWorkspace
+        actor={actor}
+        identity={identity}
+        clientFilter={{
+          clientDossierId: 'canonical-client',
+          displayName: 'Shared display name',
+        }}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Historical questionnaire' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Protected correction draft' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: action }));
+    if (completion === 'save')
+      expect(await screen.findByText('Correction saved.')).toBeInTheDocument();
+    await settle();
+    expect(
+      screen.getByRole('heading', { name: 'Historical questionnaire' }),
+    ).toBeInTheDocument();
+    if (completion === 'save')
+      expect(screen.getByText('Correction saved.')).toBeInTheDocument();
+    expect(patchAttempts).toBe(completion === 'save' ? 1 : 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expect(
+      screen.getByRole('searchbox', { name: 'Filter working Documents' }),
+    ).toHaveValue('Shared display name');
+    expect(
+      within(screen.getByRole('list'))
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Historical questionnaire']);
+  },
+);
 const supersededDossierDocument = {
   ...document,
   id: 'document-historical',
