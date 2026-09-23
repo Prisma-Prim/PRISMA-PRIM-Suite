@@ -993,19 +993,22 @@ describe.skipIf(!databaseUrl)(
       const linked = await mutate('link', 0, { key });
       expect(linked.status).toBe(201);
       const receipt = await body(linked);
-      const { reference } = await unionSetup({ supersedeOriginal: true });
+      const { second, reference } = await unionSetup({
+        supersedeOriginal: true,
+      });
       const before = await persistence();
+      // The stored original association is immutable; only the derived
+      // navigation target follows the current canonical Client dossier.
+      const superseded = { correction: 'read-only', clientDossierId: second };
       expect(await list()).toEqual({
         mutable: false,
-        documents: [
-          { document: { ...document, correction: 'read-only' }, revision: 1 },
-        ],
+        documents: [{ document: { ...document, ...superseded }, revision: 1 }],
       });
       expect(await list(true)).toEqual({
         mutable: false,
         documents: [
           {
-            document: { ...unlinked, correction: 'read-only' },
+            document: { ...unlinked, ...superseded },
             revision: 0,
           },
         ],

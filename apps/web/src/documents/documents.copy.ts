@@ -17,6 +17,7 @@ export const documentsCopy = {
   register: 'Register working reference',
   retry: 'Retry',
   back: 'Back to references',
+  openDossier: 'Open Client dossier',
   warning:
     'The external content is unverified and may change. This draft reference is not an official preserved original.',
   draft: 'Draft questionnaire · Company-confidential',
