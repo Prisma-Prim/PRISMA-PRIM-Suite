@@ -15,8 +15,10 @@ export const documentsCopy = {
   purpose: 'Purpose',
   url: 'External HTTPS link',
   register: 'Register working reference',
+  registered: 'Working reference registered.',
   retry: 'Retry',
   back: 'Back to references',
+  openDossier: 'Open Client dossier',
   warning:
     'The external content is unverified and may change. This draft reference is not an official preserved original.',
   draft: 'Draft questionnaire · Company-confidential',

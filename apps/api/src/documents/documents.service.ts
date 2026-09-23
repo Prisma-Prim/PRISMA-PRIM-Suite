@@ -115,7 +115,10 @@ export class DocumentsService {
     const companyId = requirePermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const rows = await this.database.connection
-      .select({ id: workingDocuments.id })
+      .select({
+        id: workingDocuments.id,
+        clientId: workingDocuments.clientId,
+      })
       .from(workingDocuments)
       .innerJoin(
         clientCompanyRelationships,
@@ -147,9 +150,42 @@ export class DocumentsService {
         ),
       )
       .orderBy(desc(workingDocuments.createdAt), desc(workingDocuments.id));
-    return Promise.all(rows.map((row) => this.read(actor, row.id)));
+    const dossierIds = await this.clientDossierIds(
+      actor,
+      rows.map((row) => row.clientId),
+    );
+    return Promise.all(
+      rows.map((row) => this.readReference(actor, row.id, dossierIds)),
+    );
   }
   async read(actor: ActorContext, idValue: unknown): Promise<WorkingDocument> {
+    return this.readReference(actor, idValue, undefined);
+  }
+  /**
+   * Client owns the union, permission and identity resolution behind the
+   * optional dossier target. A missing target never hides a readable Document.
+   */
+  private async clientDossierIds(
+    actor: ActorContext,
+    clientIds: readonly string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    const references = await this.clients.readProjectReferences(
+      actor,
+      clientIds,
+    );
+    return new Map(
+      [...references].flatMap(([clientId, reference]) =>
+        reference.clientDossierId
+          ? [[clientId, reference.clientDossierId] as const]
+          : [],
+      ),
+    );
+  }
+  private async readReference(
+    actor: ActorContext,
+    idValue: unknown,
+    resolvedDossierIds: ReadonlyMap<string, string> | undefined,
+  ): Promise<WorkingDocument> {
     const companyId = requirePermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const id = requireUuid(idValue);
@@ -188,6 +224,10 @@ export class DocumentsService {
       actor,
       row.document.clientId,
     );
+    const clientDossierId = (
+      resolvedDossierIds ??
+      (await this.clientDossierIds(actor, [row.document.clientId]))
+    ).get(row.document.clientId);
     const representation = {
       id: row.representation.id,
       kind: 'external-reference',
@@ -198,6 +238,7 @@ export class DocumentsService {
       workspaceId: row.document.workspaceId,
       companyId,
       clientId: row.document.clientId,
+      ...(clientDossierId ? { clientDossierId } : {}),
       clientDisplayName: client.displayName,
       title: row.document.title,
       purpose: row.document.purpose,
