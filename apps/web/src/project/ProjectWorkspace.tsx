@@ -62,6 +62,7 @@ export function ProjectWorkspace({
   clientFilter,
   clientIdentityRevision = 0,
   onOpenClientDossier,
+  requestedProject,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -70,6 +71,8 @@ export function ProjectWorkspace({
   /** Increases when Client identities change, so derived targets are re-read. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  /** Opens this Project as choosing its row would; each new request id once. */
+  requestedProject?: { projectId: string; requestId: number };
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
@@ -86,6 +89,18 @@ export function ProjectWorkspace({
   const [pending, setPending] = useState(false);
   /** The detail read or registration in flight; never a list read. */
   const request = useRef<AbortController | null>(null);
+  /**
+   * Whether that request is a registration, which no requested open aborts.
+   * It describes the request in flight, so it is consulted only while pending.
+   */
+  const registering = useRef(false);
+  /**
+   * The latest requested open already consumed. A request present when this
+   * owner mounts or resets was made for an earlier state and never replays.
+   */
+  const consumedProjectRequest = useRef<number | undefined>(undefined);
+  const latestProjectRequest = useRef(requestedProject);
+  latestProjectRequest.current = requestedProject;
   const listRequest = useRef<AbortController | null>(null);
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
@@ -235,7 +250,8 @@ export function ProjectWorkspace({
     );
   }
   // A different Company, member, authority or reload retires everything this
-  // module presents, including the drafts and commands started under it.
+  // module presents, including the drafts, commands and requested opens
+  // started under it.
   useEffect(() => {
     request.current?.abort();
     setSelected(null);
@@ -246,6 +262,7 @@ export function ProjectWorkspace({
     setClientAccountId('');
     retry.current = null;
     confirmedRegistrations.current.clear();
+    consumedProjectRequest.current = latestProjectRequest.current?.requestId;
     setLoad({ kind: 'loading' });
     readList();
     return () => {
@@ -334,6 +351,23 @@ export function ProjectWorkspace({
       displayName: clientFilter.displayName,
     });
   }, [clientFilter]);
+  // A requested open is the same detail read as choosing that Project's row,
+  // and supersedes an open still reading. It waits for a pending registration
+  // to settle rather than abort it; a denied owner reads nothing.
+  useEffect(() => {
+    if (
+      !requestedProject ||
+      requestedProject.requestId === consumedProjectRequest.current
+    )
+      return;
+    if (load.kind === 'denied') {
+      consumedProjectRequest.current = requestedProject.requestId;
+      return;
+    }
+    if (pending && registering.current) return;
+    consumedProjectRequest.current = requestedProject.requestId;
+    void run(`/projects/${encodeURIComponent(requestedProject.projectId)}`);
+  }, [requestedProject, load.kind, pending]);
 
   async function run(
     path: string,
@@ -342,6 +376,7 @@ export function ProjectWorkspace({
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
+    registering.current = command !== undefined;
     const startedUnder = identityRevision.current;
     setPending(true);
     setSelected(null);

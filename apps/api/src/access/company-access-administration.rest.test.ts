@@ -304,6 +304,15 @@ describeWithPostgres('Company access administration REST API', () => {
     expect(generations.rows).toEqual([
       { id: legacy.rows[0]?.id, permission_set_version: 'v1' },
     ]);
+    const state = await administrationState();
+    expect(state.assignments).toContainEqual({
+      id: legacy.rows[0]?.id,
+      workspaceMembershipId: member.workspaceMembershipId,
+      companyId: company.id,
+      bundle: 'Company Director Client Access',
+      permissionSetVersion: 'v1',
+      active: true,
+    });
   });
 
   it('converges concurrent fresh Director grants on one immutable generation', async () => {
