@@ -232,6 +232,35 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       value: { expectedVersion },
     });
   }
+  function move(
+    id: string,
+    status: string,
+    expectedVersion: number,
+    reason?: unknown,
+    options: Parameters<typeof request>[1] = {},
+  ) {
+    return request(`/tasks/${id}/status`, {
+      ...options,
+      method: 'POST',
+      value: {
+        expectedVersion,
+        status,
+        ...(reason === undefined ? {} : { reason }),
+      },
+    });
+  }
+  function cancel(
+    id: string,
+    expectedVersion: number,
+    reason: unknown,
+    options: Parameters<typeof request>[1] = {},
+  ) {
+    return request(`/tasks/${id}/cancel`, {
+      ...options,
+      method: 'POST',
+      value: { expectedVersion, reason },
+    });
+  }
   async function detail(
     id: string,
     options: Parameters<typeof request>[1] = {},
@@ -1808,5 +1837,714 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       201,
     );
     expect(objects((await read('/assigned-tasks')).tasks)).toHaveLength(1);
+  });
+
+  it('blocks a todo Task with an attributable reason that survives reload and is kept in history', async () => {
+    await grant('task');
+    const actor = {
+      internalUserId,
+      workspaceMembershipId: membershipId,
+      displayName: 'Task Manager',
+    };
+    const created = await create();
+    const id = string(created.id);
+    const response = await move(
+      id,
+      'blocked',
+      1,
+      "  Waiting for the Client's signed questionnaire  ",
+    );
+    expect(response.status).toBe(201);
+    const blocked = await body(response);
+    expect(blocked).toMatchObject({
+      status: 'blocked',
+      version: 2,
+      completion: null,
+      blockage: {
+        reason: "Waiting for the Client's signed questionnaire",
+        actor,
+      },
+    });
+    expect(blocked).not.toHaveProperty('cancellation');
+    const blockage = object(blocked.blockage);
+    expect(Number.isNaN(Date.parse(string(blockage.occurredAt)))).toBe(false);
+    expect(await detail(id)).toEqual(blocked);
+    expect(await read(`/projects/${projectId}/tasks`)).toEqual({
+      mutable: true,
+      tasks: [blocked],
+    });
+    const events = await history(id);
+    expect(events.map((event) => event.action)).toEqual([
+      'task.created',
+      'task.status.changed',
+    ]);
+    expect(events[1]).toMatchObject({
+      occurredAt: blockage.occurredAt,
+      actor,
+      metadata: {
+        version: 2,
+        before: 'todo',
+        after: 'blocked',
+        reason: "Waiting for the Client's signed questionnaire",
+      },
+    });
+    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
+  });
+
+  const blockageReason = 'Waiting for the signed questionnaire';
+  const cancellationReason = 'Duplicate of another Task';
+  const executionStates = [
+    'todo',
+    'in_progress',
+    'blocked',
+    'done',
+    'cancelled',
+  ] as const;
+  type ExecutionState = (typeof executionStates)[number];
+  type ExecutionMove = ExecutionState | 'reopen';
+  function send(
+    target: ExecutionMove,
+    id: string,
+    version: number,
+    options: Parameters<typeof request>[1] = {},
+  ) {
+    switch (target) {
+      case 'todo':
+      case 'in_progress':
+        return move(id, target, version, undefined, options);
+      case 'blocked':
+        return move(id, target, version, blockageReason, options);
+      case 'done':
+        return transition(id, 'complete', version, options);
+      case 'cancelled':
+        return cancel(id, version, cancellationReason, options);
+      case 'reopen':
+        return transition(id, 'reopen', version, options);
+    }
+  }
+  async function taskIn(state: ExecutionState, value: unknown = undefined) {
+    const id = string((await create(value)).id);
+    if (state === 'todo') return { id, version: 1 };
+    expect((await send(state, id, 1)).status).toBe(201);
+    return { id, version: 2 };
+  }
+  const legalMoves: Record<ExecutionState, ExecutionMove[]> = {
+    todo: ['in_progress', 'blocked', 'done', 'cancelled'],
+    in_progress: ['todo', 'blocked', 'done', 'cancelled'],
+    blocked: ['todo', 'in_progress', 'done', 'cancelled'],
+    done: ['reopen'],
+    cancelled: ['reopen'],
+  };
+
+  it.each(executionStates)(
+    'applies exactly the approved transitions from %s and conflicts on every other move without change',
+    async (from) => {
+      await grant('task');
+      const actor = {
+        internalUserId,
+        workspaceMembershipId: membershipId,
+        displayName: 'Task Manager',
+      };
+      for (const target of [
+        'todo',
+        'in_progress',
+        'blocked',
+        'done',
+        'cancelled',
+        'reopen',
+      ] satisfies ExecutionMove[]) {
+        const { id, version } = await taskIn(from);
+        const before = await detail(id);
+        const events = await history(id);
+        const response = await send(target, id, version);
+        if (!legalMoves[from].includes(target)) {
+          expect(response.status).toBe(409);
+          await assertUnchanged(id, before, events);
+          continue;
+        }
+        expect(response.status).toBe(201);
+        const result = await body(response);
+        const after = target === 'reopen' ? 'todo' : target;
+        expect(result).toMatchObject({ status: after, version: version + 1 });
+        expect(await detail(id)).toEqual(result);
+        const declaration = { actor, occurredAt: expect.any(String) };
+        expect(result.completion).toEqual(
+          after === 'done' ? declaration : null,
+        );
+        if (after === 'blocked')
+          expect(result.blockage).toEqual({
+            ...declaration,
+            reason: blockageReason,
+          });
+        else expect(result).not.toHaveProperty('blockage');
+        if (after === 'cancelled')
+          expect(result.cancellation).toEqual({
+            ...declaration,
+            reason: cancellationReason,
+          });
+        else expect(result).not.toHaveProperty('cancellation');
+        const recorded = await history(id);
+        expect(recorded.slice(0, -1)).toEqual(events);
+        const event = object(recorded.at(-1));
+        const eventVersion = version + 1;
+        if (target === 'reopen')
+          expect(event).toMatchObject({
+            action: 'task.reopened',
+            metadata: { version: eventVersion, before: from, after },
+          });
+        else if (target === 'done')
+          expect(event).toMatchObject({
+            action: 'task.completed',
+            metadata: { version: eventVersion, before: from, after },
+          });
+        else if (target === 'cancelled')
+          expect(event).toMatchObject({
+            action: 'task.cancelled',
+            metadata: {
+              version: eventVersion,
+              before: from,
+              after,
+              reason: cancellationReason,
+            },
+          });
+        else
+          expect(event).toMatchObject({
+            action: 'task.status.changed',
+            metadata: {
+              version: eventVersion,
+              before: from,
+              after,
+              reason: target === 'blocked' ? blockageReason : null,
+            },
+          });
+      }
+      expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
+    },
+  );
+
+  it('validates reasons and rejects a reason on every other transition without change', async () => {
+    await grant('task');
+    const { id } = await taskIn('todo');
+    const created = await detail(id);
+    const events = await history(id);
+    const overlong = 'x'.repeat(501);
+    for (const response of [
+      await move(id, 'blocked', 1),
+      await move(id, 'blocked', 1, ''),
+      await move(id, 'blocked', 1, '   '),
+      await move(id, 'blocked', 1, overlong),
+      await move(id, 'blocked', 1, `  ${overlong}  `),
+      await move(id, 'blocked', 1, 42),
+      await move(id, 'blocked', 1, null),
+      await move(id, 'in_progress', 1, 'Unexpected reason'),
+      await move(id, 'todo', 1, null),
+      await move(id, 'done', 1),
+      await move(id, 'cancelled', 1, cancellationReason),
+      await move(id, 'archived', 1),
+      await request(`/tasks/${id}/status`, {
+        method: 'POST',
+        value: { expectedVersion: 1 },
+      }),
+      await request(`/tasks/${id}/status`, {
+        method: 'POST',
+        value: { expectedVersion: 1, status: 'in_progress', note: 'Extra' },
+      }),
+      await request(`/tasks/${id}/cancel`, {
+        method: 'POST',
+        value: { expectedVersion: 1 },
+      }),
+      await cancel(id, 1, ''),
+      await cancel(id, 1, '  '),
+      await cancel(id, 1, overlong),
+      await cancel(id, 1, ['Duplicate']),
+      await cancel(id, 0, cancellationReason),
+      await request(`/tasks/${id}/complete`, {
+        method: 'POST',
+        value: { expectedVersion: 1, reason: 'Done anyway' },
+      }),
+      await request(`/tasks/${id}/reopen`, {
+        method: 'POST',
+        value: { expectedVersion: 1, reason: 'Reopen anyway' },
+      }),
+      await move(id, 'in_progress', 1, undefined, { key: null }),
+      await cancel(id, 1, cancellationReason, { key: null }),
+    ])
+      expect(response.status).toBe(400);
+    await assertUnchanged(id, created, events);
+    const longest = 'y'.repeat(500);
+    const response = await cancel(id, 1, `  ${longest}  `);
+    expect(response.status).toBe(201);
+    expect(object((await body(response)).cancellation).reason).toBe(longest);
+  });
+
+  it.each(['in_progress', 'blocked'] satisfies ExecutionState[])(
+    'edits the title, assignee and date of an %s Task while keeping its state and declaration',
+    async (state) => {
+      await grant('task');
+      const colleague = string(
+        (await member('task-member', true)).workspaceMembershipId,
+      );
+      const { id, version } = await taskIn(state);
+      const before = await detail(id);
+      const edited = await edit(id, {
+        expectedVersion: version,
+        title: 'Edited while open',
+        assigneeMembershipId: colleague,
+        dueDate: '2026-10-01',
+      });
+      expect(edited).toEqual({
+        ...before,
+        title: 'Edited while open',
+        assignee: expect.objectContaining({ workspaceMembershipId: colleague }),
+        dueDate: '2026-10-01',
+        version: version + 1,
+        updatedAt: expect.any(String),
+      });
+      expect(
+        await edit(id, {
+          expectedVersion: version + 1,
+          title: '  Edited while open  ',
+        }),
+      ).toEqual(edited);
+      expect(await history(id)).toHaveLength(3);
+      expect(
+        await edit(id, { expectedVersion: version + 1, dueDate: null }),
+      ).toMatchObject({ status: state, dueDate: null, version: version + 2 });
+    },
+  );
+
+  it.each(['done', 'cancelled'] satisfies ExecutionState[])(
+    'keeps a %s Task read-only except explicit reopening',
+    async (state) => {
+      await grant('task');
+      const { id, version } = await taskIn(state);
+      const closed = await detail(id);
+      const events = await history(id);
+      for (const response of [
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: version, title: 'Closed edit' },
+        }),
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: version, title: closed.title },
+        }),
+        await move(id, 'todo', version),
+        await move(id, 'blocked', version, blockageReason),
+        await cancel(id, version, cancellationReason),
+        await transition(id, 'complete', version),
+      ])
+        expect(response.status).toBe(409);
+      await assertUnchanged(id, closed, events);
+      expect((await transition(id, 'reopen', version)).status).toBe(201);
+      expect(
+        await edit(id, {
+          expectedVersion: version + 1,
+          title: 'Reopened edit',
+        }),
+      ).toMatchObject({ status: 'todo', title: 'Reopened edit' });
+    },
+  );
+
+  it('refuses stale versions and permits only one of competing transitions and edits from one observed version', async () => {
+    await grant('task');
+    const stale = await taskIn('in_progress');
+    const current = await detail(stale.id);
+    const events = await history(stale.id);
+    for (const response of [
+      await move(stale.id, 'blocked', 1, blockageReason),
+      await move(stale.id, 'todo', 1),
+      await cancel(stale.id, 1, cancellationReason),
+      await transition(stale.id, 'complete', 1),
+      await move(stale.id, 'blocked', 3, blockageReason),
+    ])
+      expect(response.status).toBe(409);
+    await assertUnchanged(stale.id, current, events);
+    const { id } = await taskIn('todo');
+    const responses = await Promise.all([
+      move(id, 'in_progress', 1),
+      move(id, 'blocked', 1, blockageReason),
+      cancel(id, 1, cancellationReason),
+      transition(id, 'complete', 1),
+      request(`/tasks/${id}`, {
+        method: 'PATCH',
+        value: { expectedVersion: 1, title: 'Competing edit' },
+      }),
+    ]);
+    expect(
+      responses.filter(
+        (response) => response.status === 200 || response.status === 201,
+      ),
+    ).toHaveLength(1);
+    expect(
+      responses.filter((response) => response.status === 409),
+    ).toHaveLength(4);
+    expect((await detail(id)).version).toBe(2);
+    expect(await history(id)).toHaveLength(2);
+  });
+
+  it('replays exact status and cancellation retries, binds keys to the target state and trimmed reason, and rechecks live authority', async () => {
+    await grant('task');
+    const colleague = string(
+      (await member('task-member', true)).workspaceMembershipId,
+    );
+    const as = { subject: 'task-member' };
+    const { id } = await taskIn('todo');
+    const blockKey = randomUUID();
+    const concurrent = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        move(id, 'blocked', 1, `  ${blockageReason}  `, {
+          ...as,
+          key: blockKey,
+        }),
+      ),
+    );
+    expect(concurrent.map((response) => response.status)).toEqual([
+      201, 201, 201, 201,
+    ]);
+    const [first, ...others] = concurrent;
+    if (!first) throw new Error('Expected blockage responses.');
+    const blocked = await body(first);
+    expect(await Promise.all(others.map(body))).toEqual([
+      blocked,
+      blocked,
+      blocked,
+    ]);
+    expect(await history(id)).toHaveLength(2);
+    for (const response of [
+      await move(id, 'blocked', 1, 'Another reason', { ...as, key: blockKey }),
+      await move(id, 'in_progress', 1, undefined, { ...as, key: blockKey }),
+      await cancel(id, 1, blockageReason, { ...as, key: blockKey }),
+      await transition(id, 'complete', 1, { ...as, key: blockKey }),
+    ])
+      expect(response.status).toBe(409);
+    expect((await move(id, 'in_progress', 2, undefined, as)).status).toBe(201);
+    const cancelKey = randomUUID();
+    const cancelledResponse = await cancel(id, 3, cancellationReason, {
+      ...as,
+      key: cancelKey,
+    });
+    expect(cancelledResponse.status).toBe(201);
+    const cancelled = await body(cancelledResponse);
+    const current = await detail(id);
+    const events = await history(id);
+    const replay = await move(id, 'blocked', 1, blockageReason, {
+      ...as,
+      key: blockKey,
+    });
+    expect(replay.status).toBe(201);
+    expect(await body(replay)).toEqual(blocked);
+    expect(
+      await body(
+        await cancel(id, 3, ` ${cancellationReason} `, {
+          ...as,
+          key: cancelKey,
+        }),
+      ),
+    ).toEqual(cancelled);
+    await assertUnchanged(id, current, events);
+    await revoke('task', colleague);
+    for (const response of [
+      await move(id, 'blocked', 1, blockageReason, { ...as, key: blockKey }),
+      await cancel(id, 3, cancellationReason, { ...as, key: cancelKey }),
+      await request(`/tasks/${id}`, as),
+    ])
+      expect(response.status).toBe(403);
+    await assertUnchanged(id, current, events);
+  });
+
+  it('reopens a cancelled Task to todo while history and the Activity Log keep the cancellation', async () => {
+    await grant('task');
+    const { id } = await taskIn('in_progress');
+    const response = await cancel(id, 2, `  ${cancellationReason}  `);
+    expect(response.status).toBe(201);
+    const cancelled = await body(response);
+    expect(cancelled).toMatchObject({
+      status: 'cancelled',
+      version: 3,
+      completion: null,
+      cancellation: { reason: cancellationReason },
+    });
+    expect(await read(`/projects/${projectId}/tasks`)).toEqual({
+      mutable: true,
+      tasks: [cancelled],
+    });
+    expect((await transition(id, 'reopen', 3)).status).toBe(201);
+    const reopened = await detail(id);
+    expect(reopened).toMatchObject({
+      status: 'todo',
+      version: 4,
+      completion: null,
+      title: cancelled.title,
+    });
+    expect(reopened).not.toHaveProperty('cancellation');
+    const events = await history(id);
+    expect(events.map((event) => [event.action, event.metadata])).toEqual([
+      ['task.created', expect.objectContaining({ version: 1 })],
+      [
+        'task.status.changed',
+        { version: 2, before: 'todo', after: 'in_progress', reason: null },
+      ],
+      [
+        'task.cancelled',
+        {
+          version: 3,
+          before: 'in_progress',
+          after: 'cancelled',
+          reason: cancellationReason,
+        },
+      ],
+      ['task.reopened', { version: 4, before: 'cancelled', after: 'todo' }],
+    ]);
+    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
+  });
+
+  it('keeps states and declarations readable for a superseded original Client and refuses every new transition', async () => {
+    await grant('task');
+    const blocked = await taskIn('blocked');
+    const cancelled = await taskIn('cancelled');
+    const snapshots = await Promise.all(
+      [blocked, cancelled].map(async ({ id }) => ({
+        id,
+        task: await detail(id),
+        events: await history(id),
+      })),
+    );
+    await (await unionSetup(true)).confirm();
+    for (const { id, task } of snapshots)
+      expect(await read(`/tasks/${id}`)).toEqual({ mutable: false, task });
+    for (const response of [
+      await move(blocked.id, 'in_progress', 2),
+      await move(blocked.id, 'todo', 2),
+      await cancel(blocked.id, 2, cancellationReason),
+      await transition(blocked.id, 'complete', 2),
+      await transition(cancelled.id, 'reopen', 2),
+    ])
+      expect(response.status).toBe(404);
+    for (const { id, task, events } of snapshots)
+      await assertUnchanged(id, task, events);
+  });
+
+  it('requires captured Task Manager authority for every transition; assignment, creation, ownership and other bundles grant none', async () => {
+    const colleague = string(
+      (await member('task-member', true)).workspaceMembershipId,
+    );
+    const as = { subject: 'task-member' };
+    const created = await create(
+      { title: 'Member notes', assigneeMembershipId: colleague },
+      as,
+    );
+    const id = string(created.id);
+    for (const kind of ['context', 'document'] satisfies Array<
+      keyof typeof assignments
+    >)
+      await grant(kind);
+    // The Workspace Owner holds Context, Client, Project and Document grants, but no Task Manager grant.
+    for (const response of [
+      await move(id, 'in_progress', 1),
+      await move(id, 'blocked', 1, blockageReason),
+      await cancel(id, 1, cancellationReason),
+    ])
+      expect(response.status).toBe(403);
+    const otherCompany = string(
+      (await command('/companies', { displayName: 'BIC' })).id,
+    );
+    await grant('task', membershipId, otherCompany);
+    await grant('project', membershipId, otherCompany);
+    for (const response of [
+      await move(id, 'in_progress', 1, undefined, { company: otherCompany }),
+      await cancel(id, 1, cancellationReason, { company: otherCompany }),
+      await request(`/tasks/${id}`, { company: otherCompany }),
+    ]) {
+      expect(response.status).toBe(404);
+      expect(await response.text()).not.toContain('Member notes');
+    }
+    await revoke('task', colleague);
+    // The creator and assignee keeps Context, Client and Project access only.
+    for (const response of [
+      await move(id, 'in_progress', 1, undefined, as),
+      await cancel(id, 1, cancellationReason, as),
+      await request(`/tasks/${id}`, as),
+      await request(`/tasks/${id}/history`, as),
+    ])
+      expect(response.status).toBe(403);
+    expect((await request('/access/current-actor', as)).status).toBe(200);
+    await grant('task');
+    expect(await detail(id)).toEqual(created);
+    expect(await history(id)).toHaveLength(1);
+  });
+
+  it.each(['in_progress', 'blocked', 'cancelled'] satisfies ExecutionMove[])(
+    'blocks union reversal after one new active-original %s transition',
+    async (target) => {
+      await grant('task');
+      const { id } = await taskIn('todo');
+      const union = await (await unionSetup()).confirm();
+      expect((await send(target, id, 1)).status).toBe(201);
+      expect((await reverse(string(union.projectionReference))).status).toBe(
+        409,
+      );
+    },
+  );
+
+  it('allows reversal after rejected, conflicting and exactly replayed status and cancellation commands', async () => {
+    await grant('task');
+    const statusKey = randomUUID();
+    const cancelKey = randomUUID();
+    const { id } = await taskIn('todo');
+    const started = await body(
+      await move(id, 'in_progress', 1, undefined, { key: statusKey }),
+    );
+    const cancelled = await body(
+      await cancel(id, 2, cancellationReason, { key: cancelKey }),
+    );
+    const current = await detail(id);
+    const events = await history(id);
+    const union = await (await unionSetup()).confirm();
+    expect(
+      await body(
+        await move(id, 'in_progress', 1, undefined, { key: statusKey }),
+      ),
+    ).toEqual(started);
+    expect(
+      await body(await cancel(id, 2, cancellationReason, { key: cancelKey })),
+    ).toEqual(cancelled);
+    for (const [response, status] of [
+      [await move(id, 'blocked', 3), 400],
+      [await move(id, 'todo', 3), 409],
+      [await cancel(id, 3, cancellationReason), 409],
+      [await move(id, 'blocked', 3, blockageReason, { key: statusKey }), 409],
+    ] satisfies Array<[Response, number]>)
+      expect(response.status).toBe(status);
+    await assertUnchanged(id, current, events);
+    expect((await reverse(string(union.projectionReference))).status).toBe(201);
+    await assertUnchanged(id, current, events);
+  });
+
+  it.each(['in_progress', 'blocked', 'cancelled'] satisfies ExecutionMove[])(
+    'rolls back a %s transition and its retry outcome when Accountability cannot commit',
+    async (target) => {
+      await grant('task');
+      const { id } = await taskIn('todo');
+      const before = await detail(id);
+      const events = await history(id);
+      const key = randomUUID();
+      const failure = vi
+        .spyOn(AccountabilityService.prototype, 'recordTaskEvent')
+        .mockRejectedValueOnce(new Error('Injected Accountability failure.'));
+      try {
+        expect((await send(target, id, 1, { key })).status).toBe(500);
+      } finally {
+        failure.mockRestore();
+      }
+      await assertUnchanged(id, before, events);
+      expect((await send(target, id, 1, { key })).status).toBe(201);
+      expect(await history(id)).toHaveLength(2);
+    },
+  );
+
+  it('lists in-progress and blocked Tasks with their state in My Tasks and excludes cancelled and done Tasks', async () => {
+    await grant('task');
+    const project = {
+      id: projectId,
+      title: 'ISO preparation',
+      clientDisplayName: 'Synthetic Client',
+    };
+    const mine = (title: string, dueDate: string) => ({
+      title,
+      assigneeMembershipId: membershipId,
+      dueDate,
+    });
+    const started = await taskIn('in_progress', mine('Started', '2026-10-01'));
+    const blocked = await taskIn('blocked', mine('Blocked', '2026-10-02'));
+    const cancelled = await taskIn(
+      'cancelled',
+      mine('Cancelled', '2026-10-03'),
+    );
+    await taskIn('done', mine('Done', '2026-10-04'));
+    const open = await taskIn('todo', mine('Open', '2026-10-05'));
+    const before = (
+      await harness.pool.query('SELECT * FROM task_commands ORDER BY id')
+    ).rows;
+    expect(await assigned()).toEqual([
+      { ...(await detail(started.id)), project },
+      { ...(await detail(blocked.id)), project },
+      { ...(await detail(open.id)), project },
+    ]);
+    expect(
+      (await harness.pool.query('SELECT * FROM task_commands ORDER BY id'))
+        .rows,
+    ).toEqual(before);
+    expect((await transition(cancelled.id, 'reopen', 2)).status).toBe(201);
+    expect((await assigned()).map((task) => task.title)).toEqual([
+      'Started',
+      'Blocked',
+      'Cancelled',
+      'Open',
+    ]);
+  });
+
+  it('replays command receipts stored before execution states existed', async () => {
+    await grant('task');
+    const created = await create({ title: 'Historical receipt' });
+    const id = string(created.id);
+    const events = await history(id);
+    const actor = {
+      internalUserId,
+      workspaceMembershipId: membershipId,
+      displayName: 'Task Manager',
+    };
+    // Receipts recorded before #365 hold exactly these fingerprints and result shapes.
+    const receipts = [
+      {
+        key: randomUUID(),
+        command: `{"companyId":"${companyId}","taskId":"${id}","action":"complete","input":{"expectedVersion":1}}`,
+        result: {
+          ...created,
+          status: 'done',
+          version: 2,
+          completion: { actor, occurredAt: '2026-09-20T10:00:00.000Z' },
+        },
+        replay: (key: string) => transition(id, 'complete', 1, { key }),
+      },
+      {
+        key: randomUUID(),
+        command: `{"companyId":"${companyId}","taskId":"${id}","action":"reopen","input":{"expectedVersion":2}}`,
+        result: { ...created, version: 3 },
+        replay: (key: string) => transition(id, 'reopen', 2, { key }),
+      },
+      {
+        key: randomUUID(),
+        command: `{"companyId":"${companyId}","taskId":"${id}","action":"edit","input":{"expectedVersion":3,"title":"Historical edit"}}`,
+        result: { ...created, title: 'Historical edit', version: 4 },
+        replay: (key: string) =>
+          request(`/tasks/${id}`, {
+            method: 'PATCH',
+            key,
+            value: { expectedVersion: 3, title: 'Historical edit' },
+          }),
+      },
+    ];
+    for (const receipt of receipts)
+      await harness.pool.query(
+        'INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [
+          workspaceId,
+          companyId,
+          id,
+          membershipId,
+          receipt.key,
+          receipt.command,
+          JSON.stringify(receipt.result),
+        ],
+      );
+    for (const receipt of receipts) {
+      const response = await receipt.replay(receipt.key);
+      expect([200, 201]).toContain(response.status);
+      expect(await body(response)).toEqual(receipt.result);
+    }
+    await assertUnchanged(id, created, events);
   });
 });
