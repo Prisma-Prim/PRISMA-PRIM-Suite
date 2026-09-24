@@ -1355,14 +1355,14 @@ withPostgres('Company Pricing Configuration REST', () => {
     });
     expect(await otherList.json()).toEqual({ items: [], provisional: true });
 
-    const foreignVersionId = await seedForeignWorkspaceVersion();
+    const foreign = await seedForeignWorkspaceVersion();
     const hidden = await request(`${VERSIONS}/${owned.version.id}`, other.id, {
       headers: OTHER_MEMBER,
     });
     expect(hidden.status).toBe(404);
     const hiddenBody = await hidden.text();
     expect(hiddenBody).not.toContain(secret);
-    for (const id of [UNKNOWN_ID, foreignVersionId, 'not-a-version']) {
+    for (const id of [UNKNOWN_ID, foreign.versionId, 'not-a-version']) {
       const response = await request(`${VERSIONS}/${id}`, other.id, {
         headers: OTHER_MEMBER,
       });
@@ -1398,12 +1398,35 @@ withPostgres('Company Pricing Configuration REST', () => {
       expect(denied.status).toBe(403);
       expect(await denied.text()).not.toContain('INVALID_PAGE');
     }
-    const everyHead = await heads();
-    expect(everyHead).toHaveLength(2);
+    // One head per Company across the database: both publications above and
+    // the foreign Workspace fixture, which no request superseded.
+    const everyHead: unknown[] = (
+      await pool.query(
+        `SELECT id, workspace_id, company_id, version_number FROM pricing_rule_versions
+          WHERE superseded_by_version_id IS NULL`,
+      )
+    ).rows;
+    expect(everyHead).toHaveLength(3);
     expect(everyHead).toEqual(
       expect.arrayContaining([
-        { company_id: company.id, version_number: 1 },
-        { company_id: other.id, version_number: 1 },
+        {
+          id: owned.version.id,
+          workspace_id: WORKSPACE_ID,
+          company_id: company.id,
+          version_number: 1,
+        },
+        {
+          id: otherPublication.version.id,
+          workspace_id: WORKSPACE_ID,
+          company_id: other.id,
+          version_number: 1,
+        },
+        {
+          id: foreign.versionId,
+          workspace_id: FOREIGN_WORKSPACE_ID,
+          company_id: foreign.companyId,
+          version_number: 1,
+        },
       ]),
     );
   }, 60_000);
@@ -1734,9 +1757,12 @@ withPostgres('Company Pricing Configuration REST', () => {
     ).rows;
   }
 
-  async function seedForeignWorkspaceVersion(): Promise<string> {
+  async function seedForeignWorkspaceVersion(): Promise<{
+    versionId: string;
+    companyId: string;
+  }> {
     const versionId = '00000000-0000-4000-8000-000000000362';
-    await pool.query(
+    const seeded = await pool.query<{ companyId: string }>(
       `WITH foreign_workspace AS (
          INSERT INTO workspaces (id, name) VALUES ($1, 'Foreign Workspace')
          RETURNING id
@@ -1765,10 +1791,14 @@ withPostgres('Company Pricing Configuration REST', () => {
               TIMESTAMPTZ '2026-05-01 00:00:00+00', foreign_membership.internal_user_id,
               foreign_membership.id, TIMESTAMPTZ '2026-04-01 00:00:00+00'
        FROM foreign_membership
-       INNER JOIN foreign_company ON foreign_company.workspace_id = foreign_membership.workspace_id`,
+       INNER JOIN foreign_company ON foreign_company.workspace_id = foreign_membership.workspace_id
+       RETURNING company_id AS "companyId"`,
       [FOREIGN_WORKSPACE_ID, versionId],
     );
-    return versionId;
+    const companyId = seeded.rows[0]?.companyId;
+    if (seeded.rowCount !== 1 || companyId === undefined)
+      throw new Error('Expected one foreign Workspace version.');
+    return { versionId, companyId };
   }
 
   async function lockRows(
