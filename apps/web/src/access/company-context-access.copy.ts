@@ -28,6 +28,10 @@ export const companyContextAccessCopy = {
   revoked: 'Access revoked. Server state refreshed.',
   currentStateLabel: 'Current server state',
   currentStateGranted: 'Granted',
+  currentStateGrantedVersion: (version: string) =>
+    `Granted — captured version ${version}`,
+  capturedVersionExplanation:
+    'The version is captured when access is granted. A later version applies only after this access is revoked and granted again.',
   currentStateNotGranted: 'Not granted',
   loading: 'Loading access administration…',
   empty: 'No active member or Company is available for access administration.',

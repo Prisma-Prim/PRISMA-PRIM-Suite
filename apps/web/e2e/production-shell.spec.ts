@@ -709,6 +709,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
                   workspaceMembershipId: member.workspaceMembershipId,
                   companyId: company.id,
                   bundle: 'Company Context Access',
+                  permissionSetVersion: null,
                   active: true,
                 },
               ]
@@ -1179,6 +1180,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
         workspaceMembershipId,
         companyId,
         bundle: 'Company Director Client Access',
+        permissionSetVersion: 'v2',
         active: true,
       };
     }),
@@ -1731,7 +1733,19 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
   await page.getByLabel('Company', { exact: true }).selectOption({
     label: candidateCompany.displayName,
   });
-  await expect(page.getByText(/Current server state:/)).toHaveText(/Granted/);
+  const companyAccess = page.getByRole('region', { name: 'Company access' });
+  const capturedVersionExplanation = companyAccess.getByText(
+    'The version is captured when access is granted. A later version applies only after this access is revoked and granted again.',
+  );
+  await expect(page.getByText(/Current server state:/)).toHaveText(
+    'Current server state: Granted — captured version v1',
+  );
+  await expect(capturedVersionExplanation).toBeVisible();
+  await companyAccess.screenshot({
+    path: testInfo.outputPath(
+      `company-access-legacy-version-${testInfo.project.name}.png`,
+    ),
+  });
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -1743,6 +1757,10 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
   await expect(
     page.getByText('Access revoked. Server state refreshed.'),
   ).toBeVisible();
+  await expect(page.getByText(/Current server state:/)).toHaveText(
+    'Current server state: Not granted',
+  );
+  await expect(capturedVersionExplanation).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
   ).toHaveCount(0);
@@ -1758,6 +1776,15 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
+  await expect(page.getByText(/Current server state:/)).toHaveText(
+    'Current server state: Granted — captured version v2',
+  );
+  await expect(capturedVersionExplanation).toBeVisible();
+  await companyAccess.screenshot({
+    path: testInfo.outputPath(
+      `company-access-fresh-version-${testInfo.project.name}.png`,
+    ),
+  });
   await page.goto('/?frame=prisme#clients');
   await expect(
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
