@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { ClientContact } from '../../client/client.types.js';
 import {
   check,
   foreignKey,
@@ -26,7 +27,7 @@ type ClientDuplicateReviewProposedFields = {
   address: string | null;
   telephone: string | null;
   generalEmail: string | null;
-  contacts: Array<{ name: string; telephone?: string; email?: string }>;
+  contacts: ClientContact[];
   businessActivity: string | null;
 };
 

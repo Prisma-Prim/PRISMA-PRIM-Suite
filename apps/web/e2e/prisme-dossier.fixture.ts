@@ -16,7 +16,13 @@ interface DossierFixture {
   telephone: string | null;
   generalEmail: string | null;
   businessActivity: string | null;
-  contacts: { name: string; telephone?: string; email?: string }[];
+  contacts: {
+    name: string;
+    telephone?: string;
+    email?: string;
+    position?: string;
+    decisionRoles?: string[];
+  }[];
   version: number;
   involvedCompanyDisplayNames: string[];
 }
