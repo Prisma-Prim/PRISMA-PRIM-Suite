@@ -26,5 +26,6 @@ export const projectDocumentsCopy = {
   attach: 'Attach',
   remove: 'Remove',
   open: 'Open external reference',
+  openDocument: 'Open Document',
   referenceDenied: 'External reference access is not granted.',
 };

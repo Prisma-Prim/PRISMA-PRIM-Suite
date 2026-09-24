@@ -62,6 +62,7 @@ export function ProjectWorkspace({
   clientFilter,
   clientIdentityRevision = 0,
   onOpenClientDossier,
+  onOpenDocument,
   requestedProject,
 }: {
   actor: ActorContext;
@@ -71,6 +72,8 @@ export function ProjectWorkspace({
   /** Increases when Client identities change, so derived targets are re-read. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  /** Passed unchanged to the opened Project's linked Documents. */
+  onOpenDocument?: (documentId: string) => void;
   /** Opens this Project as choosing its row would; each new request id once. */
   requestedProject?: { projectId: string; requestId: number };
 }) {
@@ -747,6 +750,7 @@ export function ProjectWorkspace({
               identity={identity}
               projectId={selected.project.id}
               onActivityRecorded={onActivityRecorded}
+              onOpenDocument={onOpenDocument}
             />
           </div>
         </article>

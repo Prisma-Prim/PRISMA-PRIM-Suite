@@ -20,6 +20,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const documentPurpose = `Prepare the ${suffix} Client acceptance interview`;
   const documentUrl = `https://example.test/acceptance-questionnaire-${suffix.toLowerCase()}`;
   const preservedDraft = `Draft preserved across ${suffix} frame rollback`;
+  const documentOpenDraft = `Draft preserved across the ${suffix} Document open`;
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
@@ -305,6 +306,46 @@ test('operates the delivered Client, Project, Task and working Document journey 
     testInfo,
     `operational-foundation-${narrow ? 'narrow' : 'desktop'}-prisme.png`,
   );
+
+  // Opening the linked Document keeps the Project's Task draft and records nothing.
+  await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
+  await tasks.getByRole('button', { name: 'New Task', exact: true }).click();
+  await tasks.getByLabel('Task title').fill(documentOpenDraft);
+  await projects
+    .getByRole('tab', { name: 'Working Documents', exact: true })
+    .click();
+  await projectDocuments
+    .getByRole('listitem')
+    .filter({
+      has: page.getByRole('heading', { name: documentTitle, exact: true }),
+    })
+    .getByRole('button', { name: 'Open Document', exact: true })
+    .click();
+  await expect(page.locator('#documents')).toBeFocused();
+  const openedDocument = workingDocuments.getByRole('article');
+  await expect(
+    openedDocument.getByRole('heading', { name: documentTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    openedDocument.getByText(documentPurpose, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    openedDocument.getByText('Registration time', { exact: true }),
+  ).toBeVisible();
+  expect(page.url()).not.toContain(documentId);
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-document-open.png`,
+  );
+  // The opened detail replaces the references; return to them so the journey
+  // below opens the same Document from its row.
+  await openedDocument
+    .getByRole('button', { name: 'Back to references', exact: true })
+    .click();
+  await navigate(page, navigation, 'Projects', narrow);
+  await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
+  await expect(tasks.getByLabel('Task title')).toHaveValue(documentOpenDraft);
 
   // Opening the linked Project from its Document keeps another Project's
   // Task draft and records nothing.
