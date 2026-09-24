@@ -54,6 +54,7 @@ export const clientWorkspaceCopy = {
   clientId: (id: string) => `Client ID: ${id}`,
   openDossier: 'Open dossier',
   openProjects: 'Open Client Projects',
+  openDocuments: 'Open Client working Documents',
   loadingDossier: 'Loading Client dossier…',
   dossierNotFound: 'The Client dossier is not available in this Company.',
   dossierEyebrow: 'Shared general dossier',

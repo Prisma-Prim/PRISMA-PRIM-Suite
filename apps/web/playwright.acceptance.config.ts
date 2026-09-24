@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   testMatch:
-    /(?:client-registration-refresh|commercial-intake|operational-foundation)\.acceptance\.spec\.ts/u,
+    /(?:client-document-navigation|client-registration-refresh|commercial-intake|operational-foundation)\.acceptance\.spec\.ts/u,
   outputDir: './test-results/acceptance',
   globalSetup: './e2e/operational-foundation.global-setup.mjs',
   fullyParallel: false,

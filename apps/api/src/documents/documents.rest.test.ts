@@ -570,6 +570,150 @@ describe.skipIf(!databaseUrl)(
           .clientId,
       ).toBe(clientId);
     });
+    it('separates the dossier identity of two Clients sharing one displayed name', async () => {
+      await grant();
+      const twin = text(
+        (
+          await body(
+            await request('/clients', 'POST', {
+              displayName: 'Synthetic Client',
+            }),
+          )
+        ).id,
+      );
+      const first = await body(await request('/documents', 'POST', input()));
+      const second = await body(
+        await request('/documents', 'POST', {
+          ...input(),
+          clientId: twin,
+          title: 'Twin questionnaire',
+        }),
+      );
+      expect(twin).not.toBe(clientId);
+      expect(first.clientDisplayName).toBe(second.clientDisplayName);
+      expect(first).toMatchObject({ clientId, clientDossierId: clientId });
+      expect(second).toMatchObject({
+        clientId: twin,
+        clientDossierId: twin,
+      });
+      const listed = await (await request('/documents')).json();
+      if (!Array.isArray(listed)) throw new Error('Expected a Document list.');
+      expect(
+        listed
+          .map(object)
+          .map((document) => [document.id, document.clientDossierId]),
+      ).toEqual([
+        [second.id, twin],
+        [first.id, clientId],
+      ]);
+    });
+    it('derives the current dossier identity through union and reversal without moving the original association', async () => {
+      await grant();
+      const registered = await body(
+        await request('/documents', 'POST', input()),
+      );
+      expect(registered.clientDossierId).toBe(clientId);
+      const { second, reference } = await unionSetup(true);
+      expect(
+        await body(await request(`/documents/${text(registered.id)}`)),
+      ).toMatchObject({
+        clientId,
+        clientDossierId: second,
+        correction: 'read-only',
+      });
+      expect((await reverse(reference)).status).toBe(201);
+      expect(
+        await body(await request(`/documents/${text(registered.id)}`)),
+      ).toMatchObject({
+        clientId,
+        clientDossierId: clientId,
+        correction: 'allowed',
+      });
+    });
+    it('omits the dossier identity for a Workspace manager without Company Client read while the Document stays readable', async () => {
+      const other = text(
+        (
+          await body(
+            await request('/companies', 'POST', { displayName: 'BIC' }),
+          )
+        ).id,
+      );
+      expect(
+        (
+          await request('/company-document-registrar-assignments', 'POST', {
+            companyId: other,
+            workspaceMembershipId: membershipId,
+          })
+        ).status,
+      ).toBe(201);
+      const otherClient = text(
+        (
+          await body(
+            await request(
+              '/clients',
+              'POST',
+              { displayName: 'BIC-only synthetic Client' },
+              randomUUID(),
+              other,
+            ),
+          )
+        ).id,
+      );
+      const registered = await body(
+        await request(
+          '/documents',
+          'POST',
+          { ...input(), clientId: otherClient },
+          randomUUID(),
+          other,
+        ),
+      );
+      const readWithoutDossierAuthority = await request(
+        `/documents/${text(registered.id)}`,
+        'GET',
+        undefined,
+        randomUUID(),
+        other,
+      );
+      expect(readWithoutDossierAuthority.status).toBe(200);
+      const readable = await body(readWithoutDossierAuthority);
+      expect(readable).toMatchObject({
+        clientId: otherClient,
+        clientDisplayName: 'BIC-only synthetic Client',
+      });
+      expect(readable).not.toHaveProperty('clientDossierId');
+      const listed = await (
+        await request('/documents', 'GET', undefined, randomUUID(), other)
+      ).json();
+      if (!Array.isArray(listed)) throw new Error('Expected a Document list.');
+      expect(listed.map(object).map((document) => document.id)).toEqual([
+        registered.id,
+      ]);
+      expect(listed.map(object)[0]).not.toHaveProperty('clientDossierId');
+
+      expect(
+        (
+          await request('/company-director-client-assignments', 'POST', {
+            companyId: other,
+            workspaceMembershipId: membershipId,
+          })
+        ).status,
+      ).toBe(201);
+      expect(
+        await body(
+          await request(
+            `/documents/${text(registered.id)}`,
+            'GET',
+            undefined,
+            randomUUID(),
+            other,
+          ),
+        ),
+      ).toMatchObject({
+        clientId: otherClient,
+        clientDossierId: otherClient,
+      });
+    });
     it('blocks reversal after a new post-union reference without relocating history', async () => {
       await grant();
       const { reference } = await unionSetup();

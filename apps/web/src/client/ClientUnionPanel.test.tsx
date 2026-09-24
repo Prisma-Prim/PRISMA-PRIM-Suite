@@ -60,6 +60,7 @@ const props = () => ({
   identity: deterministicBrowserIdentity(),
   canResolve: true,
   onChanged: vi.fn(async () => undefined),
+  onOpenCanonical: vi.fn(),
   onCompanyContextRejected: vi.fn(),
   onActorRevalidated: vi.fn(),
   onWorkspaceAccessRejected: vi.fn(),
@@ -129,7 +130,8 @@ describe('Client union UI public journey', () => {
         name: 'Open canonical Client dossier',
       }),
     );
-    expect(callbacks.onChanged).toHaveBeenCalledWith(first.id);
+    expect(callbacks.onOpenCanonical).toHaveBeenCalledWith(first.id);
+    expect(callbacks.onChanged).not.toHaveBeenCalled();
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       '/api/clients/client-2/union-history',

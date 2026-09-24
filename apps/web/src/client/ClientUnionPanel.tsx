@@ -54,6 +54,7 @@ export function ClientUnionPanel({
   identity,
   canResolve,
   onChanged,
+  onOpenCanonical,
   onConfirmed,
   onCompanyContextRejected,
   onActorRevalidated,
@@ -63,7 +64,10 @@ export function ClientUnionPanel({
   companyContextId: string;
   identity: BrowserIdentity;
   canResolve: boolean;
+  /** Reported after a confirmed union or reversal changed Client identities. */
   onChanged: (canonicalClientId?: string) => Promise<void>;
+  /** Reported when the member merely opens the canonical dossier from history. */
+  onOpenCanonical: (canonicalClientId: string) => void;
   onConfirmed?: (canonicalClientId: string) => void;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
@@ -96,6 +100,7 @@ export function ClientUnionPanel({
   );
   const callbacks = useRef({
     onChanged,
+    onOpenCanonical,
     onConfirmed,
     onCompanyContextRejected,
     onActorRevalidated,
@@ -103,6 +108,7 @@ export function ClientUnionPanel({
   });
   callbacks.current = {
     onChanged,
+    onOpenCanonical,
     onConfirmed,
     onCompanyContextRejected,
     onActorRevalidated,
@@ -379,7 +385,7 @@ export function ClientUnionPanel({
           uncertain={feedback === 'reversalUncertain'}
           onOpenCanonical={() => {
             close();
-            void callbacks.current.onChanged(view.detail.canonicalClientId);
+            callbacks.current.onOpenCanonical(view.detail.canonicalClientId);
           }}
           onReverse={(reason) =>
             run({
