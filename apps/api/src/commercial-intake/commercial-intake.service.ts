@@ -340,22 +340,32 @@ export class CommercialIntakeService {
       .limit(limit + 1);
     const pageRows = rows.slice(0, limit);
     const last = pageRows.at(-1);
+    const dossierIds = await this.currentClientDossierIds(
+      actor,
+      pageRows.map(({ request }) => request.clientAccountId),
+    );
     return {
       items: pageRows.map(
-        ({ request, opportunity, responsibleDisplayName }) => ({
-          id: request.id,
-          subject: request.subject,
-          capturedAt: request.capturedAt.toISOString(),
-          initialOpportunity: {
-            title: opportunity.title,
-            nextAction: opportunity.nextAction,
-            responsibleActor: {
-              workspaceMembershipId:
-                opportunity.responsibleWorkspaceMembershipId,
-              displayName: responsibleDisplayName,
+        ({ request, opportunity, responsibleDisplayName }) => {
+          const clientDossierId = request.clientAccountId
+            ? dossierIds.get(request.clientAccountId)
+            : undefined;
+          return {
+            id: request.id,
+            subject: request.subject,
+            capturedAt: request.capturedAt.toISOString(),
+            ...(clientDossierId ? { clientDossierId } : {}),
+            initialOpportunity: {
+              title: opportunity.title,
+              nextAction: opportunity.nextAction,
+              responsibleActor: {
+                workspaceMembershipId:
+                  opportunity.responsibleWorkspaceMembershipId,
+                displayName: responsibleDisplayName,
+              },
             },
-          },
-        }),
+          };
+        },
       ),
       ...(rows.length > limit && last
         ? {
@@ -366,6 +376,30 @@ export class CommercialIntakeService {
           }
         : {}),
     };
+  }
+
+  /**
+   * Client resolves every linked row of one page in a single batched call to
+   * its operational-reference projection, which owns union, reversal and the
+   * Company `client.read` condition behind a current dossier. A row without
+   * one stays listed unchanged.
+   */
+  private async currentClientDossierIds(
+    actor: ActorContext,
+    clientIds: ReadonlyArray<string | null>,
+  ): Promise<ReadonlyMap<string, string>> {
+    const dossierIds = new Map<string, string>();
+    const linkedClientIds = clientIds.filter((clientId) => clientId !== null);
+    if (linkedClientIds.length === 0 || !canReadClients(actor))
+      return dossierIds;
+    const references = await this.clients.readProjectReferences(
+      actor,
+      linkedClientIds,
+    );
+    for (const [clientId, reference] of references)
+      if (reference.clientDossierId)
+        dossierIds.set(clientId, reference.clientDossierId);
+    return dossierIds;
   }
 
   private async loadDetail(
@@ -414,10 +448,7 @@ export class CommercialIntakeService {
         ...(client ? { client } : {}),
       });
     if (!row.request.clientAccountId) return view();
-    const canReadClient =
-      actor.workspacePermissions.includes('client.manage') ||
-      actor.activeCompany?.clientPermissions.includes('client.read') === true;
-    if (!canReadClient) {
+    if (!canReadClients(actor)) {
       if (requireClientVisibility) throw clientUnavailable();
       return view();
     }
@@ -709,6 +740,15 @@ function clientReferenceView(
       : {}),
     displayName: reference.displayName,
   };
+}
+
+// The Client owner's operational-reference read condition. It only decides
+// whether that owner is asked; the owner decides what a reader may see.
+function canReadClients(actor: ActorContext): boolean {
+  return (
+    actor.workspacePermissions.includes('client.manage') ||
+    actor.activeCompany?.clientPermissions.includes('client.read') === true
+  );
 }
 
 function clientUnavailable(): NotFoundException {

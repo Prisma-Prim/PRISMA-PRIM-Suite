@@ -1,4 +1,11 @@
-import { expect, test, type Page, type Response } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Page,
+  type Request,
+  type Response,
+  type TestInfo,
+} from '@playwright/test';
 
 test('captures and reopens manual Client Requests through the real API and PostgreSQL', async ({
   page,
@@ -377,12 +384,195 @@ test('captures and reopens manual Client Requests through the real API and Postg
   }
 });
 
+test('navigates between same-named Client dossiers and their loaded Requests through the real API and PostgreSQL', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const clientName = `Shared display name ${suffix}`;
+  const firstSubject = `First dossier Request ${suffix}`;
+  const secondSubject = `Second dossier Request ${suffix}`;
+  const unlinkedSubject = `Request without Client ${suffix}`;
+
+  // Registered through the same real API and PostgreSQL the browser reads,
+  // newest last so the unlinked Request leads the server order.
+  const firstClientId = await seed(page, '/api/clients', {
+    displayName: clientName,
+  });
+  const secondClientId = await seed(page, '/api/clients', {
+    displayName: clientName,
+  });
+  for (const [subject, clientAccountId] of [
+    [firstSubject, firstClientId],
+    [secondSubject, secondClientId],
+    [unlinkedSubject, undefined],
+  ] as const)
+    await seed(page, '/api/commercial-intake/requests', {
+      originalText: `Exact source of ${subject}`,
+      subject,
+      ...(clientAccountId ? { clientAccountId } : {}),
+      opportunity: {
+        title: `Qualify ${subject}`,
+        nextAction: 'Confirm the dossier navigation',
+      },
+    });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const company = page.getByLabel('Active Company', { exact: true });
+  const navigation = page.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  const clients = page.locator('.client-workspace');
+  const dossier = page.locator('.client-dossier-detail');
+  const intake = page.locator('.commercial-intake-workspace');
+  const listItems = intake.locator('.commercial-intake-list > li');
+  const rowFor = (subject: string) =>
+    listItems.filter({ has: page.getByText(subject, { exact: true }) });
+  const filter = intake.getByLabel('Filter loaded Client Requests', {
+    exact: true,
+  });
+  const scope = intake.getByRole('group', {
+    name: `Loaded Client Requests for ${clientName}`,
+  });
+  const clearScope = scope.getByRole('button', {
+    name: 'Show loaded Requests for every Client',
+  });
+  const openDossier = async (clientId: string) => {
+    await navigate(page, navigation, 'Clients', narrow);
+    await clients
+      .getByRole('listitem')
+      .filter({ hasText: `Client ID: ${clientId}` })
+      .getByRole('button', { name: 'Open dossier' })
+      .click();
+    await expect(
+      dossier.getByRole('heading', { name: clientName, exact: true }),
+    ).toBeVisible();
+  };
+  await selectCompany(page, company, narrow);
+  await navigate(page, navigation, 'Client Requests', narrow);
+  await expect(rowFor(unlinkedSubject)).toHaveCount(1);
+
+  const mutations: string[] = [];
+  const recordMutation = (request: Request) => {
+    const { pathname } = new URL(request.url());
+    if (pathname.startsWith('/api/') && request.method() !== 'GET')
+      mutations.push(`${request.method()} ${pathname}`);
+  };
+  page.on('request', recordMutation);
+
+  await openDossier(firstClientId);
+  await dossier.getByRole('button', { name: 'Open Client Requests' }).click();
+  await expect(page.locator('#requests')).toBeFocused();
+  await expect(scope).toBeVisible();
+  await expect(listItems).toHaveCount(1);
+  await expect(rowFor(firstSubject)).toHaveCount(1);
+  await capture(
+    page,
+    testInfo,
+    `client-requests-${suffix.toLowerCase()}-prisme.png`,
+  );
+
+  // The #303 text filter composes with the identity restriction.
+  await filter.fill(secondSubject);
+  await expect(listItems).toHaveCount(0);
+  await expect(
+    intake.getByText('No loaded Client Requests match this filter.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await filter.fill('');
+  await expect(listItems).toHaveCount(1);
+  await clearScope.focus();
+  await page.keyboard.press('Enter');
+  await expect(filter).toBeFocused();
+  await expect(scope).toHaveCount(0);
+  expect(
+    (await listItems.locator('strong').allTextContents()).slice(0, 3),
+  ).toEqual([unlinkedSubject, secondSubject, firstSubject]);
+
+  // With the same-named other dossier open, returning must switch dossiers.
+  await openDossier(secondClientId);
+  await navigate(page, navigation, 'Client Requests', narrow);
+  await rowFor(firstSubject).getByRole('button').click();
+  await expect(
+    intake.getByText(`Exact source of ${firstSubject}`, { exact: true }),
+  ).toBeVisible();
+  await capture(
+    page,
+    testInfo,
+    `client-request-detail-${suffix.toLowerCase()}-prisme.png`,
+  );
+  const returnRead = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === `/api/clients/${firstClientId}`,
+  );
+  await intake.getByRole('button', { name: 'Open Client dossier' }).click();
+  await returnRead;
+  await expect(page.locator('#clients')).toBeFocused();
+  await expect(
+    dossier.getByRole('heading', { name: clientName, exact: true }),
+  ).toBeVisible();
+  page.off('request', recordMutation);
+  expect(mutations).toEqual([]);
+
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await dossier.getByRole('button', { name: 'Open Client Requests' }).click();
+  await expect(page.locator('#requests')).toBeFocused();
+  await expect(scope).toBeVisible();
+  await expect(listItems).toHaveCount(1);
+  await expect(rowFor(firstSubject)).toHaveCount(1);
+  await capture(
+    page,
+    testInfo,
+    `client-requests-${suffix.toLowerCase()}-classic.png`,
+  );
+});
+
 const apiIdentityHeaders = {
   'x-test-external-provider': 'local-demo',
   'x-test-external-subject': 'local-demonstration-user',
   'x-test-display-name': 'Ada Ionescu',
   'x-test-email': 'ada@example.test',
 };
+
+async function seed(
+  page: Page,
+  path: string,
+  data: Record<string, unknown>,
+): Promise<string> {
+  const response = await page.request.post(`http://127.0.0.1:4174${path}`, {
+    headers: {
+      ...apiIdentityHeaders,
+      'x-company-context-id': requiredEnvironment(
+        'ACCEPTANCE_PRIMARY_COMPANY_ID',
+      ),
+      'content-type': 'application/json',
+      'idempotency-key': `acceptance-client-requests-${crypto.randomUUID()}`,
+    },
+    data,
+  });
+  expect(response.status()).toBe(201);
+  const value: unknown = await response.json();
+  if (!isRecord(value) || typeof value.id !== 'string')
+    throw new Error(`Expected an identified record from ${path}.`);
+  return value.id;
+}
+
+async function capture(
+  page: Page,
+  testInfo: TestInfo,
+  filename: string,
+): Promise<void> {
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(filename),
+    fullPage: true,
+  });
+}
 const apiAdministratorHeaders = {
   'x-test-external-provider': 'local-demo',
   'x-test-external-subject': 'workspace-owner',

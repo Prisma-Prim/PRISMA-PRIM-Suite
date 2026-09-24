@@ -12,6 +12,7 @@ import { DocumentWorkspace } from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
+import type { ActorContext } from './access-types';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { WorkspaceInvitations } from './access/WorkspaceInvitations';
 import { workspaceInvitationsCopy } from './access/workspace-invitations.copy';
@@ -44,13 +45,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     displayName: string;
   }>();
+  const [requestClientFilter, setRequestClientFilter] = useState<{
+    navigationContext: string;
+    clientDossierId: string;
+    displayName: string;
+  }>();
   const [requestedClientDossier, setRequestedClientDossier] = useState<{
     companyId: string;
     clientDossierId: string;
     requestId: number;
   }>();
   const navigateToSection = useCallback(
-    (section: 'clients' | 'projects' | 'documents') => {
+    (section: 'clients' | 'projects' | 'documents' | 'requests') => {
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
       window.history.pushState(window.history.state, '', nextUrl);
@@ -85,6 +91,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   useEffect(() => {
     setDocumentClientFilter(undefined);
   }, [navigationContext]);
+  // A Requests restriction also belongs to the Commercial Intake assignment
+  // and the Company Client read it was requested under.
+  const requestNavigationContext =
+    access.status === 'active'
+      ? `${navigationContext}:${requestNavigationAuthority(access.actor)}`
+      : 'inactive';
+  useEffect(() => {
+    setRequestClientFilter(undefined);
+  }, [requestNavigationContext]);
 
   if (!identity.loaded)
     return (
@@ -110,10 +125,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     );
   }
 
+  const canReadCompanyClients =
+    access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
+    true;
   const canAccessClients =
     access.actor.workspacePermissions.includes('client.manage') ||
-    access.actor.activeCompany?.clientPermissions?.includes('client.read') ===
-      true;
+    canReadCompanyClients;
   const activeCompanyId = access.actor.activeCompany?.id;
   const canAccessProjects =
     activeCompanyId !== undefined &&
@@ -165,6 +182,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
+          clientRestriction={
+            requestClientFilter?.navigationContext === requestNavigationContext
+              ? requestClientFilter
+              : undefined
+          }
+          clientIdentityRevision={clientIdentityGeneration}
+          onOpenClientDossier={
+            canReadCompanyClients ? openClientDossier : undefined
+          }
         />
       ),
     });
@@ -224,6 +250,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                     displayName: client.displayName,
                   });
                   navigateToSection('documents');
+                }
+              : undefined
+          }
+          onOpenRequests={
+            canAccessCommercial && canReadCompanyClients
+              ? (client) => {
+                  setRequestClientFilter({
+                    navigationContext: requestNavigationContext,
+                    clientDossierId: client.id,
+                    displayName: client.displayName,
+                  });
+                  navigateToSection('requests');
                 }
               : undefined
           }
@@ -343,6 +381,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     </ApplicationShell>
   );
 }
+/**
+ * The Requests authority a dossier restriction was requested under: the
+ * Commercial Intake assignment the workspace is mounted for and Company Client
+ * read, without which rows carry no dossier identity to compare.
+ */
+function requestNavigationAuthority(actor: ActorContext): string {
+  const company = actor.activeCompany;
+  return [
+    company?.commercialIntakePermissionAssignmentId ?? 'no-assignment',
+    company?.commercialIntakePermissionSetVersion ?? 'no-version',
+    company?.clientPermissions?.includes('client.read') === true
+      ? 'client-read'
+      : 'no-client-read',
+  ].join(':');
+}
+
 function ActivityLog({ state }: { state: ActivityLogState }) {
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">

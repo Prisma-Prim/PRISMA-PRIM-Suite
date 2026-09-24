@@ -19,6 +19,8 @@ type RequestListItem = {
   id: string;
   subject: string | null;
   capturedAt: string;
+  /** Derived current dossier; a row without one never matches a restriction. */
+  clientDossierId?: string;
   initialOpportunity: {
     title: string;
     nextAction: string;
@@ -54,6 +56,16 @@ type ClientRequest = {
     version: number;
   };
 };
+
+/**
+ * The opened Request and the Client identity revision its derived Client
+ * reference was read under. Only a reference read under the current revision
+ * offers dossier navigation.
+ */
+type SelectedRequest = { request: ClientRequest; identityRevision: number };
+
+/** One dossier identity restricting the loaded rows, as the shell requested. */
+type ClientRestriction = { clientDossierId: string; displayName: string };
 
 type NextActionUpdateResult = {
   receipt: {
@@ -137,6 +149,9 @@ export function CommercialIntakeWorkspace({
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
   onActivityRecorded = () => undefined,
+  clientRestriction,
+  clientIdentityRevision = 0,
+  onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -144,9 +159,17 @@ export function CommercialIntakeWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActivityRecorded?: () => Promise<void> | void;
+  /** A new object establishes or replaces the restriction; none clears it. */
+  clientRestriction?: ClientRestriction;
+  /** Increases when a Client union or reversal changes current identities. */
+  clientIdentityRevision?: number;
+  onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
-  const [selected, setSelected] = useState<ClientRequest>();
+  const [selected, setSelected] = useState<SelectedRequest>();
+  // Local view state over the already loaded rows, beside the text filter; it
+  // never reaches the API.
+  const [restriction, setRestriction] = useState<ClientRestriction>();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [clientQuery, setClientQuery] = useState('');
   const [clientSearch, setClientSearch] = useState<ClientSearchState>({
@@ -167,6 +190,17 @@ export function CommercialIntakeWorkspace({
   // The next-action save whose response has not arrived yet; commandRequest
   // is shared with capture and detail reads.
   const nextActionCommand = useRef<AbortController | undefined>(undefined);
+  // The ordinary detail read in flight, if any; never a command.
+  const detailRead = useRef<AbortController | undefined>(undefined);
+  const identityRevision = useRef(clientIdentityRevision);
+  identityRevision.current = clientIdentityRevision;
+  const nextActionInProgress = useRef(false);
+  nextActionInProgress.current =
+    nextActionEdit.kind === 'editing' ||
+    nextActionEdit.kind === 'saving' ||
+    nextActionEdit.kind === 'uncertain';
+  const listDenied = useRef(false);
+  listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
@@ -284,6 +318,7 @@ export function CommercialIntakeWorkspace({
           setForm(emptyForm);
           setFeedback('');
           setFilter('');
+          setRestriction(undefined);
           setNextActionEdit({ kind: 'idle' });
           retry.current = undefined;
           nextActionRetry.current = undefined;
@@ -303,6 +338,13 @@ export function CommercialIntakeWorkspace({
       listRequest.current?.abort();
       const controller = new AbortController();
       listRequest.current = controller;
+      // Rows carry derived dossier identities, so a read that a newer Client
+      // identity revision overtook never publishes; that revision's own read
+      // replaces the loaded rows.
+      const startedUnderRevision = identityRevision.current;
+      const superseded = () =>
+        controller.signal.aborted ||
+        identityRevision.current !== startedUnderRevision;
       setLoad((current) => startedPage({ current, companyContextId, cursor }));
       try {
         const result = await request({
@@ -312,13 +354,13 @@ export function CommercialIntakeWorkspace({
           companyContextId,
           signal: controller.signal,
         });
-        if (controller.signal.aborted) return;
+        if (superseded()) return;
         if (
           (await handleAccess(result, companyContextId, controller.signal)) !==
           'ok'
         )
           return;
-        if (controller.signal.aborted) return;
+        if (superseded()) return;
         const page =
           result.status === 200 && isRequestList(result.body)
             ? result.body
@@ -327,7 +369,7 @@ export function CommercialIntakeWorkspace({
           appliedPage({ current, companyContextId, cursor, page }),
         );
       } catch {
-        if (!controller.signal.aborted)
+        if (!superseded())
           setLoad((current) =>
             appliedPage({
               current,
@@ -353,6 +395,7 @@ export function CommercialIntakeWorkspace({
     setClientSearch({ kind: 'idle' });
     setPending(false);
     setFilter('');
+    setRestriction(undefined);
     if (!companyId) {
       setLoad({ kind: 'denied' });
       return;
@@ -360,9 +403,89 @@ export function CommercialIntakeWorkspace({
     void loadRequests(companyId);
     return () => {
       listRequest.current?.abort();
+      commandRequest.current?.abort();
       clientSearchRequest.current?.abort();
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
+
+  // The shell owns the navigation intent. A newly requested restriction shows
+  // its loaded rows instead of a plain detail; a retired one only clears it.
+  useEffect(() => {
+    setRestriction(clientRestriction);
+    if (!clientRestriction || nextActionInProgress.current) return;
+    // A next-action draft, save or uncertain retry stays open until Back.
+    const read = detailRead.current;
+    if (read && !read.signal.aborted) {
+      read.abort();
+      setPending(false);
+    }
+    setSelected(undefined);
+    setNextActionEdit({ kind: 'idle' });
+    nextActionRetry.current = undefined;
+  }, [clientRestriction]);
+
+  // A Client union or reversal moves the derived dossier of loaded rows, which
+  // are therefore read again from the first page.
+  const readIdentityRevision = useRef(clientIdentityRevision);
+  useEffect(() => {
+    if (readIdentityRevision.current === clientIdentityRevision) return;
+    readIdentityRevision.current = clientIdentityRevision;
+    if (companyId && !listDenied.current) void loadRequests(companyId);
+  }, [clientIdentityRevision, companyId, loadRequests]);
+
+  // An opened Request whose Client reference predates the current identity
+  // revision has its reference read again. Only that derived reference is
+  // replaced: the shown Opportunity, its observed version, a draft and a
+  // retryable command stay exactly as they are.
+  const selectedRequestId = selected?.request.id;
+  const selectedIdentityRevision = selected?.identityRevision;
+  useEffect(() => {
+    if (
+      !companyId ||
+      selectedRequestId === undefined ||
+      selectedIdentityRevision === clientIdentityRevision
+    )
+      return;
+    const controller = new AbortController();
+    const startedUnderRevision = clientIdentityRevision;
+    void (async () => {
+      try {
+        const result = await request({
+          path: `/commercial-intake/requests/${encodeURIComponent(selectedRequestId)}`,
+          companyContextId: companyId,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+          return;
+        if (
+          controller.signal.aborted ||
+          result.status !== 200 ||
+          !isClientRequest(result.body)
+        )
+          return;
+        const { clientReference } = result.body;
+        setSelected((current) =>
+          current?.request.id === selectedRequestId
+            ? {
+                request: { ...current.request, clientReference },
+                identityRevision: startedUnderRevision,
+              }
+            : current,
+        );
+      } catch {
+        // The dossier target stays withheld; reopening reads it again.
+      }
+    })();
+    return () => controller.abort();
+  }, [
+    companyId,
+    selectedRequestId,
+    selectedIdentityRevision,
+    clientIdentityRevision,
+    handleAccess,
+    request,
+  ]);
 
   // Losing only update authority keeps the read-only detail and any pending
   // conflict reload, but retires the draft, the pending command and any
@@ -443,6 +566,8 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
+    detailRead.current = controller;
+    const startedUnderRevision = identityRevision.current;
     setPending(true);
     setFeedback('');
     if (!preserveConflict) {
@@ -459,7 +584,10 @@ export function CommercialIntakeWorkspace({
       if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
         return;
       if (result.status === 200 && isClientRequest(result.body)) {
-        setSelected(result.body);
+        setSelected({
+          request: result.body,
+          identityRevision: startedUnderRevision,
+        });
         setNextActionEdit({ kind: 'idle' });
         nextActionRetry.current = undefined;
       } else setFeedback(copy.error);
@@ -467,6 +595,7 @@ export function CommercialIntakeWorkspace({
       if (!controller.signal.aborted) setFeedback(copy.error);
     } finally {
       if (!controller.signal.aborted) setPending(false);
+      if (detailRead.current === controller) detailRead.current = undefined;
     }
   }
 
@@ -493,9 +622,10 @@ export function CommercialIntakeWorkspace({
       return;
     }
     const opportunityId =
-      preservedRetry?.opportunityId ?? selected.initialOpportunity.id;
+      preservedRetry?.opportunityId ?? selected.request.initialOpportunity.id;
     const expectedVersion =
-      preservedRetry?.expectedVersion ?? selected.initialOpportunity.version;
+      preservedRetry?.expectedVersion ??
+      selected.request.initialOpportunity.version;
     const previous = nextActionRetry.current;
     // An explicit retry reuses the key only for the exact same payload and
     // observed version, so the server can replay the original receipt.
@@ -516,6 +646,7 @@ export function CommercialIntakeWorkspace({
     const controller = new AbortController();
     commandRequest.current = controller;
     nextActionCommand.current = controller;
+    const startedUnderRevision = identityRevision.current;
     setNextActionEdit({ kind: 'saving', draft });
     setPending(true);
     setFeedback('');
@@ -568,7 +699,10 @@ export function CommercialIntakeWorkspace({
       }
       if (result.status === 200 && isNextActionUpdateResult(result.body)) {
         const { receipt, request: updated } = result.body;
-        setSelected(updated);
+        setSelected({
+          request: updated,
+          identityRevision: startedUnderRevision,
+        });
         setNextActionEdit({ kind: 'idle' });
         nextActionRetry.current = undefined;
         setFeedback(
@@ -633,6 +767,7 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
+    const startedUnderRevision = identityRevision.current;
     setPending(true);
     setFeedback('');
     try {
@@ -655,7 +790,10 @@ export function CommercialIntakeWorkspace({
         (result.status === 200 || result.status === 201) &&
         isClientRequest(result.body)
       ) {
-        setSelected(result.body);
+        setSelected({
+          request: result.body,
+          identityRevision: startedUnderRevision,
+        });
         setForm(emptyForm);
         retry.current = undefined;
         await onActivityRecorded();
@@ -670,16 +808,28 @@ export function CommercialIntakeWorkspace({
     }
   }
 
+  // The section is its own navigation destination in both frames, because the
+  // shell's layout wrapper generates no box that could receive focus.
   if (load.kind === 'denied') {
     return (
-      <section className="commercial-intake-workspace">
+      <section
+        id="requests"
+        tabIndex={-1}
+        className="commercial-intake-workspace"
+      >
         <p role="alert">{copy.denied}</p>
       </section>
     );
   }
   const companyName = actor.activeCompany?.displayName ?? actor.workspaceName;
+  const dossierTarget =
+    selected?.identityRevision === clientIdentityRevision
+      ? selected.request.clientReference?.currentClientId
+      : undefined;
   return (
     <section
+      id="requests"
+      tabIndex={-1}
       className="commercial-intake-workspace"
       aria-labelledby="commercial-intake-title"
     >
@@ -700,9 +850,14 @@ export function CommercialIntakeWorkspace({
       {feedback ? <p role="alert">{feedback}</p> : null}
       {selected ? (
         <RequestDetail
-          request={selected}
+          request={selected.request}
           onBack={closeDetail}
           pending={pending}
+          onOpenClientDossier={
+            dossierTarget && onOpenClientDossier
+              ? () => onOpenClientDossier(dossierTarget)
+              : undefined
+          }
           nextAction={
             canEditNextAction
               ? {
@@ -711,7 +866,7 @@ export function CommercialIntakeWorkspace({
                     setFeedback('');
                     setNextActionEdit({
                       kind: 'editing',
-                      draft: selected.initialOpportunity.nextAction,
+                      draft: selected.request.initialOpportunity.nextAction,
                     });
                   },
                   onDraftChange: (draft) =>
@@ -726,7 +881,7 @@ export function CommercialIntakeWorkspace({
                     nextActionRetry.current = undefined;
                     setFeedback('');
                   },
-                  onReload: () => void selectRequest(selected.id, true),
+                  onReload: () => void selectRequest(selected.request.id, true),
                 }
               : undefined
           }
@@ -876,6 +1031,8 @@ export function CommercialIntakeWorkspace({
             pending={pending}
             filter={filter}
             onFilter={setFilter}
+            restriction={restriction}
+            onClearRestriction={() => setRestriction(undefined)}
             onSelect={(id) => void selectRequest(id)}
             onReload={() => companyId && void loadRequests(companyId)}
             onLoadOlder={(cursor) =>
@@ -963,6 +1120,8 @@ function RequestList({
   pending,
   filter,
   onFilter,
+  restriction,
+  onClearRestriction,
   onSelect,
   onReload,
   onLoadOlder,
@@ -972,6 +1131,8 @@ function RequestList({
   pending: boolean;
   filter: string;
   onFilter: (filter: string) => void;
+  restriction: ClientRestriction | undefined;
+  onClearRestriction: () => void;
   onSelect: (id: string) => void;
   onReload: () => void;
   onLoadOlder: (cursor: string) => void;
@@ -991,11 +1152,40 @@ function RequestList({
     );
   if (load.items.length === 0) return <p>{copy.empty(companyName)}</p>;
   const nextCursor = load.nextCursor;
-  const matching = load.items.filter((item) =>
+  // Identity equality only: a row without a derived dossier never matches,
+  // and a same-named Client is a different dossier.
+  const restricted = restriction
+    ? load.items.filter(
+        (item) => item.clientDossierId === restriction.clientDossierId,
+      )
+    : load.items;
+  const matching = restricted.filter((item) =>
     matchesFilter(item, filter.trim().toLowerCase()),
   );
   return (
     <>
+      {restriction ? (
+        <div
+          className="commercial-intake-restriction"
+          role="group"
+          aria-labelledby="commercial-intake-restriction-label"
+        >
+          <p id="commercial-intake-restriction-label">
+            <strong>{copy.restrictionLabel(restriction.displayName)}</strong>
+          </p>
+          <small>{copy.restrictionHelp}</small>
+          {/* Clearing removes this button, so keyboard focus moves to the filter. */}
+          <button
+            type="button"
+            onClick={() => {
+              onClearRestriction();
+              filterField.current?.focus();
+            }}
+          >
+            {copy.restrictionClear}
+          </button>
+        </div>
+      ) : null}
       <div className="commercial-intake-filter">
         <label htmlFor="commercial-intake-filter">{copy.filterLabel}</label>
         <input
@@ -1021,7 +1211,11 @@ function RequestList({
         ) : null}
         <small id="commercial-intake-filter-help">{copy.filterHelp}</small>
       </div>
-      {matching.length === 0 ? <p>{copy.filterNoMatch}</p> : null}
+      {restriction && restricted.length === 0 ? (
+        <p>{copy.restrictionNoMatch(restriction.displayName)}</p>
+      ) : matching.length === 0 ? (
+        <p>{copy.filterNoMatch}</p>
+      ) : null}
       <ul className="commercial-intake-list" aria-label={copy.list}>
         {matching.map((item) => (
           <li key={item.id}>
@@ -1096,11 +1290,14 @@ function RequestDetail({
   request,
   onBack,
   pending,
+  onOpenClientDossier,
   nextAction,
 }: {
   request: ClientRequest;
   onBack: () => void;
   pending: boolean;
+  /** Offered only for a current dossier identity, never a name or original id. */
+  onOpenClientDossier: (() => void) | undefined;
   nextAction: NextActionEditor | undefined;
 }) {
   return (
@@ -1152,7 +1349,14 @@ function RequestDetail({
         {request.clientReference ? (
           <div>
             <dt>{copy.client}</dt>
-            <dd>{request.clientReference.displayName}</dd>
+            <dd>
+              {request.clientReference.displayName}
+              {onOpenClientDossier ? (
+                <button type="button" onClick={onOpenClientDossier}>
+                  {copy.openClientDossier}
+                </button>
+              ) : null}
+            </dd>
           </div>
         ) : null}
       </dl>
@@ -1274,6 +1478,8 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     typeof value.id === 'string' &&
     isNullableString(value.subject) &&
     isDisplayableTimestamp(value.capturedAt) &&
+    (value.clientDossierId === undefined ||
+      typeof value.clientDossierId === 'string') &&
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&

@@ -401,6 +401,77 @@ describe('ClientWorkspace', () => {
     });
   });
 
+  it('offers Client Request navigation from the dossier only when the shell grants it', async () => {
+    const dossier = {
+      id: 'client-1',
+      displayName: 'Exemplu Client SRL',
+      relatedToActiveCompany: true,
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      contacts: [],
+      businessActivity: null,
+      version: 1,
+      involvedCompanyDisplayNames: ['PRISMA-PRIM'],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (url: string) =>
+          new Response(
+            JSON.stringify(
+              url === '/api/clients'
+                ? [
+                    {
+                      id: dossier.id,
+                      displayName: dossier.displayName,
+                      relatedToActiveCompany: true,
+                    },
+                  ]
+                : dossier,
+            ),
+            { status: 200 },
+          ),
+      ),
+    );
+    const openRequests = vi.fn();
+    const withoutAction = render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByRole('heading', { name: dossier.displayName });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    expect(await screen.findByText('Version 1')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Open Client Requests' }),
+    ).not.toBeInTheDocument();
+    withoutAction.unmount();
+
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+        onOpenRequests={openRequests}
+      />,
+    );
+    await screen.findByRole('heading', { name: dossier.displayName });
+    fireEvent.click(screen.getByRole('button', { name: 'Open dossier' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open Client Requests' }),
+    );
+    expect(openRequests).toHaveBeenCalledWith({
+      id: dossier.id,
+      displayName: dossier.displayName,
+    });
+  });
+
   it('keeps legacy client.manage on the minimal Client interface', async () => {
     const client = {
       id: 'legacy-client',

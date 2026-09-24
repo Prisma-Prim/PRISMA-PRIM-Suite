@@ -61,6 +61,7 @@ export function ClientWorkspace({
   onActivityRecorded,
   onOpenProjects,
   onOpenDocuments,
+  onOpenRequests,
   onClientIdentityChanged,
   requestedClientDossierRequest,
 }: {
@@ -72,6 +73,7 @@ export function ClientWorkspace({
   onActivityRecorded: () => Promise<void>;
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
+  onOpenRequests?: (client: { id: string; displayName: string }) => void;
   /** Reported when a union or reversal changes the current Client identities. */
   onClientIdentityChanged?: () => void;
   requestedClientDossierRequest?: {
@@ -838,6 +840,7 @@ export function ClientWorkspace({
           onHeadingReady={receiveDossierHeading}
           onOpenProjects={onOpenProjects}
           onOpenDocuments={onOpenDocuments}
+          onOpenRequests={onOpenRequests}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}

@@ -36,6 +36,15 @@ export const commercialIntakeCopy = {
     'Filters only the Client Requests already loaded below, by subject, initial Opportunity title, or responsible actor. It does not search other Requests in this Company or the original request text.',
   filterNoMatch: 'No loaded Client Requests match this filter.',
   filterClear: 'Show all loaded Requests',
+  // The dossier restriction compares only the rows already loaded below.
+  restrictionLabel: (displayName: string) =>
+    `Loaded Client Requests for ${displayName}`,
+  restrictionHelp:
+    'Only the Client Requests already loaded below that belong to this Client dossier are shown. Show older Requests to check more.',
+  restrictionClear: 'Show loaded Requests for every Client',
+  restrictionNoMatch: (displayName: string) =>
+    `No loaded Client Request for ${displayName}.`,
+  openClientDossier: 'Open Client dossier',
   showOlder: 'Show older Requests',
   olderLoading: 'Loading older Client Requests…',
   olderError: 'Older Client Requests could not be loaded. Please try again.',
