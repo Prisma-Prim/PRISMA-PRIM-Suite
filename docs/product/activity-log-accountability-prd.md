@@ -96,7 +96,7 @@ For [manual preparation Tasks](release-1-project-task-prd.md#18-approved-manual-
 Accountability records `task.created`, `task.updated`, `task.completed` and
 `task.reopened` through its public recording boundary. Each material action has
 one event targeting the original Company-owned Task, with server actor membership,
-time and resulting Task version. Typed facts retain the initial title/assignee/date,
+time and resulting Task version. Typed facts retain the initial title/assignee/date/priority,
 the prior and new values of corrected fields, and completion/reopening transitions.
 Task state/version, command outcome, required history and original Client fence
 commit together. Rejected commands, normalized no-op edits and exact committed

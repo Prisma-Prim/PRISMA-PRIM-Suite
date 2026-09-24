@@ -4,10 +4,18 @@ export type TaskActor = {
   displayName: string;
 };
 export type Assignee = { workspaceMembershipId: string; displayLabel: string };
+/** Manual Task priority codes (#375), in their presentation order. */
+export const taskPriorities = ['normal', 'important', 'critical'] as const;
+export type TaskPriority = (typeof taskPriorities)[number];
 export type TaskFields = {
   title: string;
   assignee: Assignee | null;
   dueDate: string | null;
+  priority: TaskPriority;
+};
+/** A creation recorded before priority existed has none; it is never shown as Normal. */
+export type TaskInitialFields = Omit<TaskFields, 'priority'> & {
+  priority?: TaskPriority;
 };
 export type TaskView = TaskFields & {
   id: string;
@@ -36,7 +44,7 @@ export type TaskEvent = {
 } & (
   | {
       action: 'task.created';
-      metadata: { version: number; initial: TaskFields };
+      metadata: { version: number; initial: TaskInitialFields };
     }
   | {
       action: 'task.updated';
@@ -46,6 +54,7 @@ export type TaskEvent = {
           title?: Change<string>;
           assignee?: Change<Assignee | null>;
           dueDate?: Change<string | null>;
+          priority?: Change<TaskPriority>;
         };
       };
     }
@@ -119,12 +128,28 @@ function title(value: unknown): string {
     throw new Error('Invalid Task title');
   return result;
 }
+/** Rejects an unknown or missing priority instead of defaulting it. */
+export function readTaskPriority(value: unknown): TaskPriority {
+  const priority = taskPriorities.find((candidate) => candidate === value);
+  if (!priority) throw new Error('Invalid Task priority');
+  return priority;
+}
 function fields(value: unknown): TaskFields {
   const row = record(value);
   return {
     title: title(row.title),
     assignee: assignee(row.assignee),
     dueDate: date(row.dueDate),
+    priority: readTaskPriority(row.priority),
+  };
+}
+function initialFields(value: unknown): TaskInitialFields {
+  const row = record(value);
+  return {
+    title: title(row.title),
+    assignee: assignee(row.assignee),
+    dueDate: date(row.dueDate),
+    ...('priority' in row ? { priority: readTaskPriority(row.priority) } : {}),
   };
 }
 export function readTask(value: unknown, scope: TaskScope): TaskView {
@@ -260,7 +285,7 @@ export function readTaskHistory(
         action: event.action,
         metadata: {
           version: currentVersion,
-          initial: fields(metadata.initial),
+          initial: initialFields(metadata.initial),
         },
       };
     if (event.action === 'task.updated') {
@@ -268,7 +293,7 @@ export function readTaskHistory(
       if (
         !Object.keys(changes).length ||
         Object.keys(changes).some(
-          (key) => !['title', 'assignee', 'dueDate'].includes(key),
+          (key) => !['title', 'assignee', 'dueDate', 'priority'].includes(key),
         )
       )
         throw new Error('Invalid Task changes');
@@ -287,6 +312,9 @@ export function readTaskHistory(
             ...(changes.dueDate === undefined
               ? {}
               : { dueDate: change(changes.dueDate, date) }),
+            ...(changes.priority === undefined
+              ? {}
+              : { priority: change(changes.priority, readTaskPriority) }),
           },
         },
       };

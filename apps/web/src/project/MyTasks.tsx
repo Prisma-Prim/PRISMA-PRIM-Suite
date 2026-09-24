@@ -148,6 +148,10 @@ function AssignedTasks({ actor, identity }: Props) {
                     )}
                   </dd>
                 </div>
+                <div>
+                  <dt>{taskCopy.priority}</dt>
+                  <dd>{taskCopy.priorities[task.priority]}</dd>
+                </div>
               </dl>
             </li>
           ))}

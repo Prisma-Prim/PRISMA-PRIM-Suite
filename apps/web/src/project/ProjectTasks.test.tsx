@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -48,6 +54,7 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
     title: 'Collect preparation notes',
     assignee: null,
     dueDate: null,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,
@@ -231,6 +238,7 @@ const savedTask = {
   title: 'Collect preparation notes',
   assignee: null,
   dueDate: null,
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,
@@ -1127,7 +1135,11 @@ it('keeps the selected detail, draft and exact retry command when filters hide i
 });
 
 it('refreshes filtered navigation after complete and reopen while keeping the open detail readable', async () => {
-  let currentTask: TaskView = { ...savedTask, status: 'todo' };
+  let currentTask: TaskView = {
+    ...savedTask,
+    status: 'todo',
+    priority: 'normal',
+  };
   fixture({
     read: (url) => {
       if (url === '/api/projects/project/tasks')
@@ -1583,4 +1595,448 @@ it('fails closed for malformed Task history', async () => {
   expect(
     within(tasks).queryByRole('region', { name: 'Task history' }),
   ).not.toBeInTheDocument();
+});
+
+const priorityTask: TaskView = {
+  id: 'task',
+  companyId: 'company',
+  projectId: 'project',
+  clientAccountId: 'client',
+  title: 'Prepare questionnaire',
+  assignee: null,
+  dueDate: null,
+  priority: 'critical',
+  status: 'todo',
+  completion: null,
+  version: 1,
+  createdAt: '2026-09-19T00:00:00.000Z',
+  updatedAt: '2026-09-19T00:00:00.000Z',
+  createdBy: attribution,
+};
+function taskEvent(id: string, meaning: Record<string, unknown>) {
+  return {
+    id,
+    occurredAt: priorityTask.createdAt,
+    actor: attribution,
+    target: {
+      type: 'task',
+      taskId: priorityTask.id,
+      taskTitle: priorityTask.title,
+      companyId: 'company',
+    },
+    ...meaning,
+  };
+}
+function sentCommand(request: RequestInit) {
+  return {
+    key: new Headers(request.headers).get('idempotency-key'),
+    body: JSON.parse(typeof request.body === 'string' ? request.body : '{}'),
+  };
+}
+async function openProjectTasks() {
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  return screen.findByRole('region', { name: 'Tasks' });
+}
+async function openPriorityTask() {
+  const tasks = await openProjectTasks();
+  fireEvent.click(
+    await within(tasks).findByRole('button', { name: priorityTask.title }),
+  );
+  await within(tasks).findByRole('heading', { name: priorityTask.title });
+  return tasks;
+}
+function listRow(tasks: HTMLElement, title: string) {
+  const row = within(within(tasks).getByRole('navigation', { name: 'Tasks' }))
+    .getAllByRole('listitem')
+    .find((item) => within(item).queryByRole('button', { name: title }));
+  if (!row) throw new Error(`Missing Task row ${title}`);
+  return row;
+}
+function historyEntries(tasks: HTMLElement) {
+  return within(
+    within(tasks).getByRole('region', { name: 'Task history' }),
+  ).getAllByRole('listitem');
+}
+
+it('creates a Critical Task, shows its priority label in the list, detail and history and changes it to Important', async () => {
+  const commands: { key: string | null; body: unknown }[] = [];
+  let task: TaskView | null = null;
+  const events: unknown[] = [];
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: task ? [task] : [] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task });
+      if (url.endsWith('/history')) return Response.json({ events });
+      return undefined;
+    },
+    mutate: (_url, request) => {
+      commands.push(sentCommand(request));
+      if (!task) {
+        task = priorityTask;
+        events.push(
+          taskEvent('created', {
+            action: 'task.created',
+            metadata: {
+              version: 1,
+              initial: {
+                title: task.title,
+                assignee: null,
+                dueDate: null,
+                priority: 'critical',
+              },
+            },
+          }),
+        );
+      } else {
+        task = { ...task, priority: 'important', version: 2 };
+        events.push(
+          taskEvent('priority-changed', {
+            action: 'task.updated',
+            metadata: {
+              version: 2,
+              changes: { priority: { before: 'critical', after: 'important' } },
+            },
+          }),
+        );
+      }
+      return Response.json(task);
+    },
+  });
+  const tasks = await openProjectTasks();
+  const priority = await within(tasks).findByLabelText('Priority');
+  expect(priority).toHaveValue('normal');
+  expect(
+    within(priority)
+      .getAllByRole('option')
+      .map((option) => option.textContent),
+  ).toEqual(['Normal', 'Important', 'Critical']);
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: priorityTask.title },
+  });
+  fireEvent.change(priority, { target: { value: 'critical' } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Create Task' }));
+  await within(tasks).findByRole('heading', { name: priorityTask.title });
+  await within(tasks).findByText('Task change recorded.');
+  expect(commands[0]?.body).toEqual({
+    title: priorityTask.title,
+    assigneeMembershipId: null,
+    dueDate: null,
+    priority: 'critical',
+  });
+  expect(listRow(tasks, priorityTask.title)).toHaveTextContent(
+    'Priority: Critical',
+  );
+  expect(
+    within(tasks).getByText('Critical', { selector: 'dd' }),
+  ).toBeInTheDocument();
+  const [created] = historyEntries(tasks);
+  if (!created) throw new Error('Missing Task creation');
+  expect(within(created).getByText('Priority: Critical')).toBeInTheDocument();
+
+  const edit = within(tasks).getByLabelText('Priority');
+  expect(edit).toHaveValue('critical');
+  fireEvent.change(edit, { target: { value: 'important' } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByText('Important', { selector: 'dd' });
+  expect(commands[1]?.body).toEqual({
+    expectedVersion: 1,
+    priority: 'important',
+  });
+  expect(commands[1]?.key).not.toBe(commands[0]?.key);
+  expect(listRow(tasks, priorityTask.title)).toHaveTextContent(
+    'Priority: Important',
+  );
+  const [, changed] = historyEntries(tasks);
+  if (!changed) throw new Error('Missing priority change');
+  expect(
+    within(changed).getByText('Priority', { selector: 'dt' }),
+  ).toBeInTheDocument();
+  expect(
+    within(changed).getByText('Critical → Important', { selector: 'dd' }),
+  ).toBeInTheDocument();
+});
+
+it('keeps an uncertain priority change and its key for an explicit retry and requires a reload after a conflict', async () => {
+  const commands: { key: string | null; body: unknown }[] = [];
+  let current: TaskView = priorityTask;
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [current] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: current });
+      return undefined;
+    },
+    mutate: (_url, request) => {
+      commands.push(sentCommand(request));
+      if (commands.length === 1) return new Response(null, { status: 500 });
+      if (commands.length === 2) {
+        current = { ...current, priority: 'important', version: 2 };
+        return Response.json(current);
+      }
+      return new Response(null, { status: 409 });
+    },
+  });
+  const tasks = await openPriorityTask();
+  fireEvent.change(within(tasks).getByLabelText('Priority'), {
+    target: { value: 'important' },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  fireEvent.click(
+    await within(tasks).findByRole('button', {
+      name: 'Retry pending Task change',
+    }),
+  );
+  await within(tasks).findByText('Important', { selector: 'dd' });
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toEqual(commands[0]);
+  expect(commands[0]?.body).toEqual({
+    expectedVersion: 1,
+    priority: 'important',
+  });
+  expect(commands[0]?.key).toBeTruthy();
+
+  fireEvent.change(within(tasks).getByLabelText('Priority'), {
+    target: { value: 'normal' },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByText(
+    'This Task or its permissions changed. Reload the Task before making another change.',
+  );
+  expect(commands[2]?.body).toEqual({
+    expectedVersion: 2,
+    priority: 'normal',
+  });
+  expect(
+    within(tasks).getByRole('button', { name: 'Save Task' }),
+  ).toBeDisabled();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Task' }));
+  await within(tasks).findByText('Important', { selector: 'dd' });
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Save Task' }),
+    ).toBeEnabled(),
+  );
+  expect(within(tasks).getByLabelText('Priority')).toHaveValue('important');
+});
+
+const donePriorityTask: TaskView = {
+  ...priorityTask,
+  status: 'done',
+  completion: { actor: attribution, occurredAt: priorityTask.updatedAt },
+};
+it.each([
+  ['a done Task', donePriorityTask, true],
+  ['a superseded original Client', priorityTask, false],
+] as const)(
+  'shows the priority read-only for %s',
+  async (_case, task, mutable) => {
+    fixture({
+      mutable,
+      read: (url) => {
+        if (url === '/api/projects/project/tasks')
+          return Response.json({ mutable, tasks: [task] });
+        if (url === '/api/tasks/task') return Response.json({ mutable, task });
+        return undefined;
+      },
+    });
+    const tasks = await openPriorityTask();
+    expect(
+      within(tasks).getByText('Critical', { selector: 'dd' }),
+    ).toBeInTheDocument();
+    expect(listRow(tasks, priorityTask.title)).toHaveTextContent(
+      'Priority: Critical',
+    );
+    expect(within(tasks).queryByLabelText('Priority')).not.toBeInTheDocument();
+    expect(
+      within(tasks).queryByRole('button', { name: 'Save Task' }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it('renders a historical creation without a priority line and a later priority change', async () => {
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [priorityTask] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: priorityTask });
+      if (url.endsWith('/history'))
+        return Response.json({
+          events: [
+            taskEvent('created', {
+              action: 'task.created',
+              metadata: {
+                version: 1,
+                initial: {
+                  title: priorityTask.title,
+                  assignee: null,
+                  dueDate: null,
+                },
+              },
+            }),
+            taskEvent('priority-changed', {
+              action: 'task.updated',
+              metadata: {
+                version: 2,
+                changes: { priority: { before: 'normal', after: 'critical' } },
+              },
+            }),
+          ],
+        });
+      return undefined;
+    },
+  });
+  const tasks = await openPriorityTask();
+  const [created, changed] = historyEntries(tasks);
+  if (!created || !changed) throw new Error('Missing Task history');
+  expect(created).toHaveTextContent(priorityTask.title);
+  expect(created).not.toHaveTextContent('Priority');
+  expect(created).not.toHaveTextContent('Normal');
+  expect(
+    within(changed).getByText('Priority', { selector: 'dt' }),
+  ).toBeInTheDocument();
+  expect(
+    within(changed).getByText('Normal → Critical', { selector: 'dd' }),
+  ).toBeInTheDocument();
+});
+
+const withoutPriority = Object.fromEntries(
+  Object.entries(priorityTask).filter(([field]) => field !== 'priority'),
+);
+it.each([
+  ['an unknown list priority', 'list', { ...priorityTask, priority: 'urgent' }],
+  ['a missing list priority', 'list', withoutPriority],
+  [
+    'an unknown created priority',
+    'history',
+    taskEvent('created', {
+      action: 'task.created',
+      metadata: {
+        version: 1,
+        initial: {
+          title: priorityTask.title,
+          assignee: null,
+          dueDate: null,
+          priority: 'Critical',
+        },
+      },
+    }),
+  ],
+  [
+    'an unknown changed priority',
+    'history',
+    taskEvent('changed', {
+      action: 'task.updated',
+      metadata: {
+        version: 2,
+        changes: { priority: { before: 'normal', after: 'critic' } },
+      },
+    }),
+  ],
+] as const)('fails closed for %s', async (_case, where, value) => {
+  fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: true,
+          tasks: [where === 'list' ? value : priorityTask],
+        });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: priorityTask });
+      if (url.endsWith('/history'))
+        return Response.json({ events: where === 'history' ? [value] : [] });
+      return undefined;
+    },
+  });
+  const tasks = await openProjectTasks();
+  if (where === 'history')
+    fireEvent.click(
+      await within(tasks).findByRole('button', { name: priorityTask.title }),
+    );
+  await within(tasks).findByText(
+    'Tasks could not be loaded. Reload to try again.',
+  );
+  expect(within(tasks).queryByText(/Priority/)).not.toBeInTheDocument();
+});
+
+it('keeps the server order and adds no priority filter with mixed priorities', async () => {
+  const rows: TaskView[] = [
+    {
+      ...priorityTask,
+      id: 'normal-task',
+      title: 'Archive notes',
+      priority: 'normal',
+    },
+    { ...priorityTask, id: 'critical-task' },
+    {
+      ...priorityTask,
+      id: 'important-task',
+      title: 'Review evidence',
+      priority: 'important',
+    },
+  ];
+  fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: rows })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  expect(listedTitles(tasks)).toEqual([
+    'Archive notes',
+    'Prepare questionnaire',
+    'Review evidence',
+  ]);
+  expect(rows.map((row) => listRow(tasks, row.title).textContent)).toEqual([
+    expect.stringContaining('Priority: Normal'),
+    expect.stringContaining('Priority: Critical'),
+    expect.stringContaining('Priority: Important'),
+  ]);
+  expect(
+    within(
+      within(tasks).getByRole('navigation', { name: 'Tasks' }),
+    ).queryByLabelText(/priority/i),
+  ).not.toBeInTheDocument();
+});
+
+it('keeps a priority draft across Task navigation and drops it when the authorization context is replaced', async () => {
+  fixture();
+  const identity = deterministicBrowserIdentity();
+  const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
+  const tasks = await openSavedTask();
+  fireEvent.change(within(tasks).getByLabelText('Priority'), {
+    target: { value: 'critical' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Another preparation Task' }),
+  );
+  await within(tasks).findByRole('heading', {
+    name: 'Another preparation Task',
+  });
+  expect(within(tasks).getByLabelText('Priority')).toHaveValue('normal');
+  fireEvent.click(within(tasks).getByRole('button', { name: savedTask.title }));
+  await within(tasks).findByRole('heading', { name: savedTask.title });
+  expect(within(tasks).getByLabelText('Priority')).toHaveValue('critical');
+
+  view.rerender(
+    <ProjectWorkspace
+      actor={{ ...actor, workspaceMembershipId: 'replacement' }}
+      identity={identity}
+    />,
+  );
+  const replaced = await openSavedTask();
+  expect(within(replaced).getByLabelText('Priority')).toHaveValue('normal');
 });

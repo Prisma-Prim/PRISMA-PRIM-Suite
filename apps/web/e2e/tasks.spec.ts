@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
-import type { TaskEvent, TaskView } from '../src/project/task-response';
+import {
+  taskPriorities,
+  type TaskEvent,
+  type TaskView,
+} from '../src/project/task-response';
 
 test('manages manual Tasks through the production shell with retained retry and attributable read-only history', async ({
   page,
@@ -85,6 +89,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           title: 'Collect preparation notes',
           assigneeMembershipId: null,
           dueDate: null,
+          priority: 'critical',
         });
         task = {
           id: 'manual-task',
@@ -94,6 +99,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           title: 'Collect preparation notes',
           assignee: null,
           dueDate: null,
+          priority: 'critical',
           status: 'todo',
           completion: null,
           version: 1,
@@ -114,7 +120,12 @@ test('manages manual Tasks through the production shell with retained retry and 
           },
           metadata: {
             version: 1,
-            initial: { title: task.title, assignee: null, dueDate: null },
+            initial: {
+              title: task.title,
+              assignee: null,
+              dueDate: null,
+              priority: task.priority,
+            },
           },
         });
       } else {
@@ -151,6 +162,9 @@ test('manages manual Tasks through the production shell with retained retry and 
                 : body.dueDate === null
                   ? null
                   : task.dueDate,
+            priority:
+              taskPriorities.find((priority) => priority === body.priority) ??
+              task.priority,
             version,
           };
           events.push({
@@ -172,6 +186,14 @@ test('manages manual Tasks through the production shell with retained retry and 
                   : {}),
                 ...(before.dueDate !== task.dueDate
                   ? { dueDate: { before: before.dueDate, after: task.dueDate } }
+                  : {}),
+                ...(before.priority !== task.priority
+                  ? {
+                      priority: {
+                        before: before.priority,
+                        after: task.priority,
+                      },
+                    }
                   : {}),
               },
             },
@@ -233,6 +255,9 @@ test('manages manual Tasks through the production shell with retained retry and 
     tasks.getByText('No manual Tasks for this Project yet.'),
   ).toBeVisible();
   await tasks.getByLabel('Task title').fill('Collect preparation notes');
+  const priority = tasks.locator('form').getByLabel('Priority');
+  await expect(priority).toHaveValue('normal');
+  await priority.selectOption({ label: 'Critical' });
   await tasks.getByRole('button', { name: 'Create Task', exact: true }).click();
   await expect(
     tasks.getByRole('heading', {
@@ -249,17 +274,29 @@ test('manages manual Tasks through the production shell with retained retry and 
       name: `${project.title} Client: ${project.clientDisplayName}`,
     })
     .click();
+  await expect(
+    tasks
+      .getByRole('navigation', { name: 'Tasks' })
+      .getByText('Priority: Critical', { exact: true }),
+  ).toBeVisible();
   await tasks
     .getByRole('button', { name: 'Collect preparation notes', exact: true })
     .click();
+  await expect(
+    tasks.locator('dd').getByText('Critical', { exact: true }),
+  ).toBeVisible();
   await tasks
     .locator('form')
     .getByLabel('Responsible member')
     .selectOption(member.workspaceMembershipId);
   await tasks.getByLabel('Due date').fill('2026-10-15');
+  await priority.selectOption({ label: 'Important' });
   await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
   await expect(
     tasks.locator('dd').getByText(member.displayLabel, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
   ).toBeVisible();
   await tasks.getByLabel('Task title').fill('Review preparation notes');
   await tasks.getByLabel('Due date').fill('2026-10-20');
@@ -289,6 +326,11 @@ test('manages manual Tasks through the production shell with retained retry and 
       exact: false,
     }),
   ).toBeVisible();
+  // A done Task keeps its priority visible but offers no priority control.
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
+  ).toBeVisible();
+  await expect(priority).toHaveCount(0);
   expect(completionKeys).toHaveLength(2);
   expect(completionKeys[0]).toBe(completionKeys[1]);
   expect(
@@ -309,6 +351,8 @@ test('manages manual Tasks through the production shell with retained retry and 
     history.getByText('Completion declared', { exact: true }),
   ).toBeVisible();
   await expect(history.getByText('Before: 2026-10-15')).toBeVisible();
+  await expect(history.getByText('Priority: Critical')).toBeVisible();
+  await expect(history.getByText('Critical → Important')).toBeVisible();
   await expect(page.getByText('Preparatory', { exact: true })).toBeVisible();
   await expect(
     page.getByText(

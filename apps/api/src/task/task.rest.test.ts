@@ -263,6 +263,20 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     expect(await detail(id)).toEqual(task);
     expect(await history(id)).toEqual(events);
   }
+  /** The original Client version is its reversal fence. */
+  async function clientVersion() {
+    const result = await harness.pool.query<{ version: unknown }>(
+      'SELECT version FROM client_accounts WHERE id=$1',
+      [clientId],
+    );
+    return integer(result.rows[0]?.version);
+  }
+  async function commandCount() {
+    const result = await harness.pool.query<{ count: unknown }>(
+      'SELECT count(*)::int AS count FROM task_commands',
+    );
+    return integer(result.rows[0]?.count);
+  }
   async function withUnsupportedPermissionVersion(
     assignment: Record<string, unknown>,
     version: string | null,
@@ -1808,5 +1822,602 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       201,
     );
     expect(objects((await read('/assigned-tasks')).tasks)).toHaveLength(1);
+  });
+
+  it('records a chosen or default priority at creation and shows it in the list, detail and history', async () => {
+    await grant('task');
+    const critical = await create({
+      title: 'Prepare questionnaire',
+      priority: 'critical',
+    });
+    const normal = await create({ title: 'Archive notes' });
+    expect(critical).toMatchObject({
+      title: 'Prepare questionnaire',
+      priority: 'critical',
+      status: 'todo',
+      version: 1,
+    });
+    expect(normal).toMatchObject({
+      title: 'Archive notes',
+      priority: 'normal',
+      version: 1,
+    });
+    // Creation order stays the list order; priority reorders nothing.
+    expect(await read(`/projects/${projectId}/tasks`)).toEqual({
+      mutable: true,
+      tasks: [critical, normal],
+    });
+    expect(await detail(string(critical.id))).toEqual(critical);
+    for (const [task, priority] of [
+      [critical, 'critical'],
+      [normal, 'normal'],
+    ] as const) {
+      const [created] = await history(string(task.id));
+      expect(created).toMatchObject({
+        action: 'task.created',
+        metadata: { version: 1 },
+      });
+      expect(object(object(created).metadata).initial).toEqual({
+        title: task.title,
+        assignee: null,
+        dueDate: null,
+        priority,
+      });
+    }
+    expect(await taskEvents()).toHaveLength(2);
+    expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
+  });
+
+  it('rejects priorities outside the three codes without creating or changing a Task', async () => {
+    await grant('task');
+    const invalid: unknown[] = [
+      'Critical',
+      'critic',
+      'urgent',
+      null,
+      1,
+      '',
+      ['critical'],
+    ];
+    for (const priority of invalid)
+      expect(
+        (
+          await request(`/projects/${projectId}/tasks`, {
+            method: 'POST',
+            value: { title: 'Invalid priority', priority },
+          })
+        ).status,
+      ).toBe(400);
+    expect(await read(`/projects/${projectId}/tasks`)).toEqual({
+      mutable: true,
+      tasks: [],
+    });
+    expect(await taskEvents()).toEqual([]);
+    const task = await create();
+    const id = string(task.id);
+    const events = await history(id);
+    const fence = await clientVersion();
+    for (const priority of invalid)
+      expect(
+        (
+          await request(`/tasks/${id}`, {
+            method: 'PATCH',
+            value: { expectedVersion: 1, priority },
+          })
+        ).status,
+      ).toBe(400);
+    await assertUnchanged(id, task, events);
+    expect(await clientVersion()).toBe(fence);
+  });
+
+  it('changes priority as one material edit, keeps the current priority a no-op and leaves a done Task read-only', async () => {
+    await grant('task');
+    const created = await create({
+      title: 'Prepare questionnaire',
+      priority: 'critical',
+    });
+    const id = string(created.id);
+    const createdEvents = await history(id);
+    const fence = await clientVersion();
+
+    expect(
+      await edit(id, { expectedVersion: 1, priority: 'critical' }),
+    ).toEqual(created);
+    expect(
+      await edit(id, {
+        expectedVersion: 1,
+        title: ' Prepare questionnaire ',
+        priority: 'critical',
+      }),
+    ).toEqual(created);
+    await assertUnchanged(id, created, createdEvents);
+    expect(await clientVersion()).toBe(fence);
+    expect(
+      (
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: 2, priority: 'important' },
+        })
+      ).status,
+    ).toBe(409);
+    await assertUnchanged(id, created, createdEvents);
+
+    const changed = await edit(id, {
+      expectedVersion: 1,
+      priority: 'important',
+    });
+    expect(changed).toEqual({
+      ...created,
+      priority: 'important',
+      version: 2,
+      updatedAt: expect.any(String),
+    });
+    expect(await clientVersion()).toBe(fence + 1);
+    const changedEvents = await history(id);
+    expect(changedEvents).toHaveLength(2);
+    expect(changedEvents[1]).toMatchObject({
+      action: 'task.updated',
+      metadata: {
+        version: 2,
+        changes: { priority: { before: 'critical', after: 'important' } },
+      },
+    });
+    expect(
+      Object.keys(object(object(object(changedEvents[1]).metadata).changes)),
+    ).toEqual(['priority']);
+
+    const combined = await edit(id, {
+      expectedVersion: 2,
+      title: 'Prepare revised questionnaire',
+      priority: 'normal',
+    });
+    expect(combined).toMatchObject({
+      title: 'Prepare revised questionnaire',
+      priority: 'normal',
+      version: 3,
+    });
+    const combinedEvents = await history(id);
+    expect(combinedEvents).toHaveLength(3);
+    expect(object(object(combinedEvents[2]).metadata).changes).toEqual({
+      title: {
+        before: 'Prepare questionnaire',
+        after: 'Prepare revised questionnaire',
+      },
+      priority: { before: 'important', after: 'normal' },
+    });
+    expect(await clientVersion()).toBe(fence + 2);
+
+    expect((await transition(id, 'complete', 3)).status).toBe(201);
+    const completed = await detail(id);
+    expect(completed).toMatchObject({
+      status: 'done',
+      priority: 'normal',
+      version: 4,
+    });
+    const completedEvents = await history(id);
+    const completedFence = await clientVersion();
+    // Submitting the current priority is no exception: a closed Task accepts no edit.
+    for (const priority of ['normal', 'critical'])
+      expect(
+        (
+          await request(`/tasks/${id}`, {
+            method: 'PATCH',
+            value: { expectedVersion: 4, priority },
+          })
+        ).status,
+      ).toBe(409);
+    await assertUnchanged(id, completed, completedEvents);
+    expect(await clientVersion()).toBe(completedFence);
+
+    expect((await transition(id, 'reopen', 4)).status).toBe(201);
+    expect(await detail(id)).toMatchObject({
+      status: 'todo',
+      priority: 'normal',
+      version: 5,
+    });
+    expect(
+      await edit(id, { expectedVersion: 5, priority: 'critical' }),
+    ).toMatchObject({ priority: 'critical', version: 6 });
+    const events = await history(id);
+    expect(events.map((event) => event.action)).toEqual([
+      'task.created',
+      'task.updated',
+      'task.updated',
+      'task.completed',
+      'task.reopened',
+      'task.updated',
+    ]);
+    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
+  });
+
+  it('binds retry keys to a submitted priority and distinguishes an explicit normal from an omitted one', async () => {
+    await grant('task');
+    const createKey = randomUUID();
+    const created = await create({ title: 'Keyed notes' }, { key: createKey });
+    for (const priority of ['normal', 'critical'])
+      expect(
+        (
+          await request(`/projects/${projectId}/tasks`, {
+            method: 'POST',
+            key: createKey,
+            value: { title: 'Keyed notes', priority },
+          })
+        ).status,
+      ).toBe(409);
+    expect(await create({ title: 'Keyed notes' }, { key: createKey })).toEqual(
+      created,
+    );
+    const prioritizedKey = randomUUID();
+    const prioritized = await create(
+      { title: 'Prioritized notes', priority: 'important' },
+      { key: prioritizedKey },
+    );
+    for (const value of [
+      { title: 'Prioritized notes' },
+      { title: 'Prioritized notes', priority: 'critical' },
+    ])
+      expect(
+        (
+          await request(`/projects/${projectId}/tasks`, {
+            method: 'POST',
+            key: prioritizedKey,
+            value,
+          })
+        ).status,
+      ).toBe(409);
+    expect(
+      await create(
+        { title: 'Prioritized notes', priority: 'important' },
+        { key: prioritizedKey },
+      ),
+    ).toEqual(prioritized);
+
+    const id = string(created.id);
+    const editKey = randomUUID();
+    const edited = await edit(
+      id,
+      { expectedVersion: 1, priority: 'critical' },
+      { key: editKey },
+    );
+    for (const value of [
+      { expectedVersion: 1, priority: 'important' },
+      { expectedVersion: 1 },
+    ])
+      expect(
+        (
+          await request(`/tasks/${id}`, {
+            method: 'PATCH',
+            key: editKey,
+            value,
+          })
+        ).status,
+      ).toBe(409);
+    await edit(id, { expectedVersion: 2, priority: 'normal' });
+    const current = await detail(id);
+    const events = await history(id);
+    const fence = await clientVersion();
+    // The exact replay confirms its recorded outcome, not the current Task.
+    expect(
+      await edit(
+        id,
+        { expectedVersion: 1, priority: 'critical' },
+        { key: editKey },
+      ),
+    ).toEqual(edited);
+    await assertUnchanged(id, current, events);
+    expect(await clientVersion()).toBe(fence);
+    expect(
+      objects((await read(`/projects/${projectId}/tasks`)).tasks),
+    ).toHaveLength(2);
+  });
+
+  it('replays pre-priority create and edit receipts under their original payload as normal and fails closed for an unknown stored priority', async () => {
+    await grant('task');
+    const createKey = randomUUID();
+    const created = await create({ title: 'Legacy notes' }, { key: createKey });
+    const id = string(created.id);
+    const editKey = randomUUID();
+    const edited = await edit(
+      id,
+      { expectedVersion: 1, dueDate: '2026-10-01' },
+      { key: editKey },
+    );
+    const storedCommand = async (key: string) =>
+      string(
+        (
+          await harness.pool.query<{ command: unknown }>(
+            'SELECT command FROM task_commands WHERE idempotency_key=$1',
+            [key],
+          )
+        ).rows[0]?.command,
+      );
+    // An omitted priority keeps the fingerprint a pre-priority receipt recorded.
+    expect(await storedCommand(createKey)).toBe(
+      JSON.stringify({
+        action: 'create',
+        companyId,
+        projectId,
+        title: 'Legacy notes',
+        assigneeMembershipId: null,
+        dueDate: null,
+      }),
+    );
+    expect(await storedCommand(editKey)).toBe(
+      JSON.stringify({
+        companyId,
+        taskId: id,
+        action: 'edit',
+        input: { expectedVersion: 1, dueDate: '2026-10-01' },
+      }),
+    );
+    // Recreate receipts recorded before the priority field existed.
+    await harness.pool.query(
+      "UPDATE task_commands SET result = result - 'priority' WHERE idempotency_key = ANY($1::text[])",
+      [[createKey, editKey]],
+    );
+    const current = await detail(id);
+    const events = await history(id);
+    const fence = await clientVersion();
+    const receipts = await commandCount();
+    expect(created.priority).toBe('normal');
+    expect(await create({ title: 'Legacy notes' }, { key: createKey })).toEqual(
+      created,
+    );
+    expect(
+      await edit(
+        id,
+        { expectedVersion: 1, dueDate: '2026-10-01' },
+        { key: editKey },
+      ),
+    ).toEqual(edited);
+    await assertUnchanged(id, current, events);
+    expect(await clientVersion()).toBe(fence);
+    expect(await commandCount()).toBe(receipts);
+    expect(
+      objects((await read(`/projects/${projectId}/tasks`)).tasks),
+    ).toHaveLength(1);
+
+    await harness.pool.query(
+      `UPDATE task_commands SET result = jsonb_set(result, '{priority}', '"urgent"') WHERE idempotency_key=$1`,
+      [createKey],
+    );
+    const unknown = await request(`/projects/${projectId}/tasks`, {
+      method: 'POST',
+      key: createKey,
+      value: { title: 'Legacy notes' },
+    });
+    expect(unknown.status).toBe(500);
+    expect(await unknown.text()).not.toContain('Legacy notes');
+    await assertUnchanged(id, current, events);
+    expect(await clientVersion()).toBe(fence);
+  });
+
+  it('requires the existing Task authority for a priority change and denies a revoked manager exact replay', async () => {
+    await grant('task');
+    const target = string(
+      (await member('task-member', true)).workspaceMembershipId,
+    );
+    const outsider = string(
+      (await member('task-ineligible')).workspaceMembershipId,
+    );
+    for (const kind of ['context', 'client', 'project'] satisfies Array<
+      keyof typeof assignments
+    >)
+      await grant(kind, outsider);
+    const createKey = randomUUID();
+    const createBody = {
+      title: 'Member priority',
+      priority: 'critical',
+      assigneeMembershipId: target,
+    };
+    const created = await create(createBody, {
+      key: createKey,
+      subject: 'task-member',
+    });
+    const id = string(created.id);
+    const editKey = randomUUID();
+    const edited = await edit(
+      id,
+      { expectedVersion: 1, priority: 'important' },
+      { key: editKey, subject: 'task-member' },
+    );
+    const events = await history(id);
+    const fence = await clientVersion();
+    // Being the assignee and creator grants nothing once task.manage is gone.
+    await revoke('task', target);
+    for (const response of [
+      await request(`/projects/${projectId}/tasks`, {
+        method: 'POST',
+        key: createKey,
+        subject: 'task-member',
+        value: createBody,
+      }),
+      await request(`/tasks/${id}`, {
+        method: 'PATCH',
+        key: editKey,
+        subject: 'task-member',
+        value: { expectedVersion: 1, priority: 'important' },
+      }),
+      await request(`/tasks/${id}`, {
+        method: 'PATCH',
+        subject: 'task-member',
+        value: { expectedVersion: 2, priority: 'normal' },
+      }),
+      await request(`/tasks/${id}`, {
+        method: 'PATCH',
+        subject: 'task-ineligible',
+        value: { expectedVersion: 2, priority: 'normal' },
+      }),
+      await request(`/tasks/${id}`, { subject: 'task-ineligible' }),
+    ]) {
+      expect(response.status).toBe(403);
+      expect(await response.text()).not.toContain('Member priority');
+    }
+    await assertUnchanged(id, edited, events);
+    expect(await clientVersion()).toBe(fence);
+    expect(await detail(id)).toMatchObject({
+      assignee: { workspaceMembershipId: target },
+      createdBy: { workspaceMembershipId: target },
+      priority: 'important',
+    });
+  });
+
+  it('refuses a priority change for a superseded original Client while the priority stays readable', async () => {
+    await grant('task');
+    const created = await create({
+      title: 'Historical priority',
+      priority: 'critical',
+    });
+    const id = string(created.id);
+    const events = await history(id);
+    await (await unionSetup(true)).confirm();
+    expect(
+      (
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: 1, priority: 'normal' },
+        })
+      ).status,
+    ).toBe(404);
+    expect(await read(`/tasks/${id}`)).toEqual({
+      mutable: false,
+      task: created,
+    });
+    expect(await read(`/projects/${projectId}/tasks`)).toEqual({
+      mutable: false,
+      tasks: [created],
+    });
+    expect(await history(id)).toEqual(events);
+  });
+
+  it.each([
+    ['a material priority change', 'critical', 409],
+    ['the current priority', 'normal', 201],
+  ] as const)(
+    'advances the Client reversal fence exactly as any Task edit for %s',
+    async (_case, priority, reversalStatus) => {
+      await grant('task');
+      const created = await create();
+      const id = string(created.id);
+      const union = await (await unionSetup()).confirm();
+      await edit(id, { expectedVersion: 1, priority });
+      expect((await reverse(string(union.projectionReference))).status).toBe(
+        reversalStatus,
+      );
+    },
+  );
+
+  it('keeps a historical creation without priority valid and absent and fails closed for an unknown stored priority', async () => {
+    await grant('task');
+    const created = await create({ title: 'Historical creation' });
+    const id = string(created.id);
+    await harness.pool.query(
+      "UPDATE task_events SET meaning = meaning #- '{metadata,initial,priority}' WHERE task_id=$1 AND version=1",
+      [id],
+    );
+    const [creation] = await history(id);
+    expect(object(object(creation).metadata).initial).toEqual({
+      title: 'Historical creation',
+      assignee: null,
+      dueDate: null,
+    });
+    expect(await taskEvents()).toEqual([creation]);
+    expect(await detail(id)).toEqual(created);
+    await edit(id, { expectedVersion: 1, priority: 'important' });
+    expect((await history(id))[1]).toMatchObject({
+      metadata: {
+        changes: { priority: { before: 'normal', after: 'important' } },
+      },
+    });
+    await harness.pool.query(
+      `UPDATE task_events SET meaning = jsonb_set(meaning, '{metadata,initial,priority}', '"urgent"') WHERE task_id=$1 AND version=1`,
+      [id],
+    );
+    const unknown = await request(`/tasks/${id}/history`);
+    expect(unknown.status).toBe(500);
+    expect(await unknown.text()).not.toContain('Historical creation');
+  });
+
+  it('permits only one of a priority edit, another edit or completion from one observed version', async () => {
+    await grant('task');
+    const created = await create();
+    const id = string(created.id);
+    const responses = await Promise.all([
+      request(`/tasks/${id}`, {
+        method: 'PATCH',
+        value: { expectedVersion: 1, priority: 'critical' },
+      }),
+      request(`/tasks/${id}`, {
+        method: 'PATCH',
+        value: { expectedVersion: 1, priority: 'important' },
+      }),
+      request(`/tasks/${id}`, {
+        method: 'PATCH',
+        value: { expectedVersion: 1, title: 'Competing title' },
+      }),
+      transition(id, 'complete', 1),
+    ]);
+    expect(
+      responses.filter(
+        (response) => response.status === 200 || response.status === 201,
+      ),
+    ).toHaveLength(1);
+    expect(
+      responses.filter((response) => response.status === 409),
+    ).toHaveLength(3);
+    expect((await detail(id)).version).toBe(2);
+    expect(await history(id)).toHaveLength(2);
+  });
+
+  it('shows each assigned Task priority in My Tasks without changing the date order or writing', async () => {
+    await grant('task');
+    const project = {
+      id: projectId,
+      title: 'ISO preparation',
+      clientDisplayName: 'Synthetic Client',
+    };
+    const assign = (title: string, dueDate: string | null, priority?: string) =>
+      create({
+        title,
+        dueDate,
+        assigneeMembershipId: membershipId,
+        ...(priority === undefined ? {} : { priority }),
+      });
+    const laterCritical = await assign(
+      'Critical later',
+      '2026-10-20',
+      'critical',
+    );
+    const earlierNormal = await assign('Normal earlier', '2026-10-01');
+    const undatedImportant = await assign(
+      'Important undated',
+      null,
+      'important',
+    );
+    const sameDayImportant = await assign(
+      'Important same day',
+      '2026-10-01',
+      'important',
+    );
+    const events = await taskEvents();
+    const fence = await clientVersion();
+    const receipts = await commandCount();
+    const rows = await assigned();
+    expect(rows).toEqual([
+      { ...earlierNormal, project },
+      { ...sameDayImportant, project },
+      { ...laterCritical, project },
+      { ...undatedImportant, project },
+    ]);
+    expect(rows.map((task) => task.priority)).toEqual([
+      'normal',
+      'important',
+      'critical',
+      'important',
+    ]);
+    expect(await taskEvents()).toEqual(events);
+    expect(await clientVersion()).toBe(fence);
+    expect(await commandCount()).toBe(receipts);
   });
 });

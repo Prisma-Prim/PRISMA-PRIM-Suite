@@ -26,6 +26,9 @@ export const tasks = pgTable(
     assigneeMembershipId: uuid('assignee_membership_id'),
     assigneeDisplayLabel: text('assignee_display_label'),
     dueDate: date('due_date', { mode: 'string' }),
+    priority: text('priority', { enum: ['normal', 'important', 'critical'] })
+      .notNull()
+      .default('normal'),
     status: text('status', { enum: ['todo', 'done'] })
       .notNull()
       .default('todo'),
@@ -111,6 +114,10 @@ export const tasks = pgTable(
     check(
       'tasks_date_check',
       sql`${table.dueDate} IS NULL OR (${table.dueDate} >= DATE '0001-01-01' AND ${table.dueDate} <= DATE '9999-12-31')`,
+    ),
+    check(
+      'tasks_priority_check',
+      sql`${table.priority} IN ('normal', 'important', 'critical')`,
     ),
     check(
       'tasks_state_check',

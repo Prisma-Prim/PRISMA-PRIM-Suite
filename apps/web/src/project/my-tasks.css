@@ -69,7 +69,7 @@
 }
 .my-tasks-list dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
   margin: 0;
 }
@@ -149,7 +149,9 @@
   line-height: 1.55;
 }
 .prisme-shell .my-tasks--prisme .my-tasks-list dl {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr);
+  grid-template-columns:
+    minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr)
+    minmax(0, 0.7fr);
   gap: 4px 20px;
 }
 .prisme-shell .my-tasks--prisme .my-tasks-list dt {
