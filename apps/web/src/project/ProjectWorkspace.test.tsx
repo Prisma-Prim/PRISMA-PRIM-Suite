@@ -1259,6 +1259,107 @@ describe('Client identity changes', () => {
     },
   );
 
+  const deniedMessage =
+    'Project access and Client read access are required for this Company.';
+  const inFlightCommands = [
+    {
+      inFlight: 'an opened detail read',
+      route: `GET ${detailPath}`,
+      title: historicalProject.title,
+      taskRoute: `GET ${taskPath}`,
+      start: () =>
+        fireEvent.click(screen.getByRole('button', { name: historicalRow })),
+    },
+    {
+      inFlight: 'a registration',
+      route: 'POST /api/projects',
+      title: registeredProject.title,
+      taskRoute: `GET /api/projects/${registeredProject.id}/tasks`,
+      start: () => {
+        fireEvent.change(screen.getByLabelText('Project title'), {
+          target: { value: registeredProject.title },
+        });
+        fireEvent.change(screen.getByLabelText('Client'), {
+          target: { value: supersededClient.id },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+      },
+    },
+  ];
+  /**
+   * Starts a detail read or registration that the server holds, then denies
+   * the list refresh started by the next Client identity change.
+   */
+  async function denyRefreshWhile({
+    route,
+    start,
+  }: (typeof inFlightCommands)[number]) {
+    const server = identityServer();
+    const workspace = renderWorkspace({ actor: taskActor });
+    await screen.findByRole('button', { name: historicalRow });
+    server.hold(route);
+    start();
+    const inFlight = await server.requested(route);
+
+    server.unite();
+    server.hold('GET /api/projects');
+    workspace.deliver(1, canonicalFilter);
+    await server.requested('GET /api/projects');
+    // The change alone neither cancels the pending request nor offers a reload.
+    expect(inFlight.signal?.aborted).toBe(false);
+    expect(
+      screen.getByRole('button', { name: 'Reload Projects' }),
+    ).toBeDisabled();
+
+    await server.release(
+      'GET /api/projects',
+      new Response(null, { status: 403 }),
+    );
+    expect(screen.getByText(deniedMessage)).toBeInTheDocument();
+    return { server, inFlight };
+  }
+
+  it.each(inFlightCommands)(
+    'never lets $inFlight that succeeds after the refresh is denied repopulate the Project, its Tasks or its Documents',
+    async (command) => {
+      const { server, inFlight } = await denyRefreshWhile(command);
+
+      await server.release(command.route);
+
+      expect(
+        screen.queryByRole('article', { name: command.title }),
+      ).not.toBeInTheDocument();
+      expect(server.count(command.taskRoute)).toBe(0);
+      expect(screen.getByText(deniedMessage)).toBeInTheDocument();
+      expect(inFlight.signal?.aborted).toBe(true);
+      expect(
+        screen.getByRole('button', { name: 'Reload Projects' }),
+      ).toBeEnabled();
+    },
+  );
+
+  it.each(inFlightCommands)(
+    'offers the reload after a denied refresh while $inFlight never settles',
+    async (command) => {
+      const { server, inFlight } = await denyRefreshWhile(command);
+
+      const reload = screen.getByRole('button', { name: 'Reload Projects' });
+      expect(reload).toBeEnabled();
+      expect(inFlight.signal?.aborted).toBe(true);
+
+      server.serve('GET /api/projects');
+      fireEvent.click(reload);
+      expect(
+        await screen.findByRole('button', { name: historicalRow }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('article', { name: command.title }),
+      ).not.toBeInTheDocument();
+      expect(server.count('GET /api/projects')).toBe(3);
+      expect(server.count(command.route)).toBe(1);
+    },
+  );
+
   it('leaves a failed first read to the member’s reload instead of reading on the change', async () => {
     const server = identityServer();
     server.hold('GET /api/projects');

@@ -114,9 +114,17 @@ export function ProjectWorkspace({
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany.clientPermissions?.includes('client.read'));
-  /** Access denial retires the loaded rows and the opened Project. */
+  /**
+   * Access denial retires the loaded rows and the opened Project, whose
+   * current detail read stops with it. A list read, detail read or
+   * registration still in flight is cancelled so it cannot repopulate them,
+   * and the pending state settles so the member can reload. The registration
+   * draft and its request key stay until that reload retires them.
+   */
   function deny() {
     listRequest.current?.abort();
+    request.current?.abort();
+    setPending(false);
     setLoad({ kind: 'denied' });
     setSelected(null);
   }
