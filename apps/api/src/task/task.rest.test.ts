@@ -1565,9 +1565,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       'September notes',
       '2026-09-30',
     );
-    const undated = await assign(projectId, 'Undated notes', null);
     const sameDay = await assign(projectId, 'Same day notes', '2026-09-30');
-    const tied = await assign(secondProjectId, 'Tied undated notes', null);
     const early = await assign(projectId, 'Early notes', '0099-12-31');
     const done = await assign(projectId, 'Done notes', '2026-09-01');
     expect((await transition(string(done.id), 'complete', 1)).status).toBe(201);
@@ -1608,20 +1606,38 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       membershipId,
       { company: otherCompany },
     );
-    // Equal creation times prove the final identifier tie-break.
+    // Equal creation times prove the final identifier tie-break. Task creation
+    // attribution is immutable, so both undated Tasks are inserted at one
+    // instant, each copying the scope, assignee, creator and creation event of
+    // an API-created Task in the same Project.
     const tiedAt = '2026-09-02T08:00:00.000Z';
-    await harness.pool.query(
-      'UPDATE tasks SET created_at=$1 WHERE id=ANY($2::uuid[])',
-      [tiedAt, [string(undated.id), string(tied.id)]],
+    const tiedTasks = await harness.pool.query<{ id: unknown }>(
+      `WITH fixture(template_id, title) AS (
+         VALUES ($2::uuid, 'Undated notes'), ($3::uuid, 'Tied undated notes')
+       ), inserted AS (
+         INSERT INTO tasks (workspace_id, company_id, project_id, client_account_id, title, assignee_membership_id, assignee_display_label, created_by_internal_user_id, created_by_membership_id, created_by_display_name, created_at, updated_at)
+         SELECT t.workspace_id, t.company_id, t.project_id, t.client_account_id, f.title, t.assignee_membership_id, t.assignee_display_label, t.created_by_internal_user_id, t.created_by_membership_id, t.created_by_display_name, $1::timestamptz, $1::timestamptz
+         FROM fixture f JOIN tasks t ON t.id = f.template_id
+         RETURNING id, workspace_id, company_id, title, created_at
+       )
+       INSERT INTO task_events (workspace_id, company_id, task_id, version, actor_internal_user_id, actor_membership_id, actor_display_name, occurred_at, meaning)
+       SELECT i.workspace_id, i.company_id, i.id, 1, e.actor_internal_user_id, e.actor_membership_id, e.actor_display_name, i.created_at,
+         jsonb_set(jsonb_set(e.meaning, '{metadata,initial,title}', to_jsonb(i.title)), '{metadata,initial,dueDate}', 'null'::jsonb)
+       FROM inserted i
+       JOIN fixture f ON f.title = i.title
+       JOIN task_events e ON e.task_id = f.template_id AND e.version = 1
+       RETURNING task_id AS id`,
+      [tiedAt, string(october.id), string(september.id)],
     );
-    const undatedRows = [
-      { task: undated, project: first },
-      { task: tied, project: second },
-    ]
-      .sort((left, right) =>
-        string(left.task.id) < string(right.task.id) ? -1 : 1,
-      )
-      .map(({ task, project }) => ({ ...task, createdAt: tiedAt, project }));
+    const undatedRows = (
+      await Promise.all(tiedTasks.rows.map(({ id }) => detail(string(id))))
+    )
+      .sort((left, right) => (string(left.id) < string(right.id) ? -1 : 1))
+      .map((task) => ({
+        ...task,
+        createdAt: tiedAt,
+        project: task.projectId === projectId ? first : second,
+      }));
     const eventsBefore = await taskEvents();
 
     expect(await assigned()).toEqual([
