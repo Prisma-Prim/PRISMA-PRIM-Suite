@@ -74,4 +74,18 @@ export const taskCopy = {
   reopened: 'Task reopened',
   before: 'Before',
   after: 'After',
+  myTasks: {
+    title: 'My Tasks',
+    note: 'Read-only. Edit or complete a Task in its Project.',
+    listLabel: 'Open Tasks assigned to you',
+    refresh: 'Refresh My Tasks',
+    loading: 'Loading your open Tasks…',
+    empty: 'No open Tasks assigned to you',
+    denied:
+      'Your open Tasks need Task, Project and Client read access in this Company.',
+    error: 'Your open Tasks could not be loaded.',
+    retry: 'Retry',
+    project: 'Project',
+    client: 'Client',
+  },
 };

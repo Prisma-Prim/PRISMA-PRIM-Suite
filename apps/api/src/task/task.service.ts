@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -16,6 +16,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import { taskCommands, tasks } from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
 import {
+  assignedTasksQuery,
   createInput,
   editInput,
   readTaskView,
@@ -23,6 +24,7 @@ import {
   type TaskEdit,
 } from './task.validation.js';
 import type {
+  AssignedTaskView,
   TaskChanges,
   TaskEventMeaning,
   TaskFields,
@@ -60,6 +62,54 @@ export class TaskService {
           )
           .orderBy(asc(tasks.createdAt), asc(tasks.id));
         return { mutable: client.status === 'active', tasks: rows.map(view) };
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+  }
+  /** Reads without side effects: no event, command outcome or reversal-fence advance. */
+  async listAssigned(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<{ tasks: AssignedTaskView[] }> {
+    assignedTasksQuery(query);
+    return this.database.transaction(
+      async () => {
+        const companyId = await this.access.requireActor(actor);
+        const projects = new Map(
+          (await this.projects.list(actor)).map((project) => [
+            project.id,
+            {
+              id: project.id,
+              title: project.title,
+              clientDisplayName: project.clientDisplayName,
+            },
+          ]),
+        );
+        if (projects.size === 0) return { tasks: [] };
+        const rows = await this.database.connection
+          .select()
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.workspaceId, actor.workspaceId),
+              eq(tasks.companyId, companyId),
+              eq(tasks.assigneeMembershipId, actor.workspaceMembershipId),
+              eq(tasks.status, 'todo'),
+              inArray(tasks.projectId, [...projects.keys()]),
+            ),
+          )
+          // Exact YYYY-MM-DD dates sort as their text; undated Tasks follow.
+          .orderBy(
+            sql`${tasks.dueDate} ASC NULLS LAST`,
+            asc(tasks.createdAt),
+            asc(tasks.id),
+          );
+        return {
+          tasks: rows.flatMap((row) => {
+            const project = projects.get(row.projectId);
+            return project ? [{ ...view(row), project }] : [];
+          }),
+        };
       },
       { isolationLevel: 'repeatable read' },
     );

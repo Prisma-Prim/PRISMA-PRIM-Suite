@@ -170,6 +170,36 @@ export function readTaskList(value: unknown, scope: TaskScope) {
     tasks: row.tasks.map((task: unknown) => readTask(task, scope)),
   };
 }
+export type AssignedTask = Extract<TaskView, { status: 'todo' }> & {
+  project: { id: string; title: string; clientDisplayName: string };
+};
+/** Every row must be the reader's own open Task in the active Company and its own Project. */
+export function readAssignedTasks(
+  value: unknown,
+  reader: { companyId: string; workspaceMembershipId: string },
+): AssignedTask[] {
+  const row = record(value);
+  if (!Array.isArray(row.tasks)) throw new Error('Invalid assigned Tasks');
+  return row.tasks.map((item: unknown): AssignedTask => {
+    const entry = record(item);
+    const owner = record(entry.project);
+    const project = {
+      id: string(owner.id),
+      title: string(owner.title),
+      clientDisplayName: string(owner.clientDisplayName),
+    };
+    const task = readTask(entry, {
+      companyId: reader.companyId,
+      projectId: project.id,
+    });
+    if (
+      task.status !== 'todo' ||
+      task.assignee?.workspaceMembershipId !== reader.workspaceMembershipId
+    )
+      throw new Error('Invalid assigned Task');
+    return { ...task, project };
+  });
+}
 export function readTaskDetail(
   value: unknown,
   scope: TaskScope,

@@ -34,6 +34,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const clients = page.locator('.client-workspace');
   const projects = page.locator('.project-workspace');
   const tasks = page.locator('.project-tasks');
+  const myTasks = page.locator('.my-tasks');
   const workingDocuments = page.locator('.working-documents');
   const projectDocuments = page.locator('.project-documents');
   const activity = page.locator('.activity-log');
@@ -123,6 +124,23 @@ test('operates the delivered Client, Project, Task and working Document journey 
     tasks.locator('dd').getByText('Ada Ionescu', { exact: true }),
   ).toBeVisible();
 
+  await navigate(page, navigation, 'My Tasks', narrow);
+  expect(await refreshMyTasks(page, myTasks)).toContain(taskId);
+  const assignedTask = myTasks.getByRole('listitem').filter({
+    has: page.getByRole('heading', { name: taskTitle, exact: true }),
+  });
+  await expect(assignedTask.getByRole('definition')).toHaveText([
+    projectTitle,
+    clientName,
+    '2026-10-15',
+  ]);
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-my-tasks.png`,
+  );
+  await navigate(page, navigation, 'Projects', narrow);
+
   await tasks.getByLabel('Task title').fill(preservedDraft);
   const completionPath = new RegExp(
     `/api/tasks/${escapeRegExp(taskId)}/complete$`,
@@ -179,6 +197,13 @@ test('operates the delivered Client, Project, Task and working Document journey 
   page.off('request', captureCompletionKey);
   expect(completionKeys).toHaveLength(2);
   expect(completionKeys[1]).toBe(completionKeys[0]);
+
+  await navigate(page, navigation, 'My Tasks', narrow);
+  expect(await refreshMyTasks(page, myTasks)).not.toContain(taskId);
+  await expect(
+    myTasks.getByRole('heading', { name: taskTitle, exact: true }),
+  ).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
 
   await navigate(page, navigation, 'Working Documents', narrow);
   await workingDocuments.getByLabel('Client', { exact: true }).selectOption({
@@ -517,6 +542,23 @@ async function navigate(
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await navigation.getByRole('link', { name: label, exact: true }).click();
+}
+
+// My Tasks re-reads only on an explicit Refresh; returns the raw server reply.
+async function refreshMyTasks(
+  page: Page,
+  myTasks: ReturnType<Page['locator']>,
+): Promise<string> {
+  const read = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/assigned-tasks' &&
+      response.request().method() === 'GET',
+  );
+  await myTasks.getByRole('button', { name: 'Refresh My Tasks' }).click();
+  const response = await read;
+  expect(response.ok()).toBe(true);
+  await expect(myTasks.getByRole('status')).toHaveCount(0);
+  return response.text();
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {

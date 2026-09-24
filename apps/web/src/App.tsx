@@ -1,4 +1,5 @@
 import { taskCopy } from './project/task.copy';
+import { MyTasks, canReadTasks } from './project/MyTasks';
 import { projectDocumentsCopy } from './project/project-documents.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
 import { projectCopy } from './project/project.copy';
@@ -250,6 +251,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               : undefined
           }
           onOpenClientDossier={openClientDossier}
+        />
+      ),
+    });
+  if (canReadTasks(access.actor))
+    sections.push({
+      id: 'my-tasks',
+      ...prismeCopy.sections.myTasks,
+      content: (
+        <MyTasks
+          key={`my-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
         />
       ),
     });

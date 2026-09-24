@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration and manual preparation Tasks approved by #238 and #246; remaining capability Draft  
-**Version:** 0.5  
+**Status:** Preparatory registration, manual preparation Tasks and My Tasks approved by #238, #246 and #347; remaining capability Draft  
+**Version:** 0.6  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -263,3 +263,37 @@ tests own permission isolation, assignment eligibility, dates, state/version
 concurrency, atomic history, retry and union/reversal boundaries. Existing browser
 journeys prove the full path at desktop and narrow widths. No new CI, runtime,
 provider or test framework is introduced.
+
+## 19. Approved My Tasks read (#347)
+
+Dan approved this bounded read on 2026-09-24: the actor's own unfinished Tasks in
+the active Company, ordered by date, with existing access rights and no urgency
+rule or new grant. It is a delegated product choice under that approval, not newly
+collected Iurie evidence.
+
+**My Tasks** lists every `todo` Task whose responsible member is the reader's own
+Workspace Membership, in the active Company, whose Project the reader can read
+under section 18: current Company context, Company Task Manager v1 `task.read`,
+Project read, and an active or superseded original Client with an active
+relationship to that Company. Done, unassigned and other members' Tasks, other
+Companies and unreadable Projects are excluded. The read reveals no other member's
+Task and no count of them.
+
+Each row shows the Task title, its due date or "No due date", the Project title
+and the Client label the Project list shows. A superseded original Client keeps
+its original label, without canonical union or other-Company detail. Rows are
+ordered by due date ascending, compared as exact `YYYY-MM-DD` text without
+timezone conversion, with undated Tasks last; ties follow creation time, then
+identifier.
+
+No permission is added. Being the responsible member, Workspace ownership, Company
+Context Access and Company Director Client Access grant nothing. Every read
+revalidates current authority; lost authority, a suspended membership or no Company
+context is denied. The list is read-only: Tasks are still edited and completed from
+Project detail, and the next read reflects completion, reopening and reassignment.
+A read writes no Activity Log event, command outcome or Client reversal-fence
+advance, and needs no schema change.
+
+My Tasks is not a Dashboard next action. It has no overdue or urgency label,
+count, badge or ranking, and no filter, search, team view, reminder or
+notification. Opening a Task or Project from a row remains a separate follow-up.

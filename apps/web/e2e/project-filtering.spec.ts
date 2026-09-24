@@ -96,6 +96,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: { members: [] } });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
+      if (path === '/api/assigned-tasks')
+        return route.fulfill({ json: { tasks: [] } });
       if (path === '/api/documents') return route.fulfill({ json: [] });
       if (path.endsWith('/documents'))
         return route.fulfill({ json: { mutable: true, documents: [] } });

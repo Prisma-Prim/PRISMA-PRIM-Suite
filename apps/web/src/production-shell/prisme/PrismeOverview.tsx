@@ -7,6 +7,7 @@ import {
   Building2,
   ClipboardList,
   LayoutGrid,
+  ListTodo,
   Mail,
   ShieldCheck,
   Users,
@@ -33,6 +34,7 @@ export function SectionIcon({
   const icons = {
     overview: LayoutGrid,
     projects: FolderKanban,
+    'my-tasks': ListTodo,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,

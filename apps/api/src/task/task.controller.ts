@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -38,6 +39,12 @@ export class TaskController {
     @Headers('idempotency-key') key: string | undefined,
   ) {
     return this.tasks.create(actor(request), id, body, key);
+  }
+  @Get('assigned-tasks') listAssigned(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.tasks.listAssigned(actor(request), query);
   }
   @Get('tasks/:taskId') read(
     @Req() request: ActorContextRequest,

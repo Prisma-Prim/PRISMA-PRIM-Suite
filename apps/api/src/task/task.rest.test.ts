@@ -250,6 +250,11 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         typeof event.action === 'string' && event.action.startsWith('task.'),
     );
   }
+  async function assigned(options: Parameters<typeof request>[1] = {}) {
+    const page = await read('/assigned-tasks', options);
+    expect(Object.keys(page)).toEqual(['tasks']);
+    return objects(page.tasks);
+  }
   async function assertUnchanged(
     id: string,
     task: Record<string, unknown>,
@@ -1249,7 +1254,10 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     },
   );
 
-  async function unionSetup(supersedeOriginal = false) {
+  async function unionSetup(
+    supersedeOriginal = false,
+    secondDisplayName = false,
+  ) {
     const second = string(
       (await command('/clients', { displayName: 'Legacy synthetic identity' }))
         .id,
@@ -1265,7 +1273,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     const value = {
       canonicalClientId: supersedeOriginal ? second : clientId,
       fields: {
-        displayName: clientId,
+        displayName: secondDisplayName ? second : clientId,
         taxId: clientId,
         address: clientId,
         telephone: clientId,
@@ -1498,5 +1506,291 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       expect((await reverse(string(union.projectionReference))).status).toBe(
         409,
       );
+  });
+
+  it('lists only the actor open Tasks of readable active-Company Projects by exact due date, creation and identifier', async () => {
+    await grant('task');
+    const colleague = string(
+      (await member('task-member', true)).workspaceMembershipId,
+    );
+    const secondClient = string(
+      (await command('/clients', { displayName: 'Second Synthetic Client' }))
+        .id,
+    );
+    const secondProjectId = string(
+      (
+        await command('/projects', {
+          title: 'Audit preparation',
+          clientAccountId: secondClient,
+        })
+      ).id,
+    );
+    const archivedClient = string(
+      (await command('/clients', { displayName: 'Archived Synthetic Client' }))
+        .id,
+    );
+    const archivedProjectId = string(
+      (
+        await command('/projects', {
+          title: 'Archived preparation',
+          clientAccountId: archivedClient,
+        })
+      ).id,
+    );
+    const first = {
+      id: projectId,
+      title: 'ISO preparation',
+      clientDisplayName: 'Synthetic Client',
+    };
+    const second = {
+      id: secondProjectId,
+      title: 'Audit preparation',
+      clientDisplayName: 'Second Synthetic Client',
+    };
+    const assign = (
+      project: string,
+      title: string,
+      dueDate: string | null,
+      assigneeMembershipId: string | null = membershipId,
+      options: Parameters<typeof request>[1] = {},
+    ) =>
+      command(
+        `/projects/${project}/tasks`,
+        { title, dueDate, assigneeMembershipId },
+        options,
+      );
+    const october = await assign(projectId, 'October notes', '2026-10-05');
+    const september = await assign(
+      secondProjectId,
+      'September notes',
+      '2026-09-30',
+    );
+    const undated = await assign(projectId, 'Undated notes', null);
+    const sameDay = await assign(projectId, 'Same day notes', '2026-09-30');
+    const tied = await assign(secondProjectId, 'Tied undated notes', null);
+    const early = await assign(projectId, 'Early notes', '0099-12-31');
+    const done = await assign(projectId, 'Done notes', '2026-09-01');
+    expect((await transition(string(done.id), 'complete', 1)).status).toBe(201);
+    const colleagueTask = await assign(
+      projectId,
+      'Colleague notes',
+      '2026-09-01',
+      colleague,
+    );
+    await assign(secondProjectId, 'Unassigned notes', '2026-09-01', null);
+    await assign(archivedProjectId, 'Unreadable notes', '2026-09-01');
+    await harness.pool.query(
+      "UPDATE client_company_relationships SET status='archived' WHERE client_account_id=$1 AND company_id=$2",
+      [archivedClient, companyId],
+    );
+    const otherCompany = string(
+      (await command('/companies', { displayName: 'BIC' })).id,
+    );
+    await grant('task', membershipId, otherCompany);
+    await grant('project', membershipId, otherCompany);
+    const otherClient = await command(
+      '/clients',
+      { displayName: 'Other Company Client' },
+      { company: otherCompany },
+    );
+    const otherProject = await command(
+      '/projects',
+      {
+        title: 'Other Company preparation',
+        clientAccountId: string(otherClient.id),
+      },
+      { company: otherCompany },
+    );
+    const otherTask = await assign(
+      string(otherProject.id),
+      'Other Company notes',
+      '2026-09-01',
+      membershipId,
+      { company: otherCompany },
+    );
+    // Equal creation times prove the final identifier tie-break.
+    const tiedAt = '2026-09-02T08:00:00.000Z';
+    await harness.pool.query(
+      'UPDATE tasks SET created_at=$1 WHERE id=ANY($2::uuid[])',
+      [tiedAt, [string(undated.id), string(tied.id)]],
+    );
+    const undatedRows = [
+      { task: undated, project: first },
+      { task: tied, project: second },
+    ]
+      .sort((left, right) =>
+        string(left.task.id) < string(right.task.id) ? -1 : 1,
+      )
+      .map(({ task, project }) => ({ ...task, createdAt: tiedAt, project }));
+    const eventsBefore = await taskEvents();
+
+    expect(await assigned()).toEqual([
+      { ...early, project: first },
+      { ...september, project: second },
+      { ...sameDay, project: first },
+      { ...october, project: first },
+      ...undatedRows,
+    ]);
+    const page = JSON.stringify(await read('/assigned-tasks'));
+    for (const hidden of [
+      'Done notes',
+      'Colleague notes',
+      'Unassigned notes',
+      'Unreadable notes',
+      'Other Company notes',
+      colleague,
+    ])
+      expect(page).not.toContain(hidden);
+    expect(await assigned({ company: otherCompany })).toEqual([
+      {
+        ...otherTask,
+        project: {
+          id: string(otherProject.id),
+          title: 'Other Company preparation',
+          clientDisplayName: 'Other Company Client',
+        },
+      },
+    ]);
+    expect(await assigned({ subject: 'task-member' })).toEqual([
+      { ...colleagueTask, project: first },
+    ]);
+    expect(await taskEvents()).toEqual(eventsBefore);
+  });
+
+  it('reflects completion, reopening, reassignment and a cleared assignee on the next read', async () => {
+    await grant('task');
+    const colleague = string(
+      (await member('task-member', true)).workspaceMembershipId,
+    );
+    const project = {
+      id: projectId,
+      title: 'ISO preparation',
+      clientDisplayName: 'Synthetic Client',
+    };
+    const created = await create({
+      title: 'Moving notes',
+      assigneeMembershipId: membershipId,
+    });
+    const id = string(created.id);
+    expect(await assigned()).toEqual([{ ...created, project }]);
+    expect((await transition(id, 'complete', 1)).status).toBe(201);
+    expect(await assigned()).toEqual([]);
+    expect((await transition(id, 'reopen', 2)).status).toBe(201);
+    expect(await assigned()).toEqual([{ ...(await detail(id)), project }]);
+    await edit(id, { expectedVersion: 3, assigneeMembershipId: colleague });
+    expect(await assigned()).toEqual([]);
+    expect(await assigned({ subject: 'task-member' })).toEqual([
+      { ...(await detail(id)), project },
+    ]);
+    await edit(id, { expectedVersion: 4, assigneeMembershipId: membershipId });
+    expect(await assigned()).toEqual([{ ...(await detail(id)), project }]);
+    await edit(id, { expectedVersion: 5, assigneeMembershipId: null });
+    expect(await assigned()).toEqual([]);
+    expect(await assigned({ subject: 'task-member' })).toEqual([]);
+  });
+
+  it.each(['task', 'project', 'client', 'suspension'] satisfies Array<
+    Exclude<keyof typeof assignments, 'context' | 'document'> | 'suspension'
+  >)('denies the assignee own open Tasks after %s loss', async (change) => {
+    await grant('task');
+    const actor = await member('task-member', true);
+    const target = string(actor.workspaceMembershipId);
+    await create({ title: 'Member notes', assigneeMembershipId: target });
+    expect(await assigned({ subject: 'task-member' })).toHaveLength(1);
+    if (change === 'suspension')
+      await command('/workspace-membership-suspensions', {
+        workspaceMembershipId: target,
+      });
+    else await revoke(change, target);
+    const response = await request('/assigned-tasks', {
+      subject: 'task-member',
+    });
+    expect(response.status).toBe(403);
+    expect(await response.text()).not.toContain('Member notes');
+  });
+
+  it('requires captured Task Manager authority and a Company context and rejects query input', async () => {
+    // The Workspace Owner holds Project and Client access, but no Task Manager grant.
+    expect((await request('/assigned-tasks')).status).toBe(403);
+    const target = string(
+      (await member('task-ineligible')).workspaceMembershipId,
+    );
+    for (const kind of ['context', 'client', 'project'] satisfies Array<
+      keyof typeof assignments
+    >)
+      await grant(kind, target);
+    expect(
+      (await request('/assigned-tasks', { subject: 'task-ineligible' })).status,
+    ).toBe(403);
+    const assignment = await grant('task');
+    await create({ title: 'Owner notes', assigneeMembershipId: membershipId });
+    expect(await assigned()).toHaveLength(1);
+    for (const options of [
+      { company: '' },
+      { company: randomUUID() },
+      { workspace: randomUUID() },
+    ])
+      expect((await request('/assigned-tasks', options)).status).toBe(403);
+    expect((await fetch(`${harness.origin}/api/assigned-tasks`)).status).toBe(
+      401,
+    );
+    for (const query of [
+      'limit=10',
+      `companyId=${companyId}`,
+      'status=done',
+      `assignee=${membershipId}`,
+      'unknown',
+    ])
+      expect((await request(`/assigned-tasks?${query}`)).status).toBe(400);
+    await withUnsupportedPermissionVersion(assignment, 'v999', async () => {
+      expect((await request('/assigned-tasks')).status).toBe(403);
+    });
+  });
+
+  it('keeps a superseded original Client listed with its original label and writes no event, command or fence advance', async () => {
+    await grant('task');
+    const created = await create({
+      title: 'Historical notes',
+      assigneeMembershipId: membershipId,
+      dueDate: '2026-09-30',
+    });
+    const union = await unionSetup(true, true);
+    const confirmed = await union.confirm();
+    const events = await taskEvents();
+    const snapshot = async () => ({
+      commands: (
+        await harness.pool.query('SELECT * FROM task_commands ORDER BY id')
+      ).rows,
+      clients: (
+        await harness.pool.query('SELECT * FROM client_accounts ORDER BY id')
+      ).rows,
+      tasks: (await harness.pool.query('SELECT * FROM tasks ORDER BY id')).rows,
+    });
+    const before = await snapshot();
+    const page = await read('/assigned-tasks');
+    expect(page).toEqual({
+      tasks: [
+        {
+          ...created,
+          project: {
+            id: projectId,
+            title: 'ISO preparation',
+            clientDisplayName: 'Synthetic Client',
+          },
+        },
+      ],
+    });
+    for (const hidden of [
+      union.second,
+      'Legacy synthetic identity',
+      'clientDossierId',
+    ])
+      expect(JSON.stringify(page)).not.toContain(hidden);
+    expect(await snapshot()).toEqual(before);
+    expect(await taskEvents()).toEqual(events);
+    expect((await reverse(string(confirmed.projectionReference))).status).toBe(
+      201,
+    );
+    expect(objects((await read('/assigned-tasks')).tasks)).toHaveLength(1);
   });
 });
