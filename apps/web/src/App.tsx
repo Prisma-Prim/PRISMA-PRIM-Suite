@@ -57,6 +57,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     requestId: number;
   }>();
+  const [requestedProject, setRequestedProject] = useState<{
+    context: string;
+    projectId: string;
+    requestId: number;
+  }>();
   const navigateToSection = useCallback(
     (section: 'clients' | 'projects' | 'documents' | 'requests') => {
       const nextUrl = new URL(window.location.href);
@@ -104,6 +109,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   useEffect(() => {
     setRequestClientFilter(undefined);
   }, [requestNavigationContext]);
+  // A requested Project open belongs to the context that keys the Projects
+  // owner. A session, Client authority or Company change, or the loss of the
+  // Projects section, retires it for good; a Client identity change does not,
+  // because the Project id is stable.
+  const projectRequestContext =
+    access.status === 'active' && canAccessProjectsSection(access.actor)
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
+      : 'unavailable';
+  useEffect(() => {
+    setRequestedProject(undefined);
+  }, [projectRequestContext]);
 
   if (!identity.loaded)
     return (
@@ -136,11 +152,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.workspacePermissions.includes('client.manage') ||
     canReadCompanyClients;
   const activeCompanyId = access.actor.activeCompany?.id;
-  const canAccessProjects =
-    activeCompanyId !== undefined &&
-    access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
-      true &&
-    canAccessClients;
+  const canAccessProjects = canAccessProjectsSection(access.actor);
   const canReadDocuments =
     access.actor.activeCompany?.documentPermissions?.includes(
       'document.read',
@@ -177,6 +189,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('clients');
+      }
+    : undefined;
+  // The Projects owner reads the requested Project itself; no Project identity
+  // reaches the URL or history state.
+  const openProject = canAccessProjects
+    ? (projectId: string) => {
+        setRequestedProject((current) => ({
+          context: projectRequestContext,
+          projectId,
+          requestId: (current?.requestId ?? 0) + 1,
+        }));
+        navigateToSection('projects');
       }
     : undefined;
 
@@ -239,6 +263,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          onOpenProject={openProject}
         />
       ),
     });
@@ -316,6 +341,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          requestedProject={
+            requestedProject?.context === projectRequestContext
+              ? requestedProject
+              : undefined
+          }
         />
       ),
     });
@@ -419,6 +449,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         </p>
       </ApplicationContentSurface>
     </ApplicationShell>
+  );
+}
+/** The Projects section needs an active Company with Project and Client read. */
+function canAccessProjectsSection(actor: ActorContext): boolean {
+  const company = actor.activeCompany;
+  return (
+    company?.projectPermissions?.includes('project.read') === true &&
+    (actor.workspacePermissions.includes('client.manage') ||
+      company.clientPermissions?.includes('client.read') === true)
   );
 }
 /**
