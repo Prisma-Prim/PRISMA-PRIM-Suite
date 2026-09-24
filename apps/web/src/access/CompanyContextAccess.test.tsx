@@ -17,8 +17,28 @@ const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const companyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
+const capturedVersionExplanation =
+  'The version is captured when access is granted. A later version applies only after this access is revoked and granted again.';
+const bundleLabels = {
+  context: 'Company Context Access',
+  director: 'Company Director Client Access',
+  commercial: 'Company Commercial Intake',
+  catalogue: 'Company Service Catalogue',
+  reader: 'Company Commercial Activity Reader',
+} as const;
+const serverVersions = {
+  context: null,
+  director: 'v2',
+  commercial: 'v2',
+  catalogue: 'v1',
+  reader: 'v1',
+} as const;
+
 const administration = (
-  bundle?: 'context' | 'director' | 'commercial' | 'catalogue' | 'reader',
+  bundle?: keyof typeof bundleLabels,
+  permissionSetVersion: string | null | undefined = bundle
+    ? serverVersions[bundle]
+    : undefined,
 ) => ({
   members: [
     {
@@ -39,16 +59,8 @@ const administration = (
           id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
           workspaceMembershipId: memberId,
           companyId,
-          bundle:
-            bundle === 'director'
-              ? 'Company Director Client Access'
-              : bundle === 'commercial'
-                ? 'Company Commercial Intake'
-                : bundle === 'catalogue'
-                  ? 'Company Service Catalogue'
-                  : bundle === 'reader'
-                    ? 'Company Commercial Activity Reader'
-                    : 'Company Context Access',
+          bundle: bundleLabels[bundle],
+          permissionSetVersion,
           active: true,
         },
       ]
@@ -146,12 +158,259 @@ describe('CompanyContextAccess', () => {
 
     chooseTargets();
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
-      'Current server state: Not granted',
+      /^Current server state: Not granted$/,
     );
+    expect(
+      screen.queryByText(capturedVersionExplanation),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Revoke access' }),
     ).toBeDisabled();
+  });
+
+  it.each(['classic', 'prisme'] as const)(
+    'shows the exact captured version of an active legacy assignment in %s',
+    async (presentation) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => Response.json(administration('director', 'v1'))),
+      );
+
+      render(
+        <ApplicationPresentation value={presentation}>
+          <CompanyContextAccess
+            actor={ownerActor}
+            identity={deterministicBrowserIdentity()}
+          />
+        </ApplicationPresentation>,
+      );
+      await screen.findByLabelText('Workspace member');
+      chooseTargets();
+      chooseBundle('director-client');
+
+      expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+        /^Current server state: Granted — captured version v1$/,
+      );
+      expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Revoke access' }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole('button', { name: 'Grant access' }),
+      ).toBeDisabled();
+    },
+  );
+
+  it('shows the server-captured version only after an explicit revoke and fresh grant', async () => {
+    let assignment: 'legacy' | 'revoked' | 'fresh' = 'legacy';
+    const commands: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(
+            assignment === 'revoked'
+              ? administration()
+              : administration(
+                  'director',
+                  assignment === 'fresh' ? 'v2' : 'v1',
+                ),
+          );
+        if (path.startsWith('/api/company-director-client-assignments')) {
+          commands.push(options?.method ?? 'GET');
+          assignment = options?.method === 'POST' ? 'fresh' : 'revoked';
+          return Response.json({}, { status: 200 });
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(
+      screen.queryByText(capturedVersionExplanation),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v2$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+    expect(commands).toEqual(['DELETE', 'POST']);
+  });
+
+  it('shows the version reported by the reloaded state rather than the grant response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration()))
+        .mockResolvedValueOnce(
+          Response.json(
+            {
+              id: 'assignment-1',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Director Client Access',
+              permissionSetVersion: 'v2',
+              active: true,
+            },
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(Response.json(administration('director', 'v1'))),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+  });
+
+  it.each([
+    {
+      name: 'an unknown Director Client version',
+      assignment: { bundle: 'Company Director Client Access', version: 'v3' },
+    },
+    {
+      name: 'a missing Director Client version',
+      assignment: {
+        bundle: 'Company Director Client Access',
+        version: undefined,
+      },
+    },
+    {
+      name: 'a null Director Client version',
+      assignment: { bundle: 'Company Director Client Access', version: null },
+    },
+    {
+      name: 'a second version of a single-version bundle',
+      assignment: { bundle: 'Company Task Manager', version: 'v2' },
+    },
+    {
+      name: 'a version on Company Context Access',
+      assignment: { bundle: 'Company Context Access', version: 'v1' },
+    },
+    {
+      name: 'an unknown bundle label',
+      assignment: { bundle: 'Company Unlisted Access', version: 'v1' },
+    },
+    {
+      name: 'a missing bundle label',
+      assignment: { bundle: undefined, version: 'v1' },
+    },
+  ])(
+    'fails closed on $name and recovers through Retry',
+    async ({ assignment }) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(
+            Response.json({
+              ...administration(),
+              assignments: [
+                {
+                  id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                  workspaceMembershipId: memberId,
+                  companyId,
+                  bundle: assignment.bundle,
+                  permissionSetVersion: assignment.version,
+                  active: true,
+                },
+              ],
+            }),
+          )
+          .mockResolvedValueOnce(Response.json(administration('director'))),
+      );
+      render(
+        <CompanyContextAccess
+          actor={ownerActor}
+          identity={deterministicBrowserIdentity()}
+        />,
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The access state could not be loaded or changed.',
+      );
+      expect(
+        screen.queryByLabelText('Workspace member'),
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry access state' }),
+      );
+      await screen.findByLabelText('Workspace member');
+      chooseTargets();
+      chooseBundle('director-client');
+      expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+        /^Current server state: Granted — captured version v2$/,
+      );
+    },
+  );
+
+  it('does not report a confirmed grant as refreshed when the reloaded version is unknown', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration()))
+        .mockResolvedValueOnce(Response.json({}, { status: 201 }))
+        .mockResolvedValueOnce(Response.json(administration('director', 'v9')))
+        .mockResolvedValueOnce(Response.json(administration('director'))),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    expect(
+      screen.queryByText('Access granted. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/captured version/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v2$/,
+    );
   });
 
   it('requires a named confirmation before suspending a Workspace member and reloads canonical state', async () => {
@@ -752,6 +1011,15 @@ describe('CompanyContextAccess', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
     await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Company Task Manager v1 grants Task read and management only/,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Revoke access' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
     await screen.findByText('Access revoked. Server state refreshed.');
@@ -827,8 +1095,11 @@ describe('CompanyContextAccess', () => {
       expect.any(Object),
     );
     expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
-      'Current server state: Granted',
+      /^Current server state: Granted$/,
     );
+    expect(
+      screen.queryByText(capturedVersionExplanation),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText('Access granted. Server state refreshed.'),
     ).toBeInTheDocument();
@@ -923,7 +1194,7 @@ describe('CompanyContextAccess', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
-      'Current server state: Granted',
+      /^Current server state: Granted — captured version v1$/,
     );
   });
 
@@ -1208,6 +1479,7 @@ describe('CompanyContextAccess', () => {
           workspaceMembershipId: ownerMembershipId,
           companyId,
           bundle: 'Company Director Client Access',
+          permissionSetVersion: 'v2',
           active: true,
         },
       ],
@@ -1312,6 +1584,7 @@ describe('CompanyContextAccess', () => {
           workspaceMembershipId: ownerMembershipId,
           companyId: otherCompanyId,
           bundle: 'Company Director Client Access',
+          permissionSetVersion: 'v2',
           active: true,
         },
       ],
@@ -1385,6 +1658,7 @@ describe('CompanyContextAccess', () => {
           workspaceMembershipId: ownerMembershipId,
           companyId,
           bundle: 'Company Director Client Access',
+          permissionSetVersion: 'v2',
           active: true,
         },
       ],
@@ -1475,6 +1749,7 @@ describe('CompanyContextAccess', () => {
           workspaceMembershipId: ownerMembershipId,
           companyId,
           bundle: 'Company Director Client Access',
+          permissionSetVersion: 'v2',
           active: true,
         },
       ],
@@ -1690,6 +1965,12 @@ function chooseTargets() {
   });
   fireEvent.change(screen.getByLabelText('Company'), {
     target: { value: companyId },
+  });
+}
+
+function chooseBundle(value: string) {
+  fireEvent.change(screen.getByLabelText('Access bundle'), {
+    target: { value },
   });
 }
 
