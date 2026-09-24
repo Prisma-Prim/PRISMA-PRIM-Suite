@@ -105,6 +105,28 @@
   overflow-wrap: anywhere;
 }
 
+.commercial-intake-restriction {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, transparent);
+  overflow-wrap: anywhere;
+}
+
+.commercial-intake-restriction p {
+  margin: 0;
+}
+
+.commercial-intake-restriction button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .commercial-intake-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -146,6 +168,11 @@
   color: var(--shell-muted, currentColor);
 }
 
+.commercial-intake-detail dd button {
+  display: block;
+  margin-top: 0.35rem;
+}
+
 .commercial-intake-next-action {
   display: grid;
   gap: 0.5rem;
@@ -174,6 +201,7 @@
   gap: 0.5rem;
 }
 
+.commercial-intake-workspace:focus-visible,
 .commercial-intake-workspace button:focus-visible,
 .commercial-intake-workspace input:focus-visible,
 .commercial-intake-workspace textarea:focus-visible {

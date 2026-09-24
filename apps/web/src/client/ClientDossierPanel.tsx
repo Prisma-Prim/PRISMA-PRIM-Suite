@@ -84,6 +84,7 @@ export function ClientDossierPanel({
   onHeadingReady,
   onOpenProjects,
   onOpenDocuments,
+  onOpenRequests,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -98,6 +99,7 @@ export function ClientDossierPanel({
   onHeadingReady?: (heading: HTMLHeadingElement | null) => void;
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
+  onOpenRequests?: (client: { id: string; displayName: string }) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -428,6 +430,20 @@ export function ClientDossierPanel({
           }
         >
           {copy.openDocuments}
+        </button>
+      )}
+      {onOpenRequests && (
+        <button
+          type="button"
+          className="client-secondary-action"
+          onClick={() =>
+            onOpenRequests({
+              id: dossier.id,
+              displayName: dossier.displayName,
+            })
+          }
+        >
+          {copy.openRequests}
         </button>
       )}
       {isPrisme && !correctionOpen && correctionFeedback}

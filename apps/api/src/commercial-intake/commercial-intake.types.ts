@@ -72,6 +72,11 @@ export interface CommercialIntakeListItem {
   readonly id: string;
   readonly subject: string | null;
   readonly capturedAt: string;
+  /**
+   * Derived navigation target owned by Client, present only for a current
+   * Company Client reader; never persisted, accepted as input or used for access.
+   */
+  readonly clientDossierId?: string;
   readonly initialOpportunity: {
     readonly title: string;
     readonly nextAction: string;

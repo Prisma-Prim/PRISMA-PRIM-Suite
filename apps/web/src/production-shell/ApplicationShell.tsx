@@ -42,7 +42,7 @@ export interface ApplicationSection {
  * generates no box in either frame, so it cannot receive navigation focus.
  */
 const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
-  new Set(['clients', 'documents', 'projects']);
+  new Set(['clients', 'documents', 'projects', 'requests']);
 
 export interface FrameContext {
   actorName: string;

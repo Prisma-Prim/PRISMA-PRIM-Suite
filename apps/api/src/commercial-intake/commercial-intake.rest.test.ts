@@ -1040,6 +1040,208 @@ withPostgres('Company commercial intake REST', () => {
     ).toBe(400);
   });
 
+  it('derives a distinct current dossier for same-named Clients in one batched projection per page', async () => {
+    const setup = await prepared(true);
+    const first = entity(
+      await command(
+        '/clients',
+        { displayName: 'Shared display name' },
+        'shared-first-client',
+        setup.company.id,
+      ),
+    );
+    const second = entity(
+      await command(
+        '/clients',
+        { displayName: 'Shared display name' },
+        'shared-second-client',
+        setup.company.id,
+      ),
+    );
+    const linkedToFirst = detail(
+      await command(
+        '/commercial-intake/requests',
+        {
+          ...representativeBody(),
+          subject: 'First shared Request',
+          clientAccountId: first.id,
+        },
+        'shared-first-request',
+        setup.company.id,
+      ),
+    );
+    const linkedToSecond = detail(
+      await command(
+        '/commercial-intake/requests',
+        {
+          ...representativeBody(),
+          subject: 'Second shared Request',
+          clientAccountId: second.id,
+        },
+        'shared-second-request',
+        setup.company.id,
+      ),
+    );
+    const unlinked = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), subject: 'Request without Client' },
+        'shared-unlinked-request',
+        setup.company.id,
+      ),
+    );
+    await pool.query(
+      `UPDATE client_requests SET captured_at = CASE id
+         WHEN $1::uuid THEN TIMESTAMPTZ '2026-09-20 10:00:03+00'
+         WHEN $2::uuid THEN TIMESTAMPTZ '2026-09-20 10:00:02+00'
+         ELSE TIMESTAMPTZ '2026-09-20 10:00:01+00'
+       END`,
+      [unlinked.id, linkedToSecond.id],
+    );
+
+    const page = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    );
+    expect(page.items.map((item) => item.id)).toEqual([
+      unlinked.id,
+      linkedToSecond.id,
+      linkedToFirst.id,
+    ]);
+    expect(page.items.map((item) => item.clientDossierId)).toEqual([
+      undefined,
+      second.id,
+      first.id,
+    ]);
+    expect(page.items[0]).not.toHaveProperty('clientDossierId');
+    // The derived identity is the only Client datum a row gains: no display
+    // name, original reference or count.
+    for (const item of page.items)
+      expect(Object.keys(item).sort()).toEqual(
+        [
+          'capturedAt',
+          'id',
+          'initialOpportunity',
+          'subject',
+          ...(item.clientDossierId === undefined ? [] : ['clientDossierId']),
+        ].sort(),
+      );
+    expect(JSON.stringify(page)).not.toContain('Shared display name');
+    expect(page).not.toHaveProperty('total');
+
+    // Page size, cursor and order are unchanged by the derived field.
+    const firstPage = listPage(
+      await (
+        await request('/commercial-intake/requests?limit=2', setup.company.id)
+      ).json(),
+    );
+    expect(firstPage.items.map((item) => item.id)).toEqual([
+      unlinked.id,
+      linkedToSecond.id,
+    ]);
+    const cursor = firstPage.nextCursor;
+    if (cursor === undefined) throw new Error('Expected a next page cursor.');
+    const olderPage = listPage(
+      await (
+        await request(
+          `/commercial-intake/requests?limit=2&cursor=${encodeURIComponent(cursor)}`,
+          setup.company.id,
+        )
+      ).json(),
+    );
+    expect(olderPage).toEqual({
+      items: [{ ...page.items[2], clientDossierId: first.id }],
+    });
+
+    // One batched Client projection per page: more linked rows, each with its
+    // own Client, add no query.
+    const baseline = await harness.measureApplicationQueries(() =>
+      request('/commercial-intake/requests', setup.company.id),
+    );
+    expect(baseline.value.status).toBe(200);
+    for (const index of [1, 2, 3]) {
+      const client = entity(
+        await command(
+          '/clients',
+          { displayName: `Additional Client ${index}` },
+          `additional-client-${index}`,
+          setup.company.id,
+        ),
+      );
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), clientAccountId: client.id },
+        `additional-request-${index}`,
+        setup.company.id,
+      );
+    }
+    const larger = await harness.measureApplicationQueries(() =>
+      request('/commercial-intake/requests', setup.company.id),
+    );
+    expect(larger.value.status).toBe(200);
+    const largerPage = listPage(await larger.value.json());
+    expect(
+      largerPage.items.filter((item) => item.clientDossierId !== undefined),
+    ).toHaveLength(5);
+    expect(larger.queryCount).toBe(baseline.queryCount);
+  });
+
+  it('derives no dossier without current Company Client read or for an unavailable Client', async () => {
+    const setup = await preparedRestrictedMember();
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Workspace-managed shared name' },
+        'manager-only-client',
+        setup.company.id,
+      ),
+    );
+    await command(
+      '/commercial-intake/requests',
+      { ...representativeBody(), clientAccountId: client.id },
+      'manager-only-request',
+      setup.company.id,
+    );
+    const derived = async (headers: Record<string, string> = {}) =>
+      listPage(
+        await (
+          await request('/commercial-intake/requests', setup.company.id, {
+            headers,
+          })
+        ).json(),
+      ).items.map((item) => item.clientDossierId);
+
+    // Workspace client.manage alone and a commercial-only member get none.
+    expect(await derived()).toEqual([undefined]);
+    expect(await derived(setup.memberHeaders)).toEqual([undefined]);
+
+    await command(
+      '/company-director-client-assignments',
+      {
+        companyId: setup.company.id,
+        workspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+      'grant-company-client-read',
+    );
+    expect(await derived()).toEqual([client.id]);
+
+    await pool.query(
+      "UPDATE client_company_relationships SET status = 'archived' WHERE client_account_id = $1",
+      [client.id],
+    );
+    expect(await derived()).toEqual([undefined]);
+    await pool.query(
+      "UPDATE client_company_relationships SET status = 'active' WHERE client_account_id = $1",
+      [client.id],
+    );
+    await pool.query(
+      "UPDATE client_accounts SET status = 'archived' WHERE id = $1",
+      [client.id],
+    );
+    expect(await derived()).toEqual([undefined]);
+  });
+
   it('keeps direct detail, list and labels isolated between Companies', async () => {
     const setup = await prepared();
     const created = detail(
@@ -1137,6 +1339,38 @@ withPostgres('Company commercial intake REST', () => {
       setup.company.id,
     );
     expect((await setup.reverse(next)).status).toBe(409);
+  });
+
+  it('derives the canonical dossier on list rows after union and the original after reversal', async () => {
+    const setup = await unionSetup();
+    const original = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), clientAccountId: setup.second.id },
+        'list-before-union',
+        setup.other.id,
+      ),
+    );
+    const derived = async () =>
+      listPage(
+        await (
+          await request('/commercial-intake/requests', setup.other.id)
+        ).json(),
+      ).items.map((item) => [item.id, item.clientDossierId]);
+
+    expect(await derived()).toEqual([[original.id, setup.second.id]]);
+    const reference = await setup.unite();
+    expect(await derived()).toEqual([[original.id, setup.client.id]]);
+    // The other Company's Request never reaches this Company's rows.
+    expect(
+      listPage(
+        await (
+          await request('/commercial-intake/requests', setup.company.id)
+        ).json(),
+      ).items,
+    ).toEqual([]);
+    expect((await setup.reverse(reference)).status).toBe(201);
+    expect(await derived()).toEqual([[original.id, setup.second.id]]);
   });
 
   it('keeps an exact Workspace manager retry after a valid Client union reversal', async () => {
@@ -2470,6 +2704,34 @@ function listedResponsibleActor(value: unknown, requestId: string): unknown {
   const item = items.find((candidate) => record(candidate).id === requestId);
   if (item === undefined) throw new Error(`Expected Request ${requestId}.`);
   return record(record(item).initialOpportunity).responsibleActor;
+}
+
+function listPage(value: unknown): {
+  items: Array<
+    Record<string, unknown> & { id: string; clientDossierId?: string }
+  >;
+  nextCursor?: string;
+} {
+  const page = record(value);
+  if (!Array.isArray(page.items)) throw new Error('Expected a Request page.');
+  return {
+    ...page,
+    items: page.items.map((item: unknown) => {
+      const row = record(item);
+      const clientDossierId =
+        row.clientDossierId === undefined
+          ? undefined
+          : stringField(row, 'clientDossierId');
+      return {
+        ...row,
+        id: stringField(row, 'id'),
+        ...(clientDossierId === undefined ? {} : { clientDossierId }),
+      };
+    }),
+    ...(page.nextCursor === undefined
+      ? {}
+      : { nextCursor: stringField(page, 'nextCursor') }),
+  };
 }
 
 function clientReference(value: unknown): {
