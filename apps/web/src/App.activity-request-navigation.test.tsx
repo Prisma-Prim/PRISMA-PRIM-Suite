@@ -363,6 +363,73 @@ describe('opening the Request from its commercial Activity event', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each<[string, (companyId: string) => unknown]>([
+    [
+      'a non-string Request id',
+      (companyId) => ({
+        id: 'event-numeric-request',
+        action: 'client_request.created',
+        occurredAt: '2026-09-24T10:11:00.000Z',
+        actor,
+        target: { type: 'client_request', clientRequestId: 358, companyId },
+        metadata: {},
+      }),
+    ],
+    [
+      'a Request target under another action',
+      (companyId) => ({
+        id: 'event-project-request',
+        action: 'project.created',
+        occurredAt: '2026-09-24T10:11:00.000Z',
+        actor,
+        target: {
+          type: 'client_request',
+          clientRequestId: requestId,
+          companyId,
+        },
+        metadata: {},
+      }),
+    ],
+    [
+      'an Opportunity event that names a Request target',
+      (companyId) => ({
+        id: 'event-mismatched-request',
+        action: 'opportunity.next_action.updated',
+        occurredAt: '2026-09-24T10:11:00.000Z',
+        actor,
+        target: {
+          type: 'client_request',
+          clientRequestId: requestId,
+          companyId,
+        },
+        metadata: {},
+      }),
+    ],
+  ])(
+    'offers no action and reads nothing when a successful Activity payload has %s',
+    async (_case, malformed) => {
+      const transport = installTransport((companyId) => [
+        ...commercialEvents(companyId),
+        malformed(companyId),
+      ]);
+      render(<App identity={deterministicBrowserIdentity()} />);
+
+      expect(
+        await screen.findByText(
+          'We could not load the Activity Log. Please try again.',
+        ),
+      ).toBeVisible();
+      expect(
+        within(navigation()).getByRole('link', { name: 'Client Requests' }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Open Request' }),
+      ).not.toBeInTheDocument();
+      expect(transport.detailReads).toEqual([]);
+      expect(transport.mutations).toEqual([]);
+    },
+  );
+
   it('offers no action when the Requests section is not offered', async () => {
     const transport = installTransport();
     transport.requestCreate = false;

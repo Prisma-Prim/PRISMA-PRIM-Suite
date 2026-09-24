@@ -115,22 +115,15 @@ export interface OrdinaryActivityLogEvent {
         companyId: string;
         companyDisplayName: string;
       };
-  metadata:
-    | { identityProvider: string }
-    | {
-        bundle:
-          | 'Company Task Manager'
-          | 'Company Context Access'
-          | 'Company Director Client Access'
-          | 'Company Document Project Organizer'
-          | 'Company Document Registrar'
-          | 'Company Project Access'
-          | 'Company Commercial Intake'
-          | 'Company Service Catalogue'
-          | 'Company Commercial Activity Reader';
-      }
-    | { changes: Record<string, { before: unknown; after: unknown }> }
-    | Record<string, never>;
+}
+
+/** A Task event as the Activity Log lists it, without its change metadata. */
+export interface TaskActivityLogEvent {
+  id: string;
+  action: TaskEvent['action'];
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: TaskEvent['target'];
 }
 
 export interface ClientUnionActivityLogEvent {
@@ -156,7 +149,6 @@ export interface DocumentRegisteredActivityLogEvent {
     documentTitle: string;
     companyId: string;
   };
-  metadata: Record<string, never>;
 }
 export interface DocumentCorrectedActivityLogEvent {
   id: string;
@@ -168,7 +160,6 @@ export interface DocumentCorrectedActivityLogEvent {
     documentId: string;
     companyId: string;
   };
-  metadata: Record<string, never>;
 }
 export interface DocumentProjectActivityLogEvent {
   id: string;
@@ -183,7 +174,6 @@ export interface DocumentProjectActivityLogEvent {
     projectTitle: string;
     companyId: string;
   };
-  metadata: Record<string, never>;
 }
 /**
  * The authorized Company projection of a recorded commercial event. It never
@@ -207,11 +197,14 @@ export interface CommercialActivityLogEvent {
         clientRequestId?: string;
         companyId: string;
       };
-  metadata: Record<string, never>;
 }
 
+/**
+ * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
+ * The shell lists these entries and never presents their metadata.
+ */
 export type ActivityLogEvent =
-  | TaskEvent
+  | TaskActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
