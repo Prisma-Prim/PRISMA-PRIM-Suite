@@ -1,0 +1,136 @@
+.working-document-correction-history,
+.working-document-correction-history-content {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.working-document-correction-history-content[hidden] {
+  display: none;
+}
+
+.working-document-correction-history-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.working-document-correction-history-heading h4,
+.working-document-correction-history-content > p {
+  margin: 0;
+}
+
+.working-document-correction-history-list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.working-document-correction-history-list > li {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.working-document-correction-history-attribution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.working-document-correction-history-changes {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.working-document-correction-history-changes dd {
+  margin: 0;
+}
+
+.working-document-correction-history-value {
+  white-space: pre-wrap;
+}
+
+.working-document-correction-history-assistive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.prisme-shell .working-document-correction-history {
+  gap: 0;
+  margin-top: 0.4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--shell-line);
+}
+
+.prisme-shell .working-document-correction-history-heading h4 {
+  font-size: 0.9375rem;
+}
+
+.prisme-shell .working-document-correction-history-content {
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.prisme-shell .working-document-correction-history-content > p {
+  color: var(--shell-muted);
+  font-size: 0.875rem;
+}
+
+.prisme-shell .working-document-correction-history-list {
+  gap: 0;
+}
+
+.prisme-shell .working-document-correction-history-list > li {
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--shell-line);
+}
+
+.prisme-shell .working-document-correction-history-list > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.prisme-shell .working-document-correction-history-attribution {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+
+.prisme-shell .working-document-correction-history-attribution time {
+  color: var(--shell-ink);
+  font-weight: 550;
+}
+
+.prisme-shell .working-document-correction-history-changes > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.3fr) minmax(0, 1fr);
+  gap: 0.25rem 1.25rem;
+}
+
+.prisme-shell .working-document-correction-history-changes dt {
+  color: var(--shell-muted);
+}
+
+.prisme-shell
+  .working-document-correction-history-value
+  > span[aria-hidden='true'] {
+  color: #5943bd;
+}
+
+@media (max-width: 680px) {
+  .prisme-shell .working-document-correction-history-changes > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

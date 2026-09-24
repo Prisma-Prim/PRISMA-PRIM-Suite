@@ -12,6 +12,7 @@ import {
   type WorkingDocumentDetail,
 } from './document-response';
 import { documentsCopy as copy } from './documents.copy';
+import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
@@ -928,6 +929,12 @@ export function DocumentWorkspace({
                   </button>
                 </>
               )}
+              <DocumentCorrectionHistory
+                actor={actor}
+                identity={identity}
+                documentId={detail.id}
+                workingRevision={detail.workingRevision}
+              />
             </article>
           ) : (
             <>

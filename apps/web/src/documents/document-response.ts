@@ -154,6 +154,74 @@ export function readDocumentCorrectionReceipt(
     outcome: row.outcome,
   };
 }
+const correctedFields = ['title', 'purpose', 'url'] as const;
+export interface DocumentCorrectionChange {
+  field: (typeof correctedFields)[number];
+  before: string;
+  after: string;
+}
+/** One material correction as recorded; its values are history, not current. */
+export interface DocumentCorrection {
+  revision: number;
+  occurredAt: string;
+  actorDisplayName: string;
+  /** Visible changed fields in detail order; none for a withheld URL change. */
+  changes: DocumentCorrectionChange[];
+}
+export interface DocumentCorrectionHistoryPage {
+  corrections: DocumentCorrection[];
+  nextBeforeRevision: number | null;
+}
+/**
+ * One history page, newest revision first. A page that does not continue
+ * strictly below the requested revision, or whose continuation is not its last
+ * revision, is not a consistent ledger read and is rejected.
+ */
+export function readDocumentCorrectionHistory(
+  value: unknown,
+  beforeRevision: number | undefined,
+): DocumentCorrectionHistoryPage {
+  const page = record(value);
+  if (!Array.isArray(page.corrections)) throw new Error('Invalid history');
+  const corrections = page.corrections.map(readDocumentCorrection);
+  let upperBound = beforeRevision ?? Number.POSITIVE_INFINITY;
+  for (const correction of corrections) {
+    if (correction.revision >= upperBound) throw new Error('Invalid history');
+    upperBound = correction.revision;
+  }
+  const nextBeforeRevision =
+    page.nextBeforeRevision === null
+      ? null
+      : positiveInteger(page.nextBeforeRevision);
+  if (
+    nextBeforeRevision !== null &&
+    nextBeforeRevision !== corrections.at(-1)?.revision
+  )
+    throw new Error('Invalid history');
+  return { corrections, nextBeforeRevision };
+}
+function readDocumentCorrection(value: unknown): DocumentCorrection {
+  const row = record(value);
+  const changes = record(row.changes);
+  if (
+    Object.keys(changes).some(
+      (field) => !correctedFields.some((known) => known === field),
+    )
+  )
+    throw new Error('Unknown corrected field');
+  return {
+    revision: positiveInteger(row.revision),
+    occurredAt: instant(row.occurredAt),
+    actorDisplayName: string(record(row.actor).displayName),
+    changes: correctedFields.flatMap((field) => {
+      if (!Object.hasOwn(changes, field)) return [];
+      const change = record(changes[field]);
+      return [
+        { field, before: string(change.before), after: string(change.after) },
+      ];
+    }),
+  };
+}
 export function readClients(
   value: unknown,
 ): Array<{ id: string; displayName: string }> {

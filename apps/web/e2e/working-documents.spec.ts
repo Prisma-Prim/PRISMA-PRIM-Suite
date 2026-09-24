@@ -37,9 +37,40 @@ test('registers and reopens a Company-confidential working reference', async ({
   let currentDocument = document;
   const correctionRequests: Array<{ body: unknown; key: string | undefined }> =
     [];
+  let historyReads = 0;
+  const recordedCorrection = {
+    revision: 2,
+    occurredAt: '2026-09-19T01:00:00.000Z',
+    actor: { displayName: 'Document Registrar' },
+    changes: {
+      title: {
+        before: document.title,
+        after: 'Corrected assessment questionnaire',
+      },
+      purpose: {
+        before: document.purpose,
+        after: 'Prepare the corrected assessment',
+      },
+      url: {
+        before: document.version.representation.url,
+        after: 'https://example.test/corrected-questionnaire',
+      },
+    },
+  };
   await page.route('**/api/**', (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path.endsWith(`/documents/${document.id}/correction-history`)) {
+      historyReads += 1;
+      expect(request.headers()['x-company-context-id']).toBe(company.id);
+      return route.fulfill({
+        json: {
+          corrections:
+            currentDocument.workingRevision >= 2 ? [recordedCorrection] : [],
+          nextBeforeRevision: null,
+        },
+      });
+    }
     if (path.endsWith('/access/current-actor'))
       return route.fulfill({
         json: {
@@ -241,10 +272,103 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-corrected.png'),
     fullPage: true,
   });
+  // The history is read from the persisted ledger after reopening the detail.
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Corrected assessment questionnaire' })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Corrected assessment questionnaire' }),
+  ).toBeVisible();
+  const historyToggle = page.getByRole('button', {
+    name: 'Show reference correction history',
+  });
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
+  expect(historyReads).toBe(0);
+  await historyToggle.focus();
+  await page.keyboard.press('Enter');
+  const history = page.getByRole('region', {
+    name: 'Correction history',
+    exact: true,
+  });
+  const entry = history
+    .getByRole('list', { name: 'Reference corrections, newest first' })
+    .getByRole('listitem');
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText('Corrected by Document Registrar');
+  await expect(entry.locator('time')).toHaveAttribute(
+    'datetime',
+    recordedCorrection.occurredAt,
+  );
+  await expect(entry).toContainText(
+    `${document.title} → changed to Corrected assessment questionnaire`,
+  );
+  await expect(entry).toContainText(
+    `${document.version.representation.url} → changed to https://example.test/corrected-questionnaire`,
+  );
+  // Recorded references stay inert text inside the history.
+  await expect(history.getByRole('link')).toHaveCount(0);
+  expect(historyReads).toBe(1);
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await history.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('documents-correction-history.png'),
+    fullPage: true,
+  });
+  // Classic presents the same open history with the same keyboard controls.
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  const classicHistory = page
+    .locator('#documents article')
+    .getByRole('region', { name: 'Correction history', exact: true });
+  const classicToggle = classicHistory.getByRole('button', {
+    name: /reference correction history$/u,
+  });
+  await expect(classicToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(classicHistory.getByRole('listitem')).toContainText(
+    `${document.purpose} → changed to Prepare the corrected assessment`,
+  );
+  await classicToggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(classicToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(classicHistory.getByRole('listitem')).toHaveCount(0);
+  await expect(classicToggle).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(classicHistory.getByRole('listitem')).toHaveCount(1);
+  expect(historyReads).toBe(2);
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await classicHistory.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('documents-correction-history-classic.png'),
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Try Prisme' }).click();
+  await expect(history.getByRole('listitem')).toHaveCount(1);
   await page.getByRole('button', { name: 'Edit reference' }).click();
   await page
     .getByLabel('Title', { exact: true })
     .fill('Competing correction intention');
+  // Reading history again leaves the open correction draft untouched.
+  await page
+    .getByRole('button', { name: 'Hide reference correction history' })
+    .click();
+  await page
+    .getByRole('button', { name: 'Show reference correction history' })
+    .click();
+  await expect(entry).toHaveCount(1);
+  expect(historyReads).toBe(3);
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue(
+    'Competing correction intention',
+  );
   correctionConflict = true;
   await page.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByRole('alert')).toContainText(
