@@ -85,6 +85,10 @@ export function transitionInput(value: unknown) {
   keys(row, ['expectedVersion']);
   return { expectedVersion: version(row.expectedVersion) };
 }
+/** The assigned-Task read takes no filter, search, paging or scope input. */
+export function assignedTasksQuery(value: unknown): void {
+  keys(object(value), []);
+}
 function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid stored Task text.');
   return value;

@@ -25,6 +25,10 @@ export type TaskView = TaskFields & {
     | { status: 'todo'; completion: null }
     | { status: 'done'; completion: { actor: TaskActor; occurredAt: string } }
   );
+/** An open Task assigned to the reader, with the Project list's own labels. */
+export type AssignedTaskView = TaskView & {
+  project: { id: string; title: string; clientDisplayName: string };
+};
 export type TaskChanges = {
   [K in keyof TaskFields]?: { before: TaskFields[K]; after: TaskFields[K] };
 };

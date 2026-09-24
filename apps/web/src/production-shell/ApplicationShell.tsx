@@ -26,6 +26,7 @@ export interface ApplicationSection {
     | 'documents'
     | 'requests'
     | 'projects'
+    | 'my-tasks'
     | 'clients'
     | 'access'
     | 'companies'
