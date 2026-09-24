@@ -8,8 +8,11 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useCallback, useEffect, useState } from 'react';
-import { DocumentWorkspace } from './documents/DocumentWorkspace';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DocumentWorkspace,
+  type RequestedDocument,
+} from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
@@ -57,6 +60,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     requestId: number;
   }>();
+  const [requestedDocument, setRequestedDocument] = useState<
+    RequestedDocument & { documentsContext: string }
+  >();
+  /** Request ids only increase, so no retired request id is ever reissued. */
+  const documentRequests = useRef(0);
   const navigateToSection = useCallback(
     (section: 'clients' | 'projects' | 'documents' | 'requests') => {
       const nextUrl = new URL(window.location.href);
@@ -104,6 +112,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   useEffect(() => {
     setRequestClientFilter(undefined);
   }, [requestNavigationContext]);
+  // A requested Document belongs to the context that keys the Documents owner:
+  // session, Client authority and active Company. Any change retires it. A
+  // Client union or reversal does not, because the Document id is stable.
+  const documentsContext =
+    access.status === 'active'
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
+      : 'inactive';
+  useEffect(() => {
+    setRequestedDocument(undefined);
+  }, [documentsContext]);
 
   if (!identity.loaded)
     return (
@@ -179,6 +197,26 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         navigateToSection('clients');
       }
     : undefined;
+  // Offered only where the shell offers the Documents section, whose own detail
+  // read decides what is shown.
+  const openDocument =
+    access.actor.activeCompany && canAccessClients
+      ? (documentId: string) => {
+          documentRequests.current += 1;
+          setRequestedDocument({
+            documentsContext,
+            documentId,
+            requestId: documentRequests.current,
+          });
+          navigateToSection('documents');
+        }
+      : undefined;
+  // A retired request is never passed on, not even in the render that retires
+  // it before the effect above clears it.
+  const currentRequestedDocument =
+    requestedDocument?.documentsContext === documentsContext
+      ? requestedDocument
+      : undefined;
 
   const sections: ApplicationSection[] = [];
   if (canAccessCommercial && access.actor.activeCompany)
@@ -239,6 +277,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          requestedDocument={currentRequestedDocument}
         />
       ),
     });
@@ -316,6 +355,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          onOpenDocument={openDocument}
         />
       ),
     });

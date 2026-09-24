@@ -62,6 +62,7 @@ export function ProjectWorkspace({
   clientFilter,
   clientIdentityRevision = 0,
   onOpenClientDossier,
+  onOpenDocument,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -70,6 +71,8 @@ export function ProjectWorkspace({
   /** Increases when Client identities change, so derived targets are re-read. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  /** Passed unchanged to the opened Project's linked Documents. */
+  onOpenDocument?: (documentId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
@@ -712,6 +715,7 @@ export function ProjectWorkspace({
               identity={identity}
               projectId={selected.project.id}
               onActivityRecorded={onActivityRecorded}
+              onOpenDocument={onOpenDocument}
             />
           </div>
         </article>
