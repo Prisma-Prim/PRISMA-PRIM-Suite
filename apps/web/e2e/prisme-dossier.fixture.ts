@@ -72,6 +72,8 @@ export async function installDossierFixture(page: Page) {
     listReads: number;
     activityReads: number;
     reviewReads: number;
+    historyReads: number;
+    history: { corrections: unknown[]; nextCursor: string | null };
     read: ((route: Route) => Promise<void> | void) | undefined;
     patch: (route: Route) => Promise<void> | void;
   } = {
@@ -83,6 +85,8 @@ export async function installDossierFixture(page: Page) {
     listReads: 0,
     activityReads: 0,
     reviewReads: 0,
+    historyReads: 0,
+    history: { corrections: [], nextCursor: null },
     read: undefined,
     patch: (route: Route): Promise<void> | void => route.abort('failed'),
   };
@@ -105,6 +109,10 @@ export async function installDossierFixture(page: Page) {
     if (path.endsWith('/client-duplicate-reviews')) {
       state.reviewReads += 1;
       return route.fulfill({ json: { items: [], next_cursor: null } });
+    }
+    if (path.endsWith('/clients/client-dossier/correction-history')) {
+      state.historyReads += 1;
+      return route.fulfill({ json: state.history });
     }
     if (path.endsWith('/clients/client-dossier')) {
       if (request.method() === 'PATCH') {

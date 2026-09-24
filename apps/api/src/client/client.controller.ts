@@ -16,6 +16,7 @@ import {
   ActorContextAdapter,
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
+import type { ClientCorrectionHistoryPage } from '../accountability/accountability.types.js';
 import { ClientService } from './client.service.js';
 import type {
   ClientAccountView,
@@ -78,6 +79,18 @@ export class ClientController {
     return this.clients.query(request.actorContext!, {
       kind: 'dossier',
       clientAccountId,
+    });
+  }
+
+  @Get(':clientAccountId/correction-history')
+  readCorrectionHistory(
+    @Req() request: ActorContextRequest,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+    @Query('cursor') cursor: unknown,
+  ): Promise<ClientCorrectionHistoryPage> {
+    return this.clients.readCorrectionHistory(request.actorContext!, {
+      clientAccountId,
+      cursor,
     });
   }
 

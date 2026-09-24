@@ -521,6 +521,51 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/PossibleDuplicateReviewConflict'
                   - $ref: '#/components/schemas/GenericConflict'
+  /api/clients/{clientAccountId}/correction-history:
+    get:
+      operationId: listActiveCompanyClientCorrectionHistory
+      summary: Read one Client's correction history recorded in the active Company
+      description: >-
+        Authorization and every refusal are identical to the dossier read. Only
+        this Client's `client.corrected` events recorded in the server-validated
+        active Company are returned, newest first by server time and then id.
+        Each page holds at most 20 corrections; older corrections load only with
+        the returned cursor. The read changes nothing and records no Activity
+        event.
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: cursor
+          required: false
+          description: The `nextCursor` returned by the previous page.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: One page of corrections with exactly the stored previous and new values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientCorrectionHistoryPage'
+        '400':
+          description: The Client id is malformed, or the cursor is malformed, unknown or not a visible correction of this Client in the active Company.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client read authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible.
+        '500':
+          description: Stored correction history does not match the typed change shape; no partial history is returned.
   /api/client-duplicate-reviews:
     get:
       operationId: listAuthorizedClientDuplicateReviews
@@ -1582,6 +1627,108 @@ components:
           type: array
           items:
             type: string
+    ClientCorrectionHistoryPage:
+      type: object
+      additionalProperties: false
+      required:
+        - corrections
+        - nextCursor
+      properties:
+        corrections:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ClientCorrection'
+        nextCursor:
+          description: The last returned correction id when an older correction exists.
+          type:
+            - string
+            - 'null'
+          format: uuid
+    ClientCorrection:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - occurredAt
+        - actor
+        - changes
+      properties:
+        id:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+        actor:
+          type: object
+          additionalProperties: false
+          required:
+            - displayName
+          properties:
+            displayName:
+              type: string
+        changes:
+          description: Only the fields changed by this correction.
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            displayName:
+              $ref: '#/components/schemas/ClientCorrectionRequiredTextChange'
+            taxId:
+              $ref: '#/components/schemas/ClientCorrectionTextChange'
+            address:
+              $ref: '#/components/schemas/ClientCorrectionTextChange'
+            telephone:
+              $ref: '#/components/schemas/ClientCorrectionTextChange'
+            generalEmail:
+              $ref: '#/components/schemas/ClientCorrectionTextChange'
+            businessActivity:
+              $ref: '#/components/schemas/ClientCorrectionTextChange'
+            contacts:
+              $ref: '#/components/schemas/ClientCorrectionContactsChange'
+    ClientCorrectionRequiredTextChange:
+      type: object
+      additionalProperties: false
+      required:
+        - before
+        - after
+      properties:
+        before:
+          type: string
+        after:
+          type: string
+    ClientCorrectionTextChange:
+      type: object
+      additionalProperties: false
+      required:
+        - before
+        - after
+      properties:
+        before:
+          type:
+            - string
+            - 'null'
+        after:
+          type:
+            - string
+            - 'null'
+    ClientCorrectionContactsChange:
+      type: object
+      additionalProperties: false
+      required:
+        - before
+        - after
+      properties:
+        before:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientContact'
+        after:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientContact'
     PossibleDuplicateReviewConflict:
       type: object
       additionalProperties: false

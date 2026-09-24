@@ -30,8 +30,11 @@ import {
   eligibleCommercialActions,
   readCommercialActivityAction,
 } from './commercial-activity-projection.js';
+import { readClientCorrectionChanges } from './client-correction-history.js';
+import { CLIENT_CORRECTED_ACTION } from './accountability.types.js';
 import type {
   ActivityLogPage,
+  ClientCorrectionHistoryRead,
   CommercialActivityEvent,
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
@@ -42,6 +45,7 @@ import type {
 } from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
+const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 
 @Injectable()
 export class AccountabilityService {
@@ -818,6 +822,126 @@ export class AccountabilityService {
       metadata: {},
     }));
   }
+  /**
+   * One Client's `client.corrected` page in the server-validated active
+   * Company. The owning Client module has already proved dossier readability;
+   * this read reapplies that boundary and the exact correction-Company scope.
+   */
+  async readClientCorrectionHistory(input: {
+    actor: ActorContext;
+    clientAccountId: string;
+    cursor: string | undefined;
+  }): Promise<ClientCorrectionHistoryRead> {
+    const { actor, clientAccountId, cursor } = input;
+    const company = actor.activeCompany;
+    if (!company?.clientPermissions.includes('client.read'))
+      return { kind: 'page', page: { corrections: [], nextCursor: null } };
+    const visibleCorrection = and(
+      eq(activityLogEvents.workspaceId, actor.workspaceId),
+      eq(activityLogEvents.action, CLIENT_CORRECTED_ACTION),
+      eq(activityLogEvents.targetType, 'client_account'),
+      eq(activityLogEvents.targetClientAccountId, clientAccountId),
+      eq(activityLogEvents.targetCompanyId, company.id),
+      exists(
+        this.databaseContext.connection
+          .select({ id: clientCompanyRelationships.id })
+          .from(clientCompanyRelationships)
+          .innerJoin(
+            clientAccounts,
+            and(
+              eq(
+                clientAccounts.workspaceId,
+                clientCompanyRelationships.workspaceId,
+              ),
+              eq(clientAccounts.id, clientCompanyRelationships.clientAccountId),
+            ),
+          )
+          .where(
+            and(
+              eq(
+                clientCompanyRelationships.workspaceId,
+                activityLogEvents.workspaceId,
+              ),
+              eq(
+                clientCompanyRelationships.clientAccountId,
+                activityLogEvents.targetClientAccountId,
+              ),
+              eq(clientCompanyRelationships.companyId, company.id),
+              eq(clientCompanyRelationships.status, 'active'),
+              eq(clientAccounts.status, 'active'),
+            ),
+          ),
+      ),
+    );
+    let cursorPosition: { id: string; occurredAt: string } | undefined;
+    if (cursor !== undefined) {
+      // Text keeps PostgreSQL's full timestamp precision for the keyset.
+      [cursorPosition] = await this.databaseContext.connection
+        .select({
+          id: activityLogEvents.id,
+          occurredAt: sql<string>`${activityLogEvents.occurredAt}::text`,
+        })
+        .from(activityLogEvents)
+        .where(and(visibleCorrection, eq(activityLogEvents.id, cursor)))
+        .limit(1);
+      if (!cursorPosition) return { kind: 'invalid-cursor' };
+    }
+    const rows = await this.databaseContext.connection
+      .select({
+        id: activityLogEvents.id,
+        occurredAt: activityLogEvents.occurredAt,
+        metadata: activityLogEvents.metadata,
+        actorDisplayName: internalUsers.displayName,
+      })
+      .from(activityLogEvents)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(workspaceMemberships.workspaceId, activityLogEvents.workspaceId),
+          eq(
+            workspaceMemberships.id,
+            activityLogEvents.actorWorkspaceMembershipId,
+          ),
+          eq(
+            workspaceMemberships.internalUserId,
+            activityLogEvents.actorInternalUserId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          visibleCorrection,
+          cursorPosition
+            ? sql`(${activityLogEvents.occurredAt}, ${activityLogEvents.id}) < (${cursorPosition.occurredAt}::timestamptz, ${cursorPosition.id}::uuid)`
+            : undefined,
+        ),
+      )
+      .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))
+      .limit(CLIENT_CORRECTION_HISTORY_PAGE_SIZE + 1);
+    const corrections = rows
+      .slice(0, CLIENT_CORRECTION_HISTORY_PAGE_SIZE)
+      .map((row) => ({
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: { displayName: row.actorDisplayName },
+        changes: readClientCorrectionChanges(row.metadata),
+      }));
+    return {
+      kind: 'page',
+      page: {
+        corrections,
+        nextCursor:
+          rows.length > CLIENT_CORRECTION_HISTORY_PAGE_SIZE
+            ? (corrections.at(-1)?.id ?? null)
+            : null,
+      },
+    };
+  }
+
   async record(event: CanonicalActivityEvent): Promise<void> {
     if (
       event.target.type === 'internal_user' &&

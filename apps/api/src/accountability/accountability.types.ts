@@ -1,5 +1,6 @@
 import type { TaskEvent } from '../task/task.types.js';
 import type { ActorContext } from '../access/access.types.js';
+import type { ClientContact } from '../client/client.types.js';
 import type {
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
@@ -34,6 +35,36 @@ export type ClientCorrectionChanges = Record<
   string,
   { before: unknown; after: unknown }
 >;
+
+interface FieldChange<Value> {
+  before: Value;
+  after: Value;
+}
+
+/** The typed change set of one stored `client.corrected` event. */
+export interface ClientCorrectionFieldChanges {
+  displayName?: FieldChange<string>;
+  taxId?: FieldChange<string | null>;
+  address?: FieldChange<string | null>;
+  telephone?: FieldChange<string | null>;
+  generalEmail?: FieldChange<string | null>;
+  businessActivity?: FieldChange<string | null>;
+  contacts?: FieldChange<ClientContact[]>;
+}
+
+export interface ClientCorrectionHistoryPage {
+  corrections: {
+    id: string;
+    occurredAt: string;
+    actor: { displayName: string };
+    changes: ClientCorrectionFieldChanges;
+  }[];
+  nextCursor: string | null;
+}
+
+export type ClientCorrectionHistoryRead =
+  | { kind: 'page'; page: ClientCorrectionHistoryPage }
+  | { kind: 'invalid-cursor' };
 
 export type CanonicalActivityEvent =
   | {
