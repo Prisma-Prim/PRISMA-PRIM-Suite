@@ -33,7 +33,7 @@ export class DocumentsController {
     @Req() request: ActorContextRequest,
     @Param('id') id: string,
   ) {
-    return this.documents.read(actor(request), id);
+    return this.documents.detail(actor(request), id);
   }
   @Patch(':id') correct(
     @Req() request: ActorContextRequest,

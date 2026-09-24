@@ -1,7 +1,17 @@
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -31,7 +41,6 @@ import {
   readCommercialActivityAction,
 } from './commercial-activity-projection.js';
 import { readClientCorrectionChanges } from './client-correction-history.js';
-import { CLIENT_CORRECTED_ACTION } from './accountability.types.js';
 import type {
   ActivityLogPage,
   ClientCorrectionHistoryRead,
@@ -43,6 +52,7 @@ import type {
   ClientUnionActivityEvent,
   ProjectCreatedActivityEvent,
 } from './accountability.types.js';
+import { CLIENT_CORRECTED_ACTION } from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
 const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
@@ -1105,6 +1115,17 @@ export class AccountabilityService {
               : sql<boolean>`false`,
           ),
         );
+    // A shared Client does not broaden correction history: whatever grants
+    // admit the Client, a correction appears only in the Company that made it.
+    const correctionInActiveCompany = actor.activeCompany
+      ? or(
+          ne(activityLogEvents.action, CLIENT_CORRECTED_ACTION),
+          and(
+            eq(activityLogEvents.workspaceId, actor.workspaceId),
+            eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
+          ),
+        )
+      : ne(activityLogEvents.action, CLIENT_CORRECTED_ACTION);
     const rows = await this.databaseContext.connection
       .select({
         id: activityLogEvents.id,
@@ -1175,17 +1196,20 @@ export class AccountabilityService {
         ),
       )
       .where(
-        or(
-          and(
-            visibleEvents,
-            sql`${activityLogEvents.targetType}::text <> 'workspace_invitation'`,
+        and(
+          or(
+            and(
+              visibleEvents,
+              sql`${activityLogEvents.targetType}::text <> 'workspace_invitation'`,
+            ),
+            actor.workspacePermissions.includes('member.invite')
+              ? and(
+                  eq(activityLogEvents.workspaceId, actor.workspaceId),
+                  eq(activityLogEvents.targetType, 'workspace_invitation'),
+                )
+              : sql<boolean>`false`,
           ),
-          actor.workspacePermissions.includes('member.invite')
-            ? and(
-                eq(activityLogEvents.workspaceId, actor.workspaceId),
-                eq(activityLogEvents.targetType, 'workspace_invitation'),
-              )
-            : sql<boolean>`false`,
+          correctionInActiveCompany,
         ),
       )
       .orderBy(desc(activityLogEvents.occurredAt), desc(activityLogEvents.id))

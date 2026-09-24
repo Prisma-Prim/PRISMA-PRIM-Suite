@@ -2721,3 +2721,342 @@ it('reports a failure instead of presenting a registered reference with a non-in
   );
   expect(screen.queryByRole('article')).not.toBeInTheDocument();
 });
+function withProjectPermissions(
+  projectPermissions: Array<'project.read' | 'project.create'>,
+): ActorContext {
+  if (!actor.activeCompany) throw new Error('Expected an active Company.');
+  return {
+    ...actor,
+    activeCompany: { ...actor.activeCompany, projectPermissions },
+  };
+}
+const projectReader = withProjectPermissions(['project.read']);
+const linkedToProject = {
+  ...document,
+  projectAssociation: {
+    state: 'linked',
+    project: { id: 'project', title: 'ISO 9001 preparation' },
+  },
+};
+const notLinkedToProject = {
+  ...document,
+  projectAssociation: { state: 'unlinked' },
+};
+/** The opened detail's Project row text, or null while no row is shown. */
+function projectRow(): string | null {
+  const term = within(screen.getByRole('article')).queryByText('Project', {
+    selector: 'dt',
+  });
+  return term?.closest('dl')?.textContent ?? null;
+}
+it('shows a current Project reader the linked Project or an explicit unlinked state on each fresh open', async () => {
+  const details = [linkedToProject, notLinkedToProject];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (url.endsWith('/documents/document'))
+        return Response.json(details.shift());
+      return Response.json([document]);
+    }),
+  );
+  render(<DocumentWorkspace actor={projectReader} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  await screen.findByRole('article');
+  expect(projectRow()).toBe('ProjectISO 9001 preparation');
+
+  // A removal in Project detail is shown by the next open, with no invalidation.
+  fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+  fireEvent.click(screen.getByRole('button', { name: document.title }));
+  await waitFor(() =>
+    expect(projectRow()).toBe('ProjectNot linked to a Project'),
+  );
+  expect(details).toHaveLength(0);
+});
+it.each([
+  ['the response omits the association', projectReader, document],
+  ['the actor cannot read Projects', actor, linkedToProject],
+  [
+    'the actor may only create Projects',
+    withProjectPermissions(['project.create']),
+    notLinkedToProject,
+  ],
+])('shows no Project row when %s', async (_case, reader, opened) => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/clients')
+          ? []
+          : url.endsWith('/documents/document')
+            ? opened
+            : [document],
+      ),
+    ),
+  );
+  render(<DocumentWorkspace actor={reader} identity={identity} />);
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  expect(await screen.findByText(document.purpose)).toBeInTheDocument();
+  expect(projectRow()).toBeNull();
+  expect(screen.queryByText('Not linked to a Project')).not.toBeInTheDocument();
+  expect(screen.queryByText('ISO 9001 preparation')).not.toBeInTheDocument();
+});
+it('hides a previously read Project as soon as the revalidated actor loses project.read', async () => {
+  const fetcher = vi.fn(async (url: string) =>
+    Response.json(
+      url.endsWith('/clients')
+        ? []
+        : url.endsWith('/documents/document')
+          ? linkedToProject
+          : [document],
+    ),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(
+    <DocumentWorkspace actor={projectReader} identity={identity} />,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: document.title }));
+  await waitFor(() => expect(projectRow()).toBe('ProjectISO 9001 preparation'));
+  const requests = fetcher.mock.calls.length;
+
+  view.rerender(<DocumentWorkspace actor={actor} identity={identity} />);
+  expect(projectRow()).toBeNull();
+  expect(screen.queryByText('ISO 9001 preparation')).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: document.title }),
+  ).toBeInTheDocument();
+  await settle();
+  expect(fetcher).toHaveBeenCalledTimes(requests);
+});
+it.each([
+  ['a missing Project', { state: 'linked' }],
+  ['a Project without a title', { state: 'linked', project: { id: 'p' } }],
+  [
+    'a non-text Project title',
+    { state: 'linked', project: { id: 'p', title: 7 } },
+  ],
+  ['an unknown state', { state: 'archived' }],
+  [
+    'an unlinked state naming a Project',
+    { state: 'unlinked', project: { id: 'p', title: 'Hidden Project' } },
+  ],
+  ['a null association', null],
+  ['a text association', 'unlinked'],
+])(
+  'rejects a detail response carrying %s as invalid',
+  async (_case, projectAssociation) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        Response.json(
+          url.endsWith('/clients')
+            ? []
+            : url.endsWith('/documents/document')
+              ? { ...document, projectAssociation }
+              : [document],
+        ),
+      ),
+    );
+    render(<DocumentWorkspace actor={projectReader} identity={identity} />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'could not be loaded or saved',
+    );
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: document.title }),
+    ).toBeInTheDocument();
+  },
+);
+it('reports a registration whose Project association is malformed instead of opening it', async () => {
+  const posts: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients'))
+        return Response.json([{ id: 'client', displayName: 'Client' }]);
+      if (init?.method === 'POST') {
+        posts.push(new Headers(init.headers).get('idempotency-key') ?? '');
+        return Response.json(
+          { ...document, projectAssociation: { state: 'linked' } },
+          { status: 201 },
+        );
+      }
+      return Response.json([]);
+    }),
+  );
+  render(<DocumentWorkspace actor={projectReader} identity={identity} />);
+  expect(
+    await screen.findByText('No working references registered yet.'),
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: document.title },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: document.purpose },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: document.version.representation.url },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Register working reference' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'could not be loaded or saved',
+  );
+  expect(screen.queryByRole('article')).not.toBeInTheDocument();
+  expect(posts).toHaveLength(1);
+});
+it('opens a confirmed registration with the association it was answered with', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients'))
+        return Response.json([{ id: 'client', displayName: 'Client' }]);
+      if (init?.method === 'POST')
+        return Response.json(notLinkedToProject, { status: 201 });
+      return Response.json([]);
+    }),
+  );
+  render(<DocumentWorkspace actor={projectReader} identity={identity} />);
+  expect(
+    await screen.findByText('No working references registered yet.'),
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Client'), {
+    target: { value: 'client' },
+  });
+  fireEvent.change(screen.getByLabelText('Title'), {
+    target: { value: document.title },
+  });
+  fireEvent.change(screen.getByLabelText('Purpose'), {
+    target: { value: document.purpose },
+  });
+  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+    target: { value: document.version.representation.url },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Register working reference' }),
+  );
+  expect(
+    await screen.findByRole('heading', { name: document.title }),
+  ).toBeInTheDocument();
+  expect(projectRow()).toBe('ProjectNot linked to a Project');
+});
+it.each(['corrected', 'unchanged'] satisfies Array<'corrected' | 'unchanged'>)(
+  'keeps the Project row through editing and a %s correction save',
+  async (outcome) => {
+    let saved = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/clients')) return Response.json([]);
+        if (init?.method === 'PATCH') {
+          saved = true;
+          return Response.json({
+            documentId: document.id,
+            revision: outcome === 'corrected' ? 2 : 1,
+            outcome,
+          });
+        }
+        const current =
+          saved && outcome === 'corrected'
+            ? {
+                ...linkedToProject,
+                title: 'Corrected questionnaire',
+                workingRevision: 2,
+              }
+            : linkedToProject;
+        return Response.json(
+          url.endsWith('/documents/document') ? current : [current],
+        );
+      }),
+    );
+    render(<DocumentWorkspace actor={projectReader} identity={identity} />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    expect(projectRow()).toBe('ProjectISO 9001 preparation');
+    if (outcome === 'corrected')
+      fireEvent.change(screen.getByLabelText('Title'), {
+        target: { value: 'Corrected questionnaire' },
+      });
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+    expect(
+      await screen.findByText(
+        outcome === 'corrected'
+          ? 'Correction saved.'
+          : 'No changes were needed.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name:
+          outcome === 'corrected' ? 'Corrected questionnaire' : document.title,
+      }),
+    ).toBeInTheDocument();
+    expect(projectRow()).toBe('ProjectISO 9001 preparation');
+  },
+);
+it('never shows the Project of a detail read the member has already left', async () => {
+  const [historical, homonym] = dossierDocuments;
+  if (!historical || !homonym) throw new Error('Expected dossier Documents.');
+  const heldHistoricalRead = deferredResponse();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (url.endsWith(`/documents/${historical.id}`))
+        return heldHistoricalRead.promise;
+      if (url.endsWith(`/documents/${homonym.id}`))
+        return Response.json({
+          ...homonym,
+          projectAssociation: { state: 'unlinked' },
+        });
+      return Response.json(dossierDocuments);
+    }),
+  );
+  const view = render(
+    <DocumentWorkspace actor={projectReader} identity={identity} />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: historical.title }),
+  );
+  // The member opens another dossier's Documents before that read answers.
+  view.rerender(
+    <DocumentWorkspace
+      actor={projectReader}
+      identity={identity}
+      clientFilter={{
+        clientDossierId: 'other-client',
+        displayName: 'Shared display name',
+      }}
+    />,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: homonym.title }));
+  await waitFor(() =>
+    expect(projectRow()).toBe('ProjectNot linked to a Project'),
+  );
+
+  // The retired read answers late with another Project.
+  heldHistoricalRead.resolve(
+    Response.json({
+      ...historical,
+      projectAssociation: {
+        state: 'linked',
+        project: { id: 'project', title: 'Late historical Project' },
+      },
+    }),
+  );
+  await settle();
+  expect(screen.getByRole('heading', { name: homonym.title })).toBeVisible();
+  expect(projectRow()).toBe('ProjectNot linked to a Project');
+  expect(screen.queryByText('Late historical Project')).not.toBeInTheDocument();
+});
