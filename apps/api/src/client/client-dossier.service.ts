@@ -121,6 +121,13 @@ export class ClientDossierService {
         return { kind: 'completed', value: existingCommand.result };
       }
 
+      // The reservation's foreign keys require this relationship, so refuse an
+      // unknown or unrelated Client before reserving the key.
+      await this.requireRelatedClient(
+        actor.workspaceId,
+        companyId,
+        command.clientAccountId,
+      );
       const [reserved] = await this.databaseContext.connection
         .insert(clientAccountCorrectionCommands)
         .values({

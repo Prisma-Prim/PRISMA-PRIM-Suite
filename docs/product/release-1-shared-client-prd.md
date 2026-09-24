@@ -73,7 +73,7 @@ The delivered #146 / PR #147 enriched slice approved and implemented these share
 - business activity;
 - the fact that the Client also works with another involved Company.
 
-These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require.
+These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require. Section 18 refines the shared Contact with two optional descriptive fields without changing its visibility.
 
 ## 8. Permissions
 
@@ -235,3 +235,13 @@ Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential
 ## 17. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes automatic duplicate handling, broad cross-Company visibility or any runtime rule by itself. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
+
+## 18. Approved provisional Contact position and decision roles (#366)
+
+Under Dan's 24 September 2026 delegation to implement sourced business functionality and reversible provisional MVP choices, this slice records optional descriptive Contact data. It normalizes Iurie's accepted session 94 direction ([#81 comment 5308702257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308702257), items 475 and 477) into two optional descriptive Contact fields. The exact field shape and the closed code list are delegated provisional choices, not newly collected Iurie evidence. Iurie validates or corrects them against a demonstration.
+
+Each shared Contact may record a free-text `position` of up to 500 characters and a set of `decisionRoles` drawn from exactly: final decision-maker, influencer, user, financial, technical, blocker. These are the values Iurie listed in item 477. The list is closed in this slice. Adding a value later is an additive change. Neither field is mandatory. Both fields belong to the shared Contact defined in section 7. They are visible exactly where Contacts are visible, and they do not broaden visibility. Iurie's Company-confidential categories do not include them.
+
+A change to either field is an ordinary material dossier correction. It records `client.corrected` with previous and new Contact values, uses the existing expected-version, idempotency, correction-history and union rules, and adds no permission, event family or storage scope.
+
+Excluded, and not presented as business fact: communication preferences (item 476), relationships between Contacts (item 478), a departed or former Contact, and warnings on role change (item 479). Also excluded: a primary Contact, consent, Contact-level interactions (session 95), Contact identity for linking to Requests, Offers or Contracts, mission-specific Contacts stored on a relationship or Project, and any additional decision-role value.

@@ -182,6 +182,89 @@ test('reads a shared dossier before deliberately correcting it in Prisme', async
   await captureDossier(page, testInfo, 'dossier-correction-history.png');
 });
 
+test('records Contact positions and decision roles and keeps them when another Contact changes', async ({
+  page,
+}, testInfo) => {
+  const state = await installDossierFixture(page);
+  state.patch = (route) => {
+    const body: unknown = route.request().postDataJSON();
+    if (typeof body !== 'object' || body === null || Array.isArray(body))
+      throw new Error('Expected a correction object.');
+    const { expectedVersion, ...fields } = Object.fromEntries(
+      Object.entries(body),
+    );
+    state.dossier = {
+      ...state.dossier,
+      ...fields,
+      version: Number(expectedVersion) + 1,
+    };
+    return route.fulfill({ json: state.dossier });
+  };
+  const longPosition =
+    'Responsabil calitate, achiziții și relația cu organismele de certificare pentru toate filialele regionale';
+  const [ana, ion] = dossierFixture().contacts;
+  const anaWithRoles = {
+    ...ana,
+    position: 'Director general',
+    decisionRoles: ['final_decision_maker', 'financial'],
+  };
+  const ionWithRoles = {
+    ...ion,
+    position: longPosition,
+    decisionRoles: ['influencer', 'technical'],
+  };
+  await openDossier(page);
+  await correctionTrigger(page).click();
+  const form = correctionForm(page);
+  const first = form.getByRole('group', { name: 'Contact 1', exact: true });
+  await first.getByLabel('Contact position').fill('Director general');
+  await first.getByRole('checkbox', { name: 'Final decision-maker' }).check();
+  await first.getByRole('checkbox', { name: 'Financial' }).check();
+  const second = form.getByRole('group', { name: 'Contact 2', exact: true });
+  await second.getByLabel('Contact position').fill(longPosition);
+  await second.getByRole('checkbox', { name: 'Technical' }).check();
+  await second.getByRole('checkbox', { name: 'Influencer' }).check();
+  await first.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('dossier-contact-roles-editor-viewport.png'),
+  });
+  await form.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
+  expect(state.dossier.contacts).toEqual([anaWithRoles, ionWithRoles]);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Open dossier', exact: true }).click();
+  await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
+  const contacts = page.getByRole('region', { name: 'Contacts', exact: true });
+  const anaItem = contacts.getByRole('listitem').filter({ hasText: ana?.name });
+  await expect(anaItem.getByText('Director general')).toBeVisible();
+  await expect(
+    anaItem.getByText('Decision roles: Final decision-maker, Financial'),
+  ).toBeVisible();
+  await expect(contacts.getByText(longPosition)).toBeVisible();
+  await contacts.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('dossier-contact-roles-viewport.png'),
+  });
+  await captureDossier(page, testInfo, 'dossier-contact-roles.png');
+
+  await correctionTrigger(page).click();
+  await expect(
+    first.getByRole('checkbox', { name: 'Final decision-maker' }),
+  ).toBeChecked();
+  await expect(first.getByLabel('Contact position')).toHaveValue(
+    'Director general',
+  );
+  await second.getByLabel('Contact telephone').fill('+373 60 555 667');
+  await form.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByText('Version 3', { exact: true })).toBeVisible();
+  expect(state.dossier.contacts).toEqual([
+    anaWithRoles,
+    { ...ionWithRoles, telephone: '+373 60 555 667' },
+  ]);
+  await captureDossier(page, testInfo, 'dossier-contact-roles-editor.png');
+});
+
 test('preserves uncertain corrections and pending saves across closing, navigation and frames', async ({
   page,
 }, testInfo) => {

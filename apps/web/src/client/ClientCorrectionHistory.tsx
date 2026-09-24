@@ -6,7 +6,10 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { formatApplicationDateTime } from '../presentation/date-time';
-import type { ClientContact } from './ClientContactEditor';
+import {
+  ClientContactDescription,
+  type ClientContact,
+} from './ClientContactEditor';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import {
   readClientCorrectionHistory,
@@ -296,6 +299,7 @@ function ContactVersion({
               <strong>{contact.name}</strong>
               {contact.telephone && <span>{contact.telephone}</span>}
               {contact.email && <span>{contact.email}</span>}
+              <ClientContactDescription contact={contact} />
             </li>
           ))}
         </ul>
