@@ -241,6 +241,12 @@ describe.skipIf(!databaseUrl)(
       );
       return Number(result.rows[0]?.count);
     }
+    async function correctionCommandCount() {
+      const result = await harness.pool.query<{ count: string }>(
+        'SELECT count(*) FROM client_account_correction_commands',
+      );
+      return Number(result.rows[0]?.count);
+    }
 
     it('records Contact positions and decision roles as one material correction with history visible to every involved director', async () => {
       const events = await eventCount();
@@ -484,6 +490,7 @@ describe.skipIf(!databaseUrl)(
       await grant('/company-context-assignments', projectMember, companyA);
       await grant('/company-project-assignments', projectMember, companyA);
       const events = await eventCount();
+      const commands = await correctionCommandCount();
       const refusals: { actor: Actor; company: string; status: number }[] = [
         { actor: 'directorC', company: companyC, status: 404 },
         { actor: 'projectMember', company: companyA, status: 403 },
@@ -506,7 +513,13 @@ describe.skipIf(!databaseUrl)(
         );
         expect(correction.status, actor).toBe(status);
       }
+      const unknownClient = await request(`/clients/${randomUUID()}`, {
+        method: 'PATCH',
+        value: { expectedVersion: 2, contacts: [ion] },
+      });
+      expect(unknownClient.status).toBe(404);
       expect(await eventCount()).toBe(events);
+      expect(await correctionCommandCount()).toBe(commands);
       expect((await dossier(companyB)).contacts).toEqual([ion, maria]);
     });
   },
