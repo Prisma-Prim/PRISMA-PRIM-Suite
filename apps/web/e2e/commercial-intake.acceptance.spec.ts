@@ -222,7 +222,17 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await expect(
     intake.getByRole('heading', { name: linkedSubject, exact: true }),
   ).toBeVisible();
-  await expect(intake.getByText(clientName, { exact: true })).toBeVisible();
+  // The Client value also holds the dossier action, so the display name is
+  // proven inside the Client term's own definition.
+  const detailClient = intake
+    .locator('.commercial-intake-detail dl > div')
+    .filter({ has: page.getByRole('term').filter({ hasText: /^Client$/u }) })
+    .getByRole('definition');
+  await expect(detailClient).toBeVisible();
+  await expect(detailClient).toContainText(clientName);
+  await expect(
+    detailClient.getByRole('button', { name: 'Open Client dossier' }),
+  ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath(
       `commercial-intake-detail-${suffix.toLowerCase()}.png`,
