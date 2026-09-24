@@ -24,6 +24,7 @@ import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
+import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import {
   useProductionShellContext,
@@ -132,6 +133,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     commercialPermissions.includes('commercial.request.create') &&
     commercialPermissions.includes('commercial.opportunity.read') &&
     commercialPermissions.includes('commercial.opportunity.create');
+  const cataloguePermissions =
+    access.actor.activeCompany?.serviceCataloguePermissions ?? [];
+  const canAccessCatalogue =
+    activeCompanyId !== undefined &&
+    cataloguePermissions.includes('service.definition.read') &&
+    cataloguePermissions.includes('service.definition.create') &&
+    cataloguePermissions.includes('commercial.offering.read') &&
+    cataloguePermissions.includes('commercial.offering.manage');
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -165,6 +174,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onActorRevalidated={acceptRevalidatedActor}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
+        />
+      ),
+    });
+  if (canAccessCatalogue && access.actor.activeCompany)
+    sections.push({
+      id: 'catalogue',
+      ...prismeCopy.sections.catalogue,
+      content: (
+        <ServiceCatalogueWorkspace
+          key={`service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.serviceCataloguePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.serviceCataloguePermissionSetVersion ?? 'no-version'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
     });

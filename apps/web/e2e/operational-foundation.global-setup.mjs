@@ -118,6 +118,7 @@ async function seedAccessFixture(origin) {
     '/company-document-registrar-assignments',
     '/company-document-project-organizer-assignments',
     '/company-commercial-intake-assignments',
+    '/company-service-catalogue-assignments',
   ]) {
     await command(
       origin,
