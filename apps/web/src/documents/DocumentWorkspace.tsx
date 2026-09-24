@@ -4,10 +4,12 @@ import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import {
   readClients,
-  readDocument,
   readDocumentCorrectionReceipt,
+  readDocumentDetail,
   readDocuments,
+  type DocumentProjectAssociation,
   type WorkingDocument,
+  type WorkingDocumentDetail,
 } from './document-response';
 import { documentsCopy as copy } from './documents.copy';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -57,7 +59,7 @@ export function DocumentWorkspace({
     kind: 'text',
     query: '',
   });
-  const [detail, setDetail] = useState<WorkingDocument>();
+  const [detail, setDetail] = useState<WorkingDocumentDetail>();
   const [revision, setRevision] = useState(0);
   const [clientId, setClientId] = useState('');
   const [title, setTitle] = useState('');
@@ -153,6 +155,9 @@ export function DocumentWorkspace({
     actor.activeCompany?.documentPermissions?.includes('document.correct') ===
       true &&
     actor.activeCompany.documentPermissions.includes('document.reference.read');
+  /** A read association stays hidden while the current actor lacks Project read. */
+  const canReadProjects =
+    actor.activeCompany?.projectPermissions?.includes('project.read') === true;
   /**
    * Reserves the ordering slot of a publication that happens after an await.
    * The loaded rows have one owner and one monotonic order, so a delayed older
@@ -395,7 +400,7 @@ export function DocumentWorkspace({
           return;
         }
         if (reopened.status !== 'ok') throw new Error('Refresh failed');
-        const reloaded = readDocument(reopened.value);
+        const reloaded = readDocumentDetail(reopened.value);
         setDetail((current) =>
           current?.id === reloaded.id ? reloaded : current,
         );
@@ -478,7 +483,7 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status !== 'ok') throw new Error('Read failed');
-      const opened = readDocument(result.value);
+      const opened = readDocumentDetail(result.value);
       setDetail(opened);
       settleDetailRead(opened, startedUnderRevision);
       setEditing(false);
@@ -587,7 +592,7 @@ export function DocumentWorkspace({
       if (request.signal.aborted) return;
       if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
         throw new Error('Reload failed');
-      const saved = readDocument(documentResult.value);
+      const saved = readDocumentDetail(documentResult.value);
       const documents = readDocuments(documentsResult.value);
       setDetail(saved);
       settleDetailRead(saved, startedUnderRevision);
@@ -643,7 +648,7 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status !== 'ok') throw new Error('Registration failed');
-      const saved = readDocument(result.value);
+      const saved = readDocumentDetail(result.value);
       // A registration confirmed after a Client identity change cannot vouch
       // for its derived dossier target. Until a current read replaces it, the
       // confirmed Document offers no dossier navigation and matches no dossier
@@ -865,6 +870,9 @@ export function DocumentWorkspace({
                 </>
               )}
               <RegistrationTime registeredAt={detail.createdAt} />
+              {canReadProjects && detail.projectAssociation && (
+                <ProjectAssociation association={detail.projectAssociation} />
+              )}
               {!editing &&
               detail.version.representation.access === 'granted' ? (
                 <a
@@ -1045,4 +1053,34 @@ function RegistrationTime({ registeredAt }: { registeredAt: string }) {
       </dd>
     </dl>
   );
+}
+/**
+ * The preparatory Project this reference is organized in, as working-material
+ * organization only. It never states acceptance as evidence or start approval.
+ */
+function ProjectAssociation({
+  association,
+}: {
+  association: DocumentProjectAssociation;
+}) {
+  return (
+    <dl className="working-document-project">
+      <dt>{copy.project}</dt>
+      <dd>{projectAssociationLabel(association)}</dd>
+    </dl>
+  );
+}
+function projectAssociationLabel(
+  association: DocumentProjectAssociation,
+): string {
+  switch (association.state) {
+    case 'linked':
+      return association.project.title;
+    case 'unlinked':
+      return copy.notLinkedToProject;
+    default: {
+      const exhaustive: never = association;
+      return exhaustive;
+    }
+  }
 }

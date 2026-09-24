@@ -47,6 +47,16 @@ function objects(value: unknown): Record<string, unknown>[] {
 async function body(response: Response) {
   return object(await response.json());
 }
+/** Lists never carry the association that single-Document responses may add. */
+function listed(value: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => key !== 'projectAssociation'),
+  );
+}
+const unlinkedAssociation = { state: 'unlinked' };
+function linkedTo(id: string, title = 'ISO preparation') {
+  return { state: 'linked', project: { id, title } };
+}
 
 describe.skipIf(!databaseUrl)(
   'Document–Project association REST contract',
@@ -180,24 +190,35 @@ describe.skipIf(!databaseUrl)(
         ).status,
       ).toBe(200);
     }
-    function createProject(client = clientId, company = companyId) {
+    function createProject(
+      client = clientId,
+      company = companyId,
+      title = 'ISO preparation',
+    ) {
       return command(
         '/projects',
-        { title: 'ISO preparation', clientAccountId: client },
+        { title, clientAccountId: client },
         { company },
       );
     }
-    function createDocument(client = clientId, company = companyId) {
-      return command(
-        '/documents',
-        {
-          clientId: client,
-          title: 'Working questionnaire',
-          purpose: 'Prepare the initial assessment',
-          url: 'https://example.test/working-questionnaire',
-        },
-        { company },
-      );
+    const registration = (client = clientId) => ({
+      clientId: client,
+      title: 'Working questionnaire',
+      purpose: 'Prepare the initial assessment',
+      url: 'https://example.test/working-questionnaire',
+    });
+    /** Registers as the owner, a current Project reader in every Company used. */
+    async function createDocument(client = clientId, company = companyId) {
+      const registered = await command('/documents', registration(client), {
+        company,
+      });
+      expect(registered.projectAssociation).toEqual(unlinkedAssociation);
+      return listed(registered);
+    }
+    async function detail(id = documentId, subject?: string) {
+      const response = await request(`/documents/${id}`, { subject });
+      expect(response.status).toBe(200);
+      return body(response);
     }
     function mutate(
       action: 'link' | 'unlink',
@@ -305,9 +326,10 @@ describe.skipIf(!databaseUrl)(
         mutable: true,
         documents: [{ document, revision: 2 }],
       });
-      expect(await body(await request(`/documents/${documentId}`))).toEqual(
-        document,
-      );
+      expect(await detail()).toEqual({
+        ...document,
+        projectAssociation: unlinkedAssociation,
+      });
       expect(await clientVersion()).toBe(version + 2);
       expect(await body(await request(`/projects/${projectId}`))).toMatchObject(
         {
@@ -890,11 +912,9 @@ describe.skipIf(!databaseUrl)(
       },
     );
 
-    it('preserves metadata access without serializing a reference URL for a metadata-only module actor', async () => {
-      await grant('organizer');
-      expect((await mutate('link', 0)).status).toBe(201);
-      const unlinked = await createDocument();
-      const actor: ActorContext = {
+    /** The owner's identity with a metadata-only context no bundle grants. */
+    function metadataOnlyActor(): ActorContext {
+      return {
         internalUserId,
         workspaceMembershipId: membershipId,
         workspaceId,
@@ -911,24 +931,50 @@ describe.skipIf(!databaseUrl)(
           projectPermissions: ['project.read'],
         },
       };
-      // No metadata-only bundle is introduced; the public module seam proves the
-      // separate URL permission while live persisted grants still authorize reads.
+    }
+    function moduleServices() {
       const context = new DatabaseContext(drizzle(harness.pool));
       const authorization = new CompanyContextAuthorization(context);
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
-      const service = new DocumentProjectsService(
+      const projects = new ProjectService(
+        context,
+        authorization,
+        clients,
+        accountability,
+      );
+      const documents = new DocumentsService(
         authorization,
         context,
         clients,
-        new DocumentsService(authorization, context, clients, accountability),
-        new ProjectService(context, authorization, clients, accountability),
+        accountability,
+        projects,
       );
+      return {
+        documents,
+        associations: new DocumentProjectsService(
+          authorization,
+          context,
+          clients,
+          documents,
+          projects,
+        ),
+      };
+    }
+
+    it('preserves metadata access without serializing a reference URL for a metadata-only module actor', async () => {
+      await grant('organizer');
+      expect((await mutate('link', 0)).status).toBe(201);
+      const unlinked = await createDocument();
+      const actor = metadataOnlyActor();
+      // No metadata-only bundle is introduced; the public module seam proves the
+      // separate URL permission while live persisted grants still authorize reads.
+      const { documents, associations } = moduleServices();
       for (const [eligible, id] of [
         [false, documentId],
         [true, text(unlinked.id)],
       ] satisfies Array<[boolean, string]>) {
-        const page = await service.list(actor, projectId, eligible);
+        const page = await associations.list(actor, projectId, eligible);
         expect(page.documents).toHaveLength(1);
         expect(page.documents[0]).toMatchObject({
           document: {
@@ -939,6 +985,136 @@ describe.skipIf(!databaseUrl)(
         });
         expect(JSON.stringify(page)).not.toContain('https://');
       }
+      const linked = await documents.detail(actor, documentId);
+      expect(linked).toMatchObject({
+        projectAssociation: linkedTo(projectId),
+        version: { representation: { access: 'denied' } },
+      });
+      expect(JSON.stringify(linked)).not.toContain('https://');
+    });
+
+    it('omits the association instead of claiming unlinked when the Project module refuses a stale Project reader', async () => {
+      await grant('organizer');
+      expect((await mutate('link', 0)).status).toBe(201);
+      const unlinked = await createDocument();
+      await revoke('project');
+      // The captured context still claims project.read; the Project module's
+      // live read refuses it without hiding the readable Document.
+      const { documents } = moduleServices();
+      for (const [id, listedDocument] of [
+        [documentId, document],
+        [text(unlinked.id), unlinked],
+      ] satisfies Array<[string, Record<string, unknown>]>) {
+        const read = await documents.detail(metadataOnlyActor(), id);
+        expect(read).toMatchObject({ id, title: 'Working questionnaire' });
+        expect(read).not.toHaveProperty('projectAssociation');
+        expect(JSON.stringify(read)).not.toContain(projectId);
+        expect(JSON.stringify(read)).not.toContain('ISO preparation');
+        expect(await detail(id)).toEqual(listedDocument);
+      }
+    });
+
+    it('projects the current association on every single-Document response for a Project reader while lists stay unchanged', async () => {
+      await grant('organizer');
+      const secondProject = text(
+        (await createProject(clientId, companyId, 'Second preparation')).id,
+      );
+      const key = randomUUID();
+      const registered = await command('/documents', registration(), { key });
+      const registeredId = text(registered.id);
+      expect(registered.projectAssociation).toEqual(unlinkedAssociation);
+      expect(await detail(registeredId)).toEqual(registered);
+      expect((await mutate('link', 0, { document: registeredId })).status).toBe(
+        201,
+      );
+      const linked = { ...registered, projectAssociation: linkedTo(projectId) };
+      expect(await detail(registeredId)).toEqual(linked);
+      // An exact registration replay answers with the current association.
+      expect(await command('/documents', registration(), { key })).toEqual(
+        linked,
+      );
+      expect(
+        (await mutate('unlink', 1, { document: registeredId })).status,
+      ).toBe(201);
+      expect(await detail(registeredId)).toEqual(registered);
+      expect(
+        (
+          await mutate('link', 2, {
+            document: registeredId,
+            project: secondProject,
+          })
+        ).status,
+      ).toBe(201);
+      const relinked = {
+        ...registered,
+        projectAssociation: linkedTo(secondProject, 'Second preparation'),
+      };
+      expect(await detail(registeredId)).toEqual(relinked);
+      // Changed and unchanged corrections keep the association they did not touch.
+      const corrected = {
+        ...relinked,
+        title: 'Corrected questionnaire',
+        workingRevision: 2,
+      };
+      for (const [expectedRevision, outcome] of [
+        [1, 'corrected'],
+        [2, 'unchanged'],
+      ] satisfies Array<[number, 'corrected' | 'unchanged']>) {
+        const correction = await request(`/documents/${registeredId}`, {
+          method: 'PATCH',
+          value: { expectedRevision, title: 'Corrected questionnaire' },
+        });
+        expect(correction.status).toBe(200);
+        expect(await body(correction)).toEqual({
+          documentId: registeredId,
+          revision: 2,
+          outcome,
+        });
+        expect(await detail(registeredId)).toEqual(corrected);
+      }
+      expect(await list(false, secondProject)).toEqual({
+        mutable: true,
+        documents: [{ document: listed(corrected), revision: 3 }],
+      });
+      expect(await (await request('/documents')).json()).toEqual([
+        listed(corrected),
+        document,
+      ]);
+    });
+
+    it('never discloses Project identity to a Document-only reader, including through registration', async () => {
+      await grant('organizer');
+      const reader = 'document-project-member';
+      const readerMembership = text((await member()).workspaceMembershipId);
+      await grant('client', readerMembership);
+      await grant('document', readerMembership);
+      const unlinked = await detail(documentId, reader);
+      expect(unlinked).toMatchObject({
+        id: documentId,
+        title: 'Working questionnaire',
+      });
+      expect(unlinked).not.toHaveProperty('projectAssociation');
+      expect((await mutate('link', 0)).status).toBe(201);
+      const linked = await request(`/documents/${documentId}`, {
+        subject: reader,
+      });
+      expect(linked.status).toBe(200);
+      const raw = await linked.text();
+      expect(JSON.parse(raw)).toEqual(unlinked);
+      expect(raw).not.toContain(projectId);
+      expect(raw).not.toContain('ISO preparation');
+      const registered = await command('/documents', registration(), {
+        subject: reader,
+      });
+      expect(registered).not.toHaveProperty('projectAssociation');
+      // Current Project read authority alone decides whether the key appears.
+      await grant('project', readerMembership);
+      expect(await detail(documentId, reader)).toEqual({
+        ...unlinked,
+        projectAssociation: linkedTo(projectId),
+      });
+      await revoke('project', readerMembership);
+      expect(await detail(documentId, reader)).toEqual(unlinked);
     });
 
     async function unionSetup(
@@ -1013,6 +1189,17 @@ describe.skipIf(!databaseUrl)(
           },
         ],
       });
+      // The historical link stays displayed while correction is read-only.
+      expect(await detail()).toEqual({
+        ...document,
+        ...superseded,
+        projectAssociation: linkedTo(projectId),
+      });
+      expect(await detail(text(unlinked.id))).toEqual({
+        ...unlinked,
+        ...superseded,
+        projectAssociation: unlinkedAssociation,
+      });
       expect((await mutate('unlink', 1)).status).toBe(404);
       expect(
         (await mutate('link', 0, { document: text(unlinked.id) })).status,
@@ -1027,9 +1214,10 @@ describe.skipIf(!databaseUrl)(
         mutable: true,
         documents: [{ document, revision: 1 }],
       });
-      expect(await body(await request(`/documents/${documentId}`))).toEqual(
-        document,
-      );
+      expect(await detail()).toEqual({
+        ...document,
+        projectAssociation: linkedTo(projectId),
+      });
     });
 
     it('does not make a different stored original Client eligible when union gives it the same canonical identity', async () => {
@@ -1061,9 +1249,11 @@ describe.skipIf(!databaseUrl)(
         expect((await mutate(action, before.revision)).status).toBe(201);
         expect((await persistence()).version).toBe(before.version + 1);
         expect((await reverse(reference)).status).toBe(409);
-        expect(await body(await request(`/documents/${documentId}`))).toEqual(
-          document,
-        );
+        expect(await detail()).toEqual({
+          ...document,
+          projectAssociation:
+            action === 'link' ? linkedTo(projectId) : unlinkedAssociation,
+        });
       },
     );
 
@@ -1086,9 +1276,11 @@ describe.skipIf(!databaseUrl)(
           documents:
             action === 'link' ? [{ document, revision: revision + 1 }] : [],
         });
-        expect(await body(await request(`/documents/${documentId}`))).toEqual(
-          document,
-        );
+        expect(await detail()).toEqual({
+          ...document,
+          projectAssociation:
+            action === 'link' ? linkedTo(projectId) : unlinkedAssociation,
+        });
         if (reversal.status === 409)
           expect((await reverse(reference)).status).toBe(409);
       },

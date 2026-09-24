@@ -4,6 +4,7 @@ import { CompanyContextAuthorization } from '../access/company-context-authoriza
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
+import { ProjectService } from '../project/project.service.js';
 import { DocumentsService } from './documents.service.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -767,11 +768,15 @@ describe.skipIf(!databaseUrl)(
       // No metadata-only bundle is introduced. This public Documents seam proves
       // the separate representation permission even before another bundle exists.
       const context = new DatabaseContext(drizzle(harness.pool));
+      const authorization = new CompanyContextAuthorization(context);
+      const clients = new ClientOperationalReferenceService(context);
+      const accountability = new AccountabilityService(context);
       const documents = new DocumentsService(
-        new CompanyContextAuthorization(context),
+        authorization,
         context,
-        new ClientOperationalReferenceService(context),
-        new AccountabilityService(context),
+        clients,
+        accountability,
+        new ProjectService(context, authorization, clients, accountability),
       );
       const result = await documents.read(actor, text(registered.id));
       expect(result.version.representation).toMatchObject({ access: 'denied' });

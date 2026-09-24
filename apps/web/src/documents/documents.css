@@ -30,7 +30,8 @@
   max-width: 28rem;
 }
 
-.working-document-registration-time {
+.working-document-registration-time,
+.working-document-project {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -38,7 +39,8 @@
   font-size: 0.875rem;
 }
 
-.working-document-registration-time dd {
+.working-document-registration-time dd,
+.working-document-project dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -124,7 +126,8 @@
   overflow-wrap: anywhere;
 }
 
-.prisme-shell .working-document-registration-time dt {
+.prisme-shell .working-document-registration-time dt,
+.prisme-shell .working-document-project dt {
   color: var(--shell-muted);
 }
 
