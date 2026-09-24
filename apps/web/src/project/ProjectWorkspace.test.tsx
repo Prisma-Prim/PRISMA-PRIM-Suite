@@ -1,11 +1,12 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -826,4 +827,609 @@ it('presents the existing preparatory Project detail in Prisme without changing 
   expect(documentsPanel).toBeVisible();
   expect(tasksPanel).toBeInTheDocument();
   expect(documentsPanel).toBeInTheDocument();
+});
+
+describe('Client identity changes', () => {
+  const supersededClient = {
+    id: 'superseded-client',
+    displayName: 'Superseded Client',
+  };
+  const canonicalClient = {
+    id: 'canonical-client',
+    displayName: 'Canonical Client',
+  };
+  const historicalProject = {
+    id: 'historical-project',
+    title: 'Historical preparation',
+    status: 'preparatory',
+    companyId: 'company',
+    clientAccountId: supersededClient.id,
+    clientDisplayName: supersededClient.displayName,
+    createdAt: '2026-09-19T08:00:00.000Z',
+  };
+  const registeredProject = {
+    ...historicalProject,
+    id: 'registered-project',
+    title: 'Registered preparation',
+    createdAt: '2026-09-20T08:00:00.000Z',
+  };
+  const historicalRow = `${historicalProject.title} Client: ${historicalProject.clientDisplayName}`;
+  const registeredRow = `${registeredProject.title} Client: ${registeredProject.clientDisplayName}`;
+  const detailPath = `/api/projects/${historicalProject.id}`;
+  const taskPath = `/api/projects/${historicalProject.id}/tasks`;
+  const createdTask = {
+    id: 'task',
+    companyId: 'company',
+    projectId: historicalProject.id,
+    clientAccountId: supersededClient.id,
+    title: 'Keep this Task draft',
+    assignee: null,
+    dueDate: null,
+    status: 'todo',
+    completion: null,
+    version: 1,
+    createdAt: '2026-09-20T09:00:00.000Z',
+    updatedAt: '2026-09-20T09:00:00.000Z',
+    createdBy: {
+      internalUserId: 'owner',
+      workspaceMembershipId: 'member',
+      displayName: 'Owner',
+    },
+  };
+  const taskActor: ActorContext = {
+    ...actor,
+    activeCompany: {
+      id: 'company',
+      displayName: 'PRISMA-PRIM',
+      projectPermissions: ['project.read', 'project.create'],
+      taskPermissions: ['task.read', 'task.manage'],
+      taskPermissionAssignmentId: 'task-grant',
+      taskPermissionSetVersion: 'v1',
+    },
+  };
+  type ClientFilter = { clientDossierId: string; displayName: string };
+  const canonicalFilter: ClientFilter = {
+    clientDossierId: canonicalClient.id,
+    displayName: canonicalClient.displayName,
+  };
+  type ServerRequest = {
+    route: string;
+    key: string | null;
+    body: string | undefined;
+    signal: AbortSignal | undefined;
+  };
+
+  /**
+   * One Company's Project server. A union moves only the derived dossier
+   * identity of the superseded Client's Projects; `clientAccountId` stays the
+   * historical relationship. A held route waits for an explicit release. A
+   * command is processed when it is received; a held read answers from the
+   * server state at its release unless a response is given.
+   */
+  function identityServer() {
+    let united = false;
+    let taskCreated = false;
+    const registered: Array<typeof registeredProject> = [];
+    const holding = new Set<string>();
+    const requests: ServerRequest[] = [];
+    const held: Array<
+      ServerRequest & { answer: (response?: Response) => void }
+    > = [];
+    const projected = (project: typeof historicalProject) => ({
+      ...project,
+      clientDossierId:
+        united && project.clientAccountId === supersededClient.id
+          ? canonicalClient.id
+          : project.clientAccountId,
+    });
+    function answer({ route }: ServerRequest): Response {
+      if (route === 'POST /api/projects') {
+        registered.push(registeredProject);
+        return Response.json(projected(registeredProject), { status: 201 });
+      }
+      if (route === `POST ${taskPath}`) {
+        taskCreated = true;
+        return Response.json(createdTask, { status: 201 });
+      }
+      if (route === 'GET /api/clients')
+        return Response.json(
+          united ? [canonicalClient] : [supersededClient, canonicalClient],
+        );
+      if (route === 'GET /api/projects')
+        return Response.json([historicalProject, ...registered].map(projected));
+      const opened = [historicalProject, ...registered].find(
+        (project) => route === `GET /api/projects/${project.id}`,
+      );
+      if (opened) return Response.json(projected(opened));
+      if (route === `GET ${taskPath}`)
+        return Response.json({
+          mutable: true,
+          tasks: taskCreated ? [createdTask] : [],
+        });
+      if (route === `GET /api/tasks/${createdTask.id}`)
+        return Response.json({ mutable: true, task: createdTask });
+      if (route === `GET /api/tasks/${createdTask.id}/history`)
+        return Response.json({ events: [] });
+      if (route.endsWith('/eligible-task-assignees'))
+        return Response.json({ members: [] });
+      return new Response(null, { status: 404 });
+    }
+    function heldRequest(route: string) {
+      const found = held.find((candidate) => candidate.route === route);
+      if (!found) throw new Error(`Nothing is held for ${route}`);
+      return found;
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const request: ServerRequest = {
+          route: `${init?.method ?? 'GET'} ${url}`,
+          key: new Headers(init?.headers).get('idempotency-key'),
+          body: typeof init?.body === 'string' ? init.body : undefined,
+          signal: init?.signal ?? undefined,
+        };
+        requests.push(request);
+        const processed = request.route.startsWith('GET ')
+          ? undefined
+          : answer(request);
+        if (!holding.has(request.route)) return processed ?? answer(request);
+        return new Promise<Response>((resolve) => {
+          held.push({
+            ...request,
+            answer: (response) =>
+              resolve(response ?? processed ?? answer(request)),
+          });
+        });
+      }),
+    );
+    return {
+      unite: () => {
+        united = true;
+      },
+      reverse: () => {
+        united = false;
+      },
+      hold: (route: string) => holding.add(route),
+      serve: (route: string) => holding.delete(route),
+      count: (route: string) =>
+        requests.filter((request) => request.route === route).length,
+      requests: (route: string) =>
+        requests.filter((request) => request.route === route),
+      /** Waits until a route is held, without answering it. */
+      requested: (route: string) => waitFor(() => heldRequest(route)),
+      /** Waits for the oldest held request of a route, then answers it. */
+      async release(route: string, response?: Response) {
+        const request = await waitFor(() => heldRequest(route));
+        held.splice(held.indexOf(request), 1);
+        await act(async () => {
+          request.answer(response);
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+        return request;
+      },
+    };
+  }
+  function renderWorkspace(options: { actor?: ActorContext } = {}) {
+    const identity = deterministicBrowserIdentity();
+    const openDossier = vi.fn();
+    const workspace = (revision: number, clientFilter?: ClientFilter) => (
+      <ProjectWorkspace
+        actor={options.actor ?? actor}
+        identity={identity}
+        clientIdentityRevision={revision}
+        clientFilter={clientFilter}
+        onOpenClientDossier={openDossier}
+      />
+    );
+    const view = render(workspace(0));
+    return {
+      openDossier,
+      deliver: (revision: number, clientFilter?: ClientFilter) =>
+        view.rerender(workspace(revision, clientFilter)),
+    };
+  }
+  async function openHistoricalDetail() {
+    fireEvent.click(await screen.findByRole('button', { name: historicalRow }));
+    return screen.findByRole('article', { name: historicalProject.title });
+  }
+  const dossierAction = (detail: HTMLElement) =>
+    within(detail).queryByRole('button', { name: 'Open Client dossier' });
+  const listedRows = () =>
+    within(screen.getByRole('list', { name: 'Projects' }))
+      .queryAllByRole('button')
+      .map((button) => button.textContent);
+
+  it('lists a superseded Client’s historical Project under the canonical dossier and offers its dossier only after a current read', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    const detail = await openHistoricalDetail();
+    expect(dossierAction(detail)).toBeInTheDocument();
+
+    server.unite();
+    server.hold('GET /api/projects');
+    server.hold(`GET ${detailPath}`);
+    workspace.deliver(1, canonicalFilter);
+
+    // Not even the first commit after the change offers the superseded target
+    // or compares the canonical dossier with rows resolved before it.
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+    ).toHaveValue(canonicalClient.displayName);
+    expect(
+      screen.queryByText('No Project matches this search.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Loading Projects…')).toBeInTheDocument();
+
+    await server.release('GET /api/projects');
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+
+    await server.release(`GET ${detailPath}`);
+    fireEvent.click(
+      await within(detail).findByRole('button', {
+        name: 'Open Client dossier',
+      }),
+    );
+    expect(workspace.openDossier).toHaveBeenLastCalledWith(canonicalClient.id);
+    expect(server.count('GET /api/projects')).toBe(2);
+    expect(server.count('GET /api/clients')).toBe(2);
+    expect(server.count(`GET ${detailPath}`)).toBe(2);
+  });
+
+  it('applies a dossier restriction without any read while the Client identity is unchanged', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    const detail = await openHistoricalDetail();
+    const reads = server.count('GET /api/projects');
+
+    workspace.deliver(0, {
+      clientDossierId: supersededClient.id,
+      displayName: supersededClient.displayName,
+    });
+
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(dossierAction(detail)).toBeInTheDocument();
+    await act(async () => await new Promise((resolve) => setTimeout(resolve)));
+    expect(server.count('GET /api/projects')).toBe(reads);
+    expect(server.count('GET /api/clients')).toBe(reads);
+    expect(server.count(`GET ${detailPath}`)).toBe(1);
+  });
+
+  it('retires a dossier restriction applied before the change instead of remapping it', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    await screen.findByRole('button', { name: historicalRow });
+    workspace.deliver(0, {
+      clientDossierId: supersededClient.id,
+      displayName: supersededClient.displayName,
+    });
+    expect(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+    ).toHaveValue(supersededClient.displayName);
+
+    server.unite();
+    server.hold('GET /api/projects');
+    workspace.deliver(1);
+
+    const search = screen.getByRole('searchbox', { name: 'Find Projects' });
+    expect(search).toHaveValue('');
+    expect(listedRows()).toEqual([historicalRow]);
+    await server.release('GET /api/projects');
+    expect(search).toHaveValue('');
+    expect(listedRows()).toEqual([historicalRow]);
+  });
+
+  it('supersedes a list read still in flight under the previous Client identity', async () => {
+    const server = identityServer();
+    server.hold('GET /api/projects');
+    const workspace = renderWorkspace();
+    const first = await server.requested('GET /api/projects');
+
+    server.unite();
+    workspace.deliver(1, canonicalFilter);
+    await waitFor(() => expect(server.count('GET /api/projects')).toBe(2));
+    expect(first.signal?.aborted).toBe(true);
+
+    // The superseded read resolved the dossier before the union.
+    await server.release(
+      'GET /api/projects',
+      Response.json([
+        { ...historicalProject, clientDossierId: supersededClient.id },
+      ]),
+    );
+    expect(screen.getByText('Loading Projects…')).toBeInTheDocument();
+    await server.release('GET /api/projects');
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(server.count('GET /api/projects')).toBe(2);
+  });
+
+  it('never lets a detail read started before the change replace the current row or offer its dossier', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    server.hold(`GET ${detailPath}`);
+    fireEvent.click(await screen.findByRole('button', { name: historicalRow }));
+    await server.requested(`GET ${detailPath}`);
+
+    server.unite();
+    workspace.deliver(1, canonicalFilter);
+    await waitFor(() => expect(listedRows()).toEqual([historicalRow]));
+    await server.release(
+      `GET ${detailPath}`,
+      Response.json({
+        ...historicalProject,
+        clientDossierId: supersededClient.id,
+      }),
+    );
+
+    const detail = screen.getByRole('article', {
+      name: historicalProject.title,
+    });
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+    expect(listedRows()).toEqual([historicalRow]);
+    await server.release(`GET ${detailPath}`);
+    fireEvent.click(
+      await within(detail).findByRole('button', {
+        name: 'Open Client dossier',
+      }),
+    );
+    expect(workspace.openDossier).toHaveBeenLastCalledWith(canonicalClient.id);
+    expect(server.count(`GET ${detailPath}`)).toBe(2);
+  });
+
+  it('keeps the loaded rows when the refresh fails and never presents an empty dossier match', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    const detail = await openHistoricalDetail();
+
+    server.unite();
+    server.hold('GET /api/projects');
+    workspace.deliver(1, canonicalFilter);
+    await server.release(
+      'GET /api/projects',
+      new Response(null, { status: 500 }),
+    );
+
+    expect(screen.getByText(loadOrSaveError)).toBeInTheDocument();
+    expect(
+      screen.queryByText('No Project matches this search.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading Projects…')).not.toBeInTheDocument();
+    expect(listedRows()).toEqual([]);
+    expect(detail).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
+      target: { value: '' },
+    });
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(server.count('GET /api/projects')).toBe(2);
+  });
+
+  it('withholds the dossier action while the current detail read is pending and after it fails', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    const detail = await openHistoricalDetail();
+
+    server.unite();
+    server.hold(`GET ${detailPath}`);
+    workspace.deliver(1, canonicalFilter);
+    await waitFor(() => expect(listedRows()).toEqual([historicalRow]));
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+
+    await server.release(
+      `GET ${detailPath}`,
+      new Response(null, { status: 500 }),
+    );
+    expect(screen.getByText(loadOrSaveError)).toBeInTheDocument();
+    expect(detail).toBeInTheDocument();
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+    await act(async () => await new Promise((resolve) => setTimeout(resolve)));
+    expect(server.count(`GET ${detailPath}`)).toBe(2);
+  });
+
+  it.each([
+    ['list', 'GET /api/projects'],
+    ['detail', `GET ${detailPath}`],
+  ])(
+    'keeps the current denial reset when the %s read after the change is denied',
+    async (_read, route) => {
+      const server = identityServer();
+      const workspace = renderWorkspace();
+      await openHistoricalDetail();
+
+      server.unite();
+      server.hold(route);
+      workspace.deliver(1, canonicalFilter);
+      await server.release(route, new Response(null, { status: 403 }));
+
+      expect(
+        screen.getByText(
+          'Project access and Client read access are required for this Company.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('article', { name: historicalProject.title }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Open Client dossier' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('list', { name: 'Projects' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('leaves a failed first read to the member’s reload instead of reading on the change', async () => {
+    const server = identityServer();
+    server.hold('GET /api/projects');
+    const workspace = renderWorkspace();
+    await server.release(
+      'GET /api/projects',
+      new Response(null, { status: 500 }),
+    );
+    expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
+
+    server.unite();
+    workspace.deliver(1, canonicalFilter);
+    await act(async () => await new Promise((resolve) => setTimeout(resolve)));
+    expect(server.count('GET /api/projects')).toBe(1);
+
+    server.serve('GET /api/projects');
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Projects' }));
+    expect(
+      await screen.findByRole('button', { name: historicalRow }),
+    ).toBeInTheDocument();
+    expect(server.count('GET /api/projects')).toBe(2);
+  });
+
+  it('keeps a pending registration across the change without publishing the dossier target it resolved earlier', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    await screen.findByRole('button', { name: historicalRow });
+    fireEvent.change(screen.getByLabelText('Project title'), {
+      target: { value: registeredProject.title },
+    });
+    fireEvent.change(screen.getByLabelText('Client'), {
+      target: { value: supersededClient.id },
+    });
+    server.hold('POST /api/projects');
+    server.hold('GET /api/projects');
+    server.hold(`GET /api/projects/${registeredProject.id}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    // The server resolves the new Project's dossier before the union.
+    const registration = await server.requested('POST /api/projects');
+
+    server.unite();
+    workspace.deliver(1);
+    await server.requested('GET /api/projects');
+    expect(registration.signal?.aborted).toBe(false);
+    expect(screen.getByLabelText('Project title')).toHaveValue(
+      registeredProject.title,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create Project' }),
+    ).toBeDisabled();
+
+    await server.release('POST /api/projects');
+    const detail = await screen.findByRole('article', {
+      name: registeredProject.title,
+    });
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+    // The list read started before the confirmation cannot know the new row.
+    await server.release(
+      'GET /api/projects',
+      Response.json([
+        { ...historicalProject, clientDossierId: canonicalClient.id },
+      ]),
+    );
+    expect(listedRows()).toEqual([historicalRow, registeredRow]);
+
+    workspace.deliver(1, canonicalFilter);
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+    await server.release(`GET /api/projects/${registeredProject.id}`);
+    expect(listedRows()).toEqual([historicalRow, registeredRow]);
+    fireEvent.click(
+      within(detail).getByRole('button', { name: 'Open Client dossier' }),
+    );
+    expect(workspace.openDossier).toHaveBeenLastCalledWith(canonicalClient.id);
+    expect(server.count('POST /api/projects')).toBe(1);
+    expect(server.count('GET /api/projects')).toBe(2);
+    expect(server.count(`GET /api/projects/${registeredProject.id}`)).toBe(1);
+  });
+
+  it('never matches the canonical dossier with a registration resolved under a union that lands after its reversal', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace();
+    await screen.findByRole('button', { name: historicalRow });
+    fireEvent.change(screen.getByLabelText('Project title'), {
+      target: { value: registeredProject.title },
+    });
+    fireEvent.change(screen.getByLabelText('Client'), {
+      target: { value: supersededClient.id },
+    });
+    server.hold('POST /api/projects');
+    server.hold(`GET /api/projects/${registeredProject.id}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+    await server.requested('POST /api/projects');
+
+    server.unite();
+    workspace.deliver(1);
+    await waitFor(() => expect(server.count('GET /api/projects')).toBe(2));
+    server.reverse();
+    workspace.deliver(2, canonicalFilter);
+    await waitFor(() => expect(server.count('GET /api/projects')).toBe(3));
+    // The server processed the registration while the union was in effect.
+    await server.release(
+      'POST /api/projects',
+      Response.json(
+        { ...registeredProject, clientDossierId: canonicalClient.id },
+        { status: 201 },
+      ),
+    );
+    const detail = await screen.findByRole('article', {
+      name: registeredProject.title,
+    });
+    expect(listedRows()).toEqual([]);
+    expect(dossierAction(detail)).not.toBeInTheDocument();
+
+    await server.release(`GET /api/projects/${registeredProject.id}`);
+    expect(listedRows()).toEqual([]);
+    workspace.deliver(2, {
+      clientDossierId: supersededClient.id,
+      displayName: supersededClient.displayName,
+    });
+    expect(listedRows()).toEqual([historicalRow, registeredRow]);
+    fireEvent.click(
+      within(detail).getByRole('button', { name: 'Open Client dossier' }),
+    );
+    expect(workspace.openDossier).toHaveBeenLastCalledWith(supersededClient.id);
+  });
+
+  it('keeps the selected Project, its Task draft and the exact pending Task command across the change', async () => {
+    const server = identityServer();
+    const workspace = renderWorkspace({ actor: taskActor });
+    const detail = await openHistoricalDetail();
+    const tasks = await screen.findByRole('region', { name: 'Tasks' });
+    fireEvent.change(await within(tasks).findByLabelText('Task title'), {
+      target: { value: createdTask.title },
+    });
+    server.hold(`POST ${taskPath}`);
+    fireEvent.click(within(tasks).getByRole('button', { name: 'Create Task' }));
+    const pendingCommand = await server.requested(`POST ${taskPath}`);
+
+    server.unite();
+    workspace.deliver(1, canonicalFilter);
+    await waitFor(() => expect(dossierAction(detail)).toBeInTheDocument());
+    expect(listedRows()).toEqual([historicalRow]);
+    expect(pendingCommand.signal?.aborted).toBe(false);
+    expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+      createdTask.title,
+    );
+
+    // The response is lost after the server created the Task.
+    await server.release(
+      `POST ${taskPath}`,
+      new Response(null, { status: 500 }),
+    );
+    expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+      createdTask.title,
+    );
+    server.serve(`POST ${taskPath}`);
+    fireEvent.click(
+      await within(tasks).findByRole('button', {
+        name: 'Retry pending Task change',
+      }),
+    );
+    expect(
+      await within(tasks).findByRole('heading', { name: createdTask.title }),
+    ).toBeInTheDocument();
+    const commands = server.requests(`POST ${taskPath}`);
+    expect(commands).toHaveLength(2);
+    expect(commands[1]?.key).toBe(commands[0]?.key);
+    expect(commands[1]?.body).toBe(commands[0]?.body);
+    expect(screen.getByRole('article', { name: historicalProject.title })).toBe(
+      detail,
+    );
+  });
 });

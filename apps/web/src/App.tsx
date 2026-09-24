@@ -34,7 +34,7 @@ import {
 export function App({ identity }: { identity: BrowserIdentity }) {
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [projectClientFilter, setProjectClientFilter] = useState<{
-    companyId: string;
+    navigationContext: string;
     clientDossierId: string;
     displayName: string;
   }>();
@@ -77,12 +77,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // One authorized navigation intent belongs to exactly one Company, session,
   // Client authority and Client identity generation. Any change retires it
   // instead of masking it, so a dossier identity that a union or reversal
-  // superseded can never keep restricting the Documents a member sees.
+  // superseded can never keep restricting the Projects or Documents a member
+  // sees.
   const navigationContext =
     access.status === 'active'
       ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
       : 'inactive';
   useEffect(() => {
+    setProjectClientFilter(undefined);
     setDocumentClientFilter(undefined);
   }, [navigationContext]);
 
@@ -207,7 +209,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             canAccessProjects && activeCompanyId
               ? (client) => {
                   setProjectClientFilter({
-                    companyId: activeCompanyId,
+                    navigationContext,
                     clientDossierId: client.id,
                     displayName: client.displayName,
                   });
@@ -245,10 +247,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           identity={identity}
           onActivityRecorded={refreshActivityLog}
           clientFilter={
-            projectClientFilter?.companyId === activeCompanyId
+            projectClientFilter?.navigationContext === navigationContext
               ? projectClientFilter
               : undefined
           }
+          clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
         />
       ),
