@@ -2151,24 +2151,31 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         input: { expectedVersion: 1, dueDate: '2026-10-01' },
       }),
     );
-    // Recreate receipts recorded before the priority field existed.
+    // Receipts are immutable, so each pre-priority receipt is a new row under a
+    // fresh key repeating the command and outcome recorded for the same
+    // command, without the priority field that did not exist yet.
+    const legacyCreateKey = randomUUID();
+    const legacyEditKey = randomUUID();
     await harness.pool.query(
-      "UPDATE task_commands SET result = result - 'priority' WHERE idempotency_key = ANY($1::text[])",
-      [[createKey, editKey]],
+      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
+       SELECT c.workspace_id, c.company_id, c.task_id, c.actor_membership_id, f.legacy_key, c.command, c.result - 'priority'
+       FROM (VALUES ($1::text, $2::text), ($3::text, $4::text)) AS f(source_key, legacy_key)
+       JOIN task_commands c ON c.idempotency_key = f.source_key`,
+      [createKey, legacyCreateKey, editKey, legacyEditKey],
     );
     const current = await detail(id);
     const events = await history(id);
     const fence = await clientVersion();
     const receipts = await commandCount();
     expect(created.priority).toBe('normal');
-    expect(await create({ title: 'Legacy notes' }, { key: createKey })).toEqual(
-      created,
-    );
+    expect(
+      await create({ title: 'Legacy notes' }, { key: legacyCreateKey }),
+    ).toEqual(created);
     expect(
       await edit(
         id,
         { expectedVersion: 1, dueDate: '2026-10-01' },
-        { key: editKey },
+        { key: legacyEditKey },
       ),
     ).toEqual(edited);
     await assertUnchanged(id, current, events);
@@ -2178,13 +2185,16 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       objects((await read(`/projects/${projectId}/tasks`)).tasks),
     ).toHaveLength(1);
 
+    const unknownKey = randomUUID();
     await harness.pool.query(
-      `UPDATE task_commands SET result = jsonb_set(result, '{priority}', '"urgent"') WHERE idempotency_key=$1`,
-      [createKey],
+      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
+       SELECT workspace_id, company_id, task_id, actor_membership_id, $2::text, command, jsonb_set(result, '{priority}', '"urgent"')
+       FROM task_commands WHERE idempotency_key=$1`,
+      [createKey, unknownKey],
     );
     const unknown = await request(`/projects/${projectId}/tasks`, {
       method: 'POST',
-      key: createKey,
+      key: unknownKey,
       value: { title: 'Legacy notes' },
     });
     expect(unknown.status).toBe(500);
@@ -2311,30 +2321,52 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
   it('keeps a historical creation without priority valid and absent and fails closed for an unknown stored priority', async () => {
     await grant('task');
     const created = await create({ title: 'Historical creation' });
-    const id = string(created.id);
-    await harness.pool.query(
-      "UPDATE task_events SET meaning = meaning #- '{metadata,initial,priority}' WHERE task_id=$1 AND version=1",
-      [id],
-    );
+    // Task history is immutable, so each historical creation is a new Task
+    // copying the scope, creator and creation event of the API-created Task,
+    // with its initial priority absent, or replaced when one is given. The
+    // omitted priority column receives the migration default.
+    const historical = async (initialPriority: string | null) =>
+      string(
+        (
+          await harness.pool.query<{ id: unknown }>(
+            `WITH inserted AS (
+               INSERT INTO tasks (workspace_id, company_id, project_id, client_account_id, title, assignee_membership_id, assignee_display_label, due_date, created_by_internal_user_id, created_by_membership_id, created_by_display_name, created_at, updated_at)
+               SELECT workspace_id, company_id, project_id, client_account_id, title, assignee_membership_id, assignee_display_label, due_date, created_by_internal_user_id, created_by_membership_id, created_by_display_name, created_at, updated_at
+               FROM tasks WHERE id = $1::uuid
+               RETURNING id
+             )
+             INSERT INTO task_events (workspace_id, company_id, task_id, version, actor_internal_user_id, actor_membership_id, actor_display_name, occurred_at, meaning)
+             SELECT e.workspace_id, e.company_id, i.id, 1, e.actor_internal_user_id, e.actor_membership_id, e.actor_display_name, e.occurred_at,
+               CASE WHEN $2::text IS NULL THEN e.meaning #- '{metadata,initial,priority}'
+                 ELSE jsonb_set(e.meaning, '{metadata,initial,priority}', to_jsonb($2::text)) END
+             FROM inserted i JOIN task_events e ON e.task_id = $1::uuid AND e.version = 1
+             RETURNING task_id AS id`,
+            [string(created.id), initialPriority],
+          )
+        ).rows[0]?.id,
+      );
+    const id = await historical(null);
     const [creation] = await history(id);
     expect(object(object(creation).metadata).initial).toEqual({
       title: 'Historical creation',
       assignee: null,
       dueDate: null,
     });
-    expect(await taskEvents()).toEqual([creation]);
-    expect(await detail(id)).toEqual(created);
+    expect(
+      (await taskEvents()).filter(
+        (event) => object(event.target).taskId === id,
+      ),
+    ).toEqual([creation]);
+    expect(await detail(id)).toEqual({ ...created, id });
     await edit(id, { expectedVersion: 1, priority: 'important' });
     expect((await history(id))[1]).toMatchObject({
       metadata: {
         changes: { priority: { before: 'normal', after: 'important' } },
       },
     });
-    await harness.pool.query(
-      `UPDATE task_events SET meaning = jsonb_set(meaning, '{metadata,initial,priority}', '"urgent"') WHERE task_id=$1 AND version=1`,
-      [id],
+    const unknown = await request(
+      `/tasks/${await historical('urgent')}/history`,
     );
-    const unknown = await request(`/tasks/${id}/history`);
     expect(unknown.status).toBe(500);
     expect(await unknown.text()).not.toContain('Historical creation');
   });
