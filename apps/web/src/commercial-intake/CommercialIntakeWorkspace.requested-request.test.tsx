@@ -248,6 +248,33 @@ function fillCapture() {
     target: { value: 'Call back' },
   });
 }
+function expectCaptureDraft() {
+  expect(screen.getByLabelText(copy.originalText)).toHaveValue(
+    'Exact original text',
+  );
+  expect(screen.getByLabelText(copy.opportunityTitle)).toHaveValue(
+    'Qualify the request',
+  );
+  expect(screen.getByLabelText(copy.nextAction)).toHaveValue('Call back');
+}
+async function chooseClient() {
+  fireEvent.change(screen.getByLabelText(copy.clientSearch), {
+    target: { value: 'Synthetic' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+  fireEvent.change(await screen.findByLabelText(copy.existingClient), {
+    target: { value: 'client-1' },
+  });
+}
+const clientSearchPath = 'GET /api/clients/search?query=Synthetic';
+const clientChoices = () =>
+  reply([
+    {
+      id: 'client-1',
+      displayName: 'Synthetic Client',
+      relatedToActiveCompany: true,
+    },
+  ]);
 async function editOpenedRequest(draft: string) {
   openRow('Opened Request');
   fireEvent.click(
@@ -511,6 +538,163 @@ describe('CommercialIntakeWorkspace requested Request', () => {
     expect(
       transport.calls(`GET ${detailPath('request-requested')}`),
     ).toHaveLength(0);
+  });
+
+  it.each([
+    [
+      'a validation rejection',
+      400,
+      {
+        code: 'VALIDATION_ERROR',
+        field: 'originalText',
+        message: 'Original text is invalid.',
+      },
+    ],
+    ['an unavailable Client', 404, { code: 'CLIENT_REFERENCE_UNAVAILABLE' }],
+    ['an unavailable Client', 409, { code: 'CLIENT_REFERENCE_UNAVAILABLE' }],
+  ])(
+    'opens a request held behind a pending capture once %s (%i) confirms nothing was captured, keeping the draft',
+    async (_, status, body) => {
+      const capture = deferred();
+      const transport = stubRoutes({
+        [`GET ${listPath}`]: [reply({ items: rows })],
+        [clientSearchPath]: [clientChoices()],
+        [capturePath]: [capture.responder],
+        [`GET ${detailPath('request-requested')}`]: [reply(requestedDetail())],
+      });
+      const view = renderWorkspace();
+      await waitFor(() => expect(listedSubjects()).toHaveLength(3));
+      fillCapture();
+      await chooseClient();
+      fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+      await waitFor(() => expect(transport.calls(capturePath)).toHaveLength(1));
+      view.update({ requestedRequest: requested(1) });
+      expect(heldNotice()).toHaveTextContent(copy.requestedAfterCapture);
+
+      await capture.settle(body, status);
+      expect(
+        await screen.findByText('Original source of Requested Request'),
+      ).toBeVisible();
+      expect(heldNotice()).not.toBeInTheDocument();
+      // Nothing was captured, so no list reload precedes the requested read.
+      expect(transport.keys()).toEqual([
+        `GET ${listPath}`,
+        clientSearchPath,
+        capturePath,
+        `GET ${detailPath('request-requested')}`,
+      ]);
+      fireEvent.click(screen.getByRole('button', { name: copy.back }));
+      expectCaptureDraft();
+      expect(screen.getByLabelText(copy.existingClient)).toHaveValue(
+        'client-1',
+      );
+      expect(transport.unexpected).toEqual([]);
+    },
+  );
+
+  it('opens a request held behind an uncertain capture once its exact retry is rejected as invalid', async () => {
+    const transport = stubRoutes({
+      [`GET ${listPath}`]: [reply({ items: rows })],
+      [capturePath]: [
+        networkFailure(),
+        reply(
+          {
+            code: 'VALIDATION_ERROR',
+            field: 'originalText',
+            message: 'Original text is invalid.',
+          },
+          400,
+        ),
+      ],
+      [`GET ${detailPath('request-requested')}`]: [reply(requestedDetail())],
+    });
+    const view = renderWorkspace();
+    await waitFor(() => expect(listedSubjects()).toHaveLength(3));
+    fillCapture();
+    fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+    view.update({ requestedRequest: requested(1) });
+    await settleEffects();
+    expect(heldNotice()).toHaveTextContent(copy.requestedAfterCapture);
+
+    fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+    expect(
+      await screen.findByText('Original source of Requested Request'),
+    ).toBeVisible();
+    const [first, retry] = transport.calls(capturePath);
+    expect(retry?.[1]?.body).toBe(first?.[1]?.body);
+    expect(keyOf(retry?.[1])).toBeDefined();
+    expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
+    expect(transport.calls(`GET ${listPath}`)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: copy.back }));
+    expectCaptureDraft();
+    expect(transport.unexpected).toEqual([]);
+  });
+
+  it.each([
+    ['a server failure', failure(500)],
+    ['an unreadable success', reply({ id: 'request-new' }, 201)],
+  ])(
+    'keeps a request held after %s and retries the capture with the exact body and key',
+    async (_, outcome) => {
+      const transport = stubRoutes({
+        [`GET ${listPath}`]: [
+          reply({ items: rows }),
+          reply({ items: [row('request-new', 'New Request'), ...rows] }),
+        ],
+        [capturePath]: [
+          outcome,
+          reply(detail('request-new', 'New Request'), 201),
+        ],
+        [`GET ${detailPath('request-requested')}`]: [reply(requestedDetail())],
+      });
+      const view = renderWorkspace();
+      await waitFor(() => expect(listedSubjects()).toHaveLength(3));
+      fillCapture();
+      fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+      view.update({ requestedRequest: requested(1) });
+      await settleEffects();
+      expect(heldNotice()).toHaveTextContent(copy.requestedAfterCapture);
+      expectCaptureDraft();
+      expect(
+        transport.calls(`GET ${detailPath('request-requested')}`),
+      ).toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+      expect(
+        await screen.findByText('Original source of Requested Request'),
+      ).toBeVisible();
+      const [first, retry] = transport.calls(capturePath);
+      expect(retry?.[1]?.body).toBe(first?.[1]?.body);
+      expect(keyOf(retry?.[1])).toBeDefined();
+      expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
+      expect(transport.unexpected).toEqual([]);
+    },
+  );
+
+  it('retires a request held behind a capture whose access is denied', async () => {
+    const capture = deferred();
+    const transport = stubRoutes({
+      [`GET ${listPath}`]: [reply({ items: rows })],
+      [capturePath]: [capture.responder],
+      'GET /api/access/current-actor': [reply(reader)],
+    });
+    const view = renderWorkspace();
+    await waitFor(() => expect(listedSubjects()).toHaveLength(3));
+    fillCapture();
+    fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+    await waitFor(() => expect(transport.calls(capturePath)).toHaveLength(1));
+    view.update({ requestedRequest: requested(1) });
+    expect(heldNotice()).toHaveTextContent(copy.requestedAfterCapture);
+
+    await capture.settle({}, 403);
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.denied);
+    await settleEffects();
+    expect(
+      transport.calls(`GET ${detailPath('request-requested')}`),
+    ).toHaveLength(0);
+    expect(transport.unexpected).toEqual([]);
   });
 
   it('holds a request behind an open next-action edit, keeps the draft and opens it on cancel', async () => {

@@ -836,6 +836,12 @@ export function CommercialIntakeWorkspace({
         setFeedback(copy.unavailableClient);
         return;
       }
+      // Invalid fields are rejected without persistence, so the capture is
+      // settled rather than uncertain; the entered values stay for correction.
+      if (result.status === 400) {
+        setFeedback(copy.error);
+        return;
+      }
       if (
         (result.status === 200 || result.status === 201) &&
         isClientRequest(result.body)
