@@ -1,7 +1,6 @@
+import { isStoredClientContact } from '../client/client-dossier-validation.js';
 import type { ClientContact } from '../client/client.types.js';
 import type { ClientCorrectionFieldChanges } from './accountability.types.js';
-
-const CONTACT_FIELDS = new Set(['name', 'telephone', 'email']);
 
 /**
  * Stored `client.corrected` metadata is untrusted input. Prove the delivered
@@ -73,20 +72,9 @@ function optionalText(value: unknown): string | null {
 function contacts(value: unknown): ClientContact[] {
   if (!Array.isArray(value)) return invalid();
   const entries: unknown[] = value;
-  return entries.map((entry) => {
-    const contact = record(entry);
-    if (Object.keys(contact).some((field) => !CONTACT_FIELDS.has(field)))
-      return invalid();
-    return {
-      name: text(contact.name),
-      ...(Object.hasOwn(contact, 'telephone')
-        ? { telephone: text(contact.telephone) }
-        : {}),
-      ...(Object.hasOwn(contact, 'email')
-        ? { email: text(contact.email) }
-        : {}),
-    };
-  });
+  return entries.map((entry) =>
+    isStoredClientContact(entry) ? entry : invalid(),
+  );
 }
 
 function invalid(): never {

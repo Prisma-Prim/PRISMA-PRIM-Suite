@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import { useLayoutEffect } from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -3059,4 +3059,592 @@ it('never shows the Project of a detail read the member has already left', async
   expect(screen.getByRole('heading', { name: homonym.title })).toBeVisible();
   expect(projectRow()).toBe('ProjectNot linked to a Project');
   expect(screen.queryByText('Late historical Project')).not.toBeInTheDocument();
+});
+describe('a requested Document', () => {
+  const requested = {
+    ...document,
+    id: 'document-requested',
+    title: 'Requested questionnaire',
+    purpose: 'Prepare the requested interview',
+  };
+  const newer = {
+    ...document,
+    id: 'document-newer',
+    title: 'Newer requested questionnaire',
+    purpose: 'Prepare the newer interview',
+  };
+  const heldNotice =
+    'The requested Document opens after this correction is saved or cancelled.';
+  const protectedDraft = 'Protected correction draft';
+  type Recorded = {
+    url: string;
+    init?: RequestInit;
+    response: ReturnType<typeof deferredResponse>;
+  };
+  /** Holds every Document request with what it sent until the test answers. */
+  function recordedRequests() {
+    const requests: Recorded[] = [];
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients'))
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      const response = deferredResponse();
+      requests.push({ url, init, response });
+      return response.promise;
+    });
+    const detailReads = (id: string) =>
+      requests.filter(
+        (request) =>
+          request.url.endsWith(`/documents/${id}`) && !request.init?.method,
+      );
+    const commands = () => requests.filter((request) => request.init?.method);
+    const lists = () =>
+      requests.filter(
+        (request) =>
+          request.url.endsWith('/documents') && !request.init?.method,
+      );
+    return { fetcher, detailReads, commands, lists };
+  }
+  /** Answers Document requests at once, counting the detail reads by id. */
+  function answeredRequests({
+    correction = [],
+  }: { correction?: Array<'uncertain' | 'corrected'> } = {}) {
+    const reads = new Map<string, number>();
+    const patches: Array<{ body: unknown; key: string | null }> = [];
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/clients')) return Response.json([]);
+      if (init?.method === 'PATCH') {
+        patches.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return correction[patches.length - 1] === 'uncertain'
+          ? new Response(null, { status: 500 })
+          : Response.json({
+              documentId: document.id,
+              revision: 2,
+              outcome: 'corrected',
+            });
+      }
+      const opened = [document, requested, newer].find((candidate) =>
+        url.endsWith(`/documents/${candidate.id}`),
+      );
+      if (opened) {
+        reads.set(opened.id, (reads.get(opened.id) ?? 0) + 1);
+        return Response.json(opened);
+      }
+      return Response.json([document, requested, newer]);
+    });
+    return { fetcher, reads, patches };
+  }
+  const workspace = ({
+    requestedDocument,
+    clientFilter,
+    clientIdentityRevision,
+    onOpenClientDossier,
+    documentIdentity = identity,
+  }: {
+    requestedDocument?: { documentId: string; requestId: number };
+    clientFilter?: { clientDossierId: string; displayName: string };
+    clientIdentityRevision?: number;
+    onOpenClientDossier?: (clientDossierId: string) => void;
+    documentIdentity?: BrowserIdentity;
+  } = {}) => (
+    <DocumentWorkspace
+      actor={actor}
+      identity={documentIdentity}
+      requestedDocument={requestedDocument}
+      clientFilter={clientFilter}
+      clientIdentityRevision={clientIdentityRevision}
+      onOpenClientDossier={onOpenClientDossier}
+    />
+  );
+  async function beginCorrection() {
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: protectedDraft },
+    });
+  }
+  function fillRegistration() {
+    fireEvent.change(screen.getByLabelText('Client'), {
+      target: { value: 'client' },
+    });
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: lateRegistration.title },
+    });
+    fireEvent.change(screen.getByLabelText('Purpose'), {
+      target: { value: lateRegistration.purpose },
+    });
+    fireEvent.change(screen.getByLabelText('External HTTPS link'), {
+      target: { value: lateRegistration.version.representation.url },
+    });
+  }
+  function expectFilledRegistration() {
+    expect(screen.getByLabelText('Client')).toHaveValue('client');
+    expect(screen.getByLabelText('Title')).toHaveValue(lateRegistration.title);
+    expect(screen.getByLabelText('Purpose')).toHaveValue(
+      lateRegistration.purpose,
+    );
+    expect(screen.getByLabelText('External HTTPS link')).toHaveValue(
+      lateRegistration.version.representation.url,
+    );
+  }
+  /** Answers one recorded request. */
+  const answer = (request: Recorded | undefined, response: Response) =>
+    request?.response.resolve(response);
+  const commandSent = (request: Recorded | undefined) => ({
+    body: request?.init?.body,
+    key: new Headers(request?.init?.headers).get('idempotency-key'),
+  });
+
+  it('waits for a pending registration and leaves its command and draft unchanged', async () => {
+    const requests = recordedRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await waitFor(() => expect(requests.lists()).toHaveLength(1));
+    answer(requests.lists()[0], Response.json([document, requested]));
+    await screen.findByRole('button', { name: requested.title });
+    fillRegistration();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Register working reference' }),
+    );
+    await waitFor(() => expect(requests.commands()).toHaveLength(1));
+
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    await settle();
+    expect(requests.detailReads(requested.id)).toHaveLength(0);
+    expect(requests.commands()[0]?.init?.signal?.aborted).toBe(false);
+    expectFilledRegistration();
+
+    answer(requests.commands()[0], new Response(null, { status: 500 }));
+    await waitFor(() =>
+      expect(requests.detailReads(requested.id)).toHaveLength(1),
+    );
+    answer(requests.detailReads(requested.id)[0], Response.json(requested));
+    expect(
+      await screen.findByRole('heading', { name: requested.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(requested.purpose)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expectFilledRegistration();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Register working reference' }),
+    );
+    await waitFor(() => expect(requests.commands()).toHaveLength(2));
+    expect(commandSent(requests.commands()[1])).toEqual(
+      commandSent(requests.commands()[0]),
+    );
+  });
+
+  it('opens after a confirmed registration settles', async () => {
+    const requests = recordedRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await waitFor(() => expect(requests.lists()).toHaveLength(1));
+    answer(requests.lists()[0], Response.json([document, requested]));
+    await screen.findByRole('button', { name: requested.title });
+    fillRegistration();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Register working reference' }),
+    );
+    await waitFor(() => expect(requests.commands()).toHaveLength(1));
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    await settle();
+    expect(requests.detailReads(requested.id)).toHaveLength(0);
+
+    answer(
+      requests.commands()[0],
+      Response.json(lateRegistration, { status: 201 }),
+    );
+    await waitFor(() =>
+      expect(requests.detailReads(requested.id)).toHaveLength(1),
+    );
+    answer(requests.detailReads(requested.id)[0], Response.json(requested));
+    expect(
+      await screen.findByRole('heading', { name: requested.title }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expect(
+      screen.getByRole('button', { name: lateRegistration.title }),
+    ).toBeInTheDocument();
+    expect(requests.commands()).toHaveLength(1);
+  });
+
+  it.each([
+    ['edited', 'Cancel'],
+    ['edited', 'Save correction'],
+    ['uncertain', 'Cancel'],
+    ['uncertain', 'Retry same correction'],
+  ] as const)(
+    'holds the request behind an %s correction and opens it once after %s',
+    async (correctionState, release) => {
+      const requests = answeredRequests({
+        correction:
+          correctionState === 'uncertain'
+            ? ['uncertain', 'corrected']
+            : ['corrected'],
+      });
+      vi.stubGlobal('fetch', requests.fetcher);
+      const view = render(workspace());
+      await beginCorrection();
+      if (correctionState === 'uncertain') {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Save correction' }),
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'result is uncertain',
+        );
+      }
+      const patchesBefore = requests.patches.length;
+
+      view.rerender(
+        workspace({
+          requestedDocument: { documentId: requested.id, requestId: 1 },
+        }),
+      );
+      expect(await screen.findByText(heldNotice)).toHaveAttribute(
+        'role',
+        'status',
+      );
+      await settle();
+      expect(screen.getByLabelText('Title')).toHaveValue(protectedDraft);
+      expect(requests.reads.get(requested.id)).toBeUndefined();
+      expect(requests.patches).toHaveLength(patchesBefore);
+
+      fireEvent.click(screen.getByRole('button', { name: release }));
+      expect(
+        await screen.findByRole('heading', { name: requested.title }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(requested.purpose)).toBeInTheDocument();
+      expect(screen.queryByText(heldNotice)).not.toBeInTheDocument();
+      await settle();
+      expect(requests.reads.get(requested.id)).toBe(1);
+      expect(requests.patches).toHaveLength(
+        patchesBefore + (release === 'Cancel' ? 0 : 1),
+      );
+      // A retry sends the exact body and key the uncertain attempt sent.
+      if (release === 'Retry same correction')
+        expect(requests.patches[1]).toEqual(requests.patches[0]);
+    },
+  );
+
+  it('holds the request while a correction command is pending, without aborting it', async () => {
+    const requests = recordedRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await waitFor(() => expect(requests.lists()).toHaveLength(1));
+    answer(requests.lists()[0], Response.json([document, requested]));
+    fireEvent.click(
+      await screen.findByRole('button', { name: document.title }),
+    );
+    await waitFor(() =>
+      expect(requests.detailReads(document.id)).toHaveLength(1),
+    );
+    answer(requests.detailReads(document.id)[0], Response.json(document));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit reference' }),
+    );
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: protectedDraft },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+    await waitFor(() => expect(requests.commands()).toHaveLength(1));
+
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    expect(await screen.findByText(heldNotice)).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveValue(protectedDraft);
+    expect(requests.commands()[0]?.init?.signal?.aborted).toBe(false);
+    expect(requests.detailReads(requested.id)).toHaveLength(0);
+
+    answer(
+      requests.commands()[0],
+      Response.json({
+        documentId: document.id,
+        revision: 2,
+        outcome: 'corrected',
+      }),
+    );
+    // The accepted correction reloads its Document and rows first.
+    await waitFor(() =>
+      expect(requests.detailReads(document.id)).toHaveLength(2),
+    );
+    const corrected = {
+      ...document,
+      title: protectedDraft,
+      workingRevision: 2,
+    };
+    answer(requests.detailReads(document.id)[1], Response.json(corrected));
+    answer(requests.lists()[1], Response.json([corrected, requested]));
+    await waitFor(() =>
+      expect(requests.detailReads(requested.id)).toHaveLength(1),
+    );
+    answer(requests.detailReads(requested.id)[0], Response.json(requested));
+    expect(
+      await screen.findByRole('heading', { name: requested.title }),
+    ).toBeInTheDocument();
+    expect(requests.commands()).toHaveLength(1);
+  });
+
+  it('opens only the newest of the requests held behind a correction', async () => {
+    const requests = answeredRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await beginCorrection();
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    await screen.findByText(heldNotice);
+    view.rerender(
+      workspace({ requestedDocument: { documentId: newer.id, requestId: 2 } }),
+    );
+    await settle();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(
+      await screen.findByRole('heading', { name: newer.title }),
+    ).toBeInTheDocument();
+    await settle();
+    expect(requests.reads.get(newer.id)).toBe(1);
+    expect(requests.reads.has(requested.id)).toBe(false);
+  });
+
+  it('never renders a late reply to a superseded request and re-reads a repeated one', async () => {
+    const requests = recordedRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await waitFor(() => expect(requests.lists()).toHaveLength(1));
+    answer(requests.lists()[0], Response.json([document, requested, newer]));
+    await screen.findByRole('button', { name: requested.title });
+
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    await waitFor(() =>
+      expect(requests.detailReads(requested.id)).toHaveLength(1),
+    );
+    view.rerender(
+      workspace({ requestedDocument: { documentId: newer.id, requestId: 2 } }),
+    );
+    await waitFor(() => expect(requests.detailReads(newer.id)).toHaveLength(1));
+    answer(requests.detailReads(newer.id)[0], Response.json(newer));
+    expect(
+      await screen.findByRole('heading', { name: newer.title }),
+    ).toBeInTheDocument();
+    answer(requests.detailReads(requested.id)[0], Response.json(requested));
+    await settle();
+    expect(screen.getByRole('heading', { name: newer.title })).toBeVisible();
+    expect(screen.queryByText(requested.purpose)).not.toBeInTheDocument();
+
+    view.rerender(
+      workspace({ requestedDocument: { documentId: newer.id, requestId: 3 } }),
+    );
+    await waitFor(() => expect(requests.detailReads(newer.id)).toHaveLength(2));
+  });
+
+  it.each([
+    ['forbidden', 403, 'You do not have access to working Documents'],
+    ['missing', 404, 'You do not have access to working Documents'],
+    ['failing', 500, 'could not be loaded or saved'],
+  ])(
+    'shows the existing state for a %s Document',
+    async (_case, status, message) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) =>
+          url.endsWith('/clients')
+            ? Response.json([])
+            : url.endsWith(`/documents/${requested.id}`)
+              ? new Response(null, { status })
+              : Response.json([document, requested]),
+        ),
+      );
+      const view = render(workspace());
+      await screen.findByRole('button', { name: requested.title });
+      view.rerender(
+        workspace({
+          requestedDocument: { documentId: requested.id, requestId: 1 },
+        }),
+      );
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(screen.queryByRole('article')).not.toBeInTheDocument();
+      expect(screen.queryByText(requested.purpose)).not.toBeInTheDocument();
+    },
+  );
+
+  it('rejects the session for an unauthorized Document read', async () => {
+    const rejectSession = vi.fn(async () => undefined);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/clients')
+          ? Response.json([])
+          : url.endsWith(`/documents/${requested.id}`)
+            ? new Response(null, { status: 401 })
+            : Response.json([document, requested]),
+      ),
+    );
+    const sessionIdentity = { ...identity, rejectSession };
+    const view = render(workspace({ documentIdentity: sessionIdentity }));
+    await screen.findByRole('button', { name: requested.title });
+    view.rerender(
+      workspace({
+        documentIdentity: sessionIdentity,
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    await waitFor(() => expect(rejectSession).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+  });
+
+  it('keeps a superseded original Client reference readable but correction read-only', async () => {
+    const readOnly = { ...requested, correction: 'read-only' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/clients')
+          ? Response.json([])
+          : url.endsWith(`/documents/${requested.id}`)
+            ? Response.json(readOnly)
+            : Response.json([document, readOnly]),
+      ),
+    );
+    const view = render(workspace());
+    await screen.findByRole('button', { name: requested.title });
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    expect(await screen.findByText(requested.purpose)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit reference' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('never replays a request it was mounted with or one the shell retired', async () => {
+    const requests = answeredRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const mounted = { documentId: requested.id, requestId: 4 };
+    const view = render(workspace({ requestedDocument: mounted }));
+    await beginCorrection();
+    await settle();
+    expect(requests.reads.has(requested.id)).toBe(false);
+
+    view.rerender(
+      workspace({ requestedDocument: { documentId: newer.id, requestId: 5 } }),
+    );
+    await screen.findByText(heldNotice);
+    view.rerender(workspace());
+    expect(screen.queryByText(heldNotice)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+    expect(
+      screen.getByRole('heading', { name: document.title }),
+    ).toBeInTheDocument();
+    expect(requests.reads.has(newer.id)).toBe(false);
+    expect(requests.reads.has(requested.id)).toBe(false);
+  });
+
+  it('lets a newer dossier restriction supersede a held request', async () => {
+    const requests = answeredRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    await beginCorrection();
+    const request = { documentId: requested.id, requestId: 1 };
+    view.rerender(workspace({ requestedDocument: request }));
+    await screen.findByText(heldNotice);
+    view.rerender(
+      workspace({
+        requestedDocument: request,
+        clientFilter: {
+          clientDossierId: 'client',
+          displayName: 'Synthetic Client',
+        },
+      }),
+    );
+    expect(screen.getByLabelText('Title')).toHaveValue(protectedDraft);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: 'Filter working Documents' }),
+    ).toHaveValue('Synthetic Client');
+    expect(requests.reads.has(requested.id)).toBe(false);
+  });
+
+  it('keeps the search text and dossier restriction it opens under', async () => {
+    const requests = answeredRequests();
+    vi.stubGlobal('fetch', requests.fetcher);
+    const view = render(workspace());
+    const filter = await screen.findByRole('searchbox', {
+      name: 'Filter working Documents',
+    });
+    fireEvent.change(filter, { target: { value: 'Initial' } });
+    view.rerender(
+      workspace({
+        requestedDocument: { documentId: requested.id, requestId: 1 },
+      }),
+    );
+    expect(
+      await screen.findByRole('heading', { name: requested.title }),
+    ).toBeInTheDocument();
+    expect(filter).toHaveValue('Initial');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to references' }));
+    expect(
+      within(screen.getByRole('list'))
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual([document.title]);
+  });
+
+  it('reads the Document under the current Client identity after a union', async () => {
+    const projections = currentProjectionFetcher();
+    vi.stubGlobal('fetch', projections.fetcher);
+    const openClientDossier = vi.fn();
+    const view = render(
+      workspace({
+        clientIdentityRevision: 0,
+        onOpenClientDossier: openClientDossier,
+      }),
+    );
+    await screen.findByRole('button', { name: document.title });
+    projections.moveTo(unitedProjection);
+    view.rerender(
+      workspace({
+        clientIdentityRevision: 1,
+        onOpenClientDossier: openClientDossier,
+        requestedDocument: { documentId: document.id, requestId: 1 },
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open Client dossier' }),
+    );
+    expect(openClientDossier).toHaveBeenCalledWith(
+      unitedProjection.clientDossierId,
+    );
+  });
 });
