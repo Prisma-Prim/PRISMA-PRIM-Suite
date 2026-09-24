@@ -713,3 +713,92 @@ it('clears previously loaded links when the selector discovers revoked read acce
   ).not.toBeInTheDocument();
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });
+it('offers Open Document only on displayed linked rows when the shell offers it, without reading Documents', async () => {
+  const onOpenDocument = vi.fn();
+  const { fetcher } = selectorFixture(eligibleRows);
+  const panel = (open?: (documentId: string) => void) => (
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      onOpenDocument={open}
+    />
+  );
+  const view = render(panel(onOpenDocument));
+  const row = (
+    await screen.findByRole('heading', { name: linkedDocument.title })
+  ).closest('li');
+  if (!row) throw new Error('Expected the linked Document row.');
+  await openSelector();
+  await screen.findByRole('heading', { name: siteVisit.title });
+  // Eligible rows are not displayed links; only the linked row is offered.
+  expect(screen.getAllByRole('button', { name: 'Open Document' })).toEqual([
+    within(row).getByRole('button', { name: 'Open Document' }),
+  ]);
+  const requests = fetcher.mock.calls.length;
+
+  fireEvent.click(within(row).getByRole('button', { name: 'Open Document' }));
+  expect(onOpenDocument).toHaveBeenCalledExactlyOnceWith(linkedDocument.id);
+  expect(fetcher).toHaveBeenCalledTimes(requests);
+
+  view.rerender(panel());
+  expect(
+    screen.queryByRole('button', { name: 'Open Document' }),
+  ).not.toBeInTheDocument();
+});
+it('offers no Open Document without a displayed linked row', async () => {
+  const onOpenDocument = vi.fn();
+  vi.stubGlobal('fetch', vi.fn());
+  render(
+    <ProjectDocuments
+      actor={{
+        ...actor,
+        activeCompany: {
+          id: 'company',
+          displayName: 'PRISMA-PRIM',
+          projectPermissions: ['project.read'],
+          documentPermissions: ['document.project.manage'],
+        },
+      }}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      onOpenDocument={onOpenDocument}
+    />,
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Project, Document and Client read access are required',
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Open Document' }),
+  ).not.toBeInTheDocument();
+});
+it('keeps an uncertain association command and its retry when a linked Document is opened', async () => {
+  const onOpenDocument = vi.fn();
+  const { commands } = selectorFixture(
+    eligibleRows,
+    () => new Response(null, { status: 500 }),
+  );
+  render(
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      onOpenDocument={onOpenDocument}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `Remove ${linkedDocument.title}`,
+    }),
+  );
+  const retry = await screen.findByRole('button', {
+    name: 'Retry unchanged command',
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Open Document' }));
+  expect(onOpenDocument).toHaveBeenCalledWith(linkedDocument.id);
+  expect(retry).toBeInTheDocument();
+  fireEvent.click(retry);
+  await waitFor(() => expect(commands).toHaveLength(2));
+  expect(commands[1]).toEqual(commands[0]);
+});

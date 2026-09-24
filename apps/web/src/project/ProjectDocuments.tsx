@@ -15,6 +15,8 @@ type Props = {
   identity: BrowserIdentity;
   projectId: string;
   onActivityRecorded?: () => void | Promise<void>;
+  /** Opens a displayed linked Document by its stable id; this panel never reads it. */
+  onOpenDocument?: (documentId: string) => void;
 };
 type Association = { document: WorkingDocument; revision: number };
 type Listing = { mutable: boolean; documents: Association[] };
@@ -49,6 +51,7 @@ function ProjectDocumentSession({
   identity,
   projectId,
   onActivityRecorded,
+  onOpenDocument,
 }: Props) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -276,6 +279,14 @@ function ProjectDocumentSession({
                 ) : (
                   <p>{copy.referenceDenied}</p>
                 ))}
+              {!eligible && onOpenDocument && (
+                <button
+                  type="button"
+                  onClick={() => onOpenDocument(row.document.id)}
+                >
+                  {copy.openDocument}
+                </button>
+              )}
               {canManage && state.listing.mutable && (
                 <button
                   type="button"
