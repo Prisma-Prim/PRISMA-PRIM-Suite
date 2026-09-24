@@ -121,6 +121,65 @@ test('reads a shared dossier before deliberately correcting it in Prisme', async
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+
+  expect(state.historyReads).toBe(0);
+  state.history = {
+    corrections: [
+      {
+        id: 'correction-233',
+        occurredAt: '2026-09-24T09:15:00.000Z',
+        actor: { displayName: 'Ada Ionescu' },
+        changes: {
+          displayName: {
+            before: dossier.displayName,
+            after: 'Corrected Client',
+          },
+          contacts: {
+            before: [],
+            after: [{ name: 'Ana Demo', email: 'ana.demo@example.test' }],
+          },
+        },
+      },
+    ],
+    nextCursor: null,
+  };
+  const historyToggle = page.getByRole('button', {
+    name: 'Show correction history',
+  });
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
+  await historyToggle.click();
+  const history = page.getByRole('region', {
+    name: 'Correction history',
+    exact: true,
+  });
+  const entry = history
+    .getByRole('list', { name: 'Corrections, newest first' })
+    .getByRole('listitem')
+    .first();
+  await expect(entry).toContainText('Corrected by Ada Ionescu');
+  await expect(entry.locator('time')).toHaveAttribute(
+    'datetime',
+    '2026-09-24T09:15:00.000Z',
+  );
+  await expect(entry).toContainText(dossier.displayName);
+  await expect(entry).toContainText('Corrected Client');
+  await expect(
+    entry
+      .getByRole('group', { name: 'Before' })
+      .getByText('No shared Contacts recorded.'),
+  ).toBeVisible();
+  await expect(
+    entry.getByRole('group', { name: 'After' }).getByText('Ana Demo'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Show older corrections' }),
+  ).toHaveCount(0);
+  expect(state.historyReads).toBe(1);
+  await entry.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('dossier-correction-history-viewport.png'),
+  });
+  await captureDossier(page, testInfo, 'dossier-correction-history.png');
 });
 
 test('preserves uncertain corrections and pending saves across closing, navigation and frames', async ({

@@ -14,6 +14,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import {
   CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION,
   CLIENT_CREATED_ACTION,
+  type ClientCorrectionHistoryPage,
 } from '../accountability/accountability.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -44,6 +45,8 @@ import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
 const MAXIMUM_SEARCH_LENGTH = 200;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 @Injectable()
 export class ClientService {
   constructor(
@@ -141,6 +144,34 @@ export class ClientService {
       default:
         return assertNever(command);
     }
+  }
+
+  /**
+   * Correction history shares the dossier read's authority and refusals. The
+   * visibility check and the page read share one repeatable-read snapshot.
+   */
+  async readCorrectionHistory(
+    actor: ActorContext,
+    query: { clientAccountId: string; cursor: unknown },
+  ): Promise<ClientCorrectionHistoryPage> {
+    const companyId = requireCompanyClientPermission(actor, 'client.read');
+    const history = await this.databaseContext.transaction(
+      async () => {
+        await this.dossiers.requireReadable({
+          workspaceId: actor.workspaceId,
+          companyId,
+          clientAccountId: query.clientAccountId,
+        });
+        return this.accountability.readClientCorrectionHistory({
+          actor,
+          clientAccountId: query.clientAccountId,
+          cursor: requireHistoryCursor(query.cursor),
+        });
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+    if (history.kind === 'invalid-cursor') throw invalidHistoryCursor();
+    return history.page;
   }
 
   private async listForActiveCompany(
@@ -530,6 +561,17 @@ function requireSearchQuery(value: unknown): string {
     throw new BadRequestException('Client search query is too long.');
   }
   return query;
+}
+
+function requireHistoryCursor(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value))
+    throw invalidHistoryCursor();
+  return value.toLowerCase();
+}
+
+function invalidHistoryCursor(): BadRequestException {
+  return new BadRequestException('The correction history cursor is invalid.');
 }
 
 function requireIdempotencyKey(value: string | undefined): string {

@@ -23,6 +23,7 @@ import {
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
+import { ClientCorrectionHistory } from './ClientCorrectionHistory';
 import './client-dossier.css';
 
 interface ClientDossierView {
@@ -477,6 +478,15 @@ export function ClientDossierPanel({
           )}
         </section>
       </div>
+      <ClientCorrectionHistory
+        clientAccountId={dossier.id}
+        dossierVersion={dossier.version}
+        companyContextId={companyContextId}
+        identity={identity}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
       {(!isPrisme || correctionOpen) && correctionFeedback}
       {canUpdate && (
         <div

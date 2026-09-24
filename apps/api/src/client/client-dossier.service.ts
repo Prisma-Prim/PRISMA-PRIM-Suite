@@ -71,6 +71,19 @@ export class ClientDossierService {
     return this.toDossier(client, workspaceId);
   }
 
+  /** Refuses exactly as `read` does, without building the dossier view. */
+  async requireReadable(input: {
+    workspaceId: string;
+    companyId: string;
+    clientAccountId: string;
+  }): Promise<void> {
+    await this.requireRelatedClient(
+      input.workspaceId,
+      input.companyId,
+      input.clientAccountId,
+    );
+  }
+
   async correct(
     actor: ActorContext,
     companyId: string,
