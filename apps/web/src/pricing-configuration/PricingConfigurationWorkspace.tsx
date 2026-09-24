@@ -51,6 +51,9 @@ type ViewState =
   | {
       kind: 'ready';
       scope: RuleScope;
+      // Every scheduled successor, in takeover order, whatever the history
+      // pages loaded so far.
+      scheduled: RuleVersion[];
       versions: RuleVersion[];
       nextCursor?: string;
       olderPage: 'idle' | 'loading' | 'error';
@@ -208,8 +211,9 @@ export function PricingConfigurationWorkspace({
     [identity],
   );
 
-  // The scope and the first page load together, so the displayed head and
-  // list always come from one reload.
+  // The scope, the first page and every scheduled successor load together, so
+  // the displayed head, schedule and list always come from one reload and a
+  // partial schedule is never shown as complete.
   const load = useCallback(
     async (companyContextId: string): Promise<void> => {
       loadRequest.current?.abort();
@@ -228,7 +232,7 @@ export function PricingConfigurationWorkspace({
         )
           return;
         const pageResult = await request({
-          path: `${versionsPath}?limit=${listPageSize}`,
+          path: versionsPagePath(),
           companyContextId,
           signal: controller.signal,
         });
@@ -242,17 +246,56 @@ export function PricingConfigurationWorkspace({
           pageResult.status === 200 && isRuleVersionPage(pageResult.body)
             ? pageResult.body
             : undefined;
-        setView(
-          scope && page
-            ? {
-                kind: 'ready',
-                scope,
-                versions: page.items,
-                olderPage: 'idle',
-                ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
-              }
-            : { kind: 'error' },
-        );
+        if (!scope || !page) {
+          setView({ kind: 'error' });
+          return;
+        }
+        // Each successor starts strictly later than its predecessor, so the
+        // scheduled versions are the newest ones: the schedule is complete
+        // once a page reaches a version that is not scheduled, or the list
+        // ends. These pages complete the schedule; the history keeps its own.
+        const scheduled = page.items.filter(isScheduled);
+        let oldest = page.items.at(-1);
+        let cursor = page.nextCursor;
+        while (cursor && oldest?.state === 'SCHEDULED') {
+          const olderThan = oldest.versionNumber;
+          const nextResult = await request({
+            path: versionsPagePath(cursor),
+            companyContextId,
+            signal: controller.signal,
+          });
+          if (
+            await handleAccess(nextResult, companyContextId, controller.signal)
+          )
+            return;
+          const next =
+            nextResult.status === 200 && isRuleVersionPage(nextResult.body)
+              ? nextResult.body
+              : undefined;
+          // A page that does not move strictly older could repeat versions,
+          // loop or end the schedule early, so it fails the whole reload.
+          if (
+            !next ||
+            next.items.length === 0 ||
+            !next.items.every((version) => version.versionNumber < olderThan)
+          ) {
+            setView({ kind: 'error' });
+            return;
+          }
+          scheduled.push(...next.items.filter(isScheduled));
+          oldest = next.items.at(-1);
+          cursor = next.nextCursor;
+        }
+        setView({
+          kind: 'ready',
+          scope,
+          scheduled: scheduled.sort(
+            (left, right) => left.versionNumber - right.versionNumber,
+          ),
+          versions: page.items,
+          olderPage: 'idle',
+          ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
+        });
       } catch {
         if (!controller.signal.aborted) setView({ kind: 'error' });
       }
@@ -291,7 +334,7 @@ export function PricingConfigurationWorkspace({
     );
     try {
       const result = await request({
-        path: `${versionsPath}?limit=${listPageSize}&cursor=${encodeURIComponent(cursor)}`,
+        path: versionsPagePath(cursor),
         companyContextId: companyId,
         signal: controller.signal,
       });
@@ -306,6 +349,7 @@ export function PricingConfigurationWorkspace({
         return {
           kind: 'ready',
           scope: current.scope,
+          scheduled: current.scheduled,
           versions: [...current.versions, ...page.items],
           olderPage: 'idle',
           ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
@@ -387,12 +431,7 @@ export function PricingConfigurationWorkspace({
     );
 
   const head = view.kind === 'ready' ? view.scope.headVersionNumber : null;
-  const scheduled =
-    view.kind === 'ready'
-      ? view.versions
-          .filter((version) => version.state === 'SCHEDULED')
-          .sort((left, right) => left.versionNumber - right.versionNumber)
-      : [];
+  const scheduled = view.kind === 'ready' ? view.scheduled : [];
   const pendingRetry =
     feedback?.kind === 'uncertain' ? retry.current : undefined;
 
@@ -664,6 +703,16 @@ function FeedbackMessage({ feedback }: { feedback: Feedback }) {
       return exhaustive;
     }
   }
+}
+
+function versionsPagePath(cursor?: string): string {
+  return cursor === undefined
+    ? `${versionsPath}?limit=${listPageSize}`
+    : `${versionsPath}?limit=${listPageSize}&cursor=${encodeURIComponent(cursor)}`;
+}
+
+function isScheduled(version: RuleVersion): boolean {
+  return version.state === 'SCHEDULED';
 }
 
 // A datetime-local value names a wall-clock time in the browser time zone;

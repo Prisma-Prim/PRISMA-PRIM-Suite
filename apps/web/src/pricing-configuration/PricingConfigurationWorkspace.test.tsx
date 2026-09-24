@@ -95,8 +95,14 @@ const v2TakenOver = {
 
 type Responder = (
   call: number,
-  init?: RequestInit,
+  init: RequestInit | undefined,
+  url: URL,
 ) => Response | Promise<Response>;
+
+function requestUrl(input: RequestInfo | URL): URL {
+  const url = typeof input === 'string' ? input : input.toString();
+  return new URL(url, 'http://localhost');
+}
 
 function requestKey(input: RequestInfo | URL, init?: RequestInit): string {
   const url = typeof input === 'string' ? input : input.toString();
@@ -111,7 +117,7 @@ function stubApi(routes: Record<string, Responder>) {
     if (!responder) throw new Error(`Unexpected request ${key}`);
     const call = (calls.get(key) ?? 0) + 1;
     calls.set(key, call);
-    return Promise.resolve(responder(call, init));
+    return Promise.resolve(responder(call, init, requestUrl(input)));
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -127,6 +133,100 @@ function scope(current: unknown, headVersionNumber: number | null) {
 
 function page(items: unknown[]) {
   return Response.json({ items, provisional: true });
+}
+
+function takeoverInstant(versionNumber: number): string {
+  return new Date(Date.UTC(2027, 0, versionNumber, 8)).toISOString();
+}
+
+function chainVersionId(versionNumber: number): string {
+  return `00000000-0000-4000-8000-${String(versionNumber).padStart(12, '0')}`;
+}
+
+// One Company's chain, newest first as the API lists it. Each version takes
+// over from its predecessor a day later; versions from `firstScheduled` on
+// have not started yet.
+function chain({
+  count,
+  firstScheduled,
+}: {
+  count: number;
+  firstScheduled: number;
+}) {
+  return Array.from({ length: count }, (_, index) => {
+    const versionNumber = count - index;
+    return ruleVersion(versionNumber, {
+      id: chainVersionId(versionNumber),
+      effectiveFrom: takeoverInstant(versionNumber),
+      state:
+        versionNumber >= firstScheduled
+          ? 'SCHEDULED'
+          : versionNumber === firstScheduled - 1
+            ? 'CURRENT'
+            : 'SUPERSEDED',
+      supersession:
+        versionNumber === count
+          ? null
+          : {
+              supersededByVersionId: chainVersionId(versionNumber + 1),
+              supersededAt: '2026-04-02T08:00:00.000Z',
+              supersededFrom: takeoverInstant(versionNumber + 1),
+            },
+    });
+  });
+}
+
+// Serves the list like the API: newest first, at most `limit` versions per
+// page, and an opaque cursor naming the last version returned.
+function history(versions: ReturnType<typeof chain>): Responder {
+  return (_call, _init, url) => {
+    const cursor = url.searchParams.get('cursor');
+    const olderThan =
+      cursor === null
+        ? Number.POSITIVE_INFINITY
+        : Number(cursor.replace('older-than-', ''));
+    const remaining = versions.filter(
+      (version) => version.versionNumber < olderThan,
+    );
+    const limit = Number(url.searchParams.get('limit'));
+    const items = remaining.slice(0, limit);
+    const last = items.at(-1);
+    return Response.json({
+      items,
+      ...(remaining.length > limit && last
+        ? { nextCursor: `older-than-${last.versionNumber}` }
+        : {}),
+      provisional: true,
+    });
+  };
+}
+
+function listCursors(fetchMock: ReturnType<typeof stubApi>) {
+  return fetchMock.mock.calls
+    .filter(([input, init]) => requestKey(input, init) === LIST)
+    .map(([input]) => requestUrl(input).searchParams.get('cursor'));
+}
+
+function versionNames(list: HTMLElement): string[] {
+  return within(list)
+    .getAllByRole('listitem')
+    .map((item) => within(item).getByText(/^Version \d+$/u).textContent);
+}
+
+function versionSequence(from: number, to: number): string[] {
+  const step = from <= to ? 1 : -1;
+  return Array.from(
+    { length: Math.abs(to - from) + 1 },
+    (_, index) => `Version ${from + index * step}`,
+  );
+}
+
+function scheduledList() {
+  return screen.getByRole('list', { name: 'Scheduled successors' });
+}
+
+function historyList() {
+  return screen.getByRole('list', { name: 'Pricing Rule Versions' });
 }
 
 function requestsTo(fetchMock: ReturnType<typeof stubApi>, key: string) {
@@ -543,5 +643,219 @@ describe('PricingConfigurationWorkspace', () => {
     });
     expect(screen.queryByText('Version 1 published.')).not.toBeInTheDocument();
     expect(publishButton()).toBeEnabled();
+  });
+
+  it('lists every scheduled successor in takeover order when they span several pages, while the history keeps its first page', async () => {
+    stubApi({
+      [SCOPE]: () => scope(null, 27),
+      [LIST]: history(chain({ count: 27, firstScheduled: 1 })),
+    });
+    renderWorkspace();
+
+    const scheduled = await screen.findByRole('list', {
+      name: 'Scheduled successors',
+    });
+    expect(versionNames(scheduled)).toEqual(versionSequence(1, 27));
+    const [earliest] = within(scheduled).getAllByRole('listitem');
+    expect(
+      within(earliest ?? scheduled).getByText(
+        formatApplicationDateTime(takeoverInstant(1)),
+      ),
+    ).toHaveAttribute('datetime', takeoverInstant(1));
+    expect(earliest).toHaveTextContent('Takes over from');
+
+    const current = screen.getByRole('region', {
+      name: 'Current Pricing Rule Version',
+    });
+    expect(
+      within(current).getByText(
+        'No current version: no Pricing Rule Version is current at this instant.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(current).getByText(
+        'Head: version 27. A new publication follows this version.',
+      ),
+    ).toBeInTheDocument();
+    expect(versionNames(historyList())).toEqual(versionSequence(27, 3));
+    expect(
+      screen.getByRole('button', { name: 'Show older versions' }),
+    ).toBeInTheDocument();
+  });
+
+  it('stops collecting successors at the first version already in effect and keeps paging the history on request', async () => {
+    const versions = chain({ count: 60, firstScheduled: 34 });
+    const fetchMock = stubApi({
+      [SCOPE]: () =>
+        scope(
+          versions.find((version) => version.state === 'CURRENT'),
+          60,
+        ),
+      [LIST]: history(versions),
+    });
+    renderWorkspace();
+
+    const scheduled = await screen.findByRole('list', {
+      name: 'Scheduled successors',
+    });
+    expect(versionNames(scheduled)).toEqual(versionSequence(34, 60));
+    const current = screen.getByRole('region', {
+      name: 'Current Pricing Rule Version',
+    });
+    expect(within(current).getByText('Version 33')).toBeInTheDocument();
+    expect(
+      within(current).getByText(
+        'Head: version 60. A new publication follows this version.',
+      ),
+    ).toBeInTheDocument();
+    // The second page already reaches the version in effect, so no older
+    // page is read until the history asks for it.
+    expect(listCursors(fetchMock)).toEqual([null, 'older-than-36']);
+
+    expect(versionNames(historyList())).toEqual(versionSequence(60, 36));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older versions' }),
+    );
+    await waitFor(() =>
+      expect(versionNames(historyList())).toEqual(versionSequence(60, 11)),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older versions' }),
+    );
+    await waitFor(() =>
+      expect(versionNames(historyList())).toEqual(versionSequence(60, 1)),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Show older versions' }),
+    ).not.toBeInTheDocument();
+    expect(versionNames(scheduledList())).toEqual(versionSequence(34, 60));
+  });
+
+  it('never presents a partial schedule when a page of successors fails or does not advance, and completes it on reload', async () => {
+    const versions = chain({ count: 27, firstScheduled: 1 });
+    const served = history(versions);
+    const fetchMock = stubApi({
+      [SCOPE]: () => scope(null, 27),
+      [LIST]: (call, init, url) =>
+        call === 2
+          ? new Response(null, { status: 500 })
+          : call === 4
+            ? Response.json({
+                items: versions.slice(0, 25),
+                nextCursor: 'older-than-3',
+                provisional: true,
+              })
+            : served(call, init, url),
+    });
+    renderWorkspace();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Pricing Rule Versions could not be loaded. Please try again.',
+    );
+    expect(
+      screen.queryByRole('list', { name: 'Scheduled successors' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('No successor is scheduled.'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    await waitFor(() => expect(listCursors(fetchMock)).toHaveLength(4));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Pricing Rule Versions could not be loaded. Please try again.',
+    );
+    expect(
+      screen.queryByRole('list', { name: 'Scheduled successors' }),
+    ).not.toBeInTheDocument();
+    expect(listCursors(fetchMock)).toHaveLength(4);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    expect(
+      versionNames(
+        await screen.findByRole('list', { name: 'Scheduled successors' }),
+      ),
+    ).toEqual(versionSequence(1, 27));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows the denied state when a later page of successors is refused', async () => {
+    const served = history(chain({ count: 27, firstScheduled: 1 }));
+    stubApi({
+      [SCOPE]: () => scope(null, 27),
+      [LIST]: (call, init, url) =>
+        call === 1
+          ? served(call, init, url)
+          : new Response(null, { status: 403 }),
+      'GET /api/access/current-actor': () =>
+        new Response(null, { status: 403 }),
+    });
+    renderWorkspace();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You do not have permission to access Pricing Configuration.',
+    );
+    expect(
+      screen.queryByRole('list', { name: 'Scheduled successors' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Version 1')).not.toBeInTheDocument();
+  });
+
+  it('ignores a late page of successors after the Company changes', async () => {
+    let releaseFirstCompany: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      releaseFirstCompany = resolve;
+    });
+    const firstCompany = history(chain({ count: 27, firstScheduled: 1 }));
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(null, 27) : scope(null, null)),
+      [LIST]: async (call, init, url) => {
+        if (call === 1) return firstCompany(call, init, url);
+        if (call === 2) {
+          await held;
+          return firstCompany(call, init, url);
+        }
+        return page([]);
+      },
+    });
+    const view = renderWorkspace();
+    await waitFor(() =>
+      expect(listCursors(fetchMock)).toEqual([null, 'older-than-3']),
+    );
+    expect(
+      screen.getByText('Loading the current Pricing Rule Version…'),
+    ).toBeInTheDocument();
+
+    view.rerender(
+      <PricingConfigurationWorkspace
+        actor={secondCompanyActor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText('No successor is scheduled.'),
+    ).toBeInTheDocument();
+    await act(async () => {
+      releaseFirstCompany();
+      await held;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(screen.getByText('No successor is scheduled.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'No Pricing Rule Version has been published for this Company yet.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Version 1')).not.toBeInTheDocument();
+    expect(requestsTo(fetchMock, LIST).map(({ company }) => company)).toEqual([
+      'company-1',
+      'company-1',
+      'company-2',
+    ]);
   });
 });
