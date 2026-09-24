@@ -1,12 +1,16 @@
 import {
   expect,
   test,
+  type Locator,
   type Page,
   type Route,
   type TestInfo,
 } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
-import type { WorkingDocument } from '../src/documents/document-response';
+import type {
+  WorkingDocument,
+  WorkingDocumentDetail,
+} from '../src/documents/document-response';
 import { actorContextFixture } from './actor-context.fixture';
 
 const company = { id: 'company-project-documents', displayName: 'PRISMA-PRIM' };
@@ -135,6 +139,23 @@ async function installProjectDocumentsFixture(page: Page) {
       });
       return state.write(route);
     }
+    if (path === `/api/documents/${workingDocument.id}`) {
+      expect(request.method()).toBe('GET');
+      expect(request.headers()['x-company-context-id']).toBe(company.id);
+      if (!state.permissions?.includes('document.read'))
+        return route.fulfill({ status: 403 });
+      return route.fulfill({
+        json: {
+          ...state.document,
+          projectAssociation: state.linked
+            ? {
+                state: 'linked',
+                project: { id: project.id, title: project.title },
+              }
+            : { state: 'unlinked' },
+        } satisfies WorkingDocumentDetail,
+      });
+    }
     if (path === '/api/documents')
       return route.fulfill({ json: [state.document] });
     return route.fulfill({ status: 404 });
@@ -171,6 +192,40 @@ async function openProject(page: Page, testInfo: TestInfo) {
   });
   await expect(documents).toHaveClass(/project-documents--prisme/);
   return documents;
+}
+
+async function navigate(
+  page: Page,
+  testInfo: TestInfo,
+  section: 'Projects' | 'Working Documents',
+) {
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page
+    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('link', { name: section, exact: true })
+    .click();
+}
+
+async function openWorkingDocument(page: Page, testInfo: TestInfo) {
+  await navigate(page, testInfo, 'Working Documents');
+  const workspace = page.getByRole('region', {
+    name: 'Working Documents',
+    exact: true,
+  });
+  await expect(workspace).toHaveClass(/working-documents--prisme/);
+  await workspace
+    .getByRole('button', { name: workingDocument.title, exact: true })
+    .click();
+  const detail = workspace.getByRole('article');
+  await expect(
+    detail.getByRole('heading', { name: workingDocument.title }),
+  ).toBeVisible();
+  return detail;
+}
+
+function projectRow(detail: Locator) {
+  return detail.locator('dl').filter({ hasText: /^Project/ });
 }
 
 async function capture(page: Page, testInfo: TestInfo, filename: string) {
@@ -374,6 +429,68 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   await expect(
     documents.getByRole('heading', { name: state.document.title }),
   ).toBeVisible();
+});
+
+test('shows the current Project association on the opened Working Document', async ({
+  page,
+}, testInfo) => {
+  const state = await installProjectDocumentsFixture(page);
+  state.write = (route) => {
+    const action = state.linked ? 'unlink' : 'link';
+    expect(route.request().postDataJSON()).toEqual({
+      projectId: project.id,
+      action,
+      expectedRevision: state.revision,
+    });
+    state.linked = action === 'link';
+    state.revision += 1;
+    return route.fulfill({
+      json: {
+        documentId: workingDocument.id,
+        projectId: project.id,
+        action,
+        revision: state.revision,
+      },
+    });
+  };
+  const projectDocuments = await openProject(page, testInfo);
+  await projectDocuments
+    .getByRole('button', { name: 'Attach working Document', exact: true })
+    .click();
+  await projectDocuments
+    .getByRole('button', {
+      name: `Attach ${workingDocument.title}`,
+      exact: true,
+    })
+    .click();
+  const remove = projectDocuments.getByRole('button', {
+    name: `Remove ${workingDocument.title}`,
+    exact: true,
+  });
+  await expect(remove).toBeVisible();
+
+  const linked = await openWorkingDocument(page, testInfo);
+  await expect(projectRow(linked).getByRole('term')).toHaveText('Project');
+  await expect(projectRow(linked).getByRole('definition')).toHaveText(
+    project.title,
+  );
+  await capture(page, testInfo, 'working-document-project-linked.png');
+
+  await linked.getByRole('button', { name: 'Back to references' }).click();
+  await navigate(page, testInfo, 'Projects');
+  await remove.click();
+  await expect(
+    projectDocuments.getByText('No working Documents attached.'),
+  ).toBeVisible();
+
+  // Each open reads the Document afresh; the removal needs no invalidation.
+  const unlinked = await openWorkingDocument(page, testInfo);
+  await expect(projectRow(unlinked).getByRole('definition')).toHaveText(
+    'Not linked to a Project',
+  );
+  await expect(unlinked.getByText(project.title)).toHaveCount(0);
+  expect(state.commands).toHaveLength(2);
+  await capture(page, testInfo, 'working-document-project-unlinked.png');
 });
 
 test('shows permitted metadata without URL access or mutation controls', async ({

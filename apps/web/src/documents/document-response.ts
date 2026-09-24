@@ -22,6 +22,15 @@ export interface WorkingDocument {
     } & ({ access: 'granted'; url: string } | { access: 'denied' });
   };
 }
+/** The optional preparatory Project a working Document is organized in. */
+export type DocumentProjectAssociation =
+  | { state: 'linked'; project: { id: string; title: string } }
+  | { state: 'unlinked' };
+/** A single-Document response; lists never carry the association. */
+export interface WorkingDocumentDetail extends WorkingDocument {
+  /** Present only for a current Project reader; absence never means unlinked. */
+  projectAssociation?: DocumentProjectAssociation;
+}
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid response');
@@ -109,6 +118,24 @@ export function readDocument(value: unknown): WorkingDocument {
 export function readDocuments(value: unknown): WorkingDocument[] {
   if (!Array.isArray(value)) throw new Error('Invalid list');
   return value.map(readDocument);
+}
+function projectAssociation(value: unknown): DocumentProjectAssociation {
+  const row = record(value);
+  if (row.state === 'unlinked' && !('project' in row))
+    return { state: 'unlinked' };
+  if (row.state !== 'linked') throw new Error('Unknown Project association');
+  const project = record(row.project);
+  return {
+    state: 'linked',
+    project: { id: string(project.id), title: string(project.title) },
+  };
+}
+export function readDocumentDetail(value: unknown): WorkingDocumentDetail {
+  const document = readDocument(value);
+  const association = record(value).projectAssociation;
+  return association === undefined
+    ? document
+    : { ...document, projectAssociation: projectAssociation(association) };
 }
 export type DocumentCorrectionReceipt = {
   documentId: string;

@@ -24,7 +24,12 @@ import {
   documentVersions,
   workingDocuments,
 } from '../database/schema/index.js';
-import type { WorkingDocument } from './documents.types.js';
+import { ProjectService } from '../project/project.service.js';
+import type {
+  DocumentProjectAssociation,
+  WorkingDocument,
+  WorkingDocumentDetail,
+} from './documents.types.js';
 
 @Injectable()
 export class DocumentsService {
@@ -33,12 +38,13 @@ export class DocumentsService {
     private readonly database: DatabaseContext,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
+    private readonly projects: ProjectService,
   ) {}
   async register(
     actor: ActorContext,
     value: unknown,
     key: string | undefined,
-  ): Promise<WorkingDocument> {
+  ): Promise<WorkingDocumentDetail> {
     const companyId = requirePermission(actor, 'document.register');
     requirePermission(actor, 'document.read');
     const command = registration(value);
@@ -71,7 +77,7 @@ export class DocumentsService {
           throw new ConflictException(
             'Idempotency-Key was already used for another registration.',
           );
-        return this.read(actor, existing.id);
+        return this.readDetail(actor, existing.id);
       }
       await this.clients.recordReferenceUse(actor, command.clientId);
       const [document] = await this.database.connection
@@ -108,7 +114,7 @@ export class DocumentsService {
         companyId,
         documentId: document.id,
       });
-      return this.read(actor, document.id);
+      return this.readDetail(actor, document.id);
     });
   }
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
@@ -155,11 +161,70 @@ export class DocumentsService {
       rows.map((row) => row.clientId),
     );
     return Promise.all(
-      rows.map((row) => this.readReference(actor, row.id, dossierIds)),
+      rows.map(
+        async (row) =>
+          (await this.readReference(actor, row.id, dossierIds)).document,
+      ),
     );
   }
   async read(actor: ActorContext, idValue: unknown): Promise<WorkingDocument> {
-    return this.readReference(actor, idValue, undefined);
+    return (await this.readReference(actor, idValue, undefined)).document;
+  }
+  /** Association and Project title come from the Document's read snapshot. */
+  async detail(
+    actor: ActorContext,
+    idValue: unknown,
+  ): Promise<WorkingDocumentDetail> {
+    return this.database.transaction(() => this.readDetail(actor, idValue), {
+      isolationLevel: 'repeatable read',
+    });
+  }
+  /**
+   * Runs inside the caller's transaction: `detail` opens a read snapshot, and
+   * registration answers from the transaction that created or replays the
+   * Document. A Project title never changes after creation.
+   */
+  private async readDetail(
+    actor: ActorContext,
+    idValue: unknown,
+  ): Promise<WorkingDocumentDetail> {
+    const { document, projectId } = await this.readReference(
+      actor,
+      idValue,
+      undefined,
+    );
+    const projectAssociation = await this.projectAssociation(actor, projectId);
+    return projectAssociation ? { ...document, projectAssociation } : document;
+  }
+  /**
+   * Project owns its read authority, including the Client-read prerequisite.
+   * Without it the association is absent, never `unlinked`, and it never hides
+   * the readable Document, like the optional dossier target.
+   */
+  private async projectAssociation(
+    actor: ActorContext,
+    projectId: string | null,
+  ): Promise<DocumentProjectAssociation | undefined> {
+    if (!actor.activeCompany?.projectPermissions?.includes('project.read'))
+      return undefined;
+    try {
+      if (projectId === null) {
+        await this.authorization.requireProjectAccess(actor);
+        return { state: 'unlinked' };
+      }
+      const project = await this.projects.read(actor, projectId);
+      return {
+        state: 'linked',
+        project: { id: project.id, title: project.title },
+      };
+    } catch (error) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      )
+        return undefined;
+      throw error;
+    }
   }
   /**
    * Client owns the union, permission and identity resolution behind the
@@ -185,7 +250,7 @@ export class DocumentsService {
     actor: ActorContext,
     idValue: unknown,
     resolvedDossierIds: ReadonlyMap<string, string> | undefined,
-  ): Promise<WorkingDocument> {
+  ): Promise<{ document: WorkingDocument; projectId: string | null }> {
     const companyId = requirePermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const id = requireUuid(idValue);
@@ -233,7 +298,7 @@ export class DocumentsService {
       kind: 'external-reference',
       verification: 'unverified',
     } as const;
-    return {
+    const document: WorkingDocument = {
       id: row.document.id,
       workspaceId: row.document.workspaceId,
       companyId,
@@ -262,6 +327,7 @@ export class DocumentsService {
           : { ...representation, access: 'denied' },
       },
     };
+    return { document, projectId: row.document.projectId };
   }
 
   async correct(

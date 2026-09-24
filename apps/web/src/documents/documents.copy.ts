@@ -23,6 +23,8 @@ export const documentsCopy = {
     'The external content is unverified and may change. This draft reference is not an official preserved original.',
   draft: 'Draft questionnaire · Company-confidential',
   registrationTime: 'Registration time',
+  project: 'Project',
+  notLinkedToProject: 'Not linked to a Project',
   open: 'Open external reference',
   referenceDenied: 'You do not have permission to open this reference.',
   edit: 'Edit reference',
