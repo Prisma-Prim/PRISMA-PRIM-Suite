@@ -55,6 +55,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_commercial_intake_assignment.revoked'
     | 'company_service_catalogue_assignment.granted'
     | 'company_service_catalogue_assignment.revoked'
+    | 'company_pricing_configuration_assignment.granted'
+    | 'company_pricing_configuration_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
     | 'company.registered'
@@ -127,6 +129,7 @@ export interface OrdinaryActivityLogEvent {
           | 'Company Project Access'
           | 'Company Commercial Intake'
           | 'Company Service Catalogue'
+          | 'Company Pricing Configuration'
           | 'Company Commercial Activity Reader';
       }
     | { changes: Record<string, { before: unknown; after: unknown }> }

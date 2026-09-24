@@ -1,5 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   companies,
@@ -30,6 +30,9 @@ import {
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   serviceCataloguePermissionsFor,
   type CompanyServiceCataloguePermission,
+  COMPANY_PRICING_CONFIGURATION_BUNDLE,
+  pricingConfigurationPermissionsFor,
+  type CompanyPricingConfigurationPermission,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -491,6 +494,114 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // Company Pricing Configuration v1 grants configuration authority only.
+  // Company context must already follow from an independent assignment, and a
+  // locked read serializes a command against a concurrent revocation.
+  async requirePricingConfigurationAccess(
+    actor: ActorContext,
+    required: readonly CompanyPricingConfigurationPermission[],
+    lock = false,
+  ): Promise<string> {
+    const companyId = actor.activeCompany?.id;
+    const permissions =
+      actor.activeCompany?.pricingConfigurationPermissions ?? [];
+    if (
+      !companyId ||
+      required.some((permission) => !permissions.includes(permission))
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, companyId, lock);
+    return companyId;
+  }
+
+  // Offering read is carried by a live captured Company Service Catalogue v1
+  // or Company Pricing Configuration v1 assignment (pricing PRD section 10).
+  // Neither bundle confers any other permission of the other.
+  async requireOfferingReadAccess(actor: ActorContext): Promise<string> {
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (
+      company?.serviceCataloguePermissions?.includes('commercial.offering.read')
+    )
+      grants.push(capturedGrant(COMPANY_SERVICE_CATALOGUE_BUNDLE));
+    if (
+      company?.pricingConfigurationPermissions?.includes(
+        'commercial.offering.read',
+      )
+    )
+      grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
+    if (!company || grants.length === 0) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${sql.join(grants, sql` OR `)})`,
+      false,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, false);
+    return company.id;
+  }
+
+  private async requireLiveCapturedAssignment(
+    actor: ActorContext,
+    companyId: string,
+    grant: SQL,
+    lock: boolean,
+  ): Promise<void> {
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            companyRoleAssignments.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            companyRoleAssignments.workspaceMembershipId,
+          ),
+          eq(workspaceMemberships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        and(
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+          eq(internalUsers.id, actor.internalUserId),
+          eq(internalUsers.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        companies,
+        and(
+          eq(companies.workspaceId, companyRoleAssignments.workspaceId),
+          eq(companies.id, companyRoleAssignments.companyId),
+          eq(companies.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.companyId, companyId),
+          grant,
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    const rows = lock ? await query.for('share') : await query;
+    if (rows.length === 0) throw new ForbiddenException();
+  }
+
   private async requireLiveCompanyContext(
     actor: ActorContext,
     companyId: string,
@@ -572,6 +683,7 @@ export class CompanyContextAuthorization {
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
+        COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -691,6 +803,18 @@ export class CompanyContextAuthorization {
         company.serviceCataloguePermissionAssignmentId = row.assignmentId;
         company.serviceCataloguePermissionSetVersion = 'v1';
       }
+      // Configuration contributes its captured permissions only; like the
+      // catalogue bundle it never authorizes Company context by itself.
+      if (
+        row.bundle === COMPANY_PRICING_CONFIGURATION_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.pricingConfigurationPermissions = [
+          ...pricingConfigurationPermissionsFor(row.permissionSetVersion),
+        ];
+        company.pricingConfigurationPermissionAssignmentId = row.assignmentId;
+        company.pricingConfigurationPermissionSetVersion = 'v1';
+      }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
@@ -708,6 +832,19 @@ export class CompanyContextAuthorization {
         independentlyAuthorizedCompanies.has(company.id),
     );
   }
+}
+
+// Runtime authorization evaluates the captured version recorded on the live
+// assignment; every bundle introduced here exists only as v1.
+function capturedGrant(
+  bundle:
+    | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
+    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE,
+): SQL {
+  return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
+    companyRoleAssignments.permissionSetVersion,
+    'v1',
+  )})`;
 }
 
 export type CompanyContextVisibility =

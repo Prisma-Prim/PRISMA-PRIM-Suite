@@ -5,11 +5,38 @@ import {
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
+  pricingConfigurationPermissionsFor,
   serviceCataloguePermissionsFor,
   type CompanyCommercialIntakePermissionSetVersion,
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Pricing Configuration permission sets', () => {
+  it('resolves exactly the captured v1 configuration permissions', () => {
+    expect(pricingConfigurationPermissionsFor('v1')).toEqual([
+      'commercial.offering.read',
+      'commercial.pricing.configuration.read',
+      'commercial.pricing.configuration.manage',
+    ]);
+  });
+
+  it('shares only offering read with the catalogue bundle', () => {
+    const configuration: readonly string[] =
+      pricingConfigurationPermissionsFor('v1');
+    const catalogue: readonly string[] = serviceCataloguePermissionsFor('v1');
+    expect(
+      configuration.filter((permission) => catalogue.includes(permission)),
+    ).toEqual(['commercial.offering.read']);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(pricingConfigurationPermissionsFor(version)).toEqual([]);
+    },
+  );
+});
 
 describe('Company Service Catalogue permission sets', () => {
   it('resolves the immutable v1 catalogue permissions only', () => {

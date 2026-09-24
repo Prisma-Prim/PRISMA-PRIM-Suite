@@ -31,6 +31,7 @@ type AssignmentBundle =
   | 'document-project-organizer'
   | 'commercial-intake'
   | 'service-catalogue'
+  | 'pricing-configuration'
   | 'commercial-activity-reader'
   | 'project';
 // Indexing by the selected bundle makes a new bundle a type error until its
@@ -44,6 +45,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
     '/company-document-project-organizer-assignments',
   'commercial-intake': '/company-commercial-intake-assignments',
   'service-catalogue': '/company-service-catalogue-assignments',
+  'pricing-configuration': '/company-pricing-configuration-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
@@ -459,6 +461,7 @@ export function CompanyContextAccess({
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
+                value === 'pricing-configuration' ||
                 value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
@@ -475,6 +478,9 @@ export function CompanyContextAccess({
             </option>
             <option value="service-catalogue">
               {copy.serviceCatalogueBundle}
+            </option>
+            <option value="pricing-configuration">
+              {copy.pricingConfigurationBundle}
             </option>
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
@@ -493,6 +499,9 @@ export function CompanyContextAccess({
           {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
           {bundle === 'commercial-activity-reader' && (
             <p>{copy.commercialActivityReaderPrerequisites}</p>
+          )}
+          {bundle === 'pricing-configuration' && (
+            <p>{copy.pricingConfigurationPrerequisites}</p>
           )}
           {workspaceMembershipId && companyId && (
             <p role="status">
@@ -572,6 +581,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels: Record<AssignmentBundle, AssignmentBundleLabel> = {
     'commercial-intake': copy.commercialIntakeBundle,
     'service-catalogue': copy.serviceCatalogueBundle,
+    'pricing-configuration': copy.pricingConfigurationBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
