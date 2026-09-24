@@ -689,6 +689,30 @@
 
 .activity-log-list span {
   margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.activity-log-list li > div {
+  min-width: 0;
+}
+
+.activity-log-open-request {
+  min-height: 2.75rem;
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--shell-blue);
+  border-radius: 0.35rem;
+  color: var(--shell-blue);
+  background: var(--shell-surface);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-log-open-request:hover {
+  color: white;
+  background: var(--shell-blue);
 }
 
 .production-content-surface {

@@ -67,6 +67,13 @@ type SelectedRequest = { request: ClientRequest; identityRevision: number };
 /** One dossier identity restricting the loaded rows, as the shell requested. */
 type ClientRestriction = { clientDossierId: string; displayName: string };
 
+/** One Request detail the shell requested; `requestId` numbers each request. */
+type RequestedRequest = { clientRequestId: string; requestId: number };
+
+// What the one shared in-flight controller serves: an ordinary detail read, or
+// a capture or next-action command until the reads that follow its outcome end.
+type InFlight = 'none' | 'read' | 'capture' | 'next-action';
+
 type NextActionUpdateResult = {
   receipt: {
     opportunityId: string;
@@ -152,6 +159,7 @@ export function CommercialIntakeWorkspace({
   clientRestriction,
   clientIdentityRevision = 0,
   onOpenClientDossier,
+  requestedRequest,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -164,6 +172,12 @@ export function CommercialIntakeWorkspace({
   /** Increases when a Client union or reversal changes current identities. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  /**
+   * A new object requests that Request's detail again and supersedes an older
+   * request; none retires it. It opens once no capture or next-action edit is
+   * in progress, and never interrupts one.
+   */
+  requestedRequest?: RequestedRequest;
 }) {
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [selected, setSelected] = useState<SelectedRequest>();
@@ -176,7 +190,13 @@ export function CommercialIntakeWorkspace({
     kind: 'idle',
   });
   const [feedback, setFeedback] = useState('');
-  const [pending, setPending] = useState(false);
+  const [inFlight, setInFlight] = useState<InFlight>('none');
+  const pending = inFlight !== 'none';
+  // A capture that ended without a confirmed result keeps its payload and key
+  // for an exact retry until a later attempt settles it.
+  const [captureUncertain, setCaptureUncertain] = useState(false);
+  // The latest requested Request not opened yet.
+  const [requestToOpen, setRequestToOpen] = useState<RequestedRequest>();
   // Local view state over the already loaded rows; it never reaches the API.
   const [filter, setFilter] = useState('');
   const [nextActionEdit, setNextActionEdit] = useState<NextActionEdit>({
@@ -194,11 +214,19 @@ export function CommercialIntakeWorkspace({
   const detailRead = useRef<AbortController | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
-  const nextActionInProgress = useRef(false);
-  nextActionInProgress.current =
+  const nextActionEditOpen =
     nextActionEdit.kind === 'editing' ||
     nextActionEdit.kind === 'saving' ||
     nextActionEdit.kind === 'uncertain';
+  const nextActionInProgress = useRef(false);
+  nextActionInProgress.current = nextActionEditOpen;
+  // Work a requested Request never interrupts; it opens once that work ends.
+  const protectedWork =
+    nextActionEditOpen || inFlight === 'next-action'
+      ? 'next-action-edit'
+      : inFlight === 'capture' || captureUncertain
+        ? 'capture'
+        : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -320,6 +348,9 @@ export function CommercialIntakeWorkspace({
           setFilter('');
           setRestriction(undefined);
           setNextActionEdit({ kind: 'idle' });
+          setInFlight('none');
+          setCaptureUncertain(false);
+          setRequestToOpen(undefined);
           retry.current = undefined;
           nextActionRetry.current = undefined;
           listRequest.current?.abort();
@@ -393,7 +424,9 @@ export function CommercialIntakeWorkspace({
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
-    setPending(false);
+    setInFlight('none');
+    setCaptureUncertain(false);
+    setRequestToOpen(undefined);
     setFilter('');
     setRestriction(undefined);
     if (!companyId) {
@@ -417,12 +450,28 @@ export function CommercialIntakeWorkspace({
     const read = detailRead.current;
     if (read && !read.signal.aborted) {
       read.abort();
-      setPending(false);
+      setInFlight('none');
     }
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     nextActionRetry.current = undefined;
   }, [clientRestriction]);
+
+  // The shell owns the requested Request. A new one supersedes any older or
+  // held request; opening it aborts a detail read still in flight.
+  useEffect(() => {
+    setRequestToOpen(requestedRequest);
+  }, [requestedRequest]);
+
+  // It opens exactly like choosing its row from the list, once no protected
+  // capture or next-action edit remains, so their drafts, payloads and keys
+  // are kept.
+  useEffect(() => {
+    if (!requestToOpen || protectedWork) return;
+    setRequestToOpen(undefined);
+    setSelected(undefined);
+    void selectRequest(requestToOpen.clientRequestId);
+  }, [requestToOpen, protectedWork]);
 
   // A Client union or reversal moves the derived dossier of loaded rows, which
   // are therefore read again from the first page.
@@ -493,11 +542,11 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (canEditNextAction) return;
     nextActionRetry.current = undefined;
-    const inFlight = nextActionCommand.current;
+    const save = nextActionCommand.current;
     nextActionCommand.current = undefined;
-    if (inFlight && !inFlight.signal.aborted) {
-      inFlight.abort();
-      setPending(false);
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
     }
     if (nextActionEdit.kind === 'idle' || nextActionEdit.kind === 'conflict')
       return;
@@ -568,7 +617,7 @@ export function CommercialIntakeWorkspace({
     commandRequest.current = controller;
     detailRead.current = controller;
     const startedUnderRevision = identityRevision.current;
-    setPending(true);
+    setInFlight('read');
     setFeedback('');
     if (!preserveConflict) {
       setNextActionEdit({ kind: 'idle' });
@@ -594,7 +643,7 @@ export function CommercialIntakeWorkspace({
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      if (!controller.signal.aborted) setInFlight('none');
       if (detailRead.current === controller) detailRead.current = undefined;
     }
   }
@@ -604,7 +653,7 @@ export function CommercialIntakeWorkspace({
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     nextActionRetry.current = undefined;
-    setPending(false);
+    setInFlight('none');
   }
 
   async function saveNextAction(): Promise<void> {
@@ -648,7 +697,7 @@ export function CommercialIntakeWorkspace({
     nextActionCommand.current = controller;
     const startedUnderRevision = identityRevision.current;
     setNextActionEdit({ kind: 'saving', draft });
-    setPending(true);
+    setInFlight('next-action');
     setFeedback('');
     try {
       const result = await request({
@@ -722,7 +771,7 @@ export function CommercialIntakeWorkspace({
         setFeedback(copy.nextActionUncertain);
       }
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      if (!controller.signal.aborted) setInFlight('none');
     }
   }
 
@@ -768,7 +817,8 @@ export function CommercialIntakeWorkspace({
     const controller = new AbortController();
     commandRequest.current = controller;
     const startedUnderRevision = identityRevision.current;
-    setPending(true);
+    setInFlight('capture');
+    setCaptureUncertain(false);
     setFeedback('');
     try {
       const result = await request({
@@ -801,10 +851,14 @@ export function CommercialIntakeWorkspace({
         return;
       }
       setFeedback(copy.error);
+      setCaptureUncertain(true);
     } catch {
-      if (!controller.signal.aborted) setFeedback(copy.error);
+      if (!controller.signal.aborted) {
+        setFeedback(copy.error);
+        setCaptureUncertain(true);
+      }
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      if (!controller.signal.aborted) setInFlight('none');
     }
   }
 
@@ -848,6 +902,13 @@ export function CommercialIntakeWorkspace({
         <p>{copy.manualSourceDetail}</p>
       </aside>
       {feedback ? <p role="alert">{feedback}</p> : null}
+      {requestToOpen && protectedWork ? (
+        <p role="status" className="commercial-intake-held-request">
+          {protectedWork === 'capture'
+            ? copy.requestedAfterCapture
+            : copy.requestedAfterNextActionEdit}
+        </p>
+      ) : null}
       {selected ? (
         <RequestDetail
           request={selected.request}
@@ -1033,7 +1094,11 @@ export function CommercialIntakeWorkspace({
             onFilter={setFilter}
             restriction={restriction}
             onClearRestriction={() => setRestriction(undefined)}
-            onSelect={(id) => void selectRequest(id)}
+            onSelect={(id) => {
+              // Choosing a row is newer than a Request held behind a capture.
+              setRequestToOpen(undefined);
+              void selectRequest(id);
+            }}
             onReload={() => companyId && void loadRequests(companyId)}
             onLoadOlder={(cursor) =>
               companyId && void loadRequests(companyId, cursor)
