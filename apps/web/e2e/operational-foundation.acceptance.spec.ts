@@ -20,6 +20,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const documentPurpose = `Prepare the ${suffix} Client acceptance interview`;
   const documentUrl = `https://example.test/acceptance-questionnaire-${suffix.toLowerCase()}`;
   const preservedDraft = `Draft preserved across ${suffix} frame rollback`;
+  const documentOpenDraft = `Draft preserved across the ${suffix} Document open`;
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
@@ -324,6 +325,107 @@ test('operates the delivered Client, Project, Task and working Document journey 
     page,
     testInfo,
     `operational-foundation-${narrow ? 'narrow' : 'desktop'}-prisme.png`,
+  );
+
+  // Opening the linked Document keeps the Project's Task draft and records nothing.
+  await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
+  await tasks.getByRole('button', { name: 'New Task', exact: true }).click();
+  await tasks.getByLabel('Task title').fill(documentOpenDraft);
+  await projects
+    .getByRole('tab', { name: 'Working Documents', exact: true })
+    .click();
+  await projectDocuments
+    .getByRole('listitem')
+    .filter({
+      has: page.getByRole('heading', { name: documentTitle, exact: true }),
+    })
+    .getByRole('button', { name: 'Open Document', exact: true })
+    .click();
+  await expect(page.locator('#documents')).toBeFocused();
+  const openedDocument = workingDocuments.getByRole('article');
+  await expect(
+    openedDocument.getByRole('heading', { name: documentTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    openedDocument.getByText(documentPurpose, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    openedDocument.getByText('Registration time', { exact: true }),
+  ).toBeVisible();
+  expect(page.url()).not.toContain(documentId);
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-document-open.png`,
+  );
+  // The opened detail replaces the references; return to them so the journey
+  // below opens the same Document from its row.
+  await openedDocument
+    .getByRole('button', { name: 'Back to references', exact: true })
+    .click();
+  await navigate(page, navigation, 'Projects', narrow);
+  await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
+  await expect(tasks.getByLabel('Task title')).toHaveValue(documentOpenDraft);
+
+  // Opening the linked Project from its Document keeps another Project's
+  // Task draft and records nothing.
+  const otherProjectTitle = `Acceptance other preparation Project ${suffix}`;
+  const otherProjectDraft = `Draft kept while opening the linked Project ${suffix}`;
+  const visibleTasks = tasks.filter({ visible: true });
+  await projects.getByLabel('Project title').fill(otherProjectTitle);
+  await projects.getByLabel('Client', { exact: true }).selectOption({
+    label: clientName,
+  });
+  const otherProjectResponse = page.waitForResponse(
+    mutationResponse('POST', '/api/projects'),
+  );
+  await projects.getByRole('button', { name: 'Create Project' }).click();
+  expect(await responseId(otherProjectResponse)).not.toBe(projectId);
+  await expect(
+    projects.getByRole('heading', { name: otherProjectTitle, exact: true }),
+  ).toBeVisible();
+  await visibleTasks.getByLabel('Task title').fill(otherProjectDraft);
+
+  await navigate(page, navigation, 'Working Documents', narrow);
+  await workingDocuments.getByRole('button', { name: documentTitle }).click();
+  const documentDetail = workingDocuments.getByRole('article');
+  await expect(
+    documentDetail
+      .locator('dl')
+      .filter({ hasText: /^Project/u })
+      .getByRole('definition'),
+  ).toHaveText(projectTitle);
+  const openLinkedProject = documentDetail.getByRole('button', {
+    name: 'Open Project',
+    exact: true,
+  });
+  await openLinkedProject.focus();
+  await page.keyboard.press('Enter');
+  await expect(projects).toBeFocused();
+  await expect(page).toHaveURL(/\/#projects$/u);
+  expect(page.url()).not.toContain(projectId);
+  await expect(
+    projects.getByRole('heading', { name: projectTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    projects.getByRole('tab', { name: 'Tasks', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-document-project.png`,
+  );
+  await projects
+    .getByRole('list', { name: 'Projects' })
+    .getByRole('button', {
+      name: `${otherProjectTitle} Client: ${clientName}`,
+    })
+    .click();
+  await expect(
+    projects.getByRole('heading', { name: otherProjectTitle, exact: true }),
+  ).toBeVisible();
+  await expect(visibleTasks.getByLabel('Task title')).toHaveValue(
+    otherProjectDraft,
   );
 
   await page.goto('/#activity');

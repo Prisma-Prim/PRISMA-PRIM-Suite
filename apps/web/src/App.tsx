@@ -8,8 +8,11 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useCallback, useEffect, useState } from 'react';
-import { DocumentWorkspace } from './documents/DocumentWorkspace';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DocumentWorkspace,
+  type RequestedDocument,
+} from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
 import { prismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
@@ -55,6 +58,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedClientDossier, setRequestedClientDossier] = useState<{
     companyId: string;
     clientDossierId: string;
+    requestId: number;
+  }>();
+  const [requestedDocument, setRequestedDocument] = useState<
+    RequestedDocument & { documentsContext: string }
+  >();
+  /** Request ids only increase, so no retired request id is ever reissued. */
+  const documentRequests = useRef(0);
+  const [requestedProject, setRequestedProject] = useState<{
+    context: string;
+    projectId: string;
     requestId: number;
   }>();
   const navigateToSection = useCallback(
@@ -104,6 +117,27 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   useEffect(() => {
     setRequestClientFilter(undefined);
   }, [requestNavigationContext]);
+  // A requested Document belongs to the context that keys the Documents owner:
+  // session, Client authority and active Company. Any change retires it. A
+  // Client union or reversal does not, because the Document id is stable.
+  const documentsContext =
+    access.status === 'active'
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
+      : 'inactive';
+  useEffect(() => {
+    setRequestedDocument(undefined);
+  }, [documentsContext]);
+  // A requested Project open belongs to the context that keys the Projects
+  // owner. A session, Client authority or Company change, or the loss of the
+  // Projects section, retires it for good; a Client identity change does not,
+  // because the Project id is stable.
+  const projectRequestContext =
+    access.status === 'active' && canAccessProjectsSection(access.actor)
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
+      : 'unavailable';
+  useEffect(() => {
+    setRequestedProject(undefined);
+  }, [projectRequestContext]);
 
   if (!identity.loaded)
     return (
@@ -136,11 +170,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.workspacePermissions.includes('client.manage') ||
     canReadCompanyClients;
   const activeCompanyId = access.actor.activeCompany?.id;
-  const canAccessProjects =
-    activeCompanyId !== undefined &&
-    access.actor.activeCompany?.projectPermissions?.includes('project.read') ===
-      true &&
-    canAccessClients;
+  const canAccessProjects = canAccessProjectsSection(access.actor);
   const canReadDocuments =
     access.actor.activeCompany?.documentPermissions?.includes(
       'document.read',
@@ -177,6 +207,38 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('clients');
+      }
+    : undefined;
+  // Offered only where the shell offers the Documents section, whose own detail
+  // read decides what is shown.
+  const openDocument =
+    access.actor.activeCompany && canAccessClients
+      ? (documentId: string) => {
+          documentRequests.current += 1;
+          setRequestedDocument({
+            documentsContext,
+            documentId,
+            requestId: documentRequests.current,
+          });
+          navigateToSection('documents');
+        }
+      : undefined;
+  // A retired request is never passed on, not even in the render that retires
+  // it before the effect above clears it.
+  const currentRequestedDocument =
+    requestedDocument?.documentsContext === documentsContext
+      ? requestedDocument
+      : undefined;
+  // The Projects owner reads the requested Project itself; no Project identity
+  // reaches the URL or history state.
+  const openProject = canAccessProjects
+    ? (projectId: string) => {
+        setRequestedProject((current) => ({
+          context: projectRequestContext,
+          projectId,
+          requestId: (current?.requestId ?? 0) + 1,
+        }));
+        navigateToSection('projects');
       }
     : undefined;
 
@@ -239,6 +301,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          requestedDocument={currentRequestedDocument}
+          onOpenProject={openProject}
         />
       ),
     });
@@ -316,6 +380,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
+          onOpenDocument={openDocument}
+          requestedProject={
+            requestedProject?.context === projectRequestContext
+              ? requestedProject
+              : undefined
+          }
         />
       ),
     });
@@ -419,6 +489,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         </p>
       </ApplicationContentSurface>
     </ApplicationShell>
+  );
+}
+/** The Projects section needs an active Company with Project and Client read. */
+function canAccessProjectsSection(actor: ActorContext): boolean {
+  const company = actor.activeCompany;
+  return (
+    company?.projectPermissions?.includes('project.read') === true &&
+    (actor.workspacePermissions.includes('client.manage') ||
+      company.clientPermissions?.includes('client.read') === true)
   );
 }
 /**

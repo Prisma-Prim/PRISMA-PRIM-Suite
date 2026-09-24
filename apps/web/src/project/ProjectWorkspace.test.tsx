@@ -828,6 +828,79 @@ it('presents the existing preparatory Project detail in Prisme without changing 
   expect(tasksPanel).toBeInTheDocument();
   expect(documentsPanel).toBeInTheDocument();
 });
+it('passes Open Document unchanged to the opened Project’s linked Documents', async () => {
+  const linked = {
+    id: 'document-linked',
+    companyId: 'company',
+    clientId: 'client',
+    clientDisplayName: 'Synthetic Client',
+    title: 'Linked questionnaire',
+    purpose: 'Prepare the linked interview',
+    type: 'questionnaire',
+    confidentiality: 'company-confidential',
+    createdAt: '2026-09-19T00:00:00.000Z',
+    workingRevision: 1,
+    correction: 'allowed',
+    version: {
+      id: 'version',
+      status: 'draft',
+      representation: {
+        id: 'representation',
+        kind: 'external-reference',
+        verification: 'unverified',
+        access: 'denied',
+      },
+    },
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url === '/api/clients')
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      if (url === '/api/projects') return Response.json([validProject]);
+      if (url === '/api/projects/project') return Response.json(validProject);
+      if (url === '/api/projects/project/documents')
+        return Response.json({
+          mutable: true,
+          documents: [{ document: linked, revision: 1 }],
+        });
+      return new Response(null, { status: 403 });
+    }),
+  );
+  const onOpenDocument = vi.fn();
+  render(
+    <ProjectWorkspace
+      actor={{
+        ...actor,
+        activeCompany: {
+          id: 'company',
+          displayName: 'PRISMA-PRIM',
+          projectPermissions: ['project.read'],
+          documentPermissions: ['document.read'],
+        },
+      }}
+      identity={deterministicBrowserIdentity()}
+      onOpenDocument={onOpenDocument}
+    />,
+  );
+  const workspace = await screen.findByRole('region', { name: 'Projects' });
+  fireEvent.click(
+    await within(workspace).findByRole('button', {
+      name: `${validProject.title} Client: ${validProject.clientDisplayName}`,
+    }),
+  );
+  const documents = await within(workspace).findByRole('region', {
+    name: 'Working Documents',
+  });
+  await within(documents).findByRole('heading', { name: linked.title });
+
+  fireEvent.click(
+    within(documents).getByRole('button', { name: 'Open Document' }),
+  );
+  expect(onOpenDocument).toHaveBeenCalledExactlyOnceWith(linked.id);
+});
 
 describe('Client identity changes', () => {
   const supersededClient = {
