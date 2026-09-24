@@ -36,34 +36,74 @@ type DetailPanel = 'tasks' | 'documents';
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error' | 'denied' }
-  | { kind: 'ready'; projects: ProjectView[]; clients: ClientChoice[] };
+  | {
+      kind: 'ready';
+      projects: ProjectView[];
+      clients: ClientChoice[];
+      /**
+       * The Client identity revision the rows' derived dossier identities were
+       * read under. Only rows read under the current revision are compared
+       * with a dossier restriction.
+       */
+      identityRevision: number;
+      /** The refresh started under this revision failed; the rows were kept. */
+      refreshFailedUnder?: number;
+    };
+/** Either the free-text search or one exact dossier identity is active. */
+type ProjectFilter =
+  | { kind: 'text'; query: string }
+  | { kind: 'client'; clientDossierId: string; displayName: string };
+/** The opened Project and the Client identity revision it was read under. */
+type SelectedProject = { project: ProjectView; identityRevision: number };
 export function ProjectWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
   clientFilter,
+  clientIdentityRevision = 0,
   onOpenClientDossier,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
   clientFilter?: { clientDossierId: string; displayName: string };
+  /** Increases when Client identities change, so derived targets are re-read. */
+  clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
-  const [selected, setSelected] = useState<ProjectView | null>(null);
-  const [query, setQuery] = useState('');
-  const [filteredClientDossierId, setFilteredClientDossierId] = useState<
-    string | undefined
-  >();
+  const [selected, setSelected] = useState<SelectedProject | null>(null);
+  const [filter, setFilter] = useState<ProjectFilter>({
+    kind: 'text',
+    query: '',
+  });
   const [title, setTitle] = useState('');
   const [clientAccountId, setClientAccountId] = useState('');
   const [feedback, setFeedback] = useState('');
   const [pending, setPending] = useState(false);
+  /** The detail read or registration in flight; never a list read. */
   const request = useRef<AbortController | null>(null);
+  const listRequest = useRef<AbortController | null>(null);
+  const identityRevision = useRef(clientIdentityRevision);
+  identityRevision.current = clientIdentityRevision;
+  const loadKind = useRef(load.kind);
+  loadKind.current = load.kind;
+  /** The Client identity revision of the latest list read started. */
+  const listReadRevision = useRef<number | undefined>(undefined);
+  const startedListReads = useRef(0);
+  /**
+   * Confirmed registrations missing from a list read that started before they
+   * were confirmed. A list read started afterwards is authoritative for them.
+   */
+  const confirmedRegistrations = useRef(
+    new Map<
+      string,
+      { project: ProjectView; listReadsAtConfirmation: number }
+    >(),
+  );
   const retry = useRef<{
     title: string;
     clientAccountId: string;
@@ -74,26 +114,54 @@ export function ProjectWorkspace({
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany.clientPermissions?.includes('client.read'));
-  useEffect(() => {
+  /**
+   * Access denial retires the loaded rows and the opened Project, whose
+   * current detail read stops with it. A list read, detail read or
+   * registration still in flight is cancelled so it cannot repopulate them,
+   * and the pending state settles so the member can reload. The registration
+   * draft and its request key stay until that reload retires them.
+   */
+  function deny() {
+    listRequest.current?.abort();
     request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    setSelected(null);
-    setQuery('');
-    setFilteredClientDossierId(undefined);
-    setFeedback('');
     setPending(false);
-    setTitle('');
-    setClientAccountId('');
-    retry.current = null;
+    setLoad({ kind: 'denied' });
+    setSelected(null);
+  }
+  function withConfirmedRegistrations(
+    projects: ProjectView[],
+    listRead: number,
+  ): ProjectView[] {
+    const loaded = new Set(projects.map((project) => project.id));
+    const missing: ProjectView[] = [];
+    for (const [id, confirmation] of confirmedRegistrations.current) {
+      if (listRead > confirmation.listReadsAtConfirmation)
+        confirmedRegistrations.current.delete(id);
+      else if (!loaded.has(id)) missing.push(confirmation.project);
+    }
+    return missing.length === 0 ? projects : [...projects, ...missing];
+  }
+  /**
+   * Reads the rows and Client choices under the current Client identity
+   * revision, superseding any list read still in flight. A failed refresh
+   * keeps the loaded rows; only a failed first read reports the load error.
+   */
+  function readList() {
+    listRequest.current?.abort();
+    const controller = new AbortController();
+    listRequest.current = controller;
+    const startedUnder = clientIdentityRevision;
+    listReadRevision.current = startedUnder;
+    startedListReads.current += 1;
+    const listRead = startedListReads.current;
     if (!authorized || !companyId) {
       setLoad({ kind: 'denied' });
       return;
     }
-    setLoad({ kind: 'loading' });
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (controller.signal.aborted) return;
         const [projects, clients] = await Promise.all([
           api.request<unknown>('/projects', {
             companyContextId: companyId,
@@ -113,7 +181,7 @@ export function ProjectWorkspace({
           return;
         }
         if (projects.status === 'forbidden' || clients.status === 'forbidden') {
-          setLoad({ kind: 'denied' });
+          deny();
           return;
         }
         if (
@@ -123,20 +191,67 @@ export function ProjectWorkspace({
           !projects.value.every(isProject) ||
           !Array.isArray(clients.value) ||
           !clients.value.every(isClient)
-        ) {
-          setLoad({ kind: 'error' });
-          return;
-        }
+        )
+          throw new Error('Load failed');
+        const rows = withConfirmedRegistrations(projects.value, listRead);
         setLoad({
           kind: 'ready',
-          projects: projects.value,
+          projects: rows,
           clients: clients.value,
+          identityRevision: startedUnder,
         });
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (controller.signal.aborted) return;
+        setLoad((current) =>
+          current.kind === 'ready'
+            ? { ...current, refreshFailedUnder: startedUnder }
+            : { kind: 'error' },
+        );
       }
     })();
-    return () => request.current?.abort();
+  }
+  /**
+   * A detail read replaces its loaded row only when no Client identity change
+   * happened since it started; an older read cannot vouch for the row's
+   * derived dossier identity.
+   */
+  function refreshRow(project: ProjectView, startedUnder: number) {
+    if (identityRevision.current !== startedUnder) return;
+    const confirmation = confirmedRegistrations.current.get(project.id);
+    if (confirmation)
+      confirmedRegistrations.current.set(project.id, {
+        ...confirmation,
+        project,
+      });
+    setLoad((current) =>
+      current.kind === 'ready'
+        ? {
+            ...current,
+            projects: current.projects.map((row) =>
+              row.id === project.id ? project : row,
+            ),
+          }
+        : current,
+    );
+  }
+  // A different Company, member, authority or reload retires everything this
+  // module presents, including the drafts and commands started under it.
+  useEffect(() => {
+    request.current?.abort();
+    setSelected(null);
+    setFilter({ kind: 'text', query: '' });
+    setFeedback('');
+    setPending(false);
+    setTitle('');
+    setClientAccountId('');
+    retry.current = null;
+    confirmedRegistrations.current.clear();
+    setLoad({ kind: 'loading' });
+    readList();
+    return () => {
+      request.current?.abort();
+      listRequest.current?.abort();
+    };
   }, [
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -145,11 +260,79 @@ export function ProjectWorkspace({
     generation,
     identity,
   ]);
+  // A confirmed Client union or reversal moves the derived dossier identity
+  // of the loaded rows. They are re-read once, by their single owner, and a
+  // list read still in flight under the previous identity is superseded
+  // rather than raced. The opened Project, drafts and retryable commands are
+  // untouched. A denied or failed list waits for the member's reload, which
+  // reads under the current identity.
+  useEffect(() => {
+    if (listReadRevision.current === clientIdentityRevision) return;
+    if (loadKind.current === 'denied' || loadKind.current === 'error') return;
+    readList();
+  }, [clientIdentityRevision]);
+  // The opened Project owes one detail read under the current Client identity
+  // revision. Until it lands its dossier target is withheld; a failed read
+  // leaves it withheld rather than retried.
+  const staleProjectId =
+    selected && selected.identityRevision !== clientIdentityRevision
+      ? selected.project.id
+      : undefined;
+  useEffect(() => {
+    if (!staleProjectId || !companyId) return;
+    const controller = new AbortController();
+    const startedUnder = clientIdentityRevision;
+    void (async () => {
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (controller.signal.aborted) return;
+        const result = await api.request<unknown>(
+          `/projects/${encodeURIComponent(staleProjectId)}`,
+          { companyContextId: companyId, signal: controller.signal },
+        );
+        if (controller.signal.aborted) return;
+        if (result.status === 'unauthorized') {
+          await identity.rejectSession();
+          return;
+        }
+        if (result.status === 'forbidden') {
+          deny();
+          return;
+        }
+        if (
+          result.status !== 'ok' ||
+          !isProject(result.value) ||
+          result.value.id !== staleProjectId
+        )
+          throw new Error('Refresh failed');
+        const project = result.value;
+        setSelected((current) =>
+          current?.project.id === project.id
+            ? { project, identityRevision: startedUnder }
+            : current,
+        );
+        refreshRow(project, startedUnder);
+      } catch {
+        if (!controller.signal.aborted) setFeedback(copy.error);
+      }
+    })();
+    return () => controller.abort();
+  }, [staleProjectId, clientIdentityRevision, companyId, identity]);
 
   useEffect(() => {
-    if (!clientFilter) return;
-    setQuery(clientFilter.displayName);
-    setFilteredClientDossierId(clientFilter.clientDossierId);
+    if (!clientFilter) {
+      // The shell retired the navigation intent, so a dossier identity that a
+      // union or reversal superseded stops restricting the loaded rows.
+      setFilter((current) =>
+        current.kind === 'client' ? { kind: 'text', query: '' } : current,
+      );
+      return;
+    }
+    setFilter({
+      kind: 'client',
+      clientDossierId: clientFilter.clientDossierId,
+      displayName: clientFilter.displayName,
+    });
   }, [clientFilter]);
 
   async function run(
@@ -159,6 +342,7 @@ export function ProjectWorkspace({
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
+    const startedUnder = identityRevision.current;
     setPending(true);
     setSelected(null);
     setFeedback('');
@@ -187,37 +371,47 @@ export function ProjectWorkspace({
         return;
       }
       if (result.status === 'forbidden') {
-        setLoad({ kind: 'denied' });
+        deny();
         return;
       }
       if (result.status !== 'ok' || !isProject(result.value)) {
         setFeedback(messageFor(result));
         return;
       }
-      setSelected(result.value);
       setDetailPanel('tasks');
-      const project = result.value;
+      if (!command) {
+        setSelected({ project: result.value, identityRevision: startedUnder });
+        refreshRow(result.value, startedUnder);
+        return;
+      }
+      // A registration confirmed after a Client identity change cannot vouch
+      // for the dossier target resolved before it. Until a current read
+      // replaces it, the Project offers no dossier navigation and matches no
+      // dossier restriction.
+      const project =
+        identityRevision.current === startedUnder
+          ? result.value
+          : { ...result.value, clientDossierId: undefined };
+      setSelected({ project, identityRevision: startedUnder });
+      confirmedRegistrations.current.set(project.id, {
+        project,
+        listReadsAtConfirmation: startedListReads.current,
+      });
       setLoad((current) =>
         current.kind === 'ready'
           ? {
               ...current,
-              projects: command
-                ? [
-                    ...current.projects.filter((row) => row.id !== project.id),
-                    project,
-                  ]
-                : current.projects.map((row) =>
-                    row.id === project.id ? project : row,
-                  ),
+              projects: [
+                ...current.projects.filter((row) => row.id !== project.id),
+                project,
+              ],
             }
           : current,
       );
-      if (command) {
-        retry.current = null;
-        setTitle('');
-        setClientAccountId('');
-        await onActivityRecorded();
-      }
+      retry.current = null;
+      setTitle('');
+      setClientAccountId('');
+      await onActivityRecorded();
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
     } finally {
@@ -266,17 +460,30 @@ export function ProjectWorkspace({
       ?.querySelector<HTMLButtonElement>(`#project-${next}-tab`)
       ?.focus();
   }
-  const normalizedQuery = query.trim().toLowerCase();
+  // Derived dossier identities are compared only in rows read under the
+  // current Client identity revision. Until such a read lands, a dossier
+  // restriction matches none of the kept rows.
+  const rowsAwaitRead =
+    load.kind === 'ready' && load.identityRevision !== clientIdentityRevision;
+  const refreshFailed =
+    rowsAwaitRead && load.refreshFailedUnder === clientIdentityRevision;
+  const restrictionAwaitsRead = rowsAwaitRead && filter.kind === 'client';
+  const normalizedQuery =
+    filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
   const filteredProjects =
-    load.kind === 'ready'
+    load.kind === 'ready' && !restrictionAwaitsRead
       ? load.projects.filter((project) =>
-          filteredClientDossierId
-            ? project.clientDossierId === filteredClientDossierId
+          filter.kind === 'client'
+            ? project.clientDossierId === filter.clientDossierId
             : normalizedQuery.length === 0 ||
               project.title.toLowerCase().includes(normalizedQuery) ||
               project.clientDisplayName.toLowerCase().includes(normalizedQuery),
         )
       : [];
+  const dossierTarget =
+    selected?.identityRevision === clientIdentityRevision
+      ? selected.project.clientDossierId
+      : undefined;
   return (
     <section
       id="projects"
@@ -319,18 +526,26 @@ export function ProjectWorkspace({
               {copy.searchLabel}
               <input
                 type="search"
-                value={query}
+                value={
+                  filter.kind === 'client' ? filter.displayName : filter.query
+                }
                 placeholder={copy.searchPlaceholder}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setFilteredClientDossierId(undefined);
-                }}
+                onChange={(event) =>
+                  setFilter({ kind: 'text', query: event.target.value })
+                }
                 disabled={pending}
               />
             </label>
           )}
-          {load.projects.length > 0 && filteredProjects.length === 0 && (
-            <p className="project-no-matches">{copy.noMatches}</p>
+          {refreshFailed ? (
+            <p role="alert">{copy.error}</p>
+          ) : restrictionAwaitsRead ? (
+            <p role="status">{copy.loading}</p>
+          ) : (
+            load.projects.length > 0 &&
+            filteredProjects.length === 0 && (
+              <p className="project-no-matches">{copy.noMatches}</p>
+            )
           )}
           <ul
             className={isPrisme ? 'project-list' : undefined}
@@ -425,29 +640,33 @@ export function ProjectWorkspace({
           {isPrisme ? (
             <div className="project-detail-overview">
               <p className="prisme-eyebrow">{copy.status}</p>
-              <h3 id="selected-project-title">{selected.title}</h3>
+              <h3 id="selected-project-title">{selected.project.title}</h3>
               <p className="project-detail-client">
-                {copy.clientPrefix} {selected.clientDisplayName}
+                {copy.clientPrefix} {selected.project.clientDisplayName}
               </p>
-              <ProjectRegistrationTime registeredAt={selected.createdAt} />
-              {selected.clientDossierId && onOpenClientDossier && (
+              <ProjectRegistrationTime
+                registeredAt={selected.project.createdAt}
+              />
+              {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
-                  clientDossierId={selected.clientDossierId}
+                  clientDossierId={dossierTarget}
                   onOpen={onOpenClientDossier}
                 />
               )}
             </div>
           ) : (
             <>
-              <h3 id="selected-project-title">{selected.title}</h3>
+              <h3 id="selected-project-title">{selected.project.title}</h3>
               <p>{copy.status}</p>
               <p className="project-detail-client">
-                {copy.clientPrefix} {selected.clientDisplayName}
+                {copy.clientPrefix} {selected.project.clientDisplayName}
               </p>
-              <ProjectRegistrationTime registeredAt={selected.createdAt} />
-              {selected.clientDossierId && onOpenClientDossier && (
+              <ProjectRegistrationTime
+                registeredAt={selected.project.createdAt}
+              />
+              {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
-                  clientDossierId={selected.clientDossierId}
+                  clientDossierId={dossierTarget}
                   onOpen={onOpenClientDossier}
                 />
               )}
@@ -491,7 +710,7 @@ export function ProjectWorkspace({
             <ProjectDocuments
               actor={actor}
               identity={identity}
-              projectId={selected.id}
+              projectId={selected.project.id}
               onActivityRecorded={onActivityRecorded}
             />
           </div>
@@ -507,7 +726,7 @@ export function ProjectWorkspace({
         <ProjectTasks
           actor={actor}
           identity={identity}
-          projectId={selected?.id ?? null}
+          projectId={selected?.project.id ?? null}
           onActivityRecorded={onActivityRecorded}
         />
       </div>
