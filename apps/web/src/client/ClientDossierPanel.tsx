@@ -15,7 +15,9 @@ import {
 } from '../api/latest-authenticated-request';
 import { resolveRetryCommand, type RetryCommand } from './client-command';
 import {
+  ClientContactDescription,
   ClientContactEditor,
+  contactDraft,
   normalizedContacts,
   type ClientContact,
   type ClientContactDraft,
@@ -203,10 +205,10 @@ export function ClientDossierPanel({
       return;
     }
     const contacts = normalizedContacts(draft.contacts);
-    if (!contacts) {
+    if (contacts.status === 'invalid') {
       setCorrectionState({
         status: 'validation',
-        message: copy.contactsInvalid,
+        message: contacts.message,
         field: 'contacts',
       });
       return;
@@ -218,7 +220,7 @@ export function ClientDossierPanel({
       address: nullableText(draft.address),
       telephone: nullableText(draft.telephone),
       generalEmail: nullableText(draft.generalEmail),
-      contacts,
+      contacts: contacts.contacts,
       businessActivity: nullableText(draft.businessActivity),
     });
     const command = resolveRetryCommand(
@@ -488,6 +490,7 @@ export function ClientDossierPanel({
                   <strong>{contact.name}</strong>
                   {contact.telephone && <span>{contact.telephone}</span>}
                   {contact.email && <span>{contact.email}</span>}
+                  <ClientContactDescription contact={contact} />
                 </li>
               ))}
             </ul>
@@ -671,11 +674,7 @@ function draftFrom(dossier: ClientDossierView): DossierDraft {
     address: dossier.address ?? '',
     telephone: dossier.telephone ?? '',
     generalEmail: dossier.generalEmail ?? '',
-    contacts: dossier.contacts.map((contact) => ({
-      name: contact.name,
-      telephone: contact.telephone ?? '',
-      email: contact.email ?? '',
-    })),
+    contacts: dossier.contacts.map(contactDraft),
     businessActivity: dossier.businessActivity ?? '',
   };
 }

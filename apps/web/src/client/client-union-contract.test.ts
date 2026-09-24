@@ -50,4 +50,38 @@ describe('Client union history detail contract', () => {
     expect(parsed).not.toHaveProperty('identityBasis');
     expect(parsed).not.toHaveProperty('contactSources');
   });
+
+  it('reads original Contacts that carry a position and decision roles', () => {
+    const original = {
+      id: 'client-1',
+      version: 2,
+      displayName: 'AGRONOVA Demo SRL',
+      taxId: null,
+      address: null,
+      telephone: null,
+      generalEmail: null,
+      businessActivity: null,
+      contacts: [
+        {
+          name: 'Ion Demo',
+          position: 'Director general',
+          decisionRoles: ['final_decision_maker', 'financial'],
+        },
+      ],
+    };
+    const parsed = readUnionDetail({
+      state: 'united',
+      projectionReference: 'authorized-projection',
+      canonicalClientId: 'client-1',
+      reason: 'Verified union reason.',
+      occurredAt: '2026-09-24T12:00:00.000Z',
+      actor: { displayName: 'Authorized Director' },
+      canReverse: true,
+      originals: [original, { ...original, id: 'client-2' }],
+      companies: [{ id: 'company-a', displayName: 'Company A' }],
+      reversal: null,
+    });
+
+    expect(parsed.originals[0]?.contacts).toEqual([{ name: 'Ion Demo' }]);
+  });
 });
