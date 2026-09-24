@@ -375,7 +375,7 @@ describe('CompanyContextAccess', () => {
     },
   );
 
-  it('does not report a confirmed grant as refreshed when the reloaded version is unknown', async () => {
+  it('concludes a confirmed grant only after Retry reloads the state rejected for an unknown version', async () => {
     vi.stubGlobal(
       'fetch',
       vi
@@ -405,12 +405,124 @@ describe('CompanyContextAccess', () => {
     expect(screen.queryByText(/captured version/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
-    await screen.findByLabelText('Workspace member');
-    chooseTargets();
-    chooseBundle('director-client');
+    await screen.findByText('Access granted. Server state refreshed.');
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
       /^Current server state: Granted — captured version v2$/,
     );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Revoke access' })).toBeEnabled();
+    expect(fetch).toHaveBeenCalledTimes(4);
+
+    chooseBundle('company-context');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(
+      screen.queryByText('Access granted. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Revoke access' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps a confirmed revoke unconcluded through a failed Retry until the state reloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration('director')))
+        .mockResolvedValueOnce(Response.json({}, { status: 200 }))
+        .mockResolvedValueOnce(
+          Response.json({ ...administration(), members: 'invalid' }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({ ...administration(), members: 'invalid' }),
+        )
+        .mockResolvedValueOnce(Response.json(administration())),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByRole('button', { name: 'Retry access state' });
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(
+      screen.queryByText('Access revoked. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Revoke access' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps an uncertain grant replayable with its key after Retry reloads the state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(administration()))
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(Response.json(administration('director', 'v9')))
+        .mockResolvedValueOnce(Response.json(administration('director')))
+        .mockResolvedValueOnce(Response.json({}, { status: 201 }))
+        .mockResolvedValueOnce(Response.json(administration('director'))),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('director-client');
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
+    await screen.findByLabelText('Workspace member');
+
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v2$/,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The access state could not be loaded or changed.',
+    );
+    expect(
+      screen.queryByText('Access granted. Server state refreshed.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    const firstKey = new Headers(
+      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
+    ).get('idempotency-key');
+    const replayKey = new Headers(
+      vi.mocked(fetch).mock.calls[4]?.[1]?.headers,
+    ).get('idempotency-key');
+    expect(firstKey).toBeTruthy();
+    expect(replayKey).toBe(firstKey);
   });
 
   it('requires a named confirmation before suspending a Workspace member and reloads canonical state', async () => {

@@ -56,6 +56,9 @@ type MutationState =
   | { status: 'idle' }
   | { status: 'submitting'; submission: Submission }
   | { status: 'ready'; submission: Submission }
+  // The server confirmed the command, but the administration read after it
+  // failed. Only a later successful read concludes it.
+  | { status: 'unrefreshed'; submission: Submission }
   | { status: 'error' };
 export function CompanyContextAccess({
   actor,
@@ -288,6 +291,8 @@ export function CompanyContextAccess({
       if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
         retryCommand.current = undefined;
         setMutation({ status: 'ready', submission });
+      } else if (result.status === 'ok' && !actorRevalidationFailed) {
+        setMutation({ status: 'unrefreshed', submission });
       } else {
         setMutation({ status: 'error' });
       }
@@ -306,11 +311,14 @@ export function CompanyContextAccess({
     setMutation({ status: 'idle' });
   }
 
-  function retryAdministration() {
+  async function retryAdministration() {
     pendingRequest.current?.abort();
     const request = new AbortController();
     pendingRequest.current = request;
-    void reloadAdministration(request, true);
+    const refreshed = await reloadAdministration(request, true);
+    if (!refreshed || mutation.status !== 'unrefreshed') return;
+    retryCommand.current = undefined;
+    setMutation({ status: 'ready', submission: mutation.submission });
   }
 
   if (administration.status === 'loading') {
@@ -338,7 +346,7 @@ export function CompanyContextAccess({
         <button
           type="button"
           className={isPrisme ? 'company-access-primary-action' : undefined}
-          onClick={retryAdministration}
+          onClick={() => void retryAdministration()}
         >
           {copy.retry}
         </button>
@@ -365,8 +373,10 @@ export function CompanyContextAccess({
     data.members.length > 0 && data.companies.length > 0;
   const pending = mutation.status === 'submitting';
   const busy = pending || suspensionPending;
+  const unresolved =
+    mutation.status === 'error' || mutation.status === 'unrefreshed';
   const retrySubmission =
-    mutation.status === 'error' &&
+    unresolved &&
     retryCommand.current?.bundle === bundle &&
     retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
     retryCommand.current.companyId === companyId
@@ -530,7 +540,7 @@ export function CompanyContextAccess({
           {mutation.submission === 'grant' ? copy.granted : copy.revoked}
         </p>
       )}
-      {mutation.status === 'error' && <p role="alert">{copy.error}</p>}
+      {unresolved && <p role="alert">{copy.error}</p>}
       <WorkspaceSessionRevocations
         actor={actor}
         identity={identity}
