@@ -37,6 +37,8 @@ type Load =
 type DocumentFilter =
   | { kind: 'text'; query: string }
   | { kind: 'client'; clientDossierId: string; displayName: string };
+/** One request to open a Document; a newer request id supersedes older ones. */
+export type RequestedDocument = { documentId: string; requestId: number };
 export function DocumentWorkspace({
   actor,
   identity,
@@ -44,6 +46,7 @@ export function DocumentWorkspace({
   clientFilter,
   clientIdentityRevision = 0,
   onOpenClientDossier,
+  requestedDocument,
   onOpenProject,
 }: {
   actor: ActorContext;
@@ -53,6 +56,12 @@ export function DocumentWorkspace({
   /** Increases when Client identities change, so derived targets are re-read. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  /**
+   * The latest request to open one Document by its stable id. A new request id
+   * opens it once, like choosing its row; a request this workspace was mounted
+   * with is never replayed.
+   */
+  requestedDocument?: RequestedDocument;
   /** Offered only while the shell can open Projects; the owner reads it fresh. */
   onOpenProject?: (projectId: string) => void;
 }) {
@@ -115,6 +124,19 @@ export function DocumentWorkspace({
    * detail it would have retired is reconciled once that correction ends.
    */
   const restrictionAwaitsCorrection = useRef(false);
+  /**
+   * The registration attempt in flight. A requested Document waits for it, so
+   * that command, its key and its draft are never aborted or replaced.
+   */
+  const [registrationInFlight, setRegistrationInFlight] =
+    useState<AbortController>();
+  /**
+   * A requested Document not yet opened. It waits for a registration in flight
+   * or a protected correction, and a newer request replaces it.
+   */
+  const [heldRequest, setHeldRequest] = useState<RequestedDocument>();
+  /** A request this workspace was mounted with counts as already accepted. */
+  const acceptedRequestId = useRef(requestedDocument?.requestId);
   const activeFilter = useRef(filter);
   activeFilter.current = filter;
   const registrationPayload = JSON.stringify({ clientId, title, purpose, url });
@@ -260,8 +282,8 @@ export function DocumentWorkspace({
     );
   }
   // A different Company, member or Document authority retires the presentation
-  // owned by this module, including the drafts started under it and the rows
-  // loaded under it, which the load below replaces.
+  // owned by this module, including the drafts and held requests started under
+  // it and the rows loaded under it, which the load below replaces.
   useEffect(() => {
     publishList(reserveListWrite(), () => ({ status: 'loading' }));
     setDetail(undefined);
@@ -275,6 +297,8 @@ export function DocumentWorkspace({
     setCorrection('idle');
     setStaleDossier(undefined);
     restrictionAwaitsCorrection.current = false;
+    setRegistrationInFlight(undefined);
+    setHeldRequest(undefined);
     retry.current = undefined;
     correctionRetry.current = undefined;
     confirmedRegistrations.current.clear();
@@ -444,6 +468,9 @@ export function DocumentWorkspace({
       return;
     }
     setFilter({ kind: 'client', ...clientFilter });
+    // The newer navigation supersedes a requested Document still held, as it
+    // retires one whose read is in flight.
+    setHeldRequest(undefined);
     // Show the restricted references, but never discard an open correction
     // draft or a retryable correction command owned by this module.
     if (correctionInProgress.current) {
@@ -460,6 +487,25 @@ export function DocumentWorkspace({
     restrictionAwaitsCorrection.current = false;
     retireDetailBehindRestriction();
   }, [correctionActive]);
+  // Each new request is accepted once. The shell retiring it also retires the
+  // request still held here.
+  useEffect(() => {
+    if (!requestedDocument) {
+      setHeldRequest(undefined);
+      return;
+    }
+    if (requestedDocument.requestId === acceptedRequestId.current) return;
+    acceptedRequestId.current = requestedDocument.requestId;
+    setHeldRequest(requestedDocument);
+  }, [requestedDocument]);
+  // The held request opens once nothing it would abort remains: a registration
+  // command in flight or a protected correction keeps its body, key and draft.
+  // Opening is choosing that Document's row, with one fresh detail read.
+  useEffect(() => {
+    if (!heldRequest || registrationInFlight || correctionActive) return;
+    setHeldRequest(undefined);
+    if (companyId && canRead) void open(heldRequest.documentId);
+  }, [heldRequest, registrationInFlight, correctionActive]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
@@ -627,6 +673,12 @@ export function DocumentWorkspace({
     const startedUnderRevision = identityRevision.current;
     const submittedFrom = activeFilter.current;
     setMutation('pending');
+    setRegistrationInFlight(request);
+    /** Releases a requested Document in the same update as this outcome. */
+    const settleRegistration = () =>
+      setRegistrationInFlight((current) =>
+        current === request ? undefined : current,
+      );
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
@@ -700,9 +752,12 @@ export function DocumentWorkspace({
             }
           : current,
       );
+      settleRegistration();
       await onActivityRecorded();
     } catch {
       if (!request.signal.aborted) setMutation('error');
+    } finally {
+      settleRegistration();
     }
   }
   /**
@@ -933,6 +988,9 @@ export function DocumentWorkspace({
                     {copy.retryCorrection}
                   </button>
                 </>
+              )}
+              {heldRequest && correctionActive && (
+                <p role="status">{copy.requestedDocumentHeld}</p>
               )}
             </article>
           ) : (

@@ -1,3 +1,5 @@
+import type { ClientContactDecisionRole } from './ClientContactEditor';
+
 export const clientWorkspaceCopy = {
   navigationLabel: 'Clients',
   eyebrow: 'Shared Client',
@@ -33,6 +35,19 @@ export const clientWorkspaceCopy = {
   contactNameLabel: 'Contact name',
   contactTelephoneLabel: 'Contact telephone',
   contactEmailLabel: 'Contact email',
+  contactPositionLabel: 'Contact position',
+  contactPositionTooLong: 'Position must be 500 characters or fewer.',
+  contactDecisionRolesLabel: 'Decision roles',
+  contactDecisionRoleLabels: {
+    final_decision_maker: 'Final decision-maker',
+    influencer: 'Influencer',
+    user: 'User',
+    financial: 'Financial',
+    technical: 'Technical',
+    blocker: 'Blocker',
+  } satisfies Record<ClientContactDecisionRole, string>,
+  contactDecisionRolesSummary: (labels: readonly string[]) =>
+    `Decision roles: ${labels.join(', ')}`,
   create: 'Create Client',
   creating: 'Creating…',
   loading: 'Loading Clients…',

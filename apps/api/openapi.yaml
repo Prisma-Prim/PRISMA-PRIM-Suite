@@ -1553,6 +1553,24 @@ components:
           type: string
           format: email
           maxLength: 320
+        position:
+          type: string
+          description: Free-text position at the Client. Input is trimmed and blank input is omitted, so a returned position is never blank.
+          maxLength: 500
+        decisionRoles:
+          type: array
+          description: Input duplicates collapse and an empty list is omitted, so a returned list is non-empty, without duplicates and in enum order.
+          items:
+            $ref: '#/components/schemas/ClientContactDecisionRole'
+    ClientContactDecisionRole:
+      type: string
+      enum:
+        - final_decision_maker
+        - influencer
+        - user
+        - financial
+        - technical
+        - blocker
     ClientAccountView:
       type: object
       additionalProperties: false

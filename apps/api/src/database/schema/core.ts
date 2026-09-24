@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { ClientContact } from '../../client/client.types.js';
 import { workspaceInvitations } from './workspace-invitation.js';
 import {
   check,
@@ -403,10 +404,7 @@ export const clientAccounts = pgTable(
     address: text('address'),
     telephone: text('telephone'),
     generalEmail: text('general_email'),
-    contacts: jsonb('contacts')
-      .$type<Array<{ name: string; telephone?: string; email?: string }>>()
-      .default([])
-      .notNull(),
+    contacts: jsonb('contacts').$type<ClientContact[]>().default([]).notNull(),
     businessActivity: text('business_activity'),
     version: integer('version').default(1).notNull(),
     status: clientAccountStatus('status').default('active').notNull(),
@@ -514,10 +512,7 @@ export const clientAccountRegistrationCommands = pgTable(
     address: text('address'),
     telephone: text('telephone'),
     generalEmail: text('general_email'),
-    contacts: jsonb('contacts')
-      .$type<Array<{ name: string; telephone?: string; email?: string }>>()
-      .default([])
-      .notNull(),
+    contacts: jsonb('contacts').$type<ClientContact[]>().default([]).notNull(),
     businessActivity: text('business_activity'),
     companyId: uuid('company_id').notNull(),
     resultClientAccountId: uuid('result_client_account_id'),
@@ -600,7 +595,7 @@ export const clientAccountCorrectionCommands = pgTable(
       address: string | null;
       telephone: string | null;
       generalEmail: string | null;
-      contacts: Array<{ name: string; telephone?: string; email?: string }>;
+      contacts: ClientContact[];
       businessActivity: string | null;
       version: number;
       involvedCompanyDisplayNames: string[];
