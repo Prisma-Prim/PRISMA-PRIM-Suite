@@ -38,6 +38,11 @@ export const prismeCopy = {
       label: 'Client Requests',
       description: 'Capture manual requests and their initial Opportunities.',
     },
+    catalogue: {
+      label: 'Service Catalogue',
+      description:
+        'Define shared illustrative Services and record which ones this Company offers.',
+    },
     access: {
       label: 'Team & access',
       description:

@@ -10,3 +10,5 @@ export * from './project.js';
 export * from './task.js';
 
 export * from './commercial-intake.js';
+
+export * from './commercial-catalogue.js';

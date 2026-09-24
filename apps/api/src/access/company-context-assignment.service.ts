@@ -43,6 +43,8 @@ import {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   isCommercialIntakePermissionSetVersion,
   type CompanyCommercialIntakePermissionSetVersion,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
@@ -67,6 +69,7 @@ type BundleDefinition = {
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+    | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
@@ -112,6 +115,11 @@ const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+const SERVICE_CATALOGUE_BUNDLE: BundleDefinition = {
+  value: COMPANY_SERVICE_CATALOGUE_BUNDLE,
+  label: COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
@@ -125,6 +133,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
 ] as const;
 
@@ -310,6 +319,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_INTAKE_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantServiceCatalogue(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      SERVICE_CATALOGUE_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeServiceCatalogue(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      SERVICE_CATALOGUE_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -815,6 +854,10 @@ function assignmentAction(
       return granted
         ? 'company_commercial_intake_assignment.granted'
         : 'company_commercial_intake_assignment.revoked';
+    case COMPANY_SERVICE_CATALOGUE_BUNDLE:
+      return granted
+        ? 'company_service_catalogue_assignment.granted'
+        : 'company_service_catalogue_assignment.revoked';
     case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
       return granted
         ? 'company_commercial_activity_reader_assignment.granted'
@@ -930,6 +973,14 @@ function assignmentRecord(
         ...base,
         bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
         permissionSetVersion: assignment.permissionSetVersion,
+      };
+    case COMPANY_SERVICE_CATALOGUE_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Service Catalogue version.');
+      return {
+        ...base,
+        bundle: COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
       };
     case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')

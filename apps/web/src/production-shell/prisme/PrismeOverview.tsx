@@ -4,6 +4,7 @@ import {
   FolderKanban,
   Activity,
   ArrowRight,
+  BookOpen,
   Building2,
   ClipboardList,
   LayoutGrid,
@@ -40,6 +41,7 @@ export function SectionIcon({
     companies: Building2,
     documents: Mail,
     requests: ClipboardList,
+    catalogue: BookOpen,
     activity: Activity,
     invitations: Mail,
   };

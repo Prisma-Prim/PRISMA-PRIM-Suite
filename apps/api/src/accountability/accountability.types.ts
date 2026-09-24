@@ -9,6 +9,7 @@ import type {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
+  COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import type { CommercialActivityAction } from './commercial-activity-projection.js';
@@ -127,6 +128,8 @@ export type CanonicalActivityEvent =
         | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
         | 'company_commercial_intake_assignment.granted'
         | 'company_commercial_intake_assignment.revoked'
+        | 'company_service_catalogue_assignment.granted'
+        | 'company_service_catalogue_assignment.revoked'
         | 'company_commercial_activity_reader_assignment.granted'
         | 'company_commercial_activity_reader_assignment.revoked';
       target: {
@@ -145,6 +148,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
       };
       transitionId: string;
@@ -206,6 +210,8 @@ export interface OrdinaryActivityLogEvent {
     | typeof COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_REVOKED_ACTION
     | 'company_commercial_intake_assignment.granted'
     | 'company_commercial_intake_assignment.revoked'
+    | 'company_service_catalogue_assignment.granted'
+    | 'company_service_catalogue_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
@@ -269,6 +275,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
+          | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
