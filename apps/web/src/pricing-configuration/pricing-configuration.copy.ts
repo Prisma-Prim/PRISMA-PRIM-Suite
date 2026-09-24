@@ -49,6 +49,20 @@ export const pricingConfigurationCopy = {
     `Version ${versionNumber} already has this content. Nothing changed.`,
   validation:
     'Enter a label of 1 to 120 characters, a start, and an optional end later than the start.',
+  // A local time that a clock change skips or repeats names no single
+  // instant, so it is refused rather than moved to a neighbouring one.
+  skippedTime: {
+    effectiveFrom: (zone: string) =>
+      `The start does not exist in ${zone}: a clock change skips that time. Choose a time outside the change.`,
+    effectiveTo: (zone: string) =>
+      `The end does not exist in ${zone}: a clock change skips that time. Choose a time outside the change.`,
+  },
+  repeatedTime: {
+    effectiveFrom: (zone: string) =>
+      `The start is ambiguous in ${zone}: a clock change repeats that time. Choose a time outside the change.`,
+    effectiveTo: (zone: string) =>
+      `The end is ambiguous in ${zone}: a clock change repeats that time. Choose a time outside the change.`,
+  },
   effectiveFromPast: 'Choose a start that is not earlier than now.',
   effectiveFromNotAdvancing:
     'Choose a start later than the start of the head version.',

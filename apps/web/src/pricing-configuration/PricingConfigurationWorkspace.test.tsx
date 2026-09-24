@@ -47,7 +47,23 @@ const secondCompanyActor: ActorContext = {
   },
 };
 
-const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+// The browser time zone is process-wide. After each case the host zone is set
+// back by name, which every platform honours, before the original environment
+// returns: on Windows, unsetting TZ alone keeps the last zone.
+const hostTimeZone = browserTimeZone();
+
+function useBrowserTimeZone(zone: string) {
+  vi.stubEnv('TZ', zone);
+}
+
+function restoreBrowserTimeZone() {
+  vi.stubEnv('TZ', hostTimeZone);
+  vi.unstubAllEnvs();
+}
 
 function ruleVersion(
   versionNumber: number,
@@ -267,14 +283,23 @@ function fillDraft(draft: {
       target: { value: draft.label },
     });
   if (draft.effectiveFrom !== undefined)
-    fireEvent.change(screen.getByLabelText(`Effective from (${zone})`), {
+    fireEvent.change(effectiveFromField(), {
       target: { value: draft.effectiveFrom },
     });
   if (draft.effectiveTo !== undefined)
-    fireEvent.change(
-      screen.getByLabelText(`Effective until, optional (${zone})`),
-      { target: { value: draft.effectiveTo } },
-    );
+    fireEvent.change(effectiveToField(), {
+      target: { value: draft.effectiveTo },
+    });
+}
+
+function effectiveFromField() {
+  return screen.getByLabelText(`Effective from (${browserTimeZone()})`);
+}
+
+function effectiveToField() {
+  return screen.getByLabelText(
+    `Effective until, optional (${browserTimeZone()})`,
+  );
 }
 
 function publishButton() {
@@ -282,7 +307,10 @@ function publishButton() {
 }
 
 describe('PricingConfigurationWorkspace', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    restoreBrowserTimeZone();
+  });
 
   it('shows the current version and its window, the scheduled successors in takeover order, the head and the permanent marker', async () => {
     stubApi({
@@ -345,7 +373,7 @@ describe('PricingConfigurationWorkspace', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        `Instants are entered and shown in your browser time zone: ${zone}.`,
+        `Instants are entered and shown in your browser time zone: ${browserTimeZone()}.`,
       ),
     ).toBeInTheDocument();
   });
@@ -455,9 +483,161 @@ describe('PricingConfigurationWorkspace', () => {
     );
     expect(requestsTo(fetchMock, PUBLISH)).toHaveLength(1);
     expect(screen.getByLabelText('Label')).toHaveValue('😀'.repeat(120));
-    expect(screen.getByLabelText(`Effective from (${zone})`)).toHaveValue(
-      '2026-06-01T09:30',
+    expect(effectiveFromField()).toHaveValue('2026-06-01T09:30');
+  });
+
+  it('refuses a start or an end that a spring clock change skips in the browser time zone, keeping the draft and publishing nothing', async () => {
+    useBrowserTimeZone('Europe/Bucharest');
+    const fetchMock = stubApi({
+      [SCOPE]: () => scope(null, null),
+      [LIST]: () => page([]),
+      [PUBLISH]: () =>
+        Response.json(
+          { outcome: 'PUBLISHED', version: ruleVersion(1) },
+          { status: 201 },
+        ),
+    });
+    renderWorkspace();
+    await screen.findByText(
+      'The new version will be the first for this Company.',
     );
+
+    // On 28 March 2027 the Bucharest clocks move from 03:00 straight to
+    // 04:00, so no instant reads 03:00 to 03:59:59 there.
+    for (const effectiveFrom of [
+      '2027-03-28T03:00',
+      '2027-03-28T03:59:59',
+      '2027-03-28T03:30',
+    ]) {
+      fillDraft({ label: 'Spring rule', effectiveFrom });
+      fireEvent.click(publishButton());
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The start does not exist in Europe/Bucharest: a clock change skips that time. Choose a time outside the change.',
+      );
+    }
+    expect(screen.getByLabelText('Label')).toHaveValue('Spring rule');
+    expect(effectiveFromField()).toHaveValue('2027-03-28T03:30');
+
+    fillDraft({
+      effectiveFrom: '2027-03-28T02:59:59',
+      effectiveTo: '2027-03-28T03:00',
+    });
+    fireEvent.click(publishButton());
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The end does not exist in Europe/Bucharest: a clock change skips that time. Choose a time outside the change.',
+    );
+    expect(effectiveToField()).toHaveValue('2027-03-28T03:00');
+    expect(requestsTo(fetchMock, PUBLISH)).toEqual([]);
+
+    // The readings either side of the change are unique, one second apart,
+    // and the kept label and start are published with the corrected end.
+    fillDraft({ effectiveTo: '2027-03-28T04:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 1 published.')).toBeInTheDocument();
+    expect(requestsTo(fetchMock, PUBLISH).map(({ body }) => body)).toEqual([
+      {
+        label: 'Spring rule',
+        effectiveFrom: '2027-03-28T00:59:59.000Z',
+        effectiveTo: '2027-03-28T01:00:00.000Z',
+        expectedActiveVersionNumber: null,
+      },
+    ]);
+  });
+
+  it('refuses a start or an end that an autumn clock change repeats in the browser time zone, without choosing either occurrence', async () => {
+    useBrowserTimeZone('Europe/Bucharest');
+    const fetchMock = stubApi({
+      [SCOPE]: () => scope(null, null),
+      [LIST]: () => page([]),
+      [PUBLISH]: () =>
+        Response.json(
+          { outcome: 'PUBLISHED', version: ruleVersion(1) },
+          { status: 201 },
+        ),
+    });
+    renderWorkspace();
+    await screen.findByText(
+      'The new version will be the first for this Company.',
+    );
+
+    // On 31 October 2027 the Bucharest clocks go back from 04:00 to 03:00,
+    // so each reading from 03:00 to 03:59:59 names two instants there.
+    for (const effectiveFrom of [
+      '2027-10-31T03:00',
+      '2027-10-31T03:59:59',
+      '2027-10-31T03:30',
+    ]) {
+      fillDraft({ label: 'Autumn rule', effectiveFrom });
+      fireEvent.click(publishButton());
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The start is ambiguous in Europe/Bucharest: a clock change repeats that time. Choose a time outside the change.',
+      );
+    }
+    expect(screen.getByLabelText('Label')).toHaveValue('Autumn rule');
+    expect(effectiveFromField()).toHaveValue('2027-10-31T03:30');
+
+    fillDraft({
+      effectiveFrom: '2027-10-31T02:59:59',
+      effectiveTo: '2027-10-31T03:30',
+    });
+    fireEvent.click(publishButton());
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The end is ambiguous in Europe/Bucharest: a clock change repeats that time. Choose a time outside the change.',
+    );
+    expect(effectiveToField()).toHaveValue('2027-10-31T03:30');
+    expect(requestsTo(fetchMock, PUBLISH)).toEqual([]);
+
+    // The readings either side of the change are unique, and the kept label
+    // and start are published with the corrected end.
+    fillDraft({ effectiveTo: '2027-10-31T04:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 1 published.')).toBeInTheDocument();
+    expect(requestsTo(fetchMock, PUBLISH).map(({ body }) => body)).toEqual([
+      {
+        label: 'Autumn rule',
+        effectiveFrom: '2027-10-30T23:59:59.000Z',
+        effectiveTo: '2027-10-31T02:00:00.000Z',
+        expectedActiveVersionNumber: null,
+      },
+    ]);
+  });
+
+  it('publishes the same readings unchanged when the browser time zone is UTC', async () => {
+    useBrowserTimeZone('UTC');
+    const fetchMock = stubApi({
+      [SCOPE]: () => scope(null, null),
+      [LIST]: () => page([]),
+      [PUBLISH]: () =>
+        Response.json(
+          { outcome: 'PUBLISHED', version: ruleVersion(1) },
+          { status: 201 },
+        ),
+    });
+    renderWorkspace();
+    await screen.findByText(
+      'The new version will be the first for this Company.',
+    );
+    expect(
+      screen.getByText(
+        'Instants are entered and shown in your browser time zone: UTC.',
+      ),
+    ).toBeInTheDocument();
+
+    fillDraft({
+      label: 'UTC rule',
+      effectiveFrom: '2027-03-28T03:30',
+      effectiveTo: '2027-10-31T03:30',
+    });
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 1 published.')).toBeInTheDocument();
+    expect(requestsTo(fetchMock, PUBLISH).map(({ body }) => body)).toEqual([
+      {
+        label: 'UTC rule',
+        effectiveFrom: '2027-03-28T03:30:00.000Z',
+        effectiveTo: '2027-10-31T03:30:00.000Z',
+        expectedActiveVersionNumber: null,
+      },
+    ]);
   });
 
   it('names the new head on a stale conflict and reloads only when asked, keeping the draft', async () => {
