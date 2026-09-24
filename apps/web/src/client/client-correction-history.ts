@@ -49,7 +49,7 @@ function correction(value: unknown): ClientCorrection {
     throw new Error('Invalid Client correction history.');
   return {
     id: text(row.id),
-    occurredAt: text(row.occurredAt),
+    occurredAt: instant(row.occurredAt),
     actorDisplayName: text(object(row.actor).displayName),
     changes: fieldOrder.flatMap((field): ClientCorrectionChange[] => {
       if (!Object.hasOwn(stored, field)) return [];
@@ -110,4 +110,13 @@ function text(value: unknown): string {
 
 function optionalText(value: unknown): string | null {
   return value === null ? null : text(value);
+}
+
+/** A server timestamp this module hands to presentation as a formattable instant. */
+function instant(value: unknown): string {
+  const timestamp = text(value);
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.valueOf()) || date.toISOString() !== timestamp)
+    throw new Error('Invalid Client correction history.');
+  return timestamp;
 }

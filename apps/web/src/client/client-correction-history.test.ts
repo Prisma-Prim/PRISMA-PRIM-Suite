@@ -54,6 +54,7 @@ describe('Client correction history response', () => {
       'a missing display name',
       { ...correction, changes: { displayName: { before: null, after: 'X' } } },
     ],
+    ['an unreadable server time', { ...correction, occurredAt: 'not-a-date' }],
   ])('rejects %s', (_name, invalid) => {
     expect(() =>
       readClientCorrectionHistory({ corrections: [invalid], nextCursor: null }),

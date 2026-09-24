@@ -249,6 +249,71 @@ describe('Client correction history', () => {
     expect(within(history).queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('shows a retryable section error instead of an unreadable server time on any page', async () => {
+    const unreadable = { ...oldest, occurredAt: 'not-a-date' };
+    const responses = [
+      () => page([{ ...newest, occurredAt: 'not-a-date' }]),
+      () => page([newest], newest.id),
+      () => page([unreadable]),
+      () => page([oldest]),
+    ];
+    const requests = renderDossier(() => {
+      const next = responses.shift();
+      if (!next) throw new Error('Unexpected history request.');
+      return next();
+    });
+    const history = await expandHistory();
+    expect(await within(history).findByRole('alert')).toHaveTextContent(
+      'We could not load the correction history. The dossier remains available.',
+    );
+    expect(
+      screen.getByRole('heading', { name: dossier.displayName }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Correct Client dossier' }),
+    ).toBeEnabled();
+
+    fireEvent.click(
+      within(history).getByRole('button', { name: 'Retry correction history' }),
+    );
+    const [first] = await listedCorrections(history);
+    expect(
+      within(first ?? history).getByText(
+        formatApplicationDateTime(newest.occurredAt),
+      ),
+    ).toHaveAttribute('datetime', newest.occurredAt);
+
+    fireEvent.click(
+      within(history).getByRole('button', { name: 'Show older corrections' }),
+    );
+    expect(
+      await within(history).findByText(
+        'Older corrections could not be loaded. Try again.',
+      ),
+    ).toBeVisible();
+    expect(await listedCorrections(history)).toHaveLength(1);
+    expect(within(history).queryByText(/Director B/u)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(history).getByRole('button', { name: 'Show older corrections' }),
+    );
+    await waitFor(async () =>
+      expect(await listedCorrections(history)).toHaveLength(2),
+    );
+    const [, second] = await listedCorrections(history);
+    expect(
+      within(second ?? history).getByText(
+        formatApplicationDateTime(oldest.occurredAt),
+      ),
+    ).toHaveAttribute('datetime', oldest.occurredAt);
+    expect(requests).toEqual([
+      expect.stringMatching(/correction-history$/u),
+      expect.stringMatching(/correction-history$/u),
+      expect.stringMatching(/correction-history\?cursor=correction-2$/u),
+      expect.stringMatching(/correction-history\?cursor=correction-2$/u),
+    ]);
+  });
+
   it.each([403, 404])(
     'shows only a safe unavailable state for a %s history refusal',
     async (status) => {
