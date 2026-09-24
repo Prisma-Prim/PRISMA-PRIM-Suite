@@ -35,3 +35,32 @@ export interface WorkingDocumentDetail extends WorkingDocument {
   /** Present only for a current Project reader; absence never means unlinked. */
   projectAssociation?: DocumentProjectAssociation;
 }
+
+interface DocumentFieldChange {
+  before: string;
+  after: string;
+}
+
+/** One material correction as recorded; its values are history, not current. */
+export interface DocumentCorrectionHistoryEntry {
+  /** The working revision this correction produced. */
+  revision: number;
+  occurredAt: string;
+  actor: { displayName: string };
+  /**
+   * Only materially changed fields. `url` is present only for a current
+   * Representation reader, so a URL-only correction may carry no field.
+   */
+  changes: {
+    title?: DocumentFieldChange;
+    purpose?: DocumentFieldChange;
+    url?: DocumentFieldChange;
+  };
+}
+
+export interface DocumentCorrectionHistoryPage {
+  /** Newest revision first. */
+  corrections: DocumentCorrectionHistoryEntry[];
+  /** The last returned revision, only while an older correction exists. */
+  nextBeforeRevision: number | null;
+}

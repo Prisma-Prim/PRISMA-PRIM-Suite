@@ -7,7 +7,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -22,14 +22,21 @@ import {
   documentRepresentations,
   documentCorrectionCommands,
   documentVersions,
+  internalUsers,
   workingDocuments,
+  workspaceMemberships,
 } from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
 import type {
+  DocumentCorrectionHistoryEntry,
+  DocumentCorrectionHistoryPage,
   DocumentProjectAssociation,
   WorkingDocument,
   WorkingDocumentDetail,
 } from './documents.types.js';
+
+const CORRECTION_HISTORY_PAGE_SIZE = 20;
+const MAXIMUM_REVISION = 2147483647;
 
 @Injectable()
 export class DocumentsService {
@@ -251,6 +258,52 @@ export class DocumentsService {
     idValue: unknown,
     resolvedDossierIds: ReadonlyMap<string, string> | undefined,
   ): Promise<{ document: WorkingDocument; projectId: string | null }> {
+    const { companyId, row, client } = await this.readVisible(actor, idValue);
+    const clientDossierId = (
+      resolvedDossierIds ??
+      (await this.clientDossierIds(actor, [row.document.clientId]))
+    ).get(row.document.clientId);
+    const representation = {
+      id: row.representation.id,
+      kind: 'external-reference',
+      verification: 'unverified',
+    } as const;
+    const document: WorkingDocument = {
+      id: row.document.id,
+      workspaceId: row.document.workspaceId,
+      companyId,
+      clientId: row.document.clientId,
+      ...(clientDossierId ? { clientDossierId } : {}),
+      clientDisplayName: client.displayName,
+      title: row.document.title,
+      purpose: row.document.purpose,
+      type: 'questionnaire',
+      confidentiality: 'company-confidential',
+      createdAt: row.document.createdAt.toISOString(),
+      createdByMembershipId: row.document.createdByMembershipId,
+      workingRevision: row.document.workingRevision,
+      correction: client.status === 'active' ? 'allowed' : 'read-only',
+      version: {
+        id: row.version.id,
+        status: 'draft',
+        representation: canReadReference(actor)
+          ? {
+              ...representation,
+              access: 'granted',
+              url: row.representation.url,
+            }
+          : { ...representation, access: 'denied' },
+      },
+    };
+    return { document, projectId: row.document.projectId };
+  }
+  /**
+   * The detail read's authority and visibility boundary, with its refusals:
+   * Document metadata read, the live Registrar assignment, this Workspace and
+   * active Company, and the original Client's readable Company relationship,
+   * which a superseded original keeps.
+   */
+  private async readVisible(actor: ActorContext, idValue: unknown) {
     const companyId = requirePermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const id = requireUuid(idValue);
@@ -289,45 +342,107 @@ export class DocumentsService {
       actor,
       row.document.clientId,
     );
-    const clientDossierId = (
-      resolvedDossierIds ??
-      (await this.clientDossierIds(actor, [row.document.clientId]))
-    ).get(row.document.clientId);
-    const representation = {
-      id: row.representation.id,
-      kind: 'external-reference',
-      verification: 'unverified',
-    } as const;
-    const document: WorkingDocument = {
-      id: row.document.id,
-      workspaceId: row.document.workspaceId,
-      companyId,
-      clientId: row.document.clientId,
-      ...(clientDossierId ? { clientDossierId } : {}),
-      clientDisplayName: client.displayName,
-      title: row.document.title,
-      purpose: row.document.purpose,
-      type: 'questionnaire',
-      confidentiality: 'company-confidential',
-      createdAt: row.document.createdAt.toISOString(),
-      createdByMembershipId: row.document.createdByMembershipId,
-      workingRevision: row.document.workingRevision,
-      correction: client.status === 'active' ? 'allowed' : 'read-only',
-      version: {
-        id: row.version.id,
-        status: 'draft',
-        representation: actor.activeCompany?.documentPermissions?.includes(
-          'document.reference.read',
-        )
-          ? {
-              ...representation,
-              access: 'granted',
-              url: row.representation.url,
-            }
-          : { ...representation, access: 'denied' },
+    return { companyId, row, client };
+  }
+  /**
+   * A readable working Document's material correction ledger, newest revision
+   * first. Refusals are exactly the detail read's, and they precede query
+   * validation. Authority, visibility and the page share one read snapshot;
+   * nothing is written.
+   */
+  async correctionHistory(
+    actor: ActorContext,
+    request: { documentId: unknown; query: unknown },
+  ): Promise<DocumentCorrectionHistoryPage> {
+    return this.database.transaction(
+      async () => {
+        const { companyId, row } = await this.readVisible(
+          actor,
+          request.documentId,
+        );
+        const beforeRevision = correctionHistoryQuery(request.query);
+        const rows = await this.database.connection
+          .select({
+            revision: documentCorrectionCommands.revision,
+            occurredAt: documentCorrectionCommands.occurredAt,
+            actorDisplayName: internalUsers.displayName,
+            beforeTitle: documentCorrectionCommands.beforeTitle,
+            afterTitle: documentCorrectionCommands.afterTitle,
+            beforePurpose: documentCorrectionCommands.beforePurpose,
+            afterPurpose: documentCorrectionCommands.afterPurpose,
+            beforeUrl: documentCorrectionCommands.beforeUrl,
+            afterUrl: documentCorrectionCommands.afterUrl,
+          })
+          .from(documentCorrectionCommands)
+          .innerJoin(
+            workspaceMemberships,
+            and(
+              eq(
+                workspaceMemberships.workspaceId,
+                documentCorrectionCommands.workspaceId,
+              ),
+              eq(
+                workspaceMemberships.id,
+                documentCorrectionCommands.actorMembershipId,
+              ),
+            ),
+          )
+          .innerJoin(
+            internalUsers,
+            eq(internalUsers.id, workspaceMemberships.internalUserId),
+          )
+          .where(
+            and(
+              eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
+              eq(documentCorrectionCommands.companyId, companyId),
+              eq(documentCorrectionCommands.documentId, row.document.id),
+              // Unchanged receipts are retry evidence, not corrections.
+              eq(documentCorrectionCommands.outcome, 'corrected'),
+              beforeRevision === undefined
+                ? undefined
+                : lt(documentCorrectionCommands.revision, beforeRevision),
+            ),
+          )
+          // A material revision is unique per Document, so the order is total.
+          .orderBy(desc(documentCorrectionCommands.revision))
+          .limit(CORRECTION_HISTORY_PAGE_SIZE + 1);
+        const referenceReader = canReadReference(actor);
+        const corrections = rows
+          .slice(0, CORRECTION_HISTORY_PAGE_SIZE)
+          .map((correction): DocumentCorrectionHistoryEntry => {
+            const title = materialChange(
+              correction.beforeTitle,
+              correction.afterTitle,
+            );
+            const purpose = materialChange(
+              correction.beforePurpose,
+              correction.afterPurpose,
+            );
+            const url = materialChange(
+              correction.beforeUrl,
+              correction.afterUrl,
+            );
+            return {
+              revision: correction.revision,
+              occurredAt: correction.occurredAt.toISOString(),
+              actor: { displayName: correction.actorDisplayName },
+              changes: {
+                ...(title ? { title } : {}),
+                ...(purpose ? { purpose } : {}),
+                ...(referenceReader && url ? { url } : {}),
+              },
+            };
+          });
+        return {
+          corrections,
+          nextBeforeRevision:
+            rows.length > CORRECTION_HISTORY_PAGE_SIZE
+              ? (corrections.at(-1)?.revision ?? null)
+              : null,
+        };
       },
-    };
-    return { document, projectId: row.document.projectId };
+      { isolationLevel: 'repeatable read' },
+    );
   }
 
   async correct(
@@ -484,6 +599,42 @@ function requirePermission(
   )
     throw new ForbiddenException();
   return actor.activeCompany.id;
+}
+/** Only a current Representation reader receives reference URLs. */
+function canReadReference(actor: ActorContext): boolean {
+  return (
+    actor.activeCompany?.documentPermissions?.includes(
+      'document.reference.read',
+    ) === true
+  );
+}
+function materialChange(before: string, after: string) {
+  return before === after ? undefined : { before, after };
+}
+/**
+ * The only accepted query is an optional `beforeRevision`, the canonical
+ * decimal form of a positive working revision.
+ */
+function correctionHistoryQuery(value: unknown): number | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw invalidCorrectionHistoryQuery();
+  const query: Record<string, unknown> = Object.fromEntries(
+    Object.entries(value),
+  );
+  const keys = Object.keys(query);
+  if (keys.length === 0) return undefined;
+  const beforeRevision = query.beforeRevision;
+  if (
+    keys.length !== 1 ||
+    typeof beforeRevision !== 'string' ||
+    !/^[1-9][0-9]{0,9}$/u.test(beforeRevision) ||
+    Number(beforeRevision) > MAXIMUM_REVISION
+  )
+    throw invalidCorrectionHistoryQuery();
+  return Number(beforeRevision);
+}
+function invalidCorrectionHistoryQuery(): BadRequestException {
+  return new BadRequestException('Invalid correction history query.');
 }
 function registration(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value))
