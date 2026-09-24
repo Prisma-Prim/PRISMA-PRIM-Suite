@@ -226,6 +226,8 @@ it('opens a collapsed history on demand and loads older corrections by revision 
     expect.objectContaining({ documentId: 'document', beforeRevision: null }),
   ]);
   if (!newest || !older) throw new Error('Expected two corrections.');
+  expect(within(newest).getByText('Working revision 4')).toBeInTheDocument();
+  expect(within(older).getByText('Working revision 3')).toBeInTheDocument();
   expect(
     within(newest).getByText('Corrected by Document Registrar'),
   ).toBeInTheDocument();
@@ -261,6 +263,11 @@ it('opens a collapsed history on demand and loads older corrections by revision 
     null,
     '3',
   ]);
+  expect(
+    (await historyEntries()).map(
+      (entry) => within(entry).getByText(/^Working revision \d+$/u).textContent,
+    ),
+  ).toEqual(['Working revision 4', 'Working revision 3', 'Working revision 2']);
   expect(
     within(historySection()).queryByRole('button', {
       name: 'Load older corrections',
@@ -567,6 +574,8 @@ it('refreshes an open history from the ledger after a successful correction and 
     null,
   ]);
   const [newest] = await historyEntries();
+  if (!newest) throw new Error('Expected the new correction.');
+  expect(within(newest).getByText('Working revision 5')).toBeInTheDocument();
   expect(newest).toHaveTextContent(
     'Initial assessment questionnaire → changed to Corrected questionnaire',
   );
@@ -709,6 +718,12 @@ it('removes prior URLs immediately when Representation read is lost and shows a 
       .getAllByRole('term')
       .map((term) => term.textContent),
   ).toEqual(['Title']);
+  // A URL-only correction stays attributed: revision, time and actor remain.
+  expect(within(generic).getByText('Working revision 2')).toBeInTheDocument();
+  expect(generic.querySelector('time')).toHaveAttribute(
+    'datetime',
+    urlOnlyCorrection.occurredAt,
+  );
   expect(generic).toHaveTextContent('Corrected by Document Registrar');
   expect(generic).toHaveTextContent(
     'The changed details are not shown with your current access.',
@@ -732,6 +747,9 @@ it('hides URL values a response carries for a reader without Representation read
   await openDocument();
   fireEvent.click(historyToggle());
   const [, generic] = await historyEntries();
+  if (!generic) throw new Error('Expected the URL-only correction.');
+  expect(within(generic).getByText('Working revision 2')).toBeInTheDocument();
+  expect(generic).toHaveTextContent('Corrected by Document Registrar');
   expect(generic).toHaveTextContent(
     'The changed details are not shown with your current access.',
   );

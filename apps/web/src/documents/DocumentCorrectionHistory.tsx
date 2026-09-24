@@ -247,6 +247,9 @@ function HistoryContent({
             {history.corrections.map((correction) => (
               <li key={correction.revision}>
                 <p className="working-document-correction-history-attribution">
+                  <span className="working-document-correction-history-revision">
+                    {copy.resultingRevision(correction.revision)}
+                  </span>
                   <time dateTime={correction.occurredAt}>
                     {formatApplicationDateTime(correction.occurredAt)}
                   </time>

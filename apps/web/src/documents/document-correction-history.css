@@ -108,6 +108,7 @@
   font-size: 0.75rem;
 }
 
+.prisme-shell .working-document-correction-history-revision,
 .prisme-shell .working-document-correction-history-attribution time {
   color: var(--shell-ink);
   font-weight: 550;

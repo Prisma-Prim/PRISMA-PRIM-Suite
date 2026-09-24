@@ -13,6 +13,7 @@ export const documentCorrectionHistoryCopy = {
   retry: 'Retry reference correction history',
   unavailable: 'Correction history is not available with your current access.',
   list: 'Reference corrections, newest first',
+  resultingRevision: (revision: number) => `Working revision ${revision}`,
   correctedBy: (displayName: string) => `Corrected by ${displayName}`,
   changedTo: 'changed to',
   withheldChanges:

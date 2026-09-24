@@ -295,6 +295,9 @@ test('registers and reopens a Company-confidential working reference', async ({
     .getByRole('list', { name: 'Reference corrections, newest first' })
     .getByRole('listitem');
   await expect(entry).toHaveCount(1);
+  await expect(
+    entry.getByText('Working revision 2', { exact: true }),
+  ).toBeVisible();
   await expect(entry).toContainText('Corrected by Document Registrar');
   await expect(entry.locator('time')).toHaveAttribute(
     'datetime',
@@ -330,6 +333,9 @@ test('registers and reopens a Company-confidential working reference', async ({
     name: /reference correction history$/u,
   });
   await expect(classicToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(
+    classicHistory.getByText('Working revision 2', { exact: true }),
+  ).toBeVisible();
   await expect(classicHistory.getByRole('listitem')).toContainText(
     `${document.purpose} → changed to Prepare the corrected assessment`,
   );
