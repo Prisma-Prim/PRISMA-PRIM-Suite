@@ -322,8 +322,8 @@ export function ServiceCatalogueWorkspace({
     if (
       !codeGrammar.test(code) ||
       name.trim().length === 0 ||
-      name.length > 160 ||
-      definitionForm.description.length > 2_000
+      characterCount(name) > 160 ||
+      characterCount(definitionForm.description) > 2_000
     ) {
       setDefinitionFeedback({
         tone: 'alert',
@@ -404,7 +404,7 @@ export function ServiceCatalogueWorkspace({
             (definition) => definition.id === offeringForm.serviceDefinitionId,
           )
         : undefined;
-    if (!selected || offeringForm.commercialLabel.length > 160) {
+    if (!selected || characterCount(offeringForm.commercialLabel) > 160) {
       setOfferingFeedback({ tone: 'alert', message: copy.offeringValidation });
       return;
     }
@@ -543,7 +543,6 @@ export function ServiceCatalogueWorkspace({
                   }))
                 }
                 required
-                maxLength={160}
               />
             </div>
             <div className="service-catalogue-field">
@@ -559,7 +558,6 @@ export function ServiceCatalogueWorkspace({
                     description: event.target.value,
                   }))
                 }
-                maxLength={2000}
               />
             </div>
             <button type="submit" disabled={pending}>
@@ -645,7 +643,6 @@ export function ServiceCatalogueWorkspace({
                     commercialLabel: event.target.value,
                   }))
                 }
-                maxLength={160}
               />
             </div>
             <small>{copy.commercialLabelHelp}</small>
@@ -820,6 +817,12 @@ function readyPage<T>({
     olderPage: 'idle',
     ...(nextCursor === undefined ? {} : { nextCursor }),
   };
+}
+
+// Counts Unicode code points like the server limits. A string's length and a
+// browser maxLength count UTF-16 code units and double supplementary ones.
+function characterCount(value: string): number {
+  return Array.from(value).length;
 }
 
 function hasErrorCode(

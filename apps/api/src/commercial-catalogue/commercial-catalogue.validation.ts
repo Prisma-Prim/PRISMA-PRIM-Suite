@@ -83,7 +83,7 @@ function requiredString(
   if (
     typeof value !== 'string' ||
     value.trim().length === 0 ||
-    value.length > maximum
+    characterCount(value) > maximum
   )
     invalid(field, `Enter between 1 and ${maximum} characters.`);
   return value;
@@ -95,9 +95,15 @@ function optionalString(
   maximum: number,
 ): string | null {
   if (value === undefined || value === null) return null;
-  if (typeof value !== 'string' || value.length > maximum)
+  if (typeof value !== 'string' || characterCount(value) > maximum)
     invalid(field, `Enter at most ${maximum} characters.`);
   return value;
+}
+
+// The PRD limits and PostgreSQL length() count Unicode code points, whereas a
+// string's length counts UTF-16 code units and doubles supplementary ones.
+function characterCount(value: string): number {
+  return Array.from(value).length;
 }
 
 function invalid(field: string, message: string): never {

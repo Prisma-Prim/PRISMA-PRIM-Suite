@@ -812,6 +812,85 @@ withPostgres('Company Service Catalogue REST', () => {
     });
   });
 
+  it('counts supplementary characters as PostgreSQL does at every text limit', async () => {
+    const setup = await prepared();
+    const supplementary = '😀';
+    const oversizedCases: Array<[unknown, string]> = [
+      [{ code: 'EMOJI', name: supplementary.repeat(161) }, 'name'],
+      [
+        {
+          code: 'EMOJI',
+          name: 'Fine',
+          description: supplementary.repeat(2001),
+        },
+        'description',
+      ],
+    ];
+    for (const [body, field] of oversizedCases) {
+      const response = await post(
+        DEFINITIONS,
+        setup.company.id,
+        body,
+        crypto.randomUUID(),
+      );
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field,
+      });
+    }
+    const created = definitionResult(
+      await command(
+        DEFINITIONS,
+        {
+          code: 'EMOJI',
+          name: supplementary.repeat(160),
+          description: supplementary.repeat(2000),
+        },
+        'emoji-definition',
+        setup.company.id,
+      ),
+    );
+    expect(created.definition).toMatchObject({
+      name: supplementary.repeat(160),
+      description: supplementary.repeat(2000),
+    });
+    const oversizedLabel = await post(
+      OFFERINGS,
+      setup.company.id,
+      {
+        serviceDefinitionId: created.definition.id,
+        commercialLabel: supplementary.repeat(161),
+      },
+      crypto.randomUUID(),
+    );
+    expect(oversizedLabel.status).toBe(400);
+    expect(await oversizedLabel.json()).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      field: 'commercialLabel',
+    });
+    const offered = offeringResult(
+      await command(
+        OFFERINGS,
+        {
+          serviceDefinitionId: created.definition.id,
+          commercialLabel: supplementary.repeat(160),
+        },
+        'emoji-offering',
+        setup.company.id,
+      ),
+    );
+    expect(offered.offering).toMatchObject({
+      commercialLabel: supplementary.repeat(160),
+    });
+    await expectCounts({
+      definitions: 1,
+      offerings: 1,
+      receipts: 2,
+      events: 2,
+    });
+  });
+
   it('pages newest first with a stable bounded cursor and no cross-Company metadata', async () => {
     const setup = await prepared();
     for (let index = 0; index < 27; index += 1) {

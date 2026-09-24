@@ -5,6 +5,10 @@ import {
   readCreateServiceDefinitionCommand,
 } from './commercial-catalogue.validation.js';
 
+// One supplementary code point is two UTF-16 code units in a JavaScript string.
+const supplementary = '😀';
+const definitionId = '00000000-0000-4000-8000-000000000001';
+
 describe('Service Definition command validation', () => {
   it('accepts the code grammar and keeps optional description absent as null', () => {
     expect(
@@ -17,6 +21,16 @@ describe('Service Definition command validation', () => {
       name: 'ISO 9001 gap analysis',
       description: null,
     });
+  });
+
+  it('counts each supplementary character once at the name and description limits', () => {
+    const body = {
+      code: 'EMOJI',
+      name: supplementary.repeat(160),
+      description: supplementary.repeat(2_000),
+    };
+
+    expect(readCreateServiceDefinitionCommand(body)).toEqual(body);
   });
 
   it.each([
@@ -33,6 +47,11 @@ describe('Service Definition command validation', () => {
       'description',
     ],
     [{ code: 'OK', name: 'Fine', description: 42 }, 'description'],
+    [{ code: 'OK', name: supplementary.repeat(161) }, 'name'],
+    [
+      { code: 'OK', name: 'Fine', description: supplementary.repeat(2001) },
+      'description',
+    ],
     [{ code: 'OK', name: 'Fine', price: '10' }, 'definition'],
     ['ISO', 'definition'],
   ])('rejects %j on field %s', (body, field) => {
@@ -63,19 +82,35 @@ describe('Company Service Offering command validation', () => {
     });
   });
 
+  it('counts each supplementary character once at the commercial label limit', () => {
+    const body = {
+      serviceDefinitionId: definitionId,
+      commercialLabel: supplementary.repeat(160),
+    };
+
+    expect(readCreateCompanyServiceOfferingCommand(body)).toEqual(body);
+  });
+
   it.each([
     [{}, 'serviceDefinitionId'],
     [{ serviceDefinitionId: 'nope' }, 'serviceDefinitionId'],
     [
       {
-        serviceDefinitionId: '00000000-0000-4000-8000-000000000001',
+        serviceDefinitionId: definitionId,
         commercialLabel: 'x'.repeat(161),
       },
       'commercialLabel',
     ],
     [
       {
-        serviceDefinitionId: '00000000-0000-4000-8000-000000000001',
+        serviceDefinitionId: definitionId,
+        commercialLabel: supplementary.repeat(161),
+      },
+      'commercialLabel',
+    ],
+    [
+      {
+        serviceDefinitionId: definitionId,
         unitAmount: '100',
       },
       'offering',

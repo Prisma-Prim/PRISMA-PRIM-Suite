@@ -57,6 +57,9 @@ const offering = {
   createdAt: '2026-09-20T10:05:00.000Z',
 };
 
+// One supplementary code point is two UTF-16 code units in a JavaScript string.
+const supplementary = '😀';
+
 type Responder = (call: number) => Response;
 
 function stubApi(routes: Record<string, Responder>) {
@@ -280,6 +283,111 @@ describe('ServiceCatalogueWorkspace', () => {
         'Select a Service Definition and keep the commercial label at most 160 characters.',
       ),
     ).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts each supplementary character once and sends values at every limit', async () => {
+    const fetchMock = stubApi({
+      [route('GET', 'service-definitions')]: () =>
+        Response.json({ items: [definition] }),
+      [route('GET', 'offerings')]: () => Response.json({ items: [] }),
+      [route('POST', 'service-definitions')]: () =>
+        Response.json({ outcome: 'CREATED', definition }, { status: 201 }),
+      [route('POST', 'offerings')]: () =>
+        Response.json({ outcome: 'CREATED', offering }, { status: 201 }),
+    });
+    renderWorkspace();
+    await screen.findByRole('list', { name: 'Service Definitions' });
+    // A browser maxLength counts UTF-16 code units and would truncate
+    // supplementary characters before the server's code point limit.
+    for (const label of ['Service name', 'Description', 'Commercial label'])
+      expect(screen.getByLabelText(label)).not.toHaveAttribute('maxlength');
+
+    const name = supplementary.repeat(160);
+    const description = supplementary.repeat(2_000);
+    fillDefinition('EMOJI', name);
+    fireEvent.change(screen.getByLabelText('Description'), {
+      target: { value: description },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Service Definition ISO-9001_GAP recorded.',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/commercial-catalogue/service-definitions',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ code: 'EMOJI', name, description }),
+      }),
+    );
+
+    const commercialLabel = supplementary.repeat(160);
+    fireEvent.change(screen.getByLabelText('Commercial label'), {
+      target: { value: commercialLabel },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
+    expect(
+      await screen.findByText(
+        'Offering for ISO 9001 gap analysis recorded as available.',
+      ),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/commercial-catalogue/offerings',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          serviceDefinitionId: definition.id,
+          commercialLabel,
+        }),
+      }),
+    );
+  });
+
+  it('rejects one supplementary character over each limit before sending and keeps the entered values', async () => {
+    const fetchMock = stubApi({
+      [route('GET', 'service-definitions')]: () =>
+        Response.json({ items: [definition] }),
+      [route('GET', 'offerings')]: () => Response.json({ items: [] }),
+    });
+    renderWorkspace();
+    await screen.findByRole('list', { name: 'Service Definitions' });
+
+    fillDefinition('EMOJI', supplementary.repeat(161));
+    fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a service code of 1 to 40 characters',
+    );
+    expect(screen.getByLabelText('Service name')).toHaveValue(
+      supplementary.repeat(161),
+    );
+
+    fillDefinition('EMOJI', supplementary.repeat(160));
+    fireEvent.change(screen.getByLabelText('Description'), {
+      target: { value: supplementary.repeat(2_001) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a service code of 1 to 40 characters',
+    );
+    expect(screen.getByLabelText('Description')).toHaveValue(
+      supplementary.repeat(2_001),
+    );
+
+    fireEvent.change(screen.getByLabelText('Service Definition'), {
+      target: { value: definition.id },
+    });
+    fireEvent.change(screen.getByLabelText('Commercial label'), {
+      target: { value: supplementary.repeat(161) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
+    expect(
+      screen.getByText(
+        'Select a Service Definition and keep the commercial label at most 160 characters.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Commercial label')).toHaveValue(
+      supplementary.repeat(161),
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
