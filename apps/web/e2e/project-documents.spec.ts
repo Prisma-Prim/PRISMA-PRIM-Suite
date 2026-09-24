@@ -68,6 +68,9 @@ async function installProjectDocumentsFixture(page: Page) {
     mutable: boolean;
     revision: number;
     reads: number;
+    /** Other readable Documents, listed before the linkable one. */
+    others: WorkingDocument[];
+    detailReads: string[];
     commands: { body: unknown; key: string | undefined }[];
     write: (route: Route) => Promise<void>;
   } = {
@@ -81,6 +84,8 @@ async function installProjectDocumentsFixture(page: Page) {
     mutable: true,
     revision: 0,
     reads: 0,
+    others: [],
+    detailReads: [],
     commands: [],
     write: (route) => route.fulfill({ status: 500 }),
   };
@@ -144,9 +149,22 @@ async function installProjectDocumentsFixture(page: Page) {
       });
       return state.write(route);
     }
+    const other = state.others.find(
+      (document) => path === `/api/documents/${document.id}`,
+    );
+    if (other) {
+      state.detailReads.push(other.id);
+      return route.fulfill({
+        json: {
+          ...other,
+          projectAssociation: { state: 'unlinked' },
+        } satisfies WorkingDocumentDetail,
+      });
+    }
     if (path === `/api/documents/${workingDocument.id}`) {
       expect(request.method()).toBe('GET');
       expect(request.headers()['x-company-context-id']).toBe(company.id);
+      state.detailReads.push(workingDocument.id);
       if (!state.permissions?.includes('document.read'))
         return route.fulfill({ status: 403 });
       return route.fulfill({
@@ -162,7 +180,7 @@ async function installProjectDocumentsFixture(page: Page) {
       });
     }
     if (path === '/api/documents')
-      return route.fulfill({ json: [state.document] });
+      return route.fulfill({ json: [...state.others, state.document] });
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -498,6 +516,165 @@ test('shows the current Project association on the opened Working Document', asy
   await capture(page, testInfo, 'working-document-project-unlinked.png');
 });
 
+for (const frame of ['classic', 'prisme'] as const)
+  test(`${frame} opens the exact linked working Document from Project detail`, async ({
+    page,
+  }, testInfo) => {
+    const state = await installProjectDocumentsFixture(page);
+    state.linked = true;
+    state.revision = 1;
+    // Another readable Document shares the linked one's title.
+    const homonym = {
+      ...workingDocument,
+      id: 'document-homonym-363',
+      purpose: 'Prepare a different Client interview',
+      createdAt: '2026-09-18T00:00:00.000Z',
+    } satisfies WorkingDocument;
+    state.others = [homonym];
+    const narrow = frame === 'prisme' && testInfo.project.name === 'narrow';
+    await page.goto(`/?frame=${frame}#projects`);
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page
+      .getByLabel('Active Company', { exact: true })
+      .selectOption(company.id);
+    if (narrow)
+      await page.getByRole('button', { name: 'Close navigation' }).click();
+    await page.goto(`/?frame=${frame}#projects`);
+    await page
+      .getByRole('button', {
+        name: `${project.title} Client: ${project.clientDisplayName}`,
+        exact: true,
+      })
+      .click();
+    if (frame === 'prisme')
+      await page
+        .getByRole('tab', { name: 'Working Documents', exact: true })
+        .click();
+    const projectDocuments = page.locator('.project-documents');
+    const linkedRow = projectDocuments.getByRole('listitem').filter({
+      has: page.getByRole('heading', {
+        name: workingDocument.title,
+        exact: true,
+      }),
+    });
+    const openDocument = linkedRow.getByRole('button', {
+      name: 'Open Document',
+      exact: true,
+    });
+    await expect(openDocument).toBeVisible();
+    await capture(page, testInfo, `project-document-open-${frame}-row.png`);
+
+    // Keyboard activation moves focus to the Documents section.
+    await openDocument.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#documents')).toBeFocused();
+    const detail = page.locator('.working-documents').getByRole('article');
+    await expect(
+      detail.getByRole('heading', { name: workingDocument.title }),
+    ).toBeVisible();
+    await expect(
+      detail.getByText(workingDocument.purpose, { exact: true }),
+    ).toBeVisible();
+    await expect(detail.getByText(homonym.purpose)).toHaveCount(0);
+    await expect(detail.getByText('Registration time')).toBeVisible();
+    await expect(projectRow(detail).getByRole('definition')).toHaveText(
+      project.title,
+    );
+    expect(state.detailReads).toEqual([workingDocument.id]);
+    expect(page.url()).not.toContain(workingDocument.id);
+    expect(
+      JSON.stringify(await page.evaluate(() => history.state)),
+    ).not.toContain(workingDocument.id);
+    expect(state.commands).toHaveLength(0);
+    await capture(page, testInfo, `project-document-open-${frame}-detail.png`);
+
+    // The Project detail and its linked row stay mounted for the return.
+    if (frame === 'prisme') await navigate(page, testInfo, 'Projects');
+    await expect(
+      page.getByRole('heading', { name: project.title, exact: true }),
+    ).toBeVisible();
+    await expect(openDocument).toBeVisible();
+  });
+
+for (const frame of ['classic', 'prisme'] as const)
+  test(`opens the linked Project of a superseded original Client from its Working Document in ${frame}`, async ({
+    page,
+  }, testInfo) => {
+    const state = await installProjectDocumentsFixture(page);
+    state.linked = true;
+    state.revision = 1;
+    state.mutable = false;
+    const projectReads: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === `/api/projects/${project.id}`)
+        projectReads.push(request.url());
+    });
+    const narrow = testInfo.project.name === 'narrow';
+    await page.goto('/?frame=prisme#projects');
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    const activeCompany = page.getByLabel('Active Company', { exact: true });
+    await activeCompany.selectOption(company.id);
+    await expect(activeCompany).toBeEnabled();
+    await expect(activeCompany.locator('option:checked')).toHaveText(
+      company.displayName,
+    );
+    if (narrow)
+      await page.getByRole('button', { name: 'Close navigation' }).click();
+    await page.goto(`/?frame=${frame}#documents`);
+
+    const workspace = page.locator('.working-documents');
+    await workspace
+      .getByRole('button', { name: workingDocument.title, exact: true })
+      .click();
+    const detail = workspace.getByRole('article');
+    await expect(projectRow(detail).getByRole('definition')).toHaveText(
+      project.title,
+    );
+    const openLinkedProject = detail.getByRole('button', {
+      name: 'Open Project',
+      exact: true,
+    });
+    await expect(openLinkedProject).toBeVisible();
+    await capture(page, testInfo, `working-document-open-project-${frame}.png`);
+    expect(projectReads).toHaveLength(0);
+
+    await openLinkedProject.focus();
+    await page.keyboard.press('Enter');
+
+    const projects = page.locator('.project-workspace');
+    await expect(projects).toBeFocused();
+    await expect(page).toHaveURL(/#projects$/u);
+    expect(page.url()).not.toContain(project.id);
+    const opened = projects.getByRole('article', { name: project.title });
+    await expect(opened).toBeVisible();
+    await expect(
+      opened.getByText(`Client: ${project.clientDisplayName}`),
+    ).toBeVisible();
+    await expect(projects).not.toContainText(project.id);
+    if (frame === 'prisme') {
+      await expect(
+        projects.getByRole('tab', { name: 'Tasks', exact: true }),
+      ).toHaveAttribute('aria-selected', 'true');
+      await projects
+        .getByRole('tab', { name: 'Working Documents', exact: true })
+        .click();
+    }
+    const projectDocuments = projects.locator('.project-documents');
+    await expect(
+      projectDocuments.getByText(
+        'The original Client is no longer active. Existing attachments are read-only.',
+      ),
+    ).toBeVisible();
+    await expect(
+      projectDocuments.getByRole('button', { name: /Attach|Remove/ }),
+    ).toHaveCount(0);
+    expect(projectReads).toHaveLength(1);
+    expect(state.commands).toHaveLength(0);
+    await capture(page, testInfo, `document-project-open-${frame}.png`);
+  });
+
 test('shows permitted metadata without URL access or mutation controls', async ({
   page,
 }, testInfo) => {
@@ -562,6 +739,13 @@ test('keeps a superseded original Client attachment readable and read-only', asy
   page,
 }, testInfo) => {
   const state = await installProjectDocumentsFixture(page);
+  state.permissions = [
+    'document.read',
+    'document.reference.read',
+    'document.project.manage',
+    'document.correct',
+  ];
+  state.document = { ...workingDocument, correction: 'read-only' };
   state.linked = true;
   state.revision = 1;
   state.mutable = false;
@@ -582,4 +766,15 @@ test('keeps a superseded original Client attachment readable and read-only', asy
   ).toHaveCount(0);
   expect(state.commands).toHaveLength(0);
   await capture(page, testInfo, 'project-documents-read-only.png');
+
+  // The opened Document stays readable, and its correction stays read-only.
+  await documents
+    .getByRole('button', { name: 'Open Document', exact: true })
+    .click();
+  const detail = page.locator('.working-documents').getByRole('article');
+  await expect(detail.getByText(workingDocument.purpose)).toBeVisible();
+  await expect(
+    detail.getByRole('button', { name: 'Edit reference' }),
+  ).toHaveCount(0);
+  expect(state.commands).toHaveLength(0);
 });
