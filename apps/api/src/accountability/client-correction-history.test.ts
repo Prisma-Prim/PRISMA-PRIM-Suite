@@ -22,6 +22,24 @@ describe('stored Client correction metadata', () => {
     expect(readClientCorrectionChanges({ changes })).toEqual(changes);
   });
 
+  it('returns stored Contact communication preferences exactly as stored', () => {
+    const changes = {
+      contacts: {
+        before: [{ name: 'Ion Demo', telephone: '+373 60 000 372' }],
+        after: [
+          {
+            name: 'Ion Demo',
+            telephone: '+373 60 000 372',
+            communicationPreferences:
+              'Romanian; email preferred\nweekday mornings',
+          },
+        ],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
   it.each([
     ['no metadata object', null],
     ['no changes', {}],
@@ -47,6 +65,33 @@ describe('stored Client correction metadata', () => {
     [
       'an unknown Contact field',
       { changes: { contacts: pair([], [{ name: 'A', role: 'private' }]) } },
+    ],
+    [
+      'null Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', communicationPreferences: null }]),
+        },
+      },
+    ],
+    [
+      'blank Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([{ name: 'A', communicationPreferences: ' ' }], []),
+        },
+      },
+    ],
+    [
+      'over-long Contact communication preferences',
+      {
+        changes: {
+          contacts: pair(
+            [],
+            [{ name: 'A', communicationPreferences: 'x'.repeat(1_001) }],
+          ),
+        },
+      },
     ],
   ])('fails closed on %s without echoing stored values', (_name, metadata) => {
     expect(() => readClientCorrectionChanges(metadata)).toThrow(

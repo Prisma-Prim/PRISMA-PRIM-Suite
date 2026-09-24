@@ -40,8 +40,40 @@ describe('Client correction history response', () => {
     });
   });
 
+  it('keeps Contact communication preferences exactly as returned', () => {
+    const contacts = {
+      before: [{ name: 'Ion Demo' }],
+      after: [
+        {
+          name: 'Ion Demo',
+          telephone: '+373 60 000 372',
+          communicationPreferences: 'Romanian\nweekday mornings',
+        },
+      ],
+    };
+
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
   it.each([
     ['an empty change set', { ...correction, changes: {} }],
+    [
+      'non-text Contact communication preferences',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'Ion Demo', communicationPreferences: null }],
+          },
+        },
+      },
+    ],
     [
       'an unknown field',
       { ...correction, changes: { legalEntity: { before: null, after: 'X' } } },

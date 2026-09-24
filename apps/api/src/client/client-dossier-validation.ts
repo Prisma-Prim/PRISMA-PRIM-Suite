@@ -9,7 +9,15 @@ const MAXIMUM_SHORT_TEXT_LENGTH = 500;
 const MAXIMUM_LONG_TEXT_LENGTH = 2_000;
 const MAXIMUM_EMAIL_LENGTH = 320;
 const MAXIMUM_CONTACTS = 50;
+/** Provisional MVP bound, counted in Unicode code points rather than UTF-16 units. */
+const MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS = 1_000;
 const MAXIMUM_INCREMENTABLE_VERSION = 2_147_483_646;
+const CONTACT_FIELDS: ReadonlySet<string> = new Set([
+  'name',
+  'telephone',
+  'email',
+  'communicationPreferences',
+]);
 
 export interface NormalizedDossierFields {
   displayName: string;
@@ -120,6 +128,28 @@ export function normalizeCorrection(
   return changes;
 }
 
+/**
+ * Proves a Contact read back from storage or history has the shape this
+ * module writes. Delivered text fields stay as stored; communication
+ * preferences must already be canonical. Readers fail closed when this
+ * returns false.
+ */
+export function isStoredClientContact(value: unknown): value is ClientContact {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((field) => !CONTACT_FIELDS.has(field))
+  )
+    return false;
+  const { name, telephone, email, communicationPreferences } = value;
+  return (
+    typeof name === 'string' &&
+    (telephone === undefined || typeof telephone === 'string') &&
+    (email === undefined || typeof email === 'string') &&
+    (communicationPreferences === undefined ||
+      isCanonicalCommunicationPreferences(communicationPreferences))
+  );
+}
+
 export function requireVersion(value: unknown): number {
   if (
     !Number.isInteger(value) ||
@@ -204,7 +234,7 @@ function normalizeContacts(value: unknown): ClientContact[] {
       throw new BadRequestException('Each Client contact must be an object.');
     }
     const unknown = Object.keys(contact).find(
-      (field) => !['name', 'telephone', 'email'].includes(field),
+      (field) => !CONTACT_FIELDS.has(field),
     );
     if (unknown) {
       throw new BadRequestException('Unknown Client contact field.');
@@ -216,12 +246,48 @@ function normalizeContacts(value: unknown): ClientContact[] {
       MAXIMUM_SHORT_TEXT_LENGTH,
     );
     const email = optionalContactEmail(contact.email);
+    const communicationPreferences = optionalCommunicationPreferences(
+      contact.communicationPreferences,
+    );
     return {
       name,
       ...(telephone === null ? {} : { telephone }),
       ...(email === null ? {} : { email }),
+      ...(communicationPreferences === null
+        ? {}
+        : { communicationPreferences }),
     };
   });
+}
+
+/** Absent or blank means none; unlike delivered Contact text, null is rejected. */
+function optionalCommunicationPreferences(value: unknown): string | null {
+  if (value === undefined) return null;
+  if (typeof value !== 'string') {
+    throw new BadRequestException(
+      'Client contact communication preferences must be text.',
+    );
+  }
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if ([...normalized].length > MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS) {
+    throw new BadRequestException(
+      'Client contact communication preferences are too long.',
+    );
+  }
+  return normalized;
+}
+
+/** Stored preferences are canonical when normalizing them again changes nothing. */
+function isCanonicalCommunicationPreferences(value: unknown): boolean {
+  try {
+    return (
+      typeof value === 'string' &&
+      optionalCommunicationPreferences(value) === value
+    );
+  } catch {
+    return false;
+  }
 }
 
 function requireContactName(value: unknown): string {

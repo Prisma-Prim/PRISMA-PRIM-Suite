@@ -8,6 +8,8 @@ export interface ClientContact {
   name: string;
   telephone?: string;
   email?: string;
+  /** Descriptive shared text, trimmed and never blank. It grants nothing. */
+  communicationPreferences?: string;
 }
 
 export interface ClientDossierView extends ClientAccountView {

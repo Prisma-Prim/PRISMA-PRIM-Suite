@@ -1553,6 +1553,10 @@ components:
           type: string
           format: email
           maxLength: 320
+        communicationPreferences:
+          type: string
+          description: Descriptive plain text about practical communication preferences, such as language, preferred channel or suitable times. Input is trimmed and blank input is omitted, so a returned value is never blank; null is rejected. The length limit counts Unicode code points. The value sends no message and records no consent or decision authority.
+          maxLength: 1000
     ClientAccountView:
       type: object
       additionalProperties: false

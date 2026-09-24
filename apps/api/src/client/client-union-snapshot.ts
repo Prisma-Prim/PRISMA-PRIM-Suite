@@ -3,7 +3,10 @@ import {
   clientAccounts,
   clientCompanyRelationships,
 } from '../database/schema/index.js';
-import { normalizeRegistration } from './client-dossier-validation.js';
+import {
+  isStoredClientContact,
+  normalizeRegistration,
+} from './client-dossier-validation.js';
 import { unionRecord } from './client-union-validation.js';
 
 type ClientRow = typeof clientAccounts.$inferSelect;
@@ -80,15 +83,7 @@ function isClient(value: unknown): value is UnionClientSnapshot {
     });
     return (
       Array.isArray(input.contacts) &&
-      input.contacts.every((value: unknown) => {
-        const contact = unionRecord(value);
-        return (
-          typeof contact.name === 'string' &&
-          (contact.telephone === undefined ||
-            typeof contact.telephone === 'string') &&
-          (contact.email === undefined || typeof contact.email === 'string')
-        );
-      })
+      input.contacts.every(isStoredClientContact)
     );
   } catch {
     return false;

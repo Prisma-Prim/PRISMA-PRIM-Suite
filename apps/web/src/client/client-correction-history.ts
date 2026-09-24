@@ -86,6 +86,9 @@ function contacts(value: unknown): ClientContact[] {
         ? {}
         : { telephone: text(contact.telephone) }),
       ...(contact.email === undefined ? {} : { email: text(contact.email) }),
+      ...(contact.communicationPreferences === undefined
+        ? {}
+        : { communicationPreferences: text(contact.communicationPreferences) }),
     };
   });
 }

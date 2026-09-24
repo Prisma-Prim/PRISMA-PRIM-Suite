@@ -621,6 +621,74 @@ describeWithPostgres('Governed Client union REST journey', () => {
     expect(archived.rows).toEqual([{ status: 'archived' }]);
   });
 
+  it('carries every source Contact communication preference through comparison, union and reversal', async () => {
+    const alex = {
+      name: 'Alex',
+      communicationPreferences: 'Romanian; email preferred\nweekday mornings',
+    };
+    const dana = {
+      name: 'Dana',
+      email: 'dana@example.test',
+      communicationPreferences: 'Telefon după ora 14:00 \u{1F600}',
+    };
+    expect(
+      (
+        await request(`/clients/${first}`, 'PATCH', {
+          expectedVersion: 1,
+          contacts: [alex],
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          `/clients/${second}`,
+          'PATCH',
+          { expectedVersion: 1, contacts: [dana] },
+          companyB,
+        )
+      ).status,
+    ).toBe(200);
+    const comparison = await request(`/clients/${first}/union-reviews`, 'POST');
+    expect(comparison.status).toBe(201);
+    expect((await body(comparison)).clients).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: first, contacts: [alex] }),
+        expect.objectContaining({ id: second, contacts: [dana] }),
+      ]),
+    );
+
+    const projection = await unite();
+
+    for (const companyId of [companyA, companyB]) {
+      const dossier = await body(
+        await request(`/clients/${first}`, 'GET', undefined, companyId),
+      );
+      expect(dossier.contacts).toEqual(expect.arrayContaining([alex, dana]));
+      expect(dossier.contacts).toHaveLength(2);
+    }
+    expect(
+      (await body(await request(`/client-union-operations/${projection}`)))
+        .originals,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: first, contacts: [alex] }),
+        expect.objectContaining({ id: second, contacts: [dana] }),
+      ]),
+    );
+    expect((await reverse(projection)).status).toBe(201);
+    expect((await body(await request(`/clients/${first}`))).contacts).toEqual([
+      alex,
+    ]);
+    expect(
+      (
+        await body(
+          await request(`/clients/${second}`, 'GET', undefined, companyB),
+        )
+      ).contacts,
+    ).toEqual([dana]);
+  });
+
   it('blocks changed dossiers, inactive Companies and empty or foreign review scope safely', async () => {
     const reference = await review();
     expect(

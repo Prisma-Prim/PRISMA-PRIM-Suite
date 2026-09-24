@@ -73,7 +73,7 @@ The delivered #146 / PR #147 enriched slice approved and implemented these share
 - business activity;
 - the fact that the Client also works with another involved Company.
 
-These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require.
+These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require. Section 19 adds optional descriptive Contact communication preferences without changing Contact visibility.
 
 ## 8. Permissions
 
@@ -235,3 +235,15 @@ Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential
 ## 17. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes automatic duplicate handling, broad cross-Company visibility or any runtime rule by itself. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
+
+## 19. Approved provisional Contact communication preferences (#372)
+
+Iurie's session 94 answer ([#81 comment 5308702257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308702257), item 476) asks to record each Contact's practical communication preferences: preferred channel, language, suitable time windows and practical working preferences. Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this slice records them as one optional descriptive Contact field. The field shape, normalization and bound below are delegated provisional choices, not a new verbatim Iurie rule. Iurie validates or corrects them against a demonstration.
+
+Each shared Contact may record optional free-text `communicationPreferences`, for example “Romanian; email preferred; weekday mornings”. The server trims leading and trailing whitespace, omits a value that is blank after trimming and preserves the internal text and line breaks. The trimmed value holds at most 1000 Unicode code points, so a character outside the Basic Multilingual Plane counts once. A non-text, `null` or longer value is a validation error that commits nothing. There is no prescribed channel or language vocabulary, mandatory value, structured schedule or time-zone conversion. Readers present the value as plain text, never as markup or an executable link.
+
+The field belongs to the shared Contact defined in section 7. It is shared general data, not a private Company note. It is visible exactly where Contacts are visible, to current authorized readers of the dossier and its correction history, and it is not added to Client lists, search, counts or unrelated Activity summaries. Contacts recorded before this slice remain valid without it.
+
+Enriched registration and correction accept the field under the existing `client.create` and `client.update` authority; minimal registration still rejects Contacts. A correction submits the complete Contact list, so every other Contact field is resubmitted unchanged, and a blank value clears that Contact's preferences explicitly. A change is an ordinary material dossier correction. It records one `client.corrected` event with previous and new Contact values and keeps the delivered expected-version, no-op, idempotency, correction-history, duplicate-review and union/reversal rules. It adds no permission, route, event family, migration or storage scope.
+
+Excluded, and not presented as business fact: sending, scheduling or integrating communications; capturing or inferring consent; and any decision or approval authority. Contact position and decision roles are owned separately by #366. Relationships among Contacts, a departed Contact and related alerts remain outside this slice.
