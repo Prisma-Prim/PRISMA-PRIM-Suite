@@ -329,8 +329,11 @@ export class ClientDossierService {
           inArray(clientAccounts.status, options.statuses ?? ['active']),
         ),
       );
+    // Lock as the non-key dossier UPDATE does. FOR UPDATE also conflicts with
+    // the KEY SHARE lock a racing command's receipt foreign key already holds
+    // on this row, so two reserved corrections would deadlock, not queue.
     return options.lock
-      ? (await query.for('update', { of: clientAccounts }).limit(1))[0]
+      ? (await query.for('no key update', { of: clientAccounts }).limit(1))[0]
       : (await query.limit(1))[0];
   }
 
