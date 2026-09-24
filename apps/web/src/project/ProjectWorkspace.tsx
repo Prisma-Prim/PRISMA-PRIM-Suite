@@ -1,4 +1,5 @@
 import { ProjectDocuments } from './ProjectDocuments';
+import { ProjectResponsible } from './ProjectResponsible';
 import { ProjectTasks } from './ProjectTasks';
 import {
   useContext,
@@ -672,6 +673,12 @@ export function ProjectWorkspace({
               )}
             </>
           )}
+          <ProjectResponsible
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            onActivityRecorded={onActivityRecorded}
+          />
           {isPrisme && (
             <div className="project-detail-tabs" role="tablist">
               <button

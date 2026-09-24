@@ -258,7 +258,12 @@ it('shows the persisted registration time of each loaded Project row and of the 
     'datetime',
     reopenedProject.createdAt,
   );
-  expect(fetch).toHaveBeenCalledTimes(readsAfterLoad + 1);
+  // The responsible member row reads its own sub-resource.
+  expect(
+    fetch.mock.calls
+      .slice(readsAfterLoad)
+      .filter(([url]) => !url.endsWith('/responsible')),
+  ).toEqual([['/api/projects/project', expect.anything()]]);
 });
 
 it('filters loaded Projects by visible title or Client without requesting again or changing server order', async () => {

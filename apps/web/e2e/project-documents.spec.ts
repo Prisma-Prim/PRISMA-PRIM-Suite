@@ -11,7 +11,10 @@ import type {
   WorkingDocument,
   WorkingDocumentDetail,
 } from '../src/documents/document-response';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 
 const company = { id: 'company-project-documents', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -111,6 +114,8 @@ async function installProjectDocumentsFixture(page: Page) {
         json: path === '/api/projects' ? [project] : project,
       });
     }
+    if (path === `/api/projects/${project.id}/responsible`)
+      return route.fulfill({ json: unassignedResponsibility });
     if (
       path === `/api/projects/${project.id}/documents` ||
       path === `/api/projects/${project.id}/eligible-documents`

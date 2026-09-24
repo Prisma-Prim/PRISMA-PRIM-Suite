@@ -1,6 +1,7 @@
 import {
   expect,
   test,
+  type Locator,
   type Page,
   type Request,
   type Response,
@@ -21,6 +22,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const documentUrl = `https://example.test/acceptance-questionnaire-${suffix.toLowerCase()}`;
   const preservedDraft = `Draft preserved across ${suffix} frame rollback`;
 
+  // The administrator revokes and re-grants Company Project Access through the
+  // existing Company assignment administration; the fresh grant captures v2.
+  await regrantProjectAccess(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/u);
@@ -177,6 +181,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     projects.getByRole('heading', { name: projectTitle, exact: true }),
   ).toBeVisible();
+  await expect(
+    projects
+      .getByRole('region', { name: 'Responsible member' })
+      .getByText('No responsible member', { exact: true }),
+  ).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await capture(
     page,
@@ -272,11 +281,37 @@ test('operates the delivered Client, Project, Task and working Document journey 
   ).toBeVisible();
 
   await page.reload();
-  await projects
-    .getByRole('button', {
-      name: `${projectTitle} Client: ${clientName}`,
-    })
+  const projectRow = projects.getByRole('button', {
+    name: `${projectTitle} Client: ${clientName}`,
+  });
+  await projectRow.click();
+  const responsible = projects.getByRole('region', {
+    name: 'Responsible member',
+  });
+  const projectResponsible = responsible.locator('dd');
+  await expect(projectResponsible).toHaveText('No responsible member');
+  await nameResponsible(page, responsible, projectId, 'Ion Popa');
+  await expect(projectResponsible).toHaveText(/^Ion Popa · /u);
+  await page.reload();
+  await projectRow.click();
+  await expect(projectResponsible).toHaveText(/^Ion Popa · /u);
+  await expect(
+    responsible.getByText(/^Last changed by Ada Ionescu on /u),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await nameResponsible(page, responsible, projectId, 'Ada Ionescu');
+  await expect(projectResponsible).toHaveText(/^Ada Ionescu · /u);
+  await responsible
+    .getByRole('button', { name: 'Change', exact: true })
     .click();
+  const cleared = page.waitForResponse(
+    mutationResponse('PUT', `/api/projects/${projectId}/responsible`),
+  );
+  await responsible
+    .getByRole('button', { name: 'Clear responsible member' })
+    .click();
+  expect((await cleared).ok()).toBe(true);
+  await expect(projectResponsible).toHaveText('No responsible member');
   await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
   await tasks.getByRole('button', { name: taskTitle, exact: true }).click();
   await expect(
@@ -318,10 +353,20 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const activityBody: unknown = await activityResponse.json();
   const ids = { clientId, projectId, taskId, documentId };
   const serverActions = readJourneyActions(activityBody, ids);
-  expect(serverActions.slice(0, 6)).toEqual(requiredActions.slice(0, 6));
-  expect(serverActions.slice(6).sort()).toEqual(
-    requiredActions.slice(6).sort(),
+  expect(serverActions.slice(0, 9)).toEqual(requiredActions.slice(0, 9));
+  expect(serverActions.slice(9).sort()).toEqual(
+    requiredActions.slice(9).sort(),
   );
+  expect(
+    responsibleChanges(activityBody, ids.projectId).map((change) => [
+      change.before?.displayLabel.split(' · ')[0] ?? null,
+      change.after?.displayLabel.split(' · ')[0] ?? null,
+    ]),
+  ).toEqual([
+    ['Ada Ionescu', null],
+    ['Ion Popa', 'Ada Ionescu'],
+    [null, 'Ion Popa'],
+  ]);
   expectNoOtherCompanyActivity(
     activityBody,
     requiredEnvironment('ACCEPTANCE_OTHER_COMPANY_ID'),
@@ -347,6 +392,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
 });
 
 type RequiredAction =
+  | 'project.responsible.changed'
   | 'document.project.linked'
   | 'document.registered'
   | 'task.completed'
@@ -370,6 +416,9 @@ type ActivityRecord = {
 };
 
 const requiredActions: RequiredAction[] = [
+  'project.responsible.changed',
+  'project.responsible.changed',
+  'project.responsible.changed',
   'document.project.linked',
   'document.registered',
   'task.completed',
@@ -381,6 +430,7 @@ const requiredActions: RequiredAction[] = [
 ];
 const requiredActionSet: ReadonlySet<string> = new Set(requiredActions);
 const companyScopedActions: ReadonlySet<string> = new Set([
+  'project.responsible.changed',
   'document.project.linked',
   'document.project.unlinked',
   'document.registered',
@@ -394,6 +444,7 @@ const companyScopedActions: ReadonlySet<string> = new Set([
   'client.corrected',
 ]);
 const actionLabels: Record<RequiredAction, string> = {
+  'project.responsible.changed': 'changed the responsible member of a Project',
   'document.project.linked': 'attached a working Document to a Project',
   'document.registered': 'registered a working Document reference',
   'task.completed': 'declared a Task done',
@@ -403,6 +454,125 @@ const actionLabels: Record<RequiredAction, string> = {
   'client_company_relationship.established': 'linked a Client to a Company',
   'client.created': 'created a Client',
 };
+
+const apiAdministratorHeaders = {
+  'x-test-external-provider': 'local-demo',
+  'x-test-external-subject': 'workspace-owner',
+  'x-test-display-name': 'Workspace Owner',
+  'x-test-email': 'owner@example.test',
+};
+
+async function regrantProjectAccess(page: Page): Promise<void> {
+  const membershipId = requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID');
+  const companyId = requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID');
+  const revoked = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-project-assignments/${membershipId}/${companyId}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-project-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(revoked.status()).toBe(200);
+  const granted = await page.request.post(
+    'http://127.0.0.1:4174/api/company-project-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-project-${crypto.randomUUID()}`,
+      },
+      data: { workspaceMembershipId: membershipId, companyId },
+    },
+  );
+  expect(granted.status()).toBe(201);
+  expect(await granted.json()).toMatchObject({
+    bundle: 'Company Project Access',
+    permissionSetVersion: 'v2',
+    active: true,
+  });
+}
+
+// Names an eligible member from the explicitly opened selector.
+async function nameResponsible(
+  page: Page,
+  responsible: Locator,
+  projectId: string,
+  name: string,
+): Promise<void> {
+  await responsible
+    .getByRole('button', { name: 'Change', exact: true })
+    .click();
+  const chooser = responsible.getByLabel('Choose the responsible member');
+  const value = await chooser
+    .locator('option', { hasText: name })
+    .getAttribute('value');
+  if (!value) throw new Error(`${name} is not an eligible responsible member.`);
+  await chooser.selectOption(value);
+  const saved = page.waitForResponse(
+    mutationResponse('PUT', `/api/projects/${projectId}/responsible`),
+  );
+  await responsible.getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await saved).ok()).toBe(true);
+}
+
+type RecordedResponsible = { displayLabel: string } | null;
+
+// Newest first, the before and after members of this Project's changes.
+function responsibleChanges(
+  value: unknown,
+  projectId: string,
+): Array<{ before: RecordedResponsible; after: RecordedResponsible }> {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('events' in value) ||
+    !Array.isArray(value.events)
+  )
+    throw new Error('Expected an Activity Log response.');
+  const events: unknown[] = value.events;
+  return events.flatMap((event) => {
+    if (
+      typeof event !== 'object' ||
+      event === null ||
+      !('action' in event) ||
+      event.action !== 'project.responsible.changed' ||
+      !('target' in event) ||
+      typeof event.target !== 'object' ||
+      event.target === null ||
+      !('projectId' in event.target) ||
+      event.target.projectId !== projectId
+    )
+      return [];
+    if (
+      !('metadata' in event) ||
+      typeof event.metadata !== 'object' ||
+      event.metadata === null ||
+      !('before' in event.metadata) ||
+      !('after' in event.metadata)
+    )
+      throw new Error('Expected a responsible-member change.');
+    return [
+      {
+        before: recordedResponsible(event.metadata.before),
+        after: recordedResponsible(event.metadata.after),
+      },
+    ];
+  });
+}
+
+function recordedResponsible(value: unknown): RecordedResponsible {
+  if (value === null) return null;
+  if (
+    typeof value !== 'object' ||
+    !('displayLabel' in value) ||
+    typeof value.displayLabel !== 'string' ||
+    JSON.stringify(value).includes('@')
+  )
+    throw new Error('Expected a responsible member without directory data.');
+  return { displayLabel: value.displayLabel };
+}
 
 function mutationResponse(method: string, pathname: string) {
   return (response: Response) =>
@@ -477,6 +647,7 @@ function belongsToJourney(event: ActivityRecord, ids: JourneyIds): boolean {
     case 'client_company_relationship.established':
       return event.target.clientAccountId === ids.clientId;
     case 'project.created':
+    case 'project.responsible.changed':
       return event.target.projectId === ids.projectId;
     case 'task.created':
     case 'task.updated':

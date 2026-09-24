@@ -42,7 +42,9 @@ import {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   isCommercialIntakePermissionSetVersion,
+  isProjectPermissionSetVersion,
   type CompanyCommercialIntakePermissionSetVersion,
+  type CompanyProjectPermissionSetVersion,
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
@@ -75,6 +77,7 @@ type BundleDefinition = {
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
     | CompanyCommercialIntakePermissionSetVersion
+    | CompanyProjectPermissionSetVersion
     | null;
 };
 
@@ -103,10 +106,12 @@ const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
   label: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+// A fresh grant captures v2; existing v1 assignments keep their captured
+// version until explicitly revoked and granted again.
 const PROJECT_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_ACCESS_BUNDLE,
   label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 // A fresh grant captures v2; existing v1 assignments keep their captured
 // version until explicitly revoked and granted again.
@@ -936,12 +941,12 @@ function assignmentRecord(
         permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_PROJECT_ACCESS_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (!isProjectPermissionSetVersion(assignment.permissionSetVersion))
         throw new Error('Invalid Company Project assignment version.');
       return {
         ...base,
         bundle: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
 
     case COMPANY_CONTEXT_ACCESS_BUNDLE:

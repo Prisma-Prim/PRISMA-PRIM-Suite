@@ -1,4 +1,5 @@
 import { TaskAccessService } from './task-access.service.js';
+import { ProjectResponsibleAccessService } from './project-responsible-access.service.js';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module.js';
@@ -12,6 +13,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
   imports: [DatabaseModule],
   providers: [
     TaskAccessService,
+    ProjectResponsibleAccessService,
     CompanyContextAuthorization,
     {
       provide: ACCESS_ADMISSION,
@@ -39,6 +41,11 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
         }),
     },
   ],
-  exports: [ACCESS_ADMISSION, CompanyContextAuthorization, TaskAccessService],
+  exports: [
+    ACCESS_ADMISSION,
+    CompanyContextAuthorization,
+    TaskAccessService,
+    ProjectResponsibleAccessService,
+  ],
 })
 export class AccessModule {}

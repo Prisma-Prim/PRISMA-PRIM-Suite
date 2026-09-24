@@ -1,4 +1,8 @@
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
+import type {
+  ProjectResponsibleChangedActivityEvent,
+  ProjectResponsibleMember,
+} from '../project/project-responsibility.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
 import {
@@ -18,6 +22,7 @@ import {
   taskEvents,
   tasks,
   projectCreationEvents,
+  projectResponsibilityEvents,
   projects,
   activityLogEvents,
   documentRegistrationEvents,
@@ -173,6 +178,34 @@ export class AccountabilityService {
       actorInternalUserId: input.actor.internalUserId,
       actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
     });
+  }
+
+  // The caller commits this with the responsibility, its receipt and the
+  // original Client fence. Recording grants no read of it.
+  async recordProjectResponsibleChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    occurredAt: Date;
+    revision: number;
+    before: ProjectResponsibleMember | null;
+    after: ProjectResponsibleMember | null;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(projectResponsibilityEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        revision: input.revision,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        beforeMembershipId: input.before?.workspaceMembershipId ?? null,
+        beforeDisplayLabel: input.before?.displayLabel ?? null,
+        afterMembershipId: input.after?.workspaceMembershipId ?? null,
+        afterDisplayLabel: input.after?.displayLabel ?? null,
+        occurredAt: input.occurredAt,
+      });
   }
 
   // Recording grants no read. The authorized Company projection requires the
@@ -385,6 +418,85 @@ export class AccountabilityService {
         companyId: event.companyId,
       },
       metadata: {},
+    }));
+  }
+
+  // The same boundary as `project.created`: current Project and Client read
+  // plus the Project's original Client–Company relationship. Workspace
+  // ownership or Client visibility alone discloses nothing.
+  private async projectResponsibilityEvents(
+    actor: ActorContext,
+  ): Promise<ProjectResponsibleChangedActivityEvent[]> {
+    if (
+      !actor.activeCompany?.projectPermissions?.includes('project.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        event: projectResponsibilityEvents,
+        actorName: internalUsers.displayName,
+        projectTitle: projects.title,
+      })
+      .from(projectResponsibilityEvents)
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.workspaceId, projectResponsibilityEvents.workspaceId),
+          eq(projects.companyId, projectResponsibilityEvents.companyId),
+          eq(projects.id, projectResponsibilityEvents.projectId),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, projectResponsibilityEvents.actorInternalUserId),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            projects.clientAccountId,
+          ),
+          eq(clientCompanyRelationships.companyId, projects.companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(projectResponsibilityEvents.workspaceId, actor.workspaceId),
+          eq(projectResponsibilityEvents.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(projectResponsibilityEvents.occurredAt),
+        desc(projectResponsibilityEvents.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map(({ event, actorName, projectTitle }) => ({
+      id: event.id,
+      action: 'project.responsible.changed',
+      occurredAt: event.occurredAt.toISOString(),
+      actor: {
+        internalUserId: event.actorInternalUserId,
+        displayName: actorName,
+      },
+      target: {
+        type: 'project',
+        projectId: event.projectId,
+        projectTitle,
+        companyId: event.companyId,
+      },
+      metadata: {
+        revision: event.revision,
+        before: recordedMember(
+          event.beforeMembershipId,
+          event.beforeDisplayLabel,
+        ),
+        after: recordedMember(event.afterMembershipId, event.afterDisplayLabel),
+      },
     }));
   }
 
@@ -1229,6 +1341,7 @@ export class AccountabilityService {
       })),
       ...(await this.readTaskHistory(actor)),
       ...(await this.projectEvents(actor)),
+      ...(await this.projectResponsibilityEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
@@ -1495,6 +1608,16 @@ function canonicalTarget(event: PersistedActivityTarget) {
     default:
       return assertNever(event.targetType);
   }
+}
+
+function recordedMember(
+  workspaceMembershipId: string | null,
+  displayLabel: string | null,
+): ProjectResponsibleMember | null {
+  if (workspaceMembershipId === null && displayLabel === null) return null;
+  if (workspaceMembershipId === null || displayLabel === null)
+    throw new Error('Activity Log event has an incomplete responsible member.');
+  return { workspaceMembershipId, displayLabel };
 }
 
 function required(value: string | null, field: string): string {
