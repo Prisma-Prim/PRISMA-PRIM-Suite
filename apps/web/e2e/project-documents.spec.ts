@@ -592,6 +592,84 @@ for (const frame of ['classic', 'prisme'] as const)
     await expect(openDocument).toBeVisible();
   });
 
+for (const frame of ['classic', 'prisme'] as const)
+  test(`opens the linked Project of a superseded original Client from its Working Document in ${frame}`, async ({
+    page,
+  }, testInfo) => {
+    const state = await installProjectDocumentsFixture(page);
+    state.linked = true;
+    state.revision = 1;
+    state.mutable = false;
+    const projectReads: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === `/api/projects/${project.id}`)
+        projectReads.push(request.url());
+    });
+    const narrow = testInfo.project.name === 'narrow';
+    await page.goto('/?frame=prisme#projects');
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    const activeCompany = page.getByLabel('Active Company', { exact: true });
+    await activeCompany.selectOption(company.id);
+    await expect(activeCompany).toBeEnabled();
+    await expect(activeCompany.locator('option:checked')).toHaveText(
+      company.displayName,
+    );
+    if (narrow)
+      await page.getByRole('button', { name: 'Close navigation' }).click();
+    await page.goto(`/?frame=${frame}#documents`);
+
+    const workspace = page.locator('.working-documents');
+    await workspace
+      .getByRole('button', { name: workingDocument.title, exact: true })
+      .click();
+    const detail = workspace.getByRole('article');
+    await expect(projectRow(detail).getByRole('definition')).toHaveText(
+      project.title,
+    );
+    const openLinkedProject = detail.getByRole('button', {
+      name: 'Open Project',
+      exact: true,
+    });
+    await expect(openLinkedProject).toBeVisible();
+    await capture(page, testInfo, `working-document-open-project-${frame}.png`);
+    expect(projectReads).toHaveLength(0);
+
+    await openLinkedProject.focus();
+    await page.keyboard.press('Enter');
+
+    const projects = page.locator('.project-workspace');
+    await expect(projects).toBeFocused();
+    await expect(page).toHaveURL(/#projects$/u);
+    expect(page.url()).not.toContain(project.id);
+    const opened = projects.getByRole('article', { name: project.title });
+    await expect(opened).toBeVisible();
+    await expect(
+      opened.getByText(`Client: ${project.clientDisplayName}`),
+    ).toBeVisible();
+    await expect(projects).not.toContainText(project.id);
+    if (frame === 'prisme') {
+      await expect(
+        projects.getByRole('tab', { name: 'Tasks', exact: true }),
+      ).toHaveAttribute('aria-selected', 'true');
+      await projects
+        .getByRole('tab', { name: 'Working Documents', exact: true })
+        .click();
+    }
+    const projectDocuments = projects.locator('.project-documents');
+    await expect(
+      projectDocuments.getByText(
+        'The original Client is no longer active. Existing attachments are read-only.',
+      ),
+    ).toBeVisible();
+    await expect(
+      projectDocuments.getByRole('button', { name: /Attach|Remove/ }),
+    ).toHaveCount(0);
+    expect(projectReads).toHaveLength(1);
+    expect(state.commands).toHaveLength(0);
+    await capture(page, testInfo, `document-project-open-${frame}.png`);
+  });
+
 test('shows permitted metadata without URL access or mutation controls', async ({
   page,
 }, testInfo) => {

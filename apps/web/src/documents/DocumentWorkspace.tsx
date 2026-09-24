@@ -47,6 +47,7 @@ export function DocumentWorkspace({
   clientIdentityRevision = 0,
   onOpenClientDossier,
   requestedDocument,
+  onOpenProject,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -61,6 +62,8 @@ export function DocumentWorkspace({
    * with is never replayed.
    */
   requestedDocument?: RequestedDocument;
+  /** Offered only while the shell can open Projects; the owner reads it fresh. */
+  onOpenProject?: (projectId: string) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
@@ -926,7 +929,10 @@ export function DocumentWorkspace({
               )}
               <RegistrationTime registeredAt={detail.createdAt} />
               {canReadProjects && detail.projectAssociation && (
-                <ProjectAssociation association={detail.projectAssociation} />
+                <ProjectAssociation
+                  association={detail.projectAssociation}
+                  onOpenProject={onOpenProject}
+                />
               )}
               {!editing &&
               detail.version.representation.access === 'granted' ? (
@@ -1115,17 +1121,41 @@ function RegistrationTime({ registeredAt }: { registeredAt: string }) {
 /**
  * The preparatory Project this reference is organized in, as working-material
  * organization only. It never states acceptance as evidence or start approval.
+ * A linked Project is opened by its stable id; its title here is never reused.
  */
 function ProjectAssociation({
   association,
+  onOpenProject,
 }: {
   association: DocumentProjectAssociation;
+  onOpenProject?: (projectId: string) => void;
 }) {
   return (
-    <dl className="working-document-project">
-      <dt>{copy.project}</dt>
-      <dd>{projectAssociationLabel(association)}</dd>
-    </dl>
+    <>
+      <dl className="working-document-project">
+        <dt>{copy.project}</dt>
+        <dd>{projectAssociationLabel(association)}</dd>
+      </dl>
+      {association.state === 'linked' && onOpenProject && (
+        <OpenProjectButton
+          projectId={association.project.id}
+          onOpen={onOpenProject}
+        />
+      )}
+    </>
+  );
+}
+function OpenProjectButton({
+  projectId,
+  onOpen,
+}: {
+  projectId: string;
+  onOpen: (projectId: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onOpen(projectId)}>
+      {copy.openProject}
+    </button>
   );
 }
 function projectAssociationLabel(
