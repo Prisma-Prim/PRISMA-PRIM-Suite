@@ -85,7 +85,7 @@ test('records Contact communication preferences in Prisme and keeps them after r
   await correctionTrigger(page).click();
   const form = correctionForm(page);
   const second = form.getByRole('group', { name: 'Contact 2', exact: true });
-  await second.getByLabel('Contact email', { exact: true }).focus();
+  await second.getByRole('checkbox', { name: 'Blocker', exact: true }).focus();
   await page.keyboard.press('Tab');
   const ionField = second.getByLabel('Contact communication preferences', {
     exact: true,

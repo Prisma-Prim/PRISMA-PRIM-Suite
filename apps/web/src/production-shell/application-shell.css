@@ -619,6 +619,25 @@
   overflow-wrap: anywhere;
 }
 
+.client-contact-editor fieldset.client-contact-decision-roles {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.client-contact-decision-roles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.client-contact-decision-roles input {
+  width: auto;
+  margin: 0;
+}
+
 .company-registration-denied {
   border-color: #cad7df;
   background: #edf3f6;

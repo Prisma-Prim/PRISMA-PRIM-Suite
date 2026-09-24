@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readUnionSnapshot } from './client-union-snapshot.js';
 
-const clientId = '00000000-0000-4000-8000-000000000372';
+const clientId = '00000000-0000-4000-8000-000000000366';
 
 function snapshot(contacts: unknown[]) {
   return {
@@ -10,7 +10,7 @@ function snapshot(contacts: unknown[]) {
         id: clientId,
         workspaceId: '00000000-0000-4000-8000-000000000001',
         displayName: 'AGRONOVA Demo SRL',
-        taxId: '1003600037200',
+        taxId: '1003600036600',
         address: null,
         telephone: null,
         generalEmail: null,
@@ -29,13 +29,46 @@ function snapshot(contacts: unknown[]) {
   };
 }
 
+describe('Client union snapshot Contacts', () => {
+  it('carries stored positions and decision roles unchanged', () => {
+    const contacts = [
+      { name: 'Ion Demo' },
+      {
+        name: 'Maria Demo',
+        telephone: '+373 60 000 002',
+        position: 'Responsabil calitate',
+        decisionRoles: ['influencer', 'technical'],
+      },
+    ];
+
+    expect(readUnionSnapshot(snapshot(contacts)).clients[0]?.contacts).toEqual(
+      contacts,
+    );
+  });
+
+  it.each([
+    ['a non-text position', { name: 'A', position: 42 }],
+    ['an unknown decision role', { name: 'A', decisionRoles: ['vip'] }],
+    ['a non-list decision-role value', { name: 'A', decisionRoles: 'user' }],
+    [
+      'decision roles outside vocabulary order',
+      { name: 'A', decisionRoles: ['technical', 'user'] },
+    ],
+    ['an unknown Contact key', { name: 'A', preference: 'email' }],
+  ])('rejects %s', (_name, contact) => {
+    expect(() => readUnionSnapshot(snapshot([contact]))).toThrow();
+  });
+});
+
 describe('Client union snapshot Contact communication preferences', () => {
-  it('carries stored preferences and legacy Contacts unchanged', () => {
+  it('carries stored preferences, the other Contact fields and legacy Contacts unchanged', () => {
     const contacts = [
       { name: 'Ion Demo' },
       {
         name: 'Maria Demo',
         telephone: '+373 60 000 372',
+        position: 'Responsabil calitate',
+        decisionRoles: ['influencer', 'technical'],
         communicationPreferences: 'Romanian; email preferred\nweekday mornings',
       },
     ];

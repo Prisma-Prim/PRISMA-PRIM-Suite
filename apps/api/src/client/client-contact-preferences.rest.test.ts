@@ -32,8 +32,11 @@ const ionPreferences = {
   ...ion,
   communicationPreferences: 'Romanian; email preferred\nweekday mornings',
 };
+/** Carries position and decision roles so every journey proves they survive beside preferences. */
 const maria = {
   name: 'Maria Demo',
+  position: 'Responsabil calitate',
+  decisionRoles: ['influencer', 'technical'],
   communicationPreferences: `Telefon după ora 14:00 ${astral}`,
 };
 

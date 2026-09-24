@@ -21,8 +21,11 @@ const ion = {
   telephone: '+373 60 000 372',
   communicationPreferences: preferences,
 };
+/** Carries position and decision roles so every save proves they survive beside preferences. */
 const maria = {
   name: 'Maria Demo',
+  position: 'Responsabil calitate',
+  decisionRoles: ['influencer', 'technical'],
   communicationPreferences: 'Telefon după ora 14:00',
 };
 const ana = { name: 'Ana Demo', email: 'ana.demo@example.test' };
@@ -234,6 +237,35 @@ describe('Client Contact communication preferences', () => {
       }),
     );
     expect(await save(form, corrections)).toEqual([ionWithTelephone, ana]);
+  });
+
+  it('keeps position, decision roles and preferences together when any one of them changes', async () => {
+    const corrections = renderDossier();
+    const form = await openCorrection();
+    const group = contactGroup(form, 2);
+
+    fireEvent.change(within(group).getByLabelText('Contact position'), {
+      target: { value: 'Director calitate' },
+    });
+    const repositioned = { ...maria, position: 'Director calitate' };
+    expect(await save(form, corrections)).toEqual([ion, repositioned, ana]);
+
+    fireEvent.click(within(group).getByRole('checkbox', { name: 'Technical' }));
+    const narrowed = { ...repositioned, decisionRoles: ['influencer'] };
+    expect(await save(form, corrections)).toEqual([ion, narrowed, ana]);
+
+    fireEvent.change(preferencesField(group), {
+      target: { value: 'Email only' },
+    });
+    const preferring = { ...narrowed, communicationPreferences: 'Email only' };
+    expect(await save(form, corrections)).toEqual([ion, preferring, ana]);
+
+    const item = contactItem('Maria Demo');
+    expect(within(item).getByText('Director calitate')).toBeVisible();
+    expect(within(item).getByText('Decision roles: Influencer')).toBeVisible();
+    expect(
+      within(item).getByText('Communication preferences: Email only'),
+    ).toBeVisible();
   });
 
   it('submits trimmed preferences, keeps internal line breaks and omits a cleared value', async () => {

@@ -25,6 +25,7 @@ export const documentsCopy = {
   registrationTime: 'Registration time',
   project: 'Project',
   notLinkedToProject: 'Not linked to a Project',
+  openProject: 'Open Project',
   open: 'Open external reference',
   referenceDenied: 'You do not have permission to open this reference.',
   edit: 'Edit reference',
@@ -39,6 +40,8 @@ export const documentsCopy = {
   uncertain:
     'The correction result is uncertain. Retry the exact same correction safely.',
   retryCorrection: 'Retry same correction',
+  requestedDocumentHeld:
+    'The requested Document opens after this correction is saved or cancelled.',
   activityTarget: 'Working Document',
   activity: 'registered a working Document reference',
   correctionActivity: 'corrected a working Document reference',

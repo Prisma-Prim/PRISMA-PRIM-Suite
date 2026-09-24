@@ -40,6 +40,25 @@ describe('Client correction history response', () => {
     });
   });
 
+  it('keeps each Contact position and decision roles', () => {
+    const contacts = {
+      before: [{ name: 'Ion Demo' }],
+      after: [
+        {
+          name: 'Ion Demo',
+          position: 'Director general',
+          decisionRoles: ['final_decision_maker', 'financial'],
+        },
+      ],
+    };
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
   it('keeps Contact communication preferences exactly as returned', () => {
     const contacts = {
       before: [{ name: 'Ion Demo' }],
@@ -60,8 +79,61 @@ describe('Client correction history response', () => {
     ).toEqual([{ field: 'contacts', ...contacts }]);
   });
 
+  it('keeps position, decision roles and preferences together on one Contact', () => {
+    const contact = {
+      name: 'Ion Demo',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
+      communicationPreferences: 'Romanian; email preferred',
+    };
+    const contacts = {
+      before: [{ ...contact, telephone: '+373 60 000 001' }],
+      after: [{ ...contact, telephone: '+373 60 000 372' }],
+    };
+
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
   it.each([
     ['an empty change set', { ...correction, changes: {} }],
+    [
+      'a non-text Contact position',
+      {
+        ...correction,
+        changes: {
+          contacts: { before: [], after: [{ name: 'A', position: 7 }] },
+        },
+      },
+    ],
+    [
+      'an unknown decision role',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'A', decisionRoles: ['vip'] }],
+          },
+        },
+      },
+    ],
+    [
+      'a non-list decision-role value',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'A', decisionRoles: 'user' }],
+          },
+        },
+      },
+    ],
     [
       'non-text Contact communication preferences',
       {

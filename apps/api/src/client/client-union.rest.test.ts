@@ -425,6 +425,68 @@ describeWithPostgres('Governed Client union REST journey', () => {
     ).toBe(200);
   });
 
+  it('carries every source Contact position and decision roles through union and reversal', async () => {
+    const alex = {
+      name: 'Alex',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
+    };
+    const dana = {
+      name: 'Dana',
+      email: 'dana@example.test',
+      position: 'Responsabil calitate',
+      decisionRoles: ['influencer', 'technical'],
+    };
+    expect(
+      (
+        await request(`/clients/${first}`, 'PATCH', {
+          expectedVersion: 1,
+          contacts: [alex],
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(
+          `/clients/${second}`,
+          'PATCH',
+          { expectedVersion: 1, contacts: [dana] },
+          companyB,
+        )
+      ).status,
+    ).toBe(200);
+
+    const projection = await unite();
+
+    for (const companyId of [companyA, companyB]) {
+      const dossier = await body(
+        await request(`/clients/${first}`, 'GET', undefined, companyId),
+      );
+      expect(dossier.contacts).toEqual(expect.arrayContaining([alex, dana]));
+      expect(dossier.contacts).toHaveLength(2);
+    }
+    expect(
+      (await body(await request(`/client-union-operations/${projection}`)))
+        .originals,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: first, contacts: [alex] }),
+        expect.objectContaining({ id: second, contacts: [dana] }),
+      ]),
+    );
+    expect((await reverse(projection)).status).toBe(201);
+    expect((await body(await request(`/clients/${first}`))).contacts).toEqual([
+      alex,
+    ]);
+    expect(
+      (
+        await body(
+          await request(`/clients/${second}`, 'GET', undefined, companyB),
+        )
+      ).contacts,
+    ).toEqual([dana]);
+  });
+
   it('serializes competing confirmations and rejects stale or changed intent without partial state', async () => {
     const reference = await review();
     const responses = await Promise.all([
@@ -621,9 +683,11 @@ describeWithPostgres('Governed Client union REST journey', () => {
     expect(archived.rows).toEqual([{ status: 'archived' }]);
   });
 
-  it('carries every source Contact communication preference through comparison, union and reversal', async () => {
+  it('carries every source Contact communication preference with the other Contact fields through comparison, union and reversal', async () => {
     const alex = {
       name: 'Alex',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
       communicationPreferences: 'Romanian; email preferred\nweekday mornings',
     };
     const dana = {
