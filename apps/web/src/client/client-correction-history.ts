@@ -96,6 +96,9 @@ function contacts(value: unknown): ClientContact[] {
       ...(contact.decisionRoles === undefined
         ? {}
         : { decisionRoles: list(contact.decisionRoles).map(decisionRole) }),
+      ...(contact.communicationPreferences === undefined
+        ? {}
+        : { communicationPreferences: text(contact.communicationPreferences) }),
     };
   });
 }

@@ -1203,7 +1203,7 @@ describe('Client union UI public journey', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('shows differing Contact positions and decision roles by source before confirmation and in the authorized detail', async () => {
+  it('shows differing Contact positions, decision roles and communication preferences by source before confirmation and in the authorized detail', async () => {
     const described = {
       ...first,
       contacts: [
@@ -1211,6 +1211,8 @@ describe('Client union UI public journey', () => {
           name: 'Ion Demo',
           position: 'Director general',
           decisionRoles: ['final_decision_maker', 'financial'],
+          communicationPreferences:
+            'Romanian; email preferred\nweekday mornings',
         },
       ],
     };
@@ -1221,6 +1223,7 @@ describe('Client union UI public journey', () => {
           name: 'Ion Demo',
           position: 'Director financiar',
           decisionRoles: ['financial'],
+          communicationPreferences: 'Telefon după ora 14:00',
         },
         { name: 'Dana' },
       ],
@@ -1265,18 +1268,22 @@ describe('Client union UI public journey', () => {
       'Contact email': 'Not provided',
       'Contact position': 'Director general',
       'Decision roles': 'Final decision-maker, Financial',
+      'Contact communication preferences':
+        'Romanian; email preferred\nweekday mornings',
     });
     expect(contactValues('Source 2 · Exemplu S.R.L.', 0)).toEqual({
       'Contact telephone': 'Not provided',
       'Contact email': 'Not provided',
       'Contact position': 'Director financiar',
       'Decision roles': 'Financial',
+      'Contact communication preferences': 'Telefon după ora 14:00',
     });
     expect(contactValues('Source 2 · Exemplu S.R.L.', 1)).toEqual({
       'Contact telephone': 'Not provided',
       'Contact email': 'Not provided',
       'Contact position': 'Not provided',
       'Decision roles': 'Not provided',
+      'Contact communication preferences': 'Not provided',
     });
     fireEvent.submit(form);
     fireEvent.click(
@@ -1301,6 +1308,19 @@ describe('Client union UI public journey', () => {
     expect(within(originalTwo).getAllByText(/^Decision roles:/u)).toHaveLength(
       1,
     );
+    expect(
+      within(originalOne).getByText(
+        /^Communication preferences: Romanian; email preferred\s+weekday mornings$/u,
+      ),
+    ).toBeVisible();
+    expect(
+      within(originalTwo).getByText(
+        'Communication preferences: Telefon după ora 14:00',
+      ),
+    ).toBeVisible();
+    expect(
+      within(originalTwo).getAllByText(/^Communication preferences:/u),
+    ).toHaveLength(1);
   });
 
   it('refuses a union comparison whose Contact decision role is outside the closed list', async () => {
@@ -1312,6 +1332,36 @@ describe('Client union UI public journey', () => {
             {
               ...first,
               contacts: [{ name: 'Alex', decisionRoles: ['sponsor'] }],
+            },
+            second,
+          ],
+        },
+        201,
+      ),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    render(<ClientUnionPanel {...props()} />);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review existing duplicates' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The request could not be completed. You can retry safely.',
+    );
+    expect(
+      screen.queryByRole('form', { name: 'Confirm union' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Alex')).not.toBeInTheDocument();
+  });
+
+  it('refuses a union comparison whose Contact communication preferences are not text', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(
+      response(
+        {
+          ...comparison,
+          clients: [
+            {
+              ...first,
+              contacts: [{ name: 'Alex', communicationPreferences: 7 }],
             },
             second,
           ],

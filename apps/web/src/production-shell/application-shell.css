@@ -593,14 +593,30 @@
 }
 
 .client-contact-editor fieldset button,
+.client-contact-field-help,
 .client-contact-field-error {
   grid-column: 2;
 }
 
+.client-contact-field-help,
 .client-contact-field-error {
   margin: 0;
-  color: #b42318;
   font-size: 0.8125rem;
+}
+
+.client-contact-field-help {
+  color: var(--shell-muted);
+}
+
+.client-contact-field-error {
+  color: #b42318;
+}
+
+.client-contact-communication-preferences {
+  flex-basis: 100%;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .client-contact-editor fieldset.client-contact-decision-roles {
@@ -836,6 +852,7 @@
 
   .client-dossier form > button,
   .client-contact-editor fieldset button,
+  .client-contact-field-help,
   .client-contact-field-error {
     grid-column: 1;
   }

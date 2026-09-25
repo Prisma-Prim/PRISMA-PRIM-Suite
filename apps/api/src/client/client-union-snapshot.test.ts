@@ -59,3 +59,35 @@ describe('Client union snapshot Contacts', () => {
     expect(() => readUnionSnapshot(snapshot([contact]))).toThrow();
   });
 });
+
+describe('Client union snapshot Contact communication preferences', () => {
+  it('carries stored preferences, the other Contact fields and legacy Contacts unchanged', () => {
+    const contacts = [
+      { name: 'Ion Demo' },
+      {
+        name: 'Maria Demo',
+        telephone: '+373 60 000 372',
+        position: 'Responsabil calitate',
+        decisionRoles: ['influencer', 'technical'],
+        communicationPreferences: 'Romanian; email preferred\nweekday mornings',
+      },
+    ];
+
+    expect(readUnionSnapshot(snapshot(contacts)).clients[0]?.contacts).toEqual(
+      contacts,
+    );
+  });
+
+  it.each([
+    ['null preferences', { name: 'A', communicationPreferences: null }],
+    ['non-text preferences', { name: 'A', communicationPreferences: 7 }],
+    ['untrimmed preferences', { name: 'A', communicationPreferences: ' A' }],
+    [
+      'over-long preferences',
+      { name: 'A', communicationPreferences: 'x'.repeat(1_001) },
+    ],
+    ['an unknown Contact key', { name: 'A', preferences: 'Email' }],
+  ])('rejects %s', (_name, contact) => {
+    expect(() => readUnionSnapshot(snapshot([contact]))).toThrow();
+  });
+});
