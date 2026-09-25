@@ -1,5 +1,5 @@
 {
-  "id": "b5b7358a-2003-4224-9859-795030ecfaee",
+  "id": "8efdbddb-09ee-463d-9f88-63ee869ed957",
   "prevId": "d9d8f967-5164-4359-a251-66fb796fc3eb",
   "version": "7",
   "dialect": "postgresql",
@@ -5469,13 +5469,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "priority": {
-          "name": "priority",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -5528,6 +5521,66 @@
         },
         "completed_at": {
           "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blockage_reason": {
+          "name": "blockage_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_internal_user_id": {
+          "name": "blocked_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_membership_id": {
+          "name": "blocked_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_display_name": {
+          "name": "blocked_by_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_at": {
+          "name": "blocked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancellation_reason": {
+          "name": "cancellation_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_internal_user_id": {
+          "name": "cancelled_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_membership_id": {
+          "name": "cancelled_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_display_name": {
+          "name": "cancelled_by_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -5644,6 +5697,40 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "tasks_blockage_actor_fk": {
+          "name": "tasks_blockage_actor_fk",
+          "tableFrom": "tasks",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "blocked_by_membership_id",
+            "blocked_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_cancellation_actor_fk": {
+          "name": "tasks_cancellation_actor_fk",
+          "tableFrom": "tasks",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "cancelled_by_membership_id",
+            "cancelled_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5666,13 +5753,17 @@
           "name": "tasks_date_check",
           "value": "\"tasks\".\"due_date\" IS NULL OR (\"tasks\".\"due_date\" >= DATE '0001-01-01' AND \"tasks\".\"due_date\" <= DATE '9999-12-31')"
         },
-        "tasks_priority_check": {
-          "name": "tasks_priority_check",
-          "value": "\"tasks\".\"priority\" IN ('normal', 'important', 'critical')"
+        "tasks_blockage_reason_check": {
+          "name": "tasks_blockage_reason_check",
+          "value": "\"tasks\".\"blockage_reason\" IS NULL OR (length(\"tasks\".\"blockage_reason\") BETWEEN 1 AND 500 AND \"tasks\".\"blockage_reason\" = btrim(\"tasks\".\"blockage_reason\"))"
+        },
+        "tasks_cancellation_reason_check": {
+          "name": "tasks_cancellation_reason_check",
+          "value": "\"tasks\".\"cancellation_reason\" IS NULL OR (length(\"tasks\".\"cancellation_reason\") BETWEEN 1 AND 500 AND \"tasks\".\"cancellation_reason\" = btrim(\"tasks\".\"cancellation_reason\"))"
         },
         "tasks_state_check": {
           "name": "tasks_state_check",
-          "value": "(\"tasks\".\"status\" = 'todo' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL) OR (\"tasks\".\"status\" = 'done' AND \"tasks\".\"completed_at\" IS NOT NULL AND \"tasks\".\"completed_by_membership_id\" IS NOT NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"completed_by_display_name\" IS NOT NULL)"
+          "value": "(\"tasks\".\"status\" IN ('todo', 'in_progress') AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'blocked' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NOT NULL AND \"tasks\".\"blocked_at\" IS NOT NULL AND \"tasks\".\"blocked_by_membership_id\" IS NOT NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"blocked_by_display_name\" IS NOT NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'done' AND \"tasks\".\"completed_at\" IS NOT NULL AND \"tasks\".\"completed_by_membership_id\" IS NOT NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"completed_by_display_name\" IS NOT NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'cancelled' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NOT NULL AND \"tasks\".\"cancelled_at\" IS NOT NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NOT NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"cancelled_by_display_name\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false

@@ -36,7 +36,7 @@ import {
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import {
-  commercialActivityTargetOf,
+  commercialActivityTarget,
   eligibleCommercialActions,
   readCommercialActivityAction,
 } from './commercial-activity-projection.js';
@@ -301,19 +301,7 @@ export class AccountabilityService {
           internalUserId: row.internalUserId,
           displayName: row.displayName,
         },
-        target:
-          commercialActivityTargetOf(action) === 'client_request'
-            ? {
-                type: 'client_request',
-                clientRequestId: row.clientRequestId,
-                companyId: row.companyId,
-              }
-            : {
-                type: 'opportunity',
-                opportunityId: row.opportunityId,
-                clientRequestId: row.clientRequestId,
-                companyId: row.companyId,
-              },
+        target: commercialActivityTarget(company, action, row),
         metadata: {},
       };
       return [projected];

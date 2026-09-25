@@ -93,11 +93,15 @@ existing dated, bounded page rather than an appended unsorted list. Removal is a
 new attributable event and never erases earlier relationship history.
 
 For [manual preparation Tasks](release-1-project-task-prd.md#18-approved-manual-preparation-tasks-246),
-Accountability records `task.created`, `task.updated`, `task.completed` and
-`task.reopened` through its public recording boundary. Each material action has
+Accountability records `task.created`, `task.updated`, `task.status.changed`,
+`task.completed`, `task.cancelled` and `task.reopened` through its public recording
+boundary. Each material action has
 one event targeting the original Company-owned Task, with server actor membership,
 time and resulting Task version. Typed facts retain the initial title/assignee/date/priority,
-the prior and new values of corrected fields, and completion/reopening transitions.
+the prior and new values of corrected fields, the prior and new state of each
+transition, and the blockage or cancellation reason where the
+[Project/Task PRD §20](release-1-project-task-prd.md#20-approved-task-execution-states-365)
+requires one.
 Task state/version, command outcome, required history and original Client fence
 commit together. Rejected commands, normalized no-op edits and exact committed
 replays create no new success event or fence advance.

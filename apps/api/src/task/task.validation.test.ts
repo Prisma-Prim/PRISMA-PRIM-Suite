@@ -97,6 +97,31 @@ describe('stored Task results and history', () => {
     });
   });
 
+  it('returns pre-priority blocked and cancelled results as normal with their Unicode reasons', () => {
+    const declaration = {
+      reason: 'Attente du questionnaire signé — Clientă 🙂',
+      actor,
+      occurredAt: '2026-09-24T09:00:00.000Z',
+    };
+    const blocked = {
+      ...storedResult,
+      status: 'blocked',
+      version: 2,
+      blockage: declaration,
+    };
+    const cancelled = {
+      ...storedResult,
+      status: 'cancelled',
+      version: 2,
+      cancellation: declaration,
+    };
+    expect(readTaskView(blocked)).toEqual({ ...blocked, priority: 'normal' });
+    expect(readTaskView(cancelled)).toEqual({
+      ...cancelled,
+      priority: 'normal',
+    });
+  });
+
   it.each(invalidPriorities)(
     'fails closed for the stored result priority %j',
     (priority) => {

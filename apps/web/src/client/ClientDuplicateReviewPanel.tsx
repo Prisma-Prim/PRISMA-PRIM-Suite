@@ -658,6 +658,12 @@ function ReviewContacts({
               <dt>{copy.contactEmailLabel}</dt>
               <dd>{contact.email || copy.notProvided}</dd>
             </div>
+            <div>
+              <dt>{copy.contactCommunicationPreferencesLabel}</dt>
+              <dd className="client-contact-communication-preferences">
+                {contact.communicationPreferences || copy.notProvided}
+              </dd>
+            </div>
           </dl>
         </li>
       ))}
@@ -742,7 +748,8 @@ function dossierFields(value: unknown): DossierFields | undefined {
       !isRecord(contact) ||
       typeof contact.name !== 'string' ||
       !isOptionalString(contact.telephone) ||
-      !isOptionalString(contact.email)
+      !isOptionalString(contact.email) ||
+      !isOptionalString(contact.communicationPreferences)
     ) {
       return undefined;
     }
@@ -750,6 +757,9 @@ function dossierFields(value: unknown): DossierFields | undefined {
       name: contact.name,
       ...(contact.telephone ? { telephone: contact.telephone } : {}),
       ...(contact.email ? { email: contact.email } : {}),
+      ...(contact.communicationPreferences
+        ? { communicationPreferences: contact.communicationPreferences }
+        : {}),
     });
   }
   return {

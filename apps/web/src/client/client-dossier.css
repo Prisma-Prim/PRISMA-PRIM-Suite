@@ -170,6 +170,20 @@
 .prisme-shell .client-correction .client-contact-editor button:hover {
   background: #f0ecfa;
 }
+.prisme-shell
+  .client-correction
+  .client-contact-editor
+  .client-contact-decision-roles {
+  padding: 12px 14px;
+  background: #fafbfe;
+  gap: 10px 18px;
+}
+.prisme-shell .client-correction .client-contact-decision-roles input {
+  width: auto;
+}
+.prisme-shell .client-correction .client-contact-editor [aria-invalid='true'] {
+  border-color: #b42318;
+}
 .prisme-shell .client-correction form > button {
   justify-self: start;
 }

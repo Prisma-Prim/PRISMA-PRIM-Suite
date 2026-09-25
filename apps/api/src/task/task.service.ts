@@ -17,16 +17,23 @@ import { taskCommands, tasks } from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
 import {
   assignedTasksQuery,
+  cancelInput,
   createInput,
   editInput,
+  isOpenTaskState,
   readTaskView,
+  statusInput,
   transitionInput,
   type TaskEdit,
+  type TaskStatusInput,
 } from './task.validation.js';
 import {
   DEFAULT_TASK_PRIORITY,
+  OPEN_TASK_STATES,
   type AssignedTaskView,
+  type TaskActor,
   type TaskChanges,
+  type TaskDeclaration,
   type TaskEventMeaning,
   type TaskFields,
   type TaskView,
@@ -95,7 +102,7 @@ export class TaskService {
               eq(tasks.workspaceId, actor.workspaceId),
               eq(tasks.companyId, companyId),
               eq(tasks.assigneeMembershipId, actor.workspaceMembershipId),
-              eq(tasks.status, 'todo'),
+              inArray(tasks.status, [...OPEN_TASK_STATES]),
               inArray(tasks.projectId, [...projects.keys()]),
             ),
           )
@@ -262,18 +269,43 @@ export class TaskService {
       key,
     );
   }
+  async changeStatus(
+    actor: ActorContext,
+    taskId: unknown,
+    body: unknown,
+    key: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      taskId,
+      { action: 'status', input: statusInput(body) },
+      key,
+    );
+  }
+  async cancel(
+    actor: ActorContext,
+    taskId: unknown,
+    body: unknown,
+    key: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      taskId,
+      { action: 'cancel', input: cancelInput(body) },
+      key,
+    );
+  }
   private async mutate(
     actor: ActorContext,
     taskIdValue: unknown,
-    commandInput:
-      | { action: 'edit'; input: TaskEdit }
-      | { action: 'complete' | 'reopen'; input: { expectedVersion: number } },
+    commandInput: TaskCommand,
     key: string | undefined,
   ) {
     const taskId = requireUuid(taskIdValue),
       idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {
       const companyId = await this.access.requireActor(actor, true, true);
+      // Receipts recorded before blocked and cancelled states existed use this same fingerprint.
       const command = JSON.stringify({ companyId, taskId, ...commandInput });
       await this.lockCommand(actor, idempotencyKey);
       const visible = await this.visibleRow(actor, taskId);
@@ -286,94 +318,23 @@ export class TaskService {
         visible.clientAccountId,
       );
       const current = await this.row(actor, taskId, true);
-      if (
-        current.version !== commandInput.input.expectedVersion ||
-        (commandInput.action === 'reopen'
-          ? current.status !== 'done'
-          : current.status !== 'todo')
-      )
+      const occurredAt = new Date();
+      const change =
+        current.version !== commandInput.input.expectedVersion
+          ? null
+          : commandInput.action === 'edit'
+            ? isOpenTaskState(current.status)
+              ? await this.editChange(actor, current, commandInput.input)
+              : null
+            : transitionChange(commandInput, current, { actor, occurredAt });
+      if (!change)
         throw new ConflictException(
           'The Task changed. Reload before choosing another action.',
         );
-      const before = view(current);
-      const occurredAt = new Date();
-      let updates: Partial<typeof tasks.$inferInsert>;
-      let meaning: TaskEventMeaning;
-      if (commandInput.action === 'edit') {
-        const input = commandInput.input;
-        const assigneeChanged =
-          input.assigneeMembershipId !== undefined &&
-          input.assigneeMembershipId !== current.assigneeMembershipId;
-        const assignee = assigneeChanged
-          ? input.assigneeMembershipId
-            ? await this.access.requireEligibleMember(
-                actor,
-                input.assigneeMembershipId,
-              )
-            : null
-          : before.assignee;
-        const after: TaskFields = {
-          title: input.title ?? before.title,
-          dueDate: input.dueDate === undefined ? before.dueDate : input.dueDate,
-          assignee,
-          priority: input.priority ?? before.priority,
-        };
-        const changes: TaskChanges = {};
-        if (before.title !== after.title)
-          changes.title = { before: before.title, after: after.title };
-        if (before.dueDate !== after.dueDate)
-          changes.dueDate = { before: before.dueDate, after: after.dueDate };
-        if (assigneeChanged)
-          changes.assignee = { before: before.assignee, after: after.assignee };
-        if (before.priority !== after.priority)
-          changes.priority = { before: before.priority, after: after.priority };
-        if (Object.keys(changes).length === 0) {
-          await this.recordCommand(actor, idempotencyKey, command, before);
-          return before;
-        }
-        updates = {
-          title: after.title,
-          dueDate: after.dueDate,
-          assigneeMembershipId: after.assignee?.workspaceMembershipId ?? null,
-          assigneeDisplayLabel: after.assignee?.displayLabel ?? null,
-          priority: after.priority,
-        };
-        meaning = {
-          action: 'task.updated',
-          metadata: { version: current.version + 1, changes },
-        };
-      } else if (commandInput.action === 'complete') {
-        updates = {
-          status: 'done',
-          completedByInternalUserId: actor.internalUserId,
-          completedByMembershipId: actor.workspaceMembershipId,
-          completedByDisplayName: actor.displayName,
-          completedAt: occurredAt,
-        };
-        meaning = {
-          action: 'task.completed',
-          metadata: {
-            version: current.version + 1,
-            before: 'todo',
-            after: 'done',
-          },
-        };
-      } else {
-        updates = {
-          status: 'todo',
-          completedByInternalUserId: null,
-          completedByMembershipId: null,
-          completedByDisplayName: null,
-          completedAt: null,
-        };
-        meaning = {
-          action: 'task.reopened',
-          metadata: {
-            version: current.version + 1,
-            before: 'done',
-            after: 'todo',
-          },
-        };
+      if (change === 'unchanged') {
+        const unchanged = view(current);
+        await this.recordCommand(actor, idempotencyKey, command, unchanged);
+        return unchanged;
       }
       if (current.version >= 2147483647)
         throw new ConflictException('Task version is exhausted.');
@@ -381,7 +342,7 @@ export class TaskService {
       const [changed] = await this.database.connection
         .update(tasks)
         .set({
-          ...updates,
+          ...change.updates,
           version: current.version + 1,
           updatedAt: occurredAt,
         })
@@ -404,11 +365,59 @@ export class TaskService {
         companyId,
         taskId,
         occurredAt,
-        meaning,
+        meaning: change.meaning,
       });
       await this.recordCommand(actor, idempotencyKey, command, result);
       return result;
     });
+  }
+  /** A field correction of an open Task; `unchanged` is a normalized no-op. */
+  private async editChange(
+    actor: ActorContext,
+    current: TaskRow,
+    input: TaskEdit,
+  ): Promise<TaskChange | 'unchanged'> {
+    const before = view(current);
+    const assigneeChanged =
+      input.assigneeMembershipId !== undefined &&
+      input.assigneeMembershipId !== current.assigneeMembershipId;
+    const assignee = assigneeChanged
+      ? input.assigneeMembershipId
+        ? await this.access.requireEligibleMember(
+            actor,
+            input.assigneeMembershipId,
+          )
+        : null
+      : before.assignee;
+    const after: TaskFields = {
+      title: input.title ?? before.title,
+      dueDate: input.dueDate === undefined ? before.dueDate : input.dueDate,
+      assignee,
+      priority: input.priority ?? before.priority,
+    };
+    const changes: TaskChanges = {};
+    if (before.title !== after.title)
+      changes.title = { before: before.title, after: after.title };
+    if (before.dueDate !== after.dueDate)
+      changes.dueDate = { before: before.dueDate, after: after.dueDate };
+    if (assigneeChanged)
+      changes.assignee = { before: before.assignee, after: after.assignee };
+    if (before.priority !== after.priority)
+      changes.priority = { before: before.priority, after: after.priority };
+    if (Object.keys(changes).length === 0) return 'unchanged';
+    return {
+      updates: {
+        title: after.title,
+        dueDate: after.dueDate,
+        assigneeMembershipId: after.assignee?.workspaceMembershipId ?? null,
+        assigneeDisplayLabel: after.assignee?.displayLabel ?? null,
+        priority: after.priority,
+      },
+      meaning: {
+        action: 'task.updated',
+        metadata: { version: current.version + 1, changes },
+      },
+    };
   }
   private async row(actor: ActorContext, taskId: string, lock = false) {
     const query = this.database.connection
@@ -514,25 +523,238 @@ function view(row: TaskRow): TaskView {
       displayName: row.createdByDisplayName,
     },
   };
-  if (row.status === 'todo')
-    return { ...common, status: 'todo', completion: null };
+  switch (row.status) {
+    case 'todo':
+    case 'in_progress':
+      return { ...common, status: row.status, completion: null };
+    case 'blocked':
+      return {
+        ...common,
+        status: row.status,
+        completion: null,
+        blockage: storedDeclaration(
+          row.blockageReason,
+          storedAttribution({
+            internalUserId: row.blockedByInternalUserId,
+            workspaceMembershipId: row.blockedByMembershipId,
+            displayName: row.blockedByDisplayName,
+            occurredAt: row.blockedAt,
+          }),
+        ),
+      };
+    case 'done':
+      return {
+        ...common,
+        status: row.status,
+        completion: storedAttribution({
+          internalUserId: row.completedByInternalUserId,
+          workspaceMembershipId: row.completedByMembershipId,
+          displayName: row.completedByDisplayName,
+          occurredAt: row.completedAt,
+        }),
+      };
+    case 'cancelled':
+      return {
+        ...common,
+        status: row.status,
+        completion: null,
+        cancellation: storedDeclaration(
+          row.cancellationReason,
+          storedAttribution({
+            internalUserId: row.cancelledByInternalUserId,
+            workspaceMembershipId: row.cancelledByMembershipId,
+            displayName: row.cancelledByDisplayName,
+            occurredAt: row.cancelledAt,
+          }),
+        ),
+      };
+    default: {
+      const exhaustive: never = row.status;
+      throw new Error(`Invalid stored Task state: ${String(exhaustive)}.`);
+    }
+  }
+}
+function storedAttribution(columns: {
+  internalUserId: string | null;
+  workspaceMembershipId: string | null;
+  displayName: string | null;
+  occurredAt: Date | null;
+}): { actor: TaskActor; occurredAt: string } {
+  const { internalUserId, workspaceMembershipId, displayName, occurredAt } =
+    columns;
   if (
-    !row.completedAt ||
-    !row.completedByInternalUserId ||
-    !row.completedByMembershipId ||
-    row.completedByDisplayName === null
+    internalUserId === null ||
+    workspaceMembershipId === null ||
+    displayName === null ||
+    occurredAt === null
   )
-    throw new Error('Invalid stored Task completion.');
+    throw new Error('Invalid stored Task declaration.');
   return {
-    ...common,
-    status: 'done',
-    completion: {
-      occurredAt: row.completedAt.toISOString(),
-      actor: {
-        internalUserId: row.completedByInternalUserId,
-        workspaceMembershipId: row.completedByMembershipId,
-        displayName: row.completedByDisplayName,
-      },
-    },
+    actor: { internalUserId, workspaceMembershipId, displayName },
+    occurredAt: occurredAt.toISOString(),
   };
+}
+function storedDeclaration(
+  reason: string | null,
+  attribution: { actor: TaskActor; occurredAt: string },
+): TaskDeclaration {
+  if (reason === null) throw new Error('Invalid stored Task declaration.');
+  return { reason, ...attribution };
+}
+type TaskCommand =
+  | { action: 'edit'; input: TaskEdit }
+  | { action: 'complete' | 'reopen'; input: { expectedVersion: number } }
+  | { action: 'status'; input: TaskStatusInput }
+  | { action: 'cancel'; input: { expectedVersion: number; reason: string } };
+type TaskChange = {
+  updates: Partial<typeof tasks.$inferInsert>;
+  meaning: TaskEventMeaning;
+};
+type Declared = { actor: ActorContext; occurredAt: Date };
+/**
+ * The single owner of legal Task moves. It returns the complete state and event for a
+ * permitted move, or null when the move conflicts without change, including a move to
+ * the current state.
+ */
+function transitionChange(
+  command: Exclude<TaskCommand, { action: 'edit' }>,
+  current: TaskRow,
+  declared: Declared,
+): TaskChange | null {
+  const from = current.status,
+    version = current.version + 1;
+  switch (command.action) {
+    case 'reopen':
+      if (from !== 'done' && from !== 'cancelled') return null;
+      return {
+        updates: stateColumns({ status: 'todo' }),
+        meaning: {
+          action: 'task.reopened',
+          metadata: { version, before: from, after: 'todo' },
+        },
+      };
+    case 'complete':
+      if (!isOpenTaskState(from)) return null;
+      return {
+        updates: stateColumns({ status: 'done', declared }),
+        meaning: {
+          action: 'task.completed',
+          metadata: { version, before: from, after: 'done' },
+        },
+      };
+    case 'cancel': {
+      if (!isOpenTaskState(from)) return null;
+      const { reason } = command.input;
+      return {
+        updates: stateColumns({ status: 'cancelled', reason, declared }),
+        meaning: {
+          action: 'task.cancelled',
+          metadata: { version, before: from, after: 'cancelled', reason },
+        },
+      };
+    }
+    case 'status': {
+      const input = command.input;
+      if (!isOpenTaskState(from) || from === input.status) return null;
+      if (input.status === 'blocked')
+        return {
+          updates: stateColumns({
+            status: 'blocked',
+            reason: input.reason,
+            declared,
+          }),
+          meaning: {
+            action: 'task.status.changed',
+            metadata: {
+              version,
+              before: from,
+              after: 'blocked',
+              reason: input.reason,
+            },
+          },
+        };
+      return {
+        updates: stateColumns({ status: input.status }),
+        meaning: {
+          action: 'task.status.changed',
+          metadata: {
+            version,
+            before: from,
+            after: input.status,
+            reason: null,
+          },
+        },
+      };
+    }
+    default: {
+      const exhaustive: never = command;
+      return exhaustive;
+    }
+  }
+}
+/** Sets the target state's own declaration and retires every other one; history keeps them. */
+function stateColumns(
+  target:
+    | { status: 'todo' | 'in_progress' }
+    | { status: 'blocked' | 'cancelled'; reason: string; declared: Declared }
+    | { status: 'done'; declared: Declared },
+): Partial<typeof tasks.$inferInsert> {
+  const columns = {
+    status: target.status,
+    completedByInternalUserId: null,
+    completedByMembershipId: null,
+    completedByDisplayName: null,
+    completedAt: null,
+    blockageReason: null,
+    blockedByInternalUserId: null,
+    blockedByMembershipId: null,
+    blockedByDisplayName: null,
+    blockedAt: null,
+    cancellationReason: null,
+    cancelledByInternalUserId: null,
+    cancelledByMembershipId: null,
+    cancelledByDisplayName: null,
+    cancelledAt: null,
+  } satisfies Partial<typeof tasks.$inferInsert>;
+  switch (target.status) {
+    case 'todo':
+    case 'in_progress':
+      return columns;
+    case 'blocked': {
+      const { actor, occurredAt } = target.declared;
+      return {
+        ...columns,
+        blockageReason: target.reason,
+        blockedByInternalUserId: actor.internalUserId,
+        blockedByMembershipId: actor.workspaceMembershipId,
+        blockedByDisplayName: actor.displayName,
+        blockedAt: occurredAt,
+      };
+    }
+    case 'done': {
+      const { actor, occurredAt } = target.declared;
+      return {
+        ...columns,
+        completedByInternalUserId: actor.internalUserId,
+        completedByMembershipId: actor.workspaceMembershipId,
+        completedByDisplayName: actor.displayName,
+        completedAt: occurredAt,
+      };
+    }
+    case 'cancelled': {
+      const { actor, occurredAt } = target.declared;
+      return {
+        ...columns,
+        cancellationReason: target.reason,
+        cancelledByInternalUserId: actor.internalUserId,
+        cancelledByMembershipId: actor.workspaceMembershipId,
+        cancelledByDisplayName: actor.displayName,
+        cancelledAt: occurredAt,
+      };
+    }
+    default: {
+      const exhaustive: never = target;
+      return exhaustive;
+    }
+  }
 }

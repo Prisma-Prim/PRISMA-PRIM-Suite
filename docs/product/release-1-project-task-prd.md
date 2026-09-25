@@ -176,11 +176,11 @@ Unassigned and undated Tasks are valid. The server derives immutable Workspace,
 Company, Project and original Client from the Project, and establishes identity,
 creator, timestamps and initial version.
 
-A new Task is `todo`. While `todo`, a manager can edit its title, assignee and date
+A new Task is `todo`. While a Task is open (§20), a manager can edit its title, assignee and date
 or mark it `done`. A done Task is read-only except for explicit reopening to
 `todo`, which preserves its fields. Completion records the declaring actor and
 time; reopening preserves that declaration in immutable history. A manager need
-not be the assignee or creator. No deletion, cancellation or archive is introduced.
+not be the assignee or creator. No deletion or archive is introduced; §20 adds cancellation.
 
 The Project remains `preparatory`. Neither a Task assignment nor completion grants
 access, approves operational execution, closes a nonconformity, satisfies a
@@ -271,7 +271,7 @@ the active Company, ordered by date, with existing access rights and no urgency
 rule or new grant. It is a delegated product choice under that approval, not newly
 collected Iurie evidence.
 
-**My Tasks** lists every `todo` Task whose responsible member is the reader's own
+**My Tasks** lists every open Task (§20) whose responsible member is the reader's own
 Workspace Membership, in the active Company, whose Project the reader can read
 under section 18: current Company context, Company Task Manager v1 `task.read`,
 Project read, and an active or superseded original Client with an active
@@ -297,7 +297,19 @@ advance, and needs no schema change.
 
 My Tasks is not a Dashboard next action. It has no overdue or urgency label,
 count, badge or ranking, and no filter, search, team view, reminder or
-notification. Opening a Task or Project from a row remains a separate follow-up.
+notification. Opening a row's Task in its Project is owned by #377.
+
+## 20. Approved Task execution states (#365)
+
+Dan approved reusable provisional MVP choices for later business validation on 2026-09-24. This section normalizes the Task states of the consolidated decision record §9.4 for manual preparation Tasks. It is a delegated product choice, not newly collected Iurie evidence.
+
+A Task has one of five states: `todo`, `in_progress` and `blocked` are open; `done` and `cancelled` are closed. A manager with `task.manage` and the §18 read prerequisites may move an open Task to another open state, mark any open Task `done`, or cancel any open Task. A `done` or `cancelled` Task can only be reopened to `todo`. Entering `blocked` requires a blockage reason; entering `cancelled` requires a cancellation reason. Each reason is trimmed text of 1–500 characters, recorded with the declaring actor and server time. Leaving `blocked` or reopening a cancelled Task retires the current declaration without erasing it from history. Title, assignee and due date remain editable in every open state; closed Tasks are read-only except reopening.
+
+States are manual declarations. They grant no access, satisfy no gate, trigger no reminder, escalation, notification or automatic transition, and do not change the Project. Cancellation is not deletion: the Task, its fields, assignment and history remain readable under §18. The §18 rules for version, idempotency, replay, historical Clients, the reversal fence and UI states apply to every new command. A move to the current state, or any transition not listed here, conflicts without change.
+
+My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
+
+Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details, reason vocabularies, dashboard counts or queues, and Project lifecycle effects remain separate decisions.
 
 ## 22. Approved manual Task priority (#375)
 

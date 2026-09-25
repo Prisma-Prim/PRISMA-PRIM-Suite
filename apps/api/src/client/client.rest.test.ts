@@ -13,6 +13,10 @@ if (process.env.REQUIRE_CLIENT_POSTGRES === 'true' && !databaseUrl) {
 }
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
 const WORKSPACE_ID = '00000000-0000-4000-8000-000000000111';
+const CLIENT_ROW_LOCK_QUERY =
+  '%from "client_accounts"%update of "client_accounts"%';
+const CORRECTION_RECEIPT_QUERY =
+  '%insert into "client_account_correction_commands"%';
 
 describeWithPostgres('Client REST API', () => {
   let harness: PostgresRestTestHarness;
@@ -1338,6 +1342,153 @@ describeWithPostgres('Client REST API', () => {
     });
   });
 
+  it('queues corrections that both reserved a receipt before either locked the Client', async () => {
+    const company = await registerCompany('PRISMA-PRIM', 'gated-correction');
+    const client = await createClient(
+      company.id,
+      'Gated Correction Client',
+      'gated-correction-client',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const commandA = {
+      key: 'gated-correction-a',
+      telephone: '+373 60 000 011',
+    };
+    const commandB = {
+      key: 'gated-correction-b',
+      telephone: '+373 60 000 012',
+    };
+    const correct = (command: { key: string; telephone: string }) =>
+      correctTelephone({
+        companyId: company.id,
+        clientAccountId: client.id,
+        ...command,
+      });
+
+    // FOR SHARE admits each receipt's foreign-key KEY SHARE check but blocks
+    // the Client row lock, so both commands reserve before either locks.
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR SHARE',
+        [client.id],
+      );
+      const pending = Promise.all([correct(commandA), correct(commandB)]);
+      await waitForLockWaiters(CLIENT_ROW_LOCK_QUERY, 2);
+      await barrier.query('COMMIT');
+      released = true;
+      const responses = await pending;
+      expect(responses.map((response) => response.status).toSorted()).toEqual([
+        200, 409,
+      ]);
+      const commandAWon = responses[0].status === 200;
+      const [winner, loser] = commandAWon
+        ? [commandA, commandB]
+        : [commandB, commandA];
+      const [won, lost] = commandAWon
+        ? responses
+        : [responses[1], responses[0]];
+      const corrected = await won.json();
+      expect(corrected).toMatchObject({
+        id: client.id,
+        version: 2,
+        telephone: winner.telephone,
+      });
+      await expect(lost.json()).resolves.toEqual({
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'The Client dossier has changed.',
+      });
+      await expectCorrectionState(client.id, {
+        telephone: winner.telephone,
+        version: 2,
+        keys: [winner.key],
+        changes: [{ telephone: { before: null, after: winner.telephone } }],
+      });
+
+      const replay = await correct(winner);
+      expect(replay.status).toBe(200);
+      await expect(replay.json()).resolves.toEqual(corrected);
+      const retried = await correct(loser);
+      expect(retried.status).toBe(409);
+      await expectCorrectionState(client.id, {
+        telephone: winner.telephone,
+        version: 2,
+        keys: [winner.key],
+        changes: [{ telephone: { before: null, after: winner.telephone } }],
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+  });
+
+  it('replays a same-key correction that waited on the reserved receipt and refuses changed intent', async () => {
+    const company = await registerCompany('PRISMA-PRIM', 'gated-replay');
+    const client = await createClient(
+      company.id,
+      'Gated Replay Client',
+      'gated-replay-client',
+    );
+    await grantOwnerDirectorClientAccess(company.id);
+    const exact = { key: 'gated-replay', telephone: '+373 60 000 021' };
+    const changed = { key: 'gated-replay', telephone: '+373 60 000 022' };
+    const correct = (command: { key: string; telephone: string }) =>
+      correctTelephone({
+        companyId: company.id,
+        clientAccountId: client.id,
+        ...command,
+      });
+
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR SHARE',
+        [client.id],
+      );
+      // The first command owns the key and waits at the Client row lock; the
+      // same-key commands then wait on its uncommitted receipt.
+      const first = correct(exact);
+      await waitForLockWaiters(CLIENT_ROW_LOCK_QUERY, 1);
+      const racing = Promise.all([correct(exact), correct(changed)]);
+      await waitForLockWaiters(CORRECTION_RECEIPT_QUERY, 2);
+      await barrier.query('COMMIT');
+      released = true;
+      const [firstResponse, [replay, changedIntent]] = await Promise.all([
+        first,
+        racing,
+      ]);
+      expect([
+        firstResponse.status,
+        replay.status,
+        changedIntent.status,
+      ]).toEqual([200, 200, 400]);
+      const corrected = await firstResponse.json();
+      expect(corrected).toMatchObject({
+        version: 2,
+        telephone: exact.telephone,
+      });
+      await expect(replay.json()).resolves.toEqual(corrected);
+      await expect(changedIntent.json()).resolves.toMatchObject({
+        message:
+          'Idempotency-Key was already used for another Client correction.',
+      });
+      await expectCorrectionState(client.id, {
+        telephone: exact.telephone,
+        version: 2,
+        keys: [exact.key],
+        changes: [{ telephone: { before: null, after: exact.telephone } }],
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+  });
+
   it('rolls back a correction and its command when attributable history cannot be recorded', async () => {
     const company = await registerCompany('PRISMA-PRIM', 'rollback-correction');
     const client = await createClient(
@@ -2546,6 +2697,75 @@ describeWithPostgres('Client REST API', () => {
       'statusCode',
     ]);
     return { duplicate_review_reference: body.duplicate_review_reference };
+  }
+
+  function correctTelephone(input: {
+    companyId: string;
+    clientAccountId: string;
+    key: string;
+    telephone: string;
+  }) {
+    return fetch(`${origin}/api/clients/${input.clientAccountId}`, {
+      method: 'PATCH',
+      headers: {
+        ...ownerHeaders(input.companyId),
+        'content-type': 'application/json',
+        'idempotency-key': input.key,
+      },
+      body: JSON.stringify({ expectedVersion: 1, telephone: input.telephone }),
+    });
+  }
+
+  async function waitForLockWaiters(
+    queryPattern: string,
+    expected: number,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const waiting = await pool.query<{ count: string }>(
+        `SELECT count(*) AS count
+           FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND wait_event_type = 'Lock'
+            AND query ILIKE $1`,
+        [queryPattern],
+      );
+      if (Number(waiting.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(
+      'The concurrent corrections did not reach the lock barrier.',
+    );
+  }
+
+  async function expectCorrectionState(
+    clientAccountId: string,
+    expected: {
+      telephone: string;
+      version: number;
+      keys: string[];
+      changes: Record<string, { before: unknown; after: unknown }>[];
+    },
+  ): Promise<void> {
+    const client = await pool.query<{
+      telephone: string | null;
+      version: number;
+    }>('SELECT telephone, version FROM client_accounts WHERE id = $1', [
+      clientAccountId,
+    ]);
+    const receipts = await pool.query<{ idempotency_key: string }>(
+      `SELECT idempotency_key FROM client_account_correction_commands
+       ORDER BY idempotency_key`,
+    );
+    const events = await pool.query<{ metadata: { changes: unknown } }>(
+      `SELECT metadata FROM activity_log_events
+       WHERE action::text = 'client.corrected'`,
+    );
+    expect({
+      telephone: client.rows[0]?.telephone,
+      version: client.rows[0]?.version,
+      keys: receipts.rows.map((row) => row.idempotency_key),
+      changes: events.rows.map((row) => row.metadata.changes),
+    }).toEqual(expected);
   }
 
   async function clientSuccessEventCount(): Promise<number> {

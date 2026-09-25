@@ -3,6 +3,7 @@ import {
   canReadCommercialTarget,
   type CommercialTargetKind,
 } from '../commercial-intake/commercial-intake.read-predicate.js';
+import type { CommercialActivityEvent } from './accountability.types.js';
 
 /**
  * The only commercial actions this projection may return, with the commercial
@@ -29,6 +30,38 @@ export function commercialActivityTargetOf(
   action: CommercialActivityAction,
 ): CommercialTargetKind {
   return COMMERCIAL_ACTIVITY_TARGETS[action];
+}
+
+/**
+ * The target reference one projected event discloses. An Opportunity event
+ * also names its containing Request, derived read-only, only for an actor who
+ * can currently read Requests. The recorded Request is that Request: the
+ * event's composite foreign key keeps it in the event's Workspace and Company,
+ * which the projection query already requires to be the active Company.
+ */
+export function commercialActivityTarget(
+  company: ActiveCompanyContext,
+  action: CommercialActivityAction,
+  recorded: {
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+  },
+): CommercialActivityEvent['target'] {
+  if (commercialActivityTargetOf(action) === 'client_request')
+    return {
+      type: 'client_request',
+      clientRequestId: recorded.clientRequestId,
+      companyId: recorded.companyId,
+    };
+  return {
+    type: 'opportunity',
+    opportunityId: recorded.opportunityId,
+    ...(canReadCommercialTarget(company, 'client_request')
+      ? { clientRequestId: recorded.clientRequestId }
+      : {}),
+    companyId: recorded.companyId,
+  };
 }
 
 /**

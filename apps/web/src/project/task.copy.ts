@@ -1,16 +1,18 @@
-import type { TaskPriority } from './task-response';
+import type { TaskEvent, TaskPriority, TaskState } from './task-response';
 
 export const taskCopy = {
   activityTarget: 'Task',
   activityActionLabels: {
     'task.created': 'created a Task',
     'task.updated': 'updated a Task',
+    'task.status.changed': "changed a Task's status",
     'task.completed': 'declared a Task done',
+    'task.cancelled': 'cancelled a Task',
     'task.reopened': 'reopened a Task',
-  },
+  } satisfies Record<TaskEvent['action'], string>,
   title: 'Tasks',
   warning:
-    'Manual preparation Tasks. Completion records a declaration; it does not approve execution or satisfy a business gate.',
+    'Manual preparation Tasks. Each state records a declaration; it does not approve execution or satisfy a business gate.',
   loading: 'Loading Tasks…',
   error: 'Tasks could not be loaded. Reload to try again.',
   denied: 'Task, Project and Client read access are required for this Company.',
@@ -30,7 +32,6 @@ export const taskCopy = {
     'Enter calendar dates with the from date on or before the through date. No date filter is applied until then.',
   resetDateFilter: 'Reset date filter',
   all: 'All',
-  completedFilter: 'Completed',
   noMatch: 'No Tasks match the current filters.',
   immutable:
     'Read-only: the original Client has been superseded. Task history remains available.',
@@ -59,10 +60,31 @@ export const taskCopy = {
   membersError:
     'Responsible members could not be loaded. Reload before changing the Task.',
   save: 'Save Task',
-  complete: 'Mark done',
-  reopen: 'Reopen Task',
-  todo: 'To do',
-  done: 'Done',
+  states: {
+    todo: 'To do',
+    in_progress: 'In progress',
+    blocked: 'Blocked',
+    done: 'Done',
+    cancelled: 'Cancelled',
+  } satisfies Record<TaskState, string>,
+  moves: {
+    todo: 'Mark to do',
+    in_progress: 'Mark in progress',
+    blocked: 'Mark blocked',
+    done: 'Mark done',
+    cancelled: 'Cancel Task',
+    reopen: 'Reopen Task',
+  } satisfies Record<TaskState | 'reopen', string>,
+  actions: 'Task actions',
+  blockageReason: 'Blockage reason',
+  cancellationReason: 'Cancellation reason',
+  saveBlockage: 'Save blockage',
+  saveCancellation: 'Save cancellation',
+  keepState: 'Keep current state',
+  reasonValidation: 'Enter a reason of 1–500 characters.',
+  reason: 'Reason',
+  blockedBy: 'Blocked by',
+  cancelledBy: 'Cancelled by',
   history: 'Task history',
   createdBy: 'Created by',
   completion: 'Completion declared by',
@@ -80,8 +102,11 @@ export const taskCopy = {
   confirmed: 'Task change recorded.',
   created: 'Task created',
   updated: 'Task edited',
+  statusChanged: 'Status changed',
   completed: 'Completion declared',
+  cancelled: 'Task cancelled',
   reopened: 'Task reopened',
+  status: 'Status',
   before: 'Before',
   after: 'After',
   myTasks: {
@@ -97,5 +122,15 @@ export const taskCopy = {
     retry: 'Retry',
     project: 'Project',
     client: 'Client',
+    open: 'Open',
+    openTask: ({
+      task,
+      project,
+      client,
+    }: {
+      task: string;
+      project: string;
+      client: string;
+    }) => `Open ${task} in ${project} (${client})`,
   },
 };

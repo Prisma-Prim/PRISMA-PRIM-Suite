@@ -2,10 +2,13 @@ import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import {
   DEFAULT_TASK_PRIORITY,
+  OPEN_TASK_STATES,
   TASK_PRIORITIES,
+  type OpenTaskState,
   type TaskActor,
   type TaskAssignee,
   type TaskChanges,
+  type TaskDeclaration,
   type TaskEventMeaning,
   type TaskFields,
   type TaskInitialFields,
@@ -115,6 +118,42 @@ export function transitionInput(value: unknown) {
   keys(row, ['expectedVersion']);
   return { expectedVersion: version(row.expectedVersion) };
 }
+export function isOpenTaskState(value: unknown): value is OpenTaskState {
+  return OPEN_TASK_STATES.some((state) => state === value);
+}
+/** The PRD limit and PostgreSQL length() count Unicode code points, not UTF-16 code units. */
+function reason(value: unknown): string {
+  const result = typeof value === 'string' ? value.trim() : '';
+  const characters = Array.from(result).length;
+  if (characters < 1 || characters > 500)
+    throw new BadRequestException('A reason must contain 1–500 characters.');
+  return result;
+}
+export type TaskStatusInput = { expectedVersion: number } & (
+  | { status: Exclude<OpenTaskState, 'blocked'> }
+  | { status: 'blocked'; reason: string }
+);
+/** Only entering `blocked` takes a reason; a reason sent with any other open state is rejected. */
+export function statusInput(value: unknown): TaskStatusInput {
+  const row = object(value);
+  keys(row, ['expectedVersion', 'status', 'reason']);
+  const expectedVersion = version(row.expectedVersion);
+  if (!isOpenTaskState(row.status))
+    throw new BadRequestException('Choose an open Task state.');
+  if (row.status === 'blocked')
+    return { expectedVersion, status: row.status, reason: reason(row.reason) };
+  if ('reason' in row)
+    throw new BadRequestException('Only a blockage takes a reason.');
+  return { expectedVersion, status: row.status };
+}
+export function cancelInput(value: unknown) {
+  const row = object(value);
+  keys(row, ['expectedVersion', 'reason']);
+  return {
+    expectedVersion: version(row.expectedVersion),
+    reason: reason(row.reason),
+  };
+}
 /** The assigned-Task read takes no filter, search, paging or scope input. */
 export function assignedTasksQuery(value: unknown): void {
   keys(object(value), []);
@@ -168,20 +207,56 @@ export function readTaskView(value: unknown): TaskView {
     updatedAt: string(row.updatedAt),
     createdBy: actor(row.createdBy),
   };
-  if (row.status === 'todo' && row.completion === null)
-    return { ...common, status: 'todo', completion: null };
-  if (row.status === 'done') {
-    const completion = object(row.completion);
-    return {
-      ...common,
-      status: 'done',
-      completion: {
-        actor: actor(completion.actor),
-        occurredAt: string(completion.occurredAt),
-      },
-    };
+  // Receipts recorded before blocked and cancelled states existed keep exactly this shape.
+  switch (row.status) {
+    case 'todo':
+    case 'in_progress':
+      if (row.completion === null)
+        return { ...common, status: row.status, completion: null };
+      break;
+    case 'blocked':
+      if (row.completion === null)
+        return {
+          ...common,
+          status: row.status,
+          completion: null,
+          blockage: declaration(row.blockage),
+        };
+      break;
+    case 'done': {
+      const completion = object(row.completion);
+      return {
+        ...common,
+        status: row.status,
+        completion: {
+          actor: actor(completion.actor),
+          occurredAt: string(completion.occurredAt),
+        },
+      };
+    }
+    case 'cancelled':
+      if (row.completion === null)
+        return {
+          ...common,
+          status: row.status,
+          completion: null,
+          cancellation: declaration(row.cancellation),
+        };
+      break;
   }
   throw new Error('Invalid stored Task state.');
+}
+function declaration(value: unknown): TaskDeclaration {
+  const row = object(value);
+  return {
+    reason: reason(row.reason),
+    actor: actor(row.actor),
+    occurredAt: string(row.occurredAt),
+  };
+}
+function openState(value: unknown): OpenTaskState {
+  if (!isOpenTaskState(value)) throw new Error('Invalid stored Task state.');
+  return value;
 }
 export function readTaskMeaning(value: unknown): TaskEventMeaning {
   const row = object(value),
@@ -233,18 +308,63 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
         metadata: { version: resultVersion, changes },
       };
     }
-    case 'task.completed':
-      if (metadata.before === 'todo' && metadata.after === 'done')
+    case 'task.status.changed': {
+      const before = openState(metadata.before),
+        after = openState(metadata.after);
+      if (before === after) break;
+      if (after === 'blocked')
         return {
           action: row.action,
-          metadata: { version: resultVersion, before: 'todo', after: 'done' },
+          metadata: {
+            version: resultVersion,
+            before,
+            after,
+            reason: reason(metadata.reason),
+          },
+        };
+      if (metadata.reason === null)
+        return {
+          action: row.action,
+          metadata: { version: resultVersion, before, after, reason: null },
+        };
+      break;
+    }
+    // Completions recorded before in-progress and blocked states existed start from `todo`.
+    case 'task.completed':
+      if (metadata.after === 'done')
+        return {
+          action: row.action,
+          metadata: {
+            version: resultVersion,
+            before: openState(metadata.before),
+            after: 'done',
+          },
+        };
+      break;
+    case 'task.cancelled':
+      if (metadata.after === 'cancelled')
+        return {
+          action: row.action,
+          metadata: {
+            version: resultVersion,
+            before: openState(metadata.before),
+            after: 'cancelled',
+            reason: reason(metadata.reason),
+          },
         };
       break;
     case 'task.reopened':
-      if (metadata.before === 'done' && metadata.after === 'todo')
+      if (
+        (metadata.before === 'done' || metadata.before === 'cancelled') &&
+        metadata.after === 'todo'
+      )
         return {
           action: row.action,
-          metadata: { version: resultVersion, before: 'done', after: 'todo' },
+          metadata: {
+            version: resultVersion,
+            before: metadata.before,
+            after: 'todo',
+          },
         };
       break;
   }

@@ -592,8 +592,50 @@
   border: 1px solid var(--shell-line);
 }
 
-.client-contact-editor fieldset button {
+.client-contact-editor fieldset button,
+.client-contact-field-help,
+.client-contact-field-error {
   grid-column: 2;
+}
+
+.client-contact-field-help,
+.client-contact-field-error {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.client-contact-field-help {
+  color: var(--shell-muted);
+}
+
+.client-contact-field-error {
+  color: #b42318;
+}
+
+.client-contact-communication-preferences {
+  flex-basis: 100%;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.client-contact-editor fieldset.client-contact-decision-roles {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+.client-contact-decision-roles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.client-contact-decision-roles input {
+  width: auto;
+  margin: 0;
 }
 
 .company-registration-denied {
@@ -689,6 +731,30 @@
 
 .activity-log-list span {
   margin-top: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.activity-log-list li > div {
+  min-width: 0;
+}
+
+.activity-log-open-request {
+  min-height: 2.75rem;
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--shell-blue);
+  border-radius: 0.35rem;
+  color: var(--shell-blue);
+  background: var(--shell-surface);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.activity-log-open-request:hover {
+  color: white;
+  background: var(--shell-blue);
 }
 
 .production-content-surface {
@@ -785,7 +851,9 @@
   }
 
   .client-dossier form > button,
-  .client-contact-editor fieldset button {
+  .client-contact-editor fieldset button,
+  .client-contact-field-help,
+  .client-contact-field-error {
     grid-column: 1;
   }
 

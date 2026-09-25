@@ -15,11 +15,16 @@ const CLIENT = '00000000-0000-4000-8000-000000003755';
 const PROJECT = '00000000-0000-4000-8000-000000003756';
 const OPEN_TASK = '00000000-0000-4000-8000-000000003757';
 const DONE_TASK = '00000000-0000-4000-8000-000000003758';
+const STARTED_TASK = '00000000-0000-4000-8000-000000003759';
+const BLOCKED_TASK = '00000000-0000-4000-8000-00000000375a';
+const CANCELLED_TASK = '00000000-0000-4000-8000-00000000375b';
+const BLOCKAGE_REASON = 'Attente du questionnaire signé — Clientă 🙂';
+const CANCELLATION_REASON = 'Doublon d’une autre tâche';
 const CHECK_VIOLATION = '23514';
 const NOT_NULL_VIOLATION = '23502';
 
 it.skipIf(!databaseUrl)(
-  'backfills every existing Task as normal, constrains priority and leaves receipts and history byte-identical',
+  'backfills every existing Task in each execution state as normal, constrains priority and leaves states, reasons, receipts and history byte-identical',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -106,7 +111,10 @@ it.skipIf(!databaseUrl)(
         `INSERT INTO tasks (id, workspace_id, company_id, project_id, client_account_id, title, due_date,
            version, created_by_internal_user_id, created_by_membership_id, created_by_display_name)
          VALUES ($1, $3, $4, $5, $6, 'Open notes', '2026-10-01', 2, $7, $8, 'Task Manager'),
-                ($2, $3, $4, $5, $6, 'Done notes', NULL, 2, $7, $8, 'Task Manager')`,
+                ($2, $3, $4, $5, $6, 'Done notes', NULL, 2, $7, $8, 'Task Manager'),
+                ($9, $3, $4, $5, $6, 'Started notes', NULL, 2, $7, $8, 'Task Manager'),
+                ($10, $3, $4, $5, $6, 'Blocked notes', NULL, 2, $7, $8, 'Task Manager'),
+                ($11, $3, $4, $5, $6, 'Cancelled notes', NULL, 2, $7, $8, 'Task Manager')`,
         [
           OPEN_TASK,
           DONE_TASK,
@@ -116,6 +124,9 @@ it.skipIf(!databaseUrl)(
           CLIENT,
           USER,
           MEMBERSHIP,
+          STARTED_TASK,
+          BLOCKED_TASK,
+          CANCELLED_TASK,
         ],
       );
       await query(
@@ -124,26 +135,40 @@ it.skipIf(!databaseUrl)(
          WHERE id = $1`,
         [DONE_TASK, USER, MEMBERSHIP],
       );
-      const legacyResult = (id: string, title: string) =>
-        JSON.stringify({
-          id,
-          companyId: COMPANY,
-          projectId: PROJECT,
-          clientAccountId: CLIENT,
-          title,
-          assignee: null,
-          dueDate: null,
-          status: 'todo',
-          completion: null,
-          version: 1,
-          createdAt: '2026-09-20T08:00:00.000Z',
-          updatedAt: '2026-09-20T08:00:00.000Z',
-          createdBy: {
-            internalUserId: USER,
-            workspaceMembershipId: MEMBERSHIP,
-            displayName: 'Task Manager',
-          },
-        });
+      await query(`UPDATE tasks SET status = 'in_progress' WHERE id = $1`, [
+        STARTED_TASK,
+      ]);
+      await query(
+        `UPDATE tasks SET status = 'blocked', blockage_reason = $4, blocked_at = now(),
+           blocked_by_internal_user_id = $2, blocked_by_membership_id = $3, blocked_by_display_name = 'Task Manager'
+         WHERE id = $1`,
+        [BLOCKED_TASK, USER, MEMBERSHIP, BLOCKAGE_REASON],
+      );
+      await query(
+        `UPDATE tasks SET status = 'cancelled', cancellation_reason = $4, cancelled_at = now(),
+           cancelled_by_internal_user_id = $2, cancelled_by_membership_id = $3, cancelled_by_display_name = 'Task Manager'
+         WHERE id = $1`,
+        [CANCELLED_TASK, USER, MEMBERSHIP, CANCELLATION_REASON],
+      );
+      const legacyResult = (id: string, title: string) => ({
+        id,
+        companyId: COMPANY,
+        projectId: PROJECT,
+        clientAccountId: CLIENT,
+        title,
+        assignee: null,
+        dueDate: null,
+        status: 'todo',
+        completion: null,
+        version: 1,
+        createdAt: '2026-09-20T08:00:00.000Z',
+        updatedAt: '2026-09-20T08:00:00.000Z',
+        createdBy: {
+          internalUserId: USER,
+          workspaceMembershipId: MEMBERSHIP,
+          displayName: 'Task Manager',
+        },
+      });
       await query(
         `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
          VALUES ($1, $2, $3, $4, 'legacy-create', $5, $6::jsonb)`,
@@ -160,7 +185,7 @@ it.skipIf(!databaseUrl)(
             assigneeMembershipId: null,
             dueDate: null,
           }),
-          legacyResult(OPEN_TASK, 'Open notes'),
+          JSON.stringify(legacyResult(OPEN_TASK, 'Open notes')),
         ],
       );
       await query(
@@ -186,6 +211,74 @@ it.skipIf(!databaseUrl)(
             metadata: {
               version: 2,
               changes: { dueDate: { before: null, after: '2026-10-01' } },
+            },
+          }),
+        ],
+      );
+      // Execution-state receipts and history recorded before priority existed keep their reasons.
+      const actor = {
+        internalUserId: USER,
+        workspaceMembershipId: MEMBERSHIP,
+        displayName: 'Task Manager',
+      };
+      await query(
+        `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result)
+         VALUES ($1, $2, $3, $4, 'legacy-block', $5, $6::jsonb)`,
+        [
+          WORKSPACE,
+          COMPANY,
+          BLOCKED_TASK,
+          MEMBERSHIP,
+          JSON.stringify({
+            companyId: COMPANY,
+            taskId: BLOCKED_TASK,
+            action: 'status',
+            input: {
+              expectedVersion: 1,
+              status: 'blocked',
+              reason: BLOCKAGE_REASON,
+            },
+          }),
+          JSON.stringify({
+            ...legacyResult(BLOCKED_TASK, 'Blocked notes'),
+            status: 'blocked',
+            version: 2,
+            blockage: {
+              reason: BLOCKAGE_REASON,
+              actor,
+              occurredAt: '2026-09-21T08:00:00.000Z',
+            },
+          }),
+        ],
+      );
+      await query(
+        `INSERT INTO task_events (workspace_id, company_id, task_id, version, actor_internal_user_id,
+           actor_membership_id, actor_display_name, meaning)
+         VALUES ($1, $2, $3, 2, $5, $6, 'Task Manager', $7::jsonb),
+                ($1, $2, $4, 2, $5, $6, 'Task Manager', $8::jsonb)`,
+        [
+          WORKSPACE,
+          COMPANY,
+          BLOCKED_TASK,
+          CANCELLED_TASK,
+          USER,
+          MEMBERSHIP,
+          JSON.stringify({
+            action: 'task.status.changed',
+            metadata: {
+              version: 2,
+              before: 'todo',
+              after: 'blocked',
+              reason: BLOCKAGE_REASON,
+            },
+          }),
+          JSON.stringify({
+            action: 'task.cancelled',
+            metadata: {
+              version: 2,
+              before: 'todo',
+              after: 'cancelled',
+              reason: CANCELLATION_REASON,
             },
           }),
         ],
@@ -234,12 +327,51 @@ it.skipIf(!databaseUrl)(
       expect(
         (
           await query(
-            'SELECT id, status, version, priority FROM tasks ORDER BY id',
+            `SELECT id, status, version, priority, blockage_reason, cancellation_reason
+             FROM tasks ORDER BY id`,
           )
         ).rows,
       ).toEqual([
-        { id: OPEN_TASK, status: 'todo', version: 2, priority: 'normal' },
-        { id: DONE_TASK, status: 'done', version: 2, priority: 'normal' },
+        {
+          id: OPEN_TASK,
+          status: 'todo',
+          version: 2,
+          priority: 'normal',
+          blockage_reason: null,
+          cancellation_reason: null,
+        },
+        {
+          id: DONE_TASK,
+          status: 'done',
+          version: 2,
+          priority: 'normal',
+          blockage_reason: null,
+          cancellation_reason: null,
+        },
+        {
+          id: STARTED_TASK,
+          status: 'in_progress',
+          version: 2,
+          priority: 'normal',
+          blockage_reason: null,
+          cancellation_reason: null,
+        },
+        {
+          id: BLOCKED_TASK,
+          status: 'blocked',
+          version: 2,
+          priority: 'normal',
+          blockage_reason: BLOCKAGE_REASON,
+          cancellation_reason: null,
+        },
+        {
+          id: CANCELLED_TASK,
+          status: 'cancelled',
+          version: 2,
+          priority: 'normal',
+          blockage_reason: null,
+          cancellation_reason: CANCELLATION_REASON,
+        },
       ]);
 
       await migrate(connection, { migrationsFolder: resolve('drizzle') });

@@ -73,7 +73,7 @@ The delivered #146 / PR #147 enriched slice approved and implemented these share
 - business activity;
 - the fact that the Client also works with another involved Company.
 
-These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require.
+These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require. Section 18 refines the shared Contact with two optional descriptive fields, and section 19 adds optional descriptive communication preferences; neither changes its visibility.
 
 ## 8. Permissions
 
@@ -235,3 +235,25 @@ Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential
 ## 17. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes automatic duplicate handling, broad cross-Company visibility or any runtime rule by itself. Implementation issues must cite this PRD after the relevant evidence has been normalized here.
+
+## 18. Approved provisional Contact position and decision roles (#366)
+
+Under Dan's 24 September 2026 delegation to implement sourced business functionality and reversible provisional MVP choices, this slice records optional descriptive Contact data. It normalizes Iurie's accepted session 94 direction ([#81 comment 5308702257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308702257), items 475 and 477) into two optional descriptive Contact fields. The exact field shape and the closed code list are delegated provisional choices, not newly collected Iurie evidence. Iurie validates or corrects them against a demonstration.
+
+Each shared Contact may record a free-text `position` of up to 500 characters and a set of `decisionRoles` drawn from exactly: final decision-maker, influencer, user, financial, technical, blocker. These are the values Iurie listed in item 477. The list is closed in this slice. Adding a value later is an additive change. Neither field is mandatory. Both fields belong to the shared Contact defined in section 7. They are visible exactly where Contacts are visible, and they do not broaden visibility. Iurie's Company-confidential categories do not include them.
+
+A change to either field is an ordinary material dossier correction. It records `client.corrected` with previous and new Contact values, uses the existing expected-version, idempotency, correction-history and union rules, and adds no permission, event family or storage scope.
+
+Excluded, and not presented as business fact: relationships between Contacts (item 478), a departed or former Contact, and warnings on role change (item 479). Also excluded: a primary Contact, consent, Contact-level interactions (session 95), Contact identity for linking to Requests, Offers or Contracts, mission-specific Contacts stored on a relationship or Project, and any additional decision-role value. Communication preferences (item 476) are owned by section 19.
+
+## 19. Approved provisional Contact communication preferences (#372)
+
+Iurie's session 94 answer ([#81 comment 5308702257](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308702257), item 476) asks to record each Contact's practical communication preferences: preferred channel, language, suitable time windows and practical working preferences. Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this slice records them as one optional descriptive Contact field. The field shape, normalization and bound below are delegated provisional choices, not a new verbatim Iurie rule. Iurie validates or corrects them against a demonstration.
+
+Each shared Contact may record optional free-text `communicationPreferences`, for example “Romanian; email preferred; weekday mornings”. The server trims leading and trailing whitespace, omits a value that is blank after trimming and preserves the internal text and line breaks. The trimmed value holds at most 1000 Unicode code points, so a character outside the Basic Multilingual Plane counts once. A non-text, `null` or longer value is a validation error that commits nothing. There is no prescribed channel or language vocabulary, mandatory value, structured schedule or time-zone conversion. Readers present the value as plain text, never as markup or an executable link.
+
+The field belongs to the shared Contact defined in section 7. It is shared general data, not a private Company note. It is visible exactly where Contacts are visible, to current authorized readers of the dossier and its correction history, and it is not added to Client lists, search, counts or unrelated Activity summaries. Contacts recorded before this slice remain valid without it.
+
+Enriched registration and correction accept the field under the existing `client.create` and `client.update` authority; minimal registration still rejects Contacts. A correction submits the complete Contact list, so every other Contact field is resubmitted unchanged, and a blank value clears that Contact's preferences explicitly. A change is an ordinary material dossier correction. It records one `client.corrected` event with previous and new Contact values and keeps the delivered expected-version, no-op, idempotency, correction-history, duplicate-review and union/reversal rules. Like every other Contact field, preferences appear in the union comparison before confirmation and in the preserved originals, so the resolver reviews them as a material difference under section 11.3. It adds no permission, route, event family, migration or storage scope.
+
+Excluded, and not presented as business fact: sending, scheduling or integrating communications; capturing or inferring consent; and any decision or approval authority. Contact position and decision roles are owned by section 18. Relationships among Contacts, a departed Contact and related alerts remain outside this slice.

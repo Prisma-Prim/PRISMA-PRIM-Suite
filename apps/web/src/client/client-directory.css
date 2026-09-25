@@ -123,6 +123,23 @@
 .prisme-shell .client-registration .client-contact-editor button:hover {
   background: #f0ecfa;
 }
+.prisme-shell
+  .client-registration
+  .client-contact-editor
+  .client-contact-decision-roles {
+  padding: 12px 14px;
+  background: white;
+  gap: 10px 18px;
+}
+.prisme-shell .client-registration .client-contact-decision-roles input {
+  width: auto;
+}
+.prisme-shell
+  .client-registration
+  .client-contact-editor
+  [aria-invalid='true'] {
+  border-color: #b42318;
+}
 .prisme-shell .client-directory-feedback {
   display: flex;
   align-items: flex-start;

@@ -1,8 +1,9 @@
-import type { FormEvent } from 'react';
+import { useId, type FormEvent } from 'react';
 import {
   readTaskPriority,
   taskPriorities,
   type Assignee,
+  type TaskDeclaration,
   type TaskEvent,
   type TaskPriority,
   type TaskView,
@@ -132,15 +133,7 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
       <ol>
         {events.map((event) => (
           <li key={event.id}>
-            <strong>
-              {event.action === 'task.created'
-                ? copy.created
-                : event.action === 'task.updated'
-                  ? copy.updated
-                  : event.action === 'task.completed'
-                    ? copy.completed
-                    : copy.reopened}
-            </strong>
+            <strong>{eventLabel(event)}</strong>
             <p>
               {event.actor.displayName} ·{' '}
               <time dateTime={event.occurredAt}>
@@ -214,10 +207,126 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                 )}
               </dl>
             )}
+            {event.action !== 'task.created' &&
+              event.action !== 'task.updated' && (
+                <dl>
+                  <HistoryChange
+                    label={copy.status}
+                    before={copy.states[event.metadata.before]}
+                    after={copy.states[event.metadata.after]}
+                  />
+                </dl>
+              )}
+            {(event.action === 'task.status.changed' ||
+              event.action === 'task.cancelled') &&
+              event.metadata.reason !== null && (
+                <p>
+                  {copy.reason}: {event.metadata.reason}
+                </p>
+              )}
           </li>
         ))}
       </ol>
     </section>
+  );
+}
+function eventLabel(event: TaskEvent): string {
+  switch (event.action) {
+    case 'task.created':
+      return copy.created;
+    case 'task.updated':
+      return copy.updated;
+    case 'task.status.changed':
+      return copy.statusChanged;
+    case 'task.completed':
+      return copy.completed;
+    case 'task.cancelled':
+      return copy.cancelled;
+    case 'task.reopened':
+      return copy.reopened;
+    default: {
+      const exhaustive: never = event;
+      return exhaustive;
+    }
+  }
+}
+/** The current blockage or cancellation of a Task, with its declaring actor and server time. */
+export function TaskDeclarationFacts({
+  kind,
+  declaration,
+}: {
+  kind: 'blocked' | 'cancelled';
+  declaration: TaskDeclaration;
+}) {
+  return (
+    <>
+      <p>
+        {kind === 'blocked' ? copy.blockedBy : copy.cancelledBy}{' '}
+        {declaration.actor.displayName} {copy.at}{' '}
+        <time dateTime={declaration.occurredAt}>
+          {formatTime(declaration.occurredAt)}
+        </time>
+      </p>
+      <dl className="task-facts task-facts--declaration">
+        <div>
+          <dt>
+            {kind === 'blocked' ? copy.blockageReason : copy.cancellationReason}
+          </dt>
+          <dd>{declaration.reason}</dd>
+        </div>
+      </dl>
+    </>
+  );
+}
+export type ReasonDraft = {
+  kind: 'blocked' | 'cancelled';
+  text: string;
+  invalid: boolean;
+};
+/** The explicit reason required to enter `blocked` or `cancelled`, validated like the server. */
+export function TaskReasonForm({
+  draft,
+  onChange,
+  onSubmit,
+  onDismiss,
+}: {
+  draft: ReasonDraft;
+  onChange: (draft: ReasonDraft) => void;
+  onSubmit: (event: FormEvent) => void;
+  onDismiss: () => void;
+}) {
+  const errorId = useId();
+  return (
+    <form className="task-reason" onSubmit={onSubmit} noValidate>
+      <label>
+        {draft.kind === 'blocked'
+          ? copy.blockageReason
+          : copy.cancellationReason}
+        <textarea
+          value={draft.text}
+          required
+          rows={3}
+          aria-invalid={draft.invalid || undefined}
+          aria-describedby={draft.invalid ? errorId : undefined}
+          onChange={(event) =>
+            onChange({ ...draft, text: event.target.value, invalid: false })
+          }
+        />
+      </label>
+      {draft.invalid && (
+        <p className="task-reason-error" id={errorId}>
+          {copy.reasonValidation}
+        </p>
+      )}
+      <div className="task-actions">
+        <button type="submit">
+          {draft.kind === 'blocked' ? copy.saveBlockage : copy.saveCancellation}
+        </button>
+        <button type="button" onClick={onDismiss}>
+          {copy.keepState}
+        </button>
+      </div>
+    </form>
   );
 }
 function HistoryChange({

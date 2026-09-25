@@ -22,6 +22,60 @@ describe('stored Client correction metadata', () => {
     expect(readClientCorrectionChanges({ changes })).toEqual(changes);
   });
 
+  it('returns stored Contact positions and decision roles exactly as stored', () => {
+    const changes = {
+      contacts: {
+        before: [{ name: 'Ion Demo', telephone: '+373 60 000 001' }],
+        after: [
+          {
+            name: 'Ion Demo',
+            telephone: '+373 60 000 001',
+            position: 'Director general',
+            decisionRoles: ['final_decision_maker', 'financial'],
+          },
+          { name: 'Maria Demo', decisionRoles: ['influencer', 'technical'] },
+        ],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
+  it('returns stored Contact communication preferences exactly as stored', () => {
+    const changes = {
+      contacts: {
+        before: [{ name: 'Ion Demo', telephone: '+373 60 000 372' }],
+        after: [
+          {
+            name: 'Ion Demo',
+            telephone: '+373 60 000 372',
+            communicationPreferences:
+              'Romanian; email preferred\nweekday mornings',
+          },
+        ],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
+  it('returns a stored telephone change that keeps position, decision roles and preferences', () => {
+    const contact = {
+      name: 'Ion Demo',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
+      communicationPreferences: 'Romanian; email preferred',
+    };
+    const changes = {
+      contacts: {
+        before: [{ ...contact, telephone: '+373 60 000 001' }],
+        after: [{ ...contact, telephone: '+373 60 000 372' }],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
   it.each([
     ['no metadata object', null],
     ['no changes', {}],
@@ -47,6 +101,72 @@ describe('stored Client correction metadata', () => {
     [
       'an unknown Contact field',
       { changes: { contacts: pair([], [{ name: 'A', role: 'private' }]) } },
+    ],
+    [
+      'a non-text Contact position',
+      { changes: { contacts: pair([], [{ name: 'A', position: 42 }]) } },
+    ],
+    [
+      'a blank Contact position',
+      { changes: { contacts: pair([{ name: 'A', position: '' }], []) } },
+    ],
+    [
+      'a non-list decision-role value',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', decisionRoles: 'financial' }]),
+        },
+      },
+    ],
+    [
+      'an empty decision-role list',
+      { changes: { contacts: pair([], [{ name: 'A', decisionRoles: [] }]) } },
+    ],
+    [
+      'an unknown decision role',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', decisionRoles: ['vip'] }]),
+        },
+      },
+    ],
+    [
+      'decision roles outside vocabulary order',
+      {
+        changes: {
+          contacts: pair(
+            [],
+            [{ name: 'A', decisionRoles: ['blocker', 'influencer'] }],
+          ),
+        },
+      },
+    ],
+    [
+      'null Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', communicationPreferences: null }]),
+        },
+      },
+    ],
+    [
+      'blank Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([{ name: 'A', communicationPreferences: ' ' }], []),
+        },
+      },
+    ],
+    [
+      'over-long Contact communication preferences',
+      {
+        changes: {
+          contacts: pair(
+            [],
+            [{ name: 'A', communicationPreferences: 'x'.repeat(1_001) }],
+          ),
+        },
+      },
     ],
   ])('fails closed on %s without echoing stored values', (_name, metadata) => {
     expect(() => readClientCorrectionChanges(metadata)).toThrow(

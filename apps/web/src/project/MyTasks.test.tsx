@@ -236,6 +236,80 @@ it('labels each row with its priority as text while keeping the server date orde
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 });
 
+it('shows each open row with its execution state and priority and no count, badge or ranking', async () => {
+  stub(
+    page([
+      { ...september, status: 'in_progress', priority: 'important' },
+      {
+        ...october,
+        priority: 'critical',
+        status: 'blocked',
+        version: 2,
+        blockage: {
+          reason: 'Waiting for the signed questionnaire',
+          actor: attribution,
+          occurredAt: '2026-09-24T10:00:00.000Z',
+        },
+      },
+      undated,
+    ]),
+  );
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
+  const list = await screen.findByRole('list', { name: copy.listLabel });
+  expect(rows().map(([title]) => title)).toEqual([
+    'September notes',
+    'October notes',
+    'Undated notes',
+  ]);
+  const [started, blocked, open] = within(list).getAllByRole('listitem');
+  expect(started).toHaveTextContent('In progress');
+  expect(blocked).toHaveTextContent('Blocked');
+  expect(open).toHaveTextContent('To do');
+  // A blocked critical Task keeps the server's date order.
+  expect(rows().map((row) => row.at(-1))).toEqual([
+    'Important',
+    'Critical',
+    'Normal',
+  ]);
+  expect(region()).not.toHaveTextContent(
+    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+|blocked\s+|critical\s+|important\s+)?tasks?\b/i,
+  );
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+});
+
+it.each([
+  [
+    'done',
+    {
+      ...october,
+      status: 'done',
+      completion: {
+        actor: attribution,
+        occurredAt: '2026-09-24T10:00:00.000Z',
+      },
+    },
+  ],
+  [
+    'cancelled',
+    {
+      ...october,
+      status: 'cancelled',
+      cancellation: {
+        reason: 'Duplicate of another Task',
+        actor: attribution,
+        occurredAt: '2026-09-24T10:00:00.000Z',
+      },
+    },
+  ],
+])('fails closed when the read returns a %s Task', async (_state, closed) => {
+  stub(page([september, closed]));
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+  expect(
+    screen.queryByRole('list', { name: copy.listLabel }),
+  ).not.toBeInTheDocument();
+});
+
 it('shows the explicit empty state', async () => {
   stub(page([]));
   render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);

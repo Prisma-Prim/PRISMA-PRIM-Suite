@@ -1,16 +1,61 @@
 import { optionalProperty } from './client-command';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 
+/** Closed provisional vocabulary, in the order the server stores it. */
+export const clientContactDecisionRoles = [
+  'final_decision_maker',
+  'influencer',
+  'user',
+  'financial',
+  'technical',
+  'blocker',
+] as const;
+
+export type ClientContactDecisionRole =
+  (typeof clientContactDecisionRoles)[number];
+
+const MAXIMUM_POSITION_LENGTH = 500;
+/** Mirrors the server bound, counted in Unicode code points. */
+const MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS = 1_000;
+
 export interface ClientContact {
   name: string;
   telephone?: string;
   email?: string;
+  position?: string;
+  decisionRoles?: ClientContactDecisionRole[];
+  communicationPreferences?: string;
 }
 
+/** Carries every Contact field so a correction resubmits what it loaded. */
 export interface ClientContactDraft {
   name: string;
   telephone: string;
   email: string;
+  position: string;
+  decisionRoles: ClientContactDecisionRole[];
+  communicationPreferences: string;
+}
+
+export type ClientContactDraftResult =
+  | { status: 'valid'; contacts: ClientContact[] }
+  | { status: 'invalid'; message: string };
+
+export function isClientContactDecisionRole(
+  value: unknown,
+): value is ClientContactDecisionRole {
+  return clientContactDecisionRoles.some((role) => role === value);
+}
+
+export function contactDraft(contact: ClientContact): ClientContactDraft {
+  return {
+    name: contact.name,
+    telephone: contact.telephone ?? '',
+    email: contact.email ?? '',
+    position: contact.position ?? '',
+    decisionRoles: contact.decisionRoles ?? [],
+    communicationPreferences: contact.communicationPreferences ?? '',
+  };
 }
 
 export function ClientContactEditor({
@@ -68,6 +113,84 @@ export function ClientContactEditor({
                 )
               }
             />
+            <ContactField
+              id={`${idPrefix}-${index}-position`}
+              label={copy.contactPositionLabel}
+              value={contact.position}
+              invalid={positionTooLong(contact)}
+              errorId={`${idPrefix}-${index}-position-error`}
+              onChange={(value) =>
+                onChange(
+                  replaceContact(contacts, index, {
+                    ...contact,
+                    position: value,
+                  }),
+                )
+              }
+            />
+            {positionTooLong(contact) && (
+              <p
+                id={`${idPrefix}-${index}-position-error`}
+                className="client-contact-field-error"
+              >
+                {copy.contactPositionTooLong}
+              </p>
+            )}
+            <fieldset className="client-contact-decision-roles">
+              <legend>{copy.contactDecisionRolesLabel}</legend>
+              {clientContactDecisionRoles.map((role) => (
+                <label key={role}>
+                  <input
+                    type="checkbox"
+                    checked={contact.decisionRoles.includes(role)}
+                    onChange={(event) =>
+                      onChange(
+                        replaceContact(contacts, index, {
+                          ...contact,
+                          decisionRoles: clientContactDecisionRoles.filter(
+                            (selected) =>
+                              selected === role
+                                ? event.target.checked
+                                : contact.decisionRoles.includes(selected),
+                          ),
+                        }),
+                      )
+                    }
+                  />
+                  <span>{copy.contactDecisionRoleLabels[role]}</span>
+                </label>
+              ))}
+            </fieldset>
+            <ContactField
+              id={`${idPrefix}-${index}-communication-preferences`}
+              label={copy.contactCommunicationPreferencesLabel}
+              value={contact.communicationPreferences}
+              helpId={`${idPrefix}-${index}-communication-preferences-help`}
+              invalid={communicationPreferencesTooLong(contact)}
+              errorId={`${idPrefix}-${index}-communication-preferences-error`}
+              onChange={(value) =>
+                onChange(
+                  replaceContact(contacts, index, {
+                    ...contact,
+                    communicationPreferences: value,
+                  }),
+                )
+              }
+            />
+            <p
+              id={`${idPrefix}-${index}-communication-preferences-help`}
+              className="client-contact-field-help"
+            >
+              {copy.contactCommunicationPreferencesHelp}
+            </p>
+            {communicationPreferencesTooLong(contact) && (
+              <p
+                id={`${idPrefix}-${index}-communication-preferences-error`}
+                className="client-contact-field-error"
+              >
+                {copy.contactCommunicationPreferencesTooLong}
+              </p>
+            )}
             <button
               type="button"
               onClick={() =>
@@ -82,9 +205,7 @@ export function ClientContactEditor({
         ))}
         <button
           type="button"
-          onClick={() =>
-            onChange([...contacts, { name: '', telephone: '', email: '' }])
-          }
+          onClick={() => onChange([...contacts, contactDraft({ name: '' })])}
         >
           {copy.addContact}
         </button>
@@ -95,19 +216,78 @@ export function ClientContactEditor({
 
 export function normalizedContacts(
   drafts: ClientContactDraft[],
-): ClientContact[] | undefined {
-  if (drafts.some((contact) => !contact.name.trim())) return undefined;
-  return drafts.map((contact) => ({
-    name: contact.name.trim(),
-    ...optionalProperty('telephone', contact.telephone),
-    ...optionalProperty('email', contact.email),
-  }));
+): ClientContactDraftResult {
+  if (drafts.some((contact) => !contact.name.trim()))
+    return { status: 'invalid', message: copy.contactsInvalid };
+  if (drafts.some(positionTooLong))
+    return { status: 'invalid', message: copy.contactPositionTooLong };
+  if (drafts.some(communicationPreferencesTooLong))
+    return {
+      status: 'invalid',
+      message: copy.contactCommunicationPreferencesTooLong,
+    };
+  return {
+    status: 'valid',
+    contacts: drafts.map((contact) => ({
+      name: contact.name.trim(),
+      ...optionalProperty('telephone', contact.telephone),
+      ...optionalProperty('email', contact.email),
+      ...optionalProperty('position', contact.position),
+      ...(contact.decisionRoles.length === 0
+        ? {}
+        : { decisionRoles: contact.decisionRoles }),
+      ...optionalProperty(
+        'communicationPreferences',
+        contact.communicationPreferences,
+      ),
+    })),
+  };
+}
+
+/** Presents the optional descriptive fields below a Contact name. */
+export function ClientContactDescription({
+  contact,
+}: {
+  contact: ClientContact;
+}) {
+  const roles = contact.decisionRoles ?? [];
+  return (
+    <>
+      {contact.position && <span>{contact.position}</span>}
+      {roles.length > 0 && (
+        <span>
+          {copy.contactDecisionRolesSummary(
+            roles.map((role) => copy.contactDecisionRoleLabels[role]),
+          )}
+        </span>
+      )}
+      {contact.communicationPreferences && (
+        <span className="client-contact-communication-preferences">
+          {copy.contactCommunicationPreferencesSummary(
+            contact.communicationPreferences,
+          )}
+        </span>
+      )}
+    </>
+  );
+}
+
+function positionTooLong(contact: ClientContactDraft): boolean {
+  return contact.position.trim().length > MAXIMUM_POSITION_LENGTH;
+}
+
+function communicationPreferencesTooLong(contact: ClientContactDraft): boolean {
+  return (
+    [...contact.communicationPreferences.trim()].length >
+    MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS
+  );
 }
 
 function ContactField({
   id,
   label,
   value,
+  helpId,
   invalid = false,
   errorId,
   onChange,
@@ -115,10 +295,14 @@ function ContactField({
   id: string;
   label: string;
   value: string;
+  helpId?: string;
   invalid?: boolean;
   errorId?: string;
   onChange: (value: string) => void;
 }) {
+  const describedBy = [helpId, invalid ? errorId : undefined]
+    .filter((description) => description !== undefined)
+    .join(' ');
   return (
     <>
       <label htmlFor={id}>{label}</label>
@@ -127,7 +311,7 @@ function ContactField({
         rows={2}
         value={value}
         aria-invalid={invalid}
-        aria-describedby={invalid ? errorId : undefined}
+        aria-describedby={describedBy || undefined}
         onChange={(event) => onChange(event.target.value)}
       />
     </>

@@ -125,6 +125,31 @@ export function ClientUnionComparison({
                         <dt>{clientCopy.contactEmailLabel}</dt>
                         <dd>{contact.email ?? copy.notProvided}</dd>
                       </div>
+                      <div>
+                        <dt>{clientCopy.contactPositionLabel}</dt>
+                        <dd>{contact.position ?? copy.notProvided}</dd>
+                      </div>
+                      <div>
+                        <dt>{clientCopy.contactDecisionRolesLabel}</dt>
+                        <dd>
+                          {contact.decisionRoles?.length
+                            ? contact.decisionRoles
+                                .map(
+                                  (role) =>
+                                    clientCopy.contactDecisionRoleLabels[role],
+                                )
+                                .join(', ')
+                            : copy.notProvided}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>
+                          {clientCopy.contactCommunicationPreferencesLabel}
+                        </dt>
+                        <dd>
+                          {contact.communicationPreferences ?? copy.notProvided}
+                        </dd>
+                      </div>
                     </dl>
                   </li>
                 ))}

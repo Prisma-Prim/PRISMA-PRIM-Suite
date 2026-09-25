@@ -1,4 +1,8 @@
-import type { ClientContact } from './ClientContactEditor';
+import {
+  isClientContactDecisionRole,
+  type ClientContact,
+  type ClientContactDecisionRole,
+} from './ClientContactEditor';
 
 const textFields = [
   'taxId',
@@ -86,8 +90,23 @@ function contacts(value: unknown): ClientContact[] {
         ? {}
         : { telephone: text(contact.telephone) }),
       ...(contact.email === undefined ? {} : { email: text(contact.email) }),
+      ...(contact.position === undefined
+        ? {}
+        : { position: text(contact.position) }),
+      ...(contact.decisionRoles === undefined
+        ? {}
+        : { decisionRoles: list(contact.decisionRoles).map(decisionRole) }),
+      ...(contact.communicationPreferences === undefined
+        ? {}
+        : { communicationPreferences: text(contact.communicationPreferences) }),
     };
   });
+}
+
+function decisionRole(value: unknown): ClientContactDecisionRole {
+  if (!isClientContactDecisionRole(value))
+    throw new Error('Invalid Client correction history.');
+  return value;
 }
 
 function object(value: unknown): Record<string, unknown> {

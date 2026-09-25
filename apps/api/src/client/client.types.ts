@@ -4,10 +4,28 @@ export interface ClientAccountView {
   relatedToActiveCompany: boolean;
 }
 
+/** Closed provisional vocabulary, in its canonical storage order. */
+export const CLIENT_CONTACT_DECISION_ROLES = [
+  'final_decision_maker',
+  'influencer',
+  'user',
+  'financial',
+  'technical',
+  'blocker',
+] as const;
+
+export type ClientContactDecisionRole =
+  (typeof CLIENT_CONTACT_DECISION_ROLES)[number];
+
 export interface ClientContact {
   name: string;
   telephone?: string;
   email?: string;
+  position?: string;
+  /** Non-empty, without duplicates, in vocabulary order. */
+  decisionRoles?: ClientContactDecisionRole[];
+  /** Descriptive shared text, trimmed and never blank. It grants nothing. */
+  communicationPreferences?: string;
 }
 
 export interface ClientDossierView extends ClientAccountView {

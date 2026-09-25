@@ -91,4 +91,10 @@ export const commercialIntakeCopy = {
   },
   activityRequestTarget: 'Client Request',
   activityOpportunityTarget: 'Opportunity',
+  // Offered on a commercial Activity event; it names no event content.
+  activityOpenRequest: 'Open Request',
+  requestedAfterNextActionEdit:
+    'The requested Client Request opens after the next-action edit is saved or cancelled.',
+  requestedAfterCapture:
+    'The requested Client Request opens after this capture is confirmed.',
 };

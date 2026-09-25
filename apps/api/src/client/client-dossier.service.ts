@@ -121,6 +121,13 @@ export class ClientDossierService {
         return { kind: 'completed', value: existingCommand.result };
       }
 
+      // The reservation's foreign keys require this relationship, so refuse an
+      // unknown or unrelated Client before reserving the key.
+      await this.requireRelatedClient(
+        actor.workspaceId,
+        companyId,
+        command.clientAccountId,
+      );
       const [reserved] = await this.databaseContext.connection
         .insert(clientAccountCorrectionCommands)
         .values({
@@ -329,8 +336,11 @@ export class ClientDossierService {
           inArray(clientAccounts.status, options.statuses ?? ['active']),
         ),
       );
+    // Lock as the non-key dossier UPDATE does. FOR UPDATE also conflicts with
+    // the KEY SHARE lock a racing command's receipt foreign key already holds
+    // on this row, so two reserved corrections would deadlock, not queue.
     return options.lock
-      ? (await query.for('update', { of: clientAccounts }).limit(1))[0]
+      ? (await query.for('no key update', { of: clientAccounts }).limit(1))[0]
       : (await query.limit(1))[0];
   }
 

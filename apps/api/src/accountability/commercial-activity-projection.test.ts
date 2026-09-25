@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ActiveCompanyContext } from '../access/access.types.js';
 import {
+  commercialActivityTarget,
   commercialActivityTargetOf,
   eligibleCommercialActions,
   readCommercialActivityAction,
@@ -179,6 +180,73 @@ describe('commercial Activity projection rules', () => {
         metadata: { opportunityVersion: 1 },
       }),
     ).toBeUndefined();
+  });
+
+  describe('the disclosed target reference', () => {
+    const recorded = {
+      companyId: '00000000-0000-4000-8000-000000000001',
+      clientRequestId: '00000000-0000-4000-8000-000000000358',
+      opportunityId: '00000000-0000-4000-8000-000000000359',
+    };
+    const reader = (
+      commercialIntakePermissions: ActiveCompanyContext['commercialIntakePermissions'],
+    ) =>
+      company({
+        commercialActivityPermissions: ['commercial.activity.read'],
+        commercialIntakePermissions,
+      });
+
+    it('carries the Request id of a Request event', () => {
+      expect(
+        commercialActivityTarget(
+          reader(['commercial.request.read']),
+          'client_request.created',
+          recorded,
+        ),
+      ).toEqual({
+        type: 'client_request',
+        clientRequestId: recorded.clientRequestId,
+        companyId: recorded.companyId,
+      });
+    });
+
+    it('derives the containing Request id of an Opportunity event for a current Request reader', () => {
+      for (const action of [
+        'opportunity.created',
+        'opportunity.next_action.updated',
+      ] as const)
+        expect(
+          commercialActivityTarget(
+            reader(['commercial.request.read', 'commercial.opportunity.read']),
+            action,
+            recorded,
+          ),
+        ).toEqual({
+          type: 'opportunity',
+          opportunityId: recorded.opportunityId,
+          clientRequestId: recorded.clientRequestId,
+          companyId: recorded.companyId,
+        });
+    });
+
+    it('withholds the containing Request id from an Opportunity reader without Request read', () => {
+      for (const action of [
+        'opportunity.created',
+        'opportunity.next_action.updated',
+      ] as const) {
+        const target = commercialActivityTarget(
+          reader(['commercial.opportunity.read']),
+          action,
+          recorded,
+        );
+        expect(target).toEqual({
+          type: 'opportunity',
+          opportunityId: recorded.opportunityId,
+          companyId: recorded.companyId,
+        });
+        expect(target).not.toHaveProperty('clientRequestId');
+      }
+    });
   });
 
   it('maps every known action to the target it discloses', () => {
