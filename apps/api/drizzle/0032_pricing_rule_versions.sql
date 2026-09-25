@@ -27,10 +27,12 @@ CREATE TABLE "pricing_configuration_events" (
 	CONSTRAINT "pricing_configuration_events_action_metadata_check" CHECK ((
         "pricing_configuration_events"."action" = 'pricing_rule_version.published'
           AND "pricing_configuration_events"."metadata" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb
+          AND jsonb_typeof("pricing_configuration_events"."metadata" -> 'pricingRuleVersionId') = 'string'
           AND "pricing_configuration_events"."metadata" ->> 'pricingRuleVersionId' = "pricing_configuration_events"."pricing_rule_version_id"::text
           AND jsonb_typeof("pricing_configuration_events"."metadata" -> 'versionNumber') = 'number'
+          AND jsonb_typeof("pricing_configuration_events"."metadata" -> 'provenance') = 'string'
           AND "pricing_configuration_events"."metadata" ->> 'provenance' = 'ILLUSTRATIVE'
-      ))
+      ) IS TRUE)
 );
 --> statement-breakpoint
 CREATE TABLE "pricing_rule_versions" (

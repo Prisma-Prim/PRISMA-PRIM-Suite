@@ -306,6 +306,17 @@ function publishButton() {
   return screen.getByRole('button', { name: 'Publish version' });
 }
 
+function retryButton() {
+  return screen.getByRole('button', { name: 'Retry publication' });
+}
+
+// Submits the draft without its button, as a keyboard submission could.
+function submitDraft() {
+  const form = screen.getByLabelText('Label').closest('form');
+  if (!form) throw new Error('The publication form is missing.');
+  fireEvent.submit(form);
+}
+
 describe('PricingConfigurationWorkspace', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -767,6 +778,194 @@ describe('PricingConfigurationWorkspace', () => {
     expect(
       screen.queryByRole('button', { name: 'Retry publication' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('holds an uncertain publication for its explicit retry: an edited or invalid draft and a reload neither replace nor hide it', async () => {
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
+      [LIST]: (call) =>
+        call === 1
+          ? page([ruleVersion(1)])
+          : page([ruleVersion(2), ruleVersion(1)]),
+      [PUBLISH]: (call) =>
+        call === 1
+          ? Promise.reject(new TypeError('network'))
+          : Response.json(
+              { outcome: 'PUBLISHED', version: ruleVersion(2) },
+              { status: 201 },
+            ),
+    });
+    function expectHeldUncertain() {
+      expect(requestsTo(fetchMock, PUBLISH)).toHaveLength(1);
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'The publication outcome is uncertain.',
+      );
+      expect(retryButton()).toBeEnabled();
+      expect(publishButton()).toBeDisabled();
+    }
+    renderWorkspace();
+    await screen.findByText('The new version will follow head version 1.');
+    fillDraft({ label: 'Uncertain rule', effectiveFrom: '2026-07-01T00:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The publication outcome is uncertain.',
+    );
+    expectHeldUncertain();
+
+    // No other publication replaces the unresolved one, whether the draft is
+    // edited into new content or made invalid, and even when submitted.
+    fillDraft({ label: 'Edited rule', effectiveFrom: '2026-08-01T00:00' });
+    fireEvent.click(publishButton());
+    submitDraft();
+    expectHeldUncertain();
+    fillDraft({ label: '   ' });
+    submitDraft();
+    expectHeldUncertain();
+    expect(screen.getByLabelText('Label')).toHaveValue('   ');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    await screen.findByText('The new version will follow head version 2.');
+    expectHeldUncertain();
+
+    fireEvent.click(retryButton());
+    expect(await screen.findByText('Version 2 published.')).toBeInTheDocument();
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]?.body).toEqual({
+      label: 'Uncertain rule',
+      effectiveFrom: new Date('2026-07-01T00:00').toISOString(),
+      expectedActiveVersionNumber: 1,
+    });
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(
+      screen.queryByRole('button', { name: 'Retry publication' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(publishButton()).toBeEnabled());
+  });
+
+  it('resolves an uncertain publication only with a definite answer, after which a new publication gets its own key', async () => {
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
+      [LIST]: (call) =>
+        call === 1
+          ? page([ruleVersion(1)])
+          : page([ruleVersion(2), ruleVersion(1)]),
+      [PUBLISH]: (call) => {
+        if (call === 1) return new Response('gateway', { status: 502 });
+        // The first attempt did not commit, so the exact retry is decided
+        // afresh and meets the back-dating rule.
+        if (call === 2)
+          return Response.json(
+            {
+              code: 'EFFECTIVE_FROM_PAST',
+              field: 'effectiveFrom',
+              message: 'Choose a start that is not earlier than now.',
+            },
+            { status: 400 },
+          );
+        return Response.json(
+          { outcome: 'PUBLISHED', version: ruleVersion(2) },
+          { status: 201 },
+        );
+      },
+    });
+    renderWorkspace();
+    await screen.findByText('The new version will follow head version 1.');
+    fillDraft({ label: 'Late rule', effectiveFrom: '2026-07-01T00:00' });
+    fireEvent.click(publishButton());
+    await screen.findByRole('button', { name: 'Retry publication' });
+
+    fireEvent.click(retryButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Choose a start that is not earlier than now.',
+    );
+    expect(
+      screen.queryByText(/^The publication outcome is uncertain\./u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry publication' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label')).toHaveValue('Late rule');
+    expect(publishButton()).toBeEnabled();
+
+    fillDraft({ effectiveFrom: '2026-09-01T00:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 2 published.')).toBeInTheDocument();
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts.map(({ body }) => body)).toEqual([
+      {
+        label: 'Late rule',
+        effectiveFrom: new Date('2026-07-01T00:00').toISOString(),
+        expectedActiveVersionNumber: 1,
+      },
+      {
+        label: 'Late rule',
+        effectiveFrom: new Date('2026-07-01T00:00').toISOString(),
+        expectedActiveVersionNumber: 1,
+      },
+      {
+        label: 'Late rule',
+        effectiveFrom: new Date('2026-09-01T00:00').toISOString(),
+        expectedActiveVersionNumber: 1,
+      },
+    ]);
+    expect(attempts[1]?.key).toBe(attempts[0]?.key);
+    expect(attempts[2]?.key).not.toBe(attempts[0]?.key);
+  });
+
+  it('forgets an uncertain publication when the Company changes', async () => {
+    const fetchMock = stubApi({
+      [SCOPE]: () => scope(null, null),
+      [LIST]: () => page([]),
+      [PUBLISH]: (call) =>
+        call === 1
+          ? Promise.reject(new TypeError('network'))
+          : Response.json(
+              { outcome: 'PUBLISHED', version: ruleVersion(1) },
+              { status: 201 },
+            ),
+    });
+    const view = renderWorkspace();
+    await screen.findByText(
+      'The new version will be the first for this Company.',
+    );
+    fillDraft({
+      label: 'Draft for the first Company',
+      effectiveFrom: '2026-07-01T00:00',
+    });
+    fireEvent.click(publishButton());
+    await screen.findByRole('button', { name: 'Retry publication' });
+
+    view.rerender(
+      <PricingConfigurationWorkspace
+        actor={secondCompanyActor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(publishButton()).toBeEnabled());
+    expect(
+      screen.queryByRole('button', { name: 'Retry publication' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/^The publication outcome is uncertain\./u),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label')).toHaveValue('');
+
+    fillDraft({
+      label: 'Draft for the second Company',
+      effectiveFrom: '2026-07-01T00:00',
+    });
+    fireEvent.click(publishButton());
+    await screen.findByText('Version 1 published.');
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts.map(({ company }) => company)).toEqual([
+      'company-1',
+      'company-2',
+    ]);
+    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
   });
 
   it('offers publication only with the configuration manage permission', async () => {

@@ -318,7 +318,9 @@ it.skipIf(!databaseUrl)(
         },
       ]);
 
-      // Event metadata is limited to identifiers, the number and provenance.
+      // Event metadata is limited to identifiers, the number and provenance,
+      // and requires each of them with its JSON type. A missing key or an
+      // explicit JSON null is rejected, never accepted as unknown.
       const insertEvent = (metadata: string) =>
         query(
           `INSERT INTO pricing_configuration_events (workspace_id, company_id, action,
@@ -327,16 +329,46 @@ it.skipIf(!databaseUrl)(
            VALUES ($1, $2, 'pricing_rule_version.published', $3, $4, $5, now(), $6::jsonb)`,
           [WORKSPACE, COMPANY, SECOND_VERSION, USER, MEMBERSHIP, metadata],
         );
-      for (const rejected of [
-        `{"pricingRuleVersionId": "${SECOND_VERSION}", "versionNumber": 2, "provenance": "ILLUSTRATIVE", "label": "Illustrative successor"}`,
-        `{"pricingRuleVersionId": "${SECOND_VERSION}", "versionNumber": "2", "provenance": "ILLUSTRATIVE"}`,
-        `{"pricingRuleVersionId": "${FIRST_VERSION}", "versionNumber": 2, "provenance": "ILLUSTRATIVE"}`,
-        `{"pricingRuleVersionId": "${SECOND_VERSION}", "versionNumber": 2, "provenance": "REAL"}`,
-      ])
-        await expect(insertEvent(rejected)).rejects.toMatchObject({
+      const validMetadata = {
+        pricingRuleVersionId: SECOND_VERSION,
+        versionNumber: 2,
+        provenance: 'ILLUSTRATIVE',
+      };
+      const withoutKey = (key: string) =>
+        Object.fromEntries(
+          Object.entries(validMetadata).filter(([name]) => name !== key),
+        );
+      const rejectedMetadata: ReadonlyArray<Record<string, unknown>> = [
+        { ...validMetadata, label: 'Illustrative successor' },
+        { ...validMetadata, pricingRuleVersionId: FIRST_VERSION },
+        { ...validMetadata, provenance: 'REAL' },
+        {},
+        ...Object.keys(validMetadata).flatMap((key) => [
+          withoutKey(key),
+          { ...validMetadata, [key]: null },
+        ]),
+        { ...validMetadata, pricingRuleVersionId: 2 },
+        { ...validMetadata, pricingRuleVersionId: [SECOND_VERSION] },
+        { ...validMetadata, versionNumber: '2' },
+        { ...validMetadata, versionNumber: true },
+        { ...validMetadata, provenance: ['ILLUSTRATIVE'] },
+        { ...validMetadata, provenance: { value: 'ILLUSTRATIVE' } },
+      ];
+      for (const rejected of rejectedMetadata)
+        await expect(
+          insertEvent(JSON.stringify(rejected)),
+        ).rejects.toMatchObject({
           code: CHECK_VIOLATION,
+          constraint: 'pricing_configuration_events_action_metadata_check',
         });
-      const accepted = `{"pricingRuleVersionId": "${SECOND_VERSION}", "versionNumber": 2, "provenance": "ILLUSTRATIVE"}`;
+      expect(
+        (
+          await query(
+            'SELECT count(*)::int AS count FROM pricing_configuration_events',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      const accepted = JSON.stringify(validMetadata);
       await insertEvent(accepted);
       await expect(insertEvent(accepted)).rejects.toMatchObject({
         code: UNIQUE_VIOLATION,

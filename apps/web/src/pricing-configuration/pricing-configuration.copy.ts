@@ -75,7 +75,7 @@ export const pricingConfigurationCopy = {
       : `The configuration changed: version ${headVersionNumber} is now the head. Reload before publishing again.`,
   reload: 'Reload Pricing Rule Versions',
   uncertain:
-    'The publication outcome is uncertain. Retry to confirm it: the same request is sent again and never publishes twice.',
+    'The publication outcome is uncertain. Retry to confirm it: the same request is sent again and never publishes twice. No other version can be published until its outcome is known.',
   retryPublication: 'Retry publication',
   versionsTitle: 'All Pricing Rule Versions',
   versionsList: 'Pricing Rule Versions',

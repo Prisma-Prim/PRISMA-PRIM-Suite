@@ -262,16 +262,20 @@ export const pricingConfigurationEvents = pgTable(
       ],
     }),
     // Metadata carries identifiers, the version number and provenance only:
-    // no label or other text.
+    // no label or other text. Each key is required with its JSON type. A
+    // missing key makes a comparison unknown, which a CHECK alone accepts,
+    // so the condition must hold outright.
     check(
       'pricing_configuration_events_action_metadata_check',
       sql`(
         ${table.action} = 'pricing_rule_version.published'
           AND ${table.metadata} - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb
+          AND jsonb_typeof(${table.metadata} -> 'pricingRuleVersionId') = 'string'
           AND ${table.metadata} ->> 'pricingRuleVersionId' = ${table.pricingRuleVersionId}::text
           AND jsonb_typeof(${table.metadata} -> 'versionNumber') = 'number'
+          AND jsonb_typeof(${table.metadata} -> 'provenance') = 'string'
           AND ${table.metadata} ->> 'provenance' = 'ILLUSTRATIVE'
-      )`,
+      ) IS TRUE`,
     ),
   ],
 );

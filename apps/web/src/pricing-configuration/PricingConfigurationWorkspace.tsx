@@ -95,11 +95,14 @@ type LocalInstant =
   | { kind: 'instant'; instant: string }
   | { kind: 'malformed' | 'skipped' | 'repeated' };
 
+// A definite answer. An uncertain one is not feedback: it leaves its
+// publication unresolved.
 type Feedback =
   | { kind: 'published' | 'unchanged'; versionNumber: number }
   | { kind: 'invalid'; message: string }
-  | { kind: 'stale'; headVersionNumber: number | null }
-  | { kind: 'uncertain' };
+  | { kind: 'stale'; headVersionNumber: number | null };
+
+type PublicationOutcome = Feedback | { kind: 'uncertain' };
 
 type HttpResult = { status: number; body: unknown } | { status: 'network' };
 
@@ -132,11 +135,13 @@ export function PricingConfigurationWorkspace({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [feedback, setFeedback] = useState<Feedback>();
   const [pending, setPending] = useState(false);
+  // A publication whose commit is unknown. Until a definite answer, only its
+  // explicit retry is sent, unchanged, and no other publication replaces it.
+  const [unresolved, setUnresolved] = useState<Publication>();
   const fieldId = useId();
   const loadRequest = useRef<AbortController | undefined>(undefined);
   const olderRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
-  const retry = useRef<Publication | undefined>(undefined);
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
@@ -235,7 +240,7 @@ export function PricingConfigurationWorkspace({
           setView({ kind: 'loading' });
           setDraft(emptyDraft);
           setFeedback(undefined);
-          retry.current = undefined;
+          setUnresolved(undefined);
           loadRequest.current?.abort();
           olderRequest.current?.abort();
           commandRequest.current?.abort();
@@ -363,7 +368,7 @@ export function PricingConfigurationWorkspace({
     // A new Company, membership or Workspace starts from nothing: drafts,
     // retries and every in-flight reply of the previous context are dropped.
     commandRequest.current?.abort();
-    retry.current = undefined;
+    setUnresolved(undefined);
     setDenied(false);
     setDraft(emptyDraft);
     setFeedback(undefined);
@@ -429,7 +434,13 @@ export function PricingConfigurationWorkspace({
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!companyId || pending || view.kind !== 'ready') return;
+    if (
+      !companyId ||
+      pending ||
+      unresolved !== undefined ||
+      view.kind !== 'ready'
+    )
+      return;
     const reading = readDraft({
       draft,
       expectedActiveVersionNumber: view.scope.headVersionNumber,
@@ -439,19 +450,14 @@ export function PricingConfigurationWorkspace({
       setFeedback(reading);
       return;
     }
-    const payload = JSON.stringify(reading.command);
     await send({
-      payload,
-      idempotencyKey:
-        retry.current?.payload === payload
-          ? retry.current.idempotencyKey
-          : crypto.randomUUID(),
+      payload: JSON.stringify(reading.command),
+      idempotencyKey: crypto.randomUUID(),
     });
   }
 
   async function send(publication: Publication): Promise<void> {
     if (!companyId) return;
-    retry.current = publication;
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
@@ -470,14 +476,18 @@ export function PricingConfigurationWorkspace({
       const outcome = publicationOutcome(result);
       // An uncertain outcome keeps the exact payload and key for an explicit
       // retry; every definite outcome is final for this publication.
-      if (outcome.kind !== 'uncertain') retry.current = undefined;
+      if (outcome.kind === 'uncertain') {
+        setUnresolved(publication);
+        return;
+      }
+      setUnresolved(undefined);
       setFeedback(outcome);
       if (outcome.kind === 'published' || outcome.kind === 'unchanged') {
         setDraft(emptyDraft);
         void load(companyId);
       }
     } catch {
-      if (!controller.signal.aborted) setFeedback({ kind: 'uncertain' });
+      if (!controller.signal.aborted) setUnresolved(publication);
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -492,8 +502,7 @@ export function PricingConfigurationWorkspace({
 
   const head = view.kind === 'ready' ? view.scope.headVersionNumber : null;
   const scheduled = view.kind === 'ready' ? view.scheduled : [];
-  const pendingRetry =
-    feedback?.kind === 'uncertain' ? retry.current : undefined;
+  const pendingRetry = pending ? undefined : unresolved;
 
   return (
     <section
@@ -630,19 +639,23 @@ export function PricingConfigurationWorkspace({
                   }
                 />
               </div>
-              <button type="submit" disabled={pending || view.kind !== 'ready'}>
+              <button
+                type="submit"
+                disabled={
+                  pending || unresolved !== undefined || view.kind !== 'ready'
+                }
+              >
                 {copy.publish}
               </button>
             </form>
             {feedback ? <FeedbackMessage feedback={feedback} /> : null}
             {pendingRetry ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => void send(pendingRetry)}
-              >
-                {copy.retryPublication}
-              </button>
+              <>
+                <p role="alert">{copy.uncertain}</p>
+                <button type="button" onClick={() => void send(pendingRetry)}>
+                  {copy.retryPublication}
+                </button>
+              </>
             ) : null}
           </section>
         ) : null}
@@ -759,8 +772,6 @@ function FeedbackMessage({ feedback }: { feedback: Feedback }) {
       return <p role="alert">{feedback.message}</p>;
     case 'stale':
       return <p role="alert">{copy.stale(feedback.headVersionNumber)}</p>;
-    case 'uncertain':
-      return <p role="alert">{copy.uncertain}</p>;
     default: {
       const exhaustive: never = feedback;
       return exhaustive;
@@ -893,7 +904,7 @@ function offsetAt(instant: number): number {
   return -new Date(instant).getTimezoneOffset() * 60 * 1000;
 }
 
-function publicationOutcome(result: HttpResult): Feedback {
+function publicationOutcome(result: HttpResult): PublicationOutcome {
   if (result.status === 'network') return { kind: 'uncertain' };
   if (
     (result.status === 200 || result.status === 201) &&
