@@ -179,6 +179,84 @@ describe('ClientWorkspace', () => {
     ]);
   });
 
+  it('registers Contact positions and decision roles in vocabulary order', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              id: 'client-roles',
+              displayName: 'AGRONOVA Demo SRL',
+              relatedToActiveCompany: true,
+            }),
+            { status: 201 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'client-roles',
+                displayName: 'AGRONOVA Demo SRL',
+                relatedToActiveCompany: true,
+              },
+            ]),
+            { status: 200 },
+          ),
+        ),
+    );
+    render(
+      <ClientWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'AGRONOVA Demo SRL' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+    const ion = screen.getByRole('group', { name: 'Contact 1' });
+    const maria = screen.getByRole('group', { name: 'Contact 2' });
+    fireEvent.change(within(ion).getByLabelText('Contact name'), {
+      target: { value: 'Ion Demo' },
+    });
+    fireEvent.change(within(ion).getByLabelText('Contact position'), {
+      target: { value: ' Director general ' },
+    });
+    fireEvent.click(within(ion).getByRole('checkbox', { name: 'Financial' }));
+    fireEvent.click(
+      within(ion).getByRole('checkbox', { name: 'Final decision-maker' }),
+    );
+    fireEvent.change(within(maria).getByLabelText('Contact name'), {
+      target: { value: 'Maria Demo' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+    await screen.findByRole('heading', { name: 'AGRONOVA Demo SRL' });
+    const body = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[1]?.[1]?.body),
+    ) as { contacts: unknown[] };
+    expect(body.contacts).toEqual([
+      {
+        name: 'Ion Demo',
+        position: 'Director general',
+        decisionRoles: ['final_decision_maker', 'financial'],
+      },
+      { name: 'Maria Demo' },
+    ]);
+  });
+
   it('does not discard entered contact details when the contact name is missing', async () => {
     vi.stubGlobal(
       'fetch',

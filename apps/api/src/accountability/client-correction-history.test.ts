@@ -22,6 +22,25 @@ describe('stored Client correction metadata', () => {
     expect(readClientCorrectionChanges({ changes })).toEqual(changes);
   });
 
+  it('returns stored Contact positions and decision roles exactly as stored', () => {
+    const changes = {
+      contacts: {
+        before: [{ name: 'Ion Demo', telephone: '+373 60 000 001' }],
+        after: [
+          {
+            name: 'Ion Demo',
+            telephone: '+373 60 000 001',
+            position: 'Director general',
+            decisionRoles: ['final_decision_maker', 'financial'],
+          },
+          { name: 'Maria Demo', decisionRoles: ['influencer', 'technical'] },
+        ],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
   it.each([
     ['no metadata object', null],
     ['no changes', {}],
@@ -47,6 +66,45 @@ describe('stored Client correction metadata', () => {
     [
       'an unknown Contact field',
       { changes: { contacts: pair([], [{ name: 'A', role: 'private' }]) } },
+    ],
+    [
+      'a non-text Contact position',
+      { changes: { contacts: pair([], [{ name: 'A', position: 42 }]) } },
+    ],
+    [
+      'a blank Contact position',
+      { changes: { contacts: pair([{ name: 'A', position: '' }], []) } },
+    ],
+    [
+      'a non-list decision-role value',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', decisionRoles: 'financial' }]),
+        },
+      },
+    ],
+    [
+      'an empty decision-role list',
+      { changes: { contacts: pair([], [{ name: 'A', decisionRoles: [] }]) } },
+    ],
+    [
+      'an unknown decision role',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', decisionRoles: ['vip'] }]),
+        },
+      },
+    ],
+    [
+      'decision roles outside vocabulary order',
+      {
+        changes: {
+          contacts: pair(
+            [],
+            [{ name: 'A', decisionRoles: ['blocker', 'influencer'] }],
+          ),
+        },
+      },
     ],
   ])('fails closed on %s without echoing stored values', (_name, metadata) => {
     expect(() => readClientCorrectionChanges(metadata)).toThrow(

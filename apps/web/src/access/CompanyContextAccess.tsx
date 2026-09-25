@@ -11,6 +11,12 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import {
+  type AssignmentBundleLabel,
+  type CompanyAccessAdministration,
+  type CompanyAccessMember,
+  companyAccessAdministrationResponse,
+} from './company-access-administration-response';
 import { companyContextAccessCopy as copy } from './company-context-access.copy';
 import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
@@ -27,16 +33,6 @@ type AssignmentBundle =
   | 'service-catalogue'
   | 'commercial-activity-reader'
   | 'project';
-type AssignmentBundleLabel =
-  | 'Company Task Manager'
-  | 'Company Context Access'
-  | 'Company Director Client Access'
-  | 'Company Document Project Organizer'
-  | 'Company Document Registrar'
-  | 'Company Project Access'
-  | 'Company Commercial Intake'
-  | 'Company Service Catalogue'
-  | 'Company Commercial Activity Reader';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
@@ -52,29 +48,17 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
 };
-type AdministrationState = {
-  members: Array<{
-    workspaceMembershipId: string;
-    displayName: string;
-    email: string;
-  }>;
-  companies: Array<{ id: string; displayName: string }>;
-  assignments: Array<{
-    id: string;
-    workspaceMembershipId: string;
-    companyId: string;
-    bundle: AssignmentBundleLabel;
-    active: boolean;
-  }>;
-};
 type AdministrationLoadState =
   | { status: 'loading' }
-  | { status: 'ready'; value: AdministrationState }
+  | { status: 'ready'; value: CompanyAccessAdministration }
   | { status: 'error' };
 type MutationState =
   | { status: 'idle' }
   | { status: 'submitting'; submission: Submission }
   | { status: 'ready'; submission: Submission }
+  // The server confirmed the command, but the administration read after it
+  // failed. Only a later successful read concludes it.
+  | { status: 'unrefreshed'; submission: Submission }
   | { status: 'error' };
 export function CompanyContextAccess({
   actor,
@@ -129,7 +113,7 @@ export function CompanyContextAccess({
       try {
         const api = await createAuthenticatedApiClient(identity);
         if (request.signal.aborted) return false;
-        const result = await api.request<AdministrationState>(
+        const result = await api.request<unknown>(
           '/company-context-assignments/administration',
           { signal: request.signal },
         );
@@ -154,16 +138,17 @@ export function CompanyContextAccess({
           setAdministration({ status: 'error' });
           return false;
         }
-        setAdministration({ status: 'ready', value: result.value });
+        const value = companyAccessAdministrationResponse(result.value);
+        setAdministration({ status: 'ready', value });
         setWorkspaceMembershipId((current) =>
-          result.value.members.some(
+          value.members.some(
             (member) => member.workspaceMembershipId === current,
           )
             ? current
             : '',
         );
         setCompanyId((current) =>
-          result.value.companies.some((company) => company.id === current)
+          value.companies.some((company) => company.id === current)
             ? current
             : '',
         );
@@ -306,6 +291,8 @@ export function CompanyContextAccess({
       if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
         retryCommand.current = undefined;
         setMutation({ status: 'ready', submission });
+      } else if (result.status === 'ok' && !actorRevalidationFailed) {
+        setMutation({ status: 'unrefreshed', submission });
       } else {
         setMutation({ status: 'error' });
       }
@@ -324,11 +311,14 @@ export function CompanyContextAccess({
     setMutation({ status: 'idle' });
   }
 
-  function retryAdministration() {
+  async function retryAdministration() {
     pendingRequest.current?.abort();
     const request = new AbortController();
     pendingRequest.current = request;
-    void reloadAdministration(request, true);
+    const refreshed = await reloadAdministration(request, true);
+    if (!refreshed || mutation.status !== 'unrefreshed') return;
+    retryCommand.current = undefined;
+    setMutation({ status: 'ready', submission: mutation.submission });
   }
 
   if (administration.status === 'loading') {
@@ -356,7 +346,7 @@ export function CompanyContextAccess({
         <button
           type="button"
           className={isPrisme ? 'company-access-primary-action' : undefined}
-          onClick={retryAdministration}
+          onClick={() => void retryAdministration()}
         >
           {copy.retry}
         </button>
@@ -370,19 +360,23 @@ export function CompanyContextAccess({
     data.companies.map((company) => company.displayName),
   );
   const selectedBundleLabel = bundleLabel(bundle);
-  const activeAssignment = data.assignments.some(
+  const selectedAssignment = data.assignments.find(
     (assignment) =>
       assignment.active &&
       assignment.workspaceMembershipId === workspaceMembershipId &&
       assignment.companyId === companyId &&
       assignment.bundle === selectedBundleLabel,
   );
+  const activeAssignment = selectedAssignment !== undefined;
+  const capturedVersion = selectedAssignment?.permissionSetVersion ?? null;
   const hasSelectableTargets =
     data.members.length > 0 && data.companies.length > 0;
   const pending = mutation.status === 'submitting';
   const busy = pending || suspensionPending;
+  const unresolved =
+    mutation.status === 'error' || mutation.status === 'unrefreshed';
   const retrySubmission =
-    mutation.status === 'error' &&
+    unresolved &&
     retryCommand.current?.bundle === bundle &&
     retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
     retryCommand.current.companyId === companyId
@@ -504,12 +498,15 @@ export function CompanyContextAccess({
             <p role="status">
               {copy.currentStateLabel}:{' '}
               <strong>
-                {activeAssignment
-                  ? copy.currentStateGranted
-                  : copy.currentStateNotGranted}
+                {!activeAssignment
+                  ? copy.currentStateNotGranted
+                  : capturedVersion === null
+                    ? copy.currentStateGranted
+                    : copy.currentStateGrantedVersion(capturedVersion)}
               </strong>
             </p>
           )}
+          {capturedVersion !== null && <p>{copy.capturedVersionExplanation}</p>}
 
           <button
             type="submit"
@@ -543,7 +540,7 @@ export function CompanyContextAccess({
           {mutation.submission === 'grant' ? copy.granted : copy.revoked}
         </p>
       )}
-      {mutation.status === 'error' && <p role="alert">{copy.error}</p>}
+      {unresolved && <p role="alert">{copy.error}</p>}
       <WorkspaceSessionRevocations
         actor={actor}
         identity={identity}
@@ -586,7 +583,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   return labels[bundle];
 }
 
-function memberLabel(member: AdministrationState['members'][number]): string {
+function memberLabel(member: CompanyAccessMember): string {
   return `${member.displayName} — ${member.email}`;
 }
 

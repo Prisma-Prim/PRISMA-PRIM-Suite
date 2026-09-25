@@ -1,3 +1,9 @@
+import {
+  isClientContactDecisionRole,
+  type ClientContact,
+  type ClientContactDecisionRole,
+} from './ClientContactEditor';
+
 export const unionFields = [
   'displayName',
   'taxId',
@@ -24,6 +30,27 @@ function list(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new Error('Invalid union list.');
   return value;
 }
+function decisionRole(value: unknown): ClientContactDecisionRole {
+  if (!isClientContactDecisionRole(value))
+    throw new Error('Invalid union Contact decision role.');
+  return value;
+}
+function contact(value: unknown): ClientContact {
+  const row = unionObject(value);
+  return {
+    name: unionString(row.name),
+    ...(row.telephone === undefined
+      ? {}
+      : { telephone: unionString(row.telephone) }),
+    ...(row.email === undefined ? {} : { email: unionString(row.email) }),
+    ...(row.position === undefined
+      ? {}
+      : { position: unionString(row.position) }),
+    ...(row.decisionRoles === undefined
+      ? {}
+      : { decisionRoles: list(row.decisionRoles).map(decisionRole) }),
+  };
+}
 function client(value: unknown) {
   const row = unionObject(value);
   if (
@@ -41,18 +68,7 @@ function client(value: unknown) {
     telephone: optionalText(row.telephone),
     generalEmail: optionalText(row.generalEmail),
     businessActivity: optionalText(row.businessActivity),
-    contacts: list(row.contacts).map((entry) => {
-      const contact = unionObject(entry);
-      return {
-        name: unionString(contact.name),
-        ...(contact.telephone === undefined
-          ? {}
-          : { telephone: unionString(contact.telephone) }),
-        ...(contact.email === undefined
-          ? {}
-          : { email: unionString(contact.email) }),
-      };
-    }),
+    contacts: list(row.contacts).map(contact),
   };
 }
 function companies(value: unknown) {

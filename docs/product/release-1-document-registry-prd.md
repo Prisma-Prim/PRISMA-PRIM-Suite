@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction and Project association approved in #239, #250 and #245; wider governance remains Draft
-**Version:** 0.6
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; wider governance remains Draft
+**Version:** 0.7
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -140,7 +140,7 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-The working-reference registration slice is approved in section 17, Project association in section 18 and bounded working-reference correction in section 19. Wider registration families, official promotion, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
+The working-reference registration slice is approved in section 17, Project association in section 18, bounded working-reference correction in section 19 and its read-only correction history in section 20. Wider registration families, official promotion, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
 
 ## 16. Evidence authority boundary
 
@@ -312,8 +312,8 @@ Field changes, the revision, an append-only internal before/after command ledger
 one `document.corrected` event and one material Client operational-use fence
 advance commit or roll back together. The Activity Log event exposes actor, server
 time, Company and Document target with empty metadata; title, purpose, URL,
-Project identity and before/after values remain absent. A detailed public
-before/after history view is deferred.
+Project identity and before/after values remain absent. Section 20 owns the
+read-only before/after history of these corrections.
 
 The Document detail UI provides Edit, Cancel and Save only with current correction
 authority and Representation read. It preserves the exact body and idempotency key
@@ -322,3 +322,40 @@ and invalidates drafts and late responses when Company, session, membership or
 permission context changes. Uploads, URL fetching, storage integration, new
 Versions or Representations, Client reassignment, Project mutation, official
 governance and deletion remain outside this slice.
+
+## 20. Approved working-reference correction history (#369)
+
+Under Dan's 24 September 2026 delegation to implement sourced business
+functions and reversible MVP choices, this section exposes the existing
+section 19 ledger as a bounded read. Stories 8 and 10 and sections 7, 8 and 19
+already require attributable retained corrections. This is a delegated product choice,
+not newly collected Iurie evidence or official Document governance.
+
+A current reader of the working Document's metadata may read its material
+before/after correction history. Each entry shows the working revision it
+produced, the server time, the actor's existing display label (never an email)
+and only the fields it materially changed. Prior title and purpose share the
+current metadata visibility. A prior URL requires current Representation read;
+without it the URL change, its key and both values are omitted, so a URL-only
+correction remains a generic attributed entry. Historical URLs are inert plain
+text: they are never fetched, opened or linked. Unchanged retry receipts are
+excluded.
+
+The read uses the detail read's existing Workspace, active Company, Document read
+and original Client relationship boundary, with its exact refusals and without
+counts or hidden values. A superseded original Client stays readable as for the
+detail. No correction or Activity Log read permission is required, and no
+permission, bundle or implicit grant is added. Authority is rechecked for every
+page, in one read snapshot with the page itself.
+
+Pages hold at most 20 entries, newest revision first. An older page continues
+strictly below the last returned revision, so later corrections neither
+duplicate nor displace it, and there is no total count. Reading writes nothing:
+no ledger row, receipt, revision, event or Client fence change.
+
+Historical values remain history even when later corrected and are never
+presented as the current reference. The Document detail offers the history
+collapsed; losing access, or Representation read, removes the rows or prior URLs
+already shown. This creates no official Version, legal validity, restore or
+export, and it changes neither the ledger nor the empty public metadata of
+`document.corrected`.

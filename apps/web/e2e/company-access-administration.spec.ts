@@ -4,6 +4,8 @@ import type { ActorContext } from '../src/access-types';
 const ownerMembershipId = '00000000-0000-4000-8000-000000000002';
 const memberId = '11111111-1111-4111-8111-111111111111';
 const companyId = '22222222-2222-4222-8222-222222222222';
+const capturedVersionExplanation =
+  'The version is captured when access is granted. A later version applies only after this access is revoked and granted again.';
 
 const ownerActor: ActorContext = {
   internalUserId: '00000000-0000-4000-8000-000000000001',
@@ -125,9 +127,10 @@ test('administers both existing Company access bundles by member and Company nam
     await grant.evaluate((element) => getComputedStyle(element).outlineStyle),
   ).toBe('solid');
   await grant.click();
-  await expect(page.getByText(/Current server state:/)).toContainText(
-    'Granted',
+  await expect(page.getByText(/Current server state:/)).toHaveText(
+    'Current server state: Granted',
   );
+  await expect(page.getByText(capturedVersionExplanation)).toHaveCount(0);
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
   ).toBeVisible();
@@ -153,9 +156,21 @@ test('administers both existing Company access bundles by member and Company nam
     'Not granted',
   );
   await page.getByRole('button', { name: 'Grant access' }).click();
-  await expect(page.getByText(/Current server state:/)).toContainText(
-    'Granted',
+  await expect(page.getByText(/Current server state:/)).toHaveText(
+    'Current server state: Granted — captured version v2',
   );
+  await expect(page.getByText(capturedVersionExplanation)).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `company-access-captured-version-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
   await page.goto('/?frame=prisme#activity');
   await expect(
     page.getByText('Ada Ionescu granted Company Director Client Access'),
@@ -226,6 +241,7 @@ test('administers both existing Company access bundles by member and Company nam
       workspaceMembershipId: memberId,
       companyId,
       bundle,
+      permissionSetVersion: bundle === 'Company Context Access' ? null : 'v2',
       active,
     };
   }

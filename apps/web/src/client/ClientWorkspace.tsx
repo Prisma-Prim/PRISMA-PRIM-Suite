@@ -26,6 +26,7 @@ import {
   ClientContactEditor,
   normalizedContacts,
   type ClientContactDraft,
+  type ClientContactDraftResult,
 } from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -281,17 +282,18 @@ export function ClientWorkspace({
       return;
     }
 
-    const normalizedClientContacts = canCreateEnrichedClients
+    const contactResult: ClientContactDraftResult = canCreateEnrichedClients
       ? normalizedContacts(contacts)
-      : [];
-    if (!normalizedClientContacts) {
+      : { status: 'valid', contacts: [] };
+    if (contactResult.status === 'invalid') {
       setCreateState({
         status: 'validation',
-        message: copy.contactsInvalid,
+        message: contactResult.message,
         field: 'contacts',
       });
       return;
     }
+    const normalizedClientContacts = contactResult.contacts;
     const serializedBody = JSON.stringify({
       displayName: normalizedDisplayName,
       ...(canCreateEnrichedClients

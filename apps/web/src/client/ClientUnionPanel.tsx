@@ -23,6 +23,7 @@ import {
 import { clientUnionCopy as copy } from './client-union.copy';
 import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { ClientContactDescription } from './ClientContactEditor';
 import { ClientUnionComparison } from './ClientUnionComparison';
 import './client-union-comparison.css';
 import './client-union-history.css';
@@ -458,6 +459,7 @@ function Dossiers({
                   <strong>{contact.name}</strong>
                   {contact.telephone && <span>{contact.telephone}</span>}
                   {contact.email && <span>{contact.email}</span>}
+                  <ClientContactDescription contact={contact} />
                 </li>
               ))}
             </ul>

@@ -40,8 +40,60 @@ describe('Client correction history response', () => {
     });
   });
 
+  it('keeps each Contact position and decision roles', () => {
+    const contacts = {
+      before: [{ name: 'Ion Demo' }],
+      after: [
+        {
+          name: 'Ion Demo',
+          position: 'Director general',
+          decisionRoles: ['final_decision_maker', 'financial'],
+        },
+      ],
+    };
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
   it.each([
     ['an empty change set', { ...correction, changes: {} }],
+    [
+      'a non-text Contact position',
+      {
+        ...correction,
+        changes: {
+          contacts: { before: [], after: [{ name: 'A', position: 7 }] },
+        },
+      },
+    ],
+    [
+      'an unknown decision role',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'A', decisionRoles: ['vip'] }],
+          },
+        },
+      },
+    ],
+    [
+      'a non-list decision-role value',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'A', decisionRoles: 'user' }],
+          },
+        },
+      },
+    ],
     [
       'an unknown field',
       { ...correction, changes: { legalEntity: { before: null, after: 'X' } } },

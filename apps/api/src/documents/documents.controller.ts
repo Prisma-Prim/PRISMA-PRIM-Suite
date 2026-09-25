@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -34,6 +35,16 @@ export class DocumentsController {
     @Param('id') id: string,
   ) {
     return this.documents.detail(actor(request), id);
+  }
+  @Get(':id/correction-history') readCorrectionHistory(
+    @Req() request: ActorContextRequest,
+    @Param('id') id: string,
+    @Query() query: unknown,
+  ) {
+    return this.documents.correctionHistory(actor(request), {
+      documentId: id,
+      query,
+    });
   }
   @Patch(':id') correct(
     @Req() request: ActorContextRequest,
