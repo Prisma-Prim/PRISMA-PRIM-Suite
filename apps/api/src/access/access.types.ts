@@ -7,6 +7,7 @@ import type {
   CompanyCommercialIntakePermissionSetVersion,
   CompanyServiceCataloguePermission,
   CompanyCommercialActivityPermission,
+  CompanyProjectPermission,
 } from './company-permissions.js';
 
 export interface ExternalPrincipal {
@@ -31,7 +32,7 @@ export interface ActiveCompanyContext {
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';
-  projectPermissions?: Array<'project.read' | 'project.create'>;
+  projectPermissions?: CompanyProjectPermission[];
   commercialIntakePermissions?: CompanyCommercialIntakePermission[];
   commercialIntakePermissionAssignmentId?: string;
   commercialIntakePermissionSetVersion?: CompanyCommercialIntakePermissionSetVersion;

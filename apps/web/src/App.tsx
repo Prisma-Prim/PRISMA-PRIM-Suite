@@ -35,6 +35,7 @@ import {
   useProductionShellContext,
   type ActivityLogEvent,
   type ActivityLogState,
+  type ProjectResponsibleChangedActivityLogEvent,
 } from './production-shell/useProductionShellContext';
 
 export function App({ identity }: { identity: BrowserIdentity }) {
@@ -667,6 +668,7 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.corrected': documentsCopy.correctionActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
+    'project.responsible.changed': projectCopy.responsible.activityAction,
     ...taskCopy.activityActionLabels,
     'company.registered': 'registered a Company',
     ...companyContextAccessCopy.activityActionLabels,
@@ -681,6 +683,14 @@ function activityDescription(event: ActivityLogEvent): string {
   return `${actorName} ${actionLabels[event.action]}`;
 }
 
+function responsibleChange({
+  before,
+  after,
+}: ProjectResponsibleChangedActivityLogEvent['metadata']): string {
+  const copy = projectCopy.responsible;
+  return `${copy.activityFrom} ${before?.displayLabel ?? copy.none} ${copy.activityTo} ${after?.displayLabel ?? copy.none}`;
+}
+
 function activityTargetDescription(event: ActivityLogEvent): string {
   switch (event.target.type) {
     case 'document_project':
@@ -688,7 +698,9 @@ function activityTargetDescription(event: ActivityLogEvent): string {
     case 'document':
       return `${documentsCopy.activityTarget}: ${event.action === 'document.corrected' ? event.target.documentId : event.target.documentTitle}`;
     case 'project':
-      return `${projectCopy.activityTarget}: ${event.target.projectTitle}`;
+      return event.action === 'project.responsible.changed'
+        ? `${projectCopy.activityTarget}: ${event.target.projectTitle} — ${responsibleChange(event.metadata)}`
+        : `${projectCopy.activityTarget}: ${event.target.projectTitle}`;
     case 'task':
       return `${taskCopy.activityTarget}: ${event.target.taskTitle}`;
     case 'workspace_invitation':

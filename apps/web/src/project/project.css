@@ -30,6 +30,32 @@
   font-size: 0.85rem;
   opacity: 0.78;
 }
+.project-responsible,
+.project-responsible-editor {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 36rem;
+  min-width: 0;
+}
+.project-responsible {
+  margin-top: 1rem;
+}
+.project-responsible p,
+.project-responsible-facts,
+.project-responsible-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.project-responsible-facts dt,
+.project-responsible-change {
+  font-size: 0.85rem;
+  opacity: 0.78;
+}
+.project-responsible-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .project-workspace input,
 .project-workspace select {
   padding: 0.75rem;

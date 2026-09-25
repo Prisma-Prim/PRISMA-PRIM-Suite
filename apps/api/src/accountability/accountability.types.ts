@@ -1,4 +1,5 @@
 import type { TaskEvent } from '../task/task.types.js';
+import type { ProjectResponsibleChangedActivityEvent } from '../project/project-responsibility.types.js';
 import type { ActorContext } from '../access/access.types.js';
 import type { ClientContact } from '../client/client.types.js';
 import type {
@@ -372,7 +373,8 @@ export type ActivityLogEvent =
   | CommercialActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
-  | ProjectCreatedActivityEvent;
+  | ProjectCreatedActivityEvent
+  | ProjectResponsibleChangedActivityEvent;
 
 export interface ProjectCreatedActivityEvent {
   id: string;

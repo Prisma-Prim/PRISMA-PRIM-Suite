@@ -1,4 +1,13 @@
 import type { ActorContext } from '../src/access-types';
+import type { ProjectResponsibility } from '../src/project/project-responsible-response';
+
+/** The responsible-member read of a Project nobody was ever named for. */
+export const unassignedResponsibility = {
+  responsible: null,
+  revision: 0,
+  lastChange: null,
+  mutable: true,
+} satisfies ProjectResponsibility;
 
 export const actorContextFixture = {
   internalUserId: '00000000-0000-4000-8000-000000000001',

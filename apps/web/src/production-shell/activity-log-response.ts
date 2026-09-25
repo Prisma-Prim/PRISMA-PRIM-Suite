@@ -1,7 +1,9 @@
+import { readOptionalResponsibleMember } from '../project/project-responsible-response';
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
   OrdinaryActivityLogEvent,
+  ProjectResponsibleChangedActivityLogEvent,
 } from './company-context-transitions';
 
 type ActivityAction = ActivityLogEvent['action'];
@@ -45,6 +47,7 @@ const targetTypes = {
   'client.corrected': 'client_account',
   'client_company_relationship.established': 'client_company_relationship',
   'project.created': 'project',
+  'project.responsible.changed': 'project',
   'task.created': 'task',
   'task.updated': 'task',
   'task.status.changed': 'task',
@@ -84,6 +87,18 @@ function activityLogEvent(value: unknown): ActivityLogEvent {
     case 'client.union_confirmed':
     case 'client.union_reversed':
       return clientUnionEvent(value, action, target);
+    case 'project.responsible.changed':
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'project',
+          projectId: identifier(target.projectId),
+          projectTitle: text(target.projectTitle),
+          companyId: identifier(target.companyId),
+        },
+        metadata: responsibleChange(value.metadata),
+      };
     case 'task.created':
     case 'task.updated':
     case 'task.status.changed':
@@ -262,6 +277,27 @@ function clientUnionEvent(
     actor: { kind: 'authorized_resolver' },
     target: { type: 'client_union_operation', projectionReference, companyId },
   };
+}
+
+/**
+ * A material responsible-member change: its resulting revision and two
+ * different sides, each a membership identifier and label or none.
+ */
+function responsibleChange(
+  metadata: unknown,
+): ProjectResponsibleChangedActivityLogEvent['metadata'] {
+  if (!isRecord(metadata)) invalid();
+  const { revision } = metadata;
+  if (
+    typeof revision !== 'number' ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1
+  )
+    invalid();
+  const before = readOptionalResponsibleMember(metadata.before);
+  const after = readOptionalResponsibleMember(metadata.after);
+  if (before?.workspaceMembershipId === after?.workspaceMembershipId) invalid();
+  return { revision, before, after };
 }
 
 /** The identity, time and actor label of every recorded event. */

@@ -1,5 +1,5 @@
 {
-  "id": "aa617688-ae88-44a0-8484-909dbfb84f59",
+  "id": "069b85ae-1952-4fb0-badb-6209ad2a43c8",
   "prevId": "8efdbddb-09ee-463d-9f88-63ee869ed957",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_service_catalogue', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -4902,6 +4902,395 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.project_responsibility_commands": {
+      "name": "project_responsibility_commands",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_revision": {
+          "name": "expected_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result_revision": {
+          "name": "result_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsible_membership_id": {
+          "name": "responsible_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsible_display_label": {
+          "name": "responsible_display_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "project_responsibility_commands_actor_key_unique": {
+          "name": "project_responsibility_commands_actor_key_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "idempotency_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "project_responsibility_commands_revision_unique": {
+          "name": "project_responsibility_commands_revision_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "result_revision",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"project_responsibility_commands\".\"outcome\" = 'changed'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "project_responsibility_commands_project_fk": {
+          "name": "project_responsibility_commands_project_fk",
+          "tableFrom": "project_responsibility_commands",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_responsibility_commands_actor_fk": {
+          "name": "project_responsibility_commands_actor_fk",
+          "tableFrom": "project_responsibility_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_responsibility_commands_responsible_fk": {
+          "name": "project_responsibility_commands_responsible_fk",
+          "tableFrom": "project_responsibility_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "responsible_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "project_responsibility_commands_outcome_check": {
+          "name": "project_responsibility_commands_outcome_check",
+          "value": "\"project_responsibility_commands\".\"expected_revision\" >= 0 AND (\n        (\"project_responsibility_commands\".\"outcome\" = 'changed'\n          AND \"project_responsibility_commands\".\"result_revision\" = (\"project_responsibility_commands\".\"expected_revision\")::bigint + 1)\n        OR\n        (\"project_responsibility_commands\".\"outcome\" = 'unchanged'\n          AND \"project_responsibility_commands\".\"result_revision\" = \"project_responsibility_commands\".\"expected_revision\")\n      )"
+        },
+        "project_responsibility_commands_responsible_check": {
+          "name": "project_responsibility_commands_responsible_check",
+          "value": "(\"project_responsibility_commands\".\"responsible_membership_id\" IS NULL) = (\"project_responsibility_commands\".\"responsible_display_label\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.project_responsibility_events": {
+      "name": "project_responsibility_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_internal_user_id": {
+          "name": "actor_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "before_membership_id": {
+          "name": "before_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "before_display_label": {
+          "name": "before_display_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "after_membership_id": {
+          "name": "after_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "after_display_label": {
+          "name": "after_display_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "project_responsibility_events_revision_unique": {
+          "name": "project_responsibility_events_revision_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "revision",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "project_responsibility_events_project_fk": {
+          "name": "project_responsibility_events_project_fk",
+          "tableFrom": "project_responsibility_events",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "project_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_responsibility_events_actor_fk": {
+          "name": "project_responsibility_events_actor_fk",
+          "tableFrom": "project_responsibility_events",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_membership_id",
+            "actor_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_responsibility_events_before_fk": {
+          "name": "project_responsibility_events_before_fk",
+          "tableFrom": "project_responsibility_events",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "before_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "project_responsibility_events_after_fk": {
+          "name": "project_responsibility_events_after_fk",
+          "tableFrom": "project_responsibility_events",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "after_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "project_responsibility_events_revision_check": {
+          "name": "project_responsibility_events_revision_check",
+          "value": "\"project_responsibility_events\".\"revision\" >= 1"
+        },
+        "project_responsibility_events_members_check": {
+          "name": "project_responsibility_events_members_check",
+          "value": "(\"project_responsibility_events\".\"before_membership_id\" IS NULL) = (\"project_responsibility_events\".\"before_display_label\" IS NULL)\n        AND (\"project_responsibility_events\".\"after_membership_id\" IS NULL) = (\"project_responsibility_events\".\"after_display_label\" IS NULL)\n        AND \"project_responsibility_events\".\"before_membership_id\" IS DISTINCT FROM \"project_responsibility_events\".\"after_membership_id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.projects": {
       "name": "projects",
       "schema": "",
@@ -4968,6 +5357,49 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "responsible_membership_id": {
+          "name": "responsible_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsible_display_label": {
+          "name": "responsible_display_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsibility_revision": {
+          "name": "responsibility_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "responsibility_changed_by_internal_user_id": {
+          "name": "responsibility_changed_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsibility_changed_by_membership_id": {
+          "name": "responsibility_changed_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsibility_changed_by_display_name": {
+          "name": "responsibility_changed_by_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsibility_changed_at": {
+          "name": "responsibility_changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -5127,6 +5559,38 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "projects_responsible_fk": {
+          "name": "projects_responsible_fk",
+          "tableFrom": "projects",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "responsible_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "projects_responsibility_changed_by_fk": {
+          "name": "projects_responsibility_changed_by_fk",
+          "tableFrom": "projects",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "responsibility_changed_by_membership_id",
+            "responsibility_changed_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5140,6 +5604,14 @@
         "projects_preparatory_check": {
           "name": "projects_preparatory_check",
           "value": "\"projects\".\"status\" = 'preparatory'"
+        },
+        "projects_responsible_check": {
+          "name": "projects_responsible_check",
+          "value": "(\"projects\".\"responsible_membership_id\" IS NULL) = (\"projects\".\"responsible_display_label\" IS NULL)"
+        },
+        "projects_responsibility_revision_check": {
+          "name": "projects_responsibility_revision_check",
+          "value": "(\n        (\"projects\".\"responsibility_revision\" = 0\n          AND \"projects\".\"responsible_membership_id\" IS NULL\n          AND \"projects\".\"responsibility_changed_by_internal_user_id\" IS NULL\n          AND \"projects\".\"responsibility_changed_by_membership_id\" IS NULL\n          AND \"projects\".\"responsibility_changed_by_display_name\" IS NULL\n          AND \"projects\".\"responsibility_changed_at\" IS NULL)\n        OR\n        (\"projects\".\"responsibility_revision\" >= 1\n          AND \"projects\".\"responsibility_changed_by_internal_user_id\" IS NOT NULL\n          AND \"projects\".\"responsibility_changed_by_membership_id\" IS NOT NULL\n          AND \"projects\".\"responsibility_changed_by_display_name\" IS NOT NULL\n          AND \"projects\".\"responsibility_changed_at\" IS NOT NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -5469,13 +5941,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "priority": {
-          "name": "priority",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -5759,10 +6224,6 @@
         "tasks_date_check": {
           "name": "tasks_date_check",
           "value": "\"tasks\".\"due_date\" IS NULL OR (\"tasks\".\"due_date\" >= DATE '0001-01-01' AND \"tasks\".\"due_date\" <= DATE '9999-12-31')"
-        },
-        "tasks_priority_check": {
-          "name": "tasks_priority_check",
-          "value": "\"tasks\".\"priority\" IN ('normal', 'important', 'critical')"
         },
         "tasks_blockage_reason_check": {
           "name": "tasks_blockage_reason_check",

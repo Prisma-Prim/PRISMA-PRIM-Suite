@@ -222,8 +222,15 @@
     {
       "idx": 31,
       "version": "7",
-      "when": 1790362161434,
-      "tag": "0031_task_priority",
+      "when": 1790362227817,
+      "tag": "0031_project_responsible",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790365719324,
+      "tag": "0032_task_priority",
       "breakpoints": true
     }
   ]

@@ -4,6 +4,7 @@ import { CompanyTaskManagerAssignmentController } from './access/company-task-ma
 import { DocumentProjectsController } from './documents/document-projects.controller.js';
 import { CompanyDocumentProjectOrganizerAssignmentController } from './access/company-document-project-organizer-assignment.controller.js';
 import { ProjectController } from './project/project.controller.js';
+import { ProjectResponsibilityController } from './project/project-responsibility.controller.js';
 import { ProjectModule } from './project/project.module.js';
 import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
@@ -71,6 +72,7 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     CompanyDocumentRegistrarAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
+    ProjectResponsibilityController,
     CompanyProjectAssignmentController,
     WorkspaceInvitationAcceptanceController,
     WorkspaceInvitationController,

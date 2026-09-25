@@ -123,6 +123,8 @@ authority. Its holder must independently possess the owning Project's context an
 read prerequisites before reading Tasks; `task.manage` additionally permits their
 bounded manual mutations under the Project/Task PRD.
 
+The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
+
 The [working-reference correction slice](release-1-document-registry-prd.md#19-approved-unverified-working-reference-correction-250)
 adds `document.correct` only through captured **Company Document Registrar v2**.
 Registrar v1 remains exactly `document.read`, `document.register` and
