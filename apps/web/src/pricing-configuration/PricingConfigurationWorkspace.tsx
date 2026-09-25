@@ -45,9 +45,24 @@ type RuleScope = {
 
 type RuleVersionPage = { items: RuleVersion[]; nextCursor?: string };
 
+// One pass over the scope, the first page and the pages that complete the
+// schedule. `listed` holds every version those pages returned.
+type RulesPass =
+  | {
+      kind: 'read';
+      scope: RuleScope;
+      firstPage: RuleVersionPage;
+      listed: RuleVersion[];
+    }
+  | { kind: 'failed' }
+  | { kind: 'refused' };
+
 type ViewState =
   | { kind: 'loading' }
   | { kind: 'error' }
+  // Every bounded pass met a publication, or a start or end passing, between
+  // its reads.
+  | { kind: 'changing' }
   | {
       kind: 'ready';
       scope: RuleScope;
@@ -91,6 +106,8 @@ type HttpResult = { status: number; body: unknown } | { status: 'network' };
 const scopePath = '/pricing-configuration/rule-scope';
 const versionsPath = '/pricing-configuration/rule-versions';
 const listPageSize = 25;
+// The most passes one load makes while its reads disagree.
+const loadPasses = 3;
 const labelMaximum = 120;
 const localDateTimePattern =
   /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/u;
@@ -229,9 +246,77 @@ export function PricingConfigurationWorkspace({
     [identity],
   );
 
+  const readRules = useCallback(
+    async (
+      companyContextId: string,
+      signal: AbortSignal,
+    ): Promise<RulesPass> => {
+      const scopeResult = await request({
+        path: scopePath,
+        companyContextId,
+        signal,
+      });
+      if (await handleAccess(scopeResult, companyContextId, signal))
+        return { kind: 'refused' };
+      const pageResult = await request({
+        path: versionsPagePath(),
+        companyContextId,
+        signal,
+      });
+      if (await handleAccess(pageResult, companyContextId, signal))
+        return { kind: 'refused' };
+      const scope =
+        scopeResult.status === 200 && isRuleScope(scopeResult.body)
+          ? scopeResult.body
+          : undefined;
+      const page =
+        pageResult.status === 200 && isRuleVersionPage(pageResult.body)
+          ? pageResult.body
+          : undefined;
+      if (!scope || !page) return { kind: 'failed' };
+      // Each successor starts strictly later than its predecessor, so the
+      // scheduled versions are the newest ones: the schedule is complete
+      // once a page reaches a version that is not scheduled, or the list
+      // ends. These pages complete the schedule; the history keeps its own.
+      const listed = [...page.items];
+      let oldest = page.items.at(-1);
+      let cursor = page.nextCursor;
+      while (cursor && oldest?.state === 'SCHEDULED') {
+        const olderThan = oldest.versionNumber;
+        const nextResult = await request({
+          path: versionsPagePath(cursor),
+          companyContextId,
+          signal,
+        });
+        if (await handleAccess(nextResult, companyContextId, signal))
+          return { kind: 'refused' };
+        const next =
+          nextResult.status === 200 && isRuleVersionPage(nextResult.body)
+            ? nextResult.body
+            : undefined;
+        // A page that does not move strictly older could repeat versions,
+        // loop or end the schedule early, so it fails the whole reload.
+        if (
+          !next ||
+          next.items.length === 0 ||
+          !next.items.every((version) => version.versionNumber < olderThan)
+        )
+          return { kind: 'failed' };
+        listed.push(...next.items);
+        oldest = next.items.at(-1);
+        cursor = next.nextCursor;
+      }
+      return { kind: 'read', scope, firstPage: page, listed };
+    },
+    [handleAccess, request],
+  );
+
   // The scope, the first page and every scheduled successor load together, so
   // the displayed head, schedule and list always come from one reload and a
-  // partial schedule is never shown as complete.
+  // partial schedule is never shown as complete. Each is a separate read, so
+  // a publication, or a start or end passing, between two of them can make
+  // them disagree. A pass whose reads disagree is never shown: the load makes
+  // at most `loadPasses` passes in all, then asks the owner to reload.
   const load = useCallback(
     async (companyContextId: string): Promise<void> => {
       loadRequest.current?.abort();
@@ -240,85 +325,38 @@ export function PricingConfigurationWorkspace({
       loadRequest.current = controller;
       setView({ kind: 'loading' });
       try {
-        const scopeResult = await request({
-          path: scopePath,
-          companyContextId,
-          signal: controller.signal,
-        });
-        if (
-          await handleAccess(scopeResult, companyContextId, controller.signal)
-        )
-          return;
-        const pageResult = await request({
-          path: versionsPagePath(),
-          companyContextId,
-          signal: controller.signal,
-        });
-        if (await handleAccess(pageResult, companyContextId, controller.signal))
-          return;
-        const scope =
-          scopeResult.status === 200 && isRuleScope(scopeResult.body)
-            ? scopeResult.body
-            : undefined;
-        const page =
-          pageResult.status === 200 && isRuleVersionPage(pageResult.body)
-            ? pageResult.body
-            : undefined;
-        if (!scope || !page) {
-          setView({ kind: 'error' });
-          return;
-        }
-        // Each successor starts strictly later than its predecessor, so the
-        // scheduled versions are the newest ones: the schedule is complete
-        // once a page reaches a version that is not scheduled, or the list
-        // ends. These pages complete the schedule; the history keeps its own.
-        const scheduled = page.items.filter(isScheduled);
-        let oldest = page.items.at(-1);
-        let cursor = page.nextCursor;
-        while (cursor && oldest?.state === 'SCHEDULED') {
-          const olderThan = oldest.versionNumber;
-          const nextResult = await request({
-            path: versionsPagePath(cursor),
-            companyContextId,
-            signal: controller.signal,
-          });
-          if (
-            await handleAccess(nextResult, companyContextId, controller.signal)
-          )
-            return;
-          const next =
-            nextResult.status === 200 && isRuleVersionPage(nextResult.body)
-              ? nextResult.body
-              : undefined;
-          // A page that does not move strictly older could repeat versions,
-          // loop or end the schedule early, so it fails the whole reload.
-          if (
-            !next ||
-            next.items.length === 0 ||
-            !next.items.every((version) => version.versionNumber < olderThan)
-          ) {
+        for (let pass = 1; pass <= loadPasses; pass += 1) {
+          const rules = await readRules(companyContextId, controller.signal);
+          if (rules.kind === 'refused') return;
+          if (rules.kind === 'failed') {
             setView({ kind: 'error' });
             return;
           }
-          scheduled.push(...next.items.filter(isScheduled));
-          oldest = next.items.at(-1);
-          cursor = next.nextCursor;
+          if (readsAgree(rules)) {
+            const { scope, firstPage, listed } = rules;
+            setView({
+              kind: 'ready',
+              scope,
+              scheduled: listed
+                .filter(isScheduled)
+                .sort(
+                  (left, right) => left.versionNumber - right.versionNumber,
+                ),
+              versions: firstPage.items,
+              olderPage: 'idle',
+              ...(firstPage.nextCursor
+                ? { nextCursor: firstPage.nextCursor }
+                : {}),
+            });
+            return;
+          }
         }
-        setView({
-          kind: 'ready',
-          scope,
-          scheduled: scheduled.sort(
-            (left, right) => left.versionNumber - right.versionNumber,
-          ),
-          versions: page.items,
-          olderPage: 'idle',
-          ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
-        });
+        setView({ kind: 'changing' });
       } catch {
         if (!controller.signal.aborted) setView({ kind: 'error' });
       }
     },
-    [handleAccess, request],
+    [readRules],
   );
 
   useEffect(() => {
@@ -493,6 +531,9 @@ export function PricingConfigurationWorkspace({
             {view.kind === 'loading' ? <p>{copy.currentLoading}</p> : null}
             {view.kind === 'error' ? (
               <p role="alert">{copy.versionsError}</p>
+            ) : null}
+            {view.kind === 'changing' ? (
+              <p role="alert">{copy.versionsChanging}</p>
             ) : null}
             {view.kind === 'ready' ? (
               <>
@@ -735,6 +776,24 @@ function versionsPagePath(cursor?: string): string {
 
 function isScheduled(version: RuleVersion): boolean {
   return version.state === 'SCHEDULED';
+}
+
+// Reads made at one instant agree: the newest version listed is the head the
+// scope names, and a listed version is CURRENT exactly when the scope names
+// it current. A publication between the reads lists a newer head, and a
+// start or end passing between them moves the CURRENT version.
+function readsAgree({
+  scope,
+  firstPage,
+  listed,
+}: Extract<RulesPass, { kind: 'read' }>): boolean {
+  return (
+    (firstPage.items[0]?.versionNumber ?? null) === scope.headVersionNumber &&
+    listed.every(
+      (version) =>
+        (version.state === 'CURRENT') === (version.id === scope.current?.id),
+    )
+  );
 }
 
 // A datetime-local value names a wall-clock time in the browser time zone;

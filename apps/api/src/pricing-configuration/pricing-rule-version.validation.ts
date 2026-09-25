@@ -42,6 +42,8 @@ export function readPublishPricingRuleVersionCommand(
 
 // Applies the delivered catalogue name rule: at least one non-whitespace
 // character and at most the limit in Unicode code points, stored verbatim.
+// PostgreSQL text cannot store U+0000, so that one character is refused here
+// rather than failing the insert.
 function readLabel(value: unknown): string {
   if (
     typeof value !== 'string' ||
@@ -49,6 +51,8 @@ function readLabel(value: unknown): string {
     Array.from(value).length > LABEL_MAXIMUM
   )
     invalid('label', `Enter between 1 and ${LABEL_MAXIMUM} characters.`);
+  if (value.includes('\u0000'))
+    invalid('label', 'Remove the null character from the label.');
   return value;
 }
 

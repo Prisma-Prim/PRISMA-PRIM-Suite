@@ -643,7 +643,10 @@ describe('PricingConfigurationWorkspace', () => {
   it('names the new head on a stale conflict and reloads only when asked, keeping the draft', async () => {
     const fetchMock = stubApi({
       [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
-      [LIST]: () => page([]),
+      [LIST]: (call) =>
+        call === 1
+          ? page([ruleVersion(1)])
+          : page([ruleVersion(2), ruleVersion(1)]),
       [PUBLISH]: (call) =>
         call === 1
           ? Response.json(
@@ -706,7 +709,10 @@ describe('PricingConfigurationWorkspace', () => {
     ];
     const fetchMock = stubApi({
       [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
-      [LIST]: () => page([]),
+      [LIST]: (call) =>
+        call === 1
+          ? page([ruleVersion(1)])
+          : page([ruleVersion(2), ruleVersion(1)]),
       [PUBLISH]: (call) =>
         uncertainAnswers[call - 1]?.() ??
         Response.json(
@@ -1060,5 +1066,166 @@ describe('PricingConfigurationWorkspace', () => {
       'company-1',
       'company-2',
     ]);
+  });
+
+  it('never shows a head and a history read either side of a publication, and reads both again keeping the draft', async () => {
+    let releaseScope: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      releaseScope = resolve;
+    });
+    const v1TakenOverByV2 = ruleVersion(1, {
+      supersession: {
+        supersededByVersionId: v2.id,
+        supersededAt: '2026-04-02T08:00:00.000Z',
+        supersededFrom: v2.effectiveFrom,
+      },
+    });
+    const fetchMock = stubApi({
+      // The reload's scope read precedes another member's publication of
+      // version 2 and its history read follows it. The next pass is held.
+      [SCOPE]: async (call) => {
+        if (call <= 2) return scope(null, 1);
+        await held;
+        return scope(null, 2);
+      },
+      [LIST]: (call) =>
+        call === 1 ? page([ruleVersion(1)]) : page([v2, v1TakenOverByV2]),
+    });
+    renderWorkspace();
+    await screen.findByText('The new version will follow head version 1.');
+    // Reads that agree are made once.
+    expect(requestsTo(fetchMock, SCOPE)).toHaveLength(1);
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(1);
+    fillDraft({ label: 'Kept draft', effectiveFrom: '2026-07-01T00:00' });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    await waitFor(() => expect(requestsTo(fetchMock, SCOPE)).toHaveLength(3));
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(2);
+    expect(
+      screen.getByText('Loading the current Pricing Rule Version…'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Loading Pricing Rule Versions…'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Head: version/u)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: 'Pricing Rule Versions' }),
+    ).not.toBeInTheDocument();
+    expect(publishButton()).toBeDisabled();
+
+    await act(async () => {
+      releaseScope();
+      await held;
+    });
+    expect(
+      await screen.findByText('The new version will follow head version 2.'),
+    ).toBeInTheDocument();
+    expect(versionNames(historyList())).toEqual(['Version 2', 'Version 1']);
+    expect(versionNames(scheduledList())).toEqual(['Version 1', 'Version 2']);
+    expect(requestsTo(fetchMock, SCOPE)).toHaveLength(3);
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(3);
+    expect(screen.getByLabelText('Label')).toHaveValue('Kept draft');
+  });
+
+  it('reads again when a start passes between the scope and the history reads', async () => {
+    const v2Started = { ...v2, state: 'CURRENT' };
+    const v1TakenOver = { ...v1, state: 'SUPERSEDED' };
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(v1, 2) : scope(v2Started, 2)),
+      [LIST]: () => page([v2Started, v1TakenOver]),
+    });
+    renderWorkspace();
+
+    expect(
+      await screen.findByText('No successor is scheduled.'),
+    ).toBeInTheDocument();
+    const current = screen.getByRole('region', {
+      name: 'Current Pricing Rule Version',
+    });
+    expect(within(current).getByText('Version 2')).toBeInTheDocument();
+    expect(within(current).queryByText('Version 1')).not.toBeInTheDocument();
+    expect(requestsTo(fetchMock, SCOPE)).toHaveLength(2);
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(2);
+  });
+
+  it('settles in an explicit reloadable state when every bounded pass straddles a publication, keeping the draft and an uncertain publication', async () => {
+    // During the first reload, another member publishes between each scope
+    // read and its history read; the churn has stopped by the next reload.
+    const churning = (call: number) => call >= 2 && call <= 4;
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => scope(null, call),
+      [LIST]: (call) =>
+        page(
+          chain({ count: churning(call) ? call + 1 : call, firstScheduled: 1 }),
+        ),
+      [PUBLISH]: (call) =>
+        call === 1
+          ? Promise.reject(new TypeError('network'))
+          : Response.json(
+              { outcome: 'UNCHANGED', version: ruleVersion(1) },
+              { status: 201 },
+            ),
+    });
+    renderWorkspace();
+    await screen.findByText('The new version will follow head version 1.');
+    fillDraft({ label: 'Churn rule', effectiveFrom: '2026-07-01T00:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The publication outcome is uncertain.',
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    expect(
+      await screen.findByText(
+        'Pricing Rule Versions kept changing while loading. Reload to see the latest versions.',
+      ),
+    ).toHaveAttribute('role', 'alert');
+    expect(requestsTo(fetchMock, SCOPE)).toHaveLength(4);
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(4);
+    expect(screen.queryByText(/^Head: version/u)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: 'Pricing Rule Versions' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: 'Scheduled successors' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('No successor is scheduled.'),
+    ).not.toBeInTheDocument();
+    expect(publishButton()).toBeDisabled();
+    expect(screen.getByLabelText('Label')).toHaveValue('Churn rule');
+    expect(
+      screen.getByText(/^The publication outcome is uncertain\./u),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
+    );
+    expect(
+      await screen.findByText('The new version will follow head version 5.'),
+    ).toBeInTheDocument();
+    expect(requestsTo(fetchMock, SCOPE)).toHaveLength(5);
+    expect(requestsTo(fetchMock, LIST)).toHaveLength(5);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry publication' }));
+    expect(
+      await screen.findByText(
+        'Version 1 already has this content. Nothing changed.',
+      ),
+    ).toBeInTheDocument();
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]?.key).toBe(attempts[0]?.key);
+    expect(attempts.map(({ body }) => body)).toEqual(
+      attempts.map(() => ({
+        label: 'Churn rule',
+        effectiveFrom: new Date('2026-07-01T00:00').toISOString(),
+        expectedActiveVersionNumber: 1,
+      })),
+    );
   });
 });

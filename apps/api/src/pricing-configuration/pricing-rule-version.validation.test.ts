@@ -61,6 +61,12 @@ describe('Pricing Rule Version publication payload', () => {
         label: '😀'.repeat(120),
       }).label,
     ).toBe('😀'.repeat(120));
+    expect(
+      readPublishPricingRuleVersionCommand({
+        ...valid,
+        label: 'Régle étape ✓ 価格 \u{1f600}',
+      }).label,
+    ).toBe('Régle étape ✓ 価格 \u{1f600}');
   });
 
   it.each([
@@ -68,6 +74,10 @@ describe('Pricing Rule Version publication payload', () => {
     [{ ...valid, label: ' \t\n ' }, 'label'],
     [{ ...valid, label: 'x'.repeat(121) }, 'label'],
     [{ ...valid, label: '😀'.repeat(121) }, 'label'],
+    // PostgreSQL text cannot store U+0000, whatever the label's length.
+    [{ ...valid, label: '\u0000' }, 'label'],
+    [{ ...valid, label: 'Rule\u0000A' }, 'label'],
+    [{ ...valid, label: `${'😀'.repeat(119)}\u0000` }, 'label'],
     [{ ...valid, label: 7 }, 'label'],
     [
       { effectiveFrom: valid.effectiveFrom, expectedActiveVersionNumber: null },

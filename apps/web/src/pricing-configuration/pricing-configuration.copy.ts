@@ -82,6 +82,8 @@ export const pricingConfigurationCopy = {
   versionsLoading: 'Loading Pricing Rule Versions…',
   versionsEmpty: 'No Pricing Rule Version has been published yet.',
   versionsError: 'Pricing Rule Versions could not be loaded. Please try again.',
+  versionsChanging:
+    'Pricing Rule Versions kept changing while loading. Reload to see the latest versions.',
   showOlder: 'Show older versions',
   olderLoading: 'Loading older versions…',
   olderError: 'Older versions could not be loaded. Please try again.',

@@ -2149,6 +2149,47 @@ withPostgres('Company Pricing Configuration REST', () => {
     await expectCounts({ versions: 1, receipts: 1, events: 1 });
   }, 30_000);
 
+  it('refuses a label containing U+0000 as label validation on every exact retry and stores other Unicode verbatim', async () => {
+    const { company } = await prepared();
+    const valid = {
+      label: 'Illustrative rule A',
+      effectiveFrom: '2026-05-01T00:00:00Z',
+      expectedActiveVersionNumber: null,
+    };
+    // PostgreSQL text cannot store U+0000, so the label is refused before any
+    // write and an exact retry meets the same validation, never a server error.
+    const key = crypto.randomUUID();
+    for (const attempt of [1, 2]) {
+      const response = await post(
+        VERSIONS,
+        company.id,
+        { ...valid, label: 'Rule\u0000A' },
+        key,
+      );
+      expect({ attempt, status: response.status }).toEqual({
+        attempt,
+        status: 400,
+      });
+      expect(await response.json()).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field: 'label',
+      });
+    }
+    await expectCounts({ versions: 0, receipts: 0, events: 0 });
+
+    const label = 'Régle étape ✓ 価格 \u{1f600}';
+    const published = publication(
+      await command(VERSIONS, { ...valid, label }, 'unicode', company.id),
+    );
+    expect(published.version.label).toBe(label);
+    const stored = await pool.query<{ label: string }>(
+      'SELECT label FROM pricing_rule_versions WHERE id = $1',
+      [published.version.id],
+    );
+    expect(stored.rows).toEqual([{ label }]);
+    await expectCounts({ versions: 1, receipts: 1, events: 1 });
+  }, 30_000);
+
   it('separates identity, bundle and Company failures and discloses nothing across Companies or Workspaces', async () => {
     const { company } = await prepared();
     const secret = 'Only PRISMA-PRIM sees this rule';
