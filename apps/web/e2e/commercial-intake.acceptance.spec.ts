@@ -542,6 +542,113 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
   );
 });
 
+test('opens the Request from its commercial Activity events through the real API and PostgreSQL', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const subject = `Pregătire audit demo ${suffix}`;
+  const originalText = `Exact source of the ${suffix} Activity navigation.`;
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const company = page.getByLabel('Active Company', { exact: true });
+  const navigation = page.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  const intake = page.locator('.commercial-intake-workspace');
+  const activity = page.locator('.activity-log');
+  await selectCompany(page, company, narrow);
+  await navigate(page, navigation, 'Client Requests', narrow);
+  await captureRequest(page, intake, {
+    originalText,
+    subject,
+    opportunityTitle: `Qualify ${subject}`,
+    nextAction: 'Arrange the audit call',
+  });
+  await intake.getByRole('button', { name: 'Edit next action' }).click();
+  await intake
+    .getByLabel('Next action')
+    .fill(`Confirm the ${suffix} audit window`);
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/commercial-intake\/opportunities\/[^/]+\/next-action$/u.test(
+        new URL(response.url()).pathname,
+      ),
+  );
+  await intake.getByRole('button', { name: 'Save next action' }).click();
+  expect((await updateResponse).status()).toBe(200);
+  await expect(intake.getByRole('alert')).toHaveText('Next action saved.');
+  await intake.getByRole('button', { name: 'Back to Requests' }).click();
+
+  await grantCommercialActivityReader(page);
+  try {
+    await page.reload();
+    const mutations: string[] = [];
+    const recordMutation = (request: Request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname.startsWith('/api/') && request.method() !== 'GET')
+        mutations.push(`${request.method()} ${pathname}`);
+    };
+    page.on('request', recordMutation);
+    // This run's events are the newest of their kind in the Company page.
+    const openRequestOf = (description: string) =>
+      activity
+        .locator('.activity-log-list > li')
+        .filter({ hasText: `Ada Ionescu ${description}` })
+        .first()
+        .getByRole('button', { name: 'Open Request' });
+    const detailRead = () =>
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          /^\/api\/commercial-intake\/requests\/[^/]+$/u.test(
+            new URL(response.url()).pathname,
+          ),
+      );
+
+    await navigate(page, navigation, 'Activity Log', narrow);
+    const fromUpdate = openRequestOf('updated an Opportunity next action');
+    await expect(fromUpdate).toBeVisible();
+    await capture(
+      page,
+      testInfo,
+      `commercial-activity-open-request-${suffix.toLowerCase()}.png`,
+    );
+    let read = detailRead();
+    await fromUpdate.click();
+    expect((await read).status()).toBe(200);
+    await expect(page.locator('#requests')).toBeFocused();
+    await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+    await expect(
+      intake.getByText(`Next action: Confirm the ${suffix} audit window`, {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await capture(
+      page,
+      testInfo,
+      `commercial-activity-opened-request-${suffix.toLowerCase()}.png`,
+    );
+
+    await navigate(page, navigation, 'Activity Log', narrow);
+    const fromCapture = openRequestOf('captured a Client Request');
+    read = detailRead();
+    await fromCapture.focus();
+    await page.keyboard.press('Enter');
+    expect((await read).status()).toBe(200);
+    await expect(page.locator('#requests')).toBeFocused();
+    await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    page.off('request', recordMutation);
+    expect(mutations).toEqual([]);
+  } finally {
+    await revokeCommercialActivityReader(page);
+  }
+});
+
 const apiIdentityHeaders = {
   'x-test-external-provider': 'local-demo',
   'x-test-external-subject': 'local-demonstration-user',
