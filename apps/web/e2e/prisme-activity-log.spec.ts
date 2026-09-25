@@ -123,6 +123,163 @@ test('presents real Activity Log events in server order and preserves them acros
   expect(activityReads).toBe(1);
 });
 
+test('opens the Request of a commercial event from the Classic Activity Log with the keyboard', async ({
+  page,
+}, testInfo) => {
+  const company = {
+    id: '00000000-0000-4000-8000-000000000358',
+    displayName: 'PRISMA-PRIM',
+  };
+  const requestId = '00000000-0000-4000-8000-000000000359';
+  const subject = 'Pregătire audit demo';
+  const detailReads: string[] = [];
+  const mutations: string[] = [];
+  await page.route('**/api/**', (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    const selected = request.headers()['x-company-context-id'] === company.id;
+    if (request.method() !== 'GET') mutations.push(path);
+    if (path === '/api/access/current-actor')
+      return route.fulfill({
+        json: {
+          ...actorContextFixture,
+          workspacePermissions: [],
+          ...(selected
+            ? {
+                activeCompany: {
+                  ...company,
+                  clientPermissions: [],
+                  commercialIntakePermissions: [
+                    'commercial.request.read',
+                    'commercial.request.create',
+                    'commercial.opportunity.read',
+                    'commercial.opportunity.create',
+                  ],
+                  commercialActivityPermissions: ['commercial.activity.read'],
+                },
+              }
+            : {}),
+        },
+      });
+    if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/activity-log')
+      return route.fulfill({
+        json: {
+          events: selected
+            ? [
+                {
+                  id: 'event-next-action',
+                  action: 'opportunity.next_action.updated',
+                  occurredAt: '2026-09-24T10:10:00.000Z',
+                  actor: {
+                    internalUserId: actorContextFixture.internalUserId,
+                    displayName: actorContextFixture.displayName,
+                  },
+                  target: {
+                    type: 'opportunity',
+                    opportunityId: '00000000-0000-4000-8000-000000000360',
+                    clientRequestId: requestId,
+                    companyId: company.id,
+                  },
+                  metadata: {},
+                },
+                ...events.filter(({ id }) => id === 'event-company'),
+              ]
+            : [],
+        },
+      });
+    if (path === '/api/commercial-intake/requests')
+      return route.fulfill({ json: { items: [] } });
+    if (path === `/api/commercial-intake/requests/${requestId}`) {
+      detailReads.push(path);
+      return route.fulfill({
+        json: {
+          id: requestId,
+          companyId: company.id,
+          sourceKind: 'MANUAL_TEXT',
+          sourceLabel: null,
+          reportedReceivedAt: null,
+          subject,
+          originalText: `Original source of ${subject}`,
+          capturedByWorkspaceMembershipId:
+            actorContextFixture.workspaceMembershipId,
+          capturedAt: '2026-09-24T10:05:00.000Z',
+          version: 1,
+          initialOpportunity: {
+            id: '00000000-0000-4000-8000-000000000360',
+            title: 'Audit readiness',
+            scope: null,
+            nextAction: 'Confirm the audit window',
+            status: 'OPEN',
+            responsibleWorkspaceMembershipId:
+              actorContextFixture.workspaceMembershipId,
+            responsibleActor: {
+              workspaceMembershipId: actorContextFixture.workspaceMembershipId,
+              displayName: actorContextFixture.displayName,
+            },
+            createdAt: '2026-09-24T10:05:00.000Z',
+            version: 2,
+          },
+        },
+      });
+    }
+    return route.fulfill({ status: 404 });
+  });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?frame=classic#activity');
+  await page
+    .getByLabel('Active Company', { exact: true })
+    .selectOption(company.id);
+  const activity = page.getByRole('region', { name: 'Activity Log' });
+  const openRequest = activity
+    .getByRole('listitem')
+    .filter({ hasText: 'Ada Ionescu updated an Opportunity next action' })
+    .getByRole('button', { name: 'Open Request' });
+  await expect(openRequest).toBeVisible();
+  await expect(
+    activity
+      .getByRole('listitem')
+      .filter({ hasText: 'Ada Ionescu registered a Company' })
+      .getByRole('button'),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await openRequest.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `classic-activity-open-request-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+
+  await openRequest.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\?frame=classic#requests$/);
+  await expect(page.locator('#requests')).toBeFocused();
+  await expect(
+    page
+      .getByRole('region', { name: 'Client Requests' })
+      .getByText(`Original source of ${subject}`, { exact: true }),
+  ).toBeVisible();
+  expect(detailReads).toHaveLength(1);
+  expect(mutations).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `classic-activity-opened-request-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+});
+
 test('keeps the real Activity Log loading and empty states distinct in Prisme', async ({
   page,
 }) => {

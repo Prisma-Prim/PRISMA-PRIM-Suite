@@ -49,6 +49,11 @@ function contact(value: unknown): ClientContact {
     ...(row.decisionRoles === undefined
       ? {}
       : { decisionRoles: list(row.decisionRoles).map(decisionRole) }),
+    ...(row.communicationPreferences === undefined
+      ? {}
+      : {
+          communicationPreferences: unionString(row.communicationPreferences),
+        }),
   };
 }
 function client(value: unknown) {

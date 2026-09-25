@@ -940,6 +940,59 @@ paths:
           description:
             Conflict with current state, capacity, a preserved relationship,
             or command intent. No partial mutation or success event.
+  /api/documents/{documentId}/correction-history:
+    get:
+      operationId: listWorkingDocumentCorrectionHistory
+      summary: Read a working Document's material corrections with prior and new values
+      description: >-
+        Authorization and every refusal are identical to the working Document
+        detail read and take precedence over query validation; no correction
+        or Activity Log read permission is required. Authority, visibility and
+        the page share one read snapshot. Only material corrections of this
+        Document in the server-validated active Company are returned, newest
+        working revision first, at most 20 per page; unchanged retry receipts
+        are excluded. Prior title and purpose share the Document metadata
+        visibility; a URL change is returned only to a current
+        Representation reader and is otherwise omitted, key and values. The
+        read changes nothing, records no Activity Log event and never fetches
+        a URL.
+      tags:
+        - Document
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: beforeRevision
+          required: false
+          description: >-
+            The `nextBeforeRevision` returned by the previous page. Only
+            corrections that produced a lower working revision are returned.
+            Any other query key fails validation.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 2147483647
+      responses:
+        '200':
+          description: One page of material corrections as recorded; the values are history, not the current Document.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkingDocumentCorrectionHistoryPage'
+        '400':
+          description: The Document id is malformed, `beforeRevision` is not the canonical decimal form of a positive working revision, or another query key is present.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks current Document read authority or a valid active Company context.
+        '404':
+          description: No working Document with a readable original Client is visible in the active Company.
 components:
   parameters:
     IdempotencyKey:
@@ -1562,6 +1615,10 @@ components:
           description: Input duplicates collapse and an empty list is omitted, so a returned list is non-empty, without duplicates and in enum order.
           items:
             $ref: '#/components/schemas/ClientContactDecisionRole'
+        communicationPreferences:
+          type: string
+          description: Descriptive plain text about practical communication preferences, such as language, preferred channel or suitable times. Input is trimmed and blank input is omitted, so a returned value is never blank; null is rejected. The length limit counts Unicode code points. The value sends no message and records no consent or decision authority.
+          maxLength: 1000
     ClientContactDecisionRole:
       type: string
       enum:
@@ -1747,6 +1804,77 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClientContact'
+    WorkingDocumentCorrectionHistoryPage:
+      type: object
+      additionalProperties: false
+      required:
+        - corrections
+        - nextBeforeRevision
+      properties:
+        corrections:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/WorkingDocumentCorrection'
+        nextBeforeRevision:
+          description: The last returned working revision, only while an older visible correction exists. There is no total count.
+          type:
+            - integer
+            - 'null'
+          format: int32
+          minimum: 1
+    WorkingDocumentCorrection:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - occurredAt
+        - actor
+        - changes
+      properties:
+        revision:
+          description: The working revision this correction produced.
+          type: integer
+          format: int32
+          minimum: 2
+        occurredAt:
+          description: The server-established correction instant.
+          type: string
+          format: date-time
+        actor:
+          type: object
+          additionalProperties: false
+          required:
+            - displayName
+          properties:
+            displayName:
+              type: string
+        changes:
+          description: >-
+            Only materially changed fields. `url` appears only for a current
+            Representation reader, so a URL-only correction is empty for a
+            metadata-only reader. A URL is plain historical text, never a
+            verified or current reference.
+          type: object
+          additionalProperties: false
+          properties:
+            title:
+              $ref: '#/components/schemas/WorkingDocumentFieldChange'
+            purpose:
+              $ref: '#/components/schemas/WorkingDocumentFieldChange'
+            url:
+              $ref: '#/components/schemas/WorkingDocumentFieldChange'
+    WorkingDocumentFieldChange:
+      type: object
+      additionalProperties: false
+      required:
+        - before
+        - after
+      properties:
+        before:
+          type: string
+        after:
+          type: string
     PossibleDuplicateReviewConflict:
       type: object
       additionalProperties: false

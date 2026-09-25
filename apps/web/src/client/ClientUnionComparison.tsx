@@ -142,6 +142,14 @@ export function ClientUnionComparison({
                             : copy.notProvided}
                         </dd>
                       </div>
+                      <div>
+                        <dt>
+                          {clientCopy.contactCommunicationPreferencesLabel}
+                        </dt>
+                        <dd>
+                          {contact.communicationPreferences ?? copy.notProvided}
+                        </dd>
+                      </div>
                     </dl>
                   </li>
                 ))}

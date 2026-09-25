@@ -549,6 +549,31 @@
   white-space: nowrap;
 }
 
+.prisme-shell .activity-log-open-request {
+  min-height: 34px;
+  margin-top: 10px;
+  padding: 6px 13px;
+  border: 1px solid #d8d3eb;
+  border-radius: 7px;
+  color: #5943bd;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(24 32 51 / 6%);
+  font-size: 0.74rem;
+  font-weight: 620;
+  line-height: 1.4;
+}
+
+.prisme-shell .activity-log-open-request:hover {
+  border-color: #c9c0ee;
+  color: #4b36aa;
+  background: #f5f2ff;
+}
+
+.prisme-shell .activity-log-open-request:focus-visible {
+  outline: 2px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+
 .prisme-shell .activity-log > p {
   margin: 24px 26px;
   padding: 17px 19px;

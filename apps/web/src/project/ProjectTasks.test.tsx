@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -1582,5 +1588,830 @@ it('fails closed for malformed Task history', async () => {
   );
   expect(
     within(tasks).queryByRole('region', { name: 'Task history' }),
+  ).not.toBeInTheDocument();
+});
+
+const blockageReason = "Waiting for the Client's signed questionnaire";
+const declaredAt = '2026-09-24T10:00:00.000Z';
+const blockedTask = {
+  ...savedTask,
+  status: 'blocked',
+  version: 2,
+  blockage: {
+    reason: blockageReason,
+    actor: attribution,
+    occurredAt: declaredAt,
+  },
+};
+type ExecutionCommand = { url: string; key: string | null; body: unknown };
+/** A stateful server stub for one Task that applies each transition or edit and records its event. */
+function executionFixture(
+  options: {
+    task?: Record<string, unknown>;
+    mutable?: boolean;
+    members?: (typeof anaPop)[];
+    reply?: (
+      command: ExecutionCommand,
+    ) => Response | Promise<Response> | undefined;
+  } = {},
+) {
+  let task: Record<string, unknown> = options.task ?? savedTask;
+  const events: unknown[] = [];
+  const commands: ExecutionCommand[] = [];
+  const other = {
+    ...savedTask,
+    id: 'other-task',
+    title: 'Another preparation Task',
+  };
+  fixture({
+    mutable: options.mutable,
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: options.mutable ?? true,
+          tasks: [task, other],
+        });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: options.mutable ?? true, task });
+      if (url === '/api/tasks/task/history') return Response.json({ events });
+      if (url.endsWith('/eligible-task-assignees') && options.members)
+        return Response.json({ members: options.members });
+      return undefined;
+    },
+    mutate: (url, request) => {
+      const body: unknown = JSON.parse(
+        typeof request.body === 'string' ? request.body : '{}',
+      );
+      const command = {
+        url,
+        key: new Headers(request.headers).get('idempotency-key'),
+        body,
+      };
+      commands.push(command);
+      const reply = options.reply?.(command);
+      if (reply) return reply;
+      const input = body !== null && typeof body === 'object' ? body : {};
+      const status = 'status' in input ? input.status : undefined;
+      const reason = 'reason' in input ? input.reason : undefined;
+      const before = task.status;
+      const version = Number(task.version) + 1;
+      const common = {
+        ...savedTask,
+        title: task.title,
+        assignee: task.assignee,
+        dueDate: task.dueDate,
+        version,
+        updatedAt: declaredAt,
+      };
+      const declaration = {
+        reason,
+        actor: attribution,
+        occurredAt: declaredAt,
+      };
+      let meaning: Record<string, unknown>;
+      if (url.endsWith('/status')) {
+        task =
+          status === 'blocked'
+            ? { ...common, status, completion: null, blockage: declaration }
+            : { ...common, status, completion: null };
+        meaning = {
+          action: 'task.status.changed',
+          metadata: { version, before, after: status, reason: reason ?? null },
+        };
+      } else if (url.endsWith('/cancel')) {
+        task = {
+          ...common,
+          status: 'cancelled',
+          completion: null,
+          cancellation: declaration,
+        };
+        meaning = {
+          action: 'task.cancelled',
+          metadata: { version, before, after: 'cancelled', reason },
+        };
+      } else if (request.method === 'PATCH') {
+        const edited = {
+          title: 'title' in input ? input.title : task.title,
+          assignee:
+            'assigneeMembershipId' in input
+              ? (options.members?.find(
+                  (member) =>
+                    member.workspaceMembershipId === input.assigneeMembershipId,
+                ) ?? null)
+              : task.assignee,
+          dueDate: 'dueDate' in input ? input.dueDate : task.dueDate,
+        };
+        const changes = Object.fromEntries(
+          (['title', 'assignee', 'dueDate'] as const)
+            .filter((field) => edited[field] !== task[field])
+            .map((field) => [
+              field,
+              { before: task[field], after: edited[field] },
+            ]),
+        );
+        task = { ...task, ...edited, version, updatedAt: declaredAt };
+        meaning = { action: 'task.updated', metadata: { version, changes } };
+      } else if (url.endsWith('/complete')) {
+        task = {
+          ...common,
+          status: 'done',
+          completion: { actor: attribution, occurredAt: declaredAt },
+        };
+        meaning = {
+          action: 'task.completed',
+          metadata: { version, before, after: 'done' },
+        };
+      } else {
+        task = { ...common, status: 'todo', completion: null };
+        meaning = {
+          action: 'task.reopened',
+          metadata: { version, before, after: 'todo' },
+        };
+      }
+      events.push({
+        id: `event-${version}`,
+        occurredAt: declaredAt,
+        actor: attribution,
+        target: {
+          type: 'task',
+          taskId: 'task',
+          taskTitle: task.title,
+          companyId: 'company',
+        },
+        ...meaning,
+      });
+      return Response.json(task);
+    },
+  });
+  return commands;
+}
+const transitionNames = [
+  'Mark to do',
+  'Mark in progress',
+  'Mark blocked',
+  'Mark done',
+  'Cancel Task',
+  'Reopen Task',
+];
+function actionNames(tasks: HTMLElement) {
+  return within(tasks)
+    .getAllByRole('button')
+    .map((button) => button.textContent ?? '')
+    .filter((name) => transitionNames.includes(name));
+}
+function waitForState(tasks: HTMLElement, label: string) {
+  return within(tasks).findByText(label, { selector: 'p.task-status' });
+}
+
+it('starts, blocks with a validated reason, resumes, cancels with a reason and reopens with state labels and reasoned history', async () => {
+  const commands = executionFixture();
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  await waitForState(tasks, 'To do');
+  expect(actionNames(tasks)).toEqual([
+    'Mark in progress',
+    'Mark blocked',
+    'Mark done',
+    'Cancel Task',
+  ]);
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await waitForState(tasks, 'In progress');
+  expect(commands.at(-1)).toMatchObject({
+    url: '/api/tasks/task/status',
+    body: { expectedVersion: 1, status: 'in_progress' },
+  });
+  expect(
+    within(tasks).getByText('In progress', { selector: 'span.task-status' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  const reason = within(tasks).getByLabelText('Blockage reason');
+  expect(actionNames(tasks)).toEqual([]);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  expect(
+    within(tasks).getByText('Enter a reason of 1–500 characters.'),
+  ).toBeInTheDocument();
+  expect(reason).toHaveAttribute('aria-invalid', 'true');
+  fireEvent.change(reason, { target: { value: `  ${'x'.repeat(501)}  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  expect(commands).toHaveLength(1);
+  fireEvent.change(reason, { target: { value: `  ${blockageReason}  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await waitForState(tasks, 'Blocked');
+  expect(commands.at(-1)).toMatchObject({
+    url: '/api/tasks/task/status',
+    body: { expectedVersion: 2, status: 'blocked', reason: blockageReason },
+  });
+  expect(
+    within(tasks).getByText(blockageReason, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByText(/Blocked by Owner/)).toBeInTheDocument();
+  expect(within(tasks).queryByLabelText('Blockage reason')).toBeNull();
+  expect(actionNames(tasks)).toEqual([
+    'Mark to do',
+    'Mark in progress',
+    'Mark done',
+    'Cancel Task',
+  ]);
+  expect(within(tasks).getByLabelText('Task title')).toBeEnabled();
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await waitForState(tasks, 'In progress');
+  expect(
+    within(tasks).queryByText(blockageReason, { selector: 'dd' }),
+  ).toBeNull();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Duplicate of A' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Keep current state' }),
+  );
+  expect(within(tasks).queryByLabelText('Cancellation reason')).toBeNull();
+  expect(commands).toHaveLength(3);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  expect(within(tasks).getByLabelText('Cancellation reason')).toHaveValue('');
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Duplicate of A' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await waitForState(tasks, 'Cancelled');
+  expect(commands.at(-1)).toMatchObject({
+    url: '/api/tasks/task/cancel',
+    body: { expectedVersion: 4, reason: 'Duplicate of A' },
+  });
+  expect(
+    within(tasks).getByText('Duplicate of A', { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByText(/Cancelled by Owner/)).toBeInTheDocument();
+  expect(actionNames(tasks)).toEqual(['Reopen Task']);
+  expect(within(tasks).queryByLabelText('Task title')).toBeNull();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await waitForState(tasks, 'To do');
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await waitForState(tasks, 'Done');
+  expect(new Set(commands.map((command) => command.key)).size).toBe(6);
+
+  const history = within(tasks).getByRole('region', { name: 'Task history' });
+  const items = within(history).getAllByRole('listitem');
+  expect(
+    items.map((item) => item.querySelector('strong')?.textContent),
+  ).toEqual([
+    'Status changed',
+    'Status changed',
+    'Status changed',
+    'Task cancelled',
+    'Task reopened',
+    'Completion declared',
+  ]);
+  const [started, blocked, , cancelled, reopened, completed] = items;
+  expect(started).toHaveTextContent('Before: To do');
+  expect(started).toHaveTextContent('After: In progress');
+  expect(started).not.toHaveTextContent('Reason');
+  expect(blocked).toHaveTextContent('After: Blocked');
+  expect(blocked).toHaveTextContent(`Reason: ${blockageReason}`);
+  expect(cancelled).toHaveTextContent('Before: In progress');
+  expect(cancelled).toHaveTextContent('Reason: Duplicate of A');
+  expect(reopened).toHaveTextContent('Before: Cancelled');
+  expect(reopened).toHaveTextContent('After: To do');
+  expect(completed).toHaveTextContent('After: Done');
+});
+
+it('counts reason characters as Unicode code points like the server', async () => {
+  const commands = executionFixture();
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  // Each supplementary character is one character but two UTF-16 code units.
+  const blockage = '😀'.repeat(500);
+  const cancellation = '𝒜'.repeat(500);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  const reason = within(tasks).getByLabelText('Blockage reason');
+  fireEvent.change(reason, { target: { value: `  ${blockage}😀  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  expect(
+    within(tasks).getByText('Enter a reason of 1–500 characters.'),
+  ).toBeInTheDocument();
+  expect(commands).toHaveLength(0);
+  fireEvent.change(reason, { target: { value: `  ${blockage}  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await waitForState(tasks, 'Blocked');
+  expect(commands.at(-1)?.body).toEqual({
+    expectedVersion: 1,
+    status: 'blocked',
+    reason: blockage,
+  });
+  expect(
+    within(tasks).getByText(blockage, { selector: 'dd' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  const cancellationField = within(tasks).getByLabelText('Cancellation reason');
+  fireEvent.change(cancellationField, {
+    target: { value: `${cancellation}𝒜` },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  expect(
+    within(tasks).getByText('Enter a reason of 1–500 characters.'),
+  ).toBeInTheDocument();
+  expect(commands).toHaveLength(1);
+  fireEvent.change(cancellationField, { target: { value: cancellation } });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await waitForState(tasks, 'Cancelled');
+  expect(commands.at(-1)?.body).toEqual({
+    expectedVersion: 2,
+    reason: cancellation,
+  });
+  expect(
+    within(tasks).getByText(cancellation, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  const history = within(tasks).getByRole('region', { name: 'Task history' });
+  expect(
+    await within(history).findByText(`Reason: ${blockage}`),
+  ).toBeInTheDocument();
+  expect(
+    within(history).getByText(`Reason: ${cancellation}`),
+  ).toBeInTheDocument();
+});
+
+it('preserves the exact blockage payload and key for an explicit retry after an uncertain result', async () => {
+  let attempts = 0;
+  const commands = executionFixture({
+    reply: () =>
+      ++attempts === 1 ? new Response(null, { status: 502 }) : undefined,
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  fireEvent.change(within(tasks).getByLabelText('Blockage reason'), {
+    target: { value: blockageReason },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await within(tasks).findByText(
+    'The result is not confirmed. Retry the same change to safely recover its recorded result.',
+  );
+  for (const name of ['Mark in progress', 'Mark done', 'Cancel Task'])
+    expect(within(tasks).getByRole('button', { name })).toBeDisabled();
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Retry pending Task change' }),
+  );
+  await waitForState(tasks, 'Blocked');
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toEqual(commands[0]);
+  expect(commands[0]?.body).toEqual({
+    expectedVersion: 1,
+    status: 'blocked',
+    reason: blockageReason,
+  });
+  expect(commands[0]?.key).toBeTruthy();
+});
+
+it('requires an explicit reload after a conflicting cancellation', async () => {
+  const commands = executionFixture({
+    reply: () => new Response(null, { status: 409 }),
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Duplicate of A' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await within(tasks).findByText(
+    'This Task or its permissions changed. Reload the Task before making another change.',
+  );
+  expect(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  ).toBeDisabled();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Task' }));
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Mark in progress' }),
+    ).toBeEnabled(),
+  );
+  expect(commands).toHaveLength(1);
+});
+
+it('keeps a blocked Task and its declaration readable but offers no transition for a superseded original Client', async () => {
+  executionFixture({ task: blockedTask, mutable: false });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  await waitForState(tasks, 'Blocked');
+  expect(
+    within(tasks).getByText(
+      'Read-only: the original Client has been superseded. Task history remains available.',
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByText(blockageReason, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(actionNames(tasks)).toEqual([]);
+});
+
+it('shows states and declarations to a task.read reader without offering transitions', async () => {
+  executionFixture({
+    task: {
+      ...savedTask,
+      status: 'cancelled',
+      version: 2,
+      cancellation: {
+        reason: 'Duplicate of A',
+        actor: attribution,
+        occurredAt: declaredAt,
+      },
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={{
+        ...actor,
+        activeCompany: actor.activeCompany && {
+          ...actor.activeCompany,
+          taskPermissions: ['task.read'],
+        },
+      }}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  await waitForState(tasks, 'Cancelled');
+  expect(within(tasks).getByText(/Cancelled by Owner/)).toBeInTheDocument();
+  expect(
+    within(tasks).getByText('Duplicate of A', { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(actionNames(tasks)).toEqual([]);
+});
+
+it('drops an open reason draft and a late transition reply when the authorization context changes', async () => {
+  let release: (response: Response) => void = () => undefined;
+  const late = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const commands = executionFixture({ reply: () => late });
+  const identity = deterministicBrowserIdentity();
+  const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
+  let tasks = await openSavedTask();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Unsaved reason' },
+  });
+  view.rerender(
+    <ProjectWorkspace
+      actor={{ ...actor, workspaceMembershipId: 'replacement' }}
+      identity={identity}
+    />,
+  );
+  tasks = await openSavedTask();
+  await waitForState(tasks, 'To do');
+  expect(within(tasks).queryByLabelText('Cancellation reason')).toBeNull();
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await waitFor(() => expect(commands).toHaveLength(1));
+  view.rerender(
+    <ProjectWorkspace
+      actor={{ ...actor, workspaceMembershipId: 'second-replacement' }}
+      identity={identity}
+    />,
+  );
+  release(Response.json({ ...savedTask, status: 'in_progress', version: 2 }));
+  tasks = await openSavedTask();
+  await waitForState(tasks, 'To do');
+  expect(within(tasks).queryByText('Task change recorded.')).toBeNull();
+  expect(
+    within(tasks).queryByText('In progress', { selector: 'p.task-status' }),
+  ).toBeNull();
+});
+
+const unsavedFields = {
+  title: 'Unsaved correction',
+  assigneeMembershipId: anaPop.workspaceMembershipId,
+  dueDate: '2026-10-15',
+};
+function enterUnsavedFields(tasks: HTMLElement) {
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: unsavedFields.title },
+  });
+  fireEvent.change(within(tasks).getByLabelText('Responsible member'), {
+    target: { value: unsavedFields.assigneeMembershipId },
+  });
+  fireEvent.change(within(tasks).getByLabelText('Due date'), {
+    target: { value: unsavedFields.dueDate },
+  });
+}
+// A move remounts the form, so every check queries the current fields.
+function formFields(tasks: HTMLElement) {
+  return {
+    title: within(tasks).getByLabelText('Task title'),
+    assigneeMembershipId: within(tasks).getByLabelText('Responsible member'),
+    dueDate: within(tasks).getByLabelText('Due date'),
+  };
+}
+async function expectFormFields(
+  tasks: HTMLElement,
+  expected: typeof unsavedFields,
+) {
+  await waitFor(() => {
+    const fields = formFields(tasks);
+    expect(fields.title).toHaveValue(expected.title);
+    expect(fields.assigneeMembershipId).toHaveValue(
+      expected.assigneeMembershipId,
+    );
+    expect(fields.dueDate).toHaveValue(expected.dueDate);
+    expect(
+      within(tasks).getByRole('button', { name: 'Save Task' }),
+    ).toBeEnabled();
+  });
+}
+
+it('keeps unsaved title, responsible member and date through moves between open states and saves them at the current version', async () => {
+  const commands = executionFixture({ members: [anaPop] });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  await expectFormFields(tasks, {
+    title: savedTask.title,
+    assigneeMembershipId: '',
+    dueDate: '',
+  });
+  enterUnsavedFields(tasks);
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await waitForState(tasks, 'In progress');
+  await expectFormFields(tasks, unsavedFields);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  fireEvent.change(within(tasks).getByLabelText('Blockage reason'), {
+    target: { value: blockageReason },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await waitForState(tasks, 'Blocked');
+  await expectFormFields(tasks, unsavedFields);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark to do' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, unsavedFields);
+  // The detail keeps showing the recorded fields until the draft is saved.
+  expect(
+    within(tasks).getByRole('heading', { name: savedTask.title }),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByText('No due date', { selector: 'dd' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByRole('heading', { name: unsavedFields.title });
+  expect(commands.map((command) => command.body)).toEqual([
+    { expectedVersion: 1, status: 'in_progress' },
+    { expectedVersion: 2, status: 'blocked', reason: blockageReason },
+    { expectedVersion: 3, status: 'todo' },
+    { expectedVersion: 4, ...unsavedFields },
+  ]);
+  expect(commands.at(-1)?.url).toBe('/api/tasks/task');
+  expect(
+    within(tasks).getByText(anaPop.displayLabel, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByText(unsavedFields.dueDate, { selector: 'dd' }),
+  ).toBeInTheDocument();
+});
+
+it('discards a kept draft when the Task changed after its own move, so newer fields are never overwritten', async () => {
+  let moved = false;
+  const changed = {
+    ...savedTask,
+    title: 'Later correction by colleague',
+    status: 'in_progress',
+    version: 3,
+  };
+  fixture({
+    read: (url) => {
+      if (!moved) return undefined;
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [changed] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: changed });
+      return undefined;
+    },
+    mutate: () => {
+      moved = true;
+      return Response.json({ ...savedTask, status: 'in_progress', version: 2 });
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: unsavedFields.title },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await within(tasks).findByRole('heading', { name: changed.title });
+  await waitFor(() =>
+    expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+      changed.title,
+    ),
+  );
+  fireEvent.click(within(tasks).getByRole('button', { name: 'New Task' }));
+  fireEvent.click(
+    await within(tasks).findByRole('button', { name: changed.title }),
+  );
+  await within(tasks).findByRole('heading', { name: changed.title });
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(changed.title);
+});
+
+it('consumes the draft when the Task is completed or cancelled, so reopening shows the recorded fields', async () => {
+  const commands = executionFixture({ members: [anaPop] });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  const recorded = {
+    title: savedTask.title,
+    assigneeMembershipId: '',
+    dueDate: '',
+  };
+  await expectFormFields(tasks, recorded);
+  enterUnsavedFields(tasks);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await waitForState(tasks, 'Done');
+  expect(within(tasks).queryByLabelText('Task title')).toBeNull();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, recorded);
+
+  enterUnsavedFields(tasks);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Duplicate of A' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await waitForState(tasks, 'Cancelled');
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, recorded);
+  expect(commands.map((command) => command.url)).toEqual([
+    '/api/tasks/task/complete',
+    '/api/tasks/task/reopen',
+    '/api/tasks/task/cancel',
+    '/api/tasks/task/reopen',
+  ]);
+});
+
+it('offers All plus the five states in the status filter and filters on the real state', async () => {
+  const rows = [
+    savedTask,
+    {
+      ...savedTask,
+      id: 'started',
+      title: 'Started work',
+      status: 'in_progress',
+    },
+    { ...blockedTask, id: 'blocked', title: 'Blocked work' },
+    {
+      ...savedTask,
+      id: 'finished',
+      title: 'Finished work',
+      status: 'done',
+      completion: { actor: attribution, occurredAt: declaredAt },
+    },
+    {
+      ...savedTask,
+      id: 'dropped',
+      title: 'Dropped work',
+      status: 'cancelled',
+      cancellation: {
+        reason: 'Duplicate of A',
+        actor: attribution,
+        occurredAt: declaredAt,
+      },
+    },
+  ];
+  fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({ mutable: true, tasks: rows })
+        : undefined,
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  const filter = await within(tasks).findByLabelText('Task status');
+  expect(filter).toHaveValue('all');
+  expect(
+    within(filter)
+      .getAllByRole('option')
+      .map((option) => option.textContent),
+  ).toEqual(['All', 'To do', 'In progress', 'Blocked', 'Done', 'Cancelled']);
+  expect(
+    Array.from(
+      tasks.querySelectorAll('.task-list .task-status'),
+      (label) => label.textContent,
+    ),
+  ).toEqual(['To do', 'In progress', 'Blocked', 'Done', 'Cancelled']);
+  for (const [value, title] of [
+    ['todo', 'Collect preparation notes'],
+    ['in_progress', 'Started work'],
+    ['blocked', 'Blocked work'],
+    ['done', 'Finished work'],
+    ['cancelled', 'Dropped work'],
+  ]) {
+    fireEvent.change(filter, { target: { value } });
+    expect(listedTitles(tasks)).toEqual([title]);
+  }
+});
+
+it('fails closed for an unknown Task state', async () => {
+  fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({
+            mutable: true,
+            tasks: [{ ...savedTask, status: 'paused' }],
+          })
+        : undefined,
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${project.title} Client: ${project.clientDisplayName}`,
+    }),
+  );
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  await within(tasks).findByText(
+    'Tasks could not be loaded. Reload to try again.',
+  );
+  expect(
+    within(tasks).queryByRole('navigation', { name: 'Tasks' }),
   ).not.toBeInTheDocument();
 });

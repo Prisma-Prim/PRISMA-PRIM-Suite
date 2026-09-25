@@ -13,31 +13,44 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import {
+  isOpenTaskState,
   readAssignees,
   readTask,
   readTaskDetail,
   readTaskHistory,
   readTaskList,
+  taskMoves,
+  taskStates,
   validTaskDate,
+  validTaskReason,
   type Assignee,
   type TaskEvent,
+  type TaskMove,
+  type TaskState,
   type TaskView,
 } from './task-response';
 import { taskCopy as copy } from './task.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './task.css';
 import {
+  TaskDeclarationFacts,
   TaskFieldsForm,
   TaskHistory,
+  TaskReasonForm,
   formatTime,
   type Draft,
+  type ReasonDraft,
 } from './TaskPresentation';
 
+/** A requested open of one Task of the selected Project. */
+export type RequestedTask = { taskId: string; requestId: number };
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string | null;
   onActivityRecorded?: () => void | Promise<void>;
+  /** Opens this Task of the selected Project as choosing its row would; each new request id once. */
+  requestedTask?: RequestedTask;
 };
 type Listing = ReturnType<typeof readTaskList>;
 type Load =
@@ -71,11 +84,23 @@ type Command = { key: string } & (
       taskId: string;
       body: { expectedVersion: number };
     }
+  | {
+      action: 'status';
+      taskId: string;
+      body:
+        | { expectedVersion: number; status: 'todo' | 'in_progress' }
+        | { expectedVersion: number; status: 'blocked'; reason: string };
+    }
+  | {
+      action: 'cancel';
+      taskId: string;
+      body: { expectedVersion: number; reason: string };
+    }
 );
 type Mutation =
   | { kind: 'idle' | 'blocked' }
   | { kind: 'pending' | 'uncertain'; command: Command };
-type TaskFilter = 'all' | TaskView['status'];
+type TaskFilter = 'all' | TaskState;
 // Responsible members are matched by membership identity so homonymous members stay distinct.
 type AssigneeFilter =
   | { kind: 'all' }
@@ -213,6 +238,12 @@ export function ProjectTasks(props: Props) {
 }
 function TaskProjects(props: Props) {
   const [projects, setProjects] = useState<string[]>([]);
+  /** A request present when these Tasks mount was made under an earlier authority and never replays. */
+  const retiredTaskRequest = useRef(props.requestedTask?.requestId);
+  const requestedTask =
+    props.requestedTask?.requestId === retiredTaskRequest.current
+      ? undefined
+      : props.requestedTask;
   useEffect(() => {
     setProjects(props.projectId ? [props.projectId] : []);
   }, [props.identity]);
@@ -226,7 +257,13 @@ function TaskProjects(props: Props) {
   }, [props.projectId]);
   return projects.map((projectId) => (
     <div key={projectId} hidden={props.projectId !== projectId}>
-      <TaskProject {...props} projectId={projectId} />
+      <TaskProject
+        {...props}
+        projectId={projectId}
+        requestedTask={
+          props.projectId === projectId ? requestedTask : undefined
+        }
+      />
     </div>
   ));
 }
@@ -240,6 +277,7 @@ function TaskProject({
   identity,
   projectId,
   onActivityRecorded,
+  requestedTask,
 }: Props & { projectId: string }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -248,6 +286,7 @@ function TaskProject({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
+  const [reasonDraft, setReasonDraft] = useState<ReasonDraft | null>(null);
   const [feedback, setFeedback] = useState('');
   const [taskSearch, setTaskSearch] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
@@ -260,6 +299,8 @@ function TaskProject({
   );
   const request = useRef<AbortController | null>(null);
   const mutationRequest = useRef<AbortController | null>(null);
+  /** The latest requested open already applied. */
+  const consumedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
   const canRead =
@@ -335,6 +376,7 @@ function TaskProject({
     setDetail(null);
     setMembers(null);
     setDraft(emptyDraft);
+    setReasonDraft(null);
     setFeedback('');
     setMutation({ kind: 'blocked' });
   }
@@ -433,6 +475,7 @@ function TaskProject({
     setSelected(taskId);
     setDetail(taskId ? { kind: 'loading' } : null);
     setDraft(emptyDraft);
+    setReasonDraft(null);
     setMembers(null);
     if (mutation.kind !== 'uncertain') setFeedback('');
     if (options.reload) {
@@ -466,6 +509,23 @@ function TaskProject({
       mutationRequest.current?.abort();
     };
   }, [identity]);
+  // A requested open is the same open as choosing the Task's row, so it
+  // supersedes a read still loading, including the first list read. A pending
+  // command is never aborted: the open waits for its outcome and, once
+  // confirmed, for the read of its result, so neither overwrites the other.
+  const commandSettling =
+    mutation.kind === 'pending' ||
+    (mutation.kind === 'blocked' && load.kind === 'loading');
+  useEffect(() => {
+    if (
+      !requestedTask ||
+      requestedTask.requestId === consumedTaskRequest.current ||
+      commandSettling
+    )
+      return;
+    consumedTaskRequest.current = requestedTask.requestId;
+    void open(requestedTask.taskId);
+  }, [requestedTask, commandSettling]);
 
   async function run(command: Command) {
     request.current?.abort();
@@ -512,7 +572,20 @@ function TaskProject({
       const receipt = readTask(result.value, scope);
       if (command.taskId !== null && receipt.id !== command.taskId)
         throw new Error('Invalid Task receipt');
-      drafts.current.delete(command.taskId ?? 'create');
+      // A confirmed move between open states changes no field, so a draft kept at the move's
+      // expected version stays useful at the version the move produced. A later change still
+      // discards it on the next read; every other confirmed command consumes the draft.
+      const saved = drafts.current.get(command.taskId ?? 'create');
+      if (
+        command.action === 'status' &&
+        saved?.version === command.body.expectedVersion &&
+        receipt.version === command.body.expectedVersion + 1
+      )
+        drafts.current.set(command.taskId, {
+          version: receipt.version,
+          draft: saved.draft,
+        });
+      else drafts.current.delete(command.taskId ?? 'create');
       setFeedback(copy.confirmed);
       setMutation({ kind: 'blocked' });
       setSelected(receipt.id);
@@ -560,7 +633,7 @@ function TaskProject({
       assigneeMembershipId: draft.assigneeMembershipId || null,
       dueDate: draft.dueDate || null,
     };
-    if (selected && current?.task.status === 'todo')
+    if (selected && current && isOpenTaskState(current.task.status))
       void run({
         key: crypto.randomUUID(),
         action: 'edit',
@@ -584,6 +657,68 @@ function TaskProject({
         taskId: null,
         body,
       });
+  }
+  function choose(task: TaskView, move: TaskMove) {
+    const taskId = task.id;
+    const expectedVersion = task.version;
+    const key = crypto.randomUUID();
+    switch (move) {
+      case 'blocked':
+      case 'cancelled':
+        setReasonDraft({ kind: move, text: '', invalid: false });
+        return;
+      case 'todo':
+      case 'in_progress':
+        void run({
+          key,
+          action: 'status',
+          taskId,
+          body: { expectedVersion, status: move },
+        });
+        return;
+      case 'done':
+        void run({
+          key,
+          action: 'complete',
+          taskId,
+          body: { expectedVersion },
+        });
+        return;
+      case 'reopen':
+        void run({ key, action: 'reopen', taskId, body: { expectedVersion } });
+        return;
+      default: {
+        const exhaustive: never = move;
+        return exhaustive;
+      }
+    }
+  }
+  function declare(event: FormEvent) {
+    event.preventDefault();
+    if (!current || !reasonDraft || mutation.kind !== 'idle') return;
+    if (!validTaskReason(reasonDraft.text)) {
+      setReasonDraft({ ...reasonDraft, invalid: true });
+      return;
+    }
+    const reason = reasonDraft.text.trim();
+    const taskId = current.task.id;
+    const expectedVersion = current.task.version;
+    setReasonDraft(null);
+    void run(
+      reasonDraft.kind === 'blocked'
+        ? {
+            key: crypto.randomUUID(),
+            action: 'status',
+            taskId,
+            body: { expectedVersion, status: 'blocked', reason },
+          }
+        : {
+            key: crypto.randomUUID(),
+            action: 'cancel',
+            taskId,
+            body: { expectedVersion, reason },
+          },
+    );
   }
   function updateDraft(next: Draft) {
     drafts.current.set(selected ?? 'create', {
@@ -642,17 +777,19 @@ function TaskProject({
                         value={taskFilter}
                         onChange={(event) => {
                           const nextFilter = event.target.value;
-                          if (
-                            nextFilter === 'all' ||
-                            nextFilter === 'todo' ||
-                            nextFilter === 'done'
-                          )
-                            setTaskFilter(nextFilter);
+                          if (nextFilter === 'all') setTaskFilter(nextFilter);
+                          const state = taskStates.find(
+                            (candidate) => candidate === nextFilter,
+                          );
+                          if (state) setTaskFilter(state);
                         }}
                       >
                         <option value="all">{copy.all}</option>
-                        <option value="todo">{copy.todo}</option>
-                        <option value="done">{copy.completedFilter}</option>
+                        {taskStates.map((state) => (
+                          <option key={state} value={state}>
+                            {copy.states[state]}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label>
@@ -743,7 +880,7 @@ function TaskProject({
                       {task.title}
                     </button>
                     <span className="task-status">
-                      {task.status === 'todo' ? copy.todo : copy.done}
+                      {copy.states[task.status]}
                     </span>
                     <span>
                       {task.assignee?.displayLabel ?? copy.unassigned} ·{' '}
@@ -772,7 +909,7 @@ function TaskProject({
                 <>
                   <h5>{current.task.title}</h5>
                   <p className="task-status">
-                    {current.task.status === 'todo' ? copy.todo : copy.done}
+                    {copy.states[current.task.status]}
                   </p>
                   <dl className="task-facts">
                     <div>
@@ -799,11 +936,24 @@ function TaskProject({
                       </time>
                     </p>
                   )}
+                  {current.task.status === 'blocked' && (
+                    <TaskDeclarationFacts
+                      kind="blocked"
+                      declaration={current.task.blockage}
+                    />
+                  )}
+                  {current.task.status === 'cancelled' && (
+                    <TaskDeclarationFacts
+                      kind="cancelled"
+                      declaration={current.task.cancellation}
+                    />
+                  )}
                 </>
               )}
               {canManage &&
                 mutable &&
-                (!selected || current?.task.status === 'todo') && (
+                (!selected ||
+                  (current && isOpenTaskState(current.task.status))) && (
                   <TaskFieldsForm
                     draft={draft}
                     members={members}
@@ -814,22 +964,31 @@ function TaskProject({
                     onSubmit={save}
                   />
                 )}
-              {current && canManage && mutable && (
-                <button
-                  type="button"
-                  disabled={mutation.kind !== 'idle'}
-                  onClick={() =>
-                    void run({
-                      key: crypto.randomUUID(),
-                      taskId: current.task.id,
-                      action:
-                        current.task.status === 'todo' ? 'complete' : 'reopen',
-                      body: { expectedVersion: current.task.version },
-                    })
-                  }
+              {current && canManage && mutable && reasonDraft && (
+                <TaskReasonForm
+                  draft={reasonDraft}
+                  onChange={setReasonDraft}
+                  onSubmit={declare}
+                  onDismiss={() => setReasonDraft(null)}
+                />
+              )}
+              {current && canManage && mutable && !reasonDraft && (
+                <div
+                  className="task-actions"
+                  role="group"
+                  aria-label={copy.actions}
                 >
-                  {current.task.status === 'todo' ? copy.complete : copy.reopen}
-                </button>
+                  {taskMoves(current.task.status).map((move) => (
+                    <button
+                      key={move}
+                      type="button"
+                      disabled={mutation.kind !== 'idle'}
+                      onClick={() => choose(current.task, move)}
+                    >
+                      {copy.moves[move]}
+                    </button>
+                  ))}
+                </div>
               )}
               {current && <TaskHistory events={current.events} />}
             </div>

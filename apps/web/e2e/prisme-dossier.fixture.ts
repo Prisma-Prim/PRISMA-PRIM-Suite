@@ -1,5 +1,6 @@
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
+import type { ClientContact } from '../src/client/ClientContactEditor';
 import { actorContextFixture } from './actor-context.fixture';
 
 export const dossierCompany = {
@@ -16,13 +17,7 @@ interface DossierFixture {
   telephone: string | null;
   generalEmail: string | null;
   businessActivity: string | null;
-  contacts: {
-    name: string;
-    telephone?: string;
-    email?: string;
-    position?: string;
-    decisionRoles?: string[];
-  }[];
+  contacts: ClientContact[];
   version: number;
   involvedCompanyDisplayNames: string[];
 }

@@ -44,7 +44,10 @@ function member(value: unknown): ResponsibleMember {
     displayLabel: text(row.displayLabel),
   };
 }
-function optionalMember(value: unknown): ResponsibleMember | null {
+/** A responsible member, or `null` for none; anything else is rejected. */
+export function readOptionalResponsibleMember(
+  value: unknown,
+): ResponsibleMember | null {
   return value === null ? null : member(value);
 }
 
@@ -53,7 +56,7 @@ export function readResponsibility(value: unknown): ProjectResponsibility {
   if (typeof row.mutable !== 'boolean')
     throw new Error('Invalid responsible member state');
   const current = {
-    responsible: optionalMember(row.responsible),
+    responsible: readOptionalResponsibleMember(row.responsible),
     revision: revision(row.revision),
     mutable: row.mutable,
   };
@@ -93,6 +96,6 @@ export function readResponsibilityReceipt(
     projectId,
     outcome: row.outcome,
     revision: revision(row.revision),
-    responsible: optionalMember(row.responsible),
+    responsible: readOptionalResponsibleMember(row.responsible),
   };
 }

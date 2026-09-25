@@ -82,6 +82,22 @@ export class TaskController {
   ) {
     return this.tasks.reopen(actor(request), id, body, key);
   }
+  @Post('tasks/:taskId/status') changeStatus(
+    @Req() request: ActorContextRequest,
+    @Param('taskId') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.tasks.changeStatus(actor(request), id, body, key);
+  }
+  @Post('tasks/:taskId/cancel') cancel(
+    @Req() request: ActorContextRequest,
+    @Param('taskId') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.tasks.cancel(actor(request), id, body, key);
+  }
 }
 function actor(request: ActorContextRequest) {
   if (!request.actorContext) throw new ForbiddenException();
