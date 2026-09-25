@@ -12,6 +12,8 @@ const MAXIMUM_SHORT_TEXT_LENGTH = 500;
 const MAXIMUM_LONG_TEXT_LENGTH = 2_000;
 const MAXIMUM_EMAIL_LENGTH = 320;
 const MAXIMUM_CONTACTS = 50;
+/** Provisional MVP bound, counted in Unicode code points rather than UTF-16 units. */
+const MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS = 1_000;
 const MAXIMUM_INCREMENTABLE_VERSION = 2_147_483_646;
 const CONTACT_FIELDS: ReadonlySet<string> = new Set([
   'name',
@@ -19,6 +21,7 @@ const CONTACT_FIELDS: ReadonlySet<string> = new Set([
   'email',
   'position',
   'decisionRoles',
+  'communicationPreferences',
 ]);
 
 export interface NormalizedDossierFields {
@@ -132,9 +135,9 @@ export function normalizeCorrection(
 
 /**
  * Proves a Contact read back from storage or history has the shape this
- * module writes. Delivered text fields stay as stored; the optional position
- * and decision roles must already be canonical and never empty. Readers fail
- * closed when this returns false.
+ * module writes. Delivered text fields stay as stored; the optional position,
+ * decision roles and communication preferences must already be canonical and
+ * never empty. Readers fail closed when this returns false.
  */
 export function isStoredClientContact(value: unknown): value is ClientContact {
   if (
@@ -142,7 +145,14 @@ export function isStoredClientContact(value: unknown): value is ClientContact {
     Object.keys(value).some((field) => !CONTACT_FIELDS.has(field))
   )
     return false;
-  const { name, telephone, email, position, decisionRoles } = value;
+  const {
+    name,
+    telephone,
+    email,
+    position,
+    decisionRoles,
+    communicationPreferences,
+  } = value;
   return (
     typeof name === 'string' &&
     (telephone === undefined || typeof telephone === 'string') &&
@@ -152,7 +162,9 @@ export function isStoredClientContact(value: unknown): value is ClientContact {
     (decisionRoles === undefined ||
       (Array.isArray(decisionRoles) &&
         decisionRoles.length > 0 &&
-        isNormalized(decisionRoles, optionalDecisionRoles)))
+        isNormalized(decisionRoles, optionalDecisionRoles))) &&
+    (communicationPreferences === undefined ||
+      isNormalized(communicationPreferences, optionalCommunicationPreferences))
   );
 }
 
@@ -254,12 +266,18 @@ function normalizeContacts(value: unknown): ClientContact[] {
     const email = optionalContactEmail(contact.email);
     const position = optionalContactPosition(contact.position);
     const decisionRoles = optionalDecisionRoles(contact.decisionRoles);
+    const communicationPreferences = optionalCommunicationPreferences(
+      contact.communicationPreferences,
+    );
     return {
       name,
       ...(telephone === null ? {} : { telephone }),
       ...(email === null ? {} : { email }),
       ...(position === null ? {} : { position }),
       ...(decisionRoles.length === 0 ? {} : { decisionRoles }),
+      ...(communicationPreferences === null
+        ? {}
+        : { communicationPreferences }),
     };
   });
 }
@@ -295,6 +313,24 @@ function optionalDecisionRoles(value: unknown): ClientContactDecisionRole[] {
 
 function isDecisionRole(value: unknown): value is ClientContactDecisionRole {
   return CLIENT_CONTACT_DECISION_ROLES.some((role) => role === value);
+}
+
+/** Absent or blank means none; unlike delivered Contact text, null is rejected. */
+function optionalCommunicationPreferences(value: unknown): string | null {
+  if (value === undefined) return null;
+  if (typeof value !== 'string') {
+    throw new BadRequestException(
+      'Client contact communication preferences must be text.',
+    );
+  }
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if ([...normalized].length > MAXIMUM_COMMUNICATION_PREFERENCES_CODE_POINTS) {
+    throw new BadRequestException(
+      'Client contact communication preferences are too long.',
+    );
+  }
+  return normalized;
 }
 
 /** A stored value is canonical when normalizing it again changes nothing. */

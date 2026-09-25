@@ -59,6 +59,46 @@ describe('Client correction history response', () => {
     ).toEqual([{ field: 'contacts', ...contacts }]);
   });
 
+  it('keeps Contact communication preferences exactly as returned', () => {
+    const contacts = {
+      before: [{ name: 'Ion Demo' }],
+      after: [
+        {
+          name: 'Ion Demo',
+          telephone: '+373 60 000 372',
+          communicationPreferences: 'Romanian\nweekday mornings',
+        },
+      ],
+    };
+
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
+  it('keeps position, decision roles and preferences together on one Contact', () => {
+    const contact = {
+      name: 'Ion Demo',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
+      communicationPreferences: 'Romanian; email preferred',
+    };
+    const contacts = {
+      before: [{ ...contact, telephone: '+373 60 000 001' }],
+      after: [{ ...contact, telephone: '+373 60 000 372' }],
+    };
+
+    expect(
+      readClientCorrectionHistory({
+        corrections: [{ ...correction, changes: { contacts } }],
+        nextCursor: null,
+      }).corrections[0]?.changes,
+    ).toEqual([{ field: 'contacts', ...contacts }]);
+  });
+
   it.each([
     ['an empty change set', { ...correction, changes: {} }],
     [
@@ -90,6 +130,18 @@ describe('Client correction history response', () => {
           contacts: {
             before: [],
             after: [{ name: 'A', decisionRoles: 'user' }],
+          },
+        },
+      },
+    ],
+    [
+      'non-text Contact communication preferences',
+      {
+        ...correction,
+        changes: {
+          contacts: {
+            before: [],
+            after: [{ name: 'Ion Demo', communicationPreferences: null }],
           },
         },
       },

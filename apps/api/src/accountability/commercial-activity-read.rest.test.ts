@@ -139,6 +139,84 @@ withPostgres('Company commercial Activity read REST', () => {
       expect(serialized).not.toContain(confidential);
   });
 
+  it('names the containing Request of each Opportunity event without changing the Company page', async () => {
+    const setup = await preparedReader();
+    const older = await captureRequest(setup.company.id, 'derived-older');
+    const newer = await captureRequest(setup.company.id, 'derived-newer');
+    const updated = await request(
+      `/commercial-intake/opportunities/${older.initialOpportunity.id}/next-action`,
+      setup.company.id,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': `next-action-${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          nextAction: 'Confirm the derived Request link',
+        }),
+      },
+    );
+    expect(updated.status).toBe(200);
+    const other = entity(
+      await command('/companies', { displayName: 'BIC' }, 'derived-other'),
+    );
+    for (const path of [
+      CONTEXT_ASSIGNMENTS,
+      INTAKE_ASSIGNMENTS,
+      READER_ASSIGNMENTS,
+    ])
+      await grant(path, setup.actor.workspaceMembershipId, {
+        companyId: other.id,
+      });
+    const foreign = await captureRequest(other.id, 'derived-foreign');
+
+    const page = activityPage(
+      await (await request('/activity-log', setup.company.id)).json(),
+    );
+    const commercial = page.filter((event) =>
+      [
+        'client_request.created',
+        'opportunity.created',
+        'opportunity.next_action.updated',
+      ].includes(event.action),
+    );
+    const opportunityTarget = (created: typeof older) => ({
+      type: 'opportunity',
+      opportunityId: created.initialOpportunity.id,
+      clientRequestId: created.id,
+      companyId: setup.company.id,
+    });
+    const requestTarget = (created: typeof older) => ({
+      type: 'client_request',
+      clientRequestId: created.id,
+      companyId: setup.company.id,
+    });
+    // The update is the newest commercial event; each capture's pair shares
+    // one server time, so the remaining targets are compared as a set.
+    expect(commercial[0]).toMatchObject({
+      action: 'opportunity.next_action.updated',
+      target: opportunityTarget(older),
+      metadata: {},
+    });
+    expect(commercial.map((event) => event.target)).toHaveLength(5);
+    expect(commercial.map((event) => event.target)).toEqual(
+      expect.arrayContaining([
+        opportunityTarget(older),
+        requestTarget(older),
+        opportunityTarget(newer),
+        requestTarget(newer),
+      ]),
+    );
+    const datedPage = datedTimes(page);
+    expect(datedPage).toEqual([...datedPage].sort().reverse());
+    const serialized = JSON.stringify(page);
+    expect(serialized).not.toContain(foreign.id);
+    expect(serialized).not.toContain(foreign.initialOpportunity.id);
+    expect(serialized).not.toContain('Confirm the derived Request link');
+  });
+
   it('omits commercial events without the reader bundle, without target read and without an active Company', async () => {
     const setup = await preparedReader();
     const created = await captureRequest(setup.company.id, 'boundary');

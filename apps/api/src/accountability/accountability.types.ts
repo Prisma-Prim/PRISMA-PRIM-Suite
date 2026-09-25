@@ -364,7 +364,8 @@ export interface CommercialActivityEvent {
     | {
         type: 'opportunity';
         opportunityId: string;
-        clientRequestId: string;
+        /** The containing Request, present only for a current Request reader. */
+        clientRequestId?: string;
         companyId: string;
       };
   metadata: Record<string, never>;

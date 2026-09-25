@@ -61,6 +61,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientDossierId: string;
     requestId: number;
   }>();
+  const [requestedRequest, setRequestedRequest] = useState<{
+    requestsMount: string;
+    clientRequestId: string;
+    requestId: number;
+  }>();
   const [requestedDocument, setRequestedDocument] = useState<
     RequestedDocument & { documentsContext: string }
   >();
@@ -69,6 +74,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedProject, setRequestedProject] = useState<{
     context: string;
     projectId: string;
+    taskId?: string;
     requestId: number;
   }>();
   const navigateToSection = useCallback(
@@ -118,6 +124,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   useEffect(() => {
     setRequestClientFilter(undefined);
   }, [requestNavigationContext]);
+  // The Requests workspace is mounted once per session, active Company and
+  // Commercial Intake assignment, and only while the shell offers it. A
+  // requested Request belongs to exactly one mount: any change, including the
+  // loss of the section, retires it, so a remounted workspace never replays it.
+  const requestsMount =
+    access.status === 'active' && canAccessCommercialIntake(access.actor)
+      ? requestsMountOf(access.sessionGeneration, access.actor)
+      : undefined;
+  useEffect(() => {
+    setRequestedRequest(undefined);
+  }, [requestsMount]);
   // A requested Document belongs to the context that keys the Documents owner:
   // session, Client authority and active Company. Any change retires it. A
   // Client union or reversal does not, because the Document id is stable.
@@ -176,14 +193,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.actor.activeCompany?.documentPermissions?.includes(
       'document.read',
     ) === true;
-  const commercialPermissions =
-    access.actor.activeCompany?.commercialIntakePermissions ?? [];
-  const canAccessCommercial =
-    activeCompanyId !== undefined &&
-    commercialPermissions.includes('commercial.request.read') &&
-    commercialPermissions.includes('commercial.request.create') &&
-    commercialPermissions.includes('commercial.opportunity.read') &&
-    commercialPermissions.includes('commercial.opportunity.create');
+  const canAccessCommercial = requestsMount !== undefined;
   const cataloguePermissions =
     access.actor.activeCompany?.serviceCataloguePermissions ?? [];
   const canAccessCatalogue =
@@ -217,6 +227,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         navigateToSection('clients');
       }
     : undefined;
+  // The shell owns one requested Request for the Requests workspace it offers.
+  const openRequest = canAccessCommercial
+    ? (clientRequestId: string) => {
+        setRequestedRequest((current) => ({
+          requestsMount,
+          clientRequestId,
+          requestId: (current?.requestId ?? 0) + 1,
+        }));
+        navigateToSection('requests');
+      }
+    : undefined;
   // Offered only where the shell offers the Documents section, whose own detail
   // read decides what is shown.
   const openDocument =
@@ -237,13 +258,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestedDocument?.documentsContext === documentsContext
       ? requestedDocument
       : undefined;
-  // The Projects owner reads the requested Project itself; no Project identity
-  // reaches the URL or history state.
+  // The Projects owner reads the requested Project itself, then its optional
+  // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
-    ? (projectId: string) => {
+    ? (target: { projectId: string; taskId?: string }) => {
         setRequestedProject((current) => ({
           context: projectRequestContext,
-          projectId,
+          projectId: target.projectId,
+          taskId: target.taskId,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('projects');
@@ -257,7 +279,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.requests,
       content: (
         <CommercialIntakeWorkspace
-          key={`commercial-intake:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.commercialIntakePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.commercialIntakePermissionSetVersion ?? 'no-version'}`}
+          key={`commercial-intake:${requestsMount}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}
@@ -272,6 +294,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={
             canReadCompanyClients ? openClientDossier : undefined
+          }
+          requestedRequest={
+            requestedRequest?.requestsMount === requestsMount
+              ? requestedRequest
+              : undefined
           }
         />
       ),
@@ -327,7 +354,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
           requestedDocument={currentRequestedDocument}
-          onOpenProject={openProject}
+          onOpenProject={
+            openProject && ((projectId) => openProject({ projectId }))
+          }
         />
       ),
     });
@@ -423,6 +452,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           key={`my-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
+          onOpenTask={openProject}
         />
       ),
     });
@@ -463,7 +493,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   sections.push({
     id: 'activity',
     ...prismeCopy.sections.activity,
-    content: <ActivityLog state={access.activityLog} />,
+    content: (
+      <ActivityLog
+        state={access.activityLog}
+        activeCompanyId={activeCompanyId}
+        onOpenRequest={openRequest}
+      />
+    ),
   });
   if (access.actor.workspacePermissions.includes('member.invite'))
     sections.push({
@@ -541,7 +577,55 @@ function requestNavigationAuthority(actor: ActorContext): string {
   ].join(':');
 }
 
-function ActivityLog({ state }: { state: ActivityLogState }) {
+/** The delivered Requests section predicate in the active Company. */
+function canAccessCommercialIntake(actor: ActorContext): boolean {
+  const permissions = actor.activeCompany?.commercialIntakePermissions ?? [];
+  return (
+    actor.activeCompany !== undefined &&
+    permissions.includes('commercial.request.read') &&
+    permissions.includes('commercial.request.create') &&
+    permissions.includes('commercial.opportunity.read') &&
+    permissions.includes('commercial.opportunity.create')
+  );
+}
+
+function requestsMountOf(sessionGeneration: number, actor: ActorContext) {
+  const company = actor.activeCompany;
+  return [
+    sessionGeneration,
+    company?.id ?? 'no-company',
+    company?.commercialIntakePermissionAssignmentId ?? 'no-assignment',
+    company?.commercialIntakePermissionSetVersion ?? 'no-version',
+  ].join(':');
+}
+
+/**
+ * The Request a commercial event may open inside the active Company: its own
+ * Request, or the containing Request the server derived for an Opportunity
+ * event only while the actor can read Requests. Other targets open nothing.
+ */
+function requestOpenedBy(
+  event: ActivityLogEvent,
+  activeCompanyId: string | undefined,
+): string | undefined {
+  const { target } = event;
+  if (target.type !== 'client_request' && target.type !== 'opportunity')
+    return undefined;
+  return target.companyId === activeCompanyId
+    ? target.clientRequestId
+    : undefined;
+}
+
+function ActivityLog({
+  state,
+  activeCompanyId,
+  onOpenRequest,
+}: {
+  state: ActivityLogState;
+  activeCompanyId: string | undefined;
+  /** Present only while the shell offers the Requests section. */
+  onOpenRequest: ((clientRequestId: string) => void) | undefined;
+}) {
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -559,25 +643,41 @@ function ActivityLog({ state }: { state: ActivityLogState }) {
       )}
       {state.status === 'ready' && state.events.length > 0 && (
         <ol className="activity-log-list">
-          {state.events.map((event) => (
-            <li
-              key={
-                'projectionReference' in event
-                  ? event.projectionReference
-                  : event.id
-              }
-            >
-              <div>
-                <strong>{activityDescription(event)}</strong>
-                <span>Target: {activityTargetDescription(event)}</span>
-              </div>
-              {'occurredAt' in event && (
-                <time dateTime={event.occurredAt}>
-                  {formatApplicationDateTime(event.occurredAt)}
-                </time>
-              )}
-            </li>
-          ))}
+          {state.events.map((event) => {
+            const entry =
+              'projectionReference' in event
+                ? event.projectionReference
+                : event.id;
+            const openedRequest = onOpenRequest
+              ? requestOpenedBy(event, activeCompanyId)
+              : undefined;
+            const targetId = `activity-log-target-${entry}`;
+            return (
+              <li key={entry}>
+                <div>
+                  <strong>{activityDescription(event)}</strong>
+                  <span id={openedRequest ? targetId : undefined}>
+                    Target: {activityTargetDescription(event)}
+                  </span>
+                  {openedRequest && onOpenRequest ? (
+                    <button
+                      type="button"
+                      className="activity-log-open-request"
+                      aria-describedby={targetId}
+                      onClick={() => onOpenRequest(openedRequest)}
+                    >
+                      {commercialIntakeCopy.activityOpenRequest}
+                    </button>
+                  ) : null}
+                </div>
+                {'occurredAt' in event && (
+                  <time dateTime={event.occurredAt}>
+                    {formatApplicationDateTime(event.occurredAt)}
+                  </time>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>

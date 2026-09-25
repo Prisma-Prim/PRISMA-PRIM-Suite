@@ -296,4 +296,4 @@ advance, and needs no schema change.
 
 My Tasks is not a Dashboard next action. It has no overdue or urgency label,
 count, badge or ranking, and no filter, search, team view, reminder or
-notification. Opening a Task or Project from a row remains a separate follow-up.
+notification. Opening a row's Task in its Project is owned by #377.

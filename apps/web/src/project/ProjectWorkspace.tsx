@@ -1,5 +1,5 @@
 import { ProjectDocuments } from './ProjectDocuments';
-import { ProjectTasks } from './ProjectTasks';
+import { ProjectTasks, type RequestedTask } from './ProjectTasks';
 import {
   useContext,
   useEffect,
@@ -53,8 +53,23 @@ type LoadState =
 type ProjectFilter =
   | { kind: 'text'; query: string }
   | { kind: 'client'; clientDossierId: string; displayName: string };
-/** The opened Project and the Client identity revision it was read under. */
-type SelectedProject = { project: ProjectView; identityRevision: number };
+/**
+ * The opened Project, the Client identity revision it was read under and, when
+ * a requested open targeted one of its Tasks, that Task.
+ */
+type SelectedProject = {
+  project: ProjectView;
+  identityRevision: number;
+  requestedTask?: RequestedTask;
+};
+type Registration = { title: string; clientAccountId: string; key: string };
+/** A detail read, optionally requested with a Task target, or a registration. */
+type ProjectRequest =
+  | {
+      kind: 'open';
+      requestedTask?: RequestedTask & { projectId: string };
+    }
+  | { kind: 'register'; command: Registration };
 export function ProjectWorkspace({
   actor,
   identity,
@@ -74,8 +89,11 @@ export function ProjectWorkspace({
   onOpenClientDossier?: (clientDossierId: string) => void;
   /** Passed unchanged to the opened Project's linked Documents. */
   onOpenDocument?: (documentId: string) => void;
-  /** Opens this Project as choosing its row would; each new request id once. */
-  requestedProject?: { projectId: string; requestId: number };
+  /**
+   * Opens this Project as choosing its row would, then its optional Task as
+   * choosing that Task's row would; each new request id once.
+   */
+  requestedProject?: { projectId: string; taskId?: string; requestId: number };
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
@@ -122,11 +140,7 @@ export function ProjectWorkspace({
       { project: ProjectView; listReadsAtConfirmation: number }
     >(),
   );
-  const retry = useRef<{
-    title: string;
-    clientAccountId: string;
-    key: string;
-  } | null>(null);
+  const retry = useRef<Registration | null>(null);
   const companyId = actor.activeCompany?.id;
   const authorized =
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
@@ -328,7 +342,7 @@ export function ProjectWorkspace({
         const project = result.value;
         setSelected((current) =>
           current?.project.id === project.id
-            ? { project, identityRevision: startedUnder }
+            ? { ...current, project, identityRevision: startedUnder }
             : current,
         );
         refreshRow(project, startedUnder);
@@ -369,13 +383,20 @@ export function ProjectWorkspace({
     }
     if (pending && registering.current) return;
     consumedProjectRequest.current = requestedProject.requestId;
-    void run(`/projects/${encodeURIComponent(requestedProject.projectId)}`);
+    const { projectId, taskId, requestId } = requestedProject;
+    void run(`/projects/${encodeURIComponent(projectId)}`, {
+      kind: 'open',
+      requestedTask:
+        taskId === undefined ? undefined : { projectId, taskId, requestId },
+    });
   }, [requestedProject, load.kind, pending]);
 
   async function run(
     path: string,
-    command?: { title: string; clientAccountId: string; key: string },
+    projectRequest: ProjectRequest = { kind: 'open' },
   ) {
+    const command =
+      projectRequest.kind === 'register' ? projectRequest.command : undefined;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -417,8 +438,17 @@ export function ProjectWorkspace({
         return;
       }
       setDetailPanel('tasks');
-      if (!command) {
-        setSelected({ project: result.value, identityRevision: startedUnder });
+      if (projectRequest.kind === 'open') {
+        // A requested Task opens only after its own Project read succeeds.
+        const target = projectRequest.requestedTask;
+        setSelected({
+          project: result.value,
+          identityRevision: startedUnder,
+          requestedTask:
+            target?.projectId === result.value.id
+              ? { taskId: target.taskId, requestId: target.requestId }
+              : undefined,
+        });
         refreshRow(result.value, startedUnder);
         return;
       }
@@ -469,7 +499,7 @@ export function ProjectWorkspace({
         ? retry.current
         : { title: normalized, clientAccountId, key: crypto.randomUUID() };
     retry.current = command;
-    void run('/projects', command);
+    void run('/projects', { kind: 'register', command });
   }
   function moveDetailTab(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -767,6 +797,7 @@ export function ProjectWorkspace({
           identity={identity}
           projectId={selected?.project.id ?? null}
           onActivityRecorded={onActivityRecorded}
+          requestedTask={selected?.requestedTask}
         />
       </div>
     </section>
