@@ -101,6 +101,7 @@ const betaProjectRead = `GET /api/projects/${betaProject.id}`;
 const betaTasksRead = `${betaProjectRead}/tasks`;
 const taskRead = (task: TaskRow) => `GET /api/tasks/${task.id}`;
 const taskEdit = (task: TaskRow) => `PATCH /api/tasks/${task.id}`;
+const taskMove = (task: TaskRow) => `POST /api/tasks/${task.id}/status`;
 const deniedMessage =
   'Project access and Client read access are required for this Company.';
 const loadOrSaveError =
@@ -200,6 +201,19 @@ function taskServer() {
         };
         tasks.set(task.id, edited);
         return Response.json(edited);
+      }
+      if (route === taskMove(task)) {
+        const body: unknown = JSON.parse(request.body ?? '{}');
+        const moved = {
+          ...task,
+          status:
+            isRecord(body) && typeof body.status === 'string'
+              ? body.status
+              : task.status,
+          version: task.version + 1,
+        };
+        tasks.set(task.id, moved);
+        return Response.json(moved);
       }
     }
     return new Response(null, { status: 404 });
@@ -564,6 +578,95 @@ describe('Requested Task opens', () => {
     await settle();
     expect(server.count(taskRead(taskTwo))).toBe(1);
   });
+
+  it.each([
+    { outcome: 'confirmed while the requested Task waits', uncertain: false },
+    {
+      outcome:
+        'recovered by an unchanged retry after the requested Task opened',
+      uncertain: true,
+    },
+  ])(
+    'keeps a Task’s unsaved title through its own status move $outcome, then saves it at the moved version',
+    async ({ uncertain }) => {
+      const server = taskServer();
+      const workspace = renderWorkspace();
+      const tasks = await chooseTask(betaRow, taskOne);
+      fireEvent.change(within(tasks).getByLabelText('Task title'), {
+        target: { value: 'Corrected preparation notes' },
+      });
+      if (uncertain)
+        server.replyOnce(
+          taskMove(taskOne),
+          () => new Response(null, { status: 500 }),
+        );
+      else server.hold(taskMove(taskOne));
+      fireEvent.click(
+        within(tasks).getByRole('button', { name: 'Mark in progress' }),
+      );
+
+      if (uncertain) {
+        await within(tasks).findByRole('button', { name: taskCopy.retry });
+        workspace.request(betaProject, taskTwo, 1);
+        const opened = await openedTask(taskTwo);
+        fireEvent.click(
+          within(opened).getByRole('button', { name: taskCopy.retry }),
+        );
+      } else {
+        await server.requested(taskMove(taskOne));
+        workspace.request(betaProject, taskTwo, 1);
+        await settle();
+        expect(server.count(taskRead(taskTwo))).toBe(0);
+        await server.release(taskMove(taskOne));
+        await openedTask(taskTwo);
+      }
+      const row = await waitFor(() => {
+        const button = within(tasksPanel()).getByRole('button', {
+          name: taskOne.title,
+        });
+        expect(button).toBeEnabled();
+        return button;
+      });
+      fireEvent.click(row);
+      const returned = await waitFor(() => {
+        const panel = tasksPanel();
+        expect(
+          within(panel).getByText(taskCopy.states.in_progress, {
+            selector: 'p.task-status',
+          }),
+        ).toBeVisible();
+        expect(within(panel).getByLabelText('Task title')).toHaveValue(
+          'Corrected preparation notes',
+        );
+        expect(
+          within(panel).getByRole('button', { name: 'Save Task' }),
+        ).toBeEnabled();
+        return panel;
+      });
+      const [move, ...retried] = server.requests(taskMove(taskOne));
+      expect(move?.body).toBe(
+        JSON.stringify({ expectedVersion: 1, status: 'in_progress' }),
+      );
+      expect(retried).toHaveLength(uncertain ? 1 : 0);
+      for (const retry of retried) {
+        expect(retry.key).toBe(move?.key);
+        expect(retry.body).toBe(move?.body);
+      }
+
+      fireEvent.click(
+        within(returned).getByRole('button', { name: 'Save Task' }),
+      );
+      await openedTask({ ...taskOne, title: 'Corrected preparation notes' });
+      expect(
+        server.requests(taskEdit(taskOne)).map((request) => request.body),
+      ).toEqual([
+        JSON.stringify({
+          expectedVersion: 2,
+          title: 'Corrected preparation notes',
+        }),
+      ]);
+    },
+  );
 
   it.each([
     {

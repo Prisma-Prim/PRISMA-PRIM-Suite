@@ -49,7 +49,9 @@ const targetTypes = {
   'project.created': 'project',
   'task.created': 'task',
   'task.updated': 'task',
+  'task.status.changed': 'task',
   'task.completed': 'task',
+  'task.cancelled': 'task',
   'task.reopened': 'task',
   'document.registered': 'document',
   'document.corrected': 'document',
@@ -86,7 +88,9 @@ function activityLogEvent(value: unknown): ActivityLogEvent {
       return clientUnionEvent(value, action, target);
     case 'task.created':
     case 'task.updated':
+    case 'task.status.changed':
     case 'task.completed':
+    case 'task.cancelled':
     case 'task.reopened':
       return {
         ...recorded(value),

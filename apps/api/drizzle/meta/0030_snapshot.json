@@ -1,5 +1,5 @@
 {
-  "id": "7543e3ec-c94c-4184-b894-7e63c50f05d3",
+  "id": "8efdbddb-09ee-463d-9f88-63ee869ed957",
   "prevId": "d9d8f967-5164-4359-a251-66fb796fc3eb",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_service_catalogue', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -5525,6 +5525,66 @@
           "primaryKey": false,
           "notNull": false
         },
+        "blockage_reason": {
+          "name": "blockage_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_internal_user_id": {
+          "name": "blocked_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_membership_id": {
+          "name": "blocked_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_by_display_name": {
+          "name": "blocked_by_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blocked_at": {
+          "name": "blocked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancellation_reason": {
+          "name": "cancellation_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_internal_user_id": {
+          "name": "cancelled_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_membership_id": {
+          "name": "cancelled_by_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_display_name": {
+          "name": "cancelled_by_display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -5637,6 +5697,40 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "tasks_blockage_actor_fk": {
+          "name": "tasks_blockage_actor_fk",
+          "tableFrom": "tasks",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "blocked_by_membership_id",
+            "blocked_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tasks_cancellation_actor_fk": {
+          "name": "tasks_cancellation_actor_fk",
+          "tableFrom": "tasks",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "cancelled_by_membership_id",
+            "cancelled_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5659,9 +5753,17 @@
           "name": "tasks_date_check",
           "value": "\"tasks\".\"due_date\" IS NULL OR (\"tasks\".\"due_date\" >= DATE '0001-01-01' AND \"tasks\".\"due_date\" <= DATE '9999-12-31')"
         },
+        "tasks_blockage_reason_check": {
+          "name": "tasks_blockage_reason_check",
+          "value": "\"tasks\".\"blockage_reason\" IS NULL OR (length(\"tasks\".\"blockage_reason\") BETWEEN 1 AND 500 AND \"tasks\".\"blockage_reason\" = btrim(\"tasks\".\"blockage_reason\"))"
+        },
+        "tasks_cancellation_reason_check": {
+          "name": "tasks_cancellation_reason_check",
+          "value": "\"tasks\".\"cancellation_reason\" IS NULL OR (length(\"tasks\".\"cancellation_reason\") BETWEEN 1 AND 500 AND \"tasks\".\"cancellation_reason\" = btrim(\"tasks\".\"cancellation_reason\"))"
+        },
         "tasks_state_check": {
           "name": "tasks_state_check",
-          "value": "(\"tasks\".\"status\" = 'todo' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL) OR (\"tasks\".\"status\" = 'done' AND \"tasks\".\"completed_at\" IS NOT NULL AND \"tasks\".\"completed_by_membership_id\" IS NOT NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"completed_by_display_name\" IS NOT NULL)"
+          "value": "(\"tasks\".\"status\" IN ('todo', 'in_progress') AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'blocked' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NOT NULL AND \"tasks\".\"blocked_at\" IS NOT NULL AND \"tasks\".\"blocked_by_membership_id\" IS NOT NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"blocked_by_display_name\" IS NOT NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'done' AND \"tasks\".\"completed_at\" IS NOT NULL AND \"tasks\".\"completed_by_membership_id\" IS NOT NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"completed_by_display_name\" IS NOT NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NULL AND \"tasks\".\"cancelled_at\" IS NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NULL AND \"tasks\".\"cancelled_by_display_name\" IS NULL)\n        OR (\"tasks\".\"status\" = 'cancelled' AND \"tasks\".\"completed_at\" IS NULL AND \"tasks\".\"completed_by_membership_id\" IS NULL AND \"tasks\".\"completed_by_internal_user_id\" IS NULL AND \"tasks\".\"completed_by_display_name\" IS NULL AND \"tasks\".\"blockage_reason\" IS NULL AND \"tasks\".\"blocked_at\" IS NULL AND \"tasks\".\"blocked_by_membership_id\" IS NULL AND \"tasks\".\"blocked_by_internal_user_id\" IS NULL AND \"tasks\".\"blocked_by_display_name\" IS NULL AND \"tasks\".\"cancellation_reason\" IS NOT NULL AND \"tasks\".\"cancelled_at\" IS NOT NULL AND \"tasks\".\"cancelled_by_membership_id\" IS NOT NULL AND \"tasks\".\"cancelled_by_internal_user_id\" IS NOT NULL AND \"tasks\".\"cancelled_by_display_name\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -7554,642 +7656,6 @@
         }
       },
       "isRLSEnabled": false
-    },
-    "public.pricing_configuration_commands": {
-      "name": "pricing_configuration_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "command": {
-          "name": "command",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_pricing_rule_version_id": {
-          "name": "result_pricing_rule_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "pricing_configuration_commands_actor_key_unique": {
-          "name": "pricing_configuration_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_workspace_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "pricing_configuration_commands_published_unique": {
-          "name": "pricing_configuration_commands_published_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "result_pricing_rule_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_configuration_commands\".\"outcome\" = 'PUBLISHED'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "pricing_configuration_commands_company_fk": {
-          "name": "pricing_configuration_commands_company_fk",
-          "tableFrom": "pricing_configuration_commands",
-          "tableTo": "companies",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_configuration_commands_actor_fk": {
-          "name": "pricing_configuration_commands_actor_fk",
-          "tableFrom": "pricing_configuration_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_configuration_commands_rule_version_fk": {
-          "name": "pricing_configuration_commands_rule_version_fk",
-          "tableFrom": "pricing_configuration_commands",
-          "tableTo": "pricing_rule_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "result_pricing_rule_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.pricing_configuration_events": {
-      "name": "pricing_configuration_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "action": {
-          "name": "action",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "pricing_rule_version_id": {
-          "name": "pricing_rule_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_internal_user_id": {
-          "name": "actor_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "pricing_configuration_events_rule_published_unique": {
-          "name": "pricing_configuration_events_rule_published_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "pricing_rule_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "pricing_configuration_events_company_fk": {
-          "name": "pricing_configuration_events_company_fk",
-          "tableFrom": "pricing_configuration_events",
-          "tableTo": "companies",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_configuration_events_rule_version_fk": {
-          "name": "pricing_configuration_events_rule_version_fk",
-          "tableFrom": "pricing_configuration_events",
-          "tableTo": "pricing_rule_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "pricing_rule_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_configuration_events_actor_fk": {
-          "name": "pricing_configuration_events_actor_fk",
-          "tableFrom": "pricing_configuration_events",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id",
-            "actor_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "pricing_configuration_events_action_metadata_check": {
-          "name": "pricing_configuration_events_action_metadata_check",
-          "value": "(\n        \"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingRuleVersionId' = \"pricing_configuration_events\".\"pricing_rule_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n      )"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.pricing_rule_versions": {
-      "name": "pricing_rule_versions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effective_from": {
-          "name": "effective_from",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effective_to": {
-          "name": "effective_to",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rule_shape": {
-          "name": "rule_shape",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'UNIT_PRICE_TIMES_QUANTITY'"
-        },
-        "rounding_mode": {
-          "name": "rounding_mode",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'HALF_UP'"
-        },
-        "rounding_scale": {
-          "name": "rounding_scale",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2
-        },
-        "tax_application": {
-          "name": "tax_application",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PER_LINE'"
-        },
-        "provenance": {
-          "name": "provenance",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'ILLUSTRATIVE'"
-        },
-        "created_by_internal_user_id": {
-          "name": "created_by_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_workspace_membership_id": {
-          "name": "created_by_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "superseded_by_version_id": {
-          "name": "superseded_by_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_from": {
-          "name": "superseded_from",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "pricing_rule_versions_scope_id_unique": {
-          "name": "pricing_rule_versions_scope_id_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "pricing_rule_versions_number_unique": {
-          "name": "pricing_rule_versions_number_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "pricing_rule_versions_head_unique": {
-          "name": "pricing_rule_versions_head_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_rule_versions\".\"superseded_by_version_id\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "pricing_rule_versions_successor_unique": {
-          "name": "pricing_rule_versions_successor_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "superseded_by_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_rule_versions\".\"superseded_by_version_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "pricing_rule_versions_company_fk": {
-          "name": "pricing_rule_versions_company_fk",
-          "tableFrom": "pricing_rule_versions",
-          "tableTo": "companies",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_rule_versions_creator_fk": {
-          "name": "pricing_rule_versions_creator_fk",
-          "tableFrom": "pricing_rule_versions",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "created_by_workspace_membership_id",
-            "created_by_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "pricing_rule_versions_successor_fk": {
-          "name": "pricing_rule_versions_successor_fk",
-          "tableFrom": "pricing_rule_versions",
-          "tableTo": "pricing_rule_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "superseded_by_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "pricing_rule_versions_version_number_check": {
-          "name": "pricing_rule_versions_version_number_check",
-          "value": "\"pricing_rule_versions\".\"version_number\" >= 1"
-        },
-        "pricing_rule_versions_label_check": {
-          "name": "pricing_rule_versions_label_check",
-          "value": "length(\"pricing_rule_versions\".\"label\") BETWEEN 1 AND 120 AND length(btrim(\"pricing_rule_versions\".\"label\")) > 0"
-        },
-        "pricing_rule_versions_window_check": {
-          "name": "pricing_rule_versions_window_check",
-          "value": "\"pricing_rule_versions\".\"effective_to\" IS NULL OR \"pricing_rule_versions\".\"effective_to\" > \"pricing_rule_versions\".\"effective_from\""
-        },
-        "pricing_rule_versions_rule_check": {
-          "name": "pricing_rule_versions_rule_check",
-          "value": "\"pricing_rule_versions\".\"rule_shape\" = 'UNIT_PRICE_TIMES_QUANTITY'\n        AND \"pricing_rule_versions\".\"rounding_mode\" = 'HALF_UP'\n        AND \"pricing_rule_versions\".\"rounding_scale\" = 2\n        AND \"pricing_rule_versions\".\"tax_application\" = 'PER_LINE'"
-        },
-        "pricing_rule_versions_provenance_check": {
-          "name": "pricing_rule_versions_provenance_check",
-          "value": "\"pricing_rule_versions\".\"provenance\" = 'ILLUSTRATIVE'"
-        },
-        "pricing_rule_versions_supersession_check": {
-          "name": "pricing_rule_versions_supersession_check",
-          "value": "(\n        (\"pricing_rule_versions\".\"superseded_by_version_id\" IS NULL\n          AND \"pricing_rule_versions\".\"superseded_at\" IS NULL\n          AND \"pricing_rule_versions\".\"superseded_from\" IS NULL)\n        OR\n        (\"pricing_rule_versions\".\"superseded_by_version_id\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_at\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_from\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_by_version_id\" <> \"pricing_rule_versions\".\"id\"\n          AND \"pricing_rule_versions\".\"superseded_from\" > \"pricing_rule_versions\".\"effective_from\")\n      )"
-        }
-      },
-      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -8221,8 +7687,6 @@
         "company_commercial_intake_assignment.revoked",
         "company_service_catalogue_assignment.granted",
         "company_service_catalogue_assignment.revoked",
-        "company_pricing_configuration_assignment.granted",
-        "company_pricing_configuration_assignment.revoked",
         "company_commercial_activity_reader_assignment.granted",
         "company_commercial_activity_reader_assignment.revoked",
         "client.created",
@@ -8280,7 +7744,6 @@
         "company_project_access",
         "company_commercial_intake",
         "company_service_catalogue",
-        "company_pricing_configuration",
         "company_commercial_activity_reader"
       ]
     },

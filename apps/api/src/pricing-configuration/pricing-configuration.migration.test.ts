@@ -37,7 +37,7 @@ const PRESERVED_ASSIGNMENTS: ReadonlyArray<
 ];
 
 it.skipIf(!databaseUrl)(
-  'upgrades through 0030 preserving every captured bundle and enforcing the Pricing Rule Version invariants',
+  'upgrades through 0031 preserving every captured bundle and enforcing the Pricing Rule Version invariants',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -56,7 +56,7 @@ it.skipIf(!databaseUrl)(
         !Array.isArray(journal.entries)
       )
         throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries.slice(0, 30);
+      const entries: unknown[] = journal.entries.slice(0, 31);
       const tags = entries.map((entry) => {
         if (
           typeof entry !== 'object' ||
@@ -68,7 +68,7 @@ it.skipIf(!databaseUrl)(
           throw new Error('Invalid migration tag.');
         return entry.tag;
       });
-      expect(tags.at(-1)).toBe('0029_commercial_catalogue');
+      expect(tags.at(-1)).toBe('0030_task_execution_states');
       previous = await mkdtemp(join(tmpdir(), 'prisma-360-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(

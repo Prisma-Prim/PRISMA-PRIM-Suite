@@ -170,6 +170,73 @@ it.each(['classic', 'prisme'] as const)(
   },
 );
 
+it('shows each open row with its execution state and no count, badge or ranking', async () => {
+  stub(
+    page([
+      { ...september, status: 'in_progress' },
+      {
+        ...october,
+        status: 'blocked',
+        version: 2,
+        blockage: {
+          reason: 'Waiting for the signed questionnaire',
+          actor: attribution,
+          occurredAt: '2026-09-24T10:00:00.000Z',
+        },
+      },
+      undated,
+    ]),
+  );
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
+  const list = await screen.findByRole('list', { name: copy.listLabel });
+  expect(rows().map(([title]) => title)).toEqual([
+    'September notes',
+    'October notes',
+    'Undated notes',
+  ]);
+  const [started, blocked, open] = within(list).getAllByRole('listitem');
+  expect(started).toHaveTextContent('In progress');
+  expect(blocked).toHaveTextContent('Blocked');
+  expect(open).toHaveTextContent('To do');
+  expect(region()).not.toHaveTextContent(
+    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+|blocked\s+)?tasks?\b/i,
+  );
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+});
+
+it.each([
+  [
+    'done',
+    {
+      ...october,
+      status: 'done',
+      completion: {
+        actor: attribution,
+        occurredAt: '2026-09-24T10:00:00.000Z',
+      },
+    },
+  ],
+  [
+    'cancelled',
+    {
+      ...october,
+      status: 'cancelled',
+      cancellation: {
+        reason: 'Duplicate of another Task',
+        actor: attribution,
+        occurredAt: '2026-09-24T10:00:00.000Z',
+      },
+    },
+  ],
+])('fails closed when the read returns a %s Task', async (_state, closed) => {
+  stub(page([september, closed]));
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+  expect(
+    screen.queryByRole('list', { name: copy.listLabel }),
+  ).not.toBeInTheDocument();
+});
+
 it('shows the explicit empty state', async () => {
   stub(page([]));
   render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
