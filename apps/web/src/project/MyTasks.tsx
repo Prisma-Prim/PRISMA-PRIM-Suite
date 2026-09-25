@@ -133,7 +133,12 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
         <ol className="my-tasks-list" aria-label={copy.listLabel}>
           {load.tasks.map((task) => (
             <li key={task.id}>
-              <h3>{task.title}</h3>
+              <div>
+                <h3>{task.title}</h3>
+                <p className="my-tasks-status">
+                  {taskCopy.states[task.status]}
+                </p>
+              </div>
               <dl>
                 <div>
                   <dt>{copy.project}</dt>

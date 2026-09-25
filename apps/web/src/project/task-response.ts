@@ -9,6 +9,23 @@ export type TaskFields = {
   assignee: Assignee | null;
   dueDate: string | null;
 };
+export const taskStates = [
+  'todo',
+  'in_progress',
+  'blocked',
+  'done',
+  'cancelled',
+] as const;
+export type TaskState = (typeof taskStates)[number];
+const openTaskStates = ['todo', 'in_progress', 'blocked'] as const;
+export type OpenTaskState = (typeof openTaskStates)[number];
+export type ClosedTaskState = Exclude<TaskState, OpenTaskState>;
+/** A reasoned manual declaration with its server-established actor and time. */
+export type TaskDeclaration = {
+  reason: string;
+  actor: TaskActor;
+  occurredAt: string;
+};
 export type TaskView = TaskFields & {
   id: string;
   companyId: string;
@@ -19,9 +36,42 @@ export type TaskView = TaskFields & {
   updatedAt: string;
   createdBy: TaskActor;
 } & (
-    | { status: 'todo'; completion: null }
+    | { status: 'todo' | 'in_progress'; completion: null }
+    | { status: 'blocked'; completion: null; blockage: TaskDeclaration }
     | { status: 'done'; completion: { actor: TaskActor; occurredAt: string } }
+    | { status: 'cancelled'; completion: null; cancellation: TaskDeclaration }
   );
+export function isOpenTaskState(value: unknown): value is OpenTaskState {
+  return openTaskStates.some((state) => state === value);
+}
+function isTaskState(value: unknown): value is TaskState {
+  return taskStates.some((state) => state === value);
+}
+/** A move the server accepts from a state; reasons are required to enter `blocked` and `cancelled`. */
+export type TaskMove = TaskState | 'reopen';
+/** The approved transitions (Project/Task PRD §20); any other move conflicts on the server. */
+export function taskMoves(status: TaskState): TaskMove[] {
+  switch (status) {
+    case 'todo':
+      return ['in_progress', 'blocked', 'done', 'cancelled'];
+    case 'in_progress':
+      return ['todo', 'blocked', 'done', 'cancelled'];
+    case 'blocked':
+      return ['todo', 'in_progress', 'done', 'cancelled'];
+    case 'done':
+    case 'cancelled':
+      return ['reopen'];
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
+}
+/** The server rule: trimmed text of 1–500 Unicode code points, as PostgreSQL length() counts them. */
+export function validTaskReason(value: string): boolean {
+  const characters = Array.from(value.trim()).length;
+  return characters >= 1 && characters <= 500;
+}
 type Change<T> = { before: T; after: T };
 export type TaskEvent = {
   id: string;
@@ -50,12 +100,28 @@ export type TaskEvent = {
       };
     }
   | {
+      action: 'task.status.changed';
+      metadata: { version: number; before: OpenTaskState } & (
+        | { after: Exclude<OpenTaskState, 'blocked'>; reason: null }
+        | { after: 'blocked'; reason: string }
+      );
+    }
+  | {
       action: 'task.completed';
-      metadata: { version: number; before: 'todo'; after: 'done' };
+      metadata: { version: number; before: OpenTaskState; after: 'done' };
+    }
+  | {
+      action: 'task.cancelled';
+      metadata: {
+        version: number;
+        before: OpenTaskState;
+        after: 'cancelled';
+        reason: string;
+      };
     }
   | {
       action: 'task.reopened';
-      metadata: { version: number; before: 'done'; after: 'todo' };
+      metadata: { version: number; before: ClosedTaskState; after: 'todo' };
     }
 );
 export type TaskScope = { companyId: string; projectId: string };
@@ -142,20 +208,63 @@ export function readTask(value: unknown, scope: TaskScope): TaskView {
     updatedAt: timestamp(row.updatedAt),
     createdBy: actor(row.createdBy),
   };
-  if (row.status === 'todo' && row.completion === null)
-    return { ...common, status: 'todo', completion: null };
-  if (row.status === 'done') {
-    const completion = record(row.completion);
-    return {
-      ...common,
-      status: 'done',
-      completion: {
-        actor: actor(completion.actor),
-        occurredAt: timestamp(completion.occurredAt),
-      },
-    };
+  if (!isTaskState(row.status)) throw new Error('Invalid Task status');
+  switch (row.status) {
+    case 'todo':
+    case 'in_progress':
+      if (row.completion !== null) break;
+      return { ...common, status: row.status, completion: null };
+    case 'blocked':
+      if (row.completion !== null) break;
+      return {
+        ...common,
+        status: row.status,
+        completion: null,
+        blockage: declaration(row.blockage),
+      };
+    case 'done': {
+      const completion = record(row.completion);
+      return {
+        ...common,
+        status: row.status,
+        completion: {
+          actor: actor(completion.actor),
+          occurredAt: timestamp(completion.occurredAt),
+        },
+      };
+    }
+    case 'cancelled':
+      if (row.completion !== null) break;
+      return {
+        ...common,
+        status: row.status,
+        completion: null,
+        cancellation: declaration(row.cancellation),
+      };
+    default: {
+      const exhaustive: never = row.status;
+      return exhaustive;
+    }
   }
   throw new Error('Invalid Task status');
+}
+function reason(value: unknown): string {
+  const result = string(value);
+  if (result !== result.trim() || !validTaskReason(result))
+    throw new Error('Invalid Task reason');
+  return result;
+}
+function declaration(value: unknown): TaskDeclaration {
+  const row = record(value);
+  return {
+    reason: reason(row.reason),
+    actor: actor(row.actor),
+    occurredAt: timestamp(row.occurredAt),
+  };
+}
+function openState(value: unknown): OpenTaskState {
+  if (!isOpenTaskState(value)) throw new Error('Invalid Task state');
+  return value;
 }
 function mutable(row: Record<string, unknown>): boolean {
   if (typeof row.mutable !== 'boolean')
@@ -170,7 +279,7 @@ export function readTaskList(value: unknown, scope: TaskScope) {
     tasks: row.tasks.map((task: unknown) => readTask(task, scope)),
   };
 }
-export type AssignedTask = Extract<TaskView, { status: 'todo' }> & {
+export type AssignedTask = Extract<TaskView, { status: OpenTaskState }> & {
   project: { id: string; title: string; clientDisplayName: string };
 };
 /** Every row must be the reader's own open Task in the active Company and its own Project. */
@@ -192,12 +301,21 @@ export function readAssignedTasks(
       companyId: reader.companyId,
       projectId: project.id,
     });
-    if (
-      task.status !== 'todo' ||
-      task.assignee?.workspaceMembershipId !== reader.workspaceMembershipId
-    )
+    if (task.assignee?.workspaceMembershipId !== reader.workspaceMembershipId)
       throw new Error('Invalid assigned Task');
-    return { ...task, project };
+    switch (task.status) {
+      case 'todo':
+      case 'in_progress':
+      case 'blocked':
+        return { ...task, project };
+      case 'done':
+      case 'cancelled':
+        throw new Error('Invalid assigned Task');
+      default: {
+        const exhaustive: never = task;
+        return exhaustive;
+      }
+    }
   });
 }
 export function readTaskDetail(
@@ -291,25 +409,62 @@ export function readTaskHistory(
         },
       };
     }
-    if (
-      event.action === 'task.completed' &&
-      metadata.before === 'todo' &&
-      metadata.after === 'done'
-    )
+    if (event.action === 'task.status.changed') {
+      const before = openState(metadata.before);
+      const after = openState(metadata.after);
+      if (before === after) throw new Error('Invalid Task status change');
+      if (after === 'blocked')
+        return {
+          ...common,
+          action: event.action,
+          metadata: {
+            version: currentVersion,
+            before,
+            after,
+            reason: reason(metadata.reason),
+          },
+        };
+      if (metadata.reason !== null) throw new Error('Invalid Task reason');
       return {
         ...common,
         action: event.action,
-        metadata: { version: currentVersion, before: 'todo', after: 'done' },
+        metadata: { version: currentVersion, before, after, reason: null },
+      };
+    }
+    if (event.action === 'task.completed' && metadata.after === 'done')
+      return {
+        ...common,
+        action: event.action,
+        metadata: {
+          version: currentVersion,
+          before: openState(metadata.before),
+          after: 'done',
+        },
+      };
+    if (event.action === 'task.cancelled' && metadata.after === 'cancelled')
+      return {
+        ...common,
+        action: event.action,
+        metadata: {
+          version: currentVersion,
+          before: openState(metadata.before),
+          after: 'cancelled',
+          reason: reason(metadata.reason),
+        },
       };
     if (
       event.action === 'task.reopened' &&
-      metadata.before === 'done' &&
+      (metadata.before === 'done' || metadata.before === 'cancelled') &&
       metadata.after === 'todo'
     )
       return {
         ...common,
         action: event.action,
-        metadata: { version: currentVersion, before: 'done', after: 'todo' },
+        metadata: {
+          version: currentVersion,
+          before: metadata.before,
+          after: 'todo',
+        },
       };
     throw new Error('Invalid Task event');
   });

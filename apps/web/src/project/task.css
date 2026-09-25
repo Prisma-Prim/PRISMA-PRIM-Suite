@@ -107,11 +107,38 @@
 .task-panel > p {
   margin: 0;
 }
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.task-reason {
+  display: grid;
+  gap: 0.5rem;
+}
+.task-reason label {
+  display: grid;
+  gap: 0.3rem;
+}
+.task-reason textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  resize: vertical;
+}
+.task-reason-error {
+  margin: 0;
+  color: #8a4051;
+  font-size: 0.875rem;
+}
 .task-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin: 0;
+}
+.task-facts--declaration {
+  grid-template-columns: minmax(0, 1fr);
 }
 .task-facts dt,
 .task-history dt {
@@ -154,6 +181,7 @@
 .prisme-shell .project-tasks--prisme .task-header > button,
 .prisme-shell .project-tasks--prisme .task-filters button,
 .prisme-shell .project-tasks--prisme .task-panel > button,
+.prisme-shell .project-tasks--prisme .task-actions button,
 .prisme-shell .project-tasks--prisme form button,
 .prisme-shell .project-tasks--prisme nav > button {
   min-height: 36px;
@@ -169,6 +197,11 @@
   border-color: #6652e7;
   color: #fff;
   background: #6451e8;
+}
+.prisme-shell .project-tasks--prisme .task-reason button[type='button'] {
+  border-color: var(--shell-line);
+  color: var(--shell-ink);
+  background: #fff;
 }
 .prisme-shell
   .project-workspace--prisme
@@ -211,7 +244,8 @@
   gap: 0.8rem;
 }
 .prisme-shell .project-tasks--prisme .task-panel input,
-.prisme-shell .project-tasks--prisme .task-panel select {
+.prisme-shell .project-tasks--prisme .task-panel select,
+.prisme-shell .project-tasks--prisme .task-panel textarea {
   box-sizing: border-box;
   width: 100%;
   border: 1px solid var(--shell-line);

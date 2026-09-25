@@ -67,6 +67,11 @@
   margin: 0;
   font-size: 1rem;
 }
+.my-tasks-status {
+  margin: 0.2rem 0 0;
+  color: var(--shell-muted);
+  font-size: 0.8rem;
+}
 .my-tasks-list li > button {
   justify-self: start;
 }

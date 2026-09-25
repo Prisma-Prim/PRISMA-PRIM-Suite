@@ -426,7 +426,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
           within(tasks).getByText(/Completion declared by Coordinator/),
         ).toBeVisible();
         expect(
-          within(tasks).getByRole('button', { name: taskCopy.reopen }),
+          within(tasks).getByRole('button', { name: taskCopy.moves.reopen }),
         ).toBeVisible();
       },
     },
