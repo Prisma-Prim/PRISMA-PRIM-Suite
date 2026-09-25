@@ -91,10 +91,13 @@ export function transitionInput(value: unknown) {
 export function isOpenTaskState(value: unknown): value is OpenTaskState {
   return OPEN_TASK_STATES.some((state) => state === value);
 }
+/** The PRD limit and PostgreSQL length() count Unicode code points, not UTF-16 code units. */
 function reason(value: unknown): string {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > 500)
+  const result = typeof value === 'string' ? value.trim() : '';
+  const characters = Array.from(result).length;
+  if (characters < 1 || characters > 500)
     throw new BadRequestException('A reason must contain 1–500 characters.');
-  return value.trim();
+  return result;
 }
 export type TaskStatusInput = { expectedVersion: number } & (
   | { status: Exclude<OpenTaskState, 'blocked'> }

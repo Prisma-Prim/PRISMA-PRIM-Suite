@@ -67,10 +67,10 @@ export function taskMoves(status: TaskState): TaskMove[] {
     }
   }
 }
-/** The server rule: trimmed text of 1–500 characters. */
+/** The server rule: trimmed text of 1–500 Unicode code points, as PostgreSQL length() counts them. */
 export function validTaskReason(value: string): boolean {
-  const reason = value.trim();
-  return reason.length >= 1 && reason.length <= 500;
+  const characters = Array.from(value.trim()).length;
+  return characters >= 1 && characters <= 500;
 }
 type Change<T> = { before: T; after: T };
 export type TaskEvent = {

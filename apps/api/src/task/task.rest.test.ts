@@ -2078,6 +2078,52 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     expect(object((await body(response)).cancellation).reason).toBe(longest);
   });
 
+  it('counts reason characters as Unicode code points, as PostgreSQL length() does', async () => {
+    await grant('task');
+    const { id } = await taskIn('todo');
+    const created = await detail(id);
+    const events = await history(id);
+    // Each supplementary character is one character but two UTF-16 code units.
+    const blockage = '😀'.repeat(500);
+    const cancellation = '𝒜'.repeat(500);
+    for (const response of [
+      await move(id, 'blocked', 1, `${blockage}😀`),
+      await move(id, 'blocked', 1, `  ${blockage}😀  `),
+      await cancel(id, 1, `${cancellation}𝒜`),
+    ])
+      expect(response.status).toBe(400);
+    await assertUnchanged(id, created, events);
+    const blockKey = randomUUID();
+    const response = await move(id, 'blocked', 1, `  ${blockage}  `, {
+      key: blockKey,
+    });
+    expect(response.status).toBe(201);
+    const blocked = await body(response);
+    expect(object(blocked.blockage).reason).toBe(blockage);
+    const replay = await move(id, 'blocked', 1, blockage, { key: blockKey });
+    expect(replay.status).toBe(201);
+    expect(await body(replay)).toEqual(blocked);
+    const cancelled = await cancel(id, 2, cancellation);
+    expect(cancelled.status).toBe(201);
+    expect(object((await body(cancelled)).cancellation).reason).toBe(
+      cancellation,
+    );
+    const stored = await harness.pool.query<{ characters: unknown }>(
+      'SELECT length(cancellation_reason) AS characters FROM tasks WHERE id = $1',
+      [id],
+    );
+    expect(stored.rows).toEqual([{ characters: 500 }]);
+    const recorded = await history(id);
+    expect(
+      recorded.map((event) => [event.action, object(event.metadata).reason]),
+    ).toEqual([
+      ['task.created', undefined],
+      ['task.status.changed', blockage],
+      ['task.cancelled', cancellation],
+    ]);
+    expect(await taskEvents()).toEqual(expect.arrayContaining(recorded));
+  });
+
   it.each(['in_progress', 'blocked'] satisfies ExecutionState[])(
     'edits the title, assignee and date of an %s Task while keeping its state and declaration',
     async (state) => {

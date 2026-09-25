@@ -1863,6 +1863,72 @@ it('starts, blocks with a validated reason, resumes, cancels with a reason and r
   expect(completed).toHaveTextContent('After: Done');
 });
 
+it('counts reason characters as Unicode code points like the server', async () => {
+  const commands = executionFixture();
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  // Each supplementary character is one character but two UTF-16 code units.
+  const blockage = '😀'.repeat(500);
+  const cancellation = '𝒜'.repeat(500);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  const reason = within(tasks).getByLabelText('Blockage reason');
+  fireEvent.change(reason, { target: { value: `  ${blockage}😀  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  expect(
+    within(tasks).getByText('Enter a reason of 1–500 characters.'),
+  ).toBeInTheDocument();
+  expect(commands).toHaveLength(0);
+  fireEvent.change(reason, { target: { value: `  ${blockage}  ` } });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await waitForState(tasks, 'Blocked');
+  expect(commands.at(-1)?.body).toEqual({
+    expectedVersion: 1,
+    status: 'blocked',
+    reason: blockage,
+  });
+  expect(
+    within(tasks).getByText(blockage, { selector: 'dd' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  const cancellationField = within(tasks).getByLabelText('Cancellation reason');
+  fireEvent.change(cancellationField, {
+    target: { value: `${cancellation}𝒜` },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  expect(
+    within(tasks).getByText('Enter a reason of 1–500 characters.'),
+  ).toBeInTheDocument();
+  expect(commands).toHaveLength(1);
+  fireEvent.change(cancellationField, { target: { value: cancellation } });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await waitForState(tasks, 'Cancelled');
+  expect(commands.at(-1)?.body).toEqual({
+    expectedVersion: 2,
+    reason: cancellation,
+  });
+  expect(
+    within(tasks).getByText(cancellation, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  const history = within(tasks).getByRole('region', { name: 'Task history' });
+  expect(
+    await within(history).findByText(`Reason: ${blockage}`),
+  ).toBeInTheDocument();
+  expect(
+    within(history).getByText(`Reason: ${cancellation}`),
+  ).toBeInTheDocument();
+});
+
 it('preserves the exact blockage payload and key for an explicit retry after an uncertain result', async () => {
   let attempts = 0;
   const commands = executionFixture({

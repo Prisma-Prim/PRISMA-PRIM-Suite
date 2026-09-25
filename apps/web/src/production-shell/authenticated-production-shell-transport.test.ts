@@ -142,7 +142,9 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
   ],
   ['task.created', taskTarget],
   ['task.updated', taskTarget],
+  ['task.status.changed', taskTarget],
   ['task.completed', taskTarget],
+  ['task.cancelled', taskTarget],
   ['task.reopened', taskTarget],
   [
     'document.registered',
@@ -323,6 +325,21 @@ describe('the authenticated Activity Log transport', () => {
     [
       'an unknown commercial action',
       event('event-archived', 'client_request.archived', requestTarget),
+    ],
+    [
+      'a Request target under a Task cancellation',
+      event('event-task', 'task.cancelled', requestTarget),
+    ],
+    [
+      'a Task status change without its Task id',
+      event('event-task', 'task.status.changed', {
+        ...taskTarget,
+        taskId: ' ',
+      }),
+    ],
+    [
+      'an unknown Task action',
+      event('event-task', 'task.archived', taskTarget),
     ],
     [
       'an unknown target type',
