@@ -29,15 +29,16 @@ const PRESERVED_ASSIGNMENTS: ReadonlyArray<
   ['company_document_registrar', 'v2', false],
   ['company_commercial_intake', 'v1', true],
   ['company_commercial_intake', 'v2', false],
+  ['company_project_access', 'v1', true],
+  ['company_project_access', 'v2', false],
   ['company_task_manager', 'v1', false],
   ['company_document_project_organizer', 'v1', false],
-  ['company_project_access', 'v1', false],
   ['company_service_catalogue', 'v1', false],
   ['company_commercial_activity_reader', 'v1', false],
 ];
 
 it.skipIf(!databaseUrl)(
-  'upgrades through 0031 preserving every captured bundle and enforcing the Pricing Rule Version invariants',
+  'upgrades through 0032 preserving every captured bundle and enforcing the Pricing Rule Version invariants',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -56,7 +57,7 @@ it.skipIf(!databaseUrl)(
         !Array.isArray(journal.entries)
       )
         throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries.slice(0, 31);
+      const entries: unknown[] = journal.entries.slice(0, 32);
       const tags = entries.map((entry) => {
         if (
           typeof entry !== 'object' ||
@@ -68,7 +69,7 @@ it.skipIf(!databaseUrl)(
           throw new Error('Invalid migration tag.');
         return entry.tag;
       });
-      expect(tags.at(-1)).toBe('0030_task_execution_states');
+      expect(tags.at(-1)).toBe('0031_project_responsible');
       previous = await mkdtemp(join(tmpdir(), 'prisma-360-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(
@@ -161,6 +162,7 @@ it.skipIf(!databaseUrl)(
         ['company_service_catalogue', 'v2'],
         ['company_commercial_activity_reader', 'v2'],
         ['company_commercial_intake', 'v3'],
+        ['company_project_access', 'v3'],
         ['company_director_client_access', null],
         ['company_document_registrar', 'v3'],
         ['company_task_manager', null],

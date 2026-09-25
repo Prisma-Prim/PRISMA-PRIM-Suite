@@ -22,6 +22,13 @@ const otherCompanyIdentity = {
   displayName: 'Other Company Member',
   email: 'other-company-member@example.test',
 };
+// Eligible to be a Project's responsible member, never a Task assignee.
+const responsibleColleagueIdentity = {
+  provider: 'local-demo',
+  subject: 'responsible-colleague',
+  displayName: 'Ion Popa',
+  email: 'ion@example.test',
+};
 
 export default async function globalSetup() {
   const baseDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -59,6 +66,11 @@ export default async function globalSetup() {
           {
             provider: otherCompanyIdentity.provider,
             subject: otherCompanyIdentity.subject,
+            workspaceId,
+          },
+          {
+            provider: responsibleColleagueIdentity.provider,
+            subject: responsibleColleagueIdentity.subject,
             workspaceId,
           },
         ]),
@@ -129,6 +141,27 @@ async function seedAccessFixture(origin) {
         companyId: primaryCompanyId,
       },
       `fixture-primary-${route.slice(1)}`,
+    );
+  }
+
+  const colleagueActor = await readActor(origin, responsibleColleagueIdentity);
+  for (const route of [
+    '/company-context-assignments',
+    '/company-director-client-assignments',
+    '/company-project-assignments',
+  ]) {
+    await command(
+      origin,
+      administratorIdentity,
+      route,
+      {
+        workspaceMembershipId: stringProperty(
+          colleagueActor,
+          'workspaceMembershipId',
+        ),
+        companyId: primaryCompanyId,
+      },
+      `fixture-colleague-${route.slice(1)}`,
     );
   }
 

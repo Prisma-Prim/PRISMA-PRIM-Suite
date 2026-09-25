@@ -1,6 +1,9 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 
 const company = { id: 'company-document-search', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -107,6 +110,8 @@ async function installDocumentSearchFixture(page: Page) {
     if (path === '/api/projects') return route.fulfill({ json: [project] });
     if (path === `/api/projects/${project.id}`)
       return route.fulfill({ json: project });
+    if (path === `/api/projects/${project.id}/responsible`)
+      return route.fulfill({ json: unassignedResponsibility });
     if (
       path === `/api/projects/${project.id}/documents` ||
       path === `/api/projects/${project.id}/eligible-documents`

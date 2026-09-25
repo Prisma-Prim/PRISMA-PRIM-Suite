@@ -77,7 +77,8 @@ withPostgres('Preparatory Project REST', () => {
       },
       'grant',
     );
-    expect(grant.permissionSetVersion).toBe('v1');
+    // A fresh grant captures v2; the responsible-member suite covers v1.
+    expect(grant.permissionSetVersion).toBe('v2');
     const project = await command(
       '/projects',
       { title: '  ISO preparation  ', clientAccountId: client.id },

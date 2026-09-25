@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks and My Tasks approved by #238, #246 and #347; remaining capability Draft  
-**Version:** 0.6  
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks and the Project responsible member approved by #238, #246, #347 and #367; remaining capability Draft  
+**Version:** 0.7  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -309,3 +309,21 @@ States are manual declarations. They grant no access, satisfy no gate, trigger n
 My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
 
 Priorities, descriptions, dependencies, structured blocker details, reason vocabularies, dashboard counts or queues, and Project lifecycle effects remain separate decisions.
+
+## 21. Approved Project responsible member (#367)
+
+Iurie confirmed that each simultaneous Project needs its own responsible person, status, deadlines and Documents (S02-Q07). Later answers route Project work to the Project's responsible person, whom the business must be able to change. Dan approved reusable provisional MVP choices for later business validation on 2026-09-24. This section is the bounded delegated synthesis. It is not a complete role matrix.
+
+A preparatory Project has zero or one responsible Workspace Membership, initially none. A manager holding `project.update` sets, replaces or clears it. Only an eligible member may be newly set: an active Internal User with an active same-Workspace membership and effective Company context, Project read and Client read for the Project's original Client–Company relationship. Access owns that evaluation and a narrow Project-scoped query that reveals only membership identifiers and display labels. Being responsible grants no access, approves nothing, assigns no Task and triggers no reminder. Later loss of eligibility preserves the assignment and its label without retaining access, and a manager may replace or clear it.
+
+Every Project reader sees the responsible member, or none, with the attribution of the last change. The responsibility has its own revision starting at zero. A command carries the observed revision and a stable actor/Workspace idempotency key. Stale revisions conflict, and concurrent commands allow one material outcome. A normalized no-op records an unchanged receipt without revision, event or fence advance. Exact replays recheck live authority and visibility before returning the recorded outcome; changed key reuse conflicts. A material change atomically updates the responsibility and its revision, its receipt, one `project.responsible.changed` event and the original active Client's operational-use fence. A superseded original Client keeps the responsibility readable and refuses changes without exposing union detail.
+
+The Project remains `preparatory`. These remain separate decisions:
+
+- title correction;
+- lifecycle, activation and start dossier;
+- categories;
+- Contract and commercial links;
+- multiple or role-specific responsibles;
+- substitution;
+- responsibility-based notifications.

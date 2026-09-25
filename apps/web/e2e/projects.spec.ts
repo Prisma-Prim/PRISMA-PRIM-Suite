@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 
 test('registers and reopens a Company preparatory Project after reload', async ({
   page,
@@ -71,6 +74,8 @@ test('registers and reopens a Company preparatory Project after reload', async (
     if (path.startsWith('/api/projects')) {
       if (denied) return route.fulfill({ status: 403 });
       expect(request.headers()['x-company-context-id']).toBe(company.id);
+      if (path.endsWith('/responsible'))
+        return route.fulfill({ json: unassignedResponsibility });
       if (request.method() === 'POST') {
         expect(request.postDataJSON()).toEqual({
           title: project.title,

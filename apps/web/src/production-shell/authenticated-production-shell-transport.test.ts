@@ -60,6 +60,23 @@ const documentProjectTarget = {
   projectTitle: 'Audit preparation',
   companyId,
 };
+const responsibleTarget = {
+  type: 'project',
+  projectId: 'project-1',
+  projectTitle: 'Audit preparation',
+  companyId,
+};
+const ion = { workspaceMembershipId: 'membership-2', displayLabel: 'Ion Popa' };
+const maria = {
+  workspaceMembershipId: 'membership-3',
+  displayLabel: 'Maria Ene',
+};
+const responsibleChanged = event(
+  'event-responsible',
+  'project.responsible.changed',
+  responsibleTarget,
+  { revision: 2, before: ion, after: maria },
+);
 const unionEvent = {
   action: 'client.union_confirmed',
   projectionReference: 'union-1',
@@ -245,11 +262,12 @@ describe('the authenticated Activity Log transport', () => {
     );
   });
 
-  it('accepts every delivered action with its own target, including historical Client scope and redacted unions', async () => {
+  it('accepts every delivered action with its own target, including historical Client scope, responsible-member changes and redacted unions', async () => {
     const events = [
       ...legitimateTargets.map(([action, target], index) =>
         event(`event-${index}`, action, target),
       ),
+      responsibleChanged,
       unionEvent,
     ];
 
@@ -266,11 +284,128 @@ describe('the authenticated Activity Log transport', () => {
             actor,
             target,
           })),
+          responsibleChanged,
           unionEvent,
         ],
       },
     });
   });
+
+  it('keeps only the revision and each side’s membership and label of a responsible-member change', async () => {
+    const { result } = await loadActivityLog({
+      events: [
+        event(
+          'event-cleared',
+          'project.responsible.changed',
+          responsibleTarget,
+          {
+            revision: 3,
+            before: { ...ion, email: 'ion@example.test' },
+            after: null,
+            reason: 'not a delivered field',
+          },
+        ),
+      ],
+    });
+
+    expect(result).toEqual({
+      status: 'ok',
+      value: {
+        events: [
+          {
+            id: 'event-cleared',
+            action: 'project.responsible.changed',
+            occurredAt,
+            actor,
+            target: responsibleTarget,
+            metadata: { revision: 3, before: ion, after: null },
+          },
+        ],
+      },
+    });
+  });
+
+  it.each<[string, unknown]>([
+    ['no metadata', { ...responsibleChanged, metadata: undefined }],
+    [
+      'the initial revision',
+      {
+        ...responsibleChanged,
+        metadata: { revision: 0, before: null, after: ion },
+      },
+    ],
+    [
+      'a fractional revision',
+      {
+        ...responsibleChanged,
+        metadata: { revision: 1.5, before: null, after: ion },
+      },
+    ],
+    [
+      'a textual revision',
+      {
+        ...responsibleChanged,
+        metadata: { revision: '1', before: null, after: ion },
+      },
+    ],
+    [
+      'a missing before side',
+      { ...responsibleChanged, metadata: { revision: 1, after: ion } },
+    ],
+    [
+      'a side without its label',
+      {
+        ...responsibleChanged,
+        metadata: {
+          revision: 1,
+          before: null,
+          after: { workspaceMembershipId: ion.workspaceMembershipId },
+        },
+      },
+    ],
+    [
+      'a blank membership identifier',
+      {
+        ...responsibleChanged,
+        metadata: {
+          revision: 1,
+          before: null,
+          after: { ...ion, workspaceMembershipId: ' ' },
+        },
+      },
+    ],
+    [
+      'the same member on both sides',
+      {
+        ...responsibleChanged,
+        metadata: { revision: 2, before: ion, after: { ...ion } },
+      },
+    ],
+    [
+      'no member on either side',
+      {
+        ...responsibleChanged,
+        metadata: { revision: 2, before: null, after: null },
+      },
+    ],
+    ['a Task target', { ...responsibleChanged, target: taskTarget }],
+    [
+      'a Project target without its title',
+      {
+        ...responsibleChanged,
+        target: { ...responsibleTarget, projectTitle: undefined },
+      },
+    ],
+  ])(
+    'fails closed on a responsible-member change with %s next to a valid one',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [responsibleChanged, malformed],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
 
   it.each<[string, unknown]>([
     ['a non-string Request id', { ...requestTarget, clientRequestId: 358 }],

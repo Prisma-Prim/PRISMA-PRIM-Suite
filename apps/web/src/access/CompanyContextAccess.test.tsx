@@ -26,6 +26,7 @@ const bundleLabels = {
   catalogue: 'Company Service Catalogue',
   pricing: 'Company Pricing Configuration',
   reader: 'Company Commercial Activity Reader',
+  project: 'Company Project Access',
 } as const;
 const serverVersions = {
   context: null,
@@ -34,6 +35,7 @@ const serverVersions = {
   catalogue: 'v1',
   pricing: 'v1',
   reader: 'v1',
+  project: 'v2',
 } as const;
 
 const administration = (
@@ -258,6 +260,61 @@ describe('CompanyContextAccess', () => {
     expect(commands).toEqual(['DELETE', 'POST']);
   });
 
+  it('keeps a legacy Company Project Access v1 and shows the fresh v2 grant after revoke', async () => {
+    let assignment: 'legacy' | 'revoked' | 'fresh' = 'legacy';
+    const commands: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(
+            assignment === 'revoked'
+              ? administration()
+              : assignment === 'fresh'
+                ? administration('project')
+                : administration('project', 'v1'),
+          );
+        if (path.startsWith('/api/company-project-assignments')) {
+          commands.push(`${options?.method ?? 'GET'} ${path}`);
+          assignment = options?.method === 'POST' ? 'fresh' : 'revoked';
+          return Response.json({}, { status: 200 });
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <ApplicationPresentation value="prisme">
+        <CompanyContextAccess
+          actor={ownerActor}
+          identity={deterministicBrowserIdentity()}
+        />
+      </ApplicationPresentation>,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('project');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v2$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Revoke access' })).toBeEnabled();
+    expect(commands).toEqual([
+      `DELETE /api/company-project-assignments/${memberId}/${companyId}`,
+      'POST /api/company-project-assignments',
+    ]);
+  });
+
   it('shows the version reported by the reloaded state rather than the grant response', async () => {
     vi.stubGlobal(
       'fetch',
@@ -311,6 +368,14 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a null Director Client version',
       assignment: { bundle: 'Company Director Client Access', version: null },
+    },
+    {
+      name: 'an unknown Project Access version',
+      assignment: { bundle: 'Company Project Access', version: 'v3' },
+    },
+    {
+      name: 'a null Project Access version',
+      assignment: { bundle: 'Company Project Access', version: null },
     },
     {
       name: 'a second version of a single-version bundle',

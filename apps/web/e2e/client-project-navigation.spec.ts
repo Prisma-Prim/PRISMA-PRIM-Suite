@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 
 for (const frame of ['classic', 'prisme'] as const) {
   test(`${frame} navigates between one Client dossier and its loaded Projects`, async ({
@@ -90,6 +93,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: project });
       if (path.endsWith('/eligible-task-assignees'))
         return route.fulfill({ json: { members: [] } });
+      if (path.endsWith('/responsible'))
+        return route.fulfill({ json: unassignedResponsibility });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
       if (path === '/api/documents') return route.fulfill({ json: [] });
@@ -374,6 +379,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: projected });
       if (path.endsWith('/eligible-task-assignees'))
         return route.fulfill({ json: { members: [] } });
+      if (path.endsWith('/responsible'))
+        return route.fulfill({ json: unassignedResponsibility });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
       if (path === '/api/documents') return route.fulfill({ json: [] });

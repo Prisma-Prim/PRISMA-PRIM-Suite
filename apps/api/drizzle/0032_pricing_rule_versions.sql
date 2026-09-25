@@ -95,9 +95,9 @@ ALTER TABLE "company_role_assignments" ADD CONSTRAINT "company_role_assignments_
           AND "company_role_assignments"."permission_set_version" IS NOT NULL
           AND "company_role_assignments"."permission_set_version" IN ('v1', 'v2'))
         OR
-        ("company_role_assignments"."bundle"::text IN ('company_document_registrar', 'company_commercial_intake') AND "company_role_assignments"."permission_set_version" IS NOT NULL AND "company_role_assignments"."permission_set_version" IN ('v1', 'v2'))
+        ("company_role_assignments"."bundle"::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND "company_role_assignments"."permission_set_version" IS NOT NULL AND "company_role_assignments"."permission_set_version" IN ('v1', 'v2'))
         OR
-        ("company_role_assignments"."bundle"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_project_access', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader') AND "company_role_assignments"."permission_set_version" IS NOT NULL AND "company_role_assignments"."permission_set_version" = 'v1')
+        ("company_role_assignments"."bundle"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader') AND "company_role_assignments"."permission_set_version" IS NOT NULL AND "company_role_assignments"."permission_set_version" = 'v1')
         OR
         ("company_role_assignments"."bundle"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader')
           AND "company_role_assignments"."permission_set_version" IS NULL)

@@ -17,7 +17,9 @@ import {
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   documentPermissionsFor,
   COMPANY_PROJECT_ACCESS_BUNDLE,
-  COMPANY_PROJECT_V1_PERMISSIONS,
+  isProjectPermissionSetVersion,
+  projectPermissionsFor,
+  type CompanyProjectPermissionSetVersion,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   companyDirectorClientPermissionsFor,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
@@ -278,9 +280,30 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // Every delivered Project read and create accepts either captured version.
   async requireProjectAccess(
     actor: ActorContext,
     lock = false,
+  ): Promise<string> {
+    return this.requireProjectAssignment(actor, ['v1', 'v2'], lock);
+  }
+
+  // `project.update` exists only in captured v2, so a legacy v1 assignment
+  // fails closed. A locked read serializes a command against revocation,
+  // suspension and the loss of the Client read prerequisite.
+  async requireProjectUpdate(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    if (!actor.activeCompany?.projectPermissions?.includes('project.update'))
+      throw new ForbiddenException();
+    return this.requireProjectAssignment(actor, ['v2'], lock);
+  }
+
+  private async requireProjectAssignment(
+    actor: ActorContext,
+    capturedVersions: readonly CompanyProjectPermissionSetVersion[],
+    lock: boolean,
   ): Promise<string> {
     const companyId = actor.activeCompany?.id;
     if (!companyId) throw new ForbiddenException();
@@ -326,7 +349,9 @@ export class CompanyContextAuthorization {
           ),
           eq(companyRoleAssignments.companyId, companyId),
           eq(companyRoleAssignments.bundle, COMPANY_PROJECT_ACCESS_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...capturedVersions,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
@@ -758,9 +783,11 @@ export class CompanyContextAuthorization {
       }
       if (
         row.bundle === COMPANY_PROJECT_ACCESS_BUNDLE &&
-        row.permissionSetVersion === 'v1'
+        isProjectPermissionSetVersion(row.permissionSetVersion)
       ) {
-        company.projectPermissions = [...COMPANY_PROJECT_V1_PERMISSIONS];
+        company.projectPermissions = [
+          ...projectPermissionsFor(row.permissionSetVersion),
+        ];
       }
       if (
         row.bundle === COMPANY_TASK_MANAGER_BUNDLE &&

@@ -170,8 +170,32 @@ export const COMPANY_PROJECT_V1_PERMISSIONS = [
   'project.read',
   'project.create',
 ] as const;
+// Captured v2 adds the responsible-member change. Existing v1 assignments
+// never expand in place; only a fresh grant captures v2.
+export const COMPANY_PROJECT_V2_PERMISSIONS = [
+  ...COMPANY_PROJECT_V1_PERMISSIONS,
+  'project.update',
+] as const;
 export type CompanyProjectPermission =
-  (typeof COMPANY_PROJECT_V1_PERMISSIONS)[number];
+  (typeof COMPANY_PROJECT_V2_PERMISSIONS)[number];
+export type CompanyProjectPermissionSetVersion = 'v1' | 'v2';
+export function projectPermissionsFor(
+  version: unknown,
+): readonly CompanyProjectPermission[] {
+  switch (version) {
+    case 'v1':
+      return COMPANY_PROJECT_V1_PERMISSIONS;
+    case 'v2':
+      return COMPANY_PROJECT_V2_PERMISSIONS;
+    default:
+      return [];
+  }
+}
+export function isProjectPermissionSetVersion(
+  version: unknown,
+): version is CompanyProjectPermissionSetVersion {
+  return version === 'v1' || version === 'v2';
+}
 
 export const COMPANY_TASK_MANAGER_BUNDLE = 'company_task_manager';
 export const COMPANY_TASK_MANAGER_BUNDLE_LABEL = 'Company Task Manager';
