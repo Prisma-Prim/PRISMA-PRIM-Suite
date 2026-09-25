@@ -1,4 +1,5 @@
 import type { TaskEvent } from '../project/task-response';
+import type { ResponsibleMember } from '../project/project-responsible-response';
 import type { ActorContext } from '../access-types';
 
 export interface VisibleCompany {
@@ -199,12 +200,33 @@ export interface CommercialActivityLogEvent {
       };
 }
 
+/** Before and after keep only a membership identifier and its captured label. */
+export interface ProjectResponsibleChangedActivityLogEvent {
+  id: string;
+  action: 'project.responsible.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'project';
+    projectId: string;
+    projectTitle: string;
+    companyId: string;
+  };
+  metadata: {
+    revision: number;
+    before: ResponsibleMember | null;
+    after: ResponsibleMember | null;
+  };
+}
+
 /**
  * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
- * The shell lists these entries and never presents their metadata.
+ * The shell lists these entries and presents no metadata except the proved
+ * before and after of a responsible-member change.
  */
 export type ActivityLogEvent =
   | TaskActivityLogEvent
+  | ProjectResponsibleChangedActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent

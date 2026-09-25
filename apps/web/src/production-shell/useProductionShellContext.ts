@@ -11,6 +11,7 @@ export type {
   ActivityLogState,
   CompanyContextState,
   ProductionShellContext,
+  ProjectResponsibleChangedActivityLogEvent,
 } from './company-context-transitions';
 
 export function useProductionShellContext(

@@ -5,8 +5,12 @@ import {
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
+  isProjectPermissionSetVersion,
+  projectPermissionsFor,
   serviceCataloguePermissionsFor,
+  taskPermissionsFor,
   type CompanyCommercialIntakePermissionSetVersion,
+  type CompanyProjectPermissionSetVersion,
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
@@ -117,6 +121,36 @@ describe('Company Document Registrar permission sets', () => {
       expect(documentPermissionsFor(version)).toEqual([]);
     },
   );
+});
+
+describe('Company Project Access permission sets', () => {
+  it.each([
+    ['v1', ['project.read', 'project.create']],
+    ['v2', ['project.read', 'project.create', 'project.update']],
+  ] satisfies Array<[CompanyProjectPermissionSetVersion, readonly string[]]>)(
+    'resolves immutable %s permissions',
+    (version, expected) => {
+      expect(projectPermissionsFor(version)).toEqual(expected);
+      expect(isProjectPermissionSetVersion(version)).toBe(true);
+    },
+  );
+
+  it.each([null, undefined, '', 'V2', 'v3'])(
+    'fails closed for an unsupported captured version: %s',
+    (version) => {
+      expect(projectPermissionsFor(version)).toEqual([]);
+      expect(isProjectPermissionSetVersion(version)).toBe(false);
+    },
+  );
+
+  it('is never conferred by the Task Manager or Document bundles', () => {
+    for (const permissions of [
+      taskPermissionsFor('v1'),
+      documentPermissionsFor('v1'),
+      documentPermissionsFor('v2'),
+    ])
+      expect(permissions).not.toContain('project.update');
+  });
 });
 
 describe('Company Commercial Activity Reader permission sets', () => {

@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
 
 test('manages manual Tasks through the production shell with retained retry and attributable read-only history', async ({
@@ -65,6 +68,8 @@ test('manages manual Tasks through the production shell with retained retry and 
     if (path === '/api/projects') return route.fulfill({ json: [project] });
     if (path === `/api/projects/${project.id}`)
       return route.fulfill({ json: project });
+    if (path === `/api/projects/${project.id}/responsible`)
+      return route.fulfill({ json: unassignedResponsibility });
     if (!path.includes('/tasks') && !path.endsWith('/eligible-task-assignees'))
       return route.fulfill({ status: 403 });
     expect(request.headers()['x-company-context-id']).toBe(company.id);
@@ -458,6 +463,8 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     if (path === '/api/projects') return route.fulfill({ json: [project] });
     if (path === `/api/projects/${project.id}`)
       return route.fulfill({ json: project });
+    if (path === `/api/projects/${project.id}/responsible`)
+      return route.fulfill({ json: unassignedResponsibility });
     if (path === '/api/assigned-tasks')
       return route.fulfill({
         json: {

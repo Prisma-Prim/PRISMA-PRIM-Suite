@@ -115,6 +115,8 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For the [Project responsible member](release-1-project-task-prd.md#21-approved-project-responsible-member-367) slice, each material change records one `project.responsible.changed` event targeting the Project. It records the server actor membership and time, the resulting responsibility revision, and the previous and new responsible member (membership identifier and display label, or none). The event commits with the responsibility, command receipt and original Client fence. Rejected commands, no-ops and exact replays record none. Projection requires the same current Project read and original Client/Company boundary as `project.created`; Workspace ownership or Client visibility alone discloses nothing. No email or other member-directory data is recorded.
+
 For the approved [unverified working-reference correction](release-1-document-registry-prd.md#19-approved-unverified-working-reference-correction-250),
 each material correction creates one `document.corrected` event in the same
 transaction as the field update, working revision, durable command/history receipt

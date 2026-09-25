@@ -1,5 +1,8 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
 
 const company = { id: 'company-my-task-open', displayName: 'PRISMA-PRIM' };
@@ -174,6 +177,10 @@ async function installServer(page: Page) {
         });
       if (path === `${ownerPath}/eligible-task-assignees`)
         return route.fulfill({ json: { members: [me] } });
+      if (path === `${ownerPath}/responsible`)
+        return route.fulfill({
+          json: { ...unassignedResponsibility, mutable },
+        });
     }
     for (const task of tasks) {
       const mutable = task !== archivedTask;

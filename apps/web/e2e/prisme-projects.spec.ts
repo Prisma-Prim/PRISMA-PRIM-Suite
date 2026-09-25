@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  unassignedResponsibility,
+} from './actor-context.fixture';
 
 test('creates and opens a Project, then switches local panels without reloading them', async ({
   page,
@@ -77,6 +80,8 @@ test('creates and opens a Project, then switches local panels without reloading 
     }
     if (path === `/api/projects/${createdProject.id}/eligible-task-assignees`)
       return route.fulfill({ json: { members: [] } });
+    if (path === `/api/projects/${createdProject.id}/responsible`)
+      return route.fulfill({ json: unassignedResponsibility });
     if (path === `/api/projects/${createdProject.id}/documents`) {
       reads.documents += 1;
       return route.fulfill({ json: { mutable: true, documents: [] } });
