@@ -41,6 +41,41 @@ describe('stored Client correction metadata', () => {
     expect(readClientCorrectionChanges({ changes })).toEqual(changes);
   });
 
+  it('returns stored Contact communication preferences exactly as stored', () => {
+    const changes = {
+      contacts: {
+        before: [{ name: 'Ion Demo', telephone: '+373 60 000 372' }],
+        after: [
+          {
+            name: 'Ion Demo',
+            telephone: '+373 60 000 372',
+            communicationPreferences:
+              'Romanian; email preferred\nweekday mornings',
+          },
+        ],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
+  it('returns a stored telephone change that keeps position, decision roles and preferences', () => {
+    const contact = {
+      name: 'Ion Demo',
+      position: 'Director general',
+      decisionRoles: ['final_decision_maker', 'financial'],
+      communicationPreferences: 'Romanian; email preferred',
+    };
+    const changes = {
+      contacts: {
+        before: [{ ...contact, telephone: '+373 60 000 001' }],
+        after: [{ ...contact, telephone: '+373 60 000 372' }],
+      },
+    };
+
+    expect(readClientCorrectionChanges({ changes })).toEqual(changes);
+  });
+
   it.each([
     ['no metadata object', null],
     ['no changes', {}],
@@ -102,6 +137,33 @@ describe('stored Client correction metadata', () => {
           contacts: pair(
             [],
             [{ name: 'A', decisionRoles: ['blocker', 'influencer'] }],
+          ),
+        },
+      },
+    ],
+    [
+      'null Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([], [{ name: 'A', communicationPreferences: null }]),
+        },
+      },
+    ],
+    [
+      'blank Contact communication preferences',
+      {
+        changes: {
+          contacts: pair([{ name: 'A', communicationPreferences: ' ' }], []),
+        },
+      },
+    ],
+    [
+      'over-long Contact communication preferences',
+      {
+        changes: {
+          contacts: pair(
+            [],
+            [{ name: 'A', communicationPreferences: 'x'.repeat(1_001) }],
           ),
         },
       },

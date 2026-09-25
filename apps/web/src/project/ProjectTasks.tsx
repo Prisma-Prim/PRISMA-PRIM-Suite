@@ -42,11 +42,15 @@ import {
   type ReasonDraft,
 } from './TaskPresentation';
 
+/** A requested open of one Task of the selected Project. */
+export type RequestedTask = { taskId: string; requestId: number };
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string | null;
   onActivityRecorded?: () => void | Promise<void>;
+  /** Opens this Task of the selected Project as choosing its row would; each new request id once. */
+  requestedTask?: RequestedTask;
 };
 type Listing = ReturnType<typeof readTaskList>;
 type Load =
@@ -234,6 +238,12 @@ export function ProjectTasks(props: Props) {
 }
 function TaskProjects(props: Props) {
   const [projects, setProjects] = useState<string[]>([]);
+  /** A request present when these Tasks mount was made under an earlier authority and never replays. */
+  const retiredTaskRequest = useRef(props.requestedTask?.requestId);
+  const requestedTask =
+    props.requestedTask?.requestId === retiredTaskRequest.current
+      ? undefined
+      : props.requestedTask;
   useEffect(() => {
     setProjects(props.projectId ? [props.projectId] : []);
   }, [props.identity]);
@@ -247,7 +257,13 @@ function TaskProjects(props: Props) {
   }, [props.projectId]);
   return projects.map((projectId) => (
     <div key={projectId} hidden={props.projectId !== projectId}>
-      <TaskProject {...props} projectId={projectId} />
+      <TaskProject
+        {...props}
+        projectId={projectId}
+        requestedTask={
+          props.projectId === projectId ? requestedTask : undefined
+        }
+      />
     </div>
   ));
 }
@@ -261,6 +277,7 @@ function TaskProject({
   identity,
   projectId,
   onActivityRecorded,
+  requestedTask,
 }: Props & { projectId: string }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -282,6 +299,8 @@ function TaskProject({
   );
   const request = useRef<AbortController | null>(null);
   const mutationRequest = useRef<AbortController | null>(null);
+  /** The latest requested open already applied. */
+  const consumedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
   const canRead =
@@ -490,6 +509,23 @@ function TaskProject({
       mutationRequest.current?.abort();
     };
   }, [identity]);
+  // A requested open is the same open as choosing the Task's row, so it
+  // supersedes a read still loading, including the first list read. A pending
+  // command is never aborted: the open waits for its outcome and, once
+  // confirmed, for the read of its result, so neither overwrites the other.
+  const commandSettling =
+    mutation.kind === 'pending' ||
+    (mutation.kind === 'blocked' && load.kind === 'loading');
+  useEffect(() => {
+    if (
+      !requestedTask ||
+      requestedTask.requestId === consumedTaskRequest.current ||
+      commandSettling
+    )
+      return;
+    consumedTaskRequest.current = requestedTask.requestId;
+    void open(requestedTask.taskId);
+  }, [requestedTask, commandSettling]);
 
   async function run(command: Command) {
     request.current?.abort();

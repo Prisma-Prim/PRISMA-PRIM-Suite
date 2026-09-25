@@ -125,6 +125,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     tasks.locator('dd').getByText('Ada Ionescu', { exact: true }),
   ).toBeVisible();
+  // Leave the Task, so only My Tasks' Open selects it again.
+  await tasks.getByRole('button', { name: 'New Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('heading', { name: taskTitle, exact: true }),
+  ).toHaveCount(0);
 
   await navigate(page, navigation, 'My Tasks', narrow);
   expect(await refreshMyTasks(page, myTasks)).toContain(taskId);
@@ -141,7 +146,38 @@ test('operates the delivered Client, Project, Task and working Document journey 
     testInfo,
     `operational-foundation-${narrow ? 'narrow' : 'desktop'}-my-tasks.png`,
   );
-  await navigate(page, navigation, 'Projects', narrow);
+  const exactRead = (pathname: string) =>
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === pathname,
+    );
+  const projectRead = exactRead(`/api/projects/${projectId}`);
+  const taskRead = exactRead(`/api/tasks/${taskId}`);
+  await assignedTask
+    .getByRole('button', {
+      name: `Open ${taskTitle} in ${projectTitle} (${clientName})`,
+      exact: true,
+    })
+    .click();
+  expect((await projectRead).ok()).toBe(true);
+  expect((await taskRead).ok()).toBe(true);
+  await expect(projects).toBeFocused();
+  await expect(page).toHaveURL(/#projects$/u);
+  await expect(
+    projects.getByRole('heading', { name: projectTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.getByRole('heading', { name: taskTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('2026-10-15', { exact: true }),
+  ).toBeVisible();
+  await capture(
+    page,
+    testInfo,
+    `operational-foundation-${narrow ? 'narrow' : 'desktop'}-my-task-open.png`,
+  );
 
   await tasks.getByLabel('Task title').fill(preservedDraft);
   const completionPath = new RegExp(

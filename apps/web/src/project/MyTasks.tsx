@@ -9,7 +9,12 @@ import './my-tasks.css';
 
 const copy = taskCopy.myTasks;
 
-type Props = { actor: ActorContext; identity: BrowserIdentity };
+type Props = {
+  actor: ActorContext;
+  identity: BrowserIdentity;
+  /** Opens this assigned Task in its Project; rows offer Open only when supplied. */
+  onOpenTask?: (task: { projectId: string; taskId: string }) => void;
+};
 type Load =
   | { kind: 'loading' | 'denied' | 'error' }
   | { kind: 'ready'; tasks: AssignedTask[] };
@@ -42,7 +47,7 @@ export function MyTasks(props: Props) {
   return <AssignedTasks key={authority} {...props} />;
 }
 
-function AssignedTasks({ actor, identity }: Props) {
+function AssignedTasks({ actor, identity, onOpenTask }: Props) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -154,6 +159,21 @@ function AssignedTasks({ actor, identity }: Props) {
                   </dd>
                 </div>
               </dl>
+              {onOpenTask && (
+                <button
+                  type="button"
+                  aria-label={copy.openTask({
+                    task: task.title,
+                    project: task.project.title,
+                    client: task.project.clientDisplayName,
+                  })}
+                  onClick={() =>
+                    onOpenTask({ projectId: task.projectId, taskId: task.id })
+                  }
+                >
+                  {copy.open}
+                </button>
+              )}
             </li>
           ))}
         </ol>

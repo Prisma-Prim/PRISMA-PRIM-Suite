@@ -24,6 +24,8 @@ export interface ClientContact {
   position?: string;
   /** Non-empty, without duplicates, in vocabulary order. */
   decisionRoles?: ClientContactDecisionRole[];
+  /** Descriptive shared text, trimmed and never blank. It grants nothing. */
+  communicationPreferences?: string;
 }
 
 export interface ClientDossierView extends ClientAccountView {

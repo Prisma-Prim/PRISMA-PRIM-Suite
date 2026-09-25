@@ -1615,6 +1615,10 @@ components:
           description: Input duplicates collapse and an empty list is omitted, so a returned list is non-empty, without duplicates and in enum order.
           items:
             $ref: '#/components/schemas/ClientContactDecisionRole'
+        communicationPreferences:
+          type: string
+          description: Descriptive plain text about practical communication preferences, such as language, preferred channel or suitable times. Input is trimmed and blank input is omitted, so a returned value is never blank; null is rejected. The length limit counts Unicode code points. The value sends no message and records no consent or decision authority.
+          maxLength: 1000
     ClientContactDecisionRole:
       type: string
       enum:

@@ -114,5 +114,15 @@ export const taskCopy = {
     retry: 'Retry',
     project: 'Project',
     client: 'Client',
+    open: 'Open',
+    openTask: ({
+      task,
+      project,
+      client,
+    }: {
+      task: string;
+      project: string;
+      client: string;
+    }) => `Open ${task} in ${project} (${client})`,
   },
 };
