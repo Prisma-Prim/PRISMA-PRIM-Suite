@@ -47,7 +47,9 @@ const help =
 const tooLong = 'Communication preferences must be 1000 characters or fewer.';
 type Presentation = 'prisme' | 'classic';
 
-function directorActor(): ActorContext {
+function directorActor({
+  resolvesDuplicates = false,
+}: { resolvesDuplicates?: boolean } = {}): ActorContext {
   return {
     internalUserId: 'director',
     workspaceMembershipId: 'membership-1',
@@ -60,7 +62,12 @@ function directorActor(): ActorContext {
     activeCompany: {
       id: 'company-a',
       displayName: 'PRISMA-PRIM',
-      clientPermissions: ['client.read', 'client.create', 'client.update'],
+      clientPermissions: [
+        'client.read',
+        'client.create',
+        'client.update',
+        ...(resolvesDuplicates ? (['client.duplicate.resolve'] as const) : []),
+      ],
       clientPermissionAssignmentId: 'assignment-1',
       clientPermissionSetVersion: 'v2',
     },
@@ -153,6 +160,63 @@ function contactItem(name: string) {
   const item = within(region).getByText(name).closest('li');
   if (!item) throw new Error(`Expected the ${name} Contact.`);
   return item;
+}
+
+const duplicateReference = '37200000-0000-4000-8000-000000000001';
+function renderDuplicateReview({
+  proposed,
+  existing,
+}: {
+  proposed: unknown[];
+  existing: unknown[];
+}) {
+  const fields = { ...dossier, contacts: proposed };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = input.toString();
+      if (path.endsWith('/clients')) return respond([]);
+      if (path.includes('/client-duplicate-reviews?'))
+        return respond({
+          items: [{ duplicate_review_reference: duplicateReference }],
+          next_cursor: null,
+        });
+      if (path.endsWith(`/client-duplicate-reviews/${duplicateReference}`))
+        return respond({
+          outcome: 'comparison',
+          duplicate_review_reference: duplicateReference,
+          proposal: { kind: 'registration', fields },
+          candidate: {
+            ...dossier,
+            id: 'client-existing',
+            relatedToActiveCompany: false,
+            contacts: existing,
+          },
+        });
+      throw new Error('Unexpected API request: ' + path);
+    }),
+  );
+  render(
+    <ApplicationPresentation value="prisme">
+      <ClientWorkspace
+        actor={directorActor({ resolvesDuplicates: true })}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />
+    </ApplicationPresentation>,
+  );
+}
+async function openDuplicateReview() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Review possible duplicate 1' }),
+  );
+}
+function reviewedPreferences(cell: HTMLElement, name: string) {
+  const item = within(cell).getByText(name).closest('li');
+  if (!item) throw new Error(`Expected the reviewed ${name} Contact.`);
+  return within(item).getByText('Contact communication preferences')
+    .nextElementSibling?.textContent;
 }
 
 describe('Client Contact communication preferences', () => {
@@ -360,6 +424,49 @@ describe('Client Contact communication preferences', () => {
       within(after).getByText(/^Communication preferences:/u).textContent,
     ).toBe(`Communication preferences: ${preferences}`);
   });
+
+  it('shows proposed and existing Contact preferences as plain text in the duplicate comparison', async () => {
+    const markup = '<a href="javascript:alert(1)">Call</a>';
+    renderDuplicateReview({
+      proposed: [ion, ana],
+      existing: [{ ...maria, communicationPreferences: markup }],
+    });
+    await openDuplicateReview();
+    await screen.findByRole('heading', {
+      name: 'Compare the proposed and existing Client',
+    });
+
+    const contactsRow = screen
+      .getByRole('rowheader', { name: 'Contacts' })
+      .closest('tr');
+    if (!contactsRow) throw new Error('Expected the compared Contacts row.');
+    const [proposedCell, existingCell] =
+      within(contactsRow).getAllByRole('cell');
+    if (!proposedCell || !existingCell)
+      throw new Error('Expected proposed and existing Contacts.');
+    expect(reviewedPreferences(proposedCell, 'Ion Demo')).toBe(preferences);
+    expect(reviewedPreferences(proposedCell, 'Ana Demo')).toBe('Not provided');
+    expect(reviewedPreferences(existingCell, 'Maria Demo')).toBe(markup);
+    expect(within(existingCell).queryByRole('link')).toBeNull();
+  });
+
+  it.each([
+    ['proposed', { proposed: [{ ...ion, communicationPreferences: 372 }] }],
+    ['existing', { existing: [{ ...ion, communicationPreferences: null }] }],
+  ])(
+    'refuses a duplicate comparison whose %s Contact preferences are not text',
+    async (_side, contacts) => {
+      renderDuplicateReview({ proposed: [], existing: [], ...contacts });
+      await openDuplicateReview();
+
+      expect(
+        await screen.findByText(
+          'The duplicate review could not be loaded safely.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('table')).toBeNull();
+    },
+  );
 
   it('never shows a previous Client preference after the selected Client changes', async () => {
     let releaseFirst: (response: Response) => void = () => undefined;
