@@ -6,7 +6,8 @@ export interface PublishPricingRuleVersionCommand {
   readonly expectedActiveVersionNumber: number | null;
 }
 
-// Derived at one request instant from stored timestamps; never stored.
+// Derived from stored timestamps at one read instant, sampled under the rule
+// scope protection; never stored.
 export type PricingRuleVersionState = 'SCHEDULED' | 'CURRENT' | 'SUPERSEDED';
 
 // Operational selection metadata, written once when a successor is published.

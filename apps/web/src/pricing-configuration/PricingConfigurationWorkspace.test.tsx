@@ -689,36 +689,59 @@ describe('PricingConfigurationWorkspace', () => {
   });
 
   it('keeps the payload, expected head and key for an explicit retry after an uncertain outcome', async () => {
+    // A network failure, a timeout, a gateway failure and the API's safe
+    // server error each leave the committed outcome unknown.
+    const uncertainAnswers = [
+      () => Promise.reject(new TypeError('network')),
+      () =>
+        Promise.reject(
+          new DOMException('The operation timed out.', 'TimeoutError'),
+        ),
+      () => new Response('gateway', { status: 502 }),
+      () =>
+        Response.json(
+          { statusCode: 500, message: 'Internal server error' },
+          { status: 500 },
+        ),
+    ];
     const fetchMock = stubApi({
       [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
       [LIST]: () => page([]),
       [PUBLISH]: (call) =>
-        call === 1
-          ? Promise.reject(new TypeError('network'))
-          : call === 2
-            ? new Response('gateway', { status: 502 })
-            : Response.json(
-                { outcome: 'UNCHANGED', version: ruleVersion(2) },
-                { status: 201 },
-              ),
+        uncertainAnswers[call - 1]?.() ??
+        Response.json(
+          { outcome: 'UNCHANGED', version: ruleVersion(2) },
+          { status: 201 },
+        ),
     });
+    async function expectUncertain(attempt: number) {
+      await waitFor(() =>
+        expect(requestsTo(fetchMock, PUBLISH)).toHaveLength(attempt),
+      );
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The publication outcome is uncertain.',
+      );
+      // Neither success nor a no-change outcome is shown, and the draft stays.
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Label')).toHaveValue('Uncertain rule');
+    }
     renderWorkspace();
     await screen.findByText('The new version will follow head version 1.');
     fillDraft({ label: 'Uncertain rule', effectiveFrom: '2026-07-01T00:00' });
     fireEvent.click(publishButton());
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The publication outcome is uncertain.',
-    );
+    await expectUncertain(1);
     // Reloading shows a newer head, yet the retry still carries the original
     // expectation and key so a committed first attempt is replayed.
     fireEvent.click(
       screen.getByRole('button', { name: 'Reload Pricing Rule Versions' }),
     );
     await screen.findByText('The new version will follow head version 2.');
-    fireEvent.click(screen.getByRole('button', { name: 'Retry publication' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The publication outcome is uncertain.',
-    );
+    for (let attempt = 2; attempt <= uncertainAnswers.length; attempt += 1) {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry publication' }),
+      );
+      await expectUncertain(attempt);
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Retry publication' }));
     expect(
       await screen.findByText(
@@ -726,7 +749,7 @@ describe('PricingConfigurationWorkspace', () => {
       ),
     ).toBeInTheDocument();
     const attempts = requestsTo(fetchMock, PUBLISH);
-    expect(attempts).toHaveLength(3);
+    expect(attempts).toHaveLength(uncertainAnswers.length + 1);
     expect(new Set(attempts.map(({ key }) => key)).size).toBe(1);
     expect(attempts.map(({ body }) => body)).toEqual(
       attempts.map(() => ({

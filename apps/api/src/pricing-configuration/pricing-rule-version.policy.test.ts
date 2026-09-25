@@ -121,12 +121,14 @@ describe('Pricing Rule publication decisions', () => {
   );
 
   it.each([
+    ['2026-04-30T12:00:00Z', '2026-04-30T12:00:00Z', { kind: 'publish' }],
     ['2026-04-30T12:00:00Z', '2026-05-01T00:00:00Z', { kind: 'publish' }],
     [
       '2026-04-30T12:00:00Z',
       '2026-05-02T00:00:00Z',
       { kind: 'rejected', code: 'EFFECTIVE_WINDOW_GAP' },
     ],
+    ['2026-04-30T23:59:59Z', '2026-05-01T00:00:00Z', { kind: 'publish' }],
     ['2026-05-01T00:00:00Z', '2026-05-02T00:00:00Z', { kind: 'publish' }],
     ['2026-05-02T00:00:00Z', '2026-05-03T00:00:00Z', { kind: 'publish' }],
     [
@@ -135,13 +137,13 @@ describe('Pricing Rule publication decisions', () => {
       { kind: 'rejected', code: 'EFFECTIVE_FROM_PAST' },
     ],
   ])(
-    'holds the section 11.3 boundary row committed at %s for a successor from %s',
-    (commitInstant, effectiveFrom, expected) => {
+    'holds the section 11.3 boundary row published at %s for a successor from %s',
+    (publicationInstant, effectiveFrom, expected) => {
       expect(
         decidePricingRulePublication({
           head,
           command: successor(effectiveFrom),
-          now: instant(commitInstant),
+          now: instant(publicationInstant),
         }),
       ).toEqual(
         expected.kind === 'publish'
@@ -151,7 +153,7 @@ describe('Pricing Rule publication decisions', () => {
     },
   );
 
-  it('accepts a start exactly at the commit instant and rejects a start before it', () => {
+  it('accepts a start exactly at the publication instant and rejects a start before it', () => {
     const now = instant('2026-04-15T00:00:00Z');
     const open = { ...head, effectiveTo: null };
     expect(

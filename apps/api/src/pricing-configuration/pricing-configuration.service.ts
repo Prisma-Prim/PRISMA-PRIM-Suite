@@ -44,14 +44,16 @@ const UUID_GRAMMAR =
 
 // Every publication follows one order: revalidate live authority under a row
 // lock, take the idempotency lock and honor an existing receipt, validate the
-// payload, lock the Company's rule scope and its head, sample the one server
-// instant, then evaluate and commit the version, supersession, event and
-// receipt together. The rule-scope lock is held exclusively from before that
-// instant until the transaction commits, and every read, replay included,
-// samples its own instant only while holding the same lock shared. No reader
-// can therefore observe the scope between a publication's instant and its
-// commit, so an accepted start never passes while readers still see the
-// predecessor.
+// payload, lock the Company's rule scope and its head, sample the one
+// publication instant, then evaluate and write the supersession, version,
+// event and receipt in one transaction. A result is returned only after that
+// transaction commits; a failed write rolls all of them back. The rule-scope
+// lock is held exclusively from before that instant until the transaction
+// ends, and every read, replay included, samples its own instant only while
+// holding the same lock shared. No reader can therefore observe the scope
+// between a publication's instant and its end, so an accepted start never
+// passes while readers still see the predecessor, and a start that passes
+// before the commit never re-decides a publication.
 @Injectable()
 export class PricingConfigurationService {
   constructor(
@@ -327,8 +329,8 @@ export class PricingConfigurationService {
   }
 
   // A read samples its instant only after any publication of the Company in
-  // flight has committed, then reads the rows, so it sees every publication
-  // whose instant precedes its own.
+  // flight has committed or rolled back, then reads the rows, so it sees the
+  // outcome of every publication whose instant precedes its own.
   private async observeRuleScope(
     actor: ActorContext,
     companyId: string,

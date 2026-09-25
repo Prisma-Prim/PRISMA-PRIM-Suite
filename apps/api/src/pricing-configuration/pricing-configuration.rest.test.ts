@@ -498,32 +498,42 @@ withPostgres('Company Pricing Configuration REST', () => {
   it.each([
     [
       '2026-04-30T12:00:00.000Z',
+      '2026-04-30T12:00:00Z',
+      { status: 201, code: undefined, state: 'CURRENT' },
+    ],
+    [
+      '2026-04-30T12:00:00.000Z',
       '2026-05-01T00:00:00Z',
-      { status: 201, code: undefined },
+      { status: 201, code: undefined, state: 'SCHEDULED' },
     ],
     [
       '2026-04-30T12:00:00.000Z',
       '2026-05-02T00:00:00Z',
-      { status: 409, code: 'EFFECTIVE_WINDOW_GAP' },
+      { status: 409, code: 'EFFECTIVE_WINDOW_GAP', state: undefined },
+    ],
+    [
+      '2026-04-30T23:59:59.000Z',
+      '2026-05-01T00:00:00Z',
+      { status: 201, code: undefined, state: 'SCHEDULED' },
     ],
     [
       '2026-05-01T00:00:00.000Z',
       '2026-05-02T00:00:00Z',
-      { status: 201, code: undefined },
+      { status: 201, code: undefined, state: 'SCHEDULED' },
     ],
     [
       '2026-05-02T00:00:00.000Z',
       '2026-05-03T00:00:00Z',
-      { status: 201, code: undefined },
+      { status: 201, code: undefined, state: 'SCHEDULED' },
     ],
     [
       '2026-05-02T00:00:00.000Z',
       '2026-05-01T00:00:00Z',
-      { status: 400, code: 'EFFECTIVE_FROM_PAST' },
+      { status: 400, code: 'EFFECTIVE_FROM_PAST', state: undefined },
     ],
   ])(
-    'holds the section 11.3 boundary row committed at %s for a successor from %s',
-    async (commitInstant, effectiveFrom, expected) => {
+    'holds the section 11.3 boundary row published at %s for a successor from %s',
+    async (publicationInstant, effectiveFrom, expected) => {
       const { company } = await prepared();
       setClock('2026-03-01T00:00:00.000Z');
       const head = publication(
@@ -540,7 +550,7 @@ withPostgres('Company Pricing Configuration REST', () => {
         ),
       );
       const before = await contentOf(head.version.id);
-      setClock(commitInstant);
+      setClock(publicationInstant);
       const response = await post(
         VERSIONS,
         company.id,
@@ -558,7 +568,8 @@ withPostgres('Company Pricing Configuration REST', () => {
         expect(successor.version).toMatchObject({
           versionNumber: 2,
           effectiveFrom: new Date(effectiveFrom).toISOString(),
-          createdAt: commitInstant,
+          createdAt: publicationInstant,
+          state: expected.state,
         });
         expect(
           versionRecord(
@@ -568,7 +579,7 @@ withPostgres('Company Pricing Configuration REST', () => {
           ).supersession,
         ).toEqual({
           supersededByVersionId: successor.version.id,
-          supersededAt: commitInstant,
+          supersededAt: publicationInstant,
           supersededFrom: new Date(effectiveFrom).toISOString(),
         });
         await expectCounts({ versions: 2, receipts: 2, events: 2 });
@@ -697,13 +708,13 @@ withPostgres('Company Pricing Configuration REST', () => {
       createdAt: '2026-04-01T00:00:00.000Z',
     });
     expect(head.version.createdAt).toBe('2026-04-01T00:00:00.000Z');
-    // A start exactly at the commit instant is not back-dating.
+    // A start exactly at the publication instant is not back-dating.
     setClock('2026-06-01T00:00:00.002Z');
     const exactlyNow = publication(
       await command(
         VERSIONS,
         {
-          label: 'Starts at the commit instant',
+          label: 'Starts at the publication instant',
           effectiveFrom: '2026-06-01T00:00:00.002Z',
           expectedActiveVersionNumber: 2,
         },
@@ -1115,6 +1126,740 @@ withPostgres('Company Pricing Configuration REST', () => {
     await expectCounts({ versions: 2, receipts: 2, events: 2 });
   }, 30_000);
 
+  it('decides a start one millisecond after, at and before the one publication instant', async () => {
+    const { company } = await prepared();
+    async function rejectedAsBackDated(
+      body: unknown,
+      key: string,
+    ): Promise<void> {
+      const response = await post(VERSIONS, company.id, body, key);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: 'EFFECTIVE_FROM_PAST',
+        field: 'effectiveFrom',
+      });
+    }
+    async function currentVersionNumber(): Promise<number | null> {
+      const scope = scopeRecord(
+        await (await request(SCOPE, company.id)).json(),
+      );
+      return scope.current?.versionNumber ?? null;
+    }
+
+    // A first publication at P = 2026-04-01T00:00:00.000Z.
+    await rejectedAsBackDated(
+      {
+        label: 'Rule 1',
+        effectiveFrom: '2026-03-31T23:59:59.999Z',
+        expectedActiveVersionNumber: null,
+      },
+      'first-earlier',
+    );
+    await expectCounts({ versions: 0, receipts: 0, events: 0 });
+    const first = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Rule 1',
+          effectiveFrom: '2026-04-01T00:00:00.001Z',
+          expectedActiveVersionNumber: null,
+        },
+        'first-later',
+        company.id,
+      ),
+    );
+    expect(first.version).toMatchObject({
+      versionNumber: 1,
+      state: 'SCHEDULED',
+      createdAt: '2026-04-01T00:00:00.000Z',
+    });
+    expect(await currentVersionNumber()).toBeNull();
+
+    // A successor at P = 2026-04-10T12:00:00.000Z: the predecessor stays
+    // CURRENT until the later start, then yields with no job.
+    setClock('2026-04-10T12:00:00.000Z');
+    await rejectedAsBackDated(
+      {
+        label: 'Rule 2',
+        effectiveFrom: '2026-04-10T11:59:59.999Z',
+        expectedActiveVersionNumber: 1,
+      },
+      'successor-earlier',
+    );
+    const later = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Rule 2',
+          effectiveFrom: '2026-04-10T12:00:00.001Z',
+          expectedActiveVersionNumber: 1,
+        },
+        'successor-later',
+        company.id,
+      ),
+    );
+    expect(later.version).toMatchObject({
+      versionNumber: 2,
+      state: 'SCHEDULED',
+      createdAt: '2026-04-10T12:00:00.000Z',
+    });
+    expect(await currentVersionNumber()).toBe(1);
+    setClock('2026-04-10T12:00:00.001Z');
+    expect(await currentVersionNumber()).toBe(2);
+
+    // A successor at P = 2026-04-20T00:00:00.000Z starting at P takes over
+    // at once.
+    setClock('2026-04-20T00:00:00.000Z');
+    const equal = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Rule 3',
+          effectiveFrom: '2026-04-20T00:00:00.000Z',
+          expectedActiveVersionNumber: 2,
+        },
+        'successor-equal',
+        company.id,
+      ),
+    );
+    expect(equal.version).toMatchObject({
+      versionNumber: 3,
+      state: 'CURRENT',
+      createdAt: '2026-04-20T00:00:00.000Z',
+    });
+    expect(await currentVersionNumber()).toBe(3);
+
+    // Each creation time and supersededAt is its publication instant P, and
+    // the back-dated attempts wrote nothing.
+    expect(
+      (
+        await pool.query(
+          `SELECT version_number, created_at, superseded_at, superseded_from
+             FROM pricing_rule_versions WHERE company_id = $1 ORDER BY version_number`,
+          [company.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        version_number: 1,
+        created_at: new Date('2026-04-01T00:00:00.000Z'),
+        superseded_at: new Date('2026-04-10T12:00:00.000Z'),
+        superseded_from: new Date('2026-04-10T12:00:00.001Z'),
+      },
+      {
+        version_number: 2,
+        created_at: new Date('2026-04-10T12:00:00.000Z'),
+        superseded_at: new Date('2026-04-20T00:00:00.000Z'),
+        superseded_from: new Date('2026-04-20T00:00:00.000Z'),
+      },
+      {
+        version_number: 3,
+        created_at: new Date('2026-04-20T00:00:00.000Z'),
+        superseded_at: null,
+        superseded_from: null,
+      },
+    ]);
+    await expectCounts({ versions: 3, receipts: 3, events: 3 });
+  }, 30_000);
+
+  it.each([
+    {
+      crossing: 'its start',
+      head: { effectiveFrom: '2026-04-01T00:00:00Z' },
+      publicationInstant: '2026-04-01T12:00:00.000Z',
+      effectiveFrom: '2026-04-01T12:00:00.001Z',
+      committedAfter: '2026-04-01T12:00:00.002Z',
+    },
+    {
+      crossing: 'the head expiry and its start',
+      head: {
+        effectiveFrom: '2026-04-01T00:00:00Z',
+        effectiveTo: '2026-05-01T00:00:00Z',
+      },
+      publicationInstant: '2026-04-30T23:59:59.000Z',
+      effectiveFrom: '2026-05-01T00:00:00.000Z',
+      committedAfter: '2026-05-01T00:00:01.000Z',
+    },
+  ])(
+    'keeps the outcome decided at the publication instant when $crossing passes before the commit',
+    async ({ head, publicationInstant, effectiveFrom, committedAfter }) => {
+      const { company } = await prepared();
+      setClock('2026-03-01T00:00:00.000Z');
+      const predecessor = publication(
+        await command(
+          VERSIONS,
+          {
+            label: 'Illustrative rule A',
+            ...head,
+            expectedActiveVersionNumber: null,
+          },
+          'predecessor',
+          company.id,
+        ),
+      );
+      const before = await contentOf(predecessor.version.id);
+      // SHARE admits the publication's head lock and its clock sample but not
+      // its first write, holding it between its instant and its commit.
+      const blocker = await holdLock(async (connection) => {
+        await connection.query(
+          'LOCK TABLE pricing_rule_versions IN SHARE MODE',
+        );
+      });
+      let released = false;
+      try {
+        setClock(publicationInstant);
+        const pending = post(
+          VERSIONS,
+          company.id,
+          {
+            label: 'Illustrative rule B',
+            effectiveFrom,
+            expectedActiveVersionNumber: 1,
+          },
+          'successor',
+        );
+        await waitForBlockedBy(blocker.backendPid);
+        // Decided at this later instant, the same start would be back-dated.
+        setClock(committedAfter);
+        await blocker.connection.query('COMMIT');
+        released = true;
+        const published = await pending;
+        expect(published.status).toBe(201);
+        const successor = publication(await published.json());
+        expect(successor).toEqual({
+          outcome: 'PUBLISHED',
+          version: expect.objectContaining({
+            versionNumber: 2,
+            effectiveFrom,
+            createdAt: publicationInstant,
+            state: 'SCHEDULED',
+          }),
+        });
+        expect(
+          versionRecord(
+            await (
+              await request(`${VERSIONS}/${predecessor.version.id}`, company.id)
+            ).json(),
+          ),
+        ).toEqual({
+          ...predecessor.version,
+          state: 'SUPERSEDED',
+          supersession: {
+            supersededByVersionId: successor.version.id,
+            supersededAt: publicationInstant,
+            supersededFrom: effectiveFrom,
+          },
+        });
+        expect(await (await request(SCOPE, company.id)).json()).toEqual({
+          current: { ...successor.version, state: 'CURRENT' },
+          headVersionNumber: 2,
+          provisional: true,
+        });
+      } finally {
+        if (!released) await blocker.connection.query('ROLLBACK');
+        blocker.connection.release();
+      }
+      expect(await contentOf(predecessor.version.id)).toEqual(before);
+      await expectCounts({ versions: 2, receipts: 2, events: 2 });
+    },
+    30_000,
+  );
+
+  it('holds a competing first publication on the scope protection and rejects it as stale after the first commits', async () => {
+    const { company } = await prepared();
+    // A second configuration owner competes: the first owner's own requests
+    // would already queue behind its authority row locks.
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    const firstBody = {
+      label: 'First rule',
+      effectiveFrom: '2026-05-01T00:00:00Z',
+      expectedActiveVersionNumber: null,
+    };
+    // SHARE holds the first publication at its insert, after it has taken
+    // the exclusive protection of the still empty scope.
+    const blocker = await holdLock(async (connection) => {
+      await connection.query('LOCK TABLE pricing_rule_versions IN SHARE MODE');
+    });
+    let released = false;
+    try {
+      const first = post(VERSIONS, company.id, firstBody, 'first');
+      await waitForBlockedBy(blocker.backendPid);
+      const competing = post(
+        VERSIONS,
+        company.id,
+        { ...firstBody, label: 'Competing first rule' },
+        'competing-first',
+        CONFIGURATION_MEMBER,
+      );
+      await waitForAdvisoryWaiters(1);
+      await blocker.connection.query('COMMIT');
+      released = true;
+      const published = await first;
+      expect(published.status).toBe(201);
+      expect(publication(await published.json()).version).toMatchObject({
+        versionNumber: 1,
+        label: 'First rule',
+      });
+      const stale = await competing;
+      expect(stale.status).toBe(409);
+      expect(await stale.json()).toEqual({
+        code: 'STALE_ACTIVE_VERSION',
+        message: expect.any(String),
+        headVersionNumber: 1,
+      });
+    } finally {
+      if (!released) await blocker.connection.query('ROLLBACK');
+      blocker.connection.release();
+    }
+    expect(await heads()).toEqual([
+      { company_id: company.id, version_number: 1 },
+    ]);
+    await expectCounts({ versions: 1, receipts: 1, events: 1 });
+  }, 30_000);
+
+  it('orders a read holding the scope protection at P before a publication starting at P', async () => {
+    const { company } = await prepared();
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    setClock('2026-03-01T00:00:00.000Z');
+    const predecessor = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Illustrative rule A',
+          effectiveFrom: '2026-03-15T00:00:00Z',
+          expectedActiveVersionNumber: null,
+        },
+        'predecessor',
+        company.id,
+      ),
+    );
+    const instant = '2026-04-01T12:00:00.000Z';
+    setClock(instant);
+    const observer = { headers: CONFIGURATION_MEMBER };
+    // ACCESS EXCLUSIVE holds the read after it has taken the shared
+    // protection and sampled P, before it reads a version.
+    const blocker = await holdLock(async (connection) => {
+      await connection.query(
+        'LOCK TABLE pricing_rule_versions IN ACCESS EXCLUSIVE MODE',
+      );
+    });
+    let released = false;
+    let successor: VersionView;
+    try {
+      const earlier = request(SCOPE, company.id, observer);
+      await waitForBlockedBy(blocker.backendPid);
+      const pending = post(
+        VERSIONS,
+        company.id,
+        {
+          label: 'Illustrative rule B',
+          effectiveFrom: instant,
+          expectedActiveVersionNumber: 1,
+        },
+        'successor',
+      );
+      // The publication waits for the read before it samples its instant.
+      await waitForAdvisoryWaiters(1);
+      await blocker.connection.query('COMMIT');
+      released = true;
+      const earlierRead = await earlier;
+      expect(earlierRead.status).toBe(200);
+      expect(await earlierRead.json()).toEqual({
+        current: { ...predecessor.version, state: 'CURRENT' },
+        headVersionNumber: 1,
+        provisional: true,
+      });
+      const published = await pending;
+      expect(published.status).toBe(201);
+      successor = publication(await published.json()).version;
+      expect(successor).toMatchObject({
+        versionNumber: 2,
+        effectiveFrom: instant,
+        createdAt: instant,
+        state: 'CURRENT',
+      });
+    } finally {
+      if (!released) await blocker.connection.query('ROLLBACK');
+      blocker.connection.release();
+    }
+    // Later reads at the same instant show the successor.
+    expect(await (await request(SCOPE, company.id, observer)).json()).toEqual({
+      current: successor,
+      headVersionNumber: 2,
+      provisional: true,
+    });
+    expect(
+      await (
+        await request(
+          `${VERSIONS}/${predecessor.version.id}`,
+          company.id,
+          observer,
+        )
+      ).json(),
+    ).toEqual({
+      ...predecessor.version,
+      state: 'SUPERSEDED',
+      supersession: {
+        supersededByVersionId: successor.id,
+        supersededAt: instant,
+        supersededFrom: instant,
+      },
+    });
+    await expectCounts({ versions: 2, receipts: 2, events: 2 });
+  }, 30_000);
+
+  it('rolls a failed publication back at each write or its commit and releases waiting readers onto the unchanged state', async () => {
+    const { company } = await prepared();
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    const head = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Illustrative rule A',
+          effectiveFrom: '2026-04-01T00:00:00Z',
+          expectedActiveVersionNumber: null,
+        },
+        'head',
+        company.id,
+      ),
+    );
+    const before = await contentOf(head.version.id);
+    const observer = { headers: CONFIGURATION_MEMBER };
+    const unchanged = [
+      {
+        status: 200,
+        body: {
+          current: head.version,
+          headVersionNumber: 1,
+          provisional: true,
+        },
+      },
+      { status: 200, body: { items: [head.version], provisional: true } },
+      { status: 200, body: head.version },
+    ];
+    const failing = {
+      label: 'Rolled back rule',
+      effectiveFrom: '2026-05-01T00:00:00Z',
+      expectedActiveVersionNumber: 1,
+    };
+    // The failure is injected by the database, never by replacing the module.
+    await pool.query(`
+      CREATE FUNCTION reject_pricing_publication_write() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'forced pricing publication failure';
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    const rejectBefore = (operation: 'INSERT' | 'UPDATE', table: string) => ({
+      table,
+      trigger: `CREATE TRIGGER reject_pricing_publication_write
+                  BEFORE ${operation} ON ${table}
+                  FOR EACH ROW EXECUTE FUNCTION reject_pricing_publication_write()`,
+    });
+    try {
+      for (const { write, table, trigger } of [
+        {
+          write: 'predecessor',
+          ...rejectBefore('UPDATE', 'pricing_rule_versions'),
+        },
+        {
+          write: 'version',
+          ...rejectBefore('INSERT', 'pricing_rule_versions'),
+        },
+        {
+          write: 'receipt',
+          ...rejectBefore('INSERT', 'pricing_configuration_commands'),
+        },
+        {
+          write: 'event',
+          ...rejectBefore('INSERT', 'pricing_configuration_events'),
+        },
+        {
+          // Deferred, it fails the commit itself after all four writes.
+          write: 'commit',
+          table: 'pricing_configuration_commands',
+          trigger: `CREATE CONSTRAINT TRIGGER reject_pricing_publication_write
+                      AFTER INSERT ON pricing_configuration_commands
+                      DEFERRABLE INITIALLY DEFERRED
+                      FOR EACH ROW EXECUTE FUNCTION reject_pricing_publication_write()`,
+        },
+      ]) {
+        await pool.query(trigger);
+        // SHARE holds the publication at its first write while it holds the
+        // exclusive protection, so the readers queue behind it.
+        const blocker = await holdLock(async (connection) => {
+          await connection.query(
+            'LOCK TABLE pricing_rule_versions IN SHARE MODE',
+          );
+        });
+        let released = false;
+        try {
+          const pending = post(
+            VERSIONS,
+            company.id,
+            failing,
+            `failed-${write}`,
+          );
+          await waitForBlockedBy(blocker.backendPid);
+          let answered = 0;
+          const observations = [
+            SCOPE,
+            VERSIONS,
+            `${VERSIONS}/${head.version.id}`,
+          ].map(async (path) => {
+            const settled = await request(path, company.id, observer);
+            const body: unknown = await settled.json();
+            answered += 1;
+            return { status: settled.status, body };
+          });
+          await waitForAdvisoryWaiters(observations.length);
+          expect(answered).toBe(0);
+          await blocker.connection.query('COMMIT');
+          released = true;
+          const failed = await pending;
+          // Neither success nor that nothing was written is claimed.
+          expect({
+            write,
+            status: failed.status,
+            body: await failed.json(),
+          }).toEqual({
+            write,
+            status: 500,
+            body: { statusCode: 500, message: 'Internal server error' },
+          });
+          expect(await Promise.all(observations)).toEqual(unchanged);
+        } finally {
+          if (!released) await blocker.connection.query('ROLLBACK');
+          blocker.connection.release();
+          await pool.query(
+            `DROP TRIGGER reject_pricing_publication_write ON ${table}`,
+          );
+        }
+        expect(await contentOf(head.version.id)).toEqual(before);
+        expect(await heads()).toEqual([
+          { company_id: company.id, version_number: 1 },
+        ]);
+        await expectCounts({ versions: 1, receipts: 1, events: 1 });
+      }
+    } finally {
+      await pool.query(
+        'DROP FUNCTION reject_pricing_publication_write() CASCADE',
+      );
+    }
+
+    // An exact retry after a rollback is a new command decided at its own
+    // publication instant, never re-dated to the failed attempt.
+    setClock('2026-04-02T00:00:00.000Z');
+    const retried = publication(
+      await command(VERSIONS, failing, 'failed-event', company.id),
+    );
+    expect(retried.version).toMatchObject({
+      versionNumber: 2,
+      state: 'SCHEDULED',
+      createdAt: '2026-04-02T00:00:00.000Z',
+    });
+    expect(
+      versionRecord(
+        await (
+          await request(`${VERSIONS}/${head.version.id}`, company.id)
+        ).json(),
+      ).supersession,
+    ).toEqual({
+      supersededByVersionId: retried.version.id,
+      supersededAt: '2026-04-02T00:00:00.000Z',
+      supersededFrom: '2026-05-01T00:00:00.000Z',
+    });
+    // Another rolled-back attempt, retried exactly, meets the moved head like
+    // any new command.
+    const stale = await post(
+      VERSIONS,
+      company.id,
+      failing,
+      'failed-predecessor',
+    );
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({
+      code: 'STALE_ACTIVE_VERSION',
+      message: expect.any(String),
+      headVersionNumber: 2,
+    });
+    await expectCounts({ versions: 2, receipts: 2, events: 2 });
+  }, 60_000);
+
+  it('answers a publication and releases its waiting readers only once its commit completes', async () => {
+    const { company } = await prepared();
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    const head = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Illustrative rule A',
+          effectiveFrom: '2026-04-01T00:00:00Z',
+          expectedActiveVersionNumber: null,
+        },
+        'head',
+        company.id,
+      ),
+    );
+    // A deferred trigger makes the commit itself wait, after every write of
+    // the publication, for a lock the test holds.
+    await pool.query(`
+      CREATE FUNCTION hold_pricing_publication_commit() RETURNS trigger AS $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock_shared(360360);
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE CONSTRAINT TRIGGER hold_pricing_publication_commit
+        AFTER INSERT ON pricing_configuration_commands
+        DEFERRABLE INITIALLY DEFERRED
+        FOR EACH ROW EXECUTE FUNCTION hold_pricing_publication_commit();
+    `);
+    let answered = 0;
+    const answer = async (response: Promise<Response>) => {
+      const settled = await response;
+      const body: unknown = await settled.json();
+      answered += 1;
+      return { status: settled.status, body };
+    };
+    try {
+      const blocker = await holdLock(async (connection) => {
+        await connection.query('SELECT pg_advisory_xact_lock(360360)');
+      });
+      let released = false;
+      try {
+        const publishing = answer(
+          post(
+            VERSIONS,
+            company.id,
+            {
+              label: 'Illustrative rule B',
+              effectiveFrom: '2026-05-01T00:00:00Z',
+              expectedActiveVersionNumber: 1,
+            },
+            'successor',
+          ),
+        );
+        await waitForBlockedBy(blocker.backendPid);
+        const reading = answer(
+          request(SCOPE, company.id, { headers: CONFIGURATION_MEMBER }),
+        );
+        // The committing publication and the read behind its protection.
+        await waitForAdvisoryWaiters(2);
+        expect(answered).toBe(0);
+        await blocker.connection.query('COMMIT');
+        released = true;
+        const published = await publishing;
+        expect(published).toEqual({
+          status: 201,
+          body: {
+            outcome: 'PUBLISHED',
+            version: expect.objectContaining({
+              versionNumber: 2,
+              state: 'SCHEDULED',
+              createdAt: '2026-04-01T00:00:00.000Z',
+            }),
+          },
+        });
+        expect(await reading).toEqual({
+          status: 200,
+          body: {
+            current: {
+              ...head.version,
+              supersession: {
+                supersededByVersionId: publication(published.body).version.id,
+                supersededAt: '2026-04-01T00:00:00.000Z',
+                supersededFrom: '2026-05-01T00:00:00.000Z',
+              },
+            },
+            headVersionNumber: 2,
+            provisional: true,
+          },
+        });
+      } finally {
+        if (!released) await blocker.connection.query('ROLLBACK');
+        blocker.connection.release();
+      }
+    } finally {
+      await pool.query(
+        'DROP FUNCTION hold_pricing_publication_commit() CASCADE',
+      );
+    }
+    await expectCounts({ versions: 2, receipts: 2, events: 2 });
+  }, 30_000);
+
+  it('replays a publication whose response was lost after its start passed and the head moved', async () => {
+    const { company } = await prepared();
+    const body = {
+      label: 'Lost response rule',
+      effectiveFrom: '2026-04-05T00:00:00Z',
+      expectedActiveVersionNumber: null,
+    };
+    // The caller never receives this committed result.
+    const lost = publication(await command(VERSIONS, body, 'lost', company.id));
+    setClock('2026-04-06T00:00:00.000Z');
+    const moved = publication(
+      await command(
+        VERSIONS,
+        {
+          label: 'Head mover',
+          effectiveFrom: '2026-04-10T00:00:00Z',
+          expectedActiveVersionNumber: 1,
+        },
+        'moves-head',
+        company.id,
+      ),
+    );
+    // Decided afresh now, the lost payload would be both stale and back-dated.
+    setClock('2026-04-12T00:00:00.000Z');
+    const recorded = {
+      outcome: 'PUBLISHED',
+      version: {
+        ...lost.version,
+        state: 'SUPERSEDED',
+        supersession: {
+          supersededByVersionId: moved.version.id,
+          supersededAt: '2026-04-06T00:00:00.000Z',
+          supersededFrom: '2026-04-10T00:00:00.000Z',
+        },
+      },
+    };
+    const retries = [
+      await post(VERSIONS, company.id, body, 'lost'),
+      ...(await Promise.all([
+        post(VERSIONS, company.id, body, 'lost'),
+        post(VERSIONS, company.id, body, 'lost'),
+      ])),
+    ];
+    for (const retry of retries) {
+      expect(retry.status).toBe(201);
+      expect(await retry.json()).toEqual(recorded);
+    }
+    const changed = await post(
+      VERSIONS,
+      company.id,
+      { ...body, label: 'Lost response rule, edited' },
+      'lost',
+    );
+    expect(changed.status).toBe(409);
+    expect(await changed.json()).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    await expectCounts({ versions: 2, receipts: 2, events: 2 });
+  }, 30_000);
+
   it('revalidates live authority under a row lock before replaying or committing', async () => {
     const { company } = await prepared();
     const configurationMember = await member(CONFIGURATION_MEMBER, company.id, [
@@ -1363,7 +2108,9 @@ withPostgres('Company Pricing Configuration REST', () => {
       [{ ...valid, label: '😀'.repeat(121) }, 'label'],
       [{ ...valid, effectiveFrom: '2026-05-01T00:00:00' }, 'effectiveFrom'],
       [{ ...valid, effectiveFrom: '2026-02-30T00:00:00Z' }, 'effectiveFrom'],
+      [{ ...valid, effectiveFrom: '2026-05-01T24:00:00Z' }, 'effectiveFrom'],
       [{ ...valid, effectiveTo: 'soon' }, 'effectiveTo'],
+      [{ ...valid, effectiveTo: '2026-04-30T23:59:59.999Z' }, 'effectiveTo'],
       [{ ...valid, provenance: 'REAL' }, 'ruleVersion'],
       [{ ...valid, versionNumber: 7 }, 'ruleVersion'],
       [{ ...valid, ruleShape: 'FLAT_FEE' }, 'ruleVersion'],
@@ -1969,6 +2716,25 @@ withPostgres('Company Pricing Configuration REST', () => {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     throw new Error('The observers neither answered nor waited.');
+  }
+
+  // Waits until exactly `count` requests of this database wait for an
+  // advisory lock. In the cases using it, the only advisory locks contended
+  // are the Company rule-scope protection held by a paused operation and a
+  // lock the test itself holds.
+  async function waitForAdvisoryWaiters(count: number): Promise<void> {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const waiting = await pool.query<{ waiting: number }>(
+        `SELECT count(*)::integer AS waiting
+           FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND NOT granted
+            AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+      );
+      if (waiting.rows[0]?.waiting === count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The operations did not wait on the scope protection.');
   }
 
   async function expectCounts(expected: {

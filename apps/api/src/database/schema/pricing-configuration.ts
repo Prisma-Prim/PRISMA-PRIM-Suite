@@ -58,7 +58,8 @@ export const pricingRuleVersions = pgTable(
     createdByWorkspaceMembershipId: uuid(
       'created_by_workspace_membership_id',
     ).notNull(),
-    // The single server-owned instant of the publishing command.
+    // The publication instant: the one server instant the publishing command
+    // decided at, not the physical commit time, which is never stored.
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     supersededByVersionId: uuid('superseded_by_version_id'),
     supersededAt: timestamp('superseded_at', { withTimezone: true }),
