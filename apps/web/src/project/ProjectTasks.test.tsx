@@ -1604,11 +1604,12 @@ const blockedTask = {
   },
 };
 type ExecutionCommand = { url: string; key: string | null; body: unknown };
-/** A stateful server stub for one Task that applies each transition and records its event. */
+/** A stateful server stub for one Task that applies each transition or edit and records its event. */
 function executionFixture(
   options: {
     task?: Record<string, unknown>;
     mutable?: boolean;
+    members?: (typeof anaPop)[];
     reply?: (
       command: ExecutionCommand,
     ) => Response | Promise<Response> | undefined;
@@ -1633,6 +1634,8 @@ function executionFixture(
       if (url === '/api/tasks/task')
         return Response.json({ mutable: options.mutable ?? true, task });
       if (url === '/api/tasks/task/history') return Response.json({ events });
+      if (url.endsWith('/eligible-task-assignees') && options.members)
+        return Response.json({ members: options.members });
       return undefined;
     },
     mutate: (url, request) => {
@@ -1655,6 +1658,8 @@ function executionFixture(
       const common = {
         ...savedTask,
         title: task.title,
+        assignee: task.assignee,
+        dueDate: task.dueDate,
         version,
         updatedAt: declaredAt,
       };
@@ -1684,6 +1689,28 @@ function executionFixture(
           action: 'task.cancelled',
           metadata: { version, before, after: 'cancelled', reason },
         };
+      } else if (request.method === 'PATCH') {
+        const edited = {
+          title: 'title' in input ? input.title : task.title,
+          assignee:
+            'assigneeMembershipId' in input
+              ? (options.members?.find(
+                  (member) =>
+                    member.workspaceMembershipId === input.assigneeMembershipId,
+                ) ?? null)
+              : task.assignee,
+          dueDate: 'dueDate' in input ? input.dueDate : task.dueDate,
+        };
+        const changes = Object.fromEntries(
+          (['title', 'assignee', 'dueDate'] as const)
+            .filter((field) => edited[field] !== task[field])
+            .map((field) => [
+              field,
+              { before: task[field], after: edited[field] },
+            ]),
+        );
+        task = { ...task, ...edited, version, updatedAt: declaredAt };
+        meaning = { action: 'task.updated', metadata: { version, changes } };
       } else if (url.endsWith('/complete')) {
         task = {
           ...common,
@@ -2094,6 +2121,197 @@ it('drops an open reason draft and a late transition reply when the authorizatio
   expect(
     within(tasks).queryByText('In progress', { selector: 'p.task-status' }),
   ).toBeNull();
+});
+
+const unsavedFields = {
+  title: 'Unsaved correction',
+  assigneeMembershipId: anaPop.workspaceMembershipId,
+  dueDate: '2026-10-15',
+};
+function enterUnsavedFields(tasks: HTMLElement) {
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: unsavedFields.title },
+  });
+  fireEvent.change(within(tasks).getByLabelText('Responsible member'), {
+    target: { value: unsavedFields.assigneeMembershipId },
+  });
+  fireEvent.change(within(tasks).getByLabelText('Due date'), {
+    target: { value: unsavedFields.dueDate },
+  });
+}
+// A move remounts the form, so every check queries the current fields.
+function formFields(tasks: HTMLElement) {
+  return {
+    title: within(tasks).getByLabelText('Task title'),
+    assigneeMembershipId: within(tasks).getByLabelText('Responsible member'),
+    dueDate: within(tasks).getByLabelText('Due date'),
+  };
+}
+async function expectFormFields(
+  tasks: HTMLElement,
+  expected: typeof unsavedFields,
+) {
+  await waitFor(() => {
+    const fields = formFields(tasks);
+    expect(fields.title).toHaveValue(expected.title);
+    expect(fields.assigneeMembershipId).toHaveValue(
+      expected.assigneeMembershipId,
+    );
+    expect(fields.dueDate).toHaveValue(expected.dueDate);
+    expect(
+      within(tasks).getByRole('button', { name: 'Save Task' }),
+    ).toBeEnabled();
+  });
+}
+
+it('keeps unsaved title, responsible member and date through moves between open states and saves them at the current version', async () => {
+  const commands = executionFixture({ members: [anaPop] });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  await expectFormFields(tasks, {
+    title: savedTask.title,
+    assigneeMembershipId: '',
+    dueDate: '',
+  });
+  enterUnsavedFields(tasks);
+
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await waitForState(tasks, 'In progress');
+  await expectFormFields(tasks, unsavedFields);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
+  fireEvent.change(within(tasks).getByLabelText('Blockage reason'), {
+    target: { value: blockageReason },
+  });
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
+  await waitForState(tasks, 'Blocked');
+  await expectFormFields(tasks, unsavedFields);
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark to do' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, unsavedFields);
+  // The detail keeps showing the recorded fields until the draft is saved.
+  expect(
+    within(tasks).getByRole('heading', { name: savedTask.title }),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByText('No due date', { selector: 'dd' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByRole('heading', { name: unsavedFields.title });
+  expect(commands.map((command) => command.body)).toEqual([
+    { expectedVersion: 1, status: 'in_progress' },
+    { expectedVersion: 2, status: 'blocked', reason: blockageReason },
+    { expectedVersion: 3, status: 'todo' },
+    { expectedVersion: 4, ...unsavedFields },
+  ]);
+  expect(commands.at(-1)?.url).toBe('/api/tasks/task');
+  expect(
+    within(tasks).getByText(anaPop.displayLabel, { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(
+    within(tasks).getByText(unsavedFields.dueDate, { selector: 'dd' }),
+  ).toBeInTheDocument();
+});
+
+it('discards a kept draft when the Task changed after its own move, so newer fields are never overwritten', async () => {
+  let moved = false;
+  const changed = {
+    ...savedTask,
+    title: 'Later correction by colleague',
+    status: 'in_progress',
+    version: 3,
+  };
+  fixture({
+    read: (url) => {
+      if (!moved) return undefined;
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [changed] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: changed });
+      return undefined;
+    },
+    mutate: () => {
+      moved = true;
+      return Response.json({ ...savedTask, status: 'in_progress', version: 2 });
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.change(within(tasks).getByLabelText('Task title'), {
+    target: { value: unsavedFields.title },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Mark in progress' }),
+  );
+  await within(tasks).findByRole('heading', { name: changed.title });
+  await waitFor(() =>
+    expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+      changed.title,
+    ),
+  );
+  fireEvent.click(within(tasks).getByRole('button', { name: 'New Task' }));
+  fireEvent.click(
+    await within(tasks).findByRole('button', { name: changed.title }),
+  );
+  await within(tasks).findByRole('heading', { name: changed.title });
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(changed.title);
+});
+
+it('consumes the draft when the Task is completed or cancelled, so reopening shows the recorded fields', async () => {
+  const commands = executionFixture({ members: [anaPop] });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  const recorded = {
+    title: savedTask.title,
+    assigneeMembershipId: '',
+    dueDate: '',
+  };
+  await expectFormFields(tasks, recorded);
+  enterUnsavedFields(tasks);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Mark done' }));
+  await waitForState(tasks, 'Done');
+  expect(within(tasks).queryByLabelText('Task title')).toBeNull();
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, recorded);
+
+  enterUnsavedFields(tasks);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
+  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
+    target: { value: 'Duplicate of A' },
+  });
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Save cancellation' }),
+  );
+  await waitForState(tasks, 'Cancelled');
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reopen Task' }));
+  await waitForState(tasks, 'To do');
+  await expectFormFields(tasks, recorded);
+  expect(commands.map((command) => command.url)).toEqual([
+    '/api/tasks/task/complete',
+    '/api/tasks/task/reopen',
+    '/api/tasks/task/cancel',
+    '/api/tasks/task/reopen',
+  ]);
 });
 
 it('offers All plus the five states in the status filter and filters on the real state', async () => {

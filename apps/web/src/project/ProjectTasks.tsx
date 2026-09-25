@@ -572,7 +572,20 @@ function TaskProject({
       const receipt = readTask(result.value, scope);
       if (command.taskId !== null && receipt.id !== command.taskId)
         throw new Error('Invalid Task receipt');
-      drafts.current.delete(command.taskId ?? 'create');
+      // A confirmed move between open states changes no field, so a draft kept at the move's
+      // expected version stays useful at the version the move produced. A later change still
+      // discards it on the next read; every other confirmed command consumes the draft.
+      const saved = drafts.current.get(command.taskId ?? 'create');
+      if (
+        command.action === 'status' &&
+        saved?.version === command.body.expectedVersion &&
+        receipt.version === command.body.expectedVersion + 1
+      )
+        drafts.current.set(command.taskId, {
+          version: receipt.version,
+          draft: saved.draft,
+        });
+      else drafts.current.delete(command.taskId ?? 'create');
       setFeedback(copy.confirmed);
       setMutation({ kind: 'blocked' });
       setSelected(receipt.id);
