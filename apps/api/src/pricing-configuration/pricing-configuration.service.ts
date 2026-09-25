@@ -46,7 +46,12 @@ const UUID_GRAMMAR =
 // lock, take the idempotency lock and honor an existing receipt, validate the
 // payload, lock the Company's rule scope and its head, sample the one server
 // instant, then evaluate and commit the version, supersession, event and
-// receipt together. Reads sample the same clock once per request.
+// receipt together. The rule-scope lock is held exclusively from before that
+// instant until the transaction commits, and every read, replay included,
+// samples its own instant only while holding the same lock shared. No reader
+// can therefore observe the scope between a publication's instant and its
+// commit, so an accepted start never passes while readers still see the
+// predecessor.
 @Injectable()
 export class PricingConfigurationService {
   constructor(
@@ -91,6 +96,7 @@ export class PricingConfigurationService {
             code: 'IDEMPOTENCY_CONFLICT',
             message: 'Idempotency-Key was already used for another command.',
           });
+        const replayedAt = await this.observeRuleScope(actor, companyId);
         return {
           outcome: receipt.outcome,
           version: versionView(
@@ -99,19 +105,16 @@ export class PricingConfigurationService {
               companyId,
               receipt.resultPricingRuleVersionId,
             ),
-            this.clock.now(),
+            replayedAt,
           ),
         };
       }
 
       const command = readPublishPricingRuleVersionCommand(value);
       // Serializes every publication in the Company, including two first
-      // publications that have no head row to lock.
-      await this.advisoryLock([
-        'pricing-configuration.rule-scope',
-        actor.workspaceId,
-        companyId,
-      ]);
+      // publications that have no head row to lock, and holds every read of
+      // the scope until this publication commits.
+      await this.lockRuleScope(actor, companyId, 'exclusive');
       const [head] = await this.databaseContext.connection
         .select()
         .from(pricingRuleVersions)
@@ -218,45 +221,47 @@ export class PricingConfigurationService {
   }
 
   async readRuleScope(actor: ActorContext): Promise<PricingRuleScope> {
-    const companyId =
-      await this.authorization.requirePricingConfigurationAccess(actor, [
-        'commercial.pricing.configuration.read',
-      ]);
-    const now = this.clock.now();
-    // One statement returns the head and the version CURRENT at the request
-    // instant, so both answers come from the same snapshot.
-    const rows = await this.databaseContext.connection
-      .select()
-      .from(pricingRuleVersions)
-      .where(
-        and(
-          eq(pricingRuleVersions.workspaceId, actor.workspaceId),
-          eq(pricingRuleVersions.companyId, companyId),
-          or(
-            isNull(pricingRuleVersions.supersededByVersionId),
-            and(
-              lte(pricingRuleVersions.effectiveFrom, now),
-              or(
-                isNull(pricingRuleVersions.effectiveTo),
-                gt(pricingRuleVersions.effectiveTo, now),
-              ),
-              or(
-                isNull(pricingRuleVersions.supersededFrom),
-                gt(pricingRuleVersions.supersededFrom, now),
+    return this.databaseContext.transaction(async () => {
+      const companyId =
+        await this.authorization.requirePricingConfigurationAccess(actor, [
+          'commercial.pricing.configuration.read',
+        ]);
+      const now = await this.observeRuleScope(actor, companyId);
+      // One statement returns the head and the version CURRENT at the request
+      // instant, so both answers come from the same snapshot.
+      const rows = await this.databaseContext.connection
+        .select()
+        .from(pricingRuleVersions)
+        .where(
+          and(
+            eq(pricingRuleVersions.workspaceId, actor.workspaceId),
+            eq(pricingRuleVersions.companyId, companyId),
+            or(
+              isNull(pricingRuleVersions.supersededByVersionId),
+              and(
+                lte(pricingRuleVersions.effectiveFrom, now),
+                or(
+                  isNull(pricingRuleVersions.effectiveTo),
+                  gt(pricingRuleVersions.effectiveTo, now),
+                ),
+                or(
+                  isNull(pricingRuleVersions.supersededFrom),
+                  gt(pricingRuleVersions.supersededFrom, now),
+                ),
               ),
             ),
           ),
-        ),
+        );
+      const head = rows.find((row) => row.supersededByVersionId === null);
+      const current = rows.find(
+        (row) => pricingRuleVersionState(row, now) === 'CURRENT',
       );
-    const head = rows.find((row) => row.supersededByVersionId === null);
-    const current = rows.find(
-      (row) => pricingRuleVersionState(row, now) === 'CURRENT',
-    );
-    return {
-      current: current ? versionView(current, now) : null,
-      headVersionNumber: head?.versionNumber ?? null,
-      provisional: true,
-    };
+      return {
+        current: current ? versionView(current, now) : null,
+        headVersionNumber: head?.versionNumber ?? null,
+        provisional: true,
+      };
+    });
   }
 
   async listRuleVersions(
@@ -264,57 +269,89 @@ export class PricingConfigurationService {
     cursorInput: unknown,
     limitInput: unknown,
   ): Promise<PricingRuleVersionPage> {
-    const companyId =
-      await this.authorization.requirePricingConfigurationAccess(actor, [
-        'commercial.pricing.configuration.read',
-      ]);
-    const limit = readPricingConfigurationLimit(limitInput);
-    const cursor = readRuleVersionCursor(cursorInput);
-    const now = this.clock.now();
-    const rows = await this.databaseContext.connection
-      .select()
-      .from(pricingRuleVersions)
-      .where(
-        and(
-          eq(pricingRuleVersions.workspaceId, actor.workspaceId),
-          eq(pricingRuleVersions.companyId, companyId),
-          cursor === undefined
-            ? undefined
-            : lt(pricingRuleVersions.versionNumber, cursor),
-        ),
-      )
-      .orderBy(desc(pricingRuleVersions.versionNumber))
-      .limit(limit + 1);
-    const pageRows = rows.slice(0, limit);
-    const last = pageRows.at(-1);
-    return {
-      items: pageRows.map((row) => versionView(row, now)),
-      ...(rows.length > limit && last
-        ? { nextCursor: ruleVersionCursor(last.versionNumber) }
-        : {}),
-      provisional: true,
-    };
+    return this.databaseContext.transaction(async () => {
+      const companyId =
+        await this.authorization.requirePricingConfigurationAccess(actor, [
+          'commercial.pricing.configuration.read',
+        ]);
+      const limit = readPricingConfigurationLimit(limitInput);
+      const cursor = readRuleVersionCursor(cursorInput);
+      const now = await this.observeRuleScope(actor, companyId);
+      const rows = await this.databaseContext.connection
+        .select()
+        .from(pricingRuleVersions)
+        .where(
+          and(
+            eq(pricingRuleVersions.workspaceId, actor.workspaceId),
+            eq(pricingRuleVersions.companyId, companyId),
+            cursor === undefined
+              ? undefined
+              : lt(pricingRuleVersions.versionNumber, cursor),
+          ),
+        )
+        .orderBy(desc(pricingRuleVersions.versionNumber))
+        .limit(limit + 1);
+      const pageRows = rows.slice(0, limit);
+      const last = pageRows.at(-1);
+      return {
+        items: pageRows.map((row) => versionView(row, now)),
+        ...(rows.length > limit && last
+          ? { nextCursor: ruleVersionCursor(last.versionNumber) }
+          : {}),
+        provisional: true,
+      };
+    });
   }
 
   async readRuleVersion(
     actor: ActorContext,
     versionId: string,
   ): Promise<PricingRuleVersionRecord> {
-    const companyId =
-      await this.authorization.requirePricingConfigurationAccess(actor, [
-        'commercial.pricing.configuration.read',
-      ]);
-    // A malformed, unknown, cross-Company or cross-Workspace identifier gets
-    // the same safe not-found, after authority so nothing is disclosed first.
-    if (!UUID_GRAMMAR.test(versionId)) throw new NotFoundException();
-    const now = this.clock.now();
-    const version = await this.findVersion(
+    return this.databaseContext.transaction(async () => {
+      const companyId =
+        await this.authorization.requirePricingConfigurationAccess(actor, [
+          'commercial.pricing.configuration.read',
+        ]);
+      // A malformed, unknown, cross-Company or cross-Workspace identifier gets
+      // the same safe not-found, after authority so nothing is disclosed first.
+      if (!UUID_GRAMMAR.test(versionId)) throw new NotFoundException();
+      const now = await this.observeRuleScope(actor, companyId);
+      const version = await this.findVersion(
+        actor.workspaceId,
+        companyId,
+        versionId.toLowerCase(),
+      );
+      if (!version) throw new NotFoundException();
+      return versionView(version, now);
+    });
+  }
+
+  // A read samples its instant only after any publication of the Company in
+  // flight has committed, then reads the rows, so it sees every publication
+  // whose instant precedes its own.
+  private async observeRuleScope(
+    actor: ActorContext,
+    companyId: string,
+  ): Promise<Date> {
+    await this.lockRuleScope(actor, companyId, 'shared');
+    return this.clock.now();
+  }
+
+  private async lockRuleScope(
+    actor: ActorContext,
+    companyId: string,
+    mode: 'exclusive' | 'shared',
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'pricing-configuration.rule-scope',
       actor.workspaceId,
       companyId,
-      versionId.toLowerCase(),
+    ]);
+    await this.databaseContext.connection.execute(
+      mode === 'exclusive'
+        ? sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+        : sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${lockKey}, 0))`,
     );
-    if (!version) throw new NotFoundException();
-    return versionView(version, now);
   }
 
   private async findVersion(

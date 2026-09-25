@@ -1013,6 +1013,108 @@ withPostgres('Company Pricing Configuration REST', () => {
     ]);
   }, 60_000);
 
+  it('lets no read see the predecessor once a start passes between the publication instant and its commit', async () => {
+    const { company } = await prepared();
+    // Another configuration owner observes: the publisher's own requests
+    // would already queue behind its authority row locks.
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    const predecessorBody = {
+      label: 'Illustrative rule A',
+      effectiveFrom: '2026-04-01T00:00:00Z',
+      expectedActiveVersionNumber: null,
+    };
+    const predecessor = publication(
+      await command(
+        VERSIONS,
+        predecessorBody,
+        'predecessor',
+        company.id,
+        CONFIGURATION_MEMBER,
+      ),
+    );
+    // SHARE admits the publication's head lock and its clock sample but not
+    // its first write, holding it between its instant and its commit.
+    const blocker = await holdLock(async (connection) => {
+      await connection.query('LOCK TABLE pricing_rule_versions IN SHARE MODE');
+    });
+    let released = false;
+    try {
+      setClock('2026-04-01T12:00:00.000Z');
+      const pending = post(
+        VERSIONS,
+        company.id,
+        {
+          label: 'Illustrative rule B',
+          effectiveFrom: '2026-04-01T12:00:00.001Z',
+          expectedActiveVersionNumber: 1,
+        },
+        'successor',
+      );
+      await waitForBlockedBy(blocker.backendPid);
+      // The accepted start arrives before the publication is durable.
+      setClock('2026-04-01T12:00:00.001Z');
+      const observer = { headers: CONFIGURATION_MEMBER };
+      let answered = 0;
+      const observations = [
+        request(SCOPE, company.id, observer),
+        request(VERSIONS, company.id, observer),
+        request(`${VERSIONS}/${predecessor.version.id}`, company.id, observer),
+        post(
+          VERSIONS,
+          company.id,
+          predecessorBody,
+          'predecessor',
+          CONFIGURATION_MEMBER,
+        ),
+      ].map(async (response) => {
+        const settled = await response;
+        const body: unknown = await settled.json();
+        answered += 1;
+        return { status: settled.status, body };
+      });
+      await waitForObservers(observations.length, () => answered);
+      await blocker.connection.query('COMMIT');
+      released = true;
+      const published = await pending;
+      expect(published.status).toBe(201);
+      const successor = publication(await published.json());
+      expect(successor.version).toMatchObject({
+        versionNumber: 2,
+        createdAt: '2026-04-01T12:00:00.000Z',
+        state: 'SCHEDULED',
+      });
+      const current = { ...successor.version, state: 'CURRENT' };
+      const takenOver = {
+        ...predecessor.version,
+        state: 'SUPERSEDED',
+        supersession: {
+          supersededByVersionId: successor.version.id,
+          supersededAt: '2026-04-01T12:00:00.000Z',
+          supersededFrom: '2026-04-01T12:00:00.001Z',
+        },
+      };
+      expect(await Promise.all(observations)).toEqual([
+        {
+          status: 200,
+          body: { current, headVersionNumber: 2, provisional: true },
+        },
+        {
+          status: 200,
+          body: { items: [current, takenOver], provisional: true },
+        },
+        { status: 200, body: takenOver },
+        { status: 201, body: { outcome: 'PUBLISHED', version: takenOver } },
+      ]);
+    } finally {
+      if (!released) await blocker.connection.query('ROLLBACK');
+      blocker.connection.release();
+    }
+    await expectCounts({ versions: 2, receipts: 2, events: 2 });
+  }, 30_000);
+
   it('revalidates live authority under a row lock before replaying or committing', async () => {
     const { company } = await prepared();
     const configurationMember = await member(CONFIGURATION_MEMBER, company.id, [
@@ -1805,6 +1907,15 @@ withPostgres('Company Pricing Configuration REST', () => {
     query: string,
     values: readonly string[],
   ): Promise<{ connection: PoolClient; backendPid: number }> {
+    return holdLock(async (connection) => {
+      const locked = await connection.query(query, [...values]);
+      if (locked.rowCount !== 1) throw new Error('Expected one row to lock.');
+    });
+  }
+
+  async function holdLock(
+    acquire: (connection: PoolClient) => Promise<void>,
+  ): Promise<{ connection: PoolClient; backendPid: number }> {
     const connection = await pool.connect();
     try {
       await connection.query('BEGIN');
@@ -1813,8 +1924,7 @@ withPostgres('Company Pricing Configuration REST', () => {
       );
       const backendPid = backend.rows[0]?.backendPid;
       if (backendPid === undefined) throw new Error('Missing blocker backend.');
-      const locked = await connection.query(query, [...values]);
-      if (locked.rowCount !== 1) throw new Error('Expected one row to lock.');
+      await acquire(connection);
       return { connection, backendPid };
     } catch (error) {
       await connection.query('ROLLBACK');
@@ -1838,6 +1948,27 @@ withPostgres('Company Pricing Configuration REST', () => {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     throw new Error('The publication did not reach the lock barrier.');
+  }
+
+  // Waits until every observer has either answered or is waiting on a lock,
+  // so the assertions prove what each one may observe, not how fast it ran.
+  // The paused publication is the one other waiting backend.
+  async function waitForObservers(
+    observers: number,
+    answered: () => number,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const blocked = await pool.query<{ waiting: number }>(
+        `SELECT count(*)::integer AS waiting
+           FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND cardinality(pg_blocking_pids(pid)) > 0`,
+      );
+      const waiting = (blocked.rows[0]?.waiting ?? 0) - 1;
+      if (answered() + waiting >= observers) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The observers neither answered nor waited.');
   }
 
   async function expectCounts(expected: {
