@@ -68,6 +68,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedProject, setRequestedProject] = useState<{
     context: string;
     projectId: string;
+    taskId?: string;
     requestId: number;
   }>();
   const navigateToSection = useCallback(
@@ -229,13 +230,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestedDocument?.documentsContext === documentsContext
       ? requestedDocument
       : undefined;
-  // The Projects owner reads the requested Project itself; no Project identity
-  // reaches the URL or history state.
+  // The Projects owner reads the requested Project itself, then its optional
+  // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
-    ? (projectId: string) => {
+    ? (target: { projectId: string; taskId?: string }) => {
         setRequestedProject((current) => ({
           context: projectRequestContext,
-          projectId,
+          projectId: target.projectId,
+          taskId: target.taskId,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('projects');
@@ -302,7 +304,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           clientIdentityRevision={clientIdentityGeneration}
           onOpenClientDossier={openClientDossier}
           requestedDocument={currentRequestedDocument}
-          onOpenProject={openProject}
+          onOpenProject={
+            openProject && ((projectId) => openProject({ projectId }))
+          }
         />
       ),
     });
@@ -398,6 +402,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           key={`my-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
+          onOpenTask={openProject}
         />
       ),
     });

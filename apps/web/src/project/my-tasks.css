@@ -67,6 +67,9 @@
   margin: 0;
   font-size: 1rem;
 }
+.my-tasks-list li > button {
+  justify-self: start;
+}
 .my-tasks-list dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -131,7 +134,7 @@
   background: #fff9fa;
 }
 .prisme-shell .my-tasks--prisme .my-tasks-list li {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
   align-items: center;
   gap: 8px 24px;
   padding: 17px 26px;
