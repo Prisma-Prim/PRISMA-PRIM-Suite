@@ -4,7 +4,7 @@
 
 ## Entry and composition
 
-The production default for an admitted user is Prisme. `?frame=classic` is the explicit, reload-stable Classic rollback, while existing `?frame=prisme` links remain compatible. **Use classic frame** adds only `frame=classic`; **Try Prisme** removes only `frame`. Both controls preserve every other URL parameter, the current section, the URL fragment and opaque history state. In-frame links carry that state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
+The production default for an admitted user is Prisme. `?frame=classic` is a reload-stable legacy Classic compatibility URL, while existing `?frame=prisme` links remain compatible. Prisme no longer offers a Classic switch (UX PRD section 2, #426). Explicit legacy Classic URLs remain supported for compatibility. **Try Prisme** removes only `frame`, preserving every other URL parameter, the current section, the URL fragment and opaque history state. In-frame links carry that state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
 
 `App` still owns `useProductionShellContext(identity)` and the existing permission gates, callbacks and feature keys. `ApplicationShell` receives real identity/context, the existing Company selector and an authorized section composition. Section panels remain mounted when hidden or when changing presentation, so drafts and idempotent retry commands survive navigation. Identity, session, Company and permission-version changes still use the existing feature keys and session owner. No API transport, authorization or business workflow is implemented by the frame.
 
@@ -42,7 +42,7 @@ Pause/resume preserves accumulated phase. Reduced motion, hidden documents and o
 
 ## Reproduce and inspect
 
-With the usual authenticated frontend/API environment, run `pnpm --filter @prisma-prim/web dev --host 127.0.0.1 --port 5186` and open `http://127.0.0.1:5186/`. Authentication and API configuration remain the normal prerequisites. Use **Use classic frame** for the explicit rollback; `/?frame=prisme` remains a compatible Prisme entry.
+With the usual authenticated frontend/API environment, run `pnpm --filter @prisma-prim/web dev --host 127.0.0.1 --port 5186` and open `http://127.0.0.1:5186/`. Authentication and API configuration remain the normal prerequisites. There is no user-facing rollback button; `/?frame=prisme` remains a compatible Prisme entry.
 
 For deterministic contract-backed evidence without a live backend:
 

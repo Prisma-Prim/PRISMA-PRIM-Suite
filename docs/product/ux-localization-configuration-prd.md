@@ -17,6 +17,8 @@ Deliver responsive web, WCAG 2.2 AA intent, localization from Release 1, stable 
 
 The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Atlas Blue in /ui-baseline remains a recoverable synthetic snapshot. Neither reference proves implemented behaviour or freezes the final design.
 
+On 2026-09-26, Dan confirmed Prisme as the current application design and removed the user-facing Classic rollback option (#426). Prisme navigation must not offer a switch to Classic. Explicit legacy Classic URLs remain compatibility coverage; their return to Prisme remains available. This does not remove business owners, existing regression coverage or the recoverable /ui-baseline snapshot.
+
 ## 3. User stories
 
 1. As a user, I want the Client overview to answer my immediate operational questions.

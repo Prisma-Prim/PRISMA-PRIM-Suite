@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -338,7 +339,7 @@ test('registers and reopens a Company-confidential working reference', async ({
   // Classic presents the same open history with the same keyboard controls.
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   const classicHistory = page
     .locator('#documents article')
     .getByRole('region', { name: 'Correction history', exact: true });

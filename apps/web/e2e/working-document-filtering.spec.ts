@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -175,7 +176,7 @@ test('filters loaded Working Documents locally and resets at the Company boundar
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(page.getByLabel('Filter working Documents')).toHaveValue(
     'hidden while detail stays open',
   );
