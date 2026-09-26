@@ -47,6 +47,8 @@ const targetTypes = {
     'company_role_assignment',
   'company_document_registrar_assignment.granted': 'company_role_assignment',
   'company_document_registrar_assignment.revoked': 'company_role_assignment',
+  'company_document_approver_assignment.granted': 'company_role_assignment',
+  'company_document_approver_assignment.revoked': 'company_role_assignment',
   'client.created': 'client_account',
   'client.corrected': 'client_account',
   'client_company_relationship.established': 'client_company_relationship',
@@ -60,6 +62,8 @@ const targetTypes = {
   'task.reopened': 'task',
   'document.registered': 'document',
   'document.corrected': 'document',
+  'document.version.drafted': 'document',
+  'document.version.designated_official': 'document',
   'document.project.linked': 'document_project',
   'document.project.unlinked': 'document_project',
   'client.union_confirmed': 'client_union_operation',
@@ -120,6 +124,8 @@ function activityLogEvent(value: unknown): ActivityLogEvent {
         },
       };
     case 'document.registered':
+    case 'document.version.drafted':
+    case 'document.version.designated_official':
       return {
         ...recorded(value),
         action,

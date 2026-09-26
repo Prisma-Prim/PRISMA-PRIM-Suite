@@ -3,6 +3,10 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 
 const company = { id: 'company-navigation', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'company-second', displayName: 'BIC' };
@@ -134,9 +138,12 @@ function routeApi(page: Page, documentPermissions: string[]) {
       homonymDocument,
       unprojectedDocument,
       otherCompanyDocument,
-    ])
+    ]) {
       if (path === `/api/documents/${document.id}`)
         return route.fulfill({ json: document });
+      if (DOCUMENT_VERSIONS_PATH.exec(path)?.[1] === document.id)
+        return route.fulfill({ json: draftVersionsOf(document) });
+    }
     return route.fulfill({ status: 404 });
   };
   return {

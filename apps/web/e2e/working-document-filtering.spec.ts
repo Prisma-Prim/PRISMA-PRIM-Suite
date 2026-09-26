@@ -5,6 +5,10 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 
 const firstCompany = {
   id: 'document-filter-company',
@@ -268,6 +272,8 @@ async function interceptApplication(
       const document = [...firstCompanyDocuments, secondCompanyDocument].find(
         (candidate) => candidate.id === documentId,
       );
+      if (document && DOCUMENT_VERSIONS_PATH.test(path))
+        return route.fulfill({ json: draftVersionsOf(document) });
       return document
         ? route.fulfill({ json: document })
         : route.fulfill({ status: 404 });

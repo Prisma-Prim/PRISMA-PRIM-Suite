@@ -166,6 +166,10 @@ _Avoid_: File when lifecycle and governance are meant
 A specific Document Version authorized for operational use and eligible for knowledge indexing.
 _Avoid_: Uploaded document, trusted by default
 
+**Official Document Version**:
+The single Document Version currently designated by an authorized approver as the Document's official content; it is frozen, and only a later designation supersedes it.
+_Avoid_: Approved Document when knowledge-indexing eligibility is meant; final, signed or sent version
+
 **Knowledge Chunk**:
 A located fragment of an Approved Document retained with its document version and indexing metadata.
 _Avoid_: Embedding, source

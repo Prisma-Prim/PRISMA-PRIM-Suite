@@ -13,6 +13,7 @@ import {
 } from './document-response';
 import { documentsCopy as copy } from './documents.copy';
 import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
+import { DocumentVersions } from './DocumentVersions';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
@@ -49,6 +50,9 @@ export function DocumentWorkspace({
   onOpenClientDossier,
   requestedDocument,
   onOpenProject,
+  onCompanyContextRejected,
+  onActorRevalidated,
+  onWorkspaceAccessRejected,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -65,6 +69,10 @@ export function DocumentWorkspace({
   requestedDocument?: RequestedDocument;
   /** Offered only while the shell can open Projects; the owner reads it fresh. */
   onOpenProject?: (projectId: string) => void;
+  /** A refused Version command revalidates the actor through the shell. */
+  onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
@@ -170,6 +178,14 @@ export function DocumentWorkspace({
   const correctionRetry = useRef<
     { documentId: string; payload: string; key: string } | undefined
   >(undefined);
+  /**
+   * The working revision an open correction draft was started from. A detail
+   * refreshed by a Version command never rebases it: saving follows the
+   * delivered stale path.
+   */
+  const correctionRevision = useRef<number | undefined>(undefined);
+  /** The detail and list re-read after a Version command; never a mutation. */
+  const versionRefresh = useRef<AbortController | undefined>(undefined);
   const companyId = actor.activeCompany?.id;
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
@@ -303,8 +319,13 @@ export function DocumentWorkspace({
     retry.current = undefined;
     correctionRetry.current = undefined;
     confirmedRegistrations.current.clear();
+    correctionRevision.current = undefined;
     pending.current?.abort();
-    return () => pending.current?.abort();
+    versionRefresh.current?.abort();
+    return () => {
+      pending.current?.abort();
+      versionRefresh.current?.abort();
+    };
   }, [
     companyId,
     canRead,
@@ -546,6 +567,62 @@ export function DocumentWorkspace({
       if (detailRead.current === request) detailRead.current = undefined;
     }
   }
+  /**
+   * Re-reads the open Document and the loaded rows together after a confirmed
+   * or stale Version command. An open correction draft keeps its values and
+   * the revision it was started from.
+   */
+  async function refreshOpenDetail(documentId: string): Promise<void> {
+    versionRefresh.current?.abort();
+    const request = new AbortController();
+    versionRefresh.current = request;
+    const sequence = reserveListWrite();
+    const startedUnderRevision = identityRevision.current;
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
+      const [documentResult, documentsResult] = await Promise.all([
+        api.request<unknown>(`/documents/${encodeURIComponent(documentId)}`, {
+          companyContextId: companyId,
+          signal: request.signal,
+        }),
+        api.request<unknown>('/documents', {
+          companyContextId: companyId,
+          signal: request.signal,
+        }),
+      ]);
+      if (request.signal.aborted) return;
+      if (
+        documentResult.status === 'unauthorized' ||
+        documentsResult.status === 'unauthorized'
+      ) {
+        await identity.rejectSession();
+        return;
+      }
+      if (
+        documentResult.status === 'forbidden' ||
+        documentResult.status === 'notFound'
+      ) {
+        publishList(reserveListWrite(), () => ({ status: 'denied' }));
+        return;
+      }
+      if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
+        throw new Error('Refresh failed');
+      const refreshed = readDocumentDetail(documentResult.value);
+      const documents = readDocuments(documentsResult.value);
+      setDetail((current) =>
+        current?.id === refreshed.id ? refreshed : current,
+      );
+      settleDetailRead(refreshed, startedUnderRevision);
+      publishList(sequence, (current) =>
+        current.status === 'ready'
+          ? { ...current, documents, identityRevision: startedUnderRevision }
+          : current,
+      );
+    } catch {
+      if (!request.signal.aborted) setMutation('error');
+    }
+  }
   function beginCorrection() {
     if (
       !detail ||
@@ -557,6 +634,7 @@ export function DocumentWorkspace({
     setTitle(detail.title);
     setPurpose(detail.purpose);
     setUrl(detail.version.representation.url);
+    correctionRevision.current = detail.workingRevision;
     setEditing(true);
     setCorrection('idle');
     correctionRetry.current = undefined;
@@ -571,7 +649,8 @@ export function DocumentWorkspace({
         : undefined
       : (() => {
           const payload = JSON.stringify({
-            expectedRevision: detail.workingRevision,
+            expectedRevision:
+              correctionRevision.current ?? detail.workingRevision,
             title,
             purpose,
             url,
@@ -818,7 +897,9 @@ export function DocumentWorkspace({
         </>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {copy.warning}
+        {detail?.version.status === 'official'
+          ? copy.officialWarning
+          : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -915,7 +996,7 @@ export function DocumentWorkspace({
               ) : (
                 <>
                   <h3>{detail.title}</h3>
-                  <p>{copy.draft}</p>
+                  <p>{workingVersionLabel(detail.version.status)}</p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
                     onOpenClientDossier &&
@@ -993,6 +1074,19 @@ export function DocumentWorkspace({
               {heldRequest && correctionActive && (
                 <p role="status">{copy.requestedDocumentHeld}</p>
               )}
+              <DocumentVersions
+                actor={actor}
+                identity={identity}
+                documentId={detail.id}
+                workingRevision={detail.workingRevision}
+                onRefresh={async () => {
+                  await refreshOpenDetail(detail.id);
+                  await onActivityRecorded();
+                }}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onActorRevalidated={onActorRevalidated}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              />
               <DocumentCorrectionHistory
                 actor={actor}
                 identity={identity}
@@ -1095,6 +1189,21 @@ export function DocumentWorkspace({
       )}
     </section>
   );
+}
+/** The working Version the detail shows: the draft, otherwise the official one. */
+function workingVersionLabel(
+  status: WorkingDocument['version']['status'],
+): string {
+  switch (status) {
+    case 'draft':
+      return copy.draft;
+    case 'official':
+      return copy.official;
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
 }
 function ClientDossierButton({
   clientDossierId,

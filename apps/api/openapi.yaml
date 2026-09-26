@@ -362,6 +362,78 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-document-approver-assignments:
+    post:
+      operationId: grantCompanyDocumentApproverAssignment
+      summary: Grant the opt-in Company Document Approver v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The captured v1 bundle contains
+        exactly `document.version.designate_official`; it confers no Company
+        context, Document or Representation read, Client read, correction or
+        Version management. An actual grant records one
+        `company_document_approver_assignment.granted` event whose metadata
+        is limited to the bundle label; a repeat, replay or denial records
+        none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Document Approver assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentApproverAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-document-approver-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyDocumentApproverAssignment
+      summary: Revoke the Company Document Approver assignment
+      description: >-
+        An actual revocation records one
+        `company_document_approver_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Document Approver assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentApproverAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/clients:
     get:
       operationId: listActiveCompanyClients
@@ -993,6 +1065,157 @@ paths:
           description: The actor lacks current Document read authority or a valid active Company context.
         '404':
           description: No working Document with a readable original Client is visible in the active Company.
+  /api/documents/{documentId}/versions:
+    get:
+      operationId: listDocumentVersions
+      summary: Read every formal Version of a working Document with its status and designation
+      description: >-
+        Authorization and every refusal are identical to the working Document
+        detail read; a superseded original Client stays readable. Authority,
+        visibility and the Versions share one repeatable-read snapshot. At
+        most 50 Versions are returned, highest number first. Each Version
+        holds exactly one unverified external reference; its URL is returned
+        only to a current Representation reader. Actor labels are existing
+        display labels, never emails. Reading writes nothing.
+      tags:
+        - Document
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: The Document's working revision, whether Version commands are possible, and its Versions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionsRead'
+        '400':
+          description: The Document id is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks current Document read authority or a valid active Company context.
+        '404':
+          description: No working Document with a readable original Client is visible in the active Company.
+    post:
+      operationId: startDocumentDraftVersion
+      summary: Start a new draft Version copied from the current official Version
+      description: >-
+        Requires a live Company Document Registrar v3 assignment
+        (`document.version.manage`), `document.reference.read`, the Document
+        detail read authority and an active original Client related to the
+        active Company. The Document must have a current official Version and
+        no draft. Version n+1 is created as a draft attributed to the actor,
+        holding a new reference with the official Version's URL. The
+        command takes the per-actor key lock, then checks live authority,
+        visibility and replay, locks the original Client and the Document,
+        then checks the working revision and the Version state. One
+        transaction writes the Version, increments the working revision by
+        exactly one, advances the original Client operational-use fence and
+        records one durable receipt and one `document.version.drafted`
+        event. An exact replay revalidates current authority and visibility
+        and returns the stored receipt.
+      tags:
+        - Document
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentVersionCommandInput'
+      responses:
+        '201':
+          description: The draft Version was started, or an exact replay of that command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionDraftedReceipt'
+        '400':
+          description: The Idempotency-Key is missing, the Document id is malformed, or the body is not exactly `{ expectedRevision }` in range.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks a live Registrar v3 assignment, Representation read, Document read authority or a valid active Company context.
+        '404':
+          description: No working Document is visible in the active Company, or its original Client is no longer active or related.
+        '409':
+          description: >-
+            `document_revision_conflict` when `expectedRevision` is stale;
+            `document_version_state_invalid` when no official Version exists
+            or a draft already exists; `document_version_capacity_exceeded`
+            when the Document already holds 50 Versions; or the Document
+            key-reuse conflict when the Idempotency-Key was used for another
+            Version command. Nothing is written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionConflict'
+  /api/documents/{documentId}/versions/{versionId}/official-designation:
+    post:
+      operationId: designateOfficialDocumentVersion
+      summary: Designate the current draft Version as the Document's official Version
+      description: >-
+        Requires a live Company Document Approver v1 assignment
+        (`document.version.designate_official`), the delivered Document read
+        authority (any Registrar version, with `document.reference.read`) and
+        Client read in the active Company. The Version must be the current
+        draft. One transaction makes it official with the actor and server
+        time, freezes the Document's current title and purpose onto it with
+        its reference, supersedes the previous official Version, if any,
+        increments the working revision by exactly one, advances the original
+        Client operational-use fence and records one durable receipt and one
+        `document.version.designated_official` event. A designated Version
+        is never changed again, except the single official to superseded
+        transition. An exact replay revalidates current authority and
+        visibility and returns the stored receipt.
+      tags:
+        - Document
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/DocumentId'
+        - in: path
+          name: versionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentVersionCommandInput'
+      responses:
+        '200':
+          description: The draft Version was designated official, or an exact replay of that command.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionDesignatedReceipt'
+        '400':
+          description: The Idempotency-Key is missing, an identifier is malformed, or the body is not exactly `{ expectedRevision }` in range.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks a live Approver v1 assignment, Document read authority, Representation read or a valid active Company context.
+        '404':
+          description: No working Document is visible in the active Company, the Version belongs to another Document, or the original Client is no longer active or related.
+        '409':
+          description: >-
+            `document_revision_conflict` when `expectedRevision` is stale;
+            `document_version_state_invalid` when the Version is not the
+            current draft; or the Document key-reuse conflict when the
+            Idempotency-Key was used for another Version command. Nothing is
+            written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionConflict'
   /api/operational-home:
     get:
       operationId: readOperationalHome
@@ -1084,6 +1307,13 @@ components:
       description: The active Company selection revalidated by Access for this Client operation.
       schema:
         type: string
+    DocumentId:
+      in: path
+      name: documentId
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     OperationalHome:
       type: object
@@ -1718,6 +1948,34 @@ components:
             - v2
         active:
           type: boolean
+    CompanyDocumentApproverAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Document Approver
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
     RegisterCompanyInput:
       type: object
       additionalProperties: false
@@ -2145,6 +2403,313 @@ components:
         before:
           type: string
         after:
+          type: string
+    DocumentVersionsRead:
+      type: object
+      additionalProperties: false
+      required:
+        - workingRevision
+        - mutable
+        - versions
+      properties:
+        workingRevision:
+          description: The Document's one concurrency token, shared by every Version command and the working correction.
+          type: integer
+          format: int32
+          minimum: 1
+        mutable:
+          description: True only while the original Client is active and actively related to the Company.
+          type: boolean
+        versions:
+          description: Every Version, highest number first.
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/DocumentVersion'
+    DocumentVersion:
+      description: One formal Version, discriminated by its content status.
+      oneOf:
+        - $ref: '#/components/schemas/DraftDocumentVersion'
+        - $ref: '#/components/schemas/OfficialDocumentVersion'
+        - $ref: '#/components/schemas/SupersededDocumentVersion'
+      discriminator:
+        propertyName: status
+        mapping:
+          draft: '#/components/schemas/DraftDocumentVersion'
+          official: '#/components/schemas/OfficialDocumentVersion'
+          superseded: '#/components/schemas/SupersededDocumentVersion'
+    DraftDocumentVersion:
+      type: object
+      additionalProperties: false
+      required: [id, number, status, createdAt, createdBy, representations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+          maximum: 50
+        status:
+          type: string
+          const: draft
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/DocumentActorLabel'
+        representations:
+          $ref: '#/components/schemas/DocumentVersionReferences'
+    OfficialDocumentVersion:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          number,
+          status,
+          createdAt,
+          createdBy,
+          representations,
+          designatedAt,
+          designatedBy,
+          frozen,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+          maximum: 50
+        status:
+          type: string
+          const: official
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/DocumentActorLabel'
+        representations:
+          $ref: '#/components/schemas/DocumentVersionReferences'
+        designatedAt:
+          type: string
+          format: date-time
+        designatedBy:
+          $ref: '#/components/schemas/DocumentActorLabel'
+        frozen:
+          $ref: '#/components/schemas/DocumentVersionFrozenSnapshot'
+    SupersededDocumentVersion:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          number,
+          status,
+          createdAt,
+          createdBy,
+          representations,
+          designatedAt,
+          designatedBy,
+          frozen,
+          supersededAt,
+          supersededByVersionNumber,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 1
+          maximum: 50
+        status:
+          type: string
+          const: superseded
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/DocumentActorLabel'
+        representations:
+          $ref: '#/components/schemas/DocumentVersionReferences'
+        designatedAt:
+          type: string
+          format: date-time
+        designatedBy:
+          $ref: '#/components/schemas/DocumentActorLabel'
+        frozen:
+          $ref: '#/components/schemas/DocumentVersionFrozenSnapshot'
+        supersededAt:
+          type: string
+          format: date-time
+        supersededByVersionNumber:
+          type: integer
+          minimum: 2
+          maximum: 50
+    DocumentActorLabel:
+      description: The actor's existing display label, never an email.
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+    DocumentVersionFrozenSnapshot:
+      description: The Document title and purpose recorded when the Version was designated official. They never change afterwards.
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - purpose
+      properties:
+        title:
+          type: string
+        purpose:
+          type: string
+    DocumentVersionReferences:
+      description: >-
+        Exactly one unverified external reference per Version in this slice.
+        The external content is never stored, fetched or verified and may
+        change at its source.
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        oneOf:
+          - type: object
+            additionalProperties: false
+            required: [id, kind, verification, access, url]
+            properties:
+              id:
+                type: string
+                format: uuid
+              kind:
+                type: string
+                const: external-reference
+              verification:
+                type: string
+                const: unverified
+              access:
+                type: string
+                const: granted
+              url:
+                type: string
+                format: uri
+          - type: object
+            additionalProperties: false
+            required: [id, kind, verification, access]
+            properties:
+              id:
+                type: string
+                format: uuid
+              kind:
+                type: string
+                const: external-reference
+              verification:
+                type: string
+                const: unverified
+              access:
+                type: string
+                const: denied
+    DocumentVersionCommandInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+      properties:
+        expectedRevision:
+          description: The Document's `workingRevision` the command was prepared against.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483646
+    DocumentVersionDraftedReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          documentId,
+          workingRevision,
+          action,
+          versionId,
+          versionNumber,
+          sourceVersionNumber,
+        ]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        workingRevision:
+          type: integer
+          format: int32
+          minimum: 2
+        action:
+          type: string
+          const: drafted
+        versionId:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 2
+          maximum: 50
+        sourceVersionNumber:
+          type: integer
+          minimum: 1
+          maximum: 49
+    DocumentVersionDesignatedReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          documentId,
+          workingRevision,
+          action,
+          versionId,
+          versionNumber,
+          supersededVersionNumber,
+        ]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        workingRevision:
+          type: integer
+          format: int32
+          minimum: 2
+        action:
+          type: string
+          const: designated_official
+        versionId:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 1
+          maximum: 50
+        supersededVersionNumber:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 49
+    DocumentVersionConflict:
+      description: >-
+        A coded Version conflict, or the Document key-reuse conflict (a
+        message without a code). No Version count, status or URL appears.
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - document_revision_conflict
+            - document_version_state_invalid
+            - document_version_capacity_exceeded
+        message:
           type: string
     PossibleDuplicateReviewConflict:
       type: object
