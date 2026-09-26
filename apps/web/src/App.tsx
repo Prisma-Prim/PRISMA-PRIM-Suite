@@ -205,11 +205,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     cataloguePermissions.includes('commercial.offering.manage');
   const pricingConfigurationPermissions =
     access.actor.activeCompany?.pricingConfigurationPermissions ?? [];
+  const pricingUserPermissions =
+    access.actor.activeCompany?.pricingUserPermissions ?? [];
+  // Configuration v1 and Pricing User v1 each carry configuration read. The
+  // screen offers publication only through Configuration management.
   const canReadPricingConfiguration =
     activeCompanyId !== undefined &&
-    pricingConfigurationPermissions.includes(
+    (pricingConfigurationPermissions.includes(
       'commercial.pricing.configuration.read',
-    );
+    ) ||
+      pricingUserPermissions.includes('commercial.pricing.configuration.read'));
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -319,15 +324,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  // Any change of session, membership, Company, captured assignment or
-  // permission remounts the screen, clearing drafts and dropping late replies.
+  // Any change of session, membership, Company, or captured assignment or
+  // permission of either bundle remounts the screen, clearing drafts and
+  // dropping late replies.
   if (canReadPricingConfiguration && access.actor.activeCompany)
     sections.push({
       id: 'pricing',
       ...prismeCopy.sections.pricing,
       content: (
         <PricingConfigurationWorkspace
-          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.pricingConfigurationPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.pricingConfigurationPermissionSetVersion ?? 'no-version'}:${pricingConfigurationPermissions.join(',')}`}
+          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.pricingConfigurationPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.pricingConfigurationPermissionSetVersion ?? 'no-version'}:${pricingConfigurationPermissions.join(',')}:${access.actor.activeCompany.pricingUserPermissionAssignmentId ?? 'no-pricing-user-assignment'}:${access.actor.activeCompany.pricingUserPermissionSetVersion ?? 'no-pricing-user-version'}:${pricingUserPermissions.join(',')}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}

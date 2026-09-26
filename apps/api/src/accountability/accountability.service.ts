@@ -1444,6 +1444,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_service_catalogue_assignment.revoked':
     case 'company_pricing_configuration_assignment.granted':
     case 'company_pricing_configuration_assignment.revoked':
+    case 'company_pricing_user_assignment.granted':
+    case 'company_pricing_user_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':
     case 'company_commercial_activity_reader_assignment.revoked':
       return {
