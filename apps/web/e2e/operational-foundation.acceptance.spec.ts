@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import {
   expect,
   test,
@@ -226,7 +227,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(page).toHaveURL(/\?frame=classic#projects$/u);
   await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
   await expect(tasks.getByLabel('Task title')).toHaveValue(preservedDraft);

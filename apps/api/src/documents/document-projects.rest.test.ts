@@ -17,6 +17,8 @@ import {
 import { ProjectService } from '../project/project.service.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentReadBoundary } from './document-read-boundary.js';
+import { DocumentVersionsService } from './document-versions.service.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const workspaceId = '00000000-0000-4000-8000-000000000245';
@@ -943,12 +945,19 @@ describe.skipIf(!databaseUrl)(
         clients,
         accountability,
       );
+      const boundary = new DocumentReadBoundary(
+        authorization,
+        context,
+        clients,
+      );
       const documents = new DocumentsService(
         authorization,
         context,
         clients,
         accountability,
         projects,
+        boundary,
+        new DocumentVersionsService(authorization, context, clients, boundary),
       );
       return {
         documents,

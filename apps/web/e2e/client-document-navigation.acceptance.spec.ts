@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import {
   expect,
   test,
@@ -129,7 +130,7 @@ test('navigates between one Client dossier and its working Documents through the
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await dossier
     .getByRole('button', { name: 'Open Client working Documents' })
     .click();

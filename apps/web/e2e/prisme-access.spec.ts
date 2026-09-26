@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -330,7 +331,7 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
     .click();
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),

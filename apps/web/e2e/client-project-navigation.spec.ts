@@ -5,6 +5,7 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { enterClassicCompatibility } from './classic-compatibility';
 
 for (const frame of ['classic', 'prisme'] as const) {
   test(`${frame} navigates between one Client dossier and its loaded Projects`, async ({
@@ -821,13 +822,14 @@ for (const frame of ['classic', 'prisme'] as const) {
     const search = page.getByRole('searchbox', { name: 'Find Projects' });
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(`/?frame=${frame}`);
-    if (frame === 'prisme' && narrow)
+    await page.goto('/');
+    if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
     await page
       .getByLabel('Active Company', { exact: true })
       .selectOption(company.id);
-    if (frame === 'prisme' && narrow)
+    if (frame === 'classic') await enterClassicCompatibility(page);
+    else if (narrow)
       await page.getByRole('button', { name: 'Close navigation' }).click();
 
     // The home reads the three counts of the active Company.

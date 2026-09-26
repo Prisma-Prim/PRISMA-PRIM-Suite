@@ -27,6 +27,15 @@ import {
   workspaceMemberships,
 } from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
+import {
+  DocumentReadBoundary,
+  canReadReference,
+  requireDocumentPermission,
+} from './document-read-boundary.js';
+import {
+  DocumentVersionsService,
+  documentVersionStateInvalid,
+} from './document-versions.service.js';
 import type {
   DocumentCorrectionHistoryEntry,
   DocumentCorrectionHistoryPage,
@@ -46,14 +55,16 @@ export class DocumentsService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
     private readonly projects: ProjectService,
+    private readonly boundary: DocumentReadBoundary,
+    private readonly versions: DocumentVersionsService,
   ) {}
   async register(
     actor: ActorContext,
     value: unknown,
     key: string | undefined,
   ): Promise<WorkingDocumentDetail> {
-    const companyId = requirePermission(actor, 'document.register');
-    requirePermission(actor, 'document.read');
+    const companyId = requireDocumentPermission(actor, 'document.register');
+    requireDocumentPermission(actor, 'document.read');
     const command = registration(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = createHash('sha256')
@@ -101,12 +112,18 @@ export class DocumentsService {
         })
         .returning();
       if (!document) throw new Error('Document was not created.');
+      // Registration creates Version 1 as a draft, attributed to the
+      // registrar at the Document's creation time.
       const [version] = await this.database.connection
         .insert(documentVersions)
         .values({
           workspaceId: actor.workspaceId,
           companyId,
           documentId: document.id,
+          number: 1,
+          status: 'draft',
+          createdByMembershipId: actor.workspaceMembershipId,
+          createdAt: document.createdAt,
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
@@ -125,7 +142,7 @@ export class DocumentsService {
     });
   }
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
-    const companyId = requirePermission(actor, 'document.read');
+    const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const rows = await this.database.connection
       .select({
@@ -253,102 +270,70 @@ export class DocumentsService {
       ),
     );
   }
+  /**
+   * One readable Document with its working Version: the draft if one exists,
+   * otherwise the current official Version. The list, the detail and the
+   * Project lists share this projection.
+   */
   private async readReference(
     actor: ActorContext,
     idValue: unknown,
     resolvedDossierIds: ReadonlyMap<string, string> | undefined,
   ): Promise<{ document: WorkingDocument; projectId: string | null }> {
-    const { companyId, row, client } = await this.readVisible(actor, idValue);
+    const visible = await this.boundary.requireVisible(actor, idValue);
+    const { companyId, document: row, client } = visible;
+    const working = await this.versions.workingVersion({
+      workspaceId: row.workspaceId,
+      companyId,
+      documentId: row.id,
+    });
     const clientDossierId = (
-      resolvedDossierIds ??
-      (await this.clientDossierIds(actor, [row.document.clientId]))
-    ).get(row.document.clientId);
+      resolvedDossierIds ?? (await this.clientDossierIds(actor, [row.clientId]))
+    ).get(row.clientId);
     const representation = {
-      id: row.representation.id,
+      id: working.representation.id,
       kind: 'external-reference',
       verification: 'unverified',
     } as const;
     const document: WorkingDocument = {
-      id: row.document.id,
-      workspaceId: row.document.workspaceId,
+      id: row.id,
+      workspaceId: row.workspaceId,
       companyId,
-      clientId: row.document.clientId,
+      clientId: row.clientId,
       ...(clientDossierId ? { clientDossierId } : {}),
       clientDisplayName: client.displayName,
-      title: row.document.title,
-      purpose: row.document.purpose,
+      title: row.title,
+      purpose: row.purpose,
       type: 'questionnaire',
       confidentiality: 'company-confidential',
-      createdAt: row.document.createdAt.toISOString(),
-      createdByMembershipId: row.document.createdByMembershipId,
-      workingRevision: row.document.workingRevision,
-      correction: client.status === 'active' ? 'allowed' : 'read-only',
+      createdAt: row.createdAt.toISOString(),
+      createdByMembershipId: row.createdByMembershipId,
+      workingRevision: row.workingRevision,
+      // Only a draft is corrected, and only while the original Client is active.
+      correction:
+        client.status === 'active' && working.status === 'draft'
+          ? 'allowed'
+          : 'read-only',
       version: {
-        id: row.version.id,
-        status: 'draft',
+        id: working.id,
+        status: working.status,
         representation: canReadReference(actor)
           ? {
               ...representation,
               access: 'granted',
-              url: row.representation.url,
+              url: working.representation.url,
             }
           : { ...representation, access: 'denied' },
       },
     };
-    return { document, projectId: row.document.projectId };
-  }
-  /**
-   * The detail read's authority and visibility boundary, with its refusals:
-   * Document metadata read, the live Registrar assignment, this Workspace and
-   * active Company, and the original Client's readable Company relationship,
-   * which a superseded original keeps.
-   */
-  private async readVisible(actor: ActorContext, idValue: unknown) {
-    const companyId = requirePermission(actor, 'document.read');
-    await this.authorization.requireDocumentAccess(actor);
-    const id = requireUuid(idValue);
-    const [row] = await this.database.connection
-      .select({
-        document: workingDocuments,
-        version: documentVersions,
-        representation: documentRepresentations,
-      })
-      .from(workingDocuments)
-      .innerJoin(
-        documentVersions,
-        and(
-          eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-          eq(documentVersions.companyId, workingDocuments.companyId),
-          eq(documentVersions.documentId, workingDocuments.id),
-        ),
-      )
-      .innerJoin(
-        documentRepresentations,
-        and(
-          eq(documentRepresentations.workspaceId, documentVersions.workspaceId),
-          eq(documentRepresentations.companyId, documentVersions.companyId),
-          eq(documentRepresentations.versionId, documentVersions.id),
-        ),
-      )
-      .where(
-        and(
-          eq(workingDocuments.workspaceId, actor.workspaceId),
-          eq(workingDocuments.companyId, companyId),
-          eq(workingDocuments.id, id),
-        ),
-      );
-    if (!row) throw new NotFoundException();
-    const client = await this.clients.readReferenceClient(
-      actor,
-      row.document.clientId,
-    );
-    return { companyId, row, client };
+    return { document, projectId: row.projectId };
   }
   /**
    * A readable working Document's material correction ledger, newest revision
    * first. Refusals are exactly the detail read's, and they precede query
    * validation. Authority, visibility and the page share one read snapshot;
-   * nothing is written.
+   * nothing is written. Revisions consumed by Version commands leave gaps
+   * that the strict `beforeRevision` continuation skips.
    */
   async correctionHistory(
     actor: ActorContext,
@@ -356,7 +341,7 @@ export class DocumentsService {
   ): Promise<DocumentCorrectionHistoryPage> {
     return this.database.transaction(
       async () => {
-        const { companyId, row } = await this.readVisible(
+        const { companyId, document } = await this.boundary.requireVisible(
           actor,
           request.documentId,
         );
@@ -395,7 +380,7 @@ export class DocumentsService {
             and(
               eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
               eq(documentCorrectionCommands.companyId, companyId),
-              eq(documentCorrectionCommands.documentId, row.document.id),
+              eq(documentCorrectionCommands.documentId, document.id),
               // Unchanged receipts are retry evidence, not corrections.
               eq(documentCorrectionCommands.outcome, 'corrected'),
               beforeRevision === undefined
@@ -445,6 +430,11 @@ export class DocumentsService {
     );
   }
 
+  /**
+   * Corrects the current draft Version only: title and purpose on the
+   * Document and the URL of the draft's reference. With no draft, the
+   * Document is correction read-only after the delivered stale check.
+   */
   async correct(
     actor: ActorContext,
     documentIdValue: unknown,
@@ -494,31 +484,11 @@ export class DocumentsService {
 
       // Match Client union/reversal lock order and reject a superseded original.
       await this.clients.lockActiveReferenceClient(actor, visible.clientId);
+      // The Document row lock serializes this correction with every Version
+      // command through the one working revision.
       const [current] = await this.database.connection
-        .select({
-          document: workingDocuments,
-          representation: documentRepresentations,
-        })
+        .select()
         .from(workingDocuments)
-        .innerJoin(
-          documentVersions,
-          and(
-            eq(documentVersions.workspaceId, workingDocuments.workspaceId),
-            eq(documentVersions.companyId, workingDocuments.companyId),
-            eq(documentVersions.documentId, workingDocuments.id),
-          ),
-        )
-        .innerJoin(
-          documentRepresentations,
-          and(
-            eq(
-              documentRepresentations.workspaceId,
-              documentVersions.workspaceId,
-            ),
-            eq(documentRepresentations.companyId, documentVersions.companyId),
-            eq(documentRepresentations.versionId, documentVersions.id),
-          ),
-        )
         .where(
           and(
             eq(workingDocuments.workspaceId, actor.workspaceId),
@@ -529,26 +499,32 @@ export class DocumentsService {
         .for('update');
       if (!current) throw new NotFoundException();
       if (
-        current.document.workingRevision !== command.expectedRevision ||
-        current.document.workingRevision >= 2147483647
+        current.workingRevision !== command.expectedRevision ||
+        current.workingRevision >= MAXIMUM_REVISION
       )
         throw new ConflictException(
           'The working Document changed. Reload before correcting it.',
         );
+      const working = await this.versions.workingVersion({
+        workspaceId: actor.workspaceId,
+        companyId,
+        documentId,
+      });
+      if (working.status !== 'draft') throw documentVersionStateInvalid();
       const after = {
-        title: command.title ?? current.document.title,
-        purpose: command.purpose ?? current.document.purpose,
-        url: command.url ?? current.representation.url,
+        title: command.title ?? current.title,
+        purpose: command.purpose ?? current.purpose,
+        url: command.url ?? working.representation.url,
       };
       const changed =
-        after.title !== current.document.title ||
-        after.purpose !== current.document.purpose ||
-        after.url !== current.representation.url;
+        after.title !== current.title ||
+        after.purpose !== current.purpose ||
+        after.url !== working.representation.url;
       const revision = changed
-        ? current.document.workingRevision + 1
-        : current.document.workingRevision;
+        ? current.workingRevision + 1
+        : current.workingRevision;
       if (changed) {
-        await this.clients.recordReferenceUse(actor, current.document.clientId);
+        await this.clients.recordReferenceUse(actor, current.clientId);
         await this.database.connection
           .update(workingDocuments)
           .set({
@@ -560,7 +536,7 @@ export class DocumentsService {
         await this.database.connection
           .update(documentRepresentations)
           .set({ url: after.url })
-          .where(eq(documentRepresentations.id, current.representation.id));
+          .where(eq(documentRepresentations.id, working.representation.id));
       }
       const [recorded] = await this.database.connection
         .insert(documentCorrectionCommands)
@@ -574,9 +550,9 @@ export class DocumentsService {
           expectedRevision: command.expectedRevision,
           revision,
           outcome: changed ? 'corrected' : 'unchanged',
-          beforeTitle: current.document.title,
-          beforePurpose: current.document.purpose,
-          beforeUrl: current.representation.url,
+          beforeTitle: current.title,
+          beforePurpose: current.purpose,
+          beforeUrl: working.representation.url,
           afterTitle: after.title,
           afterPurpose: after.purpose,
           afterUrl: after.url,
@@ -586,27 +562,6 @@ export class DocumentsService {
       return correctionReceipt(recorded);
     });
   }
-}
-function requirePermission(
-  actor: ActorContext,
-  permission: 'document.read' | 'document.register',
-): string {
-  if (
-    !actor.active ||
-    !actor.activeCompany?.documentPermissions?.includes(permission) ||
-    (!actor.workspacePermissions.includes('client.manage') &&
-      !actor.activeCompany.clientPermissions.includes('client.read'))
-  )
-    throw new ForbiddenException();
-  return actor.activeCompany.id;
-}
-/** Only a current Representation reader receives reference URLs. */
-function canReadReference(actor: ActorContext): boolean {
-  return (
-    actor.activeCompany?.documentPermissions?.includes(
-      'document.reference.read',
-    ) === true
-  );
 }
 function materialChange(before: string, after: string) {
   return before === after ? undefined : { before, after };

@@ -214,7 +214,7 @@ it.skipIf(!databaseUrl)(
         ['company_commercial_intake', 'v3'],
         ['company_project_access', 'v3'],
         ['company_director_client_access', null],
-        ['company_document_registrar', 'v3'],
+        ['company_document_registrar', 'v4'],
         ['company_task_manager', null],
         ['company_context_access', 'v1'],
       ] as const)

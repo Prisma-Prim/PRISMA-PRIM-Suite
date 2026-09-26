@@ -410,6 +410,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenProject={
             openProject && ((projectId) => openProject({ projectId }))
           }
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
     });
@@ -755,6 +758,9 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.project.unlinked': projectDocumentsCopy.unlinked,
     'document.registered': documentsCopy.activity,
     'document.corrected': documentsCopy.correctionActivity,
+    'document.version.drafted': documentsCopy.versionDraftedActivity,
+    'document.version.designated_official':
+      documentsCopy.versionDesignatedActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
     'project.responsible.changed': projectCopy.responsible.activityAction,
