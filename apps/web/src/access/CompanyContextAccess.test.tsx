@@ -1460,7 +1460,7 @@ describe('CompanyContextAccess', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Company Pricing Configuration v1 grants offering read and Pricing Rule configuration only/,
+        /Company Pricing Configuration v1 grants offering read and pricing configuration only: reading and publishing illustrative Pricing Rule Versions and Tariff Versions/,
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(

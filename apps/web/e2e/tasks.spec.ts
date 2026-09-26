@@ -3,7 +3,12 @@ import {
   actorContextFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
-import type { TaskEvent, TaskView } from '../src/project/task-response';
+import {
+  taskPriorities,
+  type TaskEvent,
+  type TaskPriority,
+  type TaskView,
+} from '../src/project/task-response';
 
 test('manages manual Tasks through the production shell with retained retry and attributable read-only history', async ({
   page,
@@ -90,6 +95,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           title: 'Collect preparation notes',
           assigneeMembershipId: null,
           dueDate: null,
+          priority: 'critical',
         });
         task = {
           id: 'manual-task',
@@ -99,6 +105,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           title: 'Collect preparation notes',
           assignee: null,
           dueDate: null,
+          priority: 'critical',
           status: 'todo',
           completion: null,
           version: 1,
@@ -119,7 +126,12 @@ test('manages manual Tasks through the production shell with retained retry and 
           },
           metadata: {
             version: 1,
-            initial: { title: task.title, assignee: null, dueDate: null },
+            initial: {
+              title: task.title,
+              assignee: null,
+              dueDate: null,
+              priority: task.priority,
+            },
           },
         });
       } else {
@@ -156,6 +168,9 @@ test('manages manual Tasks through the production shell with retained retry and 
                 : body.dueDate === null
                   ? null
                   : task.dueDate,
+            priority:
+              taskPriorities.find((priority) => priority === body.priority) ??
+              task.priority,
             version,
           };
           events.push({
@@ -177,6 +192,14 @@ test('manages manual Tasks through the production shell with retained retry and 
                   : {}),
                 ...(before.dueDate !== task.dueDate
                   ? { dueDate: { before: before.dueDate, after: task.dueDate } }
+                  : {}),
+                ...(before.priority !== task.priority
+                  ? {
+                      priority: {
+                        before: before.priority,
+                        after: task.priority,
+                      },
+                    }
                   : {}),
               },
             },
@@ -238,6 +261,9 @@ test('manages manual Tasks through the production shell with retained retry and 
     tasks.getByText('No manual Tasks for this Project yet.'),
   ).toBeVisible();
   await tasks.getByLabel('Task title').fill('Collect preparation notes');
+  const priority = tasks.locator('form').getByLabel('Priority');
+  await expect(priority).toHaveValue('normal');
+  await priority.selectOption({ label: 'Critical' });
   await tasks.getByRole('button', { name: 'Create Task', exact: true }).click();
   await expect(
     tasks.getByRole('heading', {
@@ -254,17 +280,29 @@ test('manages manual Tasks through the production shell with retained retry and 
       name: `${project.title} Client: ${project.clientDisplayName}`,
     })
     .click();
+  await expect(
+    tasks
+      .getByRole('navigation', { name: 'Tasks' })
+      .getByText('Priority: Critical', { exact: true }),
+  ).toBeVisible();
   await tasks
     .getByRole('button', { name: 'Collect preparation notes', exact: true })
     .click();
+  await expect(
+    tasks.locator('dd').getByText('Critical', { exact: true }),
+  ).toBeVisible();
   await tasks
     .locator('form')
     .getByLabel('Responsible member')
     .selectOption(member.workspaceMembershipId);
   await tasks.getByLabel('Due date').fill('2026-10-15');
+  await priority.selectOption({ label: 'Important' });
   await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
   await expect(
     tasks.locator('dd').getByText(member.displayLabel, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
   ).toBeVisible();
   await tasks.getByLabel('Task title').fill('Review preparation notes');
   await tasks.getByLabel('Due date').fill('2026-10-20');
@@ -294,6 +332,11 @@ test('manages manual Tasks through the production shell with retained retry and 
       exact: false,
     }),
   ).toBeVisible();
+  // A done Task keeps its priority visible but offers no priority control.
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
+  ).toBeVisible();
+  await expect(priority).toHaveCount(0);
   expect(completionKeys).toHaveLength(2);
   expect(completionKeys[0]).toBe(completionKeys[1]);
   expect(
@@ -314,6 +357,8 @@ test('manages manual Tasks through the production shell with retained retry and 
     history.getByText('Completion declared', { exact: true }),
   ).toBeVisible();
   await expect(history.getByText('Before: 2026-10-15')).toBeVisible();
+  await expect(history.getByText('Priority: Critical')).toBeVisible();
+  await expect(history.getByText('Critical → Important')).toBeVisible();
   await expect(page.getByText('Preparatory', { exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -394,6 +439,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   };
   const blockageReason = "Waiting for the Client's signed questionnaire";
   const cancellationReason = 'Duplicate of A';
+  const priority: TaskPriority = 'critical';
   const common = {
     id: 'execution-task',
     companyId: company.id,
@@ -402,6 +448,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     title: 'Collect signed questionnaire',
     assignee,
     dueDate: '2026-10-15',
+    priority,
     createdAt: project.createdAt,
     updatedAt: project.createdAt,
     createdBy: actor,
@@ -431,6 +478,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
           title: common.title,
           assignee,
           dueDate: common.dueDate,
+          priority: common.priority,
         },
       },
     },
@@ -621,6 +669,12 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   await expect(
     tasks.getByText(`Blocked by ${actor.displayName}`, { exact: false }),
   ).toBeVisible();
+  // A move changes no priority; the blocked Task keeps it editable.
+  const priorityFact = tasks
+    .locator('.task-panel dd')
+    .getByText('Critical', { exact: true });
+  await expect(priorityFact).toBeVisible();
+  await expect(tasks.getByLabel('Priority')).toHaveValue('critical');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath('tasks-blocked.png'),
@@ -633,6 +687,9 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     has: page.getByRole('heading', { name: common.title, exact: true }),
   });
   await expect(assignedRow.getByText('Blocked', { exact: true })).toBeVisible();
+  await expect(
+    assignedRow.getByText('Critical', { exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('tasks-my-tasks-blocked.png'),
     fullPage: true,
@@ -649,6 +706,9 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     tasks.locator('dd').getByText(cancellationReason, { exact: true }),
   ).toBeVisible();
   await expect(tasks.getByLabel('Task title')).toHaveCount(0);
+  // A cancelled Task keeps its priority readable without a priority control.
+  await expect(priorityFact).toBeVisible();
+  await expect(tasks.getByLabel('Priority')).toHaveCount(0);
 
   await navigate('My Tasks');
   await myTasks.getByRole('button', { name: 'Refresh My Tasks' }).click();

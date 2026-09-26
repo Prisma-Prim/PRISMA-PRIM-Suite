@@ -15,7 +15,7 @@ const COMPANY = '00000000-0000-4000-8000-000000039703';
 const CONFIGURATION_ASSIGNMENT = '00000000-0000-4000-8000-000000039704';
 const PRICING_USER_ASSIGNMENT = '00000000-0000-4000-8000-000000039705';
 const RULE_VERSION = '00000000-0000-4000-8000-000000039706';
-const PREVIOUS_MIGRATIONS = 33;
+const PREVIOUS_MIGRATIONS = 35;
 const CHECK_VIOLATION = '23514';
 
 // Every bundle and captured version delivered before this migration,
@@ -39,7 +39,7 @@ const PRESERVED_ASSIGNMENTS: ReadonlyArray<
 ];
 
 it.skipIf(!databaseUrl)(
-  'adds Company Pricing User through 0033 without changing any existing row and accepts only its captured v1',
+  'adds Company Pricing User through 0035 without changing any existing row and accepts only its captured v1',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -61,9 +61,9 @@ it.skipIf(!databaseUrl)(
       const allEntries: unknown[] = journal.entries;
       const entries = allEntries.slice(0, PREVIOUS_MIGRATIONS);
       const tags = entries.map(journalTag);
-      expect(tags.at(-1)).toBe('0032_pricing_rule_versions');
+      expect(tags.at(-1)).toBe('0034_tariff_versions');
       expect(journalTag(allEntries[PREVIOUS_MIGRATIONS])).toBe(
-        '0033_company_pricing_user',
+        '0035_company_pricing_user',
       );
       previous = await mkdtemp(join(tmpdir(), 'prisma-397-upgrade-'));
       await mkdir(join(previous, 'meta'));

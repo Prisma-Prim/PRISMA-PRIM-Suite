@@ -51,6 +51,7 @@ function assigned(id: string, project: typeof atelier, dueDate: string) {
     title: 'Chestionar inițial',
     assignee: { workspaceMembershipId: 'member', displayLabel: 'Owner · 1' },
     dueDate,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,

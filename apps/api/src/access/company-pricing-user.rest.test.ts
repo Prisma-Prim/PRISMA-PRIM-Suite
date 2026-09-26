@@ -25,6 +25,7 @@ const FOREIGN = {
 } as const;
 const SCOPE = '/pricing-configuration/rule-scope';
 const VERSIONS = '/pricing-configuration/rule-versions';
+const TARIFF_VERSIONS = '/pricing-configuration/tariff-versions';
 const DEFINITIONS = '/commercial-catalogue/service-definitions';
 const OFFERINGS = '/commercial-catalogue/offerings';
 const REQUESTS = '/commercial-intake/requests';
@@ -46,12 +47,20 @@ const CONFIGURATION_PERMISSIONS = [
   'commercial.pricing.configuration.read',
   'commercial.pricing.configuration.manage',
 ];
+const TARIFF = {
+  unit: 'illustrative-unit',
+  unitAmount: '123.4500',
+  currency: 'EUR',
+  taxRatePercent: '12.34',
+  taxLabel: 'Illustrative tax',
+};
 // Every table a denied or read-only request could write to.
 const WRITABLE_TABLES = [
   'company_role_assignments',
   'company_context_assignment_commands',
   'activity_log_events',
   'pricing_rule_versions',
+  'tariff_versions',
   'pricing_configuration_commands',
   'pricing_configuration_events',
   'service_definitions',
@@ -334,6 +343,82 @@ withPostgres('Company Pricing User REST', () => {
         (await request(path, company.id, { headers: OTHER_MEMBER })).status,
       ).toBe(403);
     expect(other.membershipId).not.toBe(holder.membershipId);
+  }, 60_000);
+
+  it('lets a Pricing User read tariffs, refuses publication and removes tariff reads after revocation', async () => {
+    const company = await createCompany('PRISMA-PRIM');
+    await member(CONFIGURATION_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CONFIGURATION_ASSIGNMENTS,
+    ]);
+    await member(CATALOGUE_MEMBER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      CATALOGUE_ASSIGNMENTS,
+    ]);
+    const { offering } = await offer(company.id, 'Illustrative offering');
+    const published = record(
+      await command(
+        tariffVersionsPath(offering.id),
+        {
+          ...TARIFF,
+          effectiveFrom: '2026-04-02T00:00:00Z',
+          expectedActiveVersionNumber: null,
+        },
+        `tariff-${crypto.randomUUID()}`,
+        company.id,
+        CONFIGURATION_MEMBER,
+      ),
+    );
+    expect(published.outcome).toBe('PUBLISHED');
+    const tariffVersion = record(published.version);
+    const tariffVersionId = stringField(tariffVersion, 'id');
+
+    const holder = await member(PRICING_USER, company.id, [
+      CONTEXT_ASSIGNMENTS,
+      PRICING_USER_ASSIGNMENTS,
+    ]);
+    const tariffPaths = [
+      tariffScopePath(offering.id),
+      tariffVersionsPath(offering.id),
+      `${TARIFF_VERSIONS}/${tariffVersionId}`,
+    ];
+    for (const path of tariffPaths) {
+      const owner = await request(path, company.id, {
+        headers: CONFIGURATION_MEMBER,
+      });
+      const read = await request(path, company.id, { headers: PRICING_USER });
+      expect({ path, status: read.status }).toEqual({ path, status: 200 });
+      expect(await read.json()).toEqual(await owner.json());
+    }
+
+    const beforeDeniedPublication = await writeCounts();
+    const deniedPublication = await post(
+      tariffVersionsPath(offering.id),
+      company.id,
+      {
+        ...TARIFF,
+        unitAmount: '456.7800',
+        effectiveFrom: '2026-05-01T00:00:00Z',
+        expectedActiveVersionNumber: 1,
+      },
+      `pricing-user-tariff-${crypto.randomUUID()}`,
+      PRICING_USER,
+    );
+    expect(deniedPublication.status).toBe(403);
+    expect(await deniedPublication.text()).not.toContain('headVersionNumber');
+    expect(await writeCounts()).toEqual(beforeDeniedPublication);
+
+    await revoke(PRICING_USER_ASSIGNMENTS, {
+      workspaceMembershipId: holder.membershipId,
+      companyId: company.id,
+    });
+    for (const path of tariffPaths) {
+      const denied = await request(path, company.id, {
+        headers: PRICING_USER,
+      });
+      expect({ path, status: denied.status }).toEqual({ path, status: 403 });
+      expect(await denied.text()).not.toContain(TARIFF.unitAmount);
+    }
   }, 60_000);
 
   it('records one attributed event per actual grant or revocation and replays or conflicts without committing', async () => {
@@ -1316,6 +1401,14 @@ withPostgres('Company Pricing User REST', () => {
         path,
         status: (await request(path, companyId, { headers })).status,
       }).toEqual({ path, status });
+  }
+
+  function tariffScopePath(offeringId: string): string {
+    return `/pricing-configuration/offerings/${offeringId}/tariff-scope`;
+  }
+
+  function tariffVersionsPath(offeringId: string): string {
+    return `/pricing-configuration/offerings/${offeringId}/tariff-versions`;
   }
 
   async function liveAssignmentId(

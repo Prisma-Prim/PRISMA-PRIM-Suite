@@ -13,12 +13,20 @@ const otherCompanyHeaders = {
   'x-test-display-name': 'Other Company Member',
   'x-test-email': 'other-company-member@example.test',
 };
+// Member M, the browser identity, records the synthetic offerings.
+const primaryMemberHeaders = {
+  'x-test-external-provider': 'local-demo',
+  'x-test-external-subject': 'local-demonstration-user',
+  'x-test-display-name': 'Ada Ionescu',
+  'x-test-email': 'ada@example.test',
+};
 const marker = 'Illustrative configuration: provisional records';
+const tariffMarker = 'Illustrative tariffs: provisional records';
 
-test('publishes illustrative Pricing Rule Versions through the real API and PostgreSQL', async ({
+test('publishes illustrative Pricing Rule and Tariff Versions through the real API and PostgreSQL', async ({
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'narrow' : 'desktop';
   // Each viewport configures its own synthetic Company so both runs start
@@ -39,7 +47,16 @@ test('publishes illustrative Pricing Rule Versions through the real API and Post
     workspaceMembershipId: membershipId,
     companyId,
   });
+  // Tariffs need offerings: M also records two synthetic ones.
+  await changeAssignment(page, {
+    operation: 'grant',
+    bundle: 'company-service-catalogue',
+    workspaceMembershipId: membershipId,
+    companyId,
+  });
   try {
+    const offeringA = await createOffering(page, companyId, `A-${suffix}`);
+    const offeringB = await createOffering(page, companyId, `B-${suffix}`);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     const companySelect = page.getByLabel('Active Company', { exact: true });
@@ -171,8 +188,148 @@ test('publishes illustrative Pricing Rule Versions through the real API and Post
       fullPage: true,
     });
 
+    // Tariff Versions, one offering at a time, in the same section.
+    // 8. M chooses offering A: nothing is published for it yet.
+    const tariffs = page.locator('.tariff-versions');
+    await expect(
+      tariffs.getByText(tariffMarker, { exact: true }),
+    ).toBeVisible();
+    await chooseOffering(page, offeringA);
+    await expect(tariffs.getByText(/^No current version/u)).toBeVisible();
+    await expect(
+      tariffs.getByText(
+        'No Tariff Version has been published for this offering yet.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+
+    // 9. M publishes tariff v1 a short time ahead: none is current yet.
+    await tariffs
+      .getByRole('button', { name: 'Publish Tariff Version' })
+      .click();
+    await expect(tariffs.getByRole('alert')).toContainText(
+      'Enter a unit of 1 to 24 characters.',
+    );
+    const tariffStartA = await localDateTime(page, 60_000);
+    await fillTariffDraft(page, zone, {
+      unitAmount: '123.4500',
+      effectiveFrom: tariffStartA.local,
+    });
+    expect(await publishTariff(page, offeringA.id)).toBe(201);
+    await expect(
+      tariffs.getByText('Tariff Version 1 published.', { exact: true }),
+    ).toBeVisible();
+    await expect(tariffs.getByText(/^No current version/u)).toBeVisible();
+    await expect(
+      tariffs.getByText(
+        'Head: version 1. A new publication follows this version.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    const tariffVersions = tariffs.getByRole('list', {
+      name: 'Tariff Versions',
+    });
+    await expect(tariffVersions.getByRole('listitem')).toHaveCount(1);
+    const firstTariff = tariffVersions.getByRole('listitem').first();
+    for (const text of [
+      'Scheduled',
+      '123.4500 EUR per illustrative-unit',
+      'Tax 12.34% (Illustrative tax), no fiscal validity',
+      'Illustrative',
+      'Provisional',
+    ])
+      await expect(firstTariff).toContainText(text);
+
+    // A second tab opened now still displays head 1 of offering A.
+    const tariffTab = await page.context().newPage();
+    await tariffTab.goto('/#pricing');
+    const secondTariffs = tariffTab.locator('.tariff-versions');
+    await chooseOffering(tariffTab, offeringA);
+    await expect(
+      secondTariffs.getByText(
+        'The new version will follow head version 1 of this offering.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+
+    // 10. M publishes tariff v2 with expected head 1 and a later start.
+    const tariffStartB = await localDateTime(page, 2 * 60 * 60 * 1000);
+    await fillTariffDraft(page, zone, {
+      unitAmount: '123.4500',
+      currency: 'RON',
+      effectiveFrom: tariffStartB.local,
+    });
+    expect(await publishTariff(page, offeringA.id)).toBe(201);
+    await expect(
+      tariffs.getByText('Tariff Version 2 published.', { exact: true }),
+    ).toBeVisible();
+    await expect(tariffVersions.getByRole('listitem')).toHaveCount(2);
+    await expect(tariffVersions.getByRole('listitem').first()).toContainText(
+      '123.4500 RON per illustrative-unit',
+    );
+
+    // 11. The second tab still expecting head 1 gets a stale conflict.
+    const tariffStartC = await localDateTime(tariffTab, 3 * 60 * 60 * 1000);
+    await fillTariffDraft(tariffTab, zone, {
+      unitAmount: '99',
+      effectiveFrom: tariffStartC.local,
+    });
+    expect(await publishTariff(tariffTab, offeringA.id)).toBe(409);
+    await expect(secondTariffs.getByRole('alert')).toHaveText(
+      'The offering changed: version 2 is now the head. Reload before publishing again.',
+    );
+    await secondTariffs
+      .getByRole('button', { name: 'Reload Tariff Versions' })
+      .click();
+    await expect(
+      secondTariffs.getByText(
+        'The new version will follow head version 2 of this offering.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      secondTariffs.getByLabel('Unit amount', { exact: true }),
+    ).toHaveValue('99');
+    await tariffTab.close();
+
+    // 12. Resubmitting v2's content with 123.45 changes nothing: amounts
+    // compare by numeric value.
+    await fillTariffDraft(page, zone, {
+      unitAmount: '123.45',
+      currency: 'RON',
+      effectiveFrom: tariffStartB.local,
+    });
+    expect(await publishTariff(page, offeringA.id)).toBe(201);
+    await expect(
+      tariffs.getByText(
+        'Tariff Version 2 already has this content. Nothing changed.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(tariffVersions.getByRole('listitem')).toHaveCount(2);
+
+    // 13. Offering B still has no version.
+    await chooseOffering(page, offeringB);
+    await expect(
+      tariffs.getByText(
+        'No Tariff Version has been published for this offering yet.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await chooseOffering(page, offeringA);
+    await expect(tariffVersions.getByRole('listitem')).toHaveCount(2);
+    await expectNoHorizontalOverflow(page);
+    await tariffs.screenshot({
+      path: testInfo.outputPath(`tariff-versions-${suffix}.png`),
+    });
+
     // 6. After v1's start, a reload shows v1 current and v2 scheduled.
-    await page.waitForTimeout(Math.max(0, startA.epoch - Date.now() + 1_500));
+    await page.waitForTimeout(
+      Math.max(
+        0,
+        Math.max(startA.epoch, tariffStartA.epoch) - Date.now() + 1_500,
+      ),
+    );
     await configuration
       .getByRole('button', { name: 'Reload Pricing Rule Versions' })
       .click();
@@ -192,11 +349,39 @@ test('publishes illustrative Pricing Rule Versions through the real API and Post
       fullPage: true,
     });
 
+    // 14. After tariff v1's start, a reload shows it current and v2 scheduled.
+    await tariffs
+      .getByRole('button', { name: 'Reload Tariff Versions' })
+      .click();
+    const currentTariff = tariffs.getByRole('region', {
+      name: 'Current Tariff Version',
+    });
+    await expect(currentTariff).toContainText('Version 1');
+    await expect(currentTariff).toContainText(
+      '123.4500 EUR per illustrative-unit',
+    );
+    await expect(currentTariff.locator('.tariff-versions-state')).toHaveText(
+      'Current',
+    );
+    const scheduledTariffs = tariffs.getByRole('list', {
+      name: 'Scheduled Tariff successors',
+    });
+    await expect(scheduledTariffs.getByRole('listitem')).toHaveCount(1);
+    await expect(scheduledTariffs.getByRole('listitem').first()).toContainText(
+      'Version 2',
+    );
+    await tariffs.screenshot({
+      path: testInfo.outputPath(`tariff-versions-current-${suffix}.png`),
+    });
+
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
     await page.getByRole('button', { name: 'Use classic frame' }).click();
     await expect(
       configuration.getByText(marker, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      tariffs.getByText(tariffMarker, { exact: true }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.getByRole('button', { name: 'Try Prisme' }).click();
@@ -215,23 +400,35 @@ test('publishes illustrative Pricing Rule Versions through the real API and Post
         exact: true,
       }),
     ).toHaveCount(0);
+    await expect(page.locator('.tariff-versions')).toHaveCount(0);
     for (const otherCompanyId of [
       companyId,
       requiredEnvironment('ACCEPTANCE_OTHER_COMPANY_ID'),
     ]) {
-      const denied = await page.request.get(
-        `${apiOrigin}/api/pricing-configuration/rule-versions`,
-        {
+      for (const path of [
+        '/pricing-configuration/rule-versions',
+        `/pricing-configuration/offerings/${offeringA.id}/tariff-scope`,
+        `/pricing-configuration/offerings/${offeringA.id}/tariff-versions`,
+      ]) {
+        const denied = await page.request.get(`${apiOrigin}/api${path}`, {
           headers: {
             ...otherCompanyHeaders,
             'x-company-context-id': otherCompanyId,
           },
-        },
-      );
-      expect(denied.status()).toBe(403);
-      expect(await denied.text()).not.toContain('Illustrative rule');
+        });
+        expect(denied.status()).toBe(403);
+        const text = await denied.text();
+        expect(text).not.toContain('Illustrative rule');
+        expect(text).not.toContain('123.4500');
+      }
     }
   } finally {
+    await changeAssignment(page, {
+      operation: 'revoke',
+      bundle: 'company-service-catalogue',
+      workspaceMembershipId: membershipId,
+      companyId,
+    });
     await changeAssignment(page, {
       operation: 'revoke',
       bundle: 'company-pricing-configuration',
@@ -497,7 +694,8 @@ async function changeAssignment(
     bundle:
       | 'company-context'
       | 'company-pricing-configuration'
-      | 'company-pricing-user';
+      | 'company-pricing-user'
+      | 'company-service-catalogue';
     workspaceMembershipId: string;
     companyId: string;
   },
@@ -518,6 +716,107 @@ async function changeAssignment(
           { headers: { ...apiAdministratorHeaders, 'idempotency-key': key } },
         );
   expect(response.status()).toBe(operation === 'grant' ? 201 : 200);
+}
+
+type SyntheticOffering = { id: string; label: string };
+
+// Records a synthetic Service Definition and the Company's offering of it as
+// member M, and returns the offering with its option label in the panel.
+async function createOffering(
+  page: Page,
+  companyId: string,
+  name: string,
+): Promise<SyntheticOffering> {
+  const unique = crypto.randomUUID().slice(0, 8).toUpperCase();
+  const code = `TARIFF-${name.toUpperCase()}-${unique}`;
+  const serviceName = `Illustrative service ${name} ${unique}`;
+  const headers = {
+    ...primaryMemberHeaders,
+    'content-type': 'application/json',
+    'x-company-context-id': companyId,
+  };
+  const definition = await page.request.post(
+    `${apiOrigin}/api/commercial-catalogue/service-definitions`,
+    {
+      headers: { ...headers, 'idempotency-key': `acceptance-${code}` },
+      data: { code, name: serviceName },
+    },
+  );
+  expect(definition.status()).toBe(201);
+  const definitionId = nestedId(await definition.json(), 'definition');
+  const offering = await page.request.post(
+    `${apiOrigin}/api/commercial-catalogue/offerings`,
+    {
+      headers: { ...headers, 'idempotency-key': `acceptance-offering-${code}` },
+      data: { serviceDefinitionId: definitionId },
+    },
+  );
+  expect(offering.status()).toBe(201);
+  return {
+    id: nestedId(await offering.json(), 'offering'),
+    label: `${serviceName} (${code})`,
+  };
+}
+
+function nestedId(body: unknown, field: string): string {
+  if (typeof body !== 'object' || body === null || !(field in body))
+    throw new Error(`Expected the recorded ${field}.`);
+  const record: unknown = Object.fromEntries(Object.entries(body))[field];
+  if (
+    typeof record !== 'object' ||
+    record === null ||
+    !('id' in record) ||
+    typeof record.id !== 'string'
+  )
+    throw new Error(`Expected the recorded ${field} id.`);
+  return record.id;
+}
+
+async function chooseOffering(
+  page: Page,
+  offering: SyntheticOffering,
+): Promise<void> {
+  const select = page
+    .locator('.tariff-versions')
+    .getByLabel('Company Service Offering', { exact: true });
+  await select.selectOption({ label: offering.label });
+  await expect(select.locator('option:checked')).toHaveText(offering.label);
+}
+
+async function fillTariffDraft(
+  page: Page,
+  zone: string,
+  draft: { unitAmount: string; currency?: string; effectiveFrom: string },
+): Promise<void> {
+  const tariffs = page.locator('.tariff-versions');
+  await tariffs.getByLabel('Unit', { exact: true }).fill('illustrative-unit');
+  await tariffs
+    .getByLabel('Unit amount', { exact: true })
+    .fill(draft.unitAmount);
+  await tariffs
+    .getByLabel('Currency', { exact: true })
+    .selectOption(draft.currency ?? 'EUR');
+  await tariffs.getByLabel('Tax rate percent', { exact: true }).fill('12.34');
+  await tariffs
+    .getByLabel('Tax label', { exact: true })
+    .fill('Illustrative tax');
+  await tariffs
+    .getByLabel(`Effective from (${zone})`, { exact: true })
+    .fill(draft.effectiveFrom);
+}
+
+async function publishTariff(page: Page, offeringId: string): Promise<number> {
+  const response = page.waitForResponse(
+    mutationResponse(
+      'POST',
+      `/api/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+    ),
+  );
+  await page
+    .locator('.tariff-versions')
+    .getByRole('button', { name: 'Publish Tariff Version' })
+    .click();
+  return (await response).status();
 }
 
 // A datetime-local value names a wall-clock time in the browser time zone.
