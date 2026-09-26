@@ -61,6 +61,78 @@
 .operational-home-state p {
   margin: 0;
 }
+.operational-home-attention {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.6rem;
+  background: var(--shell-surface);
+}
+.operational-home-attention-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.operational-home-attention-heading h3,
+.operational-home-attention-list h4 {
+  margin: 0;
+}
+.operational-home-attention-heading h3 {
+  color: var(--shell-navy-deep);
+  font-size: 1.05rem;
+}
+.operational-home-attention-note {
+  margin: 0;
+  color: var(--shell-muted);
+}
+.operational-home-attention-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.operational-home-attention-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  min-width: 0;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--shell-line);
+}
+.operational-home-attention-main {
+  min-width: 0;
+}
+.operational-home-attention-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0;
+}
+.operational-home-attention-rules span {
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  color: #674f28;
+  background: #fff4d9;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.operational-home-attention-list dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+.operational-home-attention-list dt {
+  color: var(--shell-muted);
+  font-size: 0.75rem;
+}
+.operational-home-attention-list dd {
+  margin: 0.15rem 0 0;
+}
 .operational-home-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -190,6 +262,45 @@
   align-items: center;
   padding: 22px 26px;
   border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .operational-home-attention {
+  gap: 0;
+  margin: 22px 26px 0;
+  padding: 0;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.prisme-shell .operational-home-attention-heading {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .operational-home-attention-heading h3 {
+  color: var(--shell-ink);
+  font-size: 1rem;
+  font-weight: 650;
+}
+.prisme-shell .operational-home-attention-note {
+  padding: 16px 20px;
+  font-size: 0.78rem;
+}
+.prisme-shell .operational-home-attention-list li {
+  padding: 16px 20px;
+  border-top: 0;
+  border-bottom: 1px solid var(--shell-line);
+}
+.prisme-shell .operational-home-attention-list li:last-child {
+  border-bottom: 0;
+}
+.prisme-shell .operational-home-attention-list h4 {
+  color: var(--shell-ink);
+  font-size: 0.86rem;
+  font-weight: 620;
+  line-height: 1.55;
+}
+.prisme-shell .operational-home-attention-list dd {
+  color: #3d4a5c;
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 .prisme-shell .operational-home-heading h2,
 .prisme-shell .operational-home-overdue-heading h3 {
@@ -333,6 +444,12 @@
   .prisme-shell .operational-home-state {
     margin: 20px;
   }
+  .prisme-shell .operational-home-attention {
+    margin: 20px 20px 0;
+  }
+  .operational-home-attention-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .prisme-shell .operational-home-overdue {
     margin: 0 20px 20px;
   }
@@ -342,6 +459,7 @@
 }
 @media (max-width: 650px) {
   .operational-home-heading,
+  .operational-home-attention-heading,
   .operational-home-overdue-heading {
     display: grid;
     justify-items: start;
@@ -354,6 +472,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .operational-home-overdue-list dl,
+  .operational-home-attention-list dl,
   .prisme-shell .operational-home-overdue-list dl {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
@@ -363,6 +482,15 @@
     grid-template-columns: 7.5rem minmax(0, 1fr);
     align-items: baseline;
     gap: 0.75rem;
+  }
+  .operational-home-attention-list dl > div {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .operational-home-attention-list dd {
+    margin: 0;
   }
   .operational-home-overdue-list dd {
     margin: 0;

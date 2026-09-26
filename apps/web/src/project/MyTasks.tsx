@@ -96,6 +96,8 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
 
   return (
     <section
+      id="my-tasks"
+      tabIndex={-1}
       className={`my-tasks${isPrisme ? ' my-tasks--prisme' : ''}`}
       aria-labelledby={titleId}
     >
