@@ -1,4 +1,4 @@
-import { selectOption } from './select-option';
+import { openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 
@@ -122,7 +122,7 @@ test('administers both existing Company access bundles by member and Company nam
   ).toBe(true);
 
   const grant = page.getByRole('button', { name: 'Grant access' });
-  await grant.focus();
+  await page.getByLabel('Access bundle').press('Tab');
   await expect(grant).toBeFocused();
   expect(
     await grant.evaluate((element) => getComputedStyle(element).outlineStyle),
@@ -389,11 +389,14 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   ).toBeVisible();
   await expect(page.getByText('Target: Mila Popescu')).toBeVisible();
   await page.goto('/?frame=prisme#access');
+  const suspensionMember = page.getByLabel('Member to suspend');
+  const suspensionChoices = await openSelect(suspensionMember);
   await expect(
-    page
-      .getByLabel('Member to suspend')
-      .getByRole('option', { name: 'Mila Popescu — mila@example.test' }),
+    suspensionChoices.getByRole('option', {
+      name: 'Mila Popescu — mila@example.test',
+    }),
   ).toHaveCount(0);
+  await suspensionMember.press('Escape');
   expect(suspensionCommands).toBe(1);
   await page.screenshot({
     path: testInfo.outputPath(
@@ -511,11 +514,14 @@ test('recovers from last-holder suspension protection without reporting success'
   await expect(
     page.getByText('Member suspended. Server state refreshed.'),
   ).toHaveCount(0);
+  const suspensionMember = page.getByLabel('Member to suspend');
+  const suspensionChoices = await openSelect(suspensionMember);
   await expect(
-    page
-      .getByLabel('Member to suspend')
-      .getByRole('option', { name: 'Mila Popescu — mila@example.test' }),
+    suspensionChoices.getByRole('option', {
+      name: 'Mila Popescu — mila@example.test',
+    }),
   ).toHaveCount(1);
+  await suspensionMember.press('Escape');
   await expect(
     page.getByRole('heading', { name: 'Company access' }),
   ).toBeVisible();

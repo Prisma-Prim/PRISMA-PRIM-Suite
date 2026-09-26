@@ -441,10 +441,9 @@ export function Select({
           required={required}
           value={submittedValue}
           onChange={() => undefined}
-          onInvalid={(event) => {
-            event.preventDefault();
-            triggerRef.current?.focus();
-          }}
+          // Keep native validation order: canceling invalid skips this field.
+          onInvalid={() => triggerRef.current?.focus()}
+          onFocus={() => triggerRef.current?.focus()}
         />
       )}
       {menuOpen &&

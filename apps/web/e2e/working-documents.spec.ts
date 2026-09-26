@@ -242,6 +242,10 @@ test('registers and reopens a Company-confidential working reference', async ({
   await expect(clientSelect).toBeFocused();
 
   await selectOption(clientSelect, client.id);
+  await registrationForm.evaluate((form: HTMLFormElement) =>
+    form.requestSubmit(),
+  );
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused();
   await page.getByLabel('Title', { exact: true }).fill(document.title);
   await page.getByLabel('Purpose', { exact: true }).fill(document.purpose);
   await page

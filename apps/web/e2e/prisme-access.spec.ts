@@ -1,5 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -145,9 +145,12 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
   await expect(context.getByRole('alert')).toHaveText(
     'Your previous Company context is no longer available. Choose an active Company.',
   );
+  const companySelect = page.getByLabel('Active Company', { exact: true });
+  const companyChoices = await openSelect(companySelect);
   await expect(
-    context.getByRole('option', { name: companyA.displayName }),
+    companyChoices.getByRole('option', { name: companyA.displayName }),
   ).toHaveCount(0);
+  await companySelect.press('Escape');
   revoked = false;
   await selectOption(
     page.getByLabel('Active Company', { exact: true }),

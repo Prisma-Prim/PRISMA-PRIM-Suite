@@ -1,5 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -664,11 +664,10 @@ async function nameResponsible(
     .getByRole('button', { name: 'Change', exact: true })
     .click();
   const chooser = responsible.getByLabel('Choose the responsible member');
-  const value = await chooser
-    .locator('option', { hasText: name })
-    .getAttribute('value');
-  if (!value) throw new Error(`${name} is not an eligible responsible member.`);
-  await selectOption(chooser, value);
+  const choices = await openSelect(chooser);
+  const member = choices.getByRole('option', { name });
+  await expect(member).toHaveCount(1);
+  await member.click();
   const saved = page.waitForResponse(
     mutationResponse('PUT', `/api/projects/${projectId}/responsible`),
   );

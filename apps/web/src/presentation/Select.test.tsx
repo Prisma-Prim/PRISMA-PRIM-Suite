@@ -278,4 +278,46 @@ describe('Select', () => {
     expect(changes.at(-1)).toBe('alpha');
     expect(select).toHaveTextContent('Alpha');
   });
+
+  it('lets native validation identify the first invalid field and forwards its focus', () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form aria-label="Required fields" onSubmit={onSubmit}>
+        <label htmlFor="first-required">First choice</label>
+        <Select
+          id="first-required"
+          name="choice"
+          value=""
+          placeholder="Choose"
+          options={options}
+          required
+          onValueChange={vi.fn()}
+        />
+        <label>
+          Next required field
+          <input name="next" required />
+        </label>
+      </form>,
+    );
+    const form = screen.getByRole('form', { name: 'Required fields' });
+    if (!(form instanceof HTMLFormElement)) throw new Error('Expected form');
+    const submittedChoice = form.elements.namedItem('choice');
+    if (!(submittedChoice instanceof HTMLInputElement))
+      throw new Error('Expected the native form value');
+    const canceledInvalidEvents: boolean[] = [];
+    submittedChoice.addEventListener('invalid', (event) => {
+      canceledInvalidEvents.push(event.defaultPrevented);
+    });
+
+    form.requestSubmit();
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    // Canceling this event makes browsers skip the first invalid control.
+    expect(canceledInvalidEvents).toEqual([false]);
+    // jsdom does not perform the browser's interactive validation focus step.
+    submittedChoice.focus();
+    expect(
+      screen.getByRole('combobox', { name: 'First choice' }),
+    ).toHaveFocus();
+  });
 });

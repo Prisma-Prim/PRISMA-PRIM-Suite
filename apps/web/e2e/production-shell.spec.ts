@@ -1,4 +1,4 @@
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -245,14 +245,17 @@ test('lets an authorized Workspace owner register and immediately view a Company
   await expect(page.getByText('Active', { exact: true })).toBeVisible();
   await expect(page.getByText('Registered by Ada Ionescu')).toBeVisible();
   await expect(page.getByLabel('Active Company')).toBeVisible();
+  const companySelect = page.getByLabel('Active Company');
+  const companyChoices = await openSelect(companySelect);
   await expect(
-    page.getByRole('option', { name: 'North Star Consulting' }),
+    companyChoices.getByRole('option', { name: 'North Star Consulting' }),
   ).toHaveCount(1);
   await expect.poll(() => pendingActivity !== undefined).toBe(true);
   await pendingActivity!.fulfill({ json: { events: [] } });
   await expect(
-    page.getByRole('option', { name: 'North Star Consulting' }),
+    companyChoices.getByRole('option', { name: 'North Star Consulting' }),
   ).toHaveCount(1);
+  await companySelect.press('Escape');
   expect(publicReadObserved).toBe(true);
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -652,9 +655,12 @@ test('clears a stale persisted Company and recovers through safe reselection', a
   await expect(companyContext.getByRole('alert')).toHaveText(
     'Your previous Company context is no longer available. Choose an active Company.',
   );
+  const companySelect = companyContext.getByLabel('Active Company');
+  const companyChoices = await openSelect(companySelect);
   await expect(
-    companyContext.getByRole('option', { name: 'Deactivated Provider' }),
+    companyChoices.getByRole('option', { name: 'Deactivated Provider' }),
   ).toHaveCount(0);
+  await companySelect.press('Escape');
   await expect
     .poll(() => page.evaluate((key) => localStorage.getItem(key), storageKey))
     .toBeNull();
@@ -808,9 +814,12 @@ test('grants, selects, and revokes narrow Company context access', async ({
     page.getByRole('heading', { name: 'Company access' }),
   ).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
+  const companySelect = page.getByLabel('Active Company');
+  const companyChoices = await openSelect(companySelect);
   await expect(
-    page.getByRole('option', { name: unassignedCompany.displayName }),
+    companyChoices.getByRole('option', { name: unassignedCompany.displayName }),
   ).toHaveCount(0);
+  await companySelect.press('Escape');
   await selectOption(page.getByLabel('Active Company'), company.id);
   await expect(
     page

@@ -1,5 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
@@ -81,12 +81,14 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   const responsible = navigation.getByLabel('Task responsible member');
   await expectValue(responsible, 'all');
   // The eligible-member query answers with no member, so these options come from the loaded rows.
-  await expect(responsible.getByRole('option')).toHaveText([
+  const responsibleChoices = await openSelect(responsible);
+  await expect(responsibleChoices.getByRole('option')).toHaveText([
     'All',
     'Unassigned',
     'Ana Pop',
     'Ion Radu',
   ]);
+  await responsible.press('Escape');
   await selectOption(responsible, { label: 'Unassigned' });
   await expect(listed).toHaveText(['Review archive notes']);
   await selectOption(responsible, { label: 'Ana Pop' });
@@ -114,11 +116,13 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   expect(listReads).toBe(1);
 
   const dates = navigation.getByLabel('Task date filter');
-  await expect(dates.getByRole('option')).toHaveText([
+  const dateChoices = await openSelect(dates);
+  await expect(dateChoices.getByRole('option')).toHaveText([
     'All dates',
     'Without a date',
     'Date range',
   ]);
+  await dates.press('Escape');
   await selectOption(dates, { label: 'Without a date' });
   await expect(listed).toHaveText(['Review archive notes']);
   // A Date range never keeps an undated Task, even while both bounds stay open.

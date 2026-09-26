@@ -6,14 +6,23 @@ type SelectOptionChoice =
   | Readonly<{ value: string }>
   | Readonly<{ index: number }>;
 
+/** Opens the visible popup and verifies its association with the named control. */
+export async function openSelect(select: Locator): Promise<Locator> {
+  await select.click();
+  const listbox = select.page().getByRole('listbox');
+  await expect(listbox).toBeVisible();
+  const controlledId = await select.getAttribute('aria-controls');
+  if (!controlledId) throw new Error('Select does not identify its listbox');
+  await expect(listbox).toHaveAttribute('id', controlledId);
+  return listbox;
+}
+
 /** Chooses through the visible custom listbox, preserving real user interaction. */
 export async function selectOption(
   select: Locator,
   choice: SelectOptionChoice,
 ): Promise<void> {
-  await select.click();
-  const listbox = select.page().getByRole('listbox');
-  await listbox.waitFor({ state: 'visible' });
+  const listbox = await openSelect(select);
   const options = listbox.getByRole('option');
 
   if (typeof choice === 'object' && 'label' in choice) {
