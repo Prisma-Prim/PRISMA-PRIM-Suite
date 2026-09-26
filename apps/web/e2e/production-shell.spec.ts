@@ -245,7 +245,7 @@ test('lets an authorized Workspace owner register and immediately view a Company
   await expect(page.getByText('Active', { exact: true })).toBeVisible();
   await expect(page.getByText('Registered by Ada Ionescu')).toBeVisible();
   await expect(page.getByLabel('Active Company')).toBeVisible();
-  const companySelect = page.getByLabel('Active Company');
+  const companySelect = page.getByRole('combobox', { name: 'Active Company' });
   const companyChoices = await openSelect(companySelect);
   await expect(
     companyChoices.getByRole('option', { name: 'North Star Consulting' }),
@@ -814,7 +814,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
     page.getByRole('heading', { name: 'Company access' }),
   ).toHaveCount(0);
   await expect(page.getByLabel('Company display name')).toHaveCount(0);
-  const companySelect = page.getByLabel('Active Company');
+  const companySelect = page.getByRole('combobox', { name: 'Active Company' });
   const companyChoices = await openSelect(companySelect);
   await expect(
     companyChoices.getByRole('option', { name: unassignedCompany.displayName }),

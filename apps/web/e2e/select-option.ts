@@ -8,10 +8,12 @@ type SelectOptionChoice =
 
 /** Opens the visible popup and verifies its association with the named control. */
 export async function openSelect(select: Locator): Promise<Locator> {
-  await select.click();
+  // The opened listbox shares the label, so keep resolving only the trigger.
+  const trigger = select.and(select.page().getByRole('combobox'));
+  await trigger.click();
   const listbox = select.page().getByRole('listbox');
   await expect(listbox).toBeVisible();
-  const controlledId = await select.getAttribute('aria-controls');
+  const controlledId = await trigger.getAttribute('aria-controls');
   if (!controlledId) throw new Error('Select does not identify its listbox');
   await expect(listbox).toHaveAttribute('id', controlledId);
   return listbox;

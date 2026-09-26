@@ -389,7 +389,9 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   ).toBeVisible();
   await expect(page.getByText('Target: Mila Popescu')).toBeVisible();
   await page.goto('/?frame=prisme#access');
-  const suspensionMember = page.getByLabel('Member to suspend');
+  const suspensionMember = page.getByRole('combobox', {
+    name: 'Member to suspend',
+  });
   const suspensionChoices = await openSelect(suspensionMember);
   await expect(
     suspensionChoices.getByRole('option', {
@@ -514,7 +516,9 @@ test('recovers from last-holder suspension protection without reporting success'
   await expect(
     page.getByText('Member suspended. Server state refreshed.'),
   ).toHaveCount(0);
-  const suspensionMember = page.getByLabel('Member to suspend');
+  const suspensionMember = page.getByRole('combobox', {
+    name: 'Member to suspend',
+  });
   const suspensionChoices = await openSelect(suspensionMember);
   await expect(
     suspensionChoices.getByRole('option', {

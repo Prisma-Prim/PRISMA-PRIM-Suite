@@ -145,7 +145,10 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
   await expect(context.getByRole('alert')).toHaveText(
     'Your previous Company context is no longer available. Choose an active Company.',
   );
-  const companySelect = page.getByLabel('Active Company', { exact: true });
+  const companySelect = page.getByRole('combobox', {
+    name: 'Active Company',
+    exact: true,
+  });
   const companyChoices = await openSelect(companySelect);
   await expect(
     companyChoices.getByRole('option', { name: companyA.displayName }),

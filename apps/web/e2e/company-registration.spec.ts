@@ -121,7 +121,10 @@ test('registers, reads and server-activates the first Company after an exact unc
   });
 
   await openNavigationAtNarrowViewport(page, testInfo.project.name);
-  const selector = page.getByLabel('Active Company', { exact: true });
+  const selector = page.getByRole('combobox', {
+    name: 'Active Company',
+    exact: true,
+  });
   const companyChoices = await openSelect(selector);
   await expect(
     companyChoices.getByRole('option', { name: company.displayName }),
