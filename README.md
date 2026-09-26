@@ -133,6 +133,59 @@ docker compose exec postgres psql -U prisma_prim -d prisma_prim \
   -c "UPDATE internal_users SET status = 'inactive' WHERE external_subject = 'local-demonstration-user';"
 ```
 
+## Demonstration data
+
+The demonstration seed fills a dedicated demonstration Workspace with the versioned synthetic scenario `demo-v1` through the public API: PRISMA-PRIM, BIC and ECG, four `DEMO` personas with provisional role profiles, and illustrative Clients, Projects, Tasks, Documents, Requests, Service offerings and Pricing Rule Versions. [Platform PRD section 17](docs/product/platform-security-reliability-operations-prd.md#17-approved-provisional-demonstration-data-409) owns its rules, and the [first-tenant substitution register](docs/product/first-tenant-substitution-register.md) indexes what each stand-in replaces.
+
+> **Warning:** never point the seed at a database that holds real or shared data. It refuses a target whose configured Workspace name lacks `DEMO`, that holds another Workspace, or that is not at the latest migration, but a dedicated demonstration database is the operator's responsibility.
+
+Prepare a dedicated database, give the configured bootstrap Workspace a name that contains `DEMO`, and migrate it:
+
+```bash
+set -a
+. ./.env
+set +a
+docker compose exec -T postgres psql -U prisma_prim -d postgres -c "CREATE DATABASE prisma_prim_demo OWNER prisma_prim;"
+export DATABASE_URL=postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_demo
+export ACCESS_BOOTSTRAP_WORKSPACE_NAME="PRISMA DEMO Workspace"
+pnpm db:migrate
+```
+
+Build the API from a development checkout (the seed boots the application with the development dependencies), then run the seed with the explicit confirmation of the configured Workspace identifier:
+
+```bash
+pnpm --filter @prisma-prim/api build
+pnpm demo:seed --confirm-workspace "$ACCESS_BOOTSTRAP_WORKSPACE_ID"
+```
+
+The command prints its manifest as JSON lines and exits with:
+
+- `0` when every step converged: `created` on a first run, `replayed` or `present` on a repeated run;
+- `2` when it refused the target, with a named reason and nothing written;
+- `3` when it stopped at a named step; earlier steps remain, and a repeated run resumes;
+- `1` on an unexpected failure.
+
+A repeated run changes nothing and never overwrites a change made in the application. If the stored Workspace has been renamed, set `ACCESS_BOOTSTRAP_WORKSPACE_NAME` to that exact name (which must still contain `DEMO`); a stale name is refused without restoring the old one.
+
+Inside the seed process, every writable transaction blocks concurrent Workspace changes and rechecks the target before writing, including the owner bootstrap. Another process may change the target between transactions; the next writable transaction then refuses and the command stops at that step, preserving earlier commits. This is protection for each write, not exclusive ownership of the database for the whole run.
+
+To view the data as a persona, start the API in local-demo mode with the same `DATABASE_URL` and `ACCESS_BOOTSTRAP_WORKSPACE_NAME` exported (see "Local identity demonstration"), then restart the web with that persona's values:
+
+| Persona     | `VITE_DEMO_EXTERNAL_SUBJECT` | `VITE_DEMO_DISPLAY_NAME` | `VITE_DEMO_EMAIL`          |
+| ----------- | ---------------------------- | ------------------------ | -------------------------- |
+| Ana DEMO    | `DEMO-persona-ana`           | `Ana DEMO`               | `ana.demo@example.test`    |
+| Ion DEMO    | `DEMO-persona-ion`           | `Ion DEMO`               | `ion.demo@example.test`    |
+| Maria DEMO  | `DEMO-persona-maria`         | `Maria DEMO`             | `maria.demo@example.test`  |
+| Victor DEMO | `DEMO-persona-victor`        | `Victor DEMO`            | `victor.demo@example.test` |
+
+Each persona uses `VITE_DEMO_EXTERNAL_PROVIDER=demo-seed`. The configured owner keeps the `.env` values.
+
+The seed never deletes. To reset, stop the API, drop the dedicated database, then recreate, migrate and seed it again:
+
+```bash
+docker compose exec -T postgres psql -U prisma_prim -d postgres -c "DROP DATABASE prisma_prim_demo;"
+```
+
 ## Workspace Membership authority
 
 Workspace Membership is the only relationship between a global Internal User

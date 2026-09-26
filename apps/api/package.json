@@ -6,6 +6,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "demo:seed": "node dist/demonstration/demonstration-seed.main.js",
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:parallel && pnpm test:postgres:serial",
     "test:parallel": "vitest run --exclude src/access/access.rest.test.ts --exclude src/access/company-context-assignment.rest.test.ts --exclude src/access/workspace-membership-suspension.rest.test.ts --exclude src/access/workspace-membership.migration.test.ts --exclude src/client/client.rest.test.ts --exclude src/company/company.rest.test.ts --exclude src/company/company-idempotency.rest.test.ts --exclude src/database/previous-schema.migration.test.ts",
