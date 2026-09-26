@@ -10,8 +10,20 @@ export type AccessAdmissionDecision =
     }
   | { kind: 'invitation'; workspaceId: string };
 
+export interface AccessExistingIdentity {
+  readonly displayName: string;
+}
+
 export interface AccessAdmission {
   resolve(principal: ExternalPrincipal): AccessAdmissionDecision | undefined;
+  /**
+   * Optional admission-specific validation of a persisted identity. It runs
+   * inside the same transaction and before Access creates a membership.
+   */
+  assertExistingIdentity?(
+    principal: ExternalPrincipal,
+    identity: AccessExistingIdentity,
+  ): void;
 }
 
 interface AcceptedInvitation {
