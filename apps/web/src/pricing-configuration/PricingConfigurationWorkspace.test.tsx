@@ -151,6 +151,20 @@ function page(items: unknown[]) {
   return Response.json({ items, provisional: true });
 }
 
+// The API's named refusal of a key already recorded for different content.
+function idempotencyConflict() {
+  return Response.json(
+    {
+      code: 'IDEMPOTENCY_CONFLICT',
+      message: 'Idempotency-Key was already used for another command.',
+    },
+    { status: 409 },
+  );
+}
+
+const idempotencyConflictMessage =
+  'Nothing was published with that request: its identifier had already been used for a different request. Your draft is kept and can be published again.';
+
 function takeoverInstant(versionNumber: number): string {
   return new Date(Date.UTC(2027, 0, versionNumber, 8)).toISOString();
 }
@@ -703,8 +717,9 @@ describe('PricingConfigurationWorkspace', () => {
   });
 
   it('keeps the payload, expected head and key for an explicit retry after an uncertain outcome', async () => {
-    // A network failure, a timeout, a gateway failure and the API's safe
-    // server error each leave the committed outcome unknown.
+    // A network failure, a timeout, a gateway failure, the API's safe server
+    // error and a conflict the interface does not recognize each leave the
+    // committed outcome unknown.
     const uncertainAnswers = [
       () => Promise.reject(new TypeError('network')),
       () =>
@@ -717,6 +732,7 @@ describe('PricingConfigurationWorkspace', () => {
           { statusCode: 500, message: 'Internal server error' },
           { status: 500 },
         ),
+      () => Response.json({ code: 'UNRECOGNIZED_CONFLICT' }, { status: 409 }),
     ];
     const fetchMock = stubApi({
       [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
@@ -913,6 +929,102 @@ describe('PricingConfigurationWorkspace', () => {
     ]);
     expect(attempts[1]?.key).toBe(attempts[0]?.key);
     expect(attempts[2]?.key).not.toBe(attempts[0]?.key);
+  });
+
+  it('resolves an uncertain publication answered by an idempotency conflict as definite, keeping the draft, after which a new publication gets its own key', async () => {
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(null, 1) : scope(null, 2)),
+      [LIST]: (call) =>
+        call === 1
+          ? page([ruleVersion(1)])
+          : page([ruleVersion(2), ruleVersion(1)]),
+      [PUBLISH]: (call) => {
+        if (call === 1) return Promise.reject(new TypeError('network'));
+        // The named conflict commits nothing, so repeating the same key could
+        // only repeat it: the retry is answered, not left uncertain.
+        if (call === 2) return idempotencyConflict();
+        return Response.json(
+          { outcome: 'PUBLISHED', version: ruleVersion(2) },
+          { status: 201 },
+        );
+      },
+    });
+    renderWorkspace();
+    await screen.findByText('The new version will follow head version 1.');
+    fillDraft({ label: 'Conflicted rule', effectiveFrom: '2026-07-01T00:00' });
+    fireEvent.click(publishButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The publication outcome is uncertain.',
+    );
+    expect(publishButton()).toBeDisabled();
+
+    fireEvent.click(retryButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      idempotencyConflictMessage,
+    );
+    expect(
+      screen.queryByText(/^The publication outcome is uncertain\./u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry publication' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label')).toHaveValue('Conflicted rule');
+    expect(effectiveFromField()).toHaveValue('2026-07-01T00:00');
+    expect(publishButton()).toBeEnabled();
+
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 2 published.')).toBeInTheDocument();
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts).toHaveLength(3);
+    expect(attempts.map(({ body }) => body)).toEqual(
+      attempts.map(() => ({
+        label: 'Conflicted rule',
+        effectiveFrom: new Date('2026-07-01T00:00').toISOString(),
+        expectedActiveVersionNumber: 1,
+      })),
+    );
+    expect(attempts[1]?.key).toBe(attempts[0]?.key);
+    expect(attempts[2]?.key).not.toBe(attempts[0]?.key);
+  });
+
+  it('answers a first publication refused by an idempotency conflict without entering the uncertain state', async () => {
+    const fetchMock = stubApi({
+      [SCOPE]: (call) => (call === 1 ? scope(null, null) : scope(null, 1)),
+      [LIST]: (call) => (call === 1 ? page([]) : page([ruleVersion(1)])),
+      [PUBLISH]: (call) =>
+        call === 1
+          ? idempotencyConflict()
+          : Response.json(
+              { outcome: 'PUBLISHED', version: ruleVersion(1) },
+              { status: 201 },
+            ),
+    });
+    renderWorkspace();
+    await screen.findByText(
+      'The new version will be the first for this Company.',
+    );
+    fillDraft({ label: 'Conflicted rule', effectiveFrom: '2026-07-01T00:00' });
+    fireEvent.click(publishButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      idempotencyConflictMessage,
+    );
+    expect(
+      screen.queryByText(/^The publication outcome is uncertain\./u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry publication' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Label')).toHaveValue('Conflicted rule');
+    expect(publishButton()).toBeEnabled();
+
+    fireEvent.click(publishButton());
+    expect(await screen.findByText('Version 1 published.')).toBeInTheDocument();
+    const attempts = requestsTo(fetchMock, PUBLISH);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
   });
 
   it('forgets an uncertain publication when the Company changes', async () => {

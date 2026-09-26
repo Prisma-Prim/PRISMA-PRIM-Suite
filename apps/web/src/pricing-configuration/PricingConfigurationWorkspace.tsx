@@ -904,6 +904,20 @@ function offsetAt(instant: number): number {
   return -new Date(instant).getTimezoneOffset() * 60 * 1000;
 }
 
+// The publication endpoint's named refusals besides the stale head, by status
+// and code. Each commits nothing, so it is a definite answer: it resolves an
+// unresolved publication, and the kept draft is published again under a new
+// key. An idempotency conflict is one of them, since repeating its key could
+// only repeat it. Any answer not named here stays uncertain.
+const publicationRejections: ReadonlyMap<string, string> = new Map([
+  ['400:VALIDATION_ERROR', copy.validation],
+  ['400:EFFECTIVE_FROM_PAST', copy.effectiveFromPast],
+  ['400:EFFECTIVE_FROM_NOT_ADVANCING', copy.effectiveFromNotAdvancing],
+  ['409:EFFECTIVE_WINDOW_GAP', copy.windowGap],
+  ['409:VERSION_EXHAUSTED', copy.versionExhausted],
+  ['409:IDEMPOTENCY_CONFLICT', copy.idempotencyConflict],
+]);
+
 function publicationOutcome(result: HttpResult): PublicationOutcome {
   if (result.status === 'network') return { kind: 'uncertain' };
   if (
@@ -925,15 +939,10 @@ function publicationOutcome(result: HttpResult): PublicationOutcome {
     if (headVersionNumber === null || isVersionNumber(headVersionNumber))
       return { kind: 'stale', headVersionNumber };
   }
-  const messages: Record<string, string> = {
-    '400:VALIDATION_ERROR': copy.validation,
-    '400:EFFECTIVE_FROM_PAST': copy.effectiveFromPast,
-    '400:EFFECTIVE_FROM_NOT_ADVANCING': copy.effectiveFromNotAdvancing,
-    '409:EFFECTIVE_WINDOW_GAP': copy.windowGap,
-    '409:VERSION_EXHAUSTED': copy.versionExhausted,
-  };
   const message =
-    typeof code === 'string' ? messages[`${result.status}:${code}`] : undefined;
+    typeof code === 'string'
+      ? publicationRejections.get(`${result.status}:${code}`)
+      : undefined;
   return message ? { kind: 'invalid', message } : { kind: 'uncertain' };
 }
 

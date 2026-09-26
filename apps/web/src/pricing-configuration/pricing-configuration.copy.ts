@@ -69,6 +69,8 @@ export const pricingConfigurationCopy = {
   windowGap:
     'The head version ends before this start. Choose a start no later than its end, or wait until it has ended.',
   versionExhausted: 'No further Pricing Rule Version number can be allocated.',
+  idempotencyConflict:
+    'Nothing was published with that request: its identifier had already been used for a different request. Your draft is kept and can be published again.',
   stale: (headVersionNumber: number | null) =>
     headVersionNumber === null
       ? 'The configuration changed: no version is the head any more. Reload before publishing again.'
