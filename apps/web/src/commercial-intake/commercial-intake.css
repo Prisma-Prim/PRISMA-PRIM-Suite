@@ -72,7 +72,7 @@
   resize: vertical;
 }
 
-.commercial-intake-form button,
+.commercial-intake-form button:not(.shared-select__trigger),
 .commercial-intake-detail button,
 .commercial-intake-list button {
   width: fit-content;
@@ -211,8 +211,83 @@
   gap: 0.5rem;
 }
 
+.prisme-shell .commercial-intake-form button:not(.shared-select__trigger),
+.prisme-shell .commercial-intake-detail > button,
+.prisme-shell .commercial-intake-detail dd button,
+.prisme-shell .commercial-intake-detail section > button,
+.prisme-shell .commercial-intake-next-action-actions button,
+.prisme-shell .commercial-intake-filter button,
+.prisme-shell .commercial-intake-restriction button,
+.prisme-shell .commercial-intake-workspace > button {
+  min-height: 40px;
+  border: 1px solid #d8d3eb;
+  border-radius: 7px;
+  color: #5943bd;
+  background: var(--shell-surface);
+  box-shadow: 0 1px 2px rgb(24 32 51 / 6%);
+  font-weight: 620;
+  line-height: 1.4;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.prisme-shell .commercial-intake-form > button,
+.prisme-shell .commercial-intake-next-action-actions button[type='submit'] {
+  border-color: var(--shell-blue);
+  color: #fff;
+  background: var(--shell-blue);
+  box-shadow: 0 2px 5px rgb(77 57 183 / 18%);
+}
+
+.prisme-shell
+  .commercial-intake-workspace
+  button:not(.shared-select__trigger):not(:disabled):not(
+    .commercial-intake-list button
+  ):hover {
+  border-color: #c9c0ee;
+  color: #4b36aa;
+  background: #f5f2ff;
+}
+
+.prisme-shell .commercial-intake-form > button:not(:disabled):hover,
+.prisme-shell
+  .commercial-intake-next-action-actions
+  button[type='submit']:not(:disabled):hover {
+  border-color: #5943bd;
+  color: #fff;
+  background: #5943bd;
+}
+
+.prisme-shell
+  .commercial-intake-workspace
+  button:not(.shared-select__trigger):disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.prisme-shell .commercial-intake-list button {
+  color: var(--shell-ink);
+  background: var(--shell-surface);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.prisme-shell .commercial-intake-list button:not(:disabled):hover {
+  border-color: #c9c0ee;
+  background: #faf9ff;
+}
+
+.prisme-shell .commercial-intake-workspace:focus-visible,
+.prisme-shell
+  .commercial-intake-workspace
+  button:not(.shared-select__trigger):focus-visible,
+.prisme-shell .commercial-intake-workspace input:focus-visible,
+.prisme-shell .commercial-intake-workspace textarea:focus-visible {
+  outline: 2px solid var(--shell-focus, currentColor);
+}
+
 .commercial-intake-workspace:focus-visible,
-.commercial-intake-workspace button:focus-visible,
+.commercial-intake-workspace button:not(.shared-select__trigger):focus-visible,
 .commercial-intake-workspace input:focus-visible,
 .commercial-intake-workspace textarea:focus-visible {
   outline: 3px solid
