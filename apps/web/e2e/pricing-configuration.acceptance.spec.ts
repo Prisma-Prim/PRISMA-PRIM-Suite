@@ -1,4 +1,12 @@
-import { expect, test, type Page, type Response } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+  type Response,
+} from '@playwright/test';
+
+import { canonicalDateTimeLocalValue } from '../src/pricing-configuration/datetime-local-test-helper';
 
 const apiOrigin = 'http://127.0.0.1:4174';
 const apiAdministratorHeaders = {
@@ -22,6 +30,42 @@ const primaryMemberHeaders = {
 };
 const marker = 'Illustrative configuration: provisional records';
 const tariffMarker = 'Illustrative tariffs: provisional records';
+
+test('fills canonical local datetimes without changing their intended instants', async ({
+  page,
+}) => {
+  await page.setContent(
+    '<label>Effective from <input type="datetime-local" step="1"></label>',
+  );
+  const field = page.getByLabel('Effective from', { exact: true });
+
+  for (const example of [
+    {
+      input: '2026-09-26T11:34:00',
+      canonical: '2026-09-26T11:34',
+    },
+    {
+      input: '2026-09-26T11:34:27',
+      canonical: '2026-09-26T11:34:27',
+    },
+  ]) {
+    const intendedEpoch = await page.evaluate(
+      (localDateTime) => new Date(localDateTime).getTime(),
+      example.input,
+    );
+
+    await fillDateTimeLocal(field, example.input);
+
+    await expect(field).toHaveValue(example.canonical);
+    expect(
+      await field.evaluate((element) => {
+        if (!(element instanceof HTMLInputElement))
+          throw new Error('Expected a datetime-local input.');
+        return new Date(element.value).getTime();
+      }),
+    ).toBe(intendedEpoch);
+  }
+});
 
 test('publishes illustrative Pricing Rule and Tariff Versions through the real API and PostgreSQL', async ({
   page,
@@ -582,9 +626,10 @@ async function fillTariffDraft(
   await tariffs
     .getByLabel('Tax label', { exact: true })
     .fill('Illustrative tax');
-  await tariffs
-    .getByLabel(`Effective from (${zone})`, { exact: true })
-    .fill(draft.effectiveFrom);
+  await fillDateTimeLocal(
+    tariffs.getByLabel(`Effective from (${zone})`, { exact: true }),
+    draft.effectiveFrom,
+  );
 }
 
 async function publishTariff(page: Page, offeringId: string): Promise<number> {
@@ -625,9 +670,14 @@ async function fillDraft(
 ): Promise<void> {
   const configuration = page.locator('.pricing-configuration');
   await configuration.getByLabel('Label', { exact: true }).fill(label);
-  await configuration
-    .getByLabel(`Effective from (${zone})`, { exact: true })
-    .fill(effectiveFrom);
+  await fillDateTimeLocal(
+    configuration.getByLabel(`Effective from (${zone})`, { exact: true }),
+    effectiveFrom,
+  );
+}
+
+async function fillDateTimeLocal(field: Locator, value: string): Promise<void> {
+  await field.fill(canonicalDateTimeLocalValue(value));
 }
 
 async function publish(page: Page): Promise<number> {
