@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 import {
   captureUnion,
   companyA,
@@ -49,6 +52,10 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
       return route.fulfill({ json: actor });
     if (path.endsWith('/companies'))
       return route.fulfill({ json: [companyA, companyB] });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(companyA.id, { active_clients: 1 }),
+      });
     if (path.endsWith('/activity-log')) {
       state.activityReads++;
       return route.fulfill({ json: { events: [] } });

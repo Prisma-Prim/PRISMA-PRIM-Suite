@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 const firstCompany = {
   id: 'document-filter-company',
@@ -244,6 +247,10 @@ async function interceptApplication(
     }
     if (path === '/api/companies')
       return route.fulfill({ json: [firstCompany, secondCompany] });
+    if (path === '/api/operational-home' && companyId)
+      return route.fulfill({
+        json: operationalHomeFixture(companyId, { active_clients: 0 }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });

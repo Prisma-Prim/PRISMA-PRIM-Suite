@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
   preparatoryLifecycle,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 
@@ -82,6 +83,14 @@ for (const frame of ['classic', 'prisme'] as const) {
       if (path === '/api/companies') return route.fulfill({ json: [company] });
       if (path === '/api/activity-log')
         return route.fulfill({ json: { events: [] } });
+      if (path === '/api/operational-home')
+        return route.fulfill({
+          json: operationalHomeFixture(company.id, {
+            active_clients: clients.length,
+            open_projects: projects.length,
+            overdue_tasks: 0,
+          }),
+        });
       if (path === '/api/clients') return route.fulfill({ json: clients });
       if (path === '/api/projects' && request.method() === 'POST') {
         const key = request.headers()['idempotency-key'];

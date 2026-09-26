@@ -298,7 +298,10 @@ advance, and needs no schema change.
 
 My Tasks is not a Dashboard next action. It has no overdue or urgency label,
 count, badge or ranking, and no filter, search, team view, reminder or
-notification. Opening a row's Task in its Project is owned by #377.
+notification. Opening a row's Task in its Project is owned by #377. The
+operational home (Operational Dashboard PRD §17) counts the Company's overdue
+Tasks and builds its My attention queue from this same read boundary; My Tasks
+itself is unchanged.
 
 ## 20. Approved Task execution states (#365)
 
@@ -310,7 +313,7 @@ States are manual declarations. They grant no access, satisfy no gate, trigger n
 
 My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
 
-Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details, reason vocabularies, and dashboard counts or queues remain separate decisions. Section 23 decides that no Project lifecycle transition changes a Task.
+Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details and reason vocabularies remain separate decisions. Dashboard counts and queues are governed by Operational Dashboard PRD §17. Section 23 decides that no Project lifecycle transition changes a Task.
 
 ## 21. Approved Project responsible member (#367)
 

@@ -1,4 +1,4 @@
-import type { MouseEventHandler } from 'react';
+import type { MouseEventHandler, ReactNode } from 'react';
 import { FiberMotion } from '../fiber/FiberMotion';
 import {
   FolderKanban,
@@ -54,10 +54,13 @@ export function SectionIcon({
 export function PrismeOverview({
   context,
   sections,
+  summary,
   onNavigate,
 }: {
   context: FrameContext;
   sections: readonly ApplicationSection[];
+  /** The Company summary region App composes for the active Company, if any. */
+  summary?: ReactNode;
   onNavigate: MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
@@ -76,6 +79,7 @@ export function PrismeOverview({
           )}
         </div>
       </section>
+      {summary}
       <div className="prisme-overview-grid">
         <section
           className="prisme-capabilities"

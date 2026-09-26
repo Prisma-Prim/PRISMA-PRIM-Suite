@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import {
   actorContextFixture,
   preparatoryLifecycle,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskView } from '../src/project/task-response';
@@ -440,6 +441,14 @@ async function interceptApplication(
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 1,
+          open_projects: 1,
+          overdue_tasks: 0,
+        }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [client] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });

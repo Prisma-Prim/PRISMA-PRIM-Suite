@@ -76,6 +76,16 @@ function serve(current: ActorContext) {
       paths.push(path);
       if (path === '/api/access/current-actor') return Response.json(current);
       if (path === '/api/activity-log') return Response.json({ events });
+      // The Company summary the Classic home mounts for this Project reader.
+      if (path === '/api/operational-home')
+        return Response.json({
+          companyId: current.activeCompany?.id,
+          today: '2026-09-27',
+          summaries: [
+            { kind: 'active_clients', count: 1 },
+            { kind: 'open_projects', count: 1 },
+          ],
+        });
       if (path === '/api/projects') return Response.json([project]);
       if (path === `/api/projects/${project.id}`) return Response.json(project);
       if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
