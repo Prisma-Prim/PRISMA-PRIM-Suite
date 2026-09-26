@@ -131,15 +131,17 @@ it.skipIf(!databaseUrl)(
         `INSERT INTO workspace_memberships (id, workspace_id, internal_user_id) VALUES ($1, $2, $3)`,
         [MEMBERSHIP, WORKSPACE, USER],
       );
-      for (const [id, name] of [
-        [COMPANY, 'Preserved Company'],
-        [OTHER_COMPANY, 'Other Company'],
+      // One parameter per column: PostgreSQL deduces a single type for each
+      // parameter, so the uuid id and the text key cannot share one.
+      for (const [id, name, registrationKey] of [
+        [COMPANY, 'Preserved Company', 'preserved-tariff-company'],
+        [OTHER_COMPANY, 'Other Company', 'other-tariff-company'],
       ] as const)
         await query(
           `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
              created_by_workspace_membership_id, registration_idempotency_key)
-           VALUES ($1, $2, $3, $4, $5, $1::text)`,
-          [id, WORKSPACE, name, USER, MEMBERSHIP],
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [id, WORKSPACE, name, USER, MEMBERSHIP, registrationKey],
         );
       for (const [bundle, version, revoked] of PRESERVED_ASSIGNMENTS)
         await query(
