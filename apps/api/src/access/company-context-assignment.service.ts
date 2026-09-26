@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
 } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -68,6 +69,10 @@ import type {
 type Operation = 'grant' | 'revoke';
 type CommandRow = typeof companyContextAssignmentCommands.$inferSelect;
 type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
+
+export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
+  'INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION',
+);
 type BundleDefinition = {
   value: Bundle;
   label:
@@ -178,6 +183,8 @@ export class CompanyContextAssignmentService {
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly accountability: AccountabilityService,
+    @Inject(INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION)
+    private readonly includeRevokedAssignmentsInAdministration: boolean,
   ) {}
 
   async readAdministrationState(
@@ -231,6 +238,7 @@ export class CompanyContextAssignmentService {
             companyId: companyRoleAssignments.companyId,
             bundle: companyRoleAssignments.bundle,
             permissionSetVersion: companyRoleAssignments.permissionSetVersion,
+            revokedAt: companyRoleAssignments.revokedAt,
           })
           .from(companyRoleAssignments)
           .innerJoin(
@@ -265,7 +273,9 @@ export class CompanyContextAssignmentService {
           .where(
             and(
               eq(companyRoleAssignments.workspaceId, actor.workspaceId),
-              isNull(companyRoleAssignments.revokedAt),
+              this.includeRevokedAssignmentsInAdministration
+                ? undefined
+                : isNull(companyRoleAssignments.revokedAt),
               inArray(companyRoleAssignments.bundle, ADMINISTRABLE_BUNDLES),
             ),
           )
@@ -279,7 +289,7 @@ export class CompanyContextAssignmentService {
           members,
           companies: activeCompanies,
           assignments: assignments.map((assignment) =>
-            assignmentRecord(assignment, true),
+            assignmentRecord(assignment, assignment.revokedAt === null),
           ),
         };
       },
