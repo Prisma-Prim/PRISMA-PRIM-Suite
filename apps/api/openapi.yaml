@@ -1170,6 +1170,7 @@ components:
         - title
         - assignee
         - dueDate
+        - priority
         - status
         - completion
         - version
@@ -1212,6 +1213,13 @@ components:
         dueDate:
           type: string
           format: date
+        priority:
+          type: string
+          enum:
+            - normal
+            - important
+            - critical
+          description: The manual Task priority (#375); it does not change the overdue order.
         status:
           type: string
           enum:

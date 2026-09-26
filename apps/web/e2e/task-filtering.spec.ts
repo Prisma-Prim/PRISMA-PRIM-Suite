@@ -390,6 +390,7 @@ function taskFixtures(): TaskView[] {
     title: 'Collect preparation notes',
     assignee: null,
     dueDate: null,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,

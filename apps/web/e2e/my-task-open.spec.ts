@@ -57,6 +57,7 @@ function taskFor(owner: typeof atelierProject, id: string, dueDate: string) {
     title: taskTitle,
     assignee: me,
     dueDate,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,

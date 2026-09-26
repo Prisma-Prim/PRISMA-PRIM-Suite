@@ -41,6 +41,7 @@ const overdueTask = {
     displayLabel: 'Ana · 1',
   },
   dueDate: '2026-09-20',
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,

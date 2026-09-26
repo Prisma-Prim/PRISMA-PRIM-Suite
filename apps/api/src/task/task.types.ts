@@ -7,11 +7,23 @@ export interface TaskAssignee {
   workspaceMembershipId: string;
   displayLabel: string;
 }
+/**
+ * Manual Task priority codes (#375). A Task without a chosen priority is
+ * `normal`; the priority grants, orders and triggers nothing.
+ */
+export const TASK_PRIORITIES = ['normal', 'important', 'critical'] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export const DEFAULT_TASK_PRIORITY = 'normal' satisfies TaskPriority;
 export interface TaskFields {
   title: string;
   assignee: TaskAssignee | null;
   dueDate: string | null;
+  priority: TaskPriority;
 }
+/** Creation facts; a creation recorded before priority existed has none, never `normal`. */
+export type TaskInitialFields = Omit<TaskFields, 'priority'> & {
+  priority?: TaskPriority;
+};
 export const OPEN_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 export type OpenTaskState = (typeof OPEN_TASK_STATES)[number];
 export type ClosedTaskState = 'done' | 'cancelled';
@@ -77,7 +89,7 @@ export type TaskStatusChange =
 export type TaskEventMeaning =
   | {
       action: 'task.created';
-      metadata: { version: number; initial: TaskFields };
+      metadata: { version: number; initial: TaskInitialFields };
     }
   | {
       action: 'task.updated';

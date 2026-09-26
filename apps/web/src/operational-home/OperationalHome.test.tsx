@@ -51,6 +51,7 @@ function overdueTask(
       displayLabel: 'Ana · 1',
     },
     dueDate,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,

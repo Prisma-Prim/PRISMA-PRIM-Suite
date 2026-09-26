@@ -580,6 +580,7 @@ for (const frame of ['classic', 'prisme'] as const) {
         displayLabel: 'Ana Popescu · 1',
       },
       dueDate: '2026-09-20',
+      priority: 'normal',
       status: 'todo',
       completion: null,
       version: 1,
