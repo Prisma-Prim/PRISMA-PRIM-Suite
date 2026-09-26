@@ -154,9 +154,9 @@ it.skipIf(!databaseUrl)(
         [REQUEST, WORKSPACE, COMPANY, USER, MEMBERSHIP],
       );
       await query(
-        `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title,
+        `INSERT INTO opportunities (id, workspace_id, company_id, client_request_id, title, next_action,
            responsible_internal_user_id, responsible_workspace_membership_id)
-         VALUES ($1, $2, $3, $4, 'Preserved Opportunity', $5, $6)`,
+         VALUES ($1, $2, $3, $4, 'Preserved Opportunity', 'Preserved next action', $5, $6)`,
         [OPPORTUNITY, WORKSPACE, COMPANY, REQUEST, USER, MEMBERSHIP],
       );
       await query(

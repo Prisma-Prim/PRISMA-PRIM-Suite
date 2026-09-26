@@ -61,6 +61,13 @@ withPostgres('Pricing Snapshots REST', () => {
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Pricing Snapshot Workspace',
+        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'snapshot-pricing-only-member',
+            workspaceId: WORKSPACE_ID,
+          },
+        ]),
       },
     });
     ({ origin, pool } = harness);
@@ -1173,7 +1180,7 @@ withPostgres('Pricing Snapshots REST', () => {
     companyId?: string,
     init: RequestInit = {},
   ): Promise<Response> {
-    return fetch(`${origin}${path}`, {
+    return fetch(`${origin}/api${path}`, {
       ...init,
       headers: {
         ...OWNER,
