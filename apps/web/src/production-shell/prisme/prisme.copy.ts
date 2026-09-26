@@ -43,6 +43,11 @@ export const prismeCopy = {
       description:
         'Define shared illustrative Services and record which ones this Company offers.',
     },
+    pricing: {
+      label: 'Pricing Configuration',
+      description:
+        'Publish illustrative, effective-dated Pricing Rule Versions for this Company.',
+    },
     access: {
       label: 'Team & access',
       description:

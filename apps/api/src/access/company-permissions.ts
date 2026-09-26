@@ -75,6 +75,24 @@ export function serviceCataloguePermissionsFor(
 ): readonly CompanyServiceCataloguePermission[] {
   return version === 'v1' ? COMPANY_SERVICE_CATALOGUE_V1_PERMISSIONS : [];
 }
+export const COMPANY_PRICING_CONFIGURATION_BUNDLE =
+  'company_pricing_configuration' as const;
+export const COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL =
+  'Company Pricing Configuration' as const;
+// Offering read is the only permission shared with the catalogue bundle; no
+// Service Definition permission and no offering management is included.
+export const COMPANY_PRICING_CONFIGURATION_V1_PERMISSIONS = [
+  'commercial.offering.read',
+  'commercial.pricing.configuration.read',
+  'commercial.pricing.configuration.manage',
+] as const;
+export type CompanyPricingConfigurationPermission =
+  (typeof COMPANY_PRICING_CONFIGURATION_V1_PERMISSIONS)[number];
+export function pricingConfigurationPermissionsFor(
+  version: unknown,
+): readonly CompanyPricingConfigurationPermission[] {
+  return version === 'v1' ? COMPANY_PRICING_CONFIGURATION_V1_PERMISSIONS : [];
+}
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
   'company_commercial_activity_reader' as const;
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL =

@@ -1,0 +1,124 @@
+.pricing-configuration {
+  display: grid;
+  gap: 1rem;
+  max-width: 70rem;
+  min-width: 0;
+}
+
+.pricing-configuration-heading p,
+.pricing-configuration-notice p,
+.pricing-configuration-panel p,
+.pricing-configuration-panel h3 {
+  margin: 0;
+}
+
+.pricing-configuration-heading > p:first-child {
+  color: var(--shell-muted, currentColor);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pricing-configuration-notice,
+.pricing-configuration-panel,
+.pricing-configuration-list li {
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, transparent);
+}
+
+.pricing-configuration-notice,
+.pricing-configuration-panel,
+.pricing-configuration-panel > section {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pricing-configuration-notice,
+.pricing-configuration-panel {
+  padding: 1rem;
+}
+
+.pricing-configuration-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.pricing-configuration-panel form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pricing-configuration-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.pricing-configuration-panel input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.pricing-configuration button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.pricing-configuration-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.pricing-configuration-list li,
+.pricing-configuration-version {
+  display: grid;
+  gap: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.pricing-configuration-list li {
+  padding: 0.75rem;
+}
+
+.pricing-configuration-state {
+  font-weight: 700;
+}
+
+.pricing-configuration-badge {
+  justify-self: start;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pricing-configuration button:focus-visible,
+.pricing-configuration input:focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--shell-focus, currentColor) 42%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .pricing-configuration-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

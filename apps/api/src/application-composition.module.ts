@@ -49,6 +49,9 @@ import { CompanyCommercialIntakeAssignmentController } from './access/company-co
 import { CommercialCatalogueModule } from './commercial-catalogue/commercial-catalogue.module.js';
 import { CommercialCatalogueController } from './commercial-catalogue/commercial-catalogue.controller.js';
 import { CompanyServiceCatalogueAssignmentController } from './access/company-service-catalogue-assignment.controller.js';
+import { PricingConfigurationModule } from './pricing-configuration/pricing-configuration.module.js';
+import { PricingConfigurationController } from './pricing-configuration/pricing-configuration.controller.js';
+import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 
 @Module({
@@ -63,6 +66,7 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     DatabaseModule,
     CommercialIntakeModule,
     CommercialCatalogueModule,
+    PricingConfigurationModule,
   ],
   controllers: [
     TaskController,
@@ -91,6 +95,8 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     CompanyCommercialIntakeAssignmentController,
     CommercialCatalogueController,
     CompanyServiceCatalogueAssignmentController,
+    PricingConfigurationController,
+    CompanyPricingConfigurationAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
   ],
   providers: [
