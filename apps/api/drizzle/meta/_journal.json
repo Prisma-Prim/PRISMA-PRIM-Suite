@@ -239,6 +239,13 @@
       "when": 1790409579307,
       "tag": "0033_task_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790412808410,
+      "tag": "0034_tariff_versions",
+      "breakpoints": true
     }
   ]
 }

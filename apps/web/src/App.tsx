@@ -8,7 +8,7 @@ import {
   ApplicationShell,
   type ApplicationSection,
 } from './production-shell/ApplicationShell';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   DocumentWorkspace,
   type RequestedDocument,
@@ -31,6 +31,7 @@ import { clientUnionCopy } from './client/client-union.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
 import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
+import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import { OperationalHome } from './operational-home/OperationalHome';
 import {
@@ -346,19 +347,30 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     });
   // Any change of session, membership, Company, captured assignment or
   // permission remounts the screen, clearing drafts and dropping late replies.
+  // The Pricing Rule and Tariff panels share that one remount identity.
   if (canReadPricingConfiguration && access.actor.activeCompany)
     sections.push({
       id: 'pricing',
       ...prismeCopy.sections.pricing,
       content: (
-        <PricingConfigurationWorkspace
+        <Fragment
           key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.pricingConfigurationPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.pricingConfigurationPermissionSetVersion ?? 'no-version'}:${pricingConfigurationPermissions.join(',')}`}
-          actor={access.actor}
-          identity={identity}
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
+        >
+          <PricingConfigurationWorkspace
+            actor={access.actor}
+            identity={identity}
+            onCompanyContextRejected={rejectCompanyContext}
+            onActorRevalidated={acceptRevalidatedActor}
+            onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          />
+          <TariffVersionPanel
+            actor={access.actor}
+            identity={identity}
+            onCompanyContextRejected={rejectCompanyContext}
+            onActorRevalidated={acceptRevalidatedActor}
+            onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          />
+        </Fragment>
       ),
     });
   if (access.actor.activeCompany && canAccessClients)
