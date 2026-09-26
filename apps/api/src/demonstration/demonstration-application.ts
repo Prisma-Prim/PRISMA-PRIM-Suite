@@ -6,6 +6,7 @@ import {
   ACCESS_ADMISSION,
   configuredAccessAdmission,
 } from '../access/access-admission.js';
+import { INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION } from '../access/company-context-assignment.service.js';
 import { SYNCHRONIZE_ACCESS_IDENTITY_PROFILE } from '../access/access.service.js';
 import { EXTERNAL_IDENTITY_VERIFIER } from '../access/external-identity-verifier.js';
 import { IDENTITY_SESSION_REVOKER } from '../access/identity-session-revoker.js';
@@ -51,9 +52,10 @@ export interface DemonstrationApplicationInput {
 /**
  * Boots the unchanged application inside the seed's own process, bound to
  * loopback, with only these replacements: the seed identity verifier, the
- * fail-closed provider adapters, and admission limited to the configured
- * bootstrap principal plus the scenario personas, with target protection on
- * every writable database transaction.
+ * fail-closed provider adapters, admission limited to the configured bootstrap
+ * principal plus the scenario personas, and revoked assignment history in the
+ * administration projection, with target protection on every writable
+ * database transaction.
  */
 export async function startDemonstrationApplication(
   input: DemonstrationApplicationInput,
@@ -118,6 +120,10 @@ export async function startDemonstrationApplication(
       // by AccessService on every request.
       .overrideProvider(SYNCHRONIZE_ACCESS_IDENTITY_PROFILE)
       .useValue(false)
+      // The normal administration projection stays active-only. The seed sees
+      // revoked history so it can stop before it sends a replacement grant.
+      .overrideProvider(INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION)
+      .useValue(true)
       .overrideProvider(EXTERNAL_IDENTITY_VERIFIER)
       .useValue(input.identity)
       .overrideProvider(VerifiedPrincipalAdapter)

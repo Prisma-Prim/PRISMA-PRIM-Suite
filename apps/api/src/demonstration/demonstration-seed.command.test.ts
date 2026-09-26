@@ -23,6 +23,7 @@ function environment(
   overrides: Record<string, string | undefined> = {},
 ): Record<string, string | undefined> {
   return {
+    NODE_ENV: 'test',
     DATABASE_URL: databaseUrl,
     ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'local-demo',
     ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'local-demonstration-user',
@@ -113,6 +114,18 @@ describe('demonstration seed command refusals before any database access', () =>
       'a production environment',
       CONFIRMED,
       environment(UNREACHABLE_DATABASE_URL, { NODE_ENV: 'production' }),
+      'production-environment',
+    ],
+    [
+      'a missing environment name',
+      CONFIRMED,
+      environment(UNREACHABLE_DATABASE_URL, { NODE_ENV: undefined }),
+      'production-environment',
+    ],
+    [
+      'an unapproved environment name',
+      CONFIRMED,
+      environment(UNREACHABLE_DATABASE_URL, { NODE_ENV: 'staging' }),
       'production-environment',
     ],
   ])('refuses %s with a named reason', async (_case, argv, env, reason) => {
@@ -391,6 +404,123 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       expect(['replayed', 'present']).toContain(outcomeOf(line));
     expect(await identitySnapshot()).toEqual(identitiesBeforeReplay);
     expect(await snapshot()).toEqual(afterFirst);
+
+    // A preserved persona profile that lost its synthetic marker is never
+    // overwritten and stops the run before later scenario commands.
+    await pool.query(
+      `UPDATE internal_users
+          SET display_name = 'Ana Popescu'
+        WHERE external_provider = 'demo-seed'
+          AND external_subject = 'DEMO-persona-ana'`,
+    );
+    const identitiesBeforeProfileStop = await identitySnapshot();
+    const rowsBeforeProfileStop = await snapshot();
+    const profileStop = await seed(CONFIRMED, environment(database.targetUrl));
+    expect(profileStop.result).toEqual({
+      exitCode: 3,
+      outcome: 'stopped',
+      providerCallAttempts: 0,
+    });
+    expect(profileStop.lines.at(-1)).toEqual({
+      scenario: 'demo-v1',
+      result: 'stopped',
+      step: 'persona.ana',
+      reason: 'persona-not-synthetic',
+      status: null,
+    });
+    expect(await identitySnapshot()).toEqual(identitiesBeforeProfileStop);
+    expect(await snapshot()).toEqual(rowsBeforeProfileStop);
+    await pool.query(
+      `UPDATE internal_users
+          SET display_name = 'Ana DEMO corrected'
+        WHERE external_provider = 'demo-seed'
+          AND external_subject = 'DEMO-persona-ana'`,
+    );
+
+    // A historical revocation under an operator key leaves the stable seed
+    // key unused. The seed must still stop before sending a replacement grant.
+    await pool.query(
+      `UPDATE company_role_assignments AS assignment
+          SET revoked_at = TIMESTAMPTZ '2026-01-02 00:00:00+00',
+              updated_at = TIMESTAMPTZ '2026-01-02 00:00:00+00'
+         FROM company_context_assignment_commands AS command
+        WHERE command.result_assignment_id = assignment.id
+          AND command.idempotency_key = 'demo-v1:grant.ana.context'`,
+    );
+    await pool.query(
+      `UPDATE company_context_assignment_commands
+          SET idempotency_key = 'operator-historical-ana-context'
+        WHERE idempotency_key = 'demo-v1:grant.ana.context'`,
+    );
+    const revokedGrantBeforeReplay = (
+      await pool.query<{
+        id: string;
+        idempotencyKey: string;
+        revokedAt: string;
+        updatedAt: string;
+      }>(
+        `SELECT assignment.id::text AS id,
+                command.idempotency_key AS "idempotencyKey",
+                assignment.revoked_at::text AS "revokedAt",
+                assignment.updated_at::text AS "updatedAt"
+           FROM company_role_assignments AS assignment
+           JOIN company_context_assignment_commands AS command
+             ON command.result_assignment_id = assignment.id
+          WHERE command.idempotency_key = 'operator-historical-ana-context'`,
+      )
+    ).rows;
+    expect(revokedGrantBeforeReplay).toHaveLength(1);
+    const identitiesBeforeRevokedGrantStop = await identitySnapshot();
+    const rowsBeforeRevokedGrantStop = await snapshot();
+    const revokedGrantStop = await seed(
+      CONFIRMED,
+      environment(database.targetUrl),
+    );
+    expect(revokedGrantStop.result).toEqual({
+      exitCode: 3,
+      outcome: 'stopped',
+      providerCallAttempts: 0,
+    });
+    expect(revokedGrantStop.lines.at(-1)).toEqual({
+      scenario: 'demo-v1',
+      result: 'stopped',
+      step: 'grant.ana.context',
+      reason: 'grant-revoked',
+      status: null,
+    });
+    expect(await identitySnapshot()).toEqual(identitiesBeforeRevokedGrantStop);
+    expect(await snapshot()).toEqual(rowsBeforeRevokedGrantStop);
+    expect(
+      (
+        await pool.query<{
+          id: string;
+          idempotencyKey: string;
+          revokedAt: string;
+          updatedAt: string;
+        }>(
+          `SELECT assignment.id::text AS id,
+                  command.idempotency_key AS "idempotencyKey",
+                  assignment.revoked_at::text AS "revokedAt",
+                  assignment.updated_at::text AS "updatedAt"
+             FROM company_role_assignments AS assignment
+             JOIN company_context_assignment_commands AS command
+               ON command.result_assignment_id = assignment.id
+            WHERE command.idempotency_key = 'operator-historical-ana-context'`,
+        )
+      ).rows,
+    ).toEqual(revokedGrantBeforeReplay);
+    await pool.query(
+      `UPDATE company_context_assignment_commands
+          SET idempotency_key = 'demo-v1:grant.ana.context'
+        WHERE idempotency_key = 'operator-historical-ana-context'`,
+    );
+    await pool.query(
+      `UPDATE company_role_assignments AS assignment
+          SET revoked_at = NULL
+         FROM company_context_assignment_commands AS command
+        WHERE command.result_assignment_id = assignment.id
+          AND command.idempotency_key = 'demo-v1:grant.ana.context'`,
+    );
 
     // A scenario Company display name held by a Company the seed did not register.
     await pool.query(

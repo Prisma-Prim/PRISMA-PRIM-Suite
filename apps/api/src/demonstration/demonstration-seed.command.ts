@@ -96,7 +96,8 @@ export async function runDemonstrationSeedCommand(
     };
   };
 
-  if (input.environment.NODE_ENV?.trim() === 'production')
+  const nodeEnvironment = input.environment.NODE_ENV?.trim();
+  if (nodeEnvironment !== 'development' && nodeEnvironment !== 'test')
     return refuse('production-environment');
   const confirmation = readConfirmation(input.argv);
   if (confirmation.kind === 'invalid') return refuse('invalid-arguments');

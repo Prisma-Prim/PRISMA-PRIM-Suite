@@ -23,6 +23,7 @@ describe('CompanyContextAssignmentService', () => {
     const service = new CompanyContextAssignmentService(
       databaseContext,
       new AccountabilityService(databaseContext),
+      false,
     );
 
     await expect(service.readAdministrationState(actor)).resolves.toEqual({

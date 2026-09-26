@@ -11,6 +11,7 @@ import {
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import {
+  DEMONSTRATION_MARKER,
   DEMONSTRATION_SCENARIO,
   demonstrationIdempotencyKey,
   type DemonstrationBundle,
@@ -48,7 +49,8 @@ export type DemonstrationStopReason =
   | 'rejected'
   | 'unavailable'
   | 'unexpected-response'
-  | 'grant-revoked';
+  | 'grant-revoked'
+  | 'persona-not-synthetic';
 
 export interface DemonstrationWorkspaceLine {
   readonly scenario: string;
@@ -285,6 +287,12 @@ function text(value: ApiRecord, field: string): string {
   return result;
 }
 
+function flag(value: ApiRecord, field: string): boolean {
+  const result = value[field];
+  if (typeof result !== 'boolean') throw unexpected();
+  return result;
+}
+
 function integer(value: ApiRecord, field: string): number {
   const result = value[field];
   if (typeof result !== 'number' || !Number.isSafeInteger(result))
@@ -309,6 +317,7 @@ interface Administration {
     readonly workspaceMembershipId: string;
     readonly companyId: string;
     readonly bundle: string;
+    readonly active: boolean;
   }[];
 }
 
@@ -429,6 +438,8 @@ class DemonstrationRun {
       ),
     );
     if (text(actor, 'workspaceId') !== this.workspace()) throw unexpected();
+    if (!text(actor, 'displayName').includes(DEMONSTRATION_MARKER))
+      throw new DemonstrationStepStop('persona-not-synthetic', null);
     const membershipId = text(actor, 'workspaceMembershipId');
     this.memberships.set(step.persona, membershipId);
     return before.memberships.has(membershipId)
@@ -442,15 +453,18 @@ class DemonstrationRun {
     const workspaceMembershipId = this.membership(step.persona);
     const companyId = this.company(step.company);
     const label = DEMONSTRATION_BUNDLE_LABELS[step.bundle];
-    const activeAssignment = (administration: Administration) =>
-      administration.assignments.find(
+    const matchingAssignments = (administration: Administration) =>
+      administration.assignments.filter(
         (assignment) =>
           assignment.workspaceMembershipId === workspaceMembershipId &&
           assignment.companyId === companyId &&
           assignment.bundle === label,
       );
-    const before = activeAssignment(await this.administration());
-    if (before) return { outcome: 'present', recordId: before.id };
+    const before = matchingAssignments(await this.administration());
+    const activeBefore = before.find((assignment) => assignment.active);
+    if (activeBefore) return { outcome: 'present', recordId: activeBefore.id };
+    if (before.some((assignment) => !assignment.active))
+      throw new DemonstrationStepStop('grant-revoked', null);
     const assignment = record(
       await this.api.send({
         principal: OWNER,
@@ -462,7 +476,9 @@ class DemonstrationRun {
     );
     if (text(assignment, 'bundle') !== label) throw unexpected();
     const assignmentId = text(assignment, 'id');
-    const after = activeAssignment(await this.administration());
+    const after = matchingAssignments(await this.administration()).find(
+      (candidate) => candidate.active,
+    );
     // A replay returns the recorded grant even after its revocation. The seed
     // never grants again: it stops and names this step.
     if (!after) throw new DemonstrationStepStop('grant-revoked', null);
@@ -923,6 +939,7 @@ class DemonstrationRun {
           workspaceMembershipId: text(assignment, 'workspaceMembershipId'),
           companyId: text(assignment, 'companyId'),
           bundle: text(assignment, 'bundle'),
+          active: flag(assignment, 'active'),
         };
       }),
     };

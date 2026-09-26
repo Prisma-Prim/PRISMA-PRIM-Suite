@@ -33,7 +33,10 @@ import {
 import { ActorContextAdapter } from './access/actor-context.adapter.js';
 import { CompanyContextAssignmentController } from './access/company-context-assignment.controller.js';
 import { CompanyDirectorClientAssignmentController } from './access/company-director-client-assignment.controller.js';
-import { CompanyContextAssignmentService } from './access/company-context-assignment.service.js';
+import {
+  CompanyContextAssignmentService,
+  INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION,
+} from './access/company-context-assignment.service.js';
 import { WorkspaceMembershipSuspensionController } from './access/workspace-membership-suspension.controller.js';
 import { WorkspaceMembershipSuspensionService } from './access/workspace-membership-suspension.service.js';
 import { AccountabilityModule } from './accountability/accountability.module.js';
@@ -127,6 +130,10 @@ import { OperationalHomeController } from './operational-home/operational-home.c
     {
       provide: SYNCHRONIZE_ACCESS_IDENTITY_PROFILE,
       useValue: true,
+    },
+    {
+      provide: INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION,
+      useValue: false,
     },
     AccessService,
     ActorContextAdapter,
