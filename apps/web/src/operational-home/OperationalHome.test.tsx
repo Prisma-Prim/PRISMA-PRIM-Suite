@@ -130,10 +130,12 @@ function renderHome(
   const callbacks = {
     onOpenClients: vi.fn(),
     onOpenProjects: vi.fn(),
+    onOpenMyTasks: vi.fn(),
     onOpenTask: vi.fn(),
   };
   const view = render(
     <OperationalHome
+      workspaceMembershipId={attribution.workspaceMembershipId}
       company={company}
       identity={deterministicBrowserIdentity()}
       availableSummaries={{

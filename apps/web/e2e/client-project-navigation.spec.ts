@@ -6,6 +6,7 @@ import {
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import { enterClassicCompatibility } from './classic-compatibility';
 
 for (const frame of ['classic', 'prisme'] as const) {
   test(`${frame} navigates between one Client dossier and its loaded Projects`, async ({
@@ -607,7 +608,53 @@ for (const frame of ['classic', 'prisme'] as const) {
         occurredAt: '2026-09-24T10:00:00.000Z',
       },
     } satisfies TaskView;
-    const tasks: TaskView[] = [collect, manual];
+    const approve = {
+      ...collect,
+      id: 'task-approve-audit-plan',
+      title: 'Approve audit plan',
+      dueDate: null,
+      priority: 'critical',
+    } satisfies TaskView;
+    const signature = {
+      ...collect,
+      id: 'task-obtain-client-signature',
+      title: 'Obtain client signature',
+      dueDate: null,
+      status: 'blocked',
+      version: 2,
+      blockage: {
+        reason: 'Waiting for the Client.',
+        actor: attribution,
+        occurredAt: '2026-09-24T11:00:00.000Z',
+      },
+    } satisfies TaskView;
+    const plan = {
+      ...collect,
+      id: 'task-plan-internal-audit',
+      title: 'Plan internal audit',
+      dueDate: '2026-09-27',
+    } satisfies TaskView;
+    const invitations = {
+      ...collect,
+      id: 'task-send-training-invitations',
+      title: 'Send training invitations',
+      dueDate: '2026-10-02',
+    } satisfies TaskView;
+    const order = {
+      ...collect,
+      id: 'task-order-materials',
+      title: 'Order materials',
+      dueDate: '2026-10-05',
+    } satisfies TaskView;
+    const tasks: TaskView[] = [
+      collect,
+      manual,
+      approve,
+      signature,
+      plan,
+      invitations,
+      order,
+    ];
     const labels = {
       id: project.id,
       title: project.title,
@@ -647,11 +694,48 @@ for (const frame of ['classic', 'prisme'] as const) {
         reads.home += 1;
         expect(companyContext).toBe(company.id);
         return route.fulfill({
-          json: operationalHomeFixture(company.id, {
-            active_clients: 2,
-            open_projects: 1,
-            overdue_tasks: tasks.length,
-          }),
+          json: {
+            ...operationalHomeFixture(company.id, {
+              active_clients: 2,
+              open_projects: 1,
+              overdue_tasks: 2,
+            }),
+            attention: {
+              matchingCount: 5,
+              tasks: [
+                {
+                  ...collect,
+                  project: labels,
+                  rules: ['overdue'],
+                  dueInDays: -7,
+                },
+                {
+                  ...approve,
+                  project: labels,
+                  rules: ['critical'],
+                  dueInDays: null,
+                },
+                {
+                  ...signature,
+                  project: labels,
+                  rules: ['blocked'],
+                  dueInDays: null,
+                },
+                {
+                  ...plan,
+                  project: labels,
+                  rules: ['due_soon'],
+                  dueInDays: 0,
+                },
+                {
+                  ...invitations,
+                  project: labels,
+                  rules: ['due_soon'],
+                  dueInDays: 5,
+                },
+              ],
+            },
+          },
         });
       }
       if (path === '/api/overdue-tasks') {
@@ -735,23 +819,50 @@ for (const frame of ['classic', 'prisme'] as const) {
     const clientsCard = card('Active Clients: 2. Open the Client directory');
     const projectsCard = card('Open Projects: 1. Open the Project list');
     const overdueCard = card('Overdue Tasks: 2. Show the overdue Tasks');
+    const attention = page.getByRole('region', {
+      name: 'My attention',
+      exact: true,
+    });
     const projectsTarget = page.locator('#projects');
     const search = page.getByRole('searchbox', { name: 'Find Projects' });
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(`/?frame=${frame}`);
-    if (frame === 'prisme' && narrow)
+    await page.goto('/');
+    if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
     await page
       .getByLabel('Active Company', { exact: true })
       .selectOption(company.id);
-    if (frame === 'prisme' && narrow)
+    if (frame === 'classic') await enterClassicCompatibility(page);
+    else if (narrow)
       await page.getByRole('button', { name: 'Close navigation' }).click();
 
     // The home reads the three counts of the active Company.
     await expect(clientsCard).toBeVisible();
     await expect(projectsCard).toBeVisible();
     await expect(overdueCard).toBeVisible();
+    await expect(attention).toBeVisible();
+    const attentionRows = attention.getByRole('listitem');
+    await expect(attentionRows).toHaveCount(5);
+    await expect(attentionRows.nth(0)).toContainText(collect.title);
+    await expect(attentionRows.nth(0)).toContainText('Overdue by 7 days');
+    await expect(attentionRows.nth(1)).toContainText('Approve audit plan');
+    await expect(attentionRows.nth(1)).toContainText('Critical');
+    await expect(attentionRows.nth(1)).toContainText('No due date');
+    await expect(attentionRows.nth(2)).toContainText('Obtain client signature');
+    await expect(attentionRows.nth(2)).toContainText('Blocked');
+    await expect(attentionRows.nth(3)).toContainText('Plan internal audit');
+    await expect(attentionRows.nth(3)).toContainText('Due today');
+    await expect(attentionRows.nth(4)).toContainText(
+      'Send training invitations',
+    );
+    await expect(attentionRows.nth(4)).toContainText('Due in 5 days');
+    await expect(attention).not.toContainText('Order materials');
+    const attentionBox = await attention.boundingBox();
+    const cardsBox = await clientsCard.boundingBox();
+    if (!attentionBox || !cardsBox)
+      throw new Error('Expected the attention queue and Company summary.');
+    expect(attentionBox.y).toBeLessThan(cardsBox.y);
     await expect(summary).toContainText(
       `Counted on 2026-09-27 from the records you can open in ${company.displayName}.`,
     );
@@ -781,9 +892,30 @@ for (const frame of ['classic', 'prisme'] as const) {
     await expectNoHorizontalOverflow(page);
     await summary.scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: testInfo.outputPath(`${frame}-operational-home.png`),
+      path: testInfo.outputPath(`${frame}-operational-home-attention.png`),
       fullPage: true,
     });
+
+    // The queue uses App's existing My Tasks and Task-in-Project intents.
+    await attention
+      .getByRole('button', { name: 'See all in My Tasks', exact: true })
+      .click();
+    await expect(page.locator('#my-tasks')).toBeFocused();
+    await openHome();
+    await attention
+      .getByRole('button', {
+        name: `Open ${signature.title} in ${project.title} (${client.displayName})`,
+        exact: true,
+      })
+      .click();
+    await expect(projectsTarget).toBeFocused();
+    await expect(
+      page
+        .locator('.project-workspace')
+        .getByRole('region', { name: 'Tasks', exact: true })
+        .getByRole('heading', { name: signature.title, exact: true }),
+    ).toBeVisible();
+    await openHome();
 
     // Active Clients opens the Client directory it counts.
     await clientsCard.click();
@@ -876,7 +1008,7 @@ for (const frame of ['classic', 'prisme'] as const) {
     ).toBeVisible();
     // The drill-downs reuse the mounted owners: one Project list read.
     expect(reads.projects).toBe(1);
-    expect(reads.tasks).toEqual([collect.id]);
+    expect(reads.tasks).toEqual([signature.id, collect.id]);
     expect(reads.overdue).toBe(2);
     expect(reads.home).toBeGreaterThanOrEqual(frame === 'prisme' ? 3 : 1);
     for (const id of [project.id, collect.id])

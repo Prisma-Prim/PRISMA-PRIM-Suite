@@ -340,6 +340,8 @@ Every Task has exactly one priority: `normal`, `important` or `critical`. A mana
 
 Priority is a manual declaration. It grants no access, satisfies no gate, changes no Task or Project state, and triggers no reminder, escalation, notification or automatic assignment. It does not reorder the Project Task list or My Tasks and adds no filter, count, badge, queue or urgency rule.
 
+The operational home's My attention queue (Operational Dashboard PRD §17.3) reads `critical` as one of its rules; priority still changes no My Tasks order.
+
 Automatic priority rules, priority-based ordering or filtering, and escalation or notification of important or critical Tasks remain separate decisions.
 
 ## 23. Approved provisional Project lifecycle (#406)
