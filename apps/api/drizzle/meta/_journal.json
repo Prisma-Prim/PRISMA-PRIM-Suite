@@ -243,8 +243,15 @@
     {
       "idx": 34,
       "version": "7",
-      "when": 1790415005629,
-      "tag": "0034_project_lifecycle",
+      "when": 1790412808410,
+      "tag": "0034_tariff_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790425087296,
+      "tag": "0035_project_lifecycle",
       "breakpoints": true
     }
   ]
