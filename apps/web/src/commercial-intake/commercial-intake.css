@@ -72,7 +72,7 @@
   resize: vertical;
 }
 
-.commercial-intake-form button:not(.shared-select__trigger),
+.commercial-intake-form button:not(:where(.shared-select__trigger)),
 .commercial-intake-detail button,
 .commercial-intake-list button {
   width: fit-content;
@@ -211,7 +211,9 @@
   gap: 0.5rem;
 }
 
-.prisme-shell .commercial-intake-form button:not(.shared-select__trigger),
+.prisme-shell
+  .commercial-intake-form
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .commercial-intake-detail > button,
 .prisme-shell .commercial-intake-detail dd button,
 .prisme-shell .commercial-intake-detail section > button,
@@ -241,8 +243,8 @@
 
 .prisme-shell
   .commercial-intake-workspace
-  button:not(.shared-select__trigger):not(:disabled):not(
-    .commercial-intake-list button
+  button:not(:where(.shared-select__trigger)):not(:disabled):not(
+    :where(.commercial-intake-list button)
   ):hover {
   border-color: #c9c0ee;
   color: #4b36aa;
@@ -260,7 +262,7 @@
 
 .prisme-shell
   .commercial-intake-workspace
-  button:not(.shared-select__trigger):disabled {
+  button:not(:where(.shared-select__trigger)):disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -280,14 +282,15 @@
 .prisme-shell .commercial-intake-workspace:focus-visible,
 .prisme-shell
   .commercial-intake-workspace
-  button:not(.shared-select__trigger):focus-visible,
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .prisme-shell .commercial-intake-workspace input:focus-visible,
 .prisme-shell .commercial-intake-workspace textarea:focus-visible {
   outline: 2px solid var(--shell-focus, currentColor);
 }
 
 .commercial-intake-workspace:focus-visible,
-.commercial-intake-workspace button:not(.shared-select__trigger):focus-visible,
+.commercial-intake-workspace
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .commercial-intake-workspace input:focus-visible,
 .commercial-intake-workspace textarea:focus-visible {
   outline: 3px solid
