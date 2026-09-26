@@ -257,7 +257,9 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   );
   await expect(saveTask).toHaveCSS('background-color', 'rgb(100, 81, 232)');
   await expect(saveTask).toHaveCSS('color', 'rgb(255, 255, 255)');
-  await taskAssignee.focus();
+  await region.getByLabel('Task title').focus();
+  await page.keyboard.press('Tab');
+  await expect(taskAssignee).toBeFocused();
   expect(
     await taskAssignee.evaluate(
       (element) => getComputedStyle(element).outlineStyle,
@@ -268,6 +270,8 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
       (element) => getComputedStyle(element).outlineColor,
     ),
   ).toBe('rgb(75, 54, 181)');
+  await expectSelectAppearance(taskAssignee);
+  await expectSelectAppearance(taskPriority);
   await region.getByLabel('Task title').fill('Unsaved preparation title');
   await search.fill('review archive');
   await expect(

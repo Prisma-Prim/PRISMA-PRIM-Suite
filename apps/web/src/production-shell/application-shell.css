@@ -793,7 +793,7 @@
   line-height: 1.7;
 }
 
-.production-shell :focus-visible {
+.production-shell :focus-visible:not(:where(.shared-select__trigger)) {
   outline: 0.2rem solid var(--shell-focus);
   outline-offset: 0.2rem;
 }
