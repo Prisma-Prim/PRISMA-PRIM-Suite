@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 test('compares existing Clients, confirms their union and reverses it', async ({
   page,
@@ -58,6 +61,12 @@ test('compares existing Clients, confirms their union and reverses it', async ({
       return route.fulfill({ json: [companyA, companyB] });
     if (path.endsWith('/activity-log'))
       return route.fulfill({ json: { events: [] } });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(companyA.id, {
+          active_clients: united && !reversed ? 1 : 2,
+        }),
+      });
     if (path.endsWith('/client-duplicate-reviews'))
       return route.fulfill({ json: { items: [], next_cursor: null } });
     if (path.endsWith('/client-union-sources'))

@@ -1,9 +1,10 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -12,6 +13,11 @@ import {
 import { TaskAccessService } from '../access/task-access.service.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import {
+  calendarDaysBetween,
+  operationalDate,
+} from '../clock/operational-date.js';
+import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { taskCommands, tasks } from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
@@ -21,6 +27,7 @@ import {
   createInput,
   editInput,
   isOpenTaskState,
+  overdueTasksQuery,
   readTaskView,
   statusInput,
   transitionInput,
@@ -31,6 +38,7 @@ import {
   DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
   type AssignedTaskView,
+  type CompanyOverdueTasks,
   type TaskActor,
   type TaskChanges,
   type TaskDeclaration,
@@ -39,6 +47,8 @@ import {
   type TaskView,
 } from './task.types.js';
 type TaskRow = typeof tasks.$inferSelect;
+/** The Company overdue-Task list shows at most this many rows with its total. */
+const OVERDUE_TASK_ROW_LIMIT = 100;
 @Injectable()
 export class TaskService {
   constructor(
@@ -47,6 +57,7 @@ export class TaskService {
     private readonly projects: ProjectService,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
+    @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
   async list(actor: ActorContext, projectIdValue: unknown) {
     const projectId = requireUuid(projectIdValue);
@@ -121,6 +132,85 @@ export class TaskService {
       },
       { isolationLevel: 'repeatable read' },
     );
+  }
+  /**
+   * The Company overdue-Task list at the operational date of one sampled
+   * instant. It refuses exactly as My Tasks and writes nothing.
+   */
+  async listOverdue(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<CompanyOverdueTasks & { today: string }> {
+    overdueTasksQuery(query);
+    const today = operationalDate(this.clock.now());
+    const { companyId, total, tasks } = await this.database.transaction(
+      () =>
+        this.readCompanyOverdueTasks(actor, {
+          today,
+          rowLimit: OVERDUE_TASK_ROW_LIMIT,
+        }),
+      { isolationLevel: 'repeatable read' },
+    );
+    return { companyId, today, total, tasks };
+  }
+  /**
+   * Open Tasks of the reader's Project list in the active Company, whatever
+   * their responsible member, due before `today` (Operational Dashboard PRD
+   * §17.2): the total and at most `rowLimit` rows by due date, creation time
+   * and identifier. It reuses the Task read boundary of My Tasks, opens no
+   * transaction of its own and so runs inside the caller's snapshot.
+   */
+  async readCompanyOverdueTasks(
+    actor: ActorContext,
+    { today, rowLimit }: { today: string; rowLimit: number },
+  ): Promise<CompanyOverdueTasks> {
+    const companyId = await this.access.requireActor(actor);
+    const projects = new Map(
+      (await this.projects.list(actor)).map((project) => [
+        project.id,
+        {
+          id: project.id,
+          title: project.title,
+          clientDisplayName: project.clientDisplayName,
+        },
+      ]),
+    );
+    if (projects.size === 0) return { companyId, total: 0, tasks: [] };
+    // Exact YYYY-MM-DD dates compare as calendar values; undated Tasks never match.
+    const overdue = and(
+      eq(tasks.workspaceId, actor.workspaceId),
+      eq(tasks.companyId, companyId),
+      inArray(tasks.status, [...OPEN_TASK_STATES]),
+      lt(tasks.dueDate, today),
+      inArray(tasks.projectId, [...projects.keys()]),
+    );
+    const [counted] = await this.database.connection
+      .select({ total: count() })
+      .from(tasks)
+      .where(overdue);
+    const total = counted?.total ?? 0;
+    if (total === 0 || rowLimit === 0) return { companyId, total, tasks: [] };
+    const rows = await this.database.connection
+      .select()
+      .from(tasks)
+      .where(overdue)
+      .orderBy(asc(tasks.dueDate), asc(tasks.createdAt), asc(tasks.id))
+      .limit(rowLimit);
+    return {
+      companyId,
+      total,
+      tasks: rows.map((row) => {
+        const project = projects.get(row.projectId);
+        // The filter above admits only dated Tasks of listed Projects.
+        if (!project || row.dueDate === null)
+          throw new Error('Invalid overdue Task row.');
+        return {
+          ...view(row),
+          project,
+          daysOverdue: calendarDaysBetween(row.dueDate, today),
+        };
+      }),
+    };
   }
   async eligibleAssignees(actor: ActorContext, projectIdValue: unknown) {
     const projectId = requireUuid(projectIdValue);

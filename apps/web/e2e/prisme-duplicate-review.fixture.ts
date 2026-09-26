@@ -1,6 +1,9 @@
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 export const reviewReference = '23600000-0000-4000-8000-000000000001';
 export const nextReference = '23600000-0000-4000-8000-000000000002';
@@ -142,6 +145,12 @@ export async function installReviewFixture(
       return route.fulfill({ json: state.actor });
     if (path.endsWith('/companies'))
       return route.fulfill({ json: [reviewCompany] });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(reviewCompany.id, {
+          active_clients: state.attached ? 1 : 0,
+        }),
+      });
     if (path.endsWith('/activity-log')) {
       state.activityReads++;
       return route.fulfill({

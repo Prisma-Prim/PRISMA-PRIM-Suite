@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
 import {
   actorContextFixture,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 
@@ -104,6 +105,13 @@ async function installDocumentSearchFixture(page: Page) {
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 1,
+          open_projects: 1,
+        }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [client] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });

@@ -33,6 +33,7 @@ import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalog
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
+import { OperationalHome } from './operational-home/OperationalHome';
 import {
   useProductionShellContext,
   type ActivityLogEvent,
@@ -278,6 +279,36 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         navigateToSection('projects');
       }
     : undefined;
+
+  // The Company summary appears only for an active Company where App's
+  // existing predicates grant at least one of the Client directory, Project
+  // list and Task reads. Any session, Company, Client authority, assignment or
+  // version change remounts it, dropping its late replies and closing its panel.
+  const activeCompany = access.actor.activeCompany;
+  const operationalHome =
+    activeCompany &&
+    (canAccessClients || canAccessProjects || canReadTasks(access.actor)) ? (
+      <OperationalHome
+        key={`operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`}
+        company={{
+          id: activeCompany.id,
+          displayName: activeCompany.displayName,
+        }}
+        identity={identity}
+        availableSummaries={{
+          active_clients: canAccessClients,
+          open_projects: canAccessProjects,
+          overdue_tasks: canReadTasks(access.actor),
+        }}
+        onRevalidateAuthority={() => selectCompany(activeCompany.id)}
+        onOpenClients={() => navigateToSection('clients')}
+        onOpenProjects={() => {
+          setProjectClientFilter(undefined);
+          navigateToSection('projects');
+        }}
+        onOpenTask={openProject}
+      />
+    ) : null;
 
   const sections: ApplicationSection[] = [];
   if (canAccessCommercial && access.actor.activeCompany)
@@ -558,17 +589,29 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           </button>
         </span>
       }
+      overviewSummary={operationalHome}
     >
       <ApplicationContentSurface>
         <p className="eyebrow">{access.actor.workspaceName}</p>
         <h1>Welcome to PRISMA-PRIM Suite</h1>
-        <p>
+        <p className="production-home-introduction">
           This workspace is ready to host your organization&apos;s workflows as
           they become available.
         </p>
+        {operationalHome}
       </ApplicationContentSurface>
     </ApplicationShell>
   );
+}
+/** Every authority the Company summary was read under. */
+function operationalHomeAuthority(actor: ActorContext): string {
+  return JSON.stringify([
+    actor.internalUserId,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    actor.workspacePermissions,
+    actor.activeCompany,
+  ]);
 }
 /** The Projects section needs an active Company with Project and Client read. */
 function canAccessProjectsSection(actor: ActorContext): boolean {

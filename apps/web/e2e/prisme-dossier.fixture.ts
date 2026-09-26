@@ -1,7 +1,10 @@
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { ClientContact } from '../src/client/ClientContactEditor';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 export const dossierCompany = {
   id: 'company-dossier',
@@ -98,6 +101,10 @@ export async function installDossierFixture(page: Page) {
       return route.fulfill({ status: state.actorStatus, json: state.actor });
     if (path.endsWith('/companies'))
       return route.fulfill({ json: [dossierCompany] });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(dossierCompany.id, { active_clients: 1 }),
+      });
     if (path.endsWith('/activity-log')) {
       state.activityReads += 1;
       return route.fulfill({ json: { events: [] } });
