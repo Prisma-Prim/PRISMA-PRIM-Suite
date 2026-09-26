@@ -38,6 +38,7 @@ withPostgres(
       return runDemonstrationSeedCommand({
         argv: ['--confirm-workspace', WORKSPACE_ID],
         environment: {
+          NODE_ENV: 'test',
           DATABASE_URL: database.targetUrl,
           ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'local-demo',
           ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'local-demonstration-user',
