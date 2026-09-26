@@ -234,10 +234,12 @@ describeWithPostgres('Workspace Membership migration', () => {
       { permission: 'company.manage' },
     ]);
 
-    // Preserve the historical membership assertions above, then provide the
-    // current schema required by today's application and Activity Log reader.
-    await applyMigration('0017_client_union.sql');
-    await applyMigration('0018_workspace_invitations.sql');
+    // Preserve the historical membership assertions above, then apply every
+    // later journal migration: today's application and Activity Log reader
+    // always run against the fully migrated schema, including enum values
+    // they bind as query parameters.
+    for (const migration of await journalMigrationsFrom('0017_client_union'))
+      await applyMigration(migration);
 
     const current = await startCurrentApp();
     const currentActor = await fetchActor(current.origin, headers());
@@ -408,6 +410,33 @@ describeWithPostgres('Workspace Membership migration', () => {
         await app.close();
       },
     };
+  }
+
+  /** Every journal migration from `firstTag` through the latest, in order. */
+  async function journalMigrationsFrom(firstTag: string): Promise<string[]> {
+    const journal: unknown = JSON.parse(
+      await readFile('./drizzle/meta/_journal.json', 'utf8'),
+    );
+    if (
+      typeof journal !== 'object' ||
+      journal === null ||
+      !('entries' in journal) ||
+      !Array.isArray(journal.entries)
+    )
+      throw new Error('Invalid migration journal.');
+    const tags = journal.entries.map((entry: unknown) => {
+      if (
+        typeof entry !== 'object' ||
+        entry === null ||
+        !('tag' in entry) ||
+        typeof entry.tag !== 'string'
+      )
+        throw new Error('Invalid migration tag.');
+      return entry.tag;
+    });
+    const first = tags.indexOf(firstTag);
+    if (first < 0) throw new Error(`Unknown migration ${firstTag}.`);
+    return tags.slice(first).map((tag: string) => `${tag}.sql`);
   }
 
   async function applyMigration(filename: string): Promise<void> {
