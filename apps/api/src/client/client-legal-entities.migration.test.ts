@@ -7,7 +7,8 @@ import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const MIGRATION_TAG = '0032_client_legal_entities';
+const MIGRATION_TAG = '0033_client_legal_entities';
+const PREVIOUS_TAG = '0032_pricing_rule_versions';
 const WORKSPACE = '00000000-0000-4000-8000-000000000393';
 const OTHER_WORKSPACE = '00000000-0000-4000-8000-000000003939';
 const USER = '00000000-0000-4000-8000-000000003931';
@@ -54,6 +55,7 @@ it.skipIf(!databaseUrl)(
       // places it; merged migrations are never renumbered.
       const index = tags.indexOf(MIGRATION_TAG);
       expect(index).toBeGreaterThan(0);
+      expect(tags[index - 1]).toBe(PREVIOUS_TAG);
       const entries: unknown[] = journal.entries.slice(0, index);
       previous = await mkdtemp(join(tmpdir(), 'prisma-393-upgrade-'));
       await mkdir(join(previous, 'meta'));

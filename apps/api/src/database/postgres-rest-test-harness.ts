@@ -2,6 +2,7 @@ import {
   IDENTITY_SESSION_REVOKER,
   type IdentitySessionRevoker,
 } from '../access/identity-session-revoker.js';
+import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { Test } from '@nestjs/testing';
 import type { Logger } from 'drizzle-orm/logger';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -27,6 +28,8 @@ export interface PostgresRestTestHarness {
 
 export interface CreatePostgresRestTestHarnessOptions {
   readonly sessionRevoker?: IdentitySessionRevoker;
+  // Replaces only the server clock boundary for fixed-instant tests.
+  readonly serverClock?: ServerClock;
   readonly databaseUrl: string;
   readonly environment: Readonly<Record<string, string>>;
   readonly listenPort?: number;
@@ -60,6 +63,7 @@ export async function createPostgresRestTestHarness({
   listenPort = 0,
   migrationsFolder = './drizzle',
   sessionRevoker,
+  serverClock,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
   Object.assign(process.env, environment, { DATABASE_URL: databaseUrl });
@@ -85,6 +89,8 @@ export async function createPostgresRestTestHarness({
       builder
         .overrideProvider(IDENTITY_SESSION_REVOKER)
         .useValue(sessionRevoker);
+    if (serverClock)
+      builder.overrideProvider(SERVER_CLOCK).useValue(serverClock);
     const moduleRef = await builder.compile();
     const app = moduleRef.createNestApplication();
     ownedResources.unshift({

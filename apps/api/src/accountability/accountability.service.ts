@@ -28,6 +28,8 @@ import {
   clientUnionReversals,
   clientUnionProjections,
   commercialIntakeEvents,
+  PRICING_PROVENANCE,
+  pricingConfigurationEvents,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import {
@@ -254,6 +256,34 @@ export class AccountabilityService {
         actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
         action: 'opportunity.next_action.updated',
         metadata: { opportunityVersion: input.opportunityVersion },
+      });
+  }
+
+  // Recorded but projected by no Activity read surface. Metadata carries
+  // identifiers, the version number and provenance only, never the label; the
+  // caller commits it with the publication itself.
+  async recordPricingRuleVersionPublished(input: {
+    actor: ActorContext;
+    companyId: string;
+    pricingRuleVersionId: string;
+    versionNumber: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(pricingConfigurationEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'pricing_rule_version.published',
+        pricingRuleVersionId: input.pricingRuleVersionId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          pricingRuleVersionId: input.pricingRuleVersionId,
+          versionNumber: input.versionNumber,
+          provenance: PRICING_PROVENANCE,
+        },
       });
   }
 
@@ -1407,6 +1437,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_commercial_intake_assignment.revoked':
     case 'company_service_catalogue_assignment.granted':
     case 'company_service_catalogue_assignment.revoked':
+    case 'company_pricing_configuration_assignment.granted':
+    case 'company_pricing_configuration_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':
     case 'company_commercial_activity_reader_assignment.revoked':
       return {

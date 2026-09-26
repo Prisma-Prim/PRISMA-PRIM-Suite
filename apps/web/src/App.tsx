@@ -31,6 +31,7 @@ import { clientUnionCopy } from './client/client-union.copy';
 import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
 import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
+import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import {
   useProductionShellContext,
@@ -203,6 +204,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     cataloguePermissions.includes('service.definition.create') &&
     cataloguePermissions.includes('commercial.offering.read') &&
     cataloguePermissions.includes('commercial.offering.manage');
+  const pricingConfigurationPermissions =
+    access.actor.activeCompany?.pricingConfigurationPermissions ?? [];
+  const canReadPricingConfiguration =
+    activeCompanyId !== undefined &&
+    pricingConfigurationPermissions.includes(
+      'commercial.pricing.configuration.read',
+    );
   const requestedClientDossierRequest =
     requestedClientDossier === undefined
       ? undefined
@@ -304,6 +312,23 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <ServiceCatalogueWorkspace
           key={`service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${access.actor.activeCompany.serviceCataloguePermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.serviceCataloguePermissionSetVersion ?? 'no-version'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
+  // Any change of session, membership, Company, captured assignment or
+  // permission remounts the screen, clearing drafts and dropping late replies.
+  if (canReadPricingConfiguration && access.actor.activeCompany)
+    sections.push({
+      id: 'pricing',
+      ...prismeCopy.sections.pricing,
+      content: (
+        <PricingConfigurationWorkspace
+          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.pricingConfigurationPermissionAssignmentId ?? 'no-assignment'}:${access.actor.activeCompany.pricingConfigurationPermissionSetVersion ?? 'no-version'}:${pricingConfigurationPermissions.join(',')}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}

@@ -11,6 +11,7 @@ import {
   ListTodo,
   Mail,
   ShieldCheck,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react';
 import type { ApplicationSection, FrameContext } from '../ApplicationShell';
@@ -42,6 +43,7 @@ export function SectionIcon({
     documents: Mail,
     requests: ClipboardList,
     catalogue: BookOpen,
+    pricing: SlidersHorizontal,
     activity: Activity,
     invitations: Mail,
   };
