@@ -28,6 +28,7 @@ import {
   type TaskStatusInput,
 } from './task.validation.js';
 import {
+  DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
   type AssignedTaskView,
   type TaskActor,
@@ -207,6 +208,7 @@ export class TaskService {
           assigneeMembershipId: assignee?.workspaceMembershipId ?? null,
           assigneeDisplayLabel: assignee?.displayLabel ?? null,
           dueDate: input.dueDate,
+          priority: input.priority ?? DEFAULT_TASK_PRIORITY,
           createdByInternalUserId: actor.internalUserId,
           createdByMembershipId: actor.workspaceMembershipId,
           createdByDisplayName: actor.displayName,
@@ -391,6 +393,7 @@ export class TaskService {
       title: input.title ?? before.title,
       dueDate: input.dueDate === undefined ? before.dueDate : input.dueDate,
       assignee,
+      priority: input.priority ?? before.priority,
     };
     const changes: TaskChanges = {};
     if (before.title !== after.title)
@@ -399,6 +402,8 @@ export class TaskService {
       changes.dueDate = { before: before.dueDate, after: after.dueDate };
     if (assigneeChanged)
       changes.assignee = { before: before.assignee, after: after.assignee };
+    if (before.priority !== after.priority)
+      changes.priority = { before: before.priority, after: after.priority };
     if (Object.keys(changes).length === 0) return 'unchanged';
     return {
       updates: {
@@ -406,6 +411,7 @@ export class TaskService {
         dueDate: after.dueDate,
         assigneeMembershipId: after.assignee?.workspaceMembershipId ?? null,
         assigneeDisplayLabel: after.assignee?.displayLabel ?? null,
+        priority: after.priority,
       },
       meaning: {
         action: 'task.updated',
@@ -480,7 +486,12 @@ export class TaskService {
   }
 }
 function fields(task: TaskView): TaskFields {
-  return { title: task.title, assignee: task.assignee, dueDate: task.dueDate };
+  return {
+    title: task.title,
+    assignee: task.assignee,
+    dueDate: task.dueDate,
+    priority: task.priority,
+  };
 }
 function view(row: TaskRow): TaskView {
   if (
@@ -502,6 +513,7 @@ function view(row: TaskRow): TaskView {
           }
         : null,
     dueDate: row.dueDate,
+    priority: row.priority,
     version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

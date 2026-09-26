@@ -41,6 +41,7 @@ const assigned = {
     displayLabel: 'Ada Ionescu · 1',
   },
   dueDate: '2026-09-30',
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,

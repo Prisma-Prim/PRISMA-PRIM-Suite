@@ -69,6 +69,7 @@ const taskOf = (
   title,
   assignee: me,
   dueDate,
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,

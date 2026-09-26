@@ -1,7 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import {
+  DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
+  TASK_PRIORITIES,
   type OpenTaskState,
   type TaskActor,
   type TaskAssignee,
@@ -9,12 +11,16 @@ import {
   type TaskDeclaration,
   type TaskEventMeaning,
   type TaskFields,
+  type TaskInitialFields,
+  type TaskPriority,
   type TaskView,
 } from './task.types.js';
 export interface TaskInput {
   title: string;
   assigneeMembershipId: string | null;
   dueDate: string | null;
+  /** Present only when submitted, so a pre-priority receipt keeps its fingerprint. */
+  priority?: TaskPriority;
 }
 export type TaskEdit = Partial<TaskInput> & { expectedVersion: number };
 export function object(value: unknown): Record<string, unknown> {
@@ -52,6 +58,22 @@ export function calendarDate(value: unknown): string | null {
 function membership(value: unknown): string | null {
   return value === null || value === undefined ? null : requireUuid(value);
 }
+function knownPriority(value: unknown): TaskPriority | undefined {
+  return TASK_PRIORITIES.find((priority) => priority === value);
+}
+function priority(value: unknown): TaskPriority {
+  const known = knownPriority(value);
+  if (!known)
+    throw new BadRequestException(
+      'Task priority must be normal, important or critical.',
+    );
+  return known;
+}
+function storedPriority(value: unknown): TaskPriority {
+  const known = knownPriority(value);
+  if (!known) throw new Error('Invalid stored Task priority.');
+  return known;
+}
 function version(value: unknown): number {
   if (
     typeof value !== 'number' ||
@@ -64,16 +86,23 @@ function version(value: unknown): number {
 }
 export function createInput(value: unknown): TaskInput {
   const row = object(value);
-  keys(row, ['title', 'assigneeMembershipId', 'dueDate']);
+  keys(row, ['title', 'assigneeMembershipId', 'dueDate', 'priority']);
   return {
     title: title(row.title),
     assigneeMembershipId: membership(row.assigneeMembershipId),
     dueDate: calendarDate(row.dueDate),
+    ...('priority' in row ? { priority: priority(row.priority) } : {}),
   };
 }
 export function editInput(value: unknown): TaskEdit {
   const row = object(value);
-  keys(row, ['expectedVersion', 'title', 'assigneeMembershipId', 'dueDate']);
+  keys(row, [
+    'expectedVersion',
+    'title',
+    'assigneeMembershipId',
+    'dueDate',
+    'priority',
+  ]);
   return {
     expectedVersion: version(row.expectedVersion),
     ...('title' in row ? { title: title(row.title) } : {}),
@@ -81,6 +110,7 @@ export function editInput(value: unknown): TaskEdit {
       ? { assigneeMembershipId: membership(row.assigneeMembershipId) }
       : {}),
     ...('dueDate' in row ? { dueDate: calendarDate(row.dueDate) } : {}),
+    ...('priority' in row ? { priority: priority(row.priority) } : {}),
   };
 }
 export function transitionInput(value: unknown) {
@@ -148,19 +178,26 @@ function assignee(value: unknown): TaskAssignee | null {
     displayLabel: string(row.displayLabel),
   };
 }
-function fields(value: unknown): TaskFields {
+/** Only a creation recorded before priority existed lacks one; it stays absent. */
+function initialFields(value: unknown): TaskInitialFields {
   const row = object(value);
   return {
     title: title(row.title),
     assignee: assignee(row.assignee),
     dueDate: calendarDate(row.dueDate),
+    ...('priority' in row ? { priority: storedPriority(row.priority) } : {}),
   };
+}
+/** A result recorded before priority existed describes a Task backfilled as normal. */
+function resultFields(value: unknown): TaskFields {
+  const fields = initialFields(value);
+  return { ...fields, priority: fields.priority ?? DEFAULT_TASK_PRIORITY };
 }
 /** Stored JSON is an external boundary; reconstruct the checked public result. */
 export function readTaskView(value: unknown): TaskView {
   const row = object(value);
   const common = {
-    ...fields(row),
+    ...resultFields(row),
     id: string(row.id),
     companyId: string(row.companyId),
     projectId: string(row.projectId),
@@ -229,11 +266,14 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
     case 'task.created':
       return {
         action: row.action,
-        metadata: { version: resultVersion, initial: fields(metadata.initial) },
+        metadata: {
+          version: resultVersion,
+          initial: initialFields(metadata.initial),
+        },
       };
     case 'task.updated': {
       const stored = object(metadata.changes);
-      keys(stored, ['title', 'assignee', 'dueDate']);
+      keys(stored, ['title', 'assignee', 'dueDate', 'priority']);
       const changes: TaskChanges = {};
       if (stored.title !== undefined) {
         const change = object(stored.title);
@@ -254,6 +294,13 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
         changes.dueDate = {
           before: calendarDate(change.before),
           after: calendarDate(change.after),
+        };
+      }
+      if (stored.priority !== undefined) {
+        const change = object(stored.priority);
+        changes.priority = {
+          before: storedPriority(change.before),
+          after: storedPriority(change.after),
         };
       }
       return {

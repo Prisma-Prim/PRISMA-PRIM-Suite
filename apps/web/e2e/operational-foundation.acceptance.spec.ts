@@ -109,6 +109,8 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expectNoHorizontalOverflow(page);
 
   await tasks.getByLabel('Task title').fill(taskTitle);
+  const priority = tasks.locator('form').getByLabel('Priority');
+  await priority.selectOption({ label: 'Critical' });
   const taskResponse = page.waitForResponse(
     mutationResponse('POST', `/api/projects/${projectId}/tasks`),
   );
@@ -116,6 +118,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const taskId = await responseId(taskResponse);
   await expect(
     tasks.getByRole('heading', { name: taskTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('Critical', { exact: true }),
   ).toBeVisible();
   const responsibleMember = tasks
     .locator('form')
@@ -125,9 +130,18 @@ test('operates the delivered Client, Project, Task and working Document journey 
     'Ada Ionescu',
   );
   await tasks.getByLabel('Due date').fill('2026-10-15');
+  await priority.selectOption({ label: 'Important' });
   await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
   await expect(
     tasks.locator('dd').getByText('Ada Ionescu', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks
+      .getByRole('region', { name: 'Task history' })
+      .getByText('Critical → Important'),
   ).toBeVisible();
   // Leave the Task, so only My Tasks' Open selects it again.
   await tasks.getByRole('button', { name: 'New Task', exact: true }).click();
@@ -144,6 +158,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
     projectTitle,
     clientName,
     '2026-10-15',
+    'Important',
   ]);
   await capture(
     page,
@@ -176,6 +191,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
   ).toBeVisible();
   await expect(
     tasks.locator('dd').getByText('2026-10-15', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
   ).toBeVisible();
   await capture(
     page,
@@ -241,6 +259,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     tasks.getByText('Completion declared by Ada Ionescu', { exact: false }),
   ).toBeVisible();
+  // The completed Task keeps its priority visible without a priority control.
+  await expect(
+    tasks.locator('dd').getByText('Important', { exact: true }),
+  ).toBeVisible();
+  await expect(priority).toHaveCount(0);
   page.off('request', captureCompletionKey);
   expect(completionKeys).toHaveLength(2);
   expect(completionKeys[1]).toBe(completionKeys[0]);

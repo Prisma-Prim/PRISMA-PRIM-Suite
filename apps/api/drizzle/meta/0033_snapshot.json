@@ -1,5 +1,5 @@
 {
-  "id": "4d26db12-e352-44ed-a054-c3565c1f5b9f",
+  "id": "62325b76-6e23-4512-aaf9-8ef4247ff6f0",
   "prevId": "28ad593c-c8dd-48ff-bed0-83514da879f6",
   "version": "7",
   "dialect": "postgresql",
@@ -5941,6 +5941,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -6224,6 +6231,10 @@
         "tasks_date_check": {
           "name": "tasks_date_check",
           "value": "\"tasks\".\"due_date\" IS NULL OR (\"tasks\".\"due_date\" >= DATE '0001-01-01' AND \"tasks\".\"due_date\" <= DATE '9999-12-31')"
+        },
+        "tasks_priority_check": {
+          "name": "tasks_priority_check",
+          "value": "\"tasks\".\"priority\" IN ('normal', 'important', 'critical')"
         },
         "tasks_blockage_reason_check": {
           "name": "tasks_blockage_reason_check",
@@ -8186,13 +8197,7 @@
           "name": "result_pricing_rule_version_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
-        },
-        "result_tariff_version_id": {
-          "name": "result_tariff_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -8262,34 +8267,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "pricing_configuration_commands_tariff_published_unique": {
-          "name": "pricing_configuration_commands_tariff_published_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "result_tariff_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_configuration_commands\".\"outcome\" = 'PUBLISHED'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -8339,34 +8316,12 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "pricing_configuration_commands_tariff_version_fk": {
-          "name": "pricing_configuration_commands_tariff_version_fk",
-          "tableFrom": "pricing_configuration_commands",
-          "tableTo": "tariff_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "result_tariff_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "pricing_configuration_commands_result_check": {
-          "name": "pricing_configuration_commands_result_check",
-          "value": "(\n        (\"pricing_configuration_commands\".\"command\" = 'pricing_rule_version.publish'\n          AND \"pricing_configuration_commands\".\"result_pricing_rule_version_id\" IS NOT NULL\n          AND \"pricing_configuration_commands\".\"result_tariff_version_id\" IS NULL)\n        OR\n        (\"pricing_configuration_commands\".\"command\" = 'tariff_version.publish'\n          AND \"pricing_configuration_commands\".\"result_tariff_version_id\" IS NOT NULL\n          AND \"pricing_configuration_commands\".\"result_pricing_rule_version_id\" IS NULL)\n      )"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.pricing_configuration_events": {
@@ -8402,13 +8357,7 @@
           "name": "pricing_rule_version_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
-        },
-        "tariff_version_id": {
-          "name": "tariff_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "actor_internal_user_id": {
           "name": "actor_internal_user_id",
@@ -8457,28 +8406,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "pricing_configuration_events_tariff_published_unique": {
-          "name": "pricing_configuration_events_tariff_published_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tariff_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"pricing_configuration_events\".\"action\" = 'tariff_version.published'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -8514,23 +8441,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pricing_configuration_events_tariff_version_fk": {
-          "name": "pricing_configuration_events_tariff_version_fk",
-          "tableFrom": "pricing_configuration_events",
-          "tableTo": "tariff_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "tariff_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "pricing_configuration_events_actor_fk": {
           "name": "pricing_configuration_events_actor_fk",
           "tableFrom": "pricing_configuration_events",
@@ -8553,13 +8463,9 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "pricing_configuration_events_reference_check": {
-          "name": "pricing_configuration_events_reference_check",
-          "value": "(\n        (\"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"pricing_rule_version_id\" IS NOT NULL\n          AND \"pricing_configuration_events\".\"tariff_version_id\" IS NULL)\n        OR\n        (\"pricing_configuration_events\".\"action\" = 'tariff_version.published'\n          AND \"pricing_configuration_events\".\"tariff_version_id\" IS NOT NULL\n          AND \"pricing_configuration_events\".\"pricing_rule_version_id\" IS NULL)\n      )"
-        },
         "pricing_configuration_events_action_metadata_check": {
           "name": "pricing_configuration_events_action_metadata_check",
-          "value": "(\n        \"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingRuleVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingRuleVersionId' = \"pricing_configuration_events\".\"pricing_rule_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n      ) IS TRUE\n      OR (\n        \"pricing_configuration_events\".\"action\" = 'tariff_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'tariffVersionId' - 'offeringId' - 'versionNumber' - 'provenance' - 'currency' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'tariffVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'tariffVersionId' = \"pricing_configuration_events\".\"tariff_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'offeringId') = 'string'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'currency') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')\n      ) IS TRUE"
+          "value": "(\n        \"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingRuleVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingRuleVersionId' = \"pricing_configuration_events\".\"pricing_rule_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n      ) IS TRUE"
         }
       },
       "isRLSEnabled": false
@@ -8866,381 +8772,6 @@
         "pricing_rule_versions_supersession_check": {
           "name": "pricing_rule_versions_supersession_check",
           "value": "(\n        (\"pricing_rule_versions\".\"superseded_by_version_id\" IS NULL\n          AND \"pricing_rule_versions\".\"superseded_at\" IS NULL\n          AND \"pricing_rule_versions\".\"superseded_from\" IS NULL)\n        OR\n        (\"pricing_rule_versions\".\"superseded_by_version_id\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_at\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_from\" IS NOT NULL\n          AND \"pricing_rule_versions\".\"superseded_by_version_id\" <> \"pricing_rule_versions\".\"id\"\n          AND \"pricing_rule_versions\".\"superseded_from\" > \"pricing_rule_versions\".\"effective_from\")\n      )"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.tariff_versions": {
-      "name": "tariff_versions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "offering_id": {
-          "name": "offering_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit": {
-          "name": "unit",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit_amount": {
-          "name": "unit_amount",
-          "type": "numeric(11, 4)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tax_rate_percent": {
-          "name": "tax_rate_percent",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tax_label": {
-          "name": "tax_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effective_from": {
-          "name": "effective_from",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effective_to": {
-          "name": "effective_to",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "provenance": {
-          "name": "provenance",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'ILLUSTRATIVE'"
-        },
-        "created_by_internal_user_id": {
-          "name": "created_by_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_workspace_membership_id": {
-          "name": "created_by_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "superseded_by_version_id": {
-          "name": "superseded_by_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_from": {
-          "name": "superseded_from",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "tariff_versions_company_id_unique": {
-          "name": "tariff_versions_company_id_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tariff_versions_offering_id_unique": {
-          "name": "tariff_versions_offering_id_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "offering_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tariff_versions_number_unique": {
-          "name": "tariff_versions_number_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "offering_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tariff_versions_head_unique": {
-          "name": "tariff_versions_head_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "offering_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"tariff_versions\".\"superseded_by_version_id\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tariff_versions_successor_unique": {
-          "name": "tariff_versions_successor_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "offering_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "superseded_by_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"tariff_versions\".\"superseded_by_version_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "tariff_versions_offering_fk": {
-          "name": "tariff_versions_offering_fk",
-          "tableFrom": "tariff_versions",
-          "tableTo": "company_service_offerings",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "offering_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tariff_versions_creator_fk": {
-          "name": "tariff_versions_creator_fk",
-          "tableFrom": "tariff_versions",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "created_by_workspace_membership_id",
-            "created_by_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tariff_versions_successor_fk": {
-          "name": "tariff_versions_successor_fk",
-          "tableFrom": "tariff_versions",
-          "tableTo": "tariff_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "offering_id",
-            "superseded_by_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "offering_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "tariff_versions_version_number_check": {
-          "name": "tariff_versions_version_number_check",
-          "value": "\"tariff_versions\".\"version_number\" >= 1"
-        },
-        "tariff_versions_unit_check": {
-          "name": "tariff_versions_unit_check",
-          "value": "length(\"tariff_versions\".\"unit\") BETWEEN 1 AND 24 AND length(btrim(\"tariff_versions\".\"unit\")) > 0"
-        },
-        "tariff_versions_tax_label_check": {
-          "name": "tariff_versions_tax_label_check",
-          "value": "length(\"tariff_versions\".\"tax_label\") BETWEEN 1 AND 60 AND length(btrim(\"tariff_versions\".\"tax_label\")) > 0"
-        },
-        "tariff_versions_unit_amount_check": {
-          "name": "tariff_versions_unit_amount_check",
-          "value": "\"tariff_versions\".\"unit_amount\" > 0"
-        },
-        "tariff_versions_tax_rate_percent_check": {
-          "name": "tariff_versions_tax_rate_percent_check",
-          "value": "\"tariff_versions\".\"tax_rate_percent\" BETWEEN 0 AND 100"
-        },
-        "tariff_versions_currency_check": {
-          "name": "tariff_versions_currency_check",
-          "value": "\"tariff_versions\".\"currency\" IN ('MDL', 'EUR', 'RON', 'USD')"
-        },
-        "tariff_versions_window_check": {
-          "name": "tariff_versions_window_check",
-          "value": "\"tariff_versions\".\"effective_to\" IS NULL OR \"tariff_versions\".\"effective_to\" > \"tariff_versions\".\"effective_from\""
-        },
-        "tariff_versions_provenance_check": {
-          "name": "tariff_versions_provenance_check",
-          "value": "\"tariff_versions\".\"provenance\" = 'ILLUSTRATIVE'"
-        },
-        "tariff_versions_supersession_check": {
-          "name": "tariff_versions_supersession_check",
-          "value": "(\n        (\"tariff_versions\".\"superseded_by_version_id\" IS NULL\n          AND \"tariff_versions\".\"superseded_at\" IS NULL\n          AND \"tariff_versions\".\"superseded_from\" IS NULL)\n        OR\n        (\"tariff_versions\".\"superseded_by_version_id\" IS NOT NULL\n          AND \"tariff_versions\".\"superseded_at\" IS NOT NULL\n          AND \"tariff_versions\".\"superseded_from\" IS NOT NULL\n          AND \"tariff_versions\".\"superseded_by_version_id\" <> \"tariff_versions\".\"id\"\n          AND \"tariff_versions\".\"superseded_from\" > \"tariff_versions\".\"effective_from\")\n      )"
         }
       },
       "isRLSEnabled": false

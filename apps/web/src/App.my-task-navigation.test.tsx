@@ -60,6 +60,7 @@ const assignedTask = (
   title: taskTitle,
   assignee: me,
   dueDate: due,
+  priority: 'normal',
   status: 'todo',
   completion: null,
   version: 1,
