@@ -993,6 +993,73 @@ paths:
           description: The actor lacks current Document read authority or a valid active Company context.
         '404':
           description: No working Document with a readable original Client is visible in the active Company.
+  /api/operational-home:
+    get:
+      operationId: readOperationalHome
+      summary: Count the active Company records the reader can open
+      description: >-
+        Operational Dashboard PRD section 17. The read samples the server clock
+        once; `today` is that instant's calendar date in `Europe/Chisinau` and
+        every date comparison uses it. The counts come from one repeatable-read
+        snapshot. A summary appears only when the reader holds, in the active
+        Company, the read that owns its records, evaluated live exactly as that
+        read evaluates it; otherwise it is absent, never zero. Each count equals
+        the number of records its drill-down lists for the same reader and
+        state. The read records no Activity Log event, command receipt, version
+        or Client fence advance.
+      tags:
+        - Operational home
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: The Company summaries the reader may read, in the fixed kind order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalHome'
+        '400':
+          description: A query parameter is present; the read takes none.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: >-
+            No valid active Company context, or the reader holds none of the
+            Client directory, Project list and Task reads in the active
+            Company. The body is the delivered safe denial.
+  /api/overdue-tasks:
+    get:
+      operationId: listCompanyOverdueTasks
+      summary: List the active Company overdue Tasks in the reader's Project list
+      description: >-
+        Open Tasks (`todo`, `in_progress`, `blocked`) of the reader's Project
+        list in the active Company, whatever their responsible member and
+        including unassigned Tasks, whose exact due date is before `today`,
+        the calendar date in `Europe/Chisinau` of the one sampled server
+        instant. Undated Tasks and Tasks due `today` are not overdue. Rows are
+        ordered by due date, then creation time, then identifier; at most the
+        first 100 are returned with the total. Every refusal equals that of
+        `GET /api/assigned-tasks`. The read writes nothing.
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: The overdue total and at most its 100 oldest Tasks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyOverdueTasks'
+        '400':
+          description: A query parameter is present; the read takes none.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: >-
+            No valid active Company context, or the reader lacks captured
+            Company Task Manager v1 `task.read`, Project read or Client read in
+            the active Company, exactly as `GET /api/assigned-tasks` refuses.
 components:
   parameters:
     IdempotencyKey:
@@ -1018,6 +1085,210 @@ components:
       schema:
         type: string
   schemas:
+    OperationalHome:
+      type: object
+      additionalProperties: false
+      required:
+        - companyId
+        - today
+        - summaries
+      properties:
+        companyId:
+          type: string
+          format: uuid
+          description: The active Company every count belongs to.
+        today:
+          type: string
+          format: date
+          description: The `Europe/Chisinau` calendar date of the one sampled server instant.
+        summaries:
+          type: array
+          maxItems: 3
+          description: >-
+            At most one entry per kind, in the order `active_clients`,
+            `open_projects`, `overdue_tasks`. A kind the reader may not read is
+            absent, never present with 0.
+          items:
+            $ref: '#/components/schemas/CompanySummary'
+    CompanySummary:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - count
+      properties:
+        kind:
+          type: string
+          enum:
+            - active_clients
+            - open_projects
+            - overdue_tasks
+          description: >-
+            `active_clients` counts the `GET /api/clients` rows and requires
+            the Client directory read (Company `client.read`, or Workspace
+            `client.manage`). `open_projects` counts the open-status rows of
+            `GET /api/projects` and requires the Project list read.
+            `overdue_tasks` equals the `GET /api/overdue-tasks` total and
+            requires the Task read.
+        count:
+          type: integer
+          minimum: 0
+    CompanyOverdueTasks:
+      type: object
+      additionalProperties: false
+      required:
+        - companyId
+        - today
+        - total
+        - tasks
+      properties:
+        companyId:
+          type: string
+          format: uuid
+        today:
+          type: string
+          format: date
+        total:
+          type: integer
+          minimum: 0
+        tasks:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/OverdueTask'
+    OverdueTask:
+      type: object
+      description: >-
+        The Task row `GET /api/assigned-tasks` returns, including its
+        responsible member or null, plus the whole calendar days from its due
+        date to `today`.
+      required:
+        - id
+        - companyId
+        - projectId
+        - clientAccountId
+        - title
+        - assignee
+        - dueDate
+        - priority
+        - status
+        - completion
+        - version
+        - createdAt
+        - updatedAt
+        - createdBy
+        - project
+        - daysOverdue
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        clientAccountId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        assignee:
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required:
+                - workspaceMembershipId
+                - displayLabel
+              properties:
+                workspaceMembershipId:
+                  type: string
+                  format: uuid
+                displayLabel:
+                  type: string
+        dueDate:
+          type: string
+          format: date
+        priority:
+          type: string
+          enum:
+            - normal
+            - important
+            - critical
+          description: The manual Task priority (#375); it does not change the overdue order.
+        status:
+          type: string
+          enum:
+            - todo
+            - in_progress
+            - blocked
+        completion:
+          type: 'null'
+        blockage:
+          type: object
+          description: Present only for a `blocked` Task.
+          required:
+            - reason
+            - actor
+            - occurredAt
+          properties:
+            reason:
+              type: string
+            actor:
+              $ref: '#/components/schemas/TaskActor'
+            occurredAt:
+              type: string
+              format: date-time
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          $ref: '#/components/schemas/TaskActor'
+        project:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - title
+            - clientDisplayName
+          properties:
+            id:
+              type: string
+              format: uuid
+            title:
+              type: string
+            clientDisplayName:
+              type: string
+              description: The Client label the Project list shows, including a superseded original label.
+        daysOverdue:
+          type: integer
+          minimum: 1
+    TaskActor:
+      type: object
+      additionalProperties: false
+      required:
+        - internalUserId
+        - workspaceMembershipId
+        - displayName
+      properties:
+        internalUserId:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
     ActivityLogEvent:
       oneOf:
         - $ref: '#/components/schemas/OrdinaryActivityLogEvent'

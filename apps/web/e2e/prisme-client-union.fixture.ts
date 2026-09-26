@@ -1,7 +1,10 @@
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { UnionComparison } from '../src/client/client-union-contract';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 export const firstId = '24100000-0000-4000-8000-000000000001';
 export const secondId = '24100000-0000-4000-8000-000000000002';
@@ -113,6 +116,12 @@ export async function installUnionFixture(page: Page) {
       return route.fulfill({ json: state.actor });
     if (path.endsWith('/companies'))
       return route.fulfill({ json: [companyA, companyB] });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(companyA.id, {
+          active_clients: state.united ? 1 : 2,
+        }),
+      });
     if (path.endsWith('/activity-log')) {
       state.activityReads++;
       return state.united && state.refreshFails

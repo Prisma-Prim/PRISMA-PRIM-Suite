@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 test('keeps Classic as an explicit reload-stable rollback and accepts legacy Prisme links', async ({
   page,
@@ -89,6 +92,13 @@ test('keeps every authorized MVP section reachable from the default frame', asyn
       });
     if (path.endsWith('/activity-log'))
       return route.fulfill({ json: { events: [] } });
+    if (context === 'operational' && path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 0,
+          open_projects: 0,
+        }),
+      });
     if (
       context === 'operational' &&
       (path.endsWith('/clients') ||
@@ -187,6 +197,12 @@ test('opens authenticated members in Prisme, switches authorized Company and ope
     if (path.endsWith('/companies')) return route.fulfill({ json: companies });
     if (path.endsWith('/activity-log'))
       return route.fulfill({ json: { events: [] } });
+    if (path.endsWith('/operational-home') && companyId)
+      return route.fulfill({
+        json: operationalHomeFixture(companyId, {
+          active_clients: companyId === companies[1]?.id ? 1 : 0,
+        }),
+      });
     if (path.endsWith('/clients'))
       return route.fulfill({
         json:
