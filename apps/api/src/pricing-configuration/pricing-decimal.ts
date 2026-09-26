@@ -2,6 +2,7 @@
 // rate never passes through Number or parseFloat; it is compared as a BigInt
 // scaled by its column's decimal places.
 export const UNIT_AMOUNT_SCALE = 4;
+export const QUANTITY_SCALE = 3;
 export const TAX_RATE_PERCENT_SCALE = 2;
 
 const PLAIN_DECIMAL = /^(0|[1-9][0-9]*)(?:\.([0-9]+))?$/u;

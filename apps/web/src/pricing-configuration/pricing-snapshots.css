@@ -1,0 +1,67 @@
+.pricing-snapshot-panel {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #d8dee9);
+  border-radius: 0.75rem;
+}
+
+.pricing-snapshot-panel header > p:first-child,
+.pricing-snapshot-detail > p:first-of-type,
+.pricing-snapshot-history small {
+  color: var(--color-warning-text, #7a4b00);
+  font-weight: 700;
+}
+
+.pricing-snapshot-lines {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+
+.pricing-snapshot-lines fieldset {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 12rem);
+  gap: 0.5rem 1rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.pricing-snapshot-lines small {
+  grid-column: 1;
+}
+
+.pricing-snapshot-history {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.pricing-snapshot-history li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.pricing-snapshot-detail ol,
+.pricing-snapshot-detail dl {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.pricing-snapshot-detail li,
+.pricing-snapshot-detail dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+@media (max-width: 42rem) {
+  .pricing-snapshot-lines fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-snapshot-lines small {
+    grid-column: auto;
+  }
+}
