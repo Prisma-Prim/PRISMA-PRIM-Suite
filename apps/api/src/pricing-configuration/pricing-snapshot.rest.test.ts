@@ -1299,6 +1299,7 @@ function numberField(value: Record<string, unknown>, field: string): number {
 
 function memberHeaders(subject: string): Record<string, string> {
   return {
+    'x-test-external-provider': 'deterministic-test',
     'x-test-external-subject': subject,
     'x-test-display-name': subject,
     'x-test-email': `${subject}@example.test`,
