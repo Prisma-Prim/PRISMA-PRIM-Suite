@@ -61,6 +61,23 @@ export interface TaskProjectLabels {
 }
 /** An open Task assigned to the reader, with the Project list's own labels. */
 export type AssignedTaskView = TaskView & { project: TaskProjectLabels };
+export const ATTENTION_RULES = [
+  'overdue',
+  'critical',
+  'blocked',
+  'due_soon',
+] as const;
+export type AttentionRule = (typeof ATTENTION_RULES)[number];
+/** One matching My Tasks row with every attention rule it satisfies. */
+export type AttentionTaskView = AssignedTaskView & {
+  rules: AttentionRule[];
+  dueInDays: number | null;
+};
+/** The complete match count and the bounded My attention rows. */
+export interface TaskAttention {
+  matchingCount: number;
+  tasks: AttentionTaskView[];
+}
 /**
  * An open Task of the reader's Project list due before the read's today, with
  * the Project list's own labels and its whole calendar days overdue.

@@ -4,7 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, eq, inArray, lt, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gte,
+  inArray,
+  lt,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -38,7 +49,9 @@ import {
   DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
   type AssignedTaskView,
+  type AttentionRule,
   type CompanyOverdueTasks,
+  type TaskAttention,
   type TaskActor,
   type TaskChanges,
   type TaskDeclaration,
@@ -49,6 +62,8 @@ import {
 type TaskRow = typeof tasks.$inferSelect;
 /** The Company overdue-Task list shows at most this many rows with its total. */
 const OVERDUE_TASK_ROW_LIMIT = 100;
+/** The My attention queue shows at most this many rows with its full total. */
+const ATTENTION_TASK_ROW_LIMIT = 10;
 @Injectable()
 export class TaskService {
   constructor(
@@ -132,6 +147,88 @@ export class TaskService {
       },
       { isolationLevel: 'repeatable read' },
     );
+  }
+  /**
+   * The reader's own open, readable Tasks that satisfy Operational Dashboard
+   * PRD §17.3 at the home read's one sampled date. This uses the My Tasks
+   * authority and Project visibility boundary and opens no transaction itself.
+   */
+  async readAttention(
+    actor: ActorContext,
+    { today }: { today: string },
+  ): Promise<TaskAttention> {
+    const companyId = await this.access.requireActor(actor);
+    const projects = new Map(
+      (await this.projects.list(actor)).map((project) => [
+        project.id,
+        {
+          id: project.id,
+          title: project.title,
+          clientDisplayName: project.clientDisplayName,
+        },
+      ]),
+    );
+    if (projects.size === 0) return { matchingCount: 0, tasks: [] };
+    const dueSoonEnd = calendarDateAfter(today, 7);
+    const matching = and(
+      eq(tasks.workspaceId, actor.workspaceId),
+      eq(tasks.companyId, companyId),
+      eq(tasks.assigneeMembershipId, actor.workspaceMembershipId),
+      inArray(tasks.status, [...OPEN_TASK_STATES]),
+      inArray(tasks.projectId, [...projects.keys()]),
+      or(
+        lt(tasks.dueDate, today),
+        eq(tasks.priority, 'critical'),
+        eq(tasks.status, 'blocked'),
+        and(gte(tasks.dueDate, today), lte(tasks.dueDate, dueSoonEnd)),
+      ),
+    );
+    const [counted] = await this.database.connection
+      .select({ total: count() })
+      .from(tasks)
+      .where(matching);
+    const matchingCount = counted?.total ?? 0;
+    if (matchingCount === 0) return { matchingCount, tasks: [] };
+    const rows = await this.database.connection
+      .select()
+      .from(tasks)
+      .where(matching)
+      .orderBy(
+        sql`CASE
+          WHEN ${tasks.dueDate} < ${today} THEN 0
+          WHEN ${tasks.priority} = 'critical' THEN 1
+          WHEN ${tasks.status} = 'blocked' THEN 2
+          ELSE 3
+        END`,
+        sql`${tasks.dueDate} ASC NULLS LAST`,
+        sql`CASE ${tasks.priority}
+          WHEN 'critical' THEN 0
+          WHEN 'important' THEN 1
+          ELSE 2
+        END`,
+        asc(tasks.createdAt),
+        asc(tasks.id),
+      )
+      .limit(ATTENTION_TASK_ROW_LIMIT);
+    return {
+      matchingCount,
+      tasks: rows.map((row) => {
+        const project = projects.get(row.projectId);
+        if (!project) throw new Error('Invalid attention Task row.');
+        const dueInDays = row.dueDate
+          ? calendarDaysBetween(today, row.dueDate)
+          : null;
+        const rules: AttentionRule[] = [];
+        if (dueInDays !== null && dueInDays < 0) rules.push('overdue');
+        if (row.priority === 'critical') rules.push('critical');
+        if (row.status === 'blocked') rules.push('blocked');
+        if (dueInDays !== null && dueInDays >= 0 && dueInDays <= 7)
+          rules.push('due_soon');
+        if (rules.length === 0)
+          throw new Error('Attention Task matched no rule.');
+        return { ...view(row), project, rules, dueInDays };
+      }),
+    };
   }
   /**
    * The Company overdue-Task list at the operational date of one sampled
@@ -574,6 +671,11 @@ export class TaskService {
       result,
     });
   }
+}
+
+function calendarDateAfter(date: string, days: number): string {
+  const instant = Date.parse(`${date}T00:00:00.000Z`) + days * 86_400_000;
+  return new Date(instant).toISOString().slice(0, 10);
 }
 function fields(task: TaskView): TaskFields {
   return {
