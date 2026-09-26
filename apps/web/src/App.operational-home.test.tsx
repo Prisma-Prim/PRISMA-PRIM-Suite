@@ -494,6 +494,29 @@ describe('Operational home through App', () => {
     expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
   });
 
+  it.each(['classic', 'prisme'])(
+    'focuses the My Tasks region from My attention in %s',
+    async (frame) => {
+      window.history.replaceState(null, '', `/?frame=${frame}`);
+      const server = installServer();
+      server.state.showAttention = true;
+      render(<App identity={deterministicBrowserIdentity()} />);
+      const attention = await screen.findByRole('region', {
+        name: copy.attention.title,
+      });
+
+      fireEvent.click(
+        within(attention).getByRole('button', { name: copy.attention.seeAll }),
+      );
+
+      const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
+      expect(window.location.hash).toBe('#my-tasks');
+      expect(myTasks).toBeVisible();
+      await waitFor(() => expect(myTasks).toHaveFocus());
+      expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
+      expect(myTasks).toHaveAttribute('id', 'my-tasks');
+    },
+  );
   it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
     window.history.replaceState(null, '', '/?frame=classic');
     const server = installServer({
