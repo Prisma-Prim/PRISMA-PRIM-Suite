@@ -57,3 +57,46 @@ export async function expectSelectAppearance(select: Locator): Promise<void> {
     path: test.info().outputPath(`select-appearance-${id}.png`),
   });
 }
+
+/** Wrapped labels stay inside their own row, even in a height-limited menu. */
+export async function expectSelectOptionsDoNotOverlap(
+  listbox: Locator,
+  { requireWrappedOption = false }: { requireWrappedOption?: boolean } = {},
+): Promise<void> {
+  const options = await listbox.getByRole('option').evaluateAll((elements) =>
+    elements.map((element) => {
+      const label = element.querySelector(':scope > span');
+      if (!label) throw new Error('Expected an option label');
+      const row = element.getBoundingClientRect();
+      const text = document.createRange();
+      text.selectNodeContents(label);
+      const bounds = text.getBoundingClientRect();
+      return {
+        label: label.textContent,
+        top: row.top,
+        bottom: row.bottom,
+        textTop: bounds.top,
+        textBottom: bounds.bottom,
+        textHeight: bounds.height,
+        lineHeight: Number.parseFloat(getComputedStyle(label).lineHeight),
+      };
+    }),
+  );
+  expect(options.length).toBeGreaterThan(1);
+  if (requireWrappedOption)
+    expect(
+      options.some((option) => option.textHeight > option.lineHeight * 2.5),
+    ).toBe(true);
+  for (const [index, option] of options.entries()) {
+    expect(
+      option.textTop,
+      option.label ?? 'Option text',
+    ).toBeGreaterThanOrEqual(option.top - 0.5);
+    expect(
+      option.textBottom,
+      option.label ?? 'Option text',
+    ).toBeLessThanOrEqual(option.bottom + 0.5);
+    const next = options[index + 1];
+    if (next) expect(option.bottom).toBeLessThanOrEqual(next.top + 0.5);
+  }
+}

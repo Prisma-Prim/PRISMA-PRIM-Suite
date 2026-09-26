@@ -259,6 +259,14 @@ describe('Client ownership through App', () => {
       );
       await waitFor(() => expect(activityReads).toBe(1 + refreshCount));
 
+      if (refresh === 'Access revalidation') {
+        expect(
+          screen.getByText('You do not have permission to manage Clients.'),
+        ).toBeVisible();
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Back to Company Clients' }),
+        );
+      }
       expect(commands[0]?.signal?.aborted).toBe(false);
       expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
       expect(screen.getByLabelText('Client display name')).toHaveValue(
@@ -287,6 +295,11 @@ describe('Client ownership through App', () => {
         screen.getAllByText('Client created and linked to the active Company.'),
       ).toHaveLength(1);
       await waitFor(() => expect(activityReads).toBe(2 + refreshCount));
+      expect(
+        await screen.findByRole('heading', {
+          name: created.displayName,
+        }),
+      ).toBeVisible();
       expect(commands).toHaveLength(outcome === 'settles' ? 1 : 2);
     },
   );

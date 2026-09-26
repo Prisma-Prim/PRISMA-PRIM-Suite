@@ -130,6 +130,7 @@
 
 .shared-select__listbox {
   display: grid;
+  grid-auto-rows: max-content;
   width: 100%;
   min-height: 0;
   gap: 0.15rem;

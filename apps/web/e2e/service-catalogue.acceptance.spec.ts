@@ -1,4 +1,7 @@
-import { expectSelectAppearance } from './select-appearance';
+import {
+  expectSelectAppearance,
+  expectSelectOptionsDoNotOverlap,
+} from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Response } from '@playwright/test';
@@ -10,7 +13,7 @@ test('defines a shared Service and records a Company offering through the real A
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'NARROW' : 'DESKTOP';
   const code = `ACCEPTANCE-${suffix}`;
-  const name = `Acceptance service ${suffix.toLowerCase()}`;
+  const name = `Acceptance service ${suffix.toLowerCase()} with a deliberately long description for preparing and reviewing an illustrative consulting engagement`;
   const label = `Illustrative offering ${suffix.toLowerCase()}`;
   const disclaimer =
     'This illustrative offering is non-operational: it is not evidence that the Company may perform, certify, sell or contract the service. A real offering requires a separately reviewed governed transition.';
@@ -78,14 +81,41 @@ test('defines a shared Service and records a Company offering through the real A
   });
   await expect(definitions.getByText(code, { exact: true })).toBeVisible();
 
+  // Four long definitions plus the placeholder force a scrollable narrow menu
+  // even when this journey runs alone against a fresh database.
+  for (const variant of ['A', 'B', 'C']) {
+    const neighbourCode = `${code}-WRAPPED-${variant}`;
+    const neighbourName = `Additional illustrative service ${suffix.toLowerCase()} ${variant} with a long description for the preparation and review of a consulting engagement`;
+    await catalogue.getByLabel('Service code').fill(neighbourCode);
+    await catalogue.getByLabel('Service name').fill(neighbourName);
+    const neighbourResponse = page.waitForResponse(
+      mutationResponse('POST', '/api/commercial-catalogue/service-definitions'),
+    );
+    await catalogue.getByRole('button', { name: 'Define Service' }).click();
+    expect((await neighbourResponse).status()).toBe(201);
+    await expect(
+      definitions.getByText(neighbourCode, { exact: true }),
+    ).toBeVisible();
+  }
   const serviceDefinition = catalogue.getByLabel('Service Definition', {
     exact: true,
   });
   await expectSelectAppearance(serviceDefinition);
   await serviceDefinition.click();
-  await expect(
-    page.getByRole('listbox', { name: 'Service Definition' }),
-  ).toBeVisible();
+  const serviceChoices = page.getByRole('listbox', {
+    name: 'Service Definition',
+  });
+  await expect(serviceChoices).toBeVisible();
+  if (narrow) {
+    const menu = await serviceChoices.evaluate((element) => ({
+      contentHeight: element.scrollHeight,
+      visibleHeight: element.clientHeight,
+    }));
+    expect(menu.contentHeight).toBeGreaterThan(menu.visibleHeight);
+  }
+  await expectSelectOptionsDoNotOverlap(serviceChoices, {
+    requireWrappedOption: narrow,
+  });
   await page.screenshot({
     path: testInfo.outputPath(
       `service-catalogue-select-open-${suffix.toLowerCase()}.png`,
