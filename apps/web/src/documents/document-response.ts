@@ -11,17 +11,21 @@ export interface WorkingDocument {
   confidentiality: 'company-confidential';
   createdAt: string;
   workingRevision: number;
+  /** Allowed only while the original Client is active and a draft exists. */
   correction: 'allowed' | 'read-only';
+  /** The working Version: the draft if one exists, otherwise the official one. */
   version: {
     id: string;
-    status: 'draft';
-    representation: {
-      id: string;
-      kind: 'external-reference';
-      verification: 'unverified';
-    } & ({ access: 'granted'; url: string } | { access: 'denied' });
+    status: 'draft' | 'official';
+    representation: DocumentReference;
   };
 }
+/** One unverified external reference; its URL only under Representation read. */
+export type DocumentReference = {
+  id: string;
+  kind: 'external-reference';
+  verification: 'unverified';
+} & ({ access: 'granted'; url: string } | { access: 'denied' });
 /** The optional preparatory Project a working Document is organized in. */
 export type DocumentProjectAssociation =
   | { state: 'linked'; project: { id: string; title: string } }
@@ -56,44 +60,39 @@ function positiveInteger(value: unknown): number {
     throw new Error('Invalid response');
   return value;
 }
+/** A reference is inert unless it is a credential-free HTTPS URL. */
+function readReference(value: unknown): DocumentReference {
+  const representation = record(value);
+  if (
+    representation.kind !== 'external-reference' ||
+    representation.verification !== 'unverified'
+  )
+    throw new Error('Unknown reference');
+  const base = {
+    id: string(representation.id),
+    kind: 'external-reference',
+    verification: 'unverified',
+  } as const;
+  // A denied reference never carries a URL onward, whatever was sent.
+  if (representation.access === 'denied') return { ...base, access: 'denied' };
+  if (representation.access !== 'granted')
+    throw new Error('Unknown reference access');
+  const url = new URL(string(representation.url));
+  if (url.protocol !== 'https:' || url.username || url.password)
+    throw new Error('Unsafe reference');
+  return { ...base, access: 'granted', url: url.href };
+}
 export function readDocument(value: unknown): WorkingDocument {
   const row = record(value);
   const version = record(row.version);
-  const representation = record(version.representation);
   if (
     row.type !== 'questionnaire' ||
     row.confidentiality !== 'company-confidential' ||
-    version.status !== 'draft' ||
-    representation.kind !== 'external-reference' ||
-    representation.verification !== 'unverified' ||
+    (version.status !== 'draft' && version.status !== 'official') ||
     (row.correction !== 'allowed' && row.correction !== 'read-only')
   )
     throw new Error('Unknown Document state');
-  const base = {
-    id: string(representation.id),
-    kind: representation.kind,
-    verification: representation.verification,
-  };
-  let reference: WorkingDocument['version']['representation'];
-  if (representation.access === 'denied')
-    reference = {
-      ...base,
-      kind: 'external-reference',
-      verification: 'unverified',
-      access: 'denied',
-    };
-  else if (representation.access === 'granted') {
-    const url = new URL(string(representation.url));
-    if (url.protocol !== 'https:' || url.username || url.password)
-      throw new Error('Unsafe reference');
-    reference = {
-      ...base,
-      kind: 'external-reference',
-      verification: 'unverified',
-      access: 'granted',
-      url: url.href,
-    };
-  } else throw new Error('Unknown reference access');
+  const reference = readReference(version.representation);
   const clientDossierId = optionalString(row.clientDossierId);
   return {
     id: string(row.id),
@@ -221,6 +220,155 @@ function readDocumentCorrection(value: unknown): DocumentCorrection {
       ];
     }),
   };
+}
+const MAXIMUM_DOCUMENT_VERSIONS = 50;
+interface DocumentVersionBase {
+  id: string;
+  number: number;
+  createdAt: string;
+  createdByDisplayName: string;
+  /** The one unverified external reference this Version holds. */
+  reference: DocumentReference;
+}
+interface DocumentVersionDesignation {
+  designatedAt: string;
+  designatedByDisplayName: string;
+  /** The Document title and purpose frozen at designation. */
+  frozen: { title: string; purpose: string };
+}
+/** One formal Version, discriminated by its content status. */
+export type DocumentVersion =
+  | (DocumentVersionBase & { status: 'draft' })
+  | (DocumentVersionBase & DocumentVersionDesignation & { status: 'official' })
+  | (DocumentVersionBase &
+      DocumentVersionDesignation & {
+        status: 'superseded';
+        supersededAt: string;
+        supersededByVersionNumber: number;
+      });
+export interface DocumentVersions {
+  workingRevision: number;
+  /** Commands are offered only while the original Client stays active. */
+  mutable: boolean;
+  /** Highest number first. */
+  versions: DocumentVersion[];
+}
+/**
+ * One Versions read. It must list at most 50 Versions, highest number first,
+ * with at most one draft and one official Version; anything else is not a
+ * consistent read and is rejected.
+ */
+export function readDocumentVersions(value: unknown): DocumentVersions {
+  const read = record(value);
+  if (
+    !Array.isArray(read.versions) ||
+    read.versions.length > MAXIMUM_DOCUMENT_VERSIONS ||
+    typeof read.mutable !== 'boolean'
+  )
+    throw new Error('Invalid Versions');
+  const versions = read.versions.map(readDocumentVersion);
+  let upperBound = Number.POSITIVE_INFINITY;
+  for (const version of versions) {
+    if (version.number >= upperBound) throw new Error('Invalid Versions');
+    upperBound = version.number;
+  }
+  for (const status of ['draft', 'official'] as const)
+    if (versions.filter((version) => version.status === status).length > 1)
+      throw new Error('Invalid Versions');
+  return {
+    workingRevision: positiveInteger(read.workingRevision),
+    mutable: read.mutable,
+    versions,
+  };
+}
+function readDocumentVersion(value: unknown): DocumentVersion {
+  const row = record(value);
+  if (!Array.isArray(row.representations) || row.representations.length !== 1)
+    throw new Error('Invalid Version reference');
+  const base: DocumentVersionBase = {
+    id: string(row.id),
+    number: versionNumber(row.number),
+    createdAt: instant(row.createdAt),
+    createdByDisplayName: string(record(row.createdBy).displayName),
+    reference: readReference(row.representations[0]),
+  };
+  switch (row.status) {
+    case 'draft':
+      return { ...base, status: 'draft' };
+    case 'official':
+      return { ...base, ...readDesignation(row), status: 'official' };
+    case 'superseded':
+      return {
+        ...base,
+        ...readDesignation(row),
+        status: 'superseded',
+        supersededAt: instant(row.supersededAt),
+        supersededByVersionNumber: versionNumber(row.supersededByVersionNumber),
+      };
+    default:
+      throw new Error('Unknown Version status');
+  }
+}
+function readDesignation(
+  row: Record<string, unknown>,
+): DocumentVersionDesignation {
+  const frozen = record(row.frozen);
+  return {
+    designatedAt: instant(row.designatedAt),
+    designatedByDisplayName: string(record(row.designatedBy).displayName),
+    frozen: { title: string(frozen.title), purpose: string(frozen.purpose) },
+  };
+}
+function versionNumber(value: unknown): number {
+  const number = positiveInteger(value);
+  if (number > MAXIMUM_DOCUMENT_VERSIONS) throw new Error('Invalid response');
+  return number;
+}
+interface DocumentVersionReceiptBase {
+  documentId: string;
+  workingRevision: number;
+  versionId: string;
+  versionNumber: number;
+}
+/** The durable result of one confirmed Version command. */
+export type DocumentVersionReceipt =
+  | (DocumentVersionReceiptBase & {
+      action: 'designated_official';
+      supersededVersionNumber: number | null;
+    })
+  | (DocumentVersionReceiptBase & {
+      action: 'drafted';
+      sourceVersionNumber: number;
+    });
+export function readDocumentVersionReceipt(
+  value: unknown,
+): DocumentVersionReceipt {
+  const row = record(value);
+  const base = {
+    documentId: string(row.documentId),
+    workingRevision: positiveInteger(row.workingRevision),
+    versionId: string(row.versionId),
+    versionNumber: versionNumber(row.versionNumber),
+  };
+  switch (row.action) {
+    case 'designated_official':
+      return {
+        ...base,
+        action: 'designated_official',
+        supersededVersionNumber:
+          row.supersededVersionNumber === null
+            ? null
+            : versionNumber(row.supersededVersionNumber),
+      };
+    case 'drafted':
+      return {
+        ...base,
+        action: 'drafted',
+        sourceVersionNumber: versionNumber(row.sourceVersionNumber),
+      };
+    default:
+      throw new Error('Unknown Version command');
+  }
 }
 export function readClients(
   value: unknown,

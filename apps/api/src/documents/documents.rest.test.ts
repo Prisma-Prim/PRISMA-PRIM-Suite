@@ -6,6 +6,8 @@ import { ClientOperationalReferenceService } from '../client/client-operational-
 import { DatabaseContext } from '../database/database-context.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentReadBoundary } from './document-read-boundary.js';
+import { DocumentVersionsService } from './document-versions.service.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -131,9 +133,10 @@ describe.skipIf(!databaseUrl)(
         { companyId, workspaceMembershipId: membershipId },
       );
       expect(response.status).toBe(201);
+      // A fresh grant captures v3 (#400); correction accepts v2 and v3.
       expect(await body(response)).toMatchObject({
         bundle: 'Company Document Registrar',
-        permissionSetVersion: 'v2',
+        permissionSetVersion: 'v3',
       });
     }
     it('requires an explicit grant, registers one draft reference and reopens it after reload', async () => {
@@ -771,12 +774,19 @@ describe.skipIf(!databaseUrl)(
       const authorization = new CompanyContextAuthorization(context);
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
+      const boundary = new DocumentReadBoundary(
+        authorization,
+        context,
+        clients,
+      );
       const documents = new DocumentsService(
         authorization,
         context,
         clients,
         accountability,
         new ProjectService(context, authorization, clients, accountability),
+        boundary,
+        new DocumentVersionsService(authorization, context, clients, boundary),
       );
       const result = await documents.read(actor, text(registered.id));
       expect(result.version.representation).toMatchObject({ access: 'denied' });

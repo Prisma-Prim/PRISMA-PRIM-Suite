@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 import { actorContextFixture } from './actor-context.fixture';
 
 const company = {
@@ -208,6 +212,8 @@ async function interceptApplication(page: Page, mutationRequests: string[]) {
       const opened = [firstDocument, secondDocument].find(
         (candidate) => candidate.id === path.split('/')[3],
       );
+      if (opened && DOCUMENT_VERSIONS_PATH.test(path))
+        return route.fulfill({ json: draftVersionsOf(opened) });
       return opened
         ? route.fulfill({ json: opened })
         : route.fulfill({ status: 404 });

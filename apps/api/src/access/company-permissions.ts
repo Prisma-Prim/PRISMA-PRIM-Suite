@@ -18,6 +18,30 @@ export const DOCUMENT_V2_PERMISSIONS = [
   ...DOCUMENT_V1_PERMISSIONS,
   'document.correct',
 ] as const;
+// Captured v3 adds Version management only. Existing v1 and v2 assignments
+// never expand in place; only a fresh grant captures v3.
+export const DOCUMENT_V3_PERMISSIONS = [
+  ...DOCUMENT_V2_PERMISSIONS,
+  'document.version.manage',
+] as const;
+export const COMPANY_DOCUMENT_APPROVER_BUNDLE =
+  'company_document_approver' as const;
+export const COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL =
+  'Company Document Approver' as const;
+// The opt-in Approver carries designation only. It confers no Company
+// context, Document or Representation read, Client read, correction or
+// Version management.
+export const DOCUMENT_APPROVER_V1_PERMISSIONS = [
+  'document.version.designate_official',
+] as const;
+export type DocumentApproverPermission =
+  (typeof DOCUMENT_APPROVER_V1_PERMISSIONS)[number];
+// A null or unknown captured Approver version resolves to no permission.
+export function documentApproverPermissionsFor(
+  version: unknown,
+): readonly DocumentApproverPermission[] {
+  return version === 'v1' ? DOCUMENT_APPROVER_V1_PERMISSIONS : [];
+}
 export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE =
   'company_document_project_organizer';
 export const COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL =
@@ -112,8 +136,15 @@ export function commercialActivityPermissionsFor(
     : [];
 }
 export type DocumentPermission =
-  (typeof DOCUMENT_V2_PERMISSIONS)[number] | 'document.project.manage';
-export type DocumentPermissionSetVersion = 'v1' | 'v2';
+  | (typeof DOCUMENT_V3_PERMISSIONS)[number]
+  | DocumentApproverPermission
+  | 'document.project.manage';
+export type DocumentPermissionSetVersion = 'v1' | 'v2' | 'v3';
+export function isDocumentPermissionSetVersion(
+  version: unknown,
+): version is DocumentPermissionSetVersion {
+  return version === 'v1' || version === 'v2' || version === 'v3';
+}
 export function documentPermissionsFor(
   version: unknown,
 ): readonly DocumentPermission[] {
@@ -122,6 +153,8 @@ export function documentPermissionsFor(
       return DOCUMENT_V1_PERMISSIONS;
     case 'v2':
       return DOCUMENT_V2_PERMISSIONS;
+    case 'v3':
+      return DOCUMENT_V3_PERMISSIONS;
     default:
       return [];
   }

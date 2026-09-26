@@ -69,6 +69,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
     | 'company_document_registrar_assignment.revoked'
+    | 'company_document_approver_assignment.granted'
+    | 'company_document_approver_assignment.revoked'
     | 'client.created'
     | 'client_company_relationship.established'
     | 'client.corrected';
@@ -164,6 +166,19 @@ export interface DocumentCorrectedActivityLogEvent {
     companyId: string;
   };
 }
+/** One committed Version command; its Version numbers are not presented. */
+export interface DocumentVersionActivityLogEvent {
+  id: string;
+  action: 'document.version.drafted' | 'document.version.designated_official';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    documentTitle: string;
+    companyId: string;
+  };
+}
 export interface DocumentProjectActivityLogEvent {
   id: string;
   action: 'document.project.linked' | 'document.project.unlinked';
@@ -234,7 +249,8 @@ export type ActivityLogEvent =
   | ClientUnionActivityLogEvent
   | CommercialActivityLogEvent
   | DocumentRegisteredActivityLogEvent
-  | DocumentCorrectedActivityLogEvent;
+  | DocumentCorrectedActivityLogEvent
+  | DocumentVersionActivityLogEvent;
 
 export type ActivityLogState =
   | { status: 'loading' }

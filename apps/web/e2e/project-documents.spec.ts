@@ -15,6 +15,10 @@ import {
   actorContextFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 
 const company = { id: 'company-project-documents', displayName: 'PRISMA-PRIM' };
 const client = {
@@ -181,6 +185,10 @@ async function installProjectDocumentsFixture(page: Page) {
     }
     if (path === '/api/documents')
       return route.fulfill({ json: [...state.others, state.document] });
+    const versionsOf = [...state.others, state.document].find(
+      (document) => DOCUMENT_VERSIONS_PATH.exec(path)?.[1] === document.id,
+    );
+    if (versionsOf) return route.fulfill({ json: draftVersionsOf(versionsOf) });
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });

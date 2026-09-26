@@ -28,6 +28,7 @@ type AssignmentBundle =
   | 'company-context'
   | 'director-client'
   | 'document-registrar'
+  | 'document-approver'
   | 'document-project-organizer'
   | 'commercial-intake'
   | 'service-catalogue'
@@ -41,6 +42,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
   'document-registrar': '/company-document-registrar-assignments',
+  'document-approver': '/company-document-approver-assignments',
   'document-project-organizer':
     '/company-document-project-organizer-assignments',
   'commercial-intake': '/company-commercial-intake-assignments',
@@ -467,6 +469,7 @@ export function CompanyContextAccess({
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
                 value === 'document-registrar' ||
+                value === 'document-approver' ||
                 value === 'project'
               )
                 setBundle(value);
@@ -492,6 +495,9 @@ export function CompanyContextAccess({
             <option value="document-registrar">
               {copy.documentRegistrarBundle}
             </option>
+            <option value="document-approver">
+              {copy.documentApproverBundle}
+            </option>
             <option value="project">{copy.projectBundle}</option>
             <option value="task-manager">{copy.taskManagerBundle}</option>
           </select>
@@ -502,6 +508,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
+          )}
+          {bundle === 'document-approver' && (
+            <p>{copy.documentApproverPrerequisites}</p>
           )}
           {workspaceMembershipId && companyId && (
             <p role="status">
@@ -586,6 +595,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',
+    'document-approver': copy.documentApproverBundle,
     project: copy.projectBundle,
     'director-client': 'Company Director Client Access',
     'company-context': 'Company Context Access',

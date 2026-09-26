@@ -127,6 +127,12 @@ Project identifier or before/after values. Projection requires the same current
 Document and original Client visibility as registration history and participates
 in the existing newest-first bounded page.
 
+For the [provisional official Document Versions](release-1-document-registry-prd.md#21-approved-provisional-official-document-versions-400), one committed command creates exactly one of `document.version.drafted` or `document.version.designated_official`. The event is written in the same transaction as the Version change, the Document working-revision increment, the durable receipt and the original Client operational-use fence advance. It targets the Document in its responsible Company, with the actor membership and server time.
+
+Metadata carries only the affected Version number plus the source or superseded Version number. It never carries a title, purpose, URL or Project identity.
+
+Projection follows `document.corrected`: only in the recording Company, to actors with current Document metadata read and the original Client/Company visibility, inside the existing newest-first bounded page. Failed, denied and replayed commands create none. The section 20 correction history of the Document Registry PRD remains limited to `document.corrected`.
+
 For the approved [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new

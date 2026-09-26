@@ -28,6 +28,7 @@ import {
   documentRegistrationEvents,
   documentCorrectionCommands,
   documentProjectEvents,
+  documentVersionCommands,
   workingDocuments,
   clientAccounts,
   clientCompanyRelationships,
@@ -55,6 +56,7 @@ import type {
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
+  DocumentVersionActivityEvent,
   CanonicalActivityEvent,
   ClientUnionActivityEvent,
   ProjectCreatedActivityEvent,
@@ -850,6 +852,135 @@ export class AccountabilityService {
       metadata: {},
     }));
   }
+  /**
+   * Version commands are projected like `document.corrected`: only in the
+   * recording Company, to actors with current Document metadata read and the
+   * original Client/Company visibility, inside the bounded dated page.
+   */
+  private async documentVersionEvents(
+    actor: ActorContext,
+  ): Promise<DocumentVersionActivityEvent[]> {
+    if (
+      !actor.active ||
+      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: documentVersionCommands.id,
+        action: documentVersionCommands.action,
+        versionNumber: documentVersionCommands.versionNumber,
+        relatedVersionNumber: documentVersionCommands.relatedVersionNumber,
+        documentId: documentVersionCommands.documentId,
+        documentTitle: workingDocuments.title,
+        companyId: documentVersionCommands.companyId,
+        occurredAt: documentVersionCommands.occurredAt,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(documentVersionCommands)
+      .innerJoin(
+        workingDocuments,
+        and(
+          eq(workingDocuments.workspaceId, documentVersionCommands.workspaceId),
+          eq(workingDocuments.companyId, documentVersionCommands.companyId),
+          eq(workingDocuments.id, documentVersionCommands.documentId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
+          eq(clientAccounts.id, workingDocuments.clientId),
+          sql`${clientAccounts.status} IN ('active','superseded')`,
+        ),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(
+            clientCompanyRelationships.workspaceId,
+            workingDocuments.workspaceId,
+          ),
+          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            workingDocuments.clientId,
+          ),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(
+            workspaceMemberships.workspaceId,
+            documentVersionCommands.workspaceId,
+          ),
+          eq(
+            workspaceMemberships.id,
+            documentVersionCommands.actorMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          eq(documentVersionCommands.workspaceId, actor.workspaceId),
+          eq(documentVersionCommands.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(documentVersionCommands.occurredAt),
+        desc(documentVersionCommands.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row): DocumentVersionActivityEvent => {
+      const recorded = {
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+        target: {
+          type: 'document' as const,
+          documentId: row.documentId,
+          documentTitle: row.documentTitle,
+          companyId: row.companyId,
+        },
+      };
+      switch (row.action) {
+        case 'drafted':
+          if (row.relatedVersionNumber === null)
+            throw new Error('A drafted Version event has no source Version.');
+          return {
+            ...recorded,
+            action: 'document.version.drafted',
+            metadata: {
+              versionNumber: row.versionNumber,
+              sourceVersionNumber: row.relatedVersionNumber,
+            },
+          };
+        case 'designated_official':
+          return {
+            ...recorded,
+            action: 'document.version.designated_official',
+            metadata: {
+              versionNumber: row.versionNumber,
+              supersededVersionNumber: row.relatedVersionNumber,
+            },
+          };
+        default:
+          return assertNever(row.action);
+      }
+    });
+  }
   private async documentProjectEvents(
     actor: ActorContext,
   ): Promise<DocumentProjectActivityEvent[]> {
@@ -1362,6 +1493,7 @@ export class AccountabilityService {
       ...(await this.projectResponsibilityEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
+      ...(await this.documentVersionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
       ...(await this.commercialEvents(actor)),
     ];
@@ -1432,6 +1564,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_project_organizer_assignment.revoked':
     case 'company_document_registrar_assignment.granted':
     case 'company_document_registrar_assignment.revoked':
+    case 'company_document_approver_assignment.granted':
+    case 'company_document_approver_assignment.revoked':
     case 'company_project_assignment.granted':
     case 'company_project_assignment.revoked':
     case 'company_context_assignment.granted':
