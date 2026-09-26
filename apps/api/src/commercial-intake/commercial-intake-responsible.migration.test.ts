@@ -26,7 +26,7 @@ const PRESERVED = [
 ] as const;
 
 it.skipIf(!databaseUrl)(
-  'upgrades through 0033 without altering rows and enforces the Opportunity Manager bundle, receipt and event contract',
+  'upgrades through 0035 without altering rows and enforces the Opportunity Manager bundle, receipt and event contract',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -56,7 +56,7 @@ it.skipIf(!databaseUrl)(
           throw new Error('Invalid migration tag.');
         return entry.tag;
       });
-      const target = tags.indexOf('0033_opportunity_reassignment');
+      const target = tags.indexOf('0035_opportunity_reassignment');
       expect(target).toBeGreaterThan(0);
       const entries: unknown[] = journal.entries.slice(0, target);
       const previousTags = tags.slice(0, target);
