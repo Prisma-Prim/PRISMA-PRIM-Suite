@@ -93,6 +93,26 @@ export function pricingConfigurationPermissionsFor(
 ): readonly CompanyPricingConfigurationPermission[] {
   return version === 'v1' ? COMPANY_PRICING_CONFIGURATION_V1_PERMISSIONS : [];
 }
+export const COMPANY_PRICING_USER_BUNDLE = 'company_pricing_user' as const;
+export const COMPANY_PRICING_USER_BUNDLE_LABEL =
+  'Company Pricing User' as const;
+// Offering read and configuration read are the only permissions shared with
+// Configuration v1; no publication is included. Calculation and snapshot read
+// are captured now because a captured version never expands in place, and no
+// endpoint consumes them before R3B3b.
+export const COMPANY_PRICING_USER_V1_PERMISSIONS = [
+  'commercial.offering.read',
+  'commercial.pricing.configuration.read',
+  'commercial.pricing.calculate',
+  'commercial.pricing.snapshot.read',
+] as const;
+export type CompanyPricingUserPermission =
+  (typeof COMPANY_PRICING_USER_V1_PERMISSIONS)[number];
+export function pricingUserPermissionsFor(
+  version: unknown,
+): readonly CompanyPricingUserPermission[] {
+  return version === 'v1' ? COMPANY_PRICING_USER_V1_PERMISSIONS : [];
+}
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
   'company_commercial_activity_reader' as const;
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL =
