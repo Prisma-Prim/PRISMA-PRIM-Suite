@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import {
@@ -67,6 +68,14 @@ test('manages manual Tasks through the production shell with retained retry and 
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 1,
+          open_projects: 1,
+          overdue_tasks: 0,
+        }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [client] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: denied ? [] : events } });
@@ -505,6 +514,14 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 1,
+          open_projects: 1,
+          overdue_tasks: 0,
+        }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [client] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [...events].reverse() } });

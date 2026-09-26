@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 test('registers and reopens a Company-confidential working reference', async ({
   page,
@@ -93,6 +96,10 @@ test('registers and reopens a Company-confidential working reference', async ({
         },
       });
     if (path.endsWith('/companies')) return route.fulfill({ json: [company] });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, { active_clients: 1 }),
+      });
     if (path.endsWith('/activity-log'))
       return route.fulfill({
         json: {

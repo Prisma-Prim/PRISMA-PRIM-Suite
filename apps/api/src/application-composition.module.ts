@@ -54,6 +54,8 @@ import { PricingConfigurationController } from './pricing-configuration/pricing-
 import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
+import { OperationalHomeModule } from './operational-home/operational-home.module.js';
+import { OperationalHomeController } from './operational-home/operational-home.controller.js';
 
 @Module({
   imports: [
@@ -68,6 +70,7 @@ import { CompanyOpportunityManagerAssignmentController } from './access/company-
     CommercialIntakeModule,
     CommercialCatalogueModule,
     PricingConfigurationModule,
+    OperationalHomeModule,
   ],
   controllers: [
     TaskController,
@@ -100,6 +103,7 @@ import { CompanyOpportunityManagerAssignmentController } from './access/company-
     CompanyPricingConfigurationAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
     CompanyOpportunityManagerAssignmentController,
+    OperationalHomeController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

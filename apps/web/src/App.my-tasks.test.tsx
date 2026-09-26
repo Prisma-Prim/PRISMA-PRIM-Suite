@@ -66,6 +66,13 @@ function serve(current: ActorContext) {
       if (path === '/api/activity-log') return Response.json({ events: [] });
       if (path === '/api/assigned-tasks')
         return Response.json({ tasks: [assigned] });
+      // The Company summary the home mounts for this reader.
+      if (path === '/api/operational-home')
+        return Response.json({
+          companyId: current.activeCompany?.id,
+          today: '2026-09-27',
+          summaries: [{ kind: 'active_clients', count: 1 }],
+        });
       return Response.json([]);
     }),
   );
