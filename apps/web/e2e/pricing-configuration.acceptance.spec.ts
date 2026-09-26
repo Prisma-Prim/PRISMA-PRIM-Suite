@@ -790,6 +790,12 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     await expect(panel.getByText('38.08 EUR', { exact: true })).toBeVisible();
     await expect(panel.getByText('346.72 EUR', { exact: true })).toBeVisible();
     await expect(
+      panel.getByText(
+        `Calculated by Workspace Membership: ${target.workspaceMembershipId}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
       panel.locator('header').getByText('Illustrative and provisional'),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
@@ -817,6 +823,12 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     ).toBeVisible();
     await expect(
       reloadedPanel.getByText('346.72 EUR', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText(
+        `Calculated by Workspace Membership: ${target.workspaceMembershipId}`,
+        { exact: true },
+      ),
     ).toBeVisible();
     await expect(
       reloadedPanel.getByText('2.5 × 123.4500 EUR/illustrative-unit'),

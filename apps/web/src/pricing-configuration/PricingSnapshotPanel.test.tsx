@@ -74,6 +74,7 @@ function snapshot(
     opportunityId,
     clientRequestId: '40000000-0000-4000-8000-000000000001',
     clientReference: { displayName: 'Illustrative Client' },
+    calculatedByWorkspaceMembershipId: 'membership-calculator',
     pricingRuleVersion: { id: 'rule-1', versionNumber: 3 },
     currency: 'EUR',
     lines: [
@@ -271,6 +272,14 @@ describe('PricingSnapshotPanel', () => {
     expect(
       await screen.findByText(/Client:\s*Illustrative Client/u),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Calculated by Workspace Membership: membership-calculator',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Calculated by Workspace Membership: membership-1/u),
+    ).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining(`${snapshotPath(OPPORTUNITY_A)}/${saved.id}`),
       expect.anything(),
@@ -310,6 +319,179 @@ describe('PricingSnapshotPanel', () => {
       within(detail).queryByText('Tariff Version: 5'),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    {
+      failure: 'a network failure',
+      response: () => {
+        throw new TypeError('network interrupted');
+      },
+    },
+    {
+      failure: 'a server failure',
+      response: () =>
+        Response.json({ message: 'Unavailable' }, { status: 503 }),
+    },
+  ])(
+    'reports $failure while reopening and retries the selected snapshot',
+    async ({ response }) => {
+      const historical = snapshot();
+      const fetchMock = stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+          Response.json({ items: [historical] }),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}/${historical.id}`]: (call) =>
+          call === 1 ? response() : Response.json(historical),
+      });
+
+      renderPanel();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Reopen snapshot/u }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'This Pricing Snapshot could not be opened. Try again.',
+      );
+      expect(
+        screen.queryByText(/Correct the highlighted values/u),
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry opening snapshot' }),
+      );
+
+      expect(
+        await screen.findByText(
+          'Calculated by Workspace Membership: membership-calculator',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.filter(
+          ([input, init]) =>
+            key(input, init) ===
+            `GET ${snapshotPath(OPPORTUNITY_A)}/${historical.id}`,
+        ),
+      ).toHaveLength(2);
+    },
+  );
+
+  it.each([
+    { mode: 'when the transport honors abort', honorsAbort: true },
+    { mode: 'when the transport returns a late reply', honorsAbort: false },
+  ])(
+    'ignores an obsolete snapshot detail after the Opportunity changes $mode',
+    async ({ honorsAbort }) => {
+      const obsolete = {
+        ...snapshot(OPPORTUNITY_A),
+        calculatedByWorkspaceMembershipId: 'membership-obsolete',
+      };
+      const current = {
+        ...snapshot(
+          OPPORTUNITY_B,
+          '30000000-0000-4000-8000-000000000002',
+          '99.99',
+        ),
+        calculatedByWorkspaceMembershipId: 'membership-current',
+      };
+      let resolveObsolete: ((response: Response) => void) | undefined;
+      let rejectObsolete: ((reason: DOMException) => void) | undefined;
+      const obsoleteDetail = new Promise<Response>((resolve, reject) => {
+        resolveObsolete = resolve;
+        rejectObsolete = reject;
+      });
+      stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+          Response.json({ items: [obsolete] }),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}/${obsolete.id}`]: (
+          _call,
+          init,
+        ) => {
+          if (honorsAbort)
+            init?.signal?.addEventListener(
+              'abort',
+              () => rejectObsolete?.(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            );
+          return obsoleteDetail;
+        },
+        [`GET ${snapshotPath(OPPORTUNITY_B)}`]: () =>
+          Response.json({ items: [current] }),
+      });
+
+      const rendered = renderPanel();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /346\.72 EUR/u }),
+      );
+      expect(
+        await screen.findByText('Opening Pricing Snapshot…'),
+      ).toBeInTheDocument();
+
+      rendered.rerender(
+        <PricingSnapshotPanel
+          actor={actor}
+          identity={deterministicBrowserIdentity()}
+          opportunityId={OPPORTUNITY_B}
+          onCompanyContextRejected={vi.fn()}
+        />,
+      );
+      expect(
+        await screen.findByRole('button', { name: /99\.99 EUR/u }),
+      ).toBeInTheDocument();
+
+      resolveObsolete?.(Response.json(obsolete));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(
+        screen.queryByText(/membership-obsolete/u),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Close snapshot' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    {
+      invalidActor: 'a missing calculator',
+      detail: {
+        ...snapshot(),
+        calculatedByWorkspaceMembershipId: undefined,
+      },
+    },
+    {
+      invalidActor: 'a malformed calculator',
+      detail: {
+        ...snapshot(),
+        calculatedByWorkspaceMembershipId: 42,
+      },
+    },
+  ])(
+    'fails safely when a reopened snapshot has $invalidActor',
+    async ({ detail }) => {
+      const historical = snapshot();
+      stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+          Response.json({ items: [historical] }),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}/${historical.id}`]: () =>
+          Response.json(detail),
+      });
+
+      renderPanel();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Reopen snapshot/u }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'This Pricing Snapshot could not be opened. Try again.',
+      );
+      expect(
+        screen.queryByText(/Calculated by Workspace Membership/u),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('keeps quantities attached to their offerings when the catalogue returns newest first', async () => {
     const fetchMock = stubApi({

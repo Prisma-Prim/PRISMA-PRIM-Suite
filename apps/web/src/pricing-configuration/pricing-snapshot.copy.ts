@@ -32,7 +32,11 @@ export const pricingSnapshotCopy = {
   tax: 'Tax',
   total: 'Total',
   calculatedAt: 'Calculated',
+  calculatedBy: 'Calculated by Workspace Membership',
   ruleVersion: 'Pricing Rule Version',
   client: 'Client',
+  snapshotLoading: 'Opening Pricing Snapshot…',
+  snapshotUnavailable: 'This Pricing Snapshot could not be opened. Try again.',
+  retrySnapshot: 'Retry opening snapshot',
   close: 'Close snapshot',
 } as const;

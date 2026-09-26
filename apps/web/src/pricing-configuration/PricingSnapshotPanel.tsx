@@ -58,6 +58,7 @@ type PricingSnapshot = {
   opportunityId: string;
   clientRequestId: string;
   clientReference?: { displayName: string };
+  calculatedByWorkspaceMembershipId: string;
   pricingRuleVersion: { id: string; versionNumber: number };
   currency: Currency;
   lines: SnapshotLine[];
@@ -89,6 +90,11 @@ type CalculationAttempt = {
 };
 type Feedback =
   'invalid' | 'stale' | 'not-effective' | 'mixed-currency' | 'conflict';
+type DetailState =
+  | { kind: 'closed' }
+  | { kind: 'loading'; snapshotId: string }
+  | { kind: 'unavailable'; snapshotId: string }
+  | { kind: 'open'; snapshot: PricingSnapshot };
 
 export function PricingSnapshotPanel({
   actor,
@@ -107,7 +113,7 @@ export function PricingSnapshotPanel({
 }) {
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
   const [drafts, setDrafts] = useState<Record<string, DraftLine>>({});
-  const [opened, setOpened] = useState<PricingSnapshot>();
+  const [detail, setDetail] = useState<DetailState>({ kind: 'closed' });
   const [feedback, setFeedback] = useState<Feedback>();
   const [pending, setPending] = useState(false);
   const [unresolved, setUnresolved] = useState<CalculationAttempt>();
@@ -210,11 +216,13 @@ export function PricingSnapshotPanel({
       olderRequest.current?.abort();
       olderRequest.current = undefined;
       setOlderPending(false);
+      detailRequest.current?.abort();
+      detailRequest.current = undefined;
       loadRequest.current?.abort();
       const controller = new AbortController();
       loadRequest.current = controller;
       setView({ kind: 'loading' });
-      setOpened(undefined);
+      setDetail({ kind: 'closed' });
       setFeedback(undefined);
       setUnresolved(undefined);
       try {
@@ -399,7 +407,7 @@ export function PricingSnapshotPanel({
         }
         const snapshot = result.body;
         setUnresolved(undefined);
-        setOpened(snapshot);
+        setDetail({ kind: 'open', snapshot });
         setView((current) =>
           current.kind === 'ready'
             ? {
@@ -437,19 +445,33 @@ export function PricingSnapshotPanel({
     detailRequest.current?.abort();
     const controller = new AbortController();
     detailRequest.current = controller;
-    const result = await request({
-      path: `${snapshotBasePath(opportunityId)}/${encodeURIComponent(snapshotId)}`,
-      signal: controller.signal,
-    });
-    if (controller.signal.aborted) return;
-    if (await handleAccess(result, controller.signal)) {
-      setView({ kind: 'denied' });
-    } else if (result.status === 200 && isSnapshot(result.body)) {
-      setOpened(result.body);
-    } else if (result.status !== 'network') {
-      setFeedback('invalid');
+    setDetail({ kind: 'loading', snapshotId });
+    try {
+      const result = await request({
+        path: `${snapshotBasePath(opportunityId)}/${encodeURIComponent(snapshotId)}`,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted || detailRequest.current !== controller)
+        return;
+      const accessRejected = await handleAccess(result, controller.signal);
+      if (controller.signal.aborted || detailRequest.current !== controller)
+        return;
+      if (accessRejected) {
+        setDetail({ kind: 'closed' });
+        setView({ kind: 'denied' });
+      } else if (result.status === 200 && isSnapshot(result.body)) {
+        setDetail({ kind: 'open', snapshot: result.body });
+      } else {
+        setDetail({ kind: 'unavailable', snapshotId });
+      }
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      if (!controller.signal.aborted && detailRequest.current === controller)
+        setDetail({ kind: 'unavailable', snapshotId });
+    } finally {
+      if (detailRequest.current === controller)
+        detailRequest.current = undefined;
     }
-    if (detailRequest.current === controller) detailRequest.current = undefined;
   }
 
   async function loadOlder(): Promise<void> {
@@ -613,10 +635,24 @@ export function PricingSnapshotPanel({
             onOlder={() => void loadOlder()}
             onOpen={(snapshotId) => void reopen(snapshotId)}
           />
-          {opened ? (
+          {detail.kind === 'loading' ? (
+            <p role="status">{copy.snapshotLoading}</p>
+          ) : null}
+          {detail.kind === 'unavailable' ? (
+            <div role="alert">
+              <p>{copy.snapshotUnavailable}</p>
+              <button
+                type="button"
+                onClick={() => void reopen(detail.snapshotId)}
+              >
+                {copy.retrySnapshot}
+              </button>
+            </div>
+          ) : null}
+          {detail.kind === 'open' ? (
             <SnapshotDetail
-              snapshot={opened}
-              onClose={() => setOpened(undefined)}
+              snapshot={detail.snapshot}
+              onClose={() => setDetail({ kind: 'closed' })}
             />
           ) : null}
         </>
@@ -679,6 +715,9 @@ function SnapshotDetail({
       </p>
       <p>
         {copy.calculatedAt}: {formatApplicationDateTime(snapshot.calculatedAt)}
+      </p>
+      <p>
+        {copy.calculatedBy}: {snapshot.calculatedByWorkspaceMembershipId}
       </p>
       <p>
         {copy.ruleVersion}: {snapshot.pricingRuleVersion.versionNumber}
@@ -904,6 +943,7 @@ function isSnapshot(value: unknown): value is PricingSnapshot {
     typeof value.id === 'string' &&
     typeof value.opportunityId === 'string' &&
     typeof value.clientRequestId === 'string' &&
+    typeof value.calculatedByWorkspaceMembershipId === 'string' &&
     isCurrency(value.currency) &&
     isRecord(value.pricingRuleVersion) &&
     typeof value.pricingRuleVersion.id === 'string' &&
