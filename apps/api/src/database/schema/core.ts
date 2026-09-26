@@ -43,6 +43,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_service_catalogue',
   'company_pricing_configuration',
   'company_commercial_activity_reader',
+  'company_opportunity_manager',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -317,9 +318,9 @@ export const companyRoleAssignments = pgTable(
         OR
         (${table.bundle}::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_opportunity_manager') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
         OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader')
+        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_opportunity_manager')
           AND ${table.permissionSetVersion} IS NULL)
       )`,
     ),
@@ -674,6 +675,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_pricing_configuration_assignment.revoked',
   'company_commercial_activity_reader_assignment.granted',
   'company_commercial_activity_reader_assignment.revoked',
+  'company_opportunity_manager_assignment.granted',
+  'company_opportunity_manager_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -726,7 +729,8 @@ export const activityLogEvents = pgTable(
               | 'Company Commercial Intake'
               | 'Company Service Catalogue'
               | 'Company Pricing Configuration'
-              | 'Company Commercial Activity Reader';
+              | 'Company Commercial Activity Reader'
+              | 'Company Opportunity Manager';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
         | Record<string, never>

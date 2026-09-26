@@ -53,6 +53,7 @@ import { PricingConfigurationModule } from './pricing-configuration/pricing-conf
 import { PricingConfigurationController } from './pricing-configuration/pricing-configuration.controller.js';
 import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
+import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     PricingConfigurationController,
     CompanyPricingConfigurationAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
+    CompanyOpportunityManagerAssignmentController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

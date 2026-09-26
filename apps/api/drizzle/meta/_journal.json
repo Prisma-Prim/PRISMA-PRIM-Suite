@@ -232,6 +232,13 @@
       "when": 1790365504424,
       "tag": "0032_pricing_rule_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790412882038,
+      "tag": "0033_opportunity_reassignment",
+      "breakpoints": true
     }
   ]
 }

@@ -60,6 +60,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_configuration_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
+    | 'company_opportunity_manager_assignment.granted'
+    | 'company_opportunity_manager_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -202,6 +204,25 @@ export interface CommercialActivityLogEvent {
       };
 }
 
+/**
+ * A changed Opportunity responsible actor: the previous and new member, each
+ * only a membership identifier and the label captured at the change.
+ */
+export interface OpportunityResponsibleChangedActivityLogEvent {
+  id: string;
+  action: 'opportunity.responsible.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'opportunity';
+    opportunityId: string;
+    /** The containing Request, present only for a current Request reader. */
+    clientRequestId?: string;
+    companyId: string;
+  };
+  metadata: { before: ResponsibleMember; after: ResponsibleMember };
+}
+
 /** Before and after keep only a membership identifier and its captured label. */
 export interface ProjectResponsibleChangedActivityLogEvent {
   id: string;
@@ -224,11 +245,12 @@ export interface ProjectResponsibleChangedActivityLogEvent {
 /**
  * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
  * The shell lists these entries and presents no metadata except the proved
- * before and after of a responsible-member change.
+ * before and after of a Project or Opportunity responsible change.
  */
 export type ActivityLogEvent =
   | TaskActivityLogEvent
   | ProjectResponsibleChangedActivityLogEvent
+  | OpportunityResponsibleChangedActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent

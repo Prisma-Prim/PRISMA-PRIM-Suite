@@ -400,7 +400,7 @@ Bounded lists — Workspace Service Definitions, the active Company's offerings,
 
 One committed publication, definition, offering or calculation records exactly one attributed event scoped to the responsible Company: `service_definition.created`, `company_service_offering.created`, `tariff_version.published`, `pricing_rule_version.published`, `pricing_snapshot.created`. Metadata contains identifiers, version numbers, provenance, currency and counts only — no amount, quantity, rate or label text. No event is recorded for a no-op, a failed validation, a safe denial, a stale-version conflict or a replay.
 
-**These events are recorded but not projected.** No Activity read surface returns them in these slices. The commercial Activity projection allowlist owned by [#313](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/313) contains exactly `client_request.created`, `opportunity.created` and `opportunity.next_action.updated`; it is an explicit allowlist, not a pattern that admits future event types. Projecting any pricing event is a separate decision in the owning Activity slice and must not be assumed by these tickets.
+**These events are recorded but not projected.** No Activity read surface returns them in these slices. The commercial Activity projection allowlist is owned by the [commercial PRD section 17.3](release-3-commercial-workflow-prd.md#173-projection-rule-and-returned-content); it is an explicit allowlist, not a pattern that admits future event types. Projecting any pricing event is a separate decision in the owning Activity slice and must not be assumed by these tickets.
 
 ### 12.2 Errors
 

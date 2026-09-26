@@ -705,7 +705,13 @@ function activityDescription(event: ActivityLogEvent): string {
   };
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
-  return `${actorName} ${actionLabels[event.action]}`;
+  const description = `${actorName} ${actionLabels[event.action]}`;
+  return event.action === 'opportunity.responsible.changed'
+    ? `${description} ${commercialIntakeCopy.activityResponsibleChange(
+        event.metadata.before.displayLabel,
+        event.metadata.after.displayLabel,
+      )}`
+    : description;
 }
 
 function responsibleChange({

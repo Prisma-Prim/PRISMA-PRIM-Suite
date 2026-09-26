@@ -120,8 +120,9 @@ export const opportunities = pgTable(
       .defaultNow()
       .notNull(),
     version: integer('version').default(1).notNull(),
-    // Server-owned trace of the last material next-action update. Both stay
-    // null while the Opportunity is still at its captured version 1.
+    // Server-owned trace of the last material Opportunity mutation: a
+    // next-action update or a responsible-actor change. All stay null while
+    // the Opportunity is still at its captured version 1.
     lastUpdatedByInternalUserId: uuid('last_updated_by_internal_user_id'),
     lastUpdatedByWorkspaceMembershipId: uuid(
       'last_updated_by_workspace_membership_id',
@@ -278,6 +279,79 @@ export const commercialIntakeNextActionCommands = pgTable(
   ],
 );
 
+// Durable receipt of one responsible-actor command, in its own key space. It
+// shares the Opportunity version with the next-action update: an unchanged
+// outcome records a no-op at the observed version, an updated outcome the
+// version it produced, and only one updated command may produce a version.
+export const commercialIntakeResponsibleCommands = pgTable(
+  'commercial_intake_responsible_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    expectedVersion: integer('expected_version').notNull(),
+    resultVersion: integer('result_version').notNull(),
+    outcome: text('outcome', { enum: ['updated', 'unchanged'] }).notNull(),
+    // The requested member, which every recorded outcome leaves responsible.
+    responsibleWorkspaceMembershipId: uuid(
+      'responsible_workspace_membership_id',
+    ).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('commercial_intake_responsible_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('commercial_intake_responsible_commands_version_unique')
+      .on(table.workspaceId, table.opportunityId, table.resultVersion)
+      .where(sql`${table.outcome} = 'updated'`),
+    foreignKey({
+      name: 'commercial_intake_responsible_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_responsible_commands_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_responsible_commands_responsible_fk',
+      columns: [table.workspaceId, table.responsibleWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    check(
+      'commercial_intake_responsible_commands_outcome_check',
+      sql`${table.expectedVersion} >= 1 AND (
+        (${table.outcome} = 'updated'
+          AND ${table.resultVersion} = (${table.expectedVersion})::bigint + 1)
+        OR
+        (${table.outcome} = 'unchanged'
+          AND ${table.resultVersion} = ${table.expectedVersion})
+      )`,
+    ),
+  ],
+);
+
 export const commercialIntakeCommands = pgTable(
   'commercial_intake_commands',
   {
@@ -334,6 +408,7 @@ export const commercialIntakeEvents = pgTable(
         'client_request.created',
         'opportunity.created',
         'opportunity.next_action.updated',
+        'opportunity.responsible.changed',
       ],
     }).notNull(),
     clientRequestId: uuid('client_request_id').notNull(),
@@ -360,8 +435,18 @@ export const commercialIntakeEvents = pgTable(
         sql`(${table.metadata} ->> 'opportunityVersion')`,
       )
       .where(sql`${table.action} = 'opportunity.next_action.updated'`),
+    // Exactly one responsible-actor change event per resulting version.
+    uniqueIndex('commercial_intake_events_responsible_version_unique')
+      .on(
+        table.workspaceId,
+        table.opportunityId,
+        sql`(${table.metadata} ->> 'opportunityVersion')`,
+      )
+      .where(sql`${table.action} = 'opportunity.responsible.changed'`),
     // Update metadata carries the resulting version only: one integer key,
-    // never previous or new text.
+    // never previous or new text. A responsible-actor change additionally
+    // carries exactly the previous and new responsible actor, each a
+    // membership identifier and a non-blank captured label, and they differ.
     check(
       'commercial_intake_events_action_metadata_check',
       sql`(
@@ -375,6 +460,26 @@ export const commercialIntakeEvents = pgTable(
           AND jsonb_typeof(${table.metadata} -> 'opportunityVersion') = 'number'
           AND ${table.metadata} = jsonb_build_object('opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer)
           AND (${table.metadata} ->> 'opportunityVersion')::integer >= 2)
+        OR
+        ((${table.action} = 'opportunity.responsible.changed'
+          AND jsonb_typeof(${table.metadata} -> 'opportunityVersion') = 'number'
+          AND jsonb_typeof(${table.metadata} #> '{before,workspaceMembershipId}') = 'string'
+          AND jsonb_typeof(${table.metadata} #> '{before,displayLabel}') = 'string'
+          AND jsonb_typeof(${table.metadata} #> '{after,workspaceMembershipId}') = 'string'
+          AND jsonb_typeof(${table.metadata} #> '{after,displayLabel}') = 'string'
+          AND ${table.metadata} = jsonb_build_object(
+            'opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer,
+            'before', jsonb_build_object(
+              'workspaceMembershipId', ${table.metadata} #>> '{before,workspaceMembershipId}',
+              'displayLabel', ${table.metadata} #>> '{before,displayLabel}'),
+            'after', jsonb_build_object(
+              'workspaceMembershipId', ${table.metadata} #>> '{after,workspaceMembershipId}',
+              'displayLabel', ${table.metadata} #>> '{after,displayLabel}'))
+          AND (${table.metadata} ->> 'opportunityVersion')::integer >= 2
+          AND length(btrim(${table.metadata} #>> '{before,displayLabel}')) > 0
+          AND length(btrim(${table.metadata} #>> '{after,displayLabel}')) > 0
+          AND ${table.metadata} #>> '{before,workspaceMembershipId}'
+            <> ${table.metadata} #>> '{after,workspaceMembershipId}') IS TRUE)
       )`,
     ),
     foreignKey({

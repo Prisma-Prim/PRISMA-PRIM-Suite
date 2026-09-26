@@ -77,6 +77,12 @@ const responsibleChanged = event(
   responsibleTarget,
   { revision: 2, before: ion, after: maria },
 );
+const opportunityResponsibleChanged = event(
+  'event-opportunity-responsible',
+  'opportunity.responsible.changed',
+  opportunityTarget,
+  { before: ion, after: maria },
+);
 const unionEvent = {
   action: 'client.union_confirmed',
   projectionReference: 'union-1',
@@ -125,6 +131,7 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'company_service_catalogue_assignment',
     'company_pricing_configuration_assignment',
     'company_commercial_activity_reader_assignment',
+    'company_opportunity_manager_assignment',
     'company_context_assignment',
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',
@@ -401,6 +408,80 @@ describe('the authenticated Activity Log transport', () => {
     async (_case, malformed) => {
       const { result } = await loadActivityLog({
         events: [responsibleChanged, malformed],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
+
+  it('keeps exactly both responsible actors of an Opportunity change and its Request link', async () => {
+    const { result } = await loadActivityLog({
+      events: [
+        event(
+          'event-opportunity-responsible',
+          'opportunity.responsible.changed',
+          opportunityTarget,
+          {
+            before: { ...ion, email: 'ion@example.test' },
+            after: maria,
+            opportunityVersion: 2,
+          },
+        ),
+      ],
+    });
+
+    expect(result).toEqual({
+      status: 'ok',
+      value: {
+        events: [
+          {
+            ...opportunityResponsibleChanged,
+            metadata: { before: ion, after: maria },
+          },
+        ],
+      },
+    });
+  });
+
+  it.each<[string, unknown]>([
+    ['no metadata', { ...opportunityResponsibleChanged, metadata: undefined }],
+    [
+      'a cleared side',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: { before: ion, after: null },
+      },
+    ],
+    [
+      'a missing side',
+      { ...opportunityResponsibleChanged, metadata: { after: maria } },
+    ],
+    [
+      'a side without its label',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: {
+          before: ion,
+          after: { workspaceMembershipId: maria.workspaceMembershipId },
+        },
+      },
+    ],
+    [
+      'the same member on both sides',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: { before: ion, after: { ...ion } },
+      },
+    ],
+    [
+      'a Request target',
+      { ...opportunityResponsibleChanged, target: requestTarget },
+    ],
+  ])(
+    'fails closed on an Opportunity responsible change with %s next to a valid one',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [opportunityResponsibleChanged, malformed],
       });
 
       expect(result).toEqual({ status: 'error' });

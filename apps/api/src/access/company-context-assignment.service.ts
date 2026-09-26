@@ -51,6 +51,8 @@ import {
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
 } from './company-permissions.js';
@@ -75,7 +77,8 @@ type BundleDefinition = {
     | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
-    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
+    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+    | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
@@ -138,6 +141,11 @@ const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
   label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  label: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -149,6 +157,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
 ] as const;
 
 @Injectable()
@@ -423,6 +432,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantOpportunityManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_MANAGER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeOpportunityManager(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_MANAGER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -910,6 +949,10 @@ function assignmentAction(
       return granted
         ? 'company_commercial_activity_reader_assignment.granted'
         : 'company_commercial_activity_reader_assignment.revoked';
+    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
+      return granted
+        ? 'company_opportunity_manager_assignment.granted'
+        : 'company_opportunity_manager_assignment.revoked';
     case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
       return granted
         ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
@@ -1044,6 +1087,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Opportunity Manager version.');
+      return {
+        ...base,
+        bundle: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
   }

@@ -8,11 +8,14 @@ import {
   workspacePermissionGrants,
 } from '../database/schema/index.js';
 import {
+  COMMERCIAL_INTAKE_READ_PERMISSIONS,
+  COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
+  commercialIntakePermissionsFor,
   companyDirectorClientPermissionsFor,
   projectPermissionsFor,
   taskPermissionsFor,
@@ -23,6 +26,8 @@ export interface MemberAuthority {
   displayLabel: string;
   /** Effective Company context, Project read and Client read in the Company. */
   projectReader: boolean;
+  /** Effective Company context and live Commercial Intake read in the Company. */
+  commercialIntakeReader: boolean;
   taskRead: boolean;
   taskManage: boolean;
 }
@@ -104,6 +109,7 @@ export async function readMemberAuthority(
   let context = grants.some((row) => row.permission === 'company.manage');
   let client = grants.some((row) => row.permission === 'client.manage');
   let project = false,
+    intakeRead = false,
     taskRead = false,
     taskManage = false;
   for (const assignment of assignments) {
@@ -133,6 +139,14 @@ export async function readMemberAuthority(
           context = true;
         }
         break;
+      // Any captured version carrying both reads; Intake confers no context.
+      case COMPANY_COMMERCIAL_INTAKE_BUNDLE: {
+        const permissions = commercialIntakePermissionsFor(assignment.version);
+        intakeRead = COMMERCIAL_INTAKE_READ_PERMISSIONS.every((permission) =>
+          permissions.includes(permission),
+        );
+        break;
+      }
       case COMPANY_TASK_MANAGER_BUNDLE: {
         const permissions = taskPermissionsFor(assignment.version);
         taskRead = permissions.includes('task.read');
@@ -143,15 +157,27 @@ export async function readMemberAuthority(
         break;
     }
   }
-  // Stable non-email suffix distinguishes equal names without a directory lookup.
-  const reference = BigInt(`0x${input.membershipId.replaceAll('-', '')}`)
-    .toString(36)
-    .toUpperCase();
   return {
     internalUserId: member.internalUserId,
-    displayLabel: `${member.displayName} · ${reference}`,
+    displayLabel: memberDisplayLabel(member.displayName, input.membershipId),
     projectReader: context && client && project,
+    commercialIntakeReader: context && intakeRead,
     taskRead,
     taskManage,
   };
+}
+
+/**
+ * The label Access shows for one membership: its current display name and a
+ * stable non-email suffix that distinguishes equal names without a directory
+ * lookup.
+ */
+export function memberDisplayLabel(
+  displayName: string,
+  workspaceMembershipId: string,
+): string {
+  const reference = BigInt(`0x${workspaceMembershipId.replaceAll('-', '')}`)
+    .toString(36)
+    .toUpperCase();
+  return `${displayName} · ${reference}`;
 }

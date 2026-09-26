@@ -47,6 +47,9 @@ export interface ActorContext {
     pricingConfigurationPermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
+    opportunityManagerPermissions?: Array<'commercial.opportunity.assign'>;
+    opportunityManagerPermissionAssignmentId?: string;
+    opportunityManagerPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

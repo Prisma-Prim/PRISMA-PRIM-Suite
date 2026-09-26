@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialActivityPermissionsFor,
   commercialIntakePermissionsFor,
+  commercialIntakeVersionsWith,
+  opportunityManagerPermissionsFor,
   companyDirectorClientPermissionsFor,
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
@@ -15,6 +18,51 @@ import {
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Opportunity Manager permission sets', () => {
+  it('resolves exactly the captured v1 reassignment permission', () => {
+    expect(opportunityManagerPermissionsFor('v1')).toEqual([
+      'commercial.opportunity.assign',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(opportunityManagerPermissionsFor(version)).toEqual([]);
+    },
+  );
+
+  it('is never conferred by another bundle and confers none of their permissions', () => {
+    const others: ReadonlyArray<readonly string[]> = [
+      commercialIntakePermissionsFor('v1'),
+      commercialIntakePermissionsFor('v2'),
+      commercialActivityPermissionsFor('v1'),
+      pricingConfigurationPermissionsFor('v1'),
+      serviceCataloguePermissionsFor('v1'),
+      companyDirectorClientPermissionsFor('v2'),
+      projectPermissionsFor('v2'),
+      taskPermissionsFor('v1'),
+      documentPermissionsFor('v2'),
+    ];
+    for (const permissions of others) {
+      expect(permissions).not.toContain('commercial.opportunity.assign');
+      for (const permission of opportunityManagerPermissionsFor('v1'))
+        expect(permissions).not.toContain(permission);
+    }
+  });
+
+  it('accepts every captured Commercial Intake version carrying both reads as the read prerequisite', () => {
+    expect(
+      commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
+    ).toEqual(['v1', 'v2']);
+    expect(
+      commercialIntakeVersionsWith([
+        'commercial.opportunity.next_action.update',
+      ]),
+    ).toEqual(['v2']);
+  });
+});
 
 describe('Company Pricing Configuration permission sets', () => {
   it('resolves exactly the captured v1 configuration permissions', () => {

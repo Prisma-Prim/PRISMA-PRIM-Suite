@@ -17,6 +17,12 @@ export interface UpdateOpportunityNextActionCommand {
   readonly nextAction: string;
 }
 
+/** Exactly one business field: the new responsible membership. No clear. */
+export interface ChangeOpportunityResponsibleCommand {
+  readonly expectedVersion: number;
+  readonly workspaceMembershipId: string;
+}
+
 /**
  * The responsible actor label shown by the Request list and detail. It carries
  * only the membership already scoped to this Company intake read boundary and
@@ -66,6 +72,26 @@ export interface OpportunityNextActionUpdateResult {
     readonly outcome: 'updated' | 'unchanged';
   };
   readonly request: CommercialIntakeDetail;
+}
+
+// The receipt confirms what one reassignment did; `request` is the current
+// permission-filtered state, refreshed separately from the receipt.
+export interface OpportunityResponsibleChangeResult {
+  readonly receipt: {
+    readonly opportunityId: string;
+    readonly workspaceMembershipId: string;
+    readonly version: number;
+    readonly outcome: 'updated' | 'unchanged';
+  };
+  readonly request: CommercialIntakeDetail;
+}
+
+/** Eligible members only: a membership identifier and a label, never email. */
+export interface OpportunityResponsibleCandidatePage {
+  readonly members: ReadonlyArray<{
+    readonly workspaceMembershipId: string;
+    readonly displayLabel: string;
+  }>;
 }
 
 export interface CommercialIntakeListItem {

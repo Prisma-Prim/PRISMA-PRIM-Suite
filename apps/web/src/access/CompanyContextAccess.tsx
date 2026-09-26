@@ -33,6 +33,7 @@ type AssignmentBundle =
   | 'service-catalogue'
   | 'pricing-configuration'
   | 'commercial-activity-reader'
+  | 'opportunity-manager'
   | 'project';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
@@ -48,6 +49,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
+  'opportunity-manager': '/company-opportunity-manager-assignments',
   project: '/company-project-assignments',
 };
 type AdministrationLoadState =
@@ -463,6 +465,7 @@ export function CompanyContextAccess({
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
                 value === 'commercial-activity-reader' ||
+                value === 'opportunity-manager' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -485,6 +488,9 @@ export function CompanyContextAccess({
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
             </option>
+            <option value="opportunity-manager">
+              {copy.opportunityManagerBundle}
+            </option>
             <option value="director-client">{copy.directorClientBundle}</option>
             <option value="document-project-organizer">
               {copy.documentProjectOrganizerBundle}
@@ -502,6 +508,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
+          )}
+          {bundle === 'opportunity-manager' && (
+            <p>{copy.opportunityManagerPrerequisites}</p>
           )}
           {workspaceMembershipId && companyId && (
             <p role="status">
@@ -583,6 +592,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
+    'opportunity-manager': copy.opportunityManagerBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',
