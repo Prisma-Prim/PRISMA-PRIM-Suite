@@ -19,6 +19,9 @@ export const companyContextAccessCopy = {
   commercialActivityReaderBundle: 'Company Commercial Activity Reader',
   commercialActivityReaderPrerequisites:
     'Company Commercial Activity Reader v1 grants commercial Activity Log read only. Company context and the commercial target read of each event must already be authorized separately.',
+  pricingUserBundle: 'Company Pricing User',
+  pricingUserPrerequisites:
+    'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
   taskManagerBundle: 'Company Task Manager',
   taskManagerPrerequisites:
     'Company Task Manager v1 grants Task read and management only. Company context, Project read and Client read must already be authorized separately.',
@@ -76,6 +79,8 @@ export const companyContextAccessCopy = {
       'granted Company Commercial Activity Reader',
     'company_commercial_activity_reader_assignment.revoked':
       'revoked Company Commercial Activity Reader',
+    'company_pricing_user_assignment.granted': 'granted Company Pricing User',
+    'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
     'company_context_assignment.granted': 'granted Company Context Access',
     'company_context_assignment.revoked': 'revoked Company Context Access',
     'company_director_client_assignment.granted':

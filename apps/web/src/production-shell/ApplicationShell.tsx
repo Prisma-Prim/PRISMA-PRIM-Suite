@@ -57,6 +57,8 @@ interface ApplicationShellProps {
   sections: readonly ApplicationSection[];
   companyContext: ReactNode;
   userArea: ReactNode;
+  /** Optional overview content between the Prisme hero and its capabilities. */
+  overviewSummary?: ReactNode;
   children: ReactNode;
 }
 
@@ -73,6 +75,7 @@ export function ApplicationShell({
   sections,
   companyContext,
   userArea,
+  overviewSummary,
   children,
 }: ApplicationShellProps) {
   const [location, setLocation] = useState(() => window.location.href);
@@ -331,6 +334,7 @@ export function ApplicationShell({
                 <PrismeOverview
                   context={context}
                   sections={sections}
+                  summary={overviewSummary}
                   onNavigate={navigate}
                 />
               )}

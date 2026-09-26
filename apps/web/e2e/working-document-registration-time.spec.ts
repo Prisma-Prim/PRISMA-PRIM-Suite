@@ -2,10 +2,13 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
 import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
+import {
   DOCUMENT_VERSIONS_PATH,
   draftVersionsOf,
 } from './document-versions.fixture';
-import { actorContextFixture } from './actor-context.fixture';
 
 const company = {
   id: 'registration-time-company',
@@ -203,6 +206,10 @@ async function interceptApplication(page: Page, mutationRequests: string[]) {
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, { active_clients: 0 }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });

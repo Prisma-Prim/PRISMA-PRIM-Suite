@@ -250,8 +250,15 @@
     {
       "idx": 35,
       "version": "7",
-      "when": 1790421137510,
-      "tag": "0035_official_document_versions",
+      "when": 1790421222426,
+      "tag": "0035_company_pricing_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790429184012,
+      "tag": "0036_official_document_versions",
       "breakpoints": true
     }
   ]

@@ -51,6 +51,8 @@ import {
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
+  COMPANY_PRICING_USER_BUNDLE,
+  COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
@@ -79,6 +81,7 @@ type BundleDefinition = {
     | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
+    | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
@@ -145,6 +148,11 @@ const PRICING_CONFIGURATION_BUNDLE: BundleDefinition = {
   label: COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const PRICING_USER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PRICING_USER_BUNDLE,
+  label: COMPANY_PRICING_USER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
@@ -161,6 +169,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
+  COMPANY_PRICING_USER_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
 ] as const;
 
@@ -406,6 +415,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       PRICING_CONFIGURATION_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantPricingUser(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PRICING_USER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokePricingUser(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PRICING_USER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -952,6 +991,10 @@ function assignmentAction(
       return granted
         ? 'company_pricing_configuration_assignment.granted'
         : 'company_pricing_configuration_assignment.revoked';
+    case COMPANY_PRICING_USER_BUNDLE:
+      return granted
+        ? 'company_pricing_user_assignment.granted'
+        : 'company_pricing_user_assignment.revoked';
     case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
       return granted
         ? 'company_commercial_activity_reader_assignment.granted'
@@ -1087,6 +1130,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_PRICING_USER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Pricing User version.');
+      return {
+        ...base,
+        bundle: COMPANY_PRICING_USER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:

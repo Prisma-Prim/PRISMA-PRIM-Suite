@@ -1,5 +1,5 @@
 {
-  "id": "2cbad27e-be86-4fba-8041-8a7d52f3c1db",
+  "id": "f46f0568-473d-40ba-b532-5df043460e6b",
   "prevId": "181a5bd8-1415-44cf-b505-512233c5b0c8",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -4425,223 +4425,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.document_version_commands": {
-      "name": "document_version_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "document_id": {
-          "name": "document_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "action": {
-          "name": "action",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_id": {
-          "name": "version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "related_version_number": {
-          "name": "related_version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_membership_id": {
-          "name": "actor_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "request_fingerprint": {
-          "name": "request_fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_revision": {
-          "name": "expected_revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revision": {
-          "name": "revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "document_version_commands_actor_key_unique": {
-          "name": "document_version_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "document_version_commands_revision_unique": {
-          "name": "document_version_commands_revision_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "revision",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "document_version_commands_document_fk": {
-          "name": "document_version_commands_document_fk",
-          "tableFrom": "document_version_commands",
-          "tableTo": "working_documents",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "document_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "document_version_commands_version_fk": {
-          "name": "document_version_commands_version_fk",
-          "tableFrom": "document_version_commands",
-          "tableTo": "document_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "document_id",
-            "version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "document_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "document_version_commands_actor_fk": {
-          "name": "document_version_commands_actor_fk",
-          "tableFrom": "document_version_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "document_version_commands_state_check": {
-          "name": "document_version_commands_state_check",
-          "value": "(\n        \"document_version_commands\".\"expected_revision\" >= 1\n        AND \"document_version_commands\".\"revision\" = \"document_version_commands\".\"expected_revision\" + 1\n        AND \"document_version_commands\".\"version_number\" BETWEEN 1 AND 50\n        AND ((\"document_version_commands\".\"action\" = 'drafted'\n            AND \"document_version_commands\".\"related_version_number\" IS NOT NULL\n            AND \"document_version_commands\".\"related_version_number\" BETWEEN 1 AND \"document_version_commands\".\"version_number\" - 1)\n          OR (\"document_version_commands\".\"action\" = 'designated_official'\n            AND (\"document_version_commands\".\"related_version_number\" IS NULL\n              OR \"document_version_commands\".\"related_version_number\" BETWEEN 1 AND \"document_version_commands\".\"version_number\" - 1)))\n      ) IS TRUE"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.document_versions": {
       "name": "document_versions",
       "schema": "",
@@ -4671,105 +4454,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "number": {
-          "name": "number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
-        },
-        "created_by_membership_id": {
-          "name": "created_by_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "designated_by_membership_id": {
-          "name": "designated_by_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "designated_at": {
-          "name": "designated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "frozen_title": {
-          "name": "frozen_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "frozen_purpose": {
-          "name": "frozen_purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_by_version_id": {
-          "name": "superseded_by_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
-        "document_versions_number_unique": {
-          "name": "document_versions_number_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "document_versions_draft_unique": {
-          "name": "document_versions_draft_unique",
+        "document_versions_document_unique": {
+          "name": "document_versions_document_unique",
           "columns": [
             {
               "expression": "workspace_id",
@@ -4791,35 +4486,6 @@
             }
           ],
           "isUnique": true,
-          "where": "\"document_versions\".\"status\" = 'draft'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "document_versions_official_unique": {
-          "name": "document_versions_official_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"document_versions\".\"status\" = 'official'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -4835,39 +4501,6 @@
             },
             {
               "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "document_versions_document_scope_unique": {
-          "name": "document_versions_document_scope_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4902,68 +4535,15 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "document_versions_creator_fk": {
-          "name": "document_versions_creator_fk",
-          "tableFrom": "document_versions",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "created_by_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "document_versions_designator_fk": {
-          "name": "document_versions_designator_fk",
-          "tableFrom": "document_versions",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "designated_by_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "document_versions_successor_fk": {
-          "name": "document_versions_successor_fk",
-          "tableFrom": "document_versions",
-          "tableTo": "document_versions",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "document_id",
-            "superseded_by_version_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "document_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "document_versions_number_check": {
-          "name": "document_versions_number_check",
-          "value": "\"document_versions\".\"number\" BETWEEN 1 AND 50"
-        },
-        "document_versions_state_check": {
-          "name": "document_versions_state_check",
-          "value": "(\n        (\"document_versions\".\"status\" = 'draft'\n          AND \"document_versions\".\"designated_by_membership_id\" IS NULL\n          AND \"document_versions\".\"designated_at\" IS NULL\n          AND \"document_versions\".\"frozen_title\" IS NULL\n          AND \"document_versions\".\"frozen_purpose\" IS NULL\n          AND \"document_versions\".\"superseded_at\" IS NULL\n          AND \"document_versions\".\"superseded_by_version_id\" IS NULL)\n        OR\n        (\"document_versions\".\"status\" IN ('official', 'superseded')\n          AND \"document_versions\".\"designated_by_membership_id\" IS NOT NULL\n          AND \"document_versions\".\"designated_at\" IS NOT NULL\n          AND \"document_versions\".\"frozen_title\" IS NOT NULL\n          AND \"document_versions\".\"frozen_purpose\" IS NOT NULL\n          AND ((\"document_versions\".\"status\" = 'official'\n              AND \"document_versions\".\"superseded_at\" IS NULL\n              AND \"document_versions\".\"superseded_by_version_id\" IS NULL)\n            OR (\"document_versions\".\"status\" = 'superseded'\n              AND \"document_versions\".\"superseded_at\" IS NOT NULL\n              AND \"document_versions\".\"superseded_by_version_id\" IS NOT NULL\n              AND \"document_versions\".\"superseded_by_version_id\" <> \"document_versions\".\"id\")))\n      ) IS TRUE"
+        "document_versions_draft_check": {
+          "name": "document_versions_draft_check",
+          "value": "\"document_versions\".\"status\" = 'draft'"
         }
       },
       "isRLSEnabled": false
@@ -9700,8 +9280,6 @@
         "company_document_project_organizer_assignment.revoked",
         "company_document_registrar_assignment.granted",
         "company_document_registrar_assignment.revoked",
-        "company_document_approver_assignment.granted",
-        "company_document_approver_assignment.revoked",
         "company_project_assignment.granted",
         "company_project_assignment.revoked",
         "company_commercial_intake_assignment.granted",
@@ -9710,6 +9288,8 @@
         "company_service_catalogue_assignment.revoked",
         "company_pricing_configuration_assignment.granted",
         "company_pricing_configuration_assignment.revoked",
+        "company_pricing_user_assignment.granted",
+        "company_pricing_user_assignment.revoked",
         "company_commercial_activity_reader_assignment.granted",
         "company_commercial_activity_reader_assignment.revoked",
         "client.created",
@@ -9764,11 +9344,11 @@
         "company_director_client_access",
         "company_document_project_organizer",
         "company_document_registrar",
-        "company_document_approver",
         "company_project_access",
         "company_commercial_intake",
         "company_service_catalogue",
         "company_pricing_configuration",
+        "company_pricing_user",
         "company_commercial_activity_reader"
       ]
     },
