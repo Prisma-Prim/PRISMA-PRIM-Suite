@@ -291,6 +291,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     activeCompany &&
     (canAccessClients || canAccessProjects || canReadTasks(access.actor)) ? (
       <OperationalHome
+        workspaceMembershipId={access.actor.workspaceMembershipId}
         key={`operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`}
         company={{
           id: activeCompany.id,

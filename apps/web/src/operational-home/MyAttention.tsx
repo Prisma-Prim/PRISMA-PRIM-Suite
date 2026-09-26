@@ -37,14 +37,12 @@ export function MyAttention({
         </p>
       ) : (
         <>
-          {attention.matchingCount > attention.tasks.length && (
-            <p className="operational-home-attention-note">
-              {copy.attention.truncated({
-                shown: attention.tasks.length,
-                total: attention.matchingCount,
-              })}
-            </p>
-          )}
+          <p className="operational-home-attention-note">
+            {copy.attention.truncated({
+              shown: attention.tasks.length,
+              total: attention.matchingCount,
+            })}
+          </p>
           <ul
             className="operational-home-attention-list"
             aria-label={copy.attention.listLabel}

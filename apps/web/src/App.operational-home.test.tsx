@@ -464,6 +464,22 @@ describe('Operational home through App', () => {
     expect(window.location.href).not.toContain(overdueTask.id);
   });
 
+  it('rejects an attention Task that does not belong to the admitted reader', async () => {
+    const server = installServer({
+      actor: (companyId) => ({
+        ...actorFor(companyId),
+        workspaceMembershipId: 'membership-other',
+      }),
+    });
+    server.state.showAttention = true;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    expect(await screen.findByText(copy.error)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: copy.attention.title }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
+  });
+
   it('opens an attention Task in its Project and See all in My Tasks through App intents', async () => {
     window.history.replaceState(null, '', '/?frame=classic');
     const server = installServer();

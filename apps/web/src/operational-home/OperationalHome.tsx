@@ -19,6 +19,7 @@ export type OperationalHomeCompany = { id: string; displayName: string };
 type Props = {
   /** The active Company; App remounts the region for any other Company or authority. */
   company: OperationalHomeCompany;
+  workspaceMembershipId: string;
   identity: BrowserIdentity;
   /** Destinations currently offered by App's captured authority. */
   availableSummaries: Record<CompanySummaryKind, boolean>;
@@ -50,6 +51,7 @@ const icons = {
  */
 export function OperationalHome({
   company,
+  workspaceMembershipId,
   identity,
   availableSummaries,
   onRevalidateAuthority,
@@ -84,7 +86,10 @@ export function OperationalHome({
         } else if (result.status === 'forbidden') setLoad({ kind: 'denied' });
         else if (result.status !== 'ok') setLoad({ kind: 'error' });
         else {
-          const view = readOperationalHome(result.value, company.id);
+          const view = readOperationalHome(result.value, {
+            companyId: company.id,
+            workspaceMembershipId,
+          });
           if (
             view.summaries.some(({ kind }) => !availableSummaries[kind]) ||
             (view.attention !== undefined && !availableSummaries.overdue_tasks)

@@ -48,10 +48,10 @@ function response(attention: unknown) {
 describe('operational home attention response', () => {
   it('accepts the bounded Task queue with its ordered rules and signed day distance', () => {
     expect(
-      readOperationalHome(
-        response({ matchingCount: 1, tasks: [task] }),
+      readOperationalHome(response({ matchingCount: 1, tasks: [task] }), {
         companyId,
-      ),
+        workspaceMembershipId: attribution.workspaceMembershipId,
+      }),
     ).toEqual({
       companyId,
       today,
@@ -61,6 +61,20 @@ describe('operational home attention response', () => {
   });
 
   it.each([
+    [
+      'another member',
+      [
+        {
+          ...task,
+          assignee: {
+            ...task.assignee,
+            workspaceMembershipId: 'membership-other',
+          },
+        },
+      ],
+      1,
+    ],
+    ['an unassigned Task', [{ ...task, assignee: null }], 1],
     ['an unknown rule', [{ ...task, rules: ['urgent'] }], 1],
     ['unordered rules', [{ ...task, rules: ['critical', 'overdue'] }], 1],
     ['an empty rule list', [{ ...task, rules: [] }], 1],
@@ -88,7 +102,10 @@ describe('operational home attention response', () => {
     ],
   ])('fails closed on %s', (_case, tasks, matchingCount) => {
     expect(() =>
-      readOperationalHome(response({ matchingCount, tasks }), companyId),
+      readOperationalHome(response({ matchingCount, tasks }), {
+        companyId,
+        workspaceMembershipId: attribution.workspaceMembershipId,
+      }),
     ).toThrow();
   });
 });

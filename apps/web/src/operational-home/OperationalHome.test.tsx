@@ -135,6 +135,7 @@ function renderHome(
   };
   const view = render(
     <OperationalHome
+      workspaceMembershipId={attribution.workspaceMembershipId}
       company={company}
       identity={deterministicBrowserIdentity()}
       availableSummaries={{

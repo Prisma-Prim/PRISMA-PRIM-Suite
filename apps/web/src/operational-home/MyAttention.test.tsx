@@ -82,7 +82,10 @@ function attention(matchingCount = tasks.length) {
       summaries: [],
       attention: { matchingCount, tasks },
     },
-    company.id,
+    {
+      companyId: company.id,
+      workspaceMembershipId: attribution.workspaceMembershipId,
+    },
   );
   if (!view.attention) throw new Error('Expected attention fixture.');
   return view.attention;
@@ -102,6 +105,9 @@ it('shows every Task fact and rule, then opens the Task and My Tasks through exi
   );
   const region = screen.getByRole('region', { name: copy.attention.title });
   const rows = within(region).getAllByRole('listitem');
+  expect(region).toHaveTextContent(
+    'Showing 5 of 5 Tasks that need your attention.',
+  );
   expect(rows).toHaveLength(5);
   expect(rows[0]).toHaveTextContent('Overdue by 7 days');
   expect(rows[1]).toHaveTextContent('Critical');

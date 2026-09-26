@@ -93,8 +93,9 @@ function isSummaryKind(value: unknown): value is CompanySummaryKind {
  */
 export function readOperationalHome(
   value: unknown,
-  companyId: string,
+  scope: { companyId: string; workspaceMembershipId: string },
 ): OperationalHomeView {
+  const { companyId, workspaceMembershipId } = scope;
   const row = record(value);
   if (!Array.isArray(row.summaries))
     throw new Error('Invalid operational home summaries');
@@ -115,14 +116,21 @@ export function readOperationalHome(
     summaries,
   };
   if (row.attention !== undefined)
-    result.attention = readAttention(row.attention, companyId, result.today);
+    result.attention = readAttention(row.attention, {
+      companyId,
+      workspaceMembershipId,
+      operationalToday: result.today,
+    });
   return result;
 }
 
 function readAttention(
   value: unknown,
-  companyId: string,
-  operationalToday: string,
+  scope: {
+    companyId: string;
+    workspaceMembershipId: string;
+    operationalToday: string;
+  },
 ): MyAttention {
   const row = record(value);
   const matchingCount = count(row.matchingCount);
@@ -134,16 +142,21 @@ function readAttention(
     throw new Error('Invalid attention Tasks');
   return {
     matchingCount,
-    tasks: row.tasks.map((item: unknown) =>
-      readAttentionTask(item, companyId, operationalToday),
-    ),
+    tasks: row.tasks.map((item: unknown) => readAttentionTask(item, scope)),
   };
 }
 
 function readAttentionTask(
   value: unknown,
-  companyId: string,
-  operationalToday: string,
+  {
+    companyId,
+    workspaceMembershipId,
+    operationalToday,
+  }: {
+    companyId: string;
+    workspaceMembershipId: string;
+    operationalToday: string;
+  },
 ): AttentionTask {
   const entry = record(value);
   const owner = record(entry.project);
@@ -153,6 +166,8 @@ function readAttentionTask(
     clientDisplayName: text(owner.clientDisplayName),
   };
   const task = readTask(entry, { companyId, projectId: project.id });
+  if (task.assignee?.workspaceMembershipId !== workspaceMembershipId)
+    throw new Error('Invalid attention Task assignee');
   if (!Array.isArray(entry.rules))
     throw new Error('Invalid attention Task rules');
   const expectedRules: AttentionRule[] = [];
