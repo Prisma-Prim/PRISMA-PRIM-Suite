@@ -78,6 +78,38 @@ describe('Select', () => {
     expect(select).toHaveFocus();
   });
 
+  it('closes and restores focus without reporting a change when the current option is chosen again', () => {
+    const onValueChange = vi.fn();
+    render(
+      <>
+        <label htmlFor="unchanged-select">Unchanged example</label>
+        <Select
+          id="unchanged-select"
+          value="alpha"
+          options={options}
+          onValueChange={onValueChange}
+        />
+      </>,
+    );
+
+    const select = screen.getByRole('combobox', {
+      name: 'Unchanged example',
+    });
+    fireEvent.click(select);
+    fireEvent.click(screen.getByRole('option', { name: 'Alpha' }));
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(select).toHaveFocus();
+    expect(select).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(select);
+    fireEvent.keyDown(select, { key: 'Enter' });
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(select).toHaveFocus();
+    expect(select).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('names the listbox from a wrapping label without adding the value', () => {
     render(
       <label>

@@ -184,7 +184,10 @@
 .prisme-shell .project-tasks--prisme .task-filters button,
 .prisme-shell .project-tasks--prisme .task-panel > button,
 .prisme-shell .project-tasks--prisme .task-actions button,
-.prisme-shell .project-tasks--prisme form button,
+.prisme-shell
+  .project-tasks--prisme
+  form
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .project-tasks--prisme nav > button {
   min-height: 36px;
   border: 1px solid var(--shell-line);
@@ -195,7 +198,10 @@
   cursor: pointer;
 }
 .prisme-shell .project-tasks--prisme .task-panel > button,
-.prisme-shell .project-tasks--prisme form button {
+.prisme-shell
+  .project-tasks--prisme
+  form
+  button:not(:where(.shared-select__trigger)) {
   border-color: #6652e7;
   color: #fff;
   background: #6451e8;

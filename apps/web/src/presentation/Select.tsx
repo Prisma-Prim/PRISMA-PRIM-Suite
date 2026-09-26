@@ -214,7 +214,7 @@ export function Select({
   function choose(index: number) {
     const option = menuOptions[index];
     if (!option || option.disabled === true) return;
-    onValueChange(option.value);
+    if (option.value !== value) onValueChange(option.value);
     closeMenu({ restoreFocus: true });
   }
 

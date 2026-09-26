@@ -238,6 +238,34 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await navigation
     .getByRole('button', { name: 'Collect preparation notes' })
     .click();
+  const taskForm = region.locator('form');
+  const taskAssignee = taskForm.getByLabel('Responsible member');
+  const taskPriority = taskForm.getByLabel('Priority');
+  const saveTask = taskForm.getByRole('button', {
+    name: 'Save Task',
+    exact: true,
+  });
+  await expect(taskAssignee).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  );
+  await expect(taskPriority).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  );
+  await expect(saveTask).toHaveCSS('background-color', 'rgb(100, 81, 232)');
+  await expect(saveTask).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await taskAssignee.focus();
+  expect(
+    await taskAssignee.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await taskAssignee.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(75, 54, 181)');
   await region.getByLabel('Task title').fill('Unsaved preparation title');
   await search.fill('review archive');
   await expect(
