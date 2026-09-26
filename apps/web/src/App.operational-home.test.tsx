@@ -92,6 +92,8 @@ function installServer(
     refuseSearch: false,
     clientsInA: counts[companyA.id]?.active_clients ?? 0,
     showProjectSummaries: true,
+    showAttention: false,
+    showNoRuleAttentionTask: false,
   };
   const requests: ServerRequest[] = [];
   const holding = new Set<string>();
@@ -123,6 +125,33 @@ function installServer(
           (entry) =>
             state.showProjectSummaries || entry.kind === 'active_clients',
         ),
+        ...(state.showAttention
+          ? {
+              attention:
+                company === companyA.id
+                  ? {
+                      matchingCount: 1,
+                      tasks: [
+                        {
+                          ...overdueTask,
+                          dueDate: state.showNoRuleAttentionTask
+                            ? null
+                            : overdueTask.dueDate,
+                          project: {
+                            id: project.id,
+                            title: project.title,
+                            clientDisplayName: project.clientDisplayName,
+                          },
+                          rules: state.showNoRuleAttentionTask
+                            ? []
+                            : ['overdue'],
+                          dueInDays: state.showNoRuleAttentionTask ? null : -7,
+                        },
+                      ],
+                    }
+                  : { matchingCount: 0, tasks: [] },
+            }
+          : {}),
       });
     }
     if (route === 'GET /api/overdue-tasks')
@@ -345,6 +374,7 @@ describe('Operational home through App', () => {
   it('never renders a previous Company reply after a switch and closes the overdue panel', async () => {
     window.history.replaceState(null, '', '/?frame=classic');
     const server = installServer();
+    server.state.showAttention = true;
     server.hold(homeRoute, companyA.id);
     render(<App identity={deterministicBrowserIdentity()} />);
     await waitFor(() => expect(server.count(homeRoute, companyA.id)).toBe(1));
@@ -359,6 +389,10 @@ describe('Operational home through App', () => {
     ]);
     expect(summary()).toHaveTextContent('records you can open in BIC.');
     expect(summary()).not.toHaveTextContent('PRISMA-PRIM');
+    expect(summary()).toHaveTextContent(
+      'Nothing needs your attention in BIC on 2026-09-27.',
+    );
+    expect(summary()).not.toHaveTextContent(overdueTask.title);
 
     await selectCompany(companyA.id);
     fireEvent.click(
@@ -436,6 +470,87 @@ describe('Operational home through App', () => {
     expect(window.location.href).not.toContain(overdueTask.id);
   });
 
+  it('rejects an attention Task that does not belong to the admitted reader', async () => {
+    const server = installServer({
+      actor: (companyId) => ({
+        ...actorFor(companyId),
+        workspaceMembershipId: 'membership-other',
+      }),
+    });
+    server.state.showAttention = true;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    expect(await screen.findByText(copy.error)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: copy.attention.title }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
+  });
+
+  it('rejects an attention Task that matches no attention rule', async () => {
+    const server = installServer();
+    server.state.showAttention = true;
+    server.state.showNoRuleAttentionTask = true;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    expect(await screen.findByText(copy.error)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: copy.attention.title }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
+  });
+
+  it('opens an attention Task in its Project and See all in My Tasks through App intents', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer();
+    server.state.showAttention = true;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    const attention = await screen.findByRole('region', {
+      name: copy.attention.title,
+    });
+
+    fireEvent.click(
+      within(attention).getByRole('button', {
+        name: copy.attention.openTask({
+          task: overdueTask.title,
+          project: project.title,
+          client: project.clientDisplayName,
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
+    );
+    expect(window.location.href).not.toContain(overdueTask.id);
+
+    fireEvent.click(
+      within(attention).getByRole('button', { name: copy.attention.seeAll }),
+    );
+    await waitFor(() => expect(window.location.hash).toBe('#my-tasks'));
+    expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
+  });
+
+  it.each(['classic', 'prisme'])(
+    'focuses the My Tasks region from My attention in %s',
+    async (frame) => {
+      window.history.replaceState(null, '', `/?frame=${frame}`);
+      const server = installServer();
+      server.state.showAttention = true;
+      render(<App identity={deterministicBrowserIdentity()} />);
+      const attention = await screen.findByRole('region', {
+        name: copy.attention.title,
+      });
+
+      fireEvent.click(
+        within(attention).getByRole('button', { name: copy.attention.seeAll }),
+      );
+
+      const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
+      expect(window.location.hash).toBe('#my-tasks');
+      expect(myTasks).toBeVisible();
+      await waitFor(() => expect(myTasks).toHaveFocus());
+      expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
+      expect(myTasks).toHaveAttribute('id', 'my-tasks');
+    },
+  );
   it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
     window.history.replaceState(null, '', '/?frame=classic');
     const server = installServer({

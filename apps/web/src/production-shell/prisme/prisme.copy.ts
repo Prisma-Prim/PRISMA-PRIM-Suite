@@ -1,6 +1,5 @@
 export const prismeCopy = {
   optIn: 'Try Prisme',
-  returnToClassic: 'Use classic frame',
   presentation: 'Prisme & lumière',
   home: 'Home',
   overview: 'Overview',

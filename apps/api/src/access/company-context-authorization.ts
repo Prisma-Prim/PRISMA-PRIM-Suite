@@ -15,7 +15,12 @@ import {
   taskPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE,
+  documentApproverPermissionsFor,
   documentPermissionsFor,
+  isDocumentPermissionSetVersion,
+  type DocumentPermission,
+  type DocumentPermissionSetVersion,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   isProjectPermissionSetVersion,
   projectPermissionsFor,
@@ -47,6 +52,14 @@ const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
   ...COMPANY_CONTEXT_USE_BUNDLES,
   COMPANY_PROJECT_ACCESS_BUNDLE,
 ] as const;
+
+// Every captured Registrar version carries Document metadata and
+// Representation read; null or unknown versions fail closed.
+const DOCUMENT_READ_REGISTRAR_VERSIONS = [
+  'v1',
+  'v2',
+  'v3',
+] as const satisfies readonly DocumentPermissionSetVersion[];
 
 @Injectable()
 export class CompanyContextAuthorization {
@@ -222,7 +235,9 @@ export class CompanyContextAuthorization {
           ),
           eq(companyRoleAssignments.companyId, companyId),
           eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...DOCUMENT_READ_REGISTRAR_VERSIONS,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
@@ -256,10 +271,58 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // `document.correct` exists in captured Registrar v2 and v3; a legacy v1
+  // assignment fails closed.
   async requireDocumentCorrection(actor: ActorContext): Promise<string> {
+    return this.requireLockedDocumentAuthority(actor, 'document.correct', {
+      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+      versions: ['v2', 'v3'],
+    });
+  }
+
+  // `document.version.manage` exists only in captured Registrar v3.
+  async requireDocumentVersionManagement(actor: ActorContext): Promise<string> {
+    return this.requireLockedDocumentAuthority(
+      actor,
+      'document.version.manage',
+      { bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE, versions: ['v3'] },
+    );
+  }
+
+  // Designation requires a live captured Company Document Approver v1 in
+  // addition to the delivered Document read authority, which any Registrar
+  // version provides. The Approver itself grants neither.
+  async requireDocumentVersionDesignation(
+    actor: ActorContext,
+  ): Promise<string> {
+    return this.requireLockedDocumentAuthority(
+      actor,
+      'document.version.designate_official',
+      { bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE, versions: ['v1'] },
+    );
+  }
+
+  /**
+   * A Document command's live authority: the locked Document read authority,
+   * Representation read, the required permission and its captured assignment
+   * locked `FOR SHARE`, which serializes the command against revocation.
+   */
+  private async requireLockedDocumentAuthority(
+    actor: ActorContext,
+    permission: DocumentPermission,
+    grant:
+      | {
+          bundle: typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE;
+          versions: readonly DocumentPermissionSetVersion[];
+        }
+      | {
+          bundle: typeof COMPANY_DOCUMENT_APPROVER_BUNDLE;
+          versions: readonly ['v1'];
+        },
+  ): Promise<string> {
     const companyId = await this.requireDocumentAccess(actor, true);
     if (
-      !actor.activeCompany?.documentPermissions?.includes('document.correct') ||
+      !actor.activeCompany?.documentPermissions?.includes(permission) ||
       !actor.activeCompany.documentPermissions.includes(
         'document.reference.read',
       )
@@ -276,8 +339,10 @@ export class CompanyContextAuthorization {
             actor.workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v2'),
+          eq(companyRoleAssignments.bundle, grant.bundle),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...grant.versions,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       )
@@ -780,6 +845,7 @@ export class CompanyContextAuthorization {
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
+        COMPANY_DOCUMENT_APPROVER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -836,12 +902,21 @@ export class CompanyContextAuthorization {
           'document.project.manage',
         ];
       }
+      // Like the Organizer, the Approver contributes only its designation
+      // permission and never Company context.
+      if (
+        row.bundle === COMPANY_DOCUMENT_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...documentApproverPermissionsFor(row.permissionSetVersion),
+        ];
+        company.documentApproverAssignmentId = row.assignmentId;
+        company.documentApproverPermissionSetVersion = 'v1';
+      }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
-        if (
-          row.permissionSetVersion !== 'v1' &&
-          row.permissionSetVersion !== 'v2'
-        )
-          continue;
+        if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;
         const permissions = documentPermissionsFor(row.permissionSetVersion);
         company.documentPermissions = [
           ...(company.documentPermissions ?? []),

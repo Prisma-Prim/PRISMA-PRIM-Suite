@@ -32,6 +32,8 @@ import {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
@@ -57,6 +59,7 @@ import {
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
+  isDocumentPermissionSetVersion,
 } from './company-permissions.js';
 import type {
   CompanyAccessAdministrationState,
@@ -73,6 +76,7 @@ type BundleDefinition = {
     | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
+    | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
@@ -110,10 +114,18 @@ const DOCUMENT_PROJECT_ORGANIZER_BUNDLE: BundleDefinition = {
   label: COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+// A fresh grant captures v3; existing v1 and v2 assignments keep their
+// captured version until explicitly revoked and granted again.
 const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   label: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
-  permissionSetVersion: 'v2',
+  permissionSetVersion: 'v3',
+};
+// The opt-in Approver exists only as captured v1.
+const DOCUMENT_APPROVER_BUNDLE: BundleDefinition = {
+  value: COMPANY_DOCUMENT_APPROVER_BUNDLE,
+  label: COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
 };
 // A fresh grant captures v2; existing v1 assignments keep their captured
 // version until explicitly revoked and granted again.
@@ -158,6 +170,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
@@ -613,6 +626,35 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  grantDocumentApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      DOCUMENT_APPROVER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeDocumentApprover(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      DOCUMENT_APPROVER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
   grantTaskManager(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -964,6 +1006,10 @@ function assignmentAction(
       return granted
         ? 'company_document_registrar_assignment.granted'
         : 'company_document_registrar_assignment.revoked';
+    case COMPANY_DOCUMENT_APPROVER_BUNDLE:
+      return granted
+        ? 'company_document_approver_assignment.granted'
+        : 'company_document_approver_assignment.revoked';
     case COMPANY_PROJECT_ACCESS_BUNDLE:
       return granted
         ? 'company_project_assignment.granted'
@@ -1059,15 +1105,20 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
-      if (
-        assignment.permissionSetVersion !== 'v1' &&
-        assignment.permissionSetVersion !== 'v2'
-      )
+      if (!isDocumentPermissionSetVersion(assignment.permissionSetVersion))
         throw new Error('Invalid Document Registrar version.');
       return {
         ...base,
         bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
         permissionSetVersion: assignment.permissionSetVersion,
+      };
+    case COMPANY_DOCUMENT_APPROVER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Document Approver version.');
+      return {
+        ...base,
+        bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
       };
     case COMPANY_PROJECT_ACCESS_BUNDLE:
       if (!isProjectPermissionSetVersion(assignment.permissionSetVersion))

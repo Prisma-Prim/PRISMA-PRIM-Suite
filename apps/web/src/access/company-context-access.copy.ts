@@ -6,6 +6,9 @@ export const companyContextAccessCopy = {
   bundleLabel: 'Access bundle',
   documentProjectOrganizerBundle: 'Company Document Project Organizer',
   documentRegistrarBundle: 'Company Document Registrar',
+  documentApproverBundle: 'Company Document Approver',
+  documentApproverPrerequisites:
+    'Company Document Approver v1 grants only the designation of a draft Document Version as official. Company context, Document and reference read, and Client read must already be authorized separately, for example through Company Document Registrar.',
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
   commercialIntakeBundle: 'Company Commercial Intake',
@@ -57,6 +60,10 @@ export const companyContextAccessCopy = {
       'granted Company Document Registrar',
     'company_document_registrar_assignment.revoked':
       'revoked Company Document Registrar',
+    'company_document_approver_assignment.granted':
+      'granted Company Document Approver',
+    'company_document_approver_assignment.revoked':
+      'revoked Company Document Approver',
     'company_project_assignment.granted': 'granted Company Project Access',
     'company_project_assignment.revoked': 'revoked Company Project Access',
     'company_commercial_intake_assignment.granted':

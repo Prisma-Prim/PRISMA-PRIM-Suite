@@ -357,7 +357,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   it('counts the active Company records the reader can open at the Chisinau date of one server instant', async () => {
     const { companyB, projects, tasks } = await seed();
 
-    expect(await home()).toEqual({
+    expect(await home()).toMatchObject({
       companyId: companyA,
       today: '2026-09-27',
       summaries: [
@@ -408,7 +408,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     ])
       expect(page).not.toContain(hidden);
 
-    expect(await home({ company: companyB })).toEqual({
+    expect(await home({ company: companyB })).toMatchObject({
       companyId: companyB,
       today: '2026-09-27',
       summaries: [

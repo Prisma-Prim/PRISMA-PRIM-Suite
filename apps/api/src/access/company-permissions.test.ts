@@ -6,6 +6,7 @@ import {
   commercialIntakeVersionsWith,
   opportunityManagerPermissionsFor,
   companyDirectorClientPermissionsFor,
+  documentApproverPermissionsFor,
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
@@ -224,6 +225,16 @@ describe('Company Document Registrar permission sets', () => {
         'document.correct',
       ],
     ],
+    [
+      'v3',
+      [
+        'document.read',
+        'document.register',
+        'document.reference.read',
+        'document.correct',
+        'document.version.manage',
+      ],
+    ],
   ] satisfies Array<[DocumentPermissionSetVersion, readonly string[]]>)(
     'resolves immutable %s permissions',
     (version, expected) => {
@@ -231,10 +242,32 @@ describe('Company Document Registrar permission sets', () => {
     },
   );
 
-  it.each([null, undefined, '', 'V2', 'v3'])(
+  it.each([null, undefined, '', 'V2', 'v4'])(
     'fails closed for an unsupported version: %s',
     (version) => {
       expect(documentPermissionsFor(version)).toEqual([]);
+    },
+  );
+
+  it('never designates an official Version in any captured version', () => {
+    for (const version of ['v1', 'v2', 'v3'])
+      expect(documentPermissionsFor(version)).not.toContain(
+        'document.version.designate_official',
+      );
+  });
+});
+
+describe('Company Document Approver permission sets', () => {
+  it('resolves exactly the captured v1 designation permission', () => {
+    expect(documentApproverPermissionsFor('v1')).toEqual([
+      'document.version.designate_official',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2'])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(documentApproverPermissionsFor(version)).toEqual([]);
     },
   );
 });
@@ -264,6 +297,8 @@ describe('Company Project Access permission sets', () => {
       taskPermissionsFor('v1'),
       documentPermissionsFor('v1'),
       documentPermissionsFor('v2'),
+      documentPermissionsFor('v3'),
+      documentApproverPermissionsFor('v1'),
     ])
       expect(permissions).not.toContain('project.update');
   });

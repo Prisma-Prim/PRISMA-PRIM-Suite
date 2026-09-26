@@ -81,7 +81,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestId: number;
   }>();
   const navigateToSection = useCallback(
-    (section: 'clients' | 'projects' | 'documents' | 'requests') => {
+    (
+      section: 'clients' | 'projects' | 'documents' | 'requests' | 'my-tasks',
+    ) => {
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
       window.history.pushState(window.history.state, '', nextUrl);
@@ -289,6 +291,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     activeCompany &&
     (canAccessClients || canAccessProjects || canReadTasks(access.actor)) ? (
       <OperationalHome
+        workspaceMembershipId={access.actor.workspaceMembershipId}
         key={`operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`}
         company={{
           id: activeCompany.id,
@@ -306,6 +309,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           setProjectClientFilter(undefined);
           navigateToSection('projects');
         }}
+        onOpenMyTasks={() => navigateToSection('my-tasks')}
         onOpenTask={openProject}
       />
     ) : null;
@@ -406,6 +410,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenProject={
             openProject && ((projectId) => openProject({ projectId }))
           }
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
     });
@@ -751,6 +758,9 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.project.unlinked': projectDocumentsCopy.unlinked,
     'document.registered': documentsCopy.activity,
     'document.corrected': documentsCopy.correctionActivity,
+    'document.version.drafted': documentsCopy.versionDraftedActivity,
+    'document.version.designated_official':
+      documentsCopy.versionDesignatedActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
     'project.responsible.changed': projectCopy.responsible.activityAction,

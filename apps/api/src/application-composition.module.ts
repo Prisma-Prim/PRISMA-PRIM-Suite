@@ -11,6 +11,8 @@ import { WorkspaceSessionRevocationController } from './access/workspace-session
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
 import { CompanyDocumentRegistrarAssignmentController } from './access/company-document-registrar-assignment.controller.js';
 import { DocumentsController } from './documents/documents.controller.js';
+import { DocumentVersionsController } from './documents/document-versions.controller.js';
+import { CompanyDocumentApproverAssignmentController } from './access/company-document-approver-assignment.controller.js';
 import { DocumentsModule } from './documents/documents.module.js';
 import { Module } from '@nestjs/common';
 import { VerifiedPrincipalAdapter } from './access/verified-principal.adapter.js';
@@ -77,8 +79,10 @@ import { OperationalHomeController } from './operational-home/operational-home.c
     TaskController,
     CompanyTaskManagerAssignmentController,
     DocumentsController,
+    DocumentVersionsController,
     DocumentProjectsController,
     CompanyDocumentRegistrarAssignmentController,
+    CompanyDocumentApproverAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
     ProjectResponsibilityController,

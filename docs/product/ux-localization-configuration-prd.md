@@ -17,6 +17,8 @@ Deliver responsive web, WCAG 2.2 AA intent, localization from Release 1, stable 
 
 The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Atlas Blue in /ui-baseline remains a recoverable synthetic snapshot. Neither reference proves implemented behaviour or freezes the final design.
 
+On 2026-09-26, Dan confirmed Prisme as the current application design and removed the user-facing Classic rollback option (#426). Prisme navigation must not offer a switch to Classic. Explicit legacy Classic URLs remain compatibility coverage; their return to Prisme remains available. This does not remove business owners, existing regression coverage or the recoverable /ui-baseline snapshot.
+
 ## 3. User stories
 
 1. As a user, I want the Client overview to answer my immediate operational questions.
@@ -25,7 +27,7 @@ The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Pri
 4. As a role-specific user, I want my next actions and exceptions prioritized.
 5. As a mobile user, I want essential visit and audit actions usable without overflow or hidden controls.
 6. As a keyboard or assistive-technology user, I want perceivable, operable and understandable journeys.
-7. As a Romanian, Russian or English user, I want the interface and Documents in the appropriate language.
+7. As a Romanian, Russian, French or English user, I want the interface and Documents in the appropriate language.
 8. As a domain user, I want familiar terminology without changing stable business meaning.
 9. As an administrator, I want bounded settings with validation and preview.
 10. As a reviewer, I want high-impact configuration changes attributable and historically reproducible.
@@ -72,12 +74,24 @@ Generated Documents have separate accessibility requirements where applicable.
 Localization infrastructure begins in Release 1. Stable internal concepts, tenant labels and translations are separate:
 
 - internal semantics remain stable;
-- interface strings are localized;
+- Romanian (`ro`) is the interface default when no valid explicit choice exists, regardless of browser or operating-system language;
+- the offered interface choices are Română (`ro`), Русский (`ru`), Français (`fr`) and English (`en`);
+- a user's explicit supported choice controls the interface until the user changes it; an unsupported or invalid saved choice falls back to Romanian;
+- interface strings, accessible names, errors, dates and numbers follow the chosen interface locale;
+- a missing required translation falls back to Romanian, never to a raw translation key or silently to English, and release checks report the missing translation;
 - approved tenant terminology may override bounded labels;
 - Company-specific wording may vary without changing rules;
 - historical Documents preserve the language and wording used at generation time.
 
-Dates, numbers, currencies and sorting follow explicit locale and business context.
+The interface locale, Document language, Client communication language and Company default language are distinct. Changing the interface locale does not translate or mutate business content, prices, currencies, timezone rules, permissions or stored canonical identifiers, and it preserves work already entered in the current journey. Technical documentation, code and identifiers remain English. `/ui-baseline` remains an unchanged, recoverable snapshot and does not prove production localization.
+
+Dates, numbers and sorting follow the chosen interface locale while currencies, timezone rules and canonical values remain governed by their business context. Localization acceptance proves that:
+
+- French, English or Russian browser preferences still start in Romanian without a valid explicit choice;
+- every offered interface choice can be selected by keyboard and presents its own accessible language name, including Romanian and French diacritics and Russian Cyrillic;
+- an explicit supported choice survives navigation and reload, while an unsupported saved choice falls back to Romanian;
+- switching languages preserves entered work and business meaning;
+- required translation coverage fails release checks when a key is missing.
 
 ## 8. Configuration
 
@@ -130,14 +144,14 @@ Bulk work is permission-checked per target, previewable, partially failure-aware
 - browser tests for complete role journeys rather than isolated screenshots;
 - named desktop/mobile viewports and overflow checks;
 - keyboard and automated accessibility checks plus targeted manual review;
-- Romanian, Russian and English representative content;
+- Romanian, Russian, French and English representative content;
 - long labels, empty data, large data and provider failures;
 - permission-safe not-found and denial behaviour;
 - deterministic screenshot evidence through ignored test output.
 
 ## 14. Acceptance journey
 
-Users with Workspace and Company roles sign in, understand their context, find a Client, complete their next action and recover from an error on desktop and phone. Romanian and Russian labels preserve stable meaning. A high-impact configuration change is previewed and attributed. Notifications and dashboard numbers link back to governed business records and remain permission-safe.
+Users with Workspace and Company roles sign in, understand their context, find a Client, complete their next action and recover from an error on desktop and phone. Romanian, Russian, French and English labels preserve stable meaning. A high-impact configuration change is previewed and attributed. Notifications and dashboard numbers link back to governed business records and remain permission-safe.
 
 ## 15. Evidence dependencies
 

@@ -127,6 +127,12 @@ Project identifier or before/after values. Projection requires the same current
 Document and original Client visibility as registration history and participates
 in the existing newest-first bounded page.
 
+For the [provisional official Document Versions](release-1-document-registry-prd.md#21-approved-provisional-official-document-versions-400), one committed command creates exactly one of `document.version.drafted` or `document.version.designated_official`. The event is written in the same transaction as the Version change, the Document working-revision increment, the durable receipt and the original Client operational-use fence advance. It targets the Document in its responsible Company, with the actor membership and server time.
+
+Metadata carries only the affected Version number plus the source or superseded Version number. It never carries a title, purpose, URL or Project identity.
+
+Projection follows `document.corrected`: only in the recording Company, to actors with current Document metadata read and the original Client/Company visibility, inside the existing newest-first bounded page. Failed, denied and replayed commands create none. The section 20 correction history of the Document Registry PRD remains limited to `document.corrected`.
+
 For the approved [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new
@@ -141,7 +147,7 @@ trimming or normalization, so a no-op here is a byte-identical resubmission
 rather than the normalized comparison used by Tasks. Recording this event grants
 no read of it.
 
-For the approved [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#19-approved-provisional-opportunity-reassignment-399), one committed material change creates exactly one `opportunity.responsible.changed` event in the same transaction as the new responsible actor, the incremented shared Opportunity version and the durable receipt. It retains the acting membership, server time, responsible Company and Opportunity target; its metadata carries only the resulting version and the previous and new responsible actor (membership identifier and captured display label), with no email or commercial text. Rejected commands, denials, no-ops and exact replays create none. The commercial projection of section 17.3 returns the two responsible actors.
+For the approved [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#20-approved-provisional-opportunity-reassignment-399), one committed material change creates exactly one `opportunity.responsible.changed` event in the same transaction as the new responsible actor, the incremented shared Opportunity version and the durable receipt. It retains the acting membership, server time, responsible Company and Opportunity target; its metadata carries only the resulting version and the previous and new responsible actor (membership identifier and captured display label), with no email or commercial text. Rejected commands, denials, no-ops and exact replays create none. The commercial projection of section 17.3 returns the two responsible actors.
 
 The separately approved [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
 owns the first authorized projection of commercial events, which the intake

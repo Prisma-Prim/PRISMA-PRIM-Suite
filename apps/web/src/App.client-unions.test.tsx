@@ -205,7 +205,12 @@ describe('persisted Client union through App', () => {
     const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
     fireEvent.click(within(nav).getByRole('link', { name: 'Activity Log' }));
     fireEvent.click(within(nav).getByRole('link', { name: 'Clients' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use classic frame' }));
+    act(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('frame', 'classic');
+      window.history.pushState(window.history.state, '', url);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Try Prisme' }));
     const retained = screen.getByRole('form', { name: 'Confirm union' });
     expect(

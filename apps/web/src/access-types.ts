@@ -69,9 +69,14 @@ export interface ActorContext {
       | 'document.register'
       | 'document.reference.read'
       | 'document.correct'
+      | 'document.version.manage'
+      | 'document.version.designate_official'
       | 'document.project.manage'
     >;
-    documentPermissionSetVersion?: 'v1' | 'v2';
+    documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
+    /** The live Company Document Approver assignment, if any. */
+    documentApproverAssignmentId?: string;
+    documentApproverPermissionSetVersion?: 'v1';
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';
   };

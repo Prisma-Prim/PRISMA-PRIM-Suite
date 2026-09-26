@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   captureUnion,
@@ -92,7 +93,7 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   await navigateUnion(page, 'Clients');
   const menu = page.getByRole('button', { name: 'Open navigation' });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(
     unionForm(page).getByRole('combobox', {
       name: 'Canonical Client dossier',

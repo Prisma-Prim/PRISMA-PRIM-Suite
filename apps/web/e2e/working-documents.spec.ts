@@ -1,8 +1,13 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 
 test('registers and reopens a Company-confidential working reference', async ({
   page,
@@ -147,6 +152,8 @@ test('registers and reopens a Company-confidential working reference', async ({
         },
       });
     if (path.endsWith('/clients')) return route.fulfill({ json: [client] });
+    if (DOCUMENT_VERSIONS_PATH.test(path))
+      return route.fulfill({ json: draftVersionsOf(currentDocument) });
     if (path.includes('/documents')) {
       if (denied) return route.fulfill({ status: 403 });
       if (loadError) return route.fulfill({ status: 500 });
@@ -332,7 +339,7 @@ test('registers and reopens a Company-confidential working reference', async ({
   // Classic presents the same open history with the same keyboard controls.
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   const classicHistory = page
     .locator('#documents article')
     .getByRole('region', { name: 'Correction history', exact: true });
@@ -416,6 +423,391 @@ test('registers and reopens a Company-confidential working reference', async ({
   await expect(page.getByRole('alert')).toContainText('do not have access');
   await page.screenshot({
     path: testInfo.outputPath('documents-denied.png'),
+    fullPage: true,
+  });
+});
+
+test('designates official Versions, starts and corrects a new draft and keeps the superseded Version readable', async ({
+  page,
+}, testInfo) => {
+  const company = { id: 'company-versions', displayName: 'PRISMA-PRIM' };
+  const client = { id: 'client-versions', displayName: 'GRUP Demo SA' };
+  const documentId = 'document-400';
+  const firstTitle = 'Chestionar de evaluare inițială — GRUP Demo SA';
+  const purpose = 'Evaluate the initial situation of GRUP Demo SA';
+  const firstUrl = 'https://example.test/demo/chestionar-v1.docx';
+  const secondTitle =
+    'Chestionar de evaluare inițială — GRUP Demo SA — versiune corectată cu observațiile primite de la client';
+  const secondUrl = `https://example.test/demo/${'segment-foarte-lung-'.repeat(8)}chestionar-v2.docx`;
+  interface StoredVersion {
+    id: string;
+    number: number;
+    status: 'draft' | 'official' | 'superseded';
+    createdAt: string;
+    url: string;
+    designatedAt?: string;
+    frozen?: { title: string; purpose: string };
+    supersededAt?: string;
+    supersededByVersionNumber?: number;
+  }
+  const server = {
+    registered: false,
+    title: firstTitle,
+    workingRevision: 1,
+    versions: [] as StoredVersion[],
+    commands: [] as Array<{ path: string; body: unknown }>,
+  };
+  const at = (minute: number) =>
+    `2026-09-26T08:${String(minute).padStart(2, '0')}:00.000Z`;
+  const reference = (version: StoredVersion) => ({
+    id: `reference-${version.number}`,
+    kind: 'external-reference',
+    verification: 'unverified',
+    access: 'granted',
+    url: version.url,
+  });
+  const working = () =>
+    server.versions.find((version) => version.status === 'draft') ??
+    server.versions.find((version) => version.status === 'official');
+  const detail = () => {
+    const version = working();
+    if (!version) throw new Error('Expected a working Version.');
+    return {
+      id: documentId,
+      companyId: company.id,
+      clientId: client.id,
+      clientDisplayName: client.displayName,
+      title: server.title,
+      purpose,
+      type: 'questionnaire',
+      confidentiality: 'company-confidential',
+      createdAt: at(0),
+      workingRevision: server.workingRevision,
+      correction: version.status === 'draft' ? 'allowed' : 'read-only',
+      version: {
+        id: version.id,
+        status: version.status,
+        representation: reference(version),
+      },
+    };
+  };
+  const versionView = (version: StoredVersion) => ({
+    id: version.id,
+    number: version.number,
+    status: version.status,
+    createdAt: version.createdAt,
+    createdBy: { displayName: 'Document Registrar' },
+    representations: [reference(version)],
+    ...(version.status === 'draft'
+      ? {}
+      : {
+          designatedAt: version.designatedAt,
+          designatedBy: { displayName: 'Document Approver' },
+          frozen: version.frozen,
+        }),
+    ...(version.status === 'superseded'
+      ? {
+          supersededAt: version.supersededAt,
+          supersededByVersionNumber: version.supersededByVersionNumber,
+        }
+      : {}),
+  });
+  const receipt = (version: StoredVersion, extra: Record<string, unknown>) => ({
+    documentId,
+    workingRevision: server.workingRevision,
+    versionId: version.id,
+    versionNumber: version.number,
+    ...extra,
+  });
+  const isCurrent = (body: unknown) => {
+    const expected =
+      typeof body === 'object' && body !== null && 'expectedRevision' in body
+        ? body.expectedRevision
+        : undefined;
+    return expected === server.workingRevision;
+  };
+  await page.route('**/api/**', (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    const method = request.method();
+    if (path.endsWith('/access/current-actor'))
+      return route.fulfill({
+        json: {
+          ...actorContextFixture,
+          workspacePermissions: [],
+          ...(request.headers()['x-company-context-id']
+            ? {
+                activeCompany: {
+                  ...company,
+                  clientPermissions: ['client.read'],
+                  documentPermissions: [
+                    'document.read',
+                    'document.register',
+                    'document.reference.read',
+                    'document.correct',
+                    'document.version.manage',
+                    'document.version.designate_official',
+                  ],
+                  documentPermissionSetVersion: 'v3',
+                  documentApproverAssignmentId: 'approver-assignment',
+                  documentApproverPermissionSetVersion: 'v1',
+                },
+              }
+            : {}),
+        },
+      });
+    if (path.endsWith('/companies')) return route.fulfill({ json: [company] });
+    if (path.endsWith('/activity-log'))
+      return route.fulfill({ json: { events: [] } });
+    if (path.endsWith('/clients')) return route.fulfill({ json: [client] });
+    if (path === '/api/documents' && method === 'POST') {
+      expect(request.postDataJSON()).toEqual({
+        clientId: client.id,
+        title: firstTitle,
+        purpose,
+        url: firstUrl,
+      });
+      server.registered = true;
+      server.versions = [
+        {
+          id: 'version-1',
+          number: 1,
+          status: 'draft',
+          createdAt: at(0),
+          url: firstUrl,
+        },
+      ];
+      return route.fulfill({ status: 201, json: detail() });
+    }
+    if (path === '/api/documents')
+      return route.fulfill({ json: server.registered ? [detail()] : [] });
+    if (path === `/api/documents/${documentId}/correction-history`)
+      return route.fulfill({
+        json: { corrections: [], nextBeforeRevision: null },
+      });
+    if (path === `/api/documents/${documentId}/versions` && method === 'GET')
+      return route.fulfill({
+        json: {
+          workingRevision: server.workingRevision,
+          mutable: true,
+          versions: [...server.versions]
+            .sort((left, right) => right.number - left.number)
+            .map(versionView),
+        },
+      });
+    if (
+      method === 'POST' &&
+      path.startsWith(`/api/documents/${documentId}/versions`)
+    ) {
+      const body: unknown = request.postDataJSON();
+      server.commands.push({ path, body });
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      if (!isCurrent(body))
+        return route.fulfill({
+          status: 409,
+          json: { code: 'document_revision_conflict', message: 'Stale.' },
+        });
+      const minute = server.workingRevision + 1;
+      if (path.endsWith('/official-designation')) {
+        const draft = server.versions.find(
+          (version) =>
+            path ===
+            `/api/documents/${documentId}/versions/${version.id}/official-designation`,
+        );
+        if (draft?.status !== 'draft') throw new Error('Expected the draft.');
+        const previous = server.versions.find(
+          (version) => version.status === 'official',
+        );
+        if (previous) {
+          previous.status = 'superseded';
+          previous.supersededAt = at(minute);
+          previous.supersededByVersionNumber = draft.number;
+        }
+        draft.status = 'official';
+        draft.designatedAt = at(minute);
+        draft.frozen = { title: server.title, purpose };
+        server.workingRevision += 1;
+        return route.fulfill({
+          json: receipt(draft, {
+            action: 'designated_official',
+            supersededVersionNumber: previous?.number ?? null,
+          }),
+        });
+      }
+      const source = server.versions.find(
+        (version) => version.status === 'official',
+      );
+      if (!source) throw new Error('Expected the official Version.');
+      const drafted: StoredVersion = {
+        id: `version-${server.versions.length + 1}`,
+        number: server.versions.length + 1,
+        status: 'draft',
+        createdAt: at(minute),
+        url: source.url,
+      };
+      server.versions.push(drafted);
+      server.workingRevision += 1;
+      return route.fulfill({
+        status: 201,
+        json: receipt(drafted, {
+          action: 'drafted',
+          sourceVersionNumber: source.number,
+        }),
+      });
+    }
+    if (path === `/api/documents/${documentId}` && method === 'PATCH') {
+      const body: unknown = request.postDataJSON();
+      server.commands.push({ path, body });
+      const draft = server.versions.find(
+        (version) => version.status === 'draft',
+      );
+      if (!isCurrent(body) || !draft) return route.fulfill({ status: 409 });
+      if (typeof body === 'object' && body !== null) {
+        if ('title' in body && typeof body.title === 'string')
+          server.title = body.title;
+        if ('url' in body && typeof body.url === 'string') draft.url = body.url;
+      }
+      server.workingRevision += 1;
+      return route.fulfill({
+        json: {
+          documentId,
+          revision: server.workingRevision,
+          outcome: 'corrected',
+        },
+      });
+    }
+    if (path === `/api/documents/${documentId}`)
+      return route.fulfill({ json: detail() });
+    return route.fulfill({ status: 404 });
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?frame=prisme#documents');
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page
+    .getByLabel('Active Company', { exact: true })
+    .selectOption(company.id);
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  await page.getByLabel('Title', { exact: true }).fill(firstTitle);
+  await page.getByLabel('Purpose', { exact: true }).fill(purpose);
+  await page.getByLabel('External HTTPS link').fill(firstUrl);
+  await page
+    .getByRole('button', { name: 'Register working reference' })
+    .click();
+  await expect(page.getByRole('heading', { name: firstTitle })).toBeVisible();
+
+  // 1. The Approver designates Version 1 from the keyboard.
+  const versions = page.getByRole('region', { name: 'Versions' });
+  const rows = versions
+    .getByRole('list', { name: 'Document Versions, newest first' })
+    .getByRole('listitem');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Version 1');
+  await expect(rows.first()).toContainText('Draft');
+  await versions
+    .getByRole('link', { name: 'Open Version 1 reference' })
+    .focus();
+  await page.keyboard.press('Tab');
+  const designate = versions.getByRole('button', {
+    name: 'Designate as official',
+  });
+  await expect(designate).toBeFocused();
+  expect(
+    await designate.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  await page.keyboard.press('Enter');
+  await expect(
+    versions.getByRole('group', {
+      name: 'Designate Version 1 as the official Version? No Version will be superseded.',
+    }),
+  ).toBeVisible();
+  await expect(
+    versions.getByRole('button', { name: 'Confirm official designation' }),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(versions.getByRole('status')).toHaveText(
+    'Version 1 is now official.',
+  );
+  await expect(
+    page.getByText('Official questionnaire · Company-confidential'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Edit reference' }),
+  ).toHaveCount(0);
+  await expect(rows.first()).toContainText(
+    'The recorded reference and title of this official Version are frozen.',
+  );
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await versions.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('document-versions-official.png'),
+    fullPage: true,
+  });
+
+  // 2. The registrar starts Version 2 and corrects its title and URL.
+  await versions.getByRole('button', { name: 'Start new draft' }).click();
+  await expect(versions.getByRole('status')).toHaveText(
+    'Version 2 was started as a draft.',
+  );
+  await expect(
+    page.getByText('Draft questionnaire · Company-confidential'),
+  ).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  await page.getByRole('button', { name: 'Edit reference' }).click();
+  await page.getByLabel('Title', { exact: true }).fill(secondTitle);
+  await page.getByLabel('External HTTPS link').fill(secondUrl);
+  await page.getByRole('button', { name: 'Save correction' }).click();
+  await expect(page.getByRole('heading', { name: secondTitle })).toBeVisible();
+
+  // 3. The Approver designates Version 2; Version 1 stays readable, superseded.
+  await versions.getByRole('button', { name: 'Designate as official' }).click();
+  await expect(
+    versions.getByRole('group', {
+      name: 'Designate Version 2 as the official Version? Version 1 will become superseded.',
+    }),
+  ).toBeVisible();
+  await versions
+    .getByRole('button', { name: 'Confirm official designation' })
+    .click();
+  await expect(versions.getByRole('status')).toHaveText(
+    'Version 2 is now official.',
+  );
+  await expect(rows.nth(1)).toContainText('Superseded');
+  await expect(rows.nth(1)).toContainText('Superseded by Version 2');
+  await expect(rows.nth(1)).toContainText(firstTitle);
+  await expect(
+    rows.nth(1).getByRole('link', { name: 'Open Version 1 reference' }),
+  ).toHaveAttribute('href', firstUrl);
+  await expect(rows.first()).toContainText('Official');
+  await expect(rows.first()).toContainText(secondTitle);
+  const secondLink = rows
+    .first()
+    .getByRole('link', { name: 'Open Version 2 reference' });
+  await expect(secondLink).toHaveAttribute('href', secondUrl);
+  await expect(secondLink).toHaveAttribute('target', '_blank');
+  await expect(secondLink).toHaveAttribute('rel', 'noopener noreferrer');
+  expect(server.commands.map((command) => command.body)).toEqual([
+    { expectedRevision: 1 },
+    { expectedRevision: 2 },
+    { expectedRevision: 3, title: secondTitle, purpose, url: secondUrl },
+    { expectedRevision: 4 },
+  ]);
+  expect(
+    await page.evaluate(
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await versions.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('document-versions-superseded.png'),
     fullPage: true,
   });
 });

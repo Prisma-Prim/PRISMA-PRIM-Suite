@@ -143,6 +143,14 @@ _Avoid_: Agreement draft when no Contract entity exists, Accepted Offer
 **Contract Version**:
 An immutable revision of a Contract with its own checks, approval state, and generated files.
 
+**Precontract**:
+A Contract of the precontract kind that records the bounded preliminary work, financial conditions, term and limits agreed before the main Contract.
+_Avoid_: draft Contract Version, preliminary Offer
+
+**Addendum**:
+A separate Contract of the addendum kind that records a later change to an executed Contract or Precontract without editing it.
+_Avoid_: amended Contract Version, edited Contract
+
 **Project**:
 A Company-owned operational record for a Client Account. Project–Contract linkage and
 pre-contract behavior are owned by the Project and Task PRD, not by this glossary.
@@ -157,6 +165,10 @@ _Avoid_: File when lifecycle and governance are meant
 **Approved Document**:
 A specific Document Version authorized for operational use and eligible for knowledge indexing.
 _Avoid_: Uploaded document, trusted by default
+
+**Official Document Version**:
+The single Document Version currently designated by an authorized approver as the Document's official content; it is frozen, and only a later designation supersedes it.
+_Avoid_: Approved Document when knowledge-indexing eligibility is meant; final, signed or sent version
 
 **Knowledge Chunk**:
 A located fragment of an Approved Document retained with its document version and indexing metadata.

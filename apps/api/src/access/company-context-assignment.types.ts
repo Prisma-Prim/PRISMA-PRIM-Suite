@@ -3,6 +3,7 @@ import type {
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
@@ -16,6 +17,7 @@ import type {
   CompanyCommercialIntakePermissionSetVersion,
   CompanyDirectorClientPermissionSetVersion,
   CompanyProjectPermissionSetVersion,
+  DocumentPermissionSetVersion,
 } from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
@@ -25,6 +27,7 @@ export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
   | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
   | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
+  | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
   | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
   | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
   | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
@@ -43,7 +46,8 @@ export type CompanyContextAssignmentRecord =
   | (CompanyContextAssignmentRecordBase & {
       bundle:
         | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
-        | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL;
+        | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
+        | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     })
   | (CompanyContextAssignmentRecordBase & {
@@ -52,7 +56,7 @@ export type CompanyContextAssignmentRecord =
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL;
-      permissionSetVersion: 'v1' | 'v2';
+      permissionSetVersion: DocumentPermissionSetVersion;
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL;

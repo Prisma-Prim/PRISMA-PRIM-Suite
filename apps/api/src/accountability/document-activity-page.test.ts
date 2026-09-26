@@ -56,6 +56,8 @@ it('merges Document and ordinary events into one newest-first dated page', async
         ]);
       else if (query.text.includes('from "document_correction_commands"'))
         rows = [];
+      else if (query.text.includes('from "document_version_commands"'))
+        rows = [];
       else if (query.text.includes('from "client_union_projections"'))
         rows = [];
       else throw new Error('Unexpected event family query');

@@ -16,6 +16,8 @@ import {
 } from '../database/postgres-rest-test-harness.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentReadBoundary } from './document-read-boundary.js';
+import { DocumentVersionsService } from './document-versions.service.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const owner = {
@@ -562,12 +564,19 @@ describe.skipIf(!databaseUrl)(
       const authorization = new CompanyContextAuthorization(context);
       const clients = new ClientOperationalReferenceService(context);
       const accountability = new AccountabilityService(context);
+      const boundary = new DocumentReadBoundary(
+        authorization,
+        context,
+        clients,
+      );
       const documents = new DocumentsService(
         authorization,
         context,
         clients,
         accountability,
         new ProjectService(context, authorization, clients, accountability),
+        boundary,
+        new DocumentVersionsService(authorization, context, clients, boundary),
       );
       const result = await documents.correctionHistory(metadataReader, {
         documentId,
