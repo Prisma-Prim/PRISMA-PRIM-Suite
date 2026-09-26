@@ -1,5 +1,5 @@
 {
-  "id": "3cc249b5-8205-462a-a7f5-d89dc75ff184",
+  "id": "f46f0568-473d-40ba-b532-5df043460e6b",
   "prevId": "181a5bd8-1415-44cf-b505-512233c5b0c8",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_opportunity_manager') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_opportunity_manager')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -6766,34 +6766,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "commercial_intake_events_responsible_version_unique": {
-          "name": "commercial_intake_events_responsible_version_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "opportunity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "(\"metadata\" ->> 'opportunityVersion')",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"commercial_intake_events\".\"action\" = 'opportunity.responsible.changed'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -6857,7 +6829,7 @@
       "checkConstraints": {
         "commercial_intake_events_action_metadata_check": {
           "name": "commercial_intake_events_action_metadata_check",
-          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n        OR\n        ((\"commercial_intake_events\".\"action\" = 'opportunity.responsible.changed'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{before,workspaceMembershipId}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{before,displayLabel}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{after,workspaceMembershipId}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{after,displayLabel}') = 'string'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object(\n            'opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer,\n            'before', jsonb_build_object(\n              'workspaceMembershipId', \"commercial_intake_events\".\"metadata\" #>> '{before,workspaceMembershipId}',\n              'displayLabel', \"commercial_intake_events\".\"metadata\" #>> '{before,displayLabel}'),\n            'after', jsonb_build_object(\n              'workspaceMembershipId', \"commercial_intake_events\".\"metadata\" #>> '{after,workspaceMembershipId}',\n              'displayLabel', \"commercial_intake_events\".\"metadata\" #>> '{after,displayLabel}'))\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2\n          AND length(btrim(\"commercial_intake_events\".\"metadata\" #>> '{before,displayLabel}')) > 0\n          AND length(btrim(\"commercial_intake_events\".\"metadata\" #>> '{after,displayLabel}')) > 0\n          AND \"commercial_intake_events\".\"metadata\" #>> '{before,workspaceMembershipId}'\n            <> \"commercial_intake_events\".\"metadata\" #>> '{after,workspaceMembershipId}') IS TRUE)\n      )"
+          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -7049,208 +7021,6 @@
         "commercial_intake_next_action_commands_next_action_check": {
           "name": "commercial_intake_next_action_commands_next_action_check",
           "value": "length(\"commercial_intake_next_action_commands\".\"next_action\") BETWEEN 1 AND 500 AND length(btrim(\"commercial_intake_next_action_commands\".\"next_action\")) > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.commercial_intake_responsible_commands": {
-      "name": "commercial_intake_responsible_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opportunity_id": {
-          "name": "opportunity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_version": {
-          "name": "expected_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_version": {
-          "name": "result_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "responsible_workspace_membership_id": {
-          "name": "responsible_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "commercial_intake_responsible_commands_actor_key_unique": {
-          "name": "commercial_intake_responsible_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_workspace_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "commercial_intake_responsible_commands_version_unique": {
-          "name": "commercial_intake_responsible_commands_version_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "opportunity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "result_version",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"commercial_intake_responsible_commands\".\"outcome\" = 'updated'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "commercial_intake_responsible_commands_actor_fk": {
-          "name": "commercial_intake_responsible_commands_actor_fk",
-          "tableFrom": "commercial_intake_responsible_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_responsible_commands_opportunity_fk": {
-          "name": "commercial_intake_responsible_commands_opportunity_fk",
-          "tableFrom": "commercial_intake_responsible_commands",
-          "tableTo": "opportunities",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "opportunity_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_responsible_commands_responsible_fk": {
-          "name": "commercial_intake_responsible_commands_responsible_fk",
-          "tableFrom": "commercial_intake_responsible_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "responsible_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "commercial_intake_responsible_commands_outcome_check": {
-          "name": "commercial_intake_responsible_commands_outcome_check",
-          "value": "\"commercial_intake_responsible_commands\".\"expected_version\" >= 1 AND (\n        (\"commercial_intake_responsible_commands\".\"outcome\" = 'updated'\n          AND \"commercial_intake_responsible_commands\".\"result_version\" = (\"commercial_intake_responsible_commands\".\"expected_version\")::bigint + 1)\n        OR\n        (\"commercial_intake_responsible_commands\".\"outcome\" = 'unchanged'\n          AND \"commercial_intake_responsible_commands\".\"result_version\" = \"commercial_intake_responsible_commands\".\"expected_version\")\n      )"
         }
       },
       "isRLSEnabled": false
@@ -9518,10 +9288,10 @@
         "company_service_catalogue_assignment.revoked",
         "company_pricing_configuration_assignment.granted",
         "company_pricing_configuration_assignment.revoked",
+        "company_pricing_user_assignment.granted",
+        "company_pricing_user_assignment.revoked",
         "company_commercial_activity_reader_assignment.granted",
         "company_commercial_activity_reader_assignment.revoked",
-        "company_opportunity_manager_assignment.granted",
-        "company_opportunity_manager_assignment.revoked",
         "client.created",
         "client_company_relationship.established",
         "client.corrected"
@@ -9578,8 +9348,8 @@
         "company_commercial_intake",
         "company_service_catalogue",
         "company_pricing_configuration",
-        "company_commercial_activity_reader",
-        "company_opportunity_manager"
+        "company_pricing_user",
+        "company_commercial_activity_reader"
       ]
     },
     "public.company_status": {

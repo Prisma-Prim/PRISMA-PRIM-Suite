@@ -45,6 +45,14 @@ export interface ActorContext {
     >;
     pricingConfigurationPermissionAssignmentId?: string;
     pricingConfigurationPermissionSetVersion?: 'v1';
+    pricingUserPermissions?: Array<
+      | 'commercial.offering.read'
+      | 'commercial.pricing.configuration.read'
+      | 'commercial.pricing.calculate'
+      | 'commercial.pricing.snapshot.read'
+    >;
+    pricingUserPermissionAssignmentId?: string;
+    pricingUserPermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
     opportunityManagerPermissions?: Array<'commercial.opportunity.assign'>;

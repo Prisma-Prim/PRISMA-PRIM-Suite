@@ -32,6 +32,7 @@ type AssignmentBundle =
   | 'commercial-intake'
   | 'service-catalogue'
   | 'pricing-configuration'
+  | 'pricing-user'
   | 'commercial-activity-reader'
   | 'opportunity-manager'
   | 'project';
@@ -47,6 +48,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'commercial-intake': '/company-commercial-intake-assignments',
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
+  'pricing-user': '/company-pricing-user-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   'opportunity-manager': '/company-opportunity-manager-assignments',
@@ -464,6 +466,7 @@ export function CompanyContextAccess({
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
+                value === 'pricing-user' ||
                 value === 'commercial-activity-reader' ||
                 value === 'opportunity-manager' ||
                 value === 'company-context' ||
@@ -485,6 +488,7 @@ export function CompanyContextAccess({
             <option value="pricing-configuration">
               {copy.pricingConfigurationBundle}
             </option>
+            <option value="pricing-user">{copy.pricingUserBundle}</option>
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
             </option>
@@ -509,6 +513,7 @@ export function CompanyContextAccess({
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
           )}
+          {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
           {bundle === 'opportunity-manager' && (
             <p>{copy.opportunityManagerPrerequisites}</p>
           )}
@@ -591,6 +596,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'commercial-intake': copy.commercialIntakeBundle,
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
+    'pricing-user': copy.pricingUserBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,
     'task-manager': copy.taskManagerBundle,

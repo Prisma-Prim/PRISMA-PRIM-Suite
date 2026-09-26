@@ -425,6 +425,8 @@ describe('App', () => {
         'granted Company Commercial Activity Reader',
       'company_commercial_activity_reader_assignment.revoked':
         'revoked Company Commercial Activity Reader',
+      'company_pricing_user_assignment.granted': 'granted Company Pricing User',
+      'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
       'company_opportunity_manager_assignment.granted':
         'granted Company Opportunity Manager',
       'company_opportunity_manager_assignment.revoked':
