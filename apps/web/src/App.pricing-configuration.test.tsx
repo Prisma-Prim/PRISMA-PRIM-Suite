@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { pricingConfigurationCopy } from './pricing-configuration/pricing-configuration.copy';
+import { tariffVersionCopy } from './pricing-configuration/tariff-version.copy';
 
 const company = {
   id: 'company-1',
@@ -28,6 +29,7 @@ const actor: ActorContext = {
   workspacePermissions: [],
   activeCompany: company,
 };
+const OFFERING_ID = '10000000-0000-4000-8000-00000000000a';
 const catalogueOnly: ActorContext = {
   ...actor,
   activeCompany: {
@@ -61,6 +63,34 @@ function serve(current: ActorContext) {
           provisional: true,
         });
       if (path === '/api/pricing-configuration/rule-versions')
+        return Response.json({ items: [], provisional: true });
+      if (path === '/api/commercial-catalogue/offerings')
+        return Response.json({
+          items: [
+            {
+              id: OFFERING_ID,
+              serviceDefinition: {
+                code: 'SERVICE-A',
+                name: 'Illustrative service A',
+              },
+              commercialLabel: null,
+            },
+          ],
+        });
+      if (
+        path ===
+        `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-scope`
+      )
+        return Response.json({
+          offeringId: OFFERING_ID,
+          current: null,
+          headVersionNumber: null,
+          provisional: true,
+        });
+      if (
+        path ===
+        `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-versions`
+      )
         return Response.json({ items: [], provisional: true });
       return Response.json([]);
     }),
@@ -115,6 +145,25 @@ it('offers the configuration screen in both frames to a configuration reader', a
     await within(prisme).findByText(pricingConfigurationCopy.noCurrent),
   ).toBeVisible();
   expect(paths).toContain('/api/pricing-configuration/rule-scope');
+  // The Tariff panel sits beside the Pricing Rule screen, separate from it.
+  const tariffs = within(prisme.parentElement ?? document.body).getByRole(
+    'region',
+    { name: tariffVersionCopy.title },
+  );
+  expect(prisme).not.toContainElement(tariffs);
+  expect(
+    await within(tariffs).findByText(tariffVersionCopy.illustrativeMarker),
+  ).toBeVisible();
+  fireEvent.change(
+    await within(tariffs).findByLabelText(tariffVersionCopy.offering),
+    { target: { value: OFFERING_ID } },
+  );
+  expect(
+    await within(tariffs).findByText(tariffVersionCopy.noCurrent),
+  ).toBeVisible();
+  expect(paths).toContain(
+    `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-scope`,
+  );
   view.unmount();
 
   window.history.replaceState(null, '', '/?frame=classic');
@@ -126,6 +175,11 @@ it('offers the configuration screen in both frames to a configuration reader', a
     await within(classic).findByText(
       pricingConfigurationCopy.illustrativeMarker,
     ),
+  ).toBeInTheDocument();
+  expect(
+    await within(
+      await screen.findByRole('region', { name: tariffVersionCopy.title }),
+    ).findByText(tariffVersionCopy.illustrativeMarker),
   ).toBeInTheDocument();
 });
 
@@ -146,4 +200,8 @@ it('offers no configuration screen to a Catalogue-only member', async () => {
     screen.queryByRole('region', { name: 'Pricing Configuration' }),
   ).not.toBeInTheDocument();
   expect(paths).not.toContain('/api/pricing-configuration/rule-scope');
+  expect(
+    screen.queryByRole('region', { name: tariffVersionCopy.title }),
+  ).not.toBeInTheDocument();
+  expect(paths.filter((path) => path.includes('/tariff-'))).toEqual([]);
 });

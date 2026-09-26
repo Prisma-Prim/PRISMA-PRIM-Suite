@@ -817,3 +817,57 @@ test('records and corrects additional legal entities while an open dossier draft
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await captureDossier(page, testInfo, 'legal-entities-classic.png');
 });
+
+test('opens a fresh dossier correction with current fields after an entity mutation', async ({
+  page,
+}, testInfo) => {
+  const state = await installDossierFixture(page);
+  await openDossier(page);
+  const section = page.getByRole('region', {
+    name: 'Legal entities and branches',
+    exact: true,
+  });
+  await section
+    .getByRole('button', { name: 'Add legal entity or branch' })
+    .click();
+  const form = section.getByRole('form', {
+    name: 'Add a legal entity or branch',
+  });
+  await form.getByLabel('Exact legal name').fill('Demo Logistic SRL');
+  await form.getByRole('button', { name: 'Save legal entity' }).click();
+  await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
+  state.dossier = {
+    ...state.dossier,
+    address: 'Current shared address',
+    version: 3,
+  };
+  await correctionTrigger(page).click();
+  await expect(
+    correctionForm(page).getByLabel('Address', { exact: true }),
+  ).toHaveValue('Current shared address');
+  await expect(
+    correctionForm(page).getByLabel('Client display name'),
+  ).toBeFocused();
+  await correctionForm(page)
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 60 999 000');
+  state.patch = (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      expectedVersion: 3,
+      address: 'Current shared address',
+      telephone: '+373 60 999 000',
+    });
+    state.dossier = {
+      ...state.dossier,
+      telephone: '+373 60 999 000',
+      version: 4,
+    };
+    return route.fulfill({ json: state.dossier });
+  };
+  await correctionForm(page)
+    .getByRole('button', { name: 'Save correction' })
+    .click();
+  await expect(page.getByText('Version 4', { exact: true })).toBeVisible();
+  expect(state.dossierReads).toBe(2);
+  await captureDossier(page, testInfo, 'legal-entities-fresh-correction.png');
+});

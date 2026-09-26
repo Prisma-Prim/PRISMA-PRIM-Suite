@@ -30,6 +30,7 @@ import {
   commercialIntakeEvents,
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
+  type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import {
@@ -283,6 +284,39 @@ export class AccountabilityService {
           pricingRuleVersionId: input.pricingRuleVersionId,
           versionNumber: input.versionNumber,
           provenance: PRICING_PROVENANCE,
+        },
+      });
+  }
+
+  // Recorded but projected by no Activity read surface. Metadata carries
+  // identifiers, the version number, provenance and the currency only, never
+  // an amount, rate, unit or label; the caller commits it with the
+  // publication itself.
+  async recordTariffVersionPublished(input: {
+    actor: ActorContext;
+    companyId: string;
+    tariffVersionId: string;
+    offeringId: string;
+    versionNumber: number;
+    currency: TariffCurrency;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(pricingConfigurationEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'tariff_version.published',
+        tariffVersionId: input.tariffVersionId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          tariffVersionId: input.tariffVersionId,
+          offeringId: input.offeringId,
+          versionNumber: input.versionNumber,
+          provenance: PRICING_PROVENANCE,
+          currency: input.currency,
         },
       });
   }

@@ -99,18 +99,25 @@ type Route = (
 function renderDossier({
   entities = [],
   route = () => undefined,
+  dossierRoute = () => undefined,
   presentation = 'prisme',
   canUpdate = true,
   clientAccountId = dossier.id,
 }: {
   entities?: Entity[];
   route?: Route;
+  dossierRoute?: Route;
   presentation?: Presentation;
   canUpdate?: boolean;
   clientAccountId?: string;
 } = {}) {
-  const server = { version: dossier.version, entities: [...entities] };
+  const server = {
+    version: dossier.version,
+    address: dossier.address,
+    entities: [...entities],
+  };
   const requests: EntityRequest[] = [];
+  const dossierRequests: EntityRequest[] = [];
   const dossierCorrections: Record<string, unknown>[] = [];
   const activity = vi.fn(async () => undefined);
   vi.stubGlobal(
@@ -140,6 +147,20 @@ function renderDossier({
         if (answered) return answered;
         return serve(request);
       }
+      if (path.endsWith('/clients/client-one')) {
+        const request: EntityRequest = {
+          method,
+          path,
+          key: new Headers(init?.headers).get('idempotency-key'),
+          body:
+            init?.body === undefined
+              ? undefined
+              : record(JSON.parse(String(init.body))),
+        };
+        dossierRequests.push(request);
+        const answered = await dossierRoute(request);
+        if (answered) return answered;
+      }
       if (path.endsWith('/clients/client-one') && method === 'PATCH') {
         const body = record(JSON.parse(String(init?.body)));
         dossierCorrections.push(body);
@@ -156,7 +177,11 @@ function renderDossier({
         return respond({ ...dossier, ...body, version: server.version });
       }
       if (path.endsWith('/clients/client-one'))
-        return respond({ ...dossier, version: server.version });
+        return respond({
+          ...dossier,
+          address: server.address,
+          version: server.version,
+        });
       if (path.endsWith('/clients/client-two'))
         return respond({
           ...dossier,
@@ -220,7 +245,14 @@ function renderDossier({
       />
     </ApplicationPresentation>,
   );
-  return { server, requests, dossierCorrections, activity, view };
+  return {
+    server,
+    requests,
+    dossierRequests,
+    dossierCorrections,
+    activity,
+    view,
+  };
 }
 
 async function section() {
@@ -373,6 +405,136 @@ describe('Client legal entities and branches', () => {
         }),
       ).not.toBeInTheDocument();
       expect(within(region).queryByText(/\d/u)).not.toBeInTheDocument();
+    },
+  );
+
+  it('loads coherent current fields and version when opening a new correction after an entity change', async () => {
+    const { server, dossierCorrections } = renderDossier();
+    const form = await openAdd();
+    fill(form, { 'Exact legal name': branch.legalName });
+    save(form);
+    await screen.findByText('Version 4');
+    // A later shared-field correction must not be overwritten by the old draft.
+    server.address = 'Current shared address';
+    server.version = 5;
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Correct Client dossier' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Address')).toHaveValue(
+        'Current shared address',
+      ),
+    );
+    const correction = screen.getByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correction).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 393' },
+    });
+    fireEvent.click(
+      within(correction).getByRole('button', { name: 'Save correction' }),
+    );
+    await waitFor(() =>
+      expect(dossierCorrections).toEqual([
+        expect.objectContaining({
+          expectedVersion: 5,
+          address: 'Current shared address',
+          telephone: '+373 22 000 393',
+        }),
+      ]),
+    );
+    expect(await screen.findByText('Version 6')).toBeVisible();
+  });
+
+  it.each([403, 404, 503])(
+    'does not expose or submit a fresh draft when its required refresh returns %s',
+    async (status) => {
+      let reads = 0;
+      const { dossierRequests } = renderDossier({
+        dossierRoute: (request) => {
+          if (request.method === 'GET' && ++reads > 1)
+            return respond({ statusCode: status }, status);
+          return undefined;
+        },
+      });
+      const form = await openAdd();
+      fill(form, { 'Exact legal name': branch.legalName });
+      save(form);
+      await screen.findByText('Version 4');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Correct Client dossier' }),
+      );
+      await screen.findByRole('alert');
+      expect(
+        screen.queryByRole('form', { name: 'Correct Client dossier' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(dossier.address)).not.toBeInTheDocument();
+      expect(
+        dossierRequests.filter((request) => request.method === 'PATCH'),
+      ).toEqual([]);
+      expect(reads).toBe(2);
+    },
+  );
+
+  it.each([false, true])(
+    'preserves a closed edited dossier draft and uncertain retry=%s through entity changes',
+    async (uncertain) => {
+      const { dossierRequests } = renderDossier({
+        dossierRoute: (request) =>
+          uncertain && request.method === 'PATCH'
+            ? respond({}, 503)
+            : undefined,
+      });
+      await screen.findByText('Version 3');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Correct Client dossier' }),
+      );
+      const correction = screen.getByRole('form', {
+        name: 'Correct Client dossier',
+      });
+      fireEvent.change(within(correction).getByLabelText('Telephone'), {
+        target: { value: '+373 22 000 393' },
+      });
+      if (uncertain) {
+        fireEvent.click(
+          within(correction).getByRole('button', { name: 'Save correction' }),
+        );
+        await screen.findByRole('alert');
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Close correction' }));
+      const form = await openAdd();
+      fill(form, { 'Exact legal name': branch.legalName });
+      save(form);
+      await screen.findByText('Version 4');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Correct Client dossier' }),
+      );
+      expect(within(correction).getByLabelText('Telephone')).toHaveValue(
+        '+373 22 000 393',
+      );
+      fireEvent.click(
+        within(correction).getByRole('button', { name: 'Save correction' }),
+      );
+      await waitFor(() =>
+        expect(
+          dossierRequests.filter((request) => request.method === 'PATCH'),
+        ).toHaveLength(uncertain ? 2 : 1),
+      );
+      const commands = dossierRequests.filter(
+        (request) => request.method === 'PATCH',
+      );
+      expect(commands[0]?.body).toMatchObject({
+        expectedVersion: 3,
+        telephone: '+373 22 000 393',
+      });
+      if (uncertain) expect(commands[1]).toEqual(commands[0]);
+      else
+        expect(
+          await screen.findByText(/changed before your correction was saved/iu),
+        ).toBeVisible();
+      expect(
+        dossierRequests.filter((request) => request.method === 'GET'),
+      ).toHaveLength(1);
     },
   );
 

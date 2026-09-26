@@ -108,12 +108,12 @@ export function ClientDossierPanel({
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const correctionTrigger = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (correctionOpen) nameInput.current?.focus();
-  }, [correctionOpen]);
   const [dossierState, setDossierState] = useState<DossierState>({
     status: 'idle',
   });
+  useEffect(() => {
+    if (correctionOpen) nameInput.current?.focus();
+  }, [correctionOpen, dossierState.status]);
   const [correctionState, setCorrectionState] = useState<CorrectionState>({
     status: 'idle',
   });
@@ -121,6 +121,7 @@ export function ClientDossierPanel({
   // A confirmed legal-entity change refreshes the displayed version only; the
   // correction draft keeps the version it observed.
   const [confirmedVersion, setConfirmedVersion] = useState(0);
+  const draftEdited = useRef(false);
   const correctionRetryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingDossier = useRef<AbortController | undefined>(undefined);
   const pendingCorrection = useRef<AbortController | undefined>(undefined);
@@ -170,6 +171,7 @@ export function ClientDossierPanel({
             setDossierState({ status: 'error' });
             return;
           }
+          draftEdited.current = false;
           setDraft(draftFrom(result.value));
           setDossierState({ status: 'ready', dossier: result.value });
         },
@@ -185,6 +187,7 @@ export function ClientDossierPanel({
     correctionRetryCommand.current = undefined;
     setCorrectionState({ status: 'idle' });
     setCorrectionOpen(false);
+    draftEdited.current = false;
     setDraft(emptyDraft());
     setConfirmedVersion(0);
     if (!clientAccountId) {
@@ -297,6 +300,7 @@ export function ClientDossierPanel({
           return;
         }
         correctionRetryCommand.current = undefined;
+        draftEdited.current = false;
         setDraft(draftFrom(result.value));
         setDossierState({ status: 'ready', dossier: result.value });
         setCorrectionState({ status: 'success' });
@@ -409,7 +413,19 @@ export function ClientDossierPanel({
             ref={correctionTrigger}
             aria-expanded={correctionOpen}
             aria-controls="client-correction"
-            onClick={() => setCorrectionOpen((open) => !open)}
+            onClick={() => {
+              if (
+                !correctionOpen &&
+                !draftEdited.current &&
+                !correctionRetryCommand.current &&
+                confirmedVersion > dossier.version
+              ) {
+                // A new draft must observe fields and their version together.
+                // Edited or uncertain commands retain their original observation.
+                void loadDossier(dossier.id);
+              }
+              setCorrectionOpen((open) => !open);
+            }}
           >
             {copy.correctionFormLabel}
           </button>
@@ -561,7 +577,10 @@ export function ClientDossierPanel({
                 : undefined
             }
             nameInput={nameInput}
-            onDraftChange={setDraft}
+            onDraftChange={(nextDraft) => {
+              draftEdited.current = true;
+              setDraft(nextDraft);
+            }}
             onSubmit={correctDossier}
           />
         </div>
