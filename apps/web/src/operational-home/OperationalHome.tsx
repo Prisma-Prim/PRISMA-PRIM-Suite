@@ -10,6 +10,7 @@ import {
   type OperationalHomeView,
 } from './operational-home-response';
 import { operationalHomeCopy as copy } from './operational-home.copy';
+import { MyAttention } from './MyAttention';
 import { OverdueTasksPanel } from './OverdueTasksPanel';
 import './operational-home.css';
 
@@ -25,6 +26,7 @@ type Props = {
   onRevalidateAuthority: () => Promise<void>;
   onOpenClients: () => void;
   onOpenProjects: () => void;
+  onOpenMyTasks: () => void;
   /** Opens an overdue Task in its Project; rows offer Open only when supplied. */
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
 };
@@ -53,6 +55,7 @@ export function OperationalHome({
   onRevalidateAuthority,
   onOpenClients,
   onOpenProjects,
+  onOpenMyTasks,
   onOpenTask,
 }: Props) {
   const titleId = useId();
@@ -82,7 +85,10 @@ export function OperationalHome({
         else if (result.status !== 'ok') setLoad({ kind: 'error' });
         else {
           const view = readOperationalHome(result.value, company.id);
-          if (view.summaries.some(({ kind }) => !availableSummaries[kind])) {
+          if (
+            view.summaries.some(({ kind }) => !availableSummaries[kind]) ||
+            (view.attention !== undefined && !availableSummaries.overdue_tasks)
+          ) {
             // A newly granted read must mount its destination before a card
             // can expose it. Changed authority remounts this region and reads
             // again; an unchanged or failed refresh exposes no stale links.
@@ -138,9 +144,23 @@ export function OperationalHome({
     }
   }
 
-  if (load.kind === 'ready' && load.view.summaries.length === 0) return null;
+  if (
+    load.kind === 'ready' &&
+    load.view.summaries.length === 0 &&
+    load.view.attention === undefined
+  )
+    return null;
   return (
     <section className="operational-home" aria-labelledby={titleId}>
+      {load.kind === 'ready' && load.view.attention !== undefined && (
+        <MyAttention
+          attention={load.view.attention}
+          company={company}
+          today={load.view.today}
+          onOpenTask={onOpenTask}
+          onOpenMyTasks={onOpenMyTasks}
+        />
+      )}
       <header className="operational-home-heading">
         <div>
           <h2 id={titleId}>{copy.title}</h2>

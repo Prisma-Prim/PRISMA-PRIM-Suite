@@ -13,10 +13,27 @@ export const companySummaryKinds = [
 ] as const;
 export type CompanySummaryKind = (typeof companySummaryKinds)[number];
 export type CompanySummary = { kind: CompanySummaryKind; count: number };
+export const attentionRules = [
+  'overdue',
+  'critical',
+  'blocked',
+  'due_soon',
+] as const;
+export type AttentionRule = (typeof attentionRules)[number];
+export type AttentionTask = Extract<TaskView, { status: OpenTaskState }> & {
+  project: { id: string; title: string; clientDisplayName: string };
+  rules: AttentionRule[];
+  dueInDays: number | null;
+};
+export type MyAttention = {
+  matchingCount: number;
+  tasks: AttentionTask[];
+};
 export type OperationalHomeView = {
   companyId: string;
   today: string;
   summaries: CompanySummary[];
+  attention?: MyAttention;
 };
 export type OverdueTask = Extract<TaskView, { status: OpenTaskState }> & {
   dueDate: string;
@@ -32,6 +49,8 @@ export type CompanyOverdueTasks = {
 
 /** The overdue list's server bound (Operational Dashboard PRD §17.2). */
 const OVERDUE_TASK_ROW_LIMIT = 100;
+/** The My attention bound of Operational Dashboard PRD §17.3. */
+const ATTENTION_TASK_ROW_LIMIT = 10;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -90,11 +109,88 @@ export function readOperationalHome(
     previous = position;
     return { kind: entry.kind, count: count(entry.count) };
   });
-  return {
+  const result: OperationalHomeView = {
     companyId: company(row.companyId, companyId),
     today: today(row.today),
     summaries,
   };
+  if (row.attention !== undefined)
+    result.attention = readAttention(row.attention, companyId, result.today);
+  return result;
+}
+
+function readAttention(
+  value: unknown,
+  companyId: string,
+  operationalToday: string,
+): MyAttention {
+  const row = record(value);
+  const matchingCount = count(row.matchingCount);
+  if (
+    !Array.isArray(row.tasks) ||
+    row.tasks.length > ATTENTION_TASK_ROW_LIMIT ||
+    row.tasks.length > matchingCount
+  )
+    throw new Error('Invalid attention Tasks');
+  return {
+    matchingCount,
+    tasks: row.tasks.map((item: unknown) =>
+      readAttentionTask(item, companyId, operationalToday),
+    ),
+  };
+}
+
+function readAttentionTask(
+  value: unknown,
+  companyId: string,
+  operationalToday: string,
+): AttentionTask {
+  const entry = record(value);
+  const owner = record(entry.project);
+  const project = {
+    id: text(owner.id),
+    title: text(owner.title),
+    clientDisplayName: text(owner.clientDisplayName),
+  };
+  const task = readTask(entry, { companyId, projectId: project.id });
+  if (!Array.isArray(entry.rules))
+    throw new Error('Invalid attention Task rules');
+  const expectedRules: AttentionRule[] = [];
+  const dueInDays = task.dueDate
+    ? calendarDayDistance(operationalToday, task.dueDate)
+    : null;
+  if (dueInDays !== null && dueInDays < 0) expectedRules.push('overdue');
+  if (task.priority === 'critical') expectedRules.push('critical');
+  if (task.status === 'blocked') expectedRules.push('blocked');
+  if (dueInDays !== null && dueInDays >= 0 && dueInDays <= 7)
+    expectedRules.push('due_soon');
+  if (
+    entry.rules.length !== expectedRules.length ||
+    !entry.rules.every((rule, index) => rule === expectedRules[index])
+  )
+    throw new Error('Inconsistent attention Task rules');
+  if (entry.dueInDays !== dueInDays)
+    throw new Error('Inconsistent attention Task day count');
+  switch (task.status) {
+    case 'todo':
+    case 'in_progress':
+    case 'blocked':
+      return { ...task, project, rules: expectedRules, dueInDays };
+    case 'done':
+    case 'cancelled':
+      throw new Error('Invalid attention Task state');
+    default: {
+      const exhaustive: never = task;
+      return exhaustive;
+    }
+  }
+}
+
+function calendarDayDistance(from: string, to: string): number {
+  return (
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+    86_400_000
+  );
 }
 
 /** Validates the Company overdue-Task list once at the fetch boundary. */

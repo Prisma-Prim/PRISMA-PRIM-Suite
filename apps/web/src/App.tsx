@@ -81,7 +81,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestId: number;
   }>();
   const navigateToSection = useCallback(
-    (section: 'clients' | 'projects' | 'documents' | 'requests') => {
+    (
+      section: 'clients' | 'projects' | 'documents' | 'requests' | 'my-tasks',
+    ) => {
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
       window.history.pushState(window.history.state, '', nextUrl);
@@ -306,6 +308,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           setProjectClientFilter(undefined);
           navigateToSection('projects');
         }}
+        onOpenMyTasks={() => navigateToSection('my-tasks')}
         onOpenTask={openProject}
       />
     ) : null;

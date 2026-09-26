@@ -57,13 +57,21 @@ export class OperationalHomeService {
     };
     return this.database.transaction(
       async () => {
+        const attention = await whenPermitted(() =>
+          this.tasks.readAttention(actor, { today }),
+        );
         const summaries: CompanySummary[] = [];
         for (const kind of COMPANY_SUMMARY_KINDS) {
           const result = await whenPermitted(counts[kind]);
           if (result.permitted) summaries.push({ kind, count: result.value });
         }
         if (summaries.length === 0) throw new ForbiddenException();
-        return { companyId, today, summaries };
+        return {
+          companyId,
+          today,
+          summaries,
+          ...(attention.permitted ? { attention: attention.value } : {}),
+        };
       },
       { isolationLevel: 'repeatable read' },
     );

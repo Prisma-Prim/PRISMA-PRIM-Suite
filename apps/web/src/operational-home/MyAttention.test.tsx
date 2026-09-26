@@ -1,0 +1,161 @@
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
+import { MyAttention } from './MyAttention';
+import { operationalHomeCopy as copy } from './operational-home.copy';
+import { readOperationalHome } from './operational-home-response';
+
+const company = { id: 'company-a', displayName: 'PRISMA-PRIM' };
+const today = '2026-09-27';
+const project = {
+  id: 'project-iso',
+  title: 'ISO 9001 — GRUP Demo SA',
+  clientDisplayName: 'GRUP Demo SA',
+};
+const attribution = {
+  internalUserId: 'ana',
+  workspaceMembershipId: 'membership-ana',
+  displayName: 'Ana',
+};
+function task(
+  id: string,
+  title: string,
+  dueDate: string | null,
+  changes: Record<string, unknown>,
+) {
+  return {
+    id,
+    companyId: company.id,
+    projectId: project.id,
+    clientAccountId: 'client-grup',
+    title,
+    assignee: {
+      workspaceMembershipId: attribution.workspaceMembershipId,
+      displayLabel: 'Ana · 1',
+    },
+    dueDate,
+    priority: 'normal',
+    status: 'todo',
+    completion: null,
+    version: 1,
+    createdAt: '2026-09-19T09:00:00.000Z',
+    updatedAt: '2026-09-19T09:00:00.000Z',
+    createdBy: attribution,
+    project,
+    ...changes,
+  };
+}
+const tasks = [
+  task('collect', 'Collect procedures', '2026-09-20', {
+    rules: ['overdue'],
+    dueInDays: -7,
+  }),
+  task('approve', 'Approve audit plan', null, {
+    priority: 'critical',
+    rules: ['critical'],
+    dueInDays: null,
+  }),
+  task('signature', 'Obtain client signature', null, {
+    status: 'blocked',
+    blockage: {
+      reason: 'Waiting for the Client.',
+      actor: attribution,
+      occurredAt: '2026-09-24T10:00:00.000Z',
+    },
+    rules: ['blocked'],
+    dueInDays: null,
+  }),
+  task('audit', 'Plan internal audit', today, {
+    rules: ['due_soon'],
+    dueInDays: 0,
+  }),
+  task('invite', 'Send training invitations', '2026-10-02', {
+    rules: ['due_soon'],
+    dueInDays: 5,
+  }),
+];
+
+function attention(matchingCount = tasks.length) {
+  const view = readOperationalHome(
+    {
+      companyId: company.id,
+      today,
+      summaries: [],
+      attention: { matchingCount, tasks },
+    },
+    company.id,
+  );
+  if (!view.attention) throw new Error('Expected attention fixture.');
+  return view.attention;
+}
+
+it('shows every Task fact and rule, then opens the Task and My Tasks through existing intents', () => {
+  const onOpenTask = vi.fn();
+  const onOpenMyTasks = vi.fn();
+  render(
+    <MyAttention
+      attention={attention()}
+      company={company}
+      today={today}
+      onOpenTask={onOpenTask}
+      onOpenMyTasks={onOpenMyTasks}
+    />,
+  );
+  const region = screen.getByRole('region', { name: copy.attention.title });
+  const rows = within(region).getAllByRole('listitem');
+  expect(rows).toHaveLength(5);
+  expect(rows[0]).toHaveTextContent('Overdue by 7 days');
+  expect(rows[1]).toHaveTextContent('Critical');
+  expect(rows[1]).toHaveTextContent('No due date');
+  expect(rows[2]).toHaveTextContent('Blocked');
+  expect(rows[3]).toHaveTextContent('Due today');
+  expect(rows[3]).toHaveTextContent(today);
+  expect(rows[4]).toHaveTextContent('Due in 5 days');
+  for (const row of rows) {
+    expect(row).toHaveTextContent(project.title);
+    expect(row).toHaveTextContent(project.clientDisplayName);
+  }
+  fireEvent.click(
+    within(rows[2] ?? region).getByRole('button', {
+      name: copy.attention.openTask({
+        task: 'Obtain client signature',
+        project: project.title,
+        client: project.clientDisplayName,
+      }),
+    }),
+  );
+  expect(onOpenTask).toHaveBeenCalledWith({
+    projectId: project.id,
+    taskId: 'signature',
+  });
+  fireEvent.click(
+    within(region).getByRole('button', { name: copy.attention.seeAll }),
+  );
+  expect(onOpenMyTasks).toHaveBeenCalledOnce();
+});
+
+it('states the empty Company/date and the bounded total', () => {
+  const { rerender } = render(
+    <MyAttention
+      attention={{ matchingCount: 0, tasks: [] }}
+      company={company}
+      today={today}
+      onOpenMyTasks={() => undefined}
+    />,
+  );
+  expect(
+    screen.getByRole('region', { name: copy.attention.title }),
+  ).toHaveTextContent(
+    'Nothing needs your attention in PRISMA-PRIM on 2026-09-27.',
+  );
+  rerender(
+    <MyAttention
+      attention={attention(12)}
+      company={company}
+      today={today}
+      onOpenMyTasks={() => undefined}
+    />,
+  );
+  expect(
+    screen.getByRole('region', { name: copy.attention.title }),
+  ).toHaveTextContent('Showing 5 of 12 Tasks that need your attention.');
+});

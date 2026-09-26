@@ -211,7 +211,7 @@ My attention lists the reader's own open Tasks (the My Tasks set of Project/Task
 
 **Bound and links.** The block shows at most 10 rows and states how many Tasks match. It links to My Tasks, and each row opens its Task in its Project (#377).
 
-My Tasks keeps its own order and presentation. This deterministic ordering is the formula that session 28 delegates; it is not the AI-generated prioritization excluded by section 5. The Critical rule and the priority tie-break apply once manual Task priority is delivered. A follow-up slice delivers this block and records its issue here.
+My Tasks keeps its own order and presentation. This deterministic ordering is the formula that session 28 delegates; it is not the AI-generated prioritization excluded by section 5. This issue delivers this block.
 
 ### 17.4 Excluded
 
