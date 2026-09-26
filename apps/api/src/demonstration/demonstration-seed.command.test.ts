@@ -160,7 +160,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     if (!testDatabaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: testDatabaseUrl,
-      namePrefix: 'demonstration_seed_command',
+      namePrefix: 'demo_seed_command',
     });
     pool = database.targetPool;
   }, 60_000);
