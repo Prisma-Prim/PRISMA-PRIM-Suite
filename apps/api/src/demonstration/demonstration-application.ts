@@ -20,6 +20,7 @@ import { DATABASE } from '../database/database.constants.js';
 import { DemonstrationDatabaseContext } from './demonstration-database-context.js';
 import {
   DemonstrationPrincipalAdapter,
+  protectDemonstrationPersonaAdmission,
   type DemonstrationProviderAdapters,
   type DemonstrationSeedIdentity,
 } from './demonstration-identity.js';
@@ -102,18 +103,20 @@ export async function startDemonstrationApplication(
       .useValue(new DemonstrationDatabaseContext(database, input.bootstrap))
       .overrideProvider(ACCESS_ADMISSION)
       .useValue(
-        configuredAccessAdmission({
-          ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: input.bootstrap.provider,
-          ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: input.bootstrap.subject,
-          ACCESS_BOOTSTRAP_WORKSPACE_ID: input.bootstrap.workspaceId,
-          ACCESS_BOOTSTRAP_WORKSPACE_NAME: input.bootstrap.workspaceName,
-          ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
-            demonstrationPersonaAdmissions(
-              input.bootstrap.workspaceId,
-              input.scenario,
+        protectDemonstrationPersonaAdmission(
+          configuredAccessAdmission({
+            ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: input.bootstrap.provider,
+            ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: input.bootstrap.subject,
+            ACCESS_BOOTSTRAP_WORKSPACE_ID: input.bootstrap.workspaceId,
+            ACCESS_BOOTSTRAP_WORKSPACE_NAME: input.bootstrap.workspaceName,
+            ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify(
+              demonstrationPersonaAdmissions(
+                input.bootstrap.workspaceId,
+                input.scenario,
+              ),
             ),
-          ),
-        }),
+          }),
+        ),
       )
       // Existing seed principals retain their persisted profile. Actor status,
       // membership, grants and Company authorization are still resolved afresh

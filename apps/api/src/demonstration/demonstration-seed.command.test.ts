@@ -214,6 +214,64 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     await database?.close();
   });
 
+  it('refuses a markerless persisted persona before creating its Workspace Membership', async () => {
+    if (!testDatabaseUrl) throw new Error('TEST_DATABASE_URL is required.');
+    const isolated = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: testDatabaseUrl,
+      namePrefix: 'demo_seed_markerless',
+    });
+    try {
+      await migrate(drizzle({ client: isolated.targetPool }), {
+        migrationsFolder: './drizzle',
+      });
+      await isolated.targetPool.query(
+        `INSERT INTO internal_users
+           (external_provider, external_subject, display_name, email)
+         VALUES ('demo-seed', 'DEMO-persona-ana', 'Ana Popescu',
+                 'ana.demo@example.test')`,
+      );
+
+      const stopped = await seed(CONFIRMED, environment(isolated.targetUrl));
+
+      expect(stopped.result).toEqual({
+        exitCode: 3,
+        outcome: 'stopped',
+        providerCallAttempts: 0,
+      });
+      expect(stopped.lines.at(-1)).toEqual({
+        scenario: 'demo-v1',
+        result: 'stopped',
+        step: 'persona.ana',
+        reason: 'persona-not-synthetic',
+        status: 403,
+      });
+      expect(
+        (
+          await isolated.targetPool.query<{ count: number }>(
+            `SELECT count(*)::integer AS count
+               FROM workspace_memberships AS membership
+               JOIN internal_users AS internal_user
+                 ON internal_user.id = membership.internal_user_id
+              WHERE internal_user.external_provider = 'demo-seed'
+                AND internal_user.external_subject = 'DEMO-persona-ana'`,
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      expect(
+        (
+          await isolated.targetPool.query<{ displayName: string }>(
+            `SELECT display_name AS "displayName"
+               FROM internal_users
+              WHERE external_provider = 'demo-seed'
+                AND external_subject = 'DEMO-persona-ana'`,
+          )
+        ).rows,
+      ).toEqual([{ displayName: 'Ana Popescu' }]);
+    } finally {
+      await isolated.close();
+    }
+  }, 60_000);
+
   it('refuses every non-demonstration target, then converges idempotently through the public API', async () => {
     // A database that is not at the application's latest migration.
     await expectRefusedWithoutWrites('schema-not-latest');

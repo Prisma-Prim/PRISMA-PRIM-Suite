@@ -19,6 +19,46 @@ interface RequestTrace {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('demonstration runner refusal boundaries', () => {
+  it('preserves the pre-admission synthetic-profile refusal', async () => {
+    const requests: RequestTrace[] = [];
+    installFetch(
+      [
+        actor('Demonstration Operator', 'operator@example.test'),
+        [],
+        { id: COMPANY_ID, displayName: 'PRISMA-PRIM' },
+        { members: [], companies: [], assignments: [] },
+        new Response(
+          JSON.stringify({
+            statusCode: 403,
+            message: 'persona-not-synthetic',
+            error: 'Forbidden',
+          }),
+          { status: 403, headers: { 'content-type': 'application/json' } },
+        ),
+      ],
+      requests,
+    );
+
+    const result = await runDemonstrationScenario({
+      origin: ORIGIN,
+      headersFor,
+      now: NOW,
+      scenario: scenario('company.prisma-prim', 'persona.ana'),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'stopped',
+      stop: {
+        step: 'persona.ana',
+        reason: 'persona-not-synthetic',
+        status: 403,
+      },
+    });
+    expect(requests.filter((request) => request.method !== 'GET')).toEqual([
+      { method: 'POST', path: '/api/companies' },
+    ]);
+  });
+
   it('stops when a persisted persona no longer has the DEMO marker', async () => {
     const requests: RequestTrace[] = [];
     installFetch(
@@ -167,6 +207,7 @@ function installFetch(bodies: unknown[], requests: RequestTrace[]): void {
       });
       const body = bodies.shift();
       if (body === undefined) throw new Error(`Unexpected request ${url}.`);
+      if (body instanceof Response) return body;
       return new Response(JSON.stringify(body), {
         status: init?.method === 'POST' ? 201 : 200,
         headers: { 'content-type': 'application/json' },

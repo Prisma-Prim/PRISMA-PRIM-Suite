@@ -1,5 +1,9 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { afterEach, describe, expect, it } from 'vitest';
+import type {
+  AccessAdmission,
+  AccessExistingIdentity,
+} from '../access/access-admission.js';
 import type { VerifiedPrincipalRequest } from '../access/verified-principal.adapter.js';
 import {
   DEMONSTRATION_PRINCIPAL_HEADER,
@@ -8,6 +12,7 @@ import {
   DemonstrationSeedIdentity,
   ProviderCallLedger,
   failClosedProviderAdapters,
+  protectDemonstrationPersonaAdmission,
 } from './demonstration-identity.js';
 import { DEMONSTRATION_PERSONAS } from './demonstration-scenario.js';
 
@@ -57,6 +62,35 @@ afterEach(() => {
 });
 
 describe('demonstration seed identity', () => {
+  it('guards only persisted markerless demonstration personas', () => {
+    const configured: AccessAdmission = {
+      resolve: () => ({ kind: 'invitation', workspaceId: 'workspace' }),
+    };
+    const admission = protectDemonstrationPersonaAdmission(configured);
+    const profile: AccessExistingIdentity = {
+      displayName: 'Ana Popescu',
+    };
+    const persona = {
+      provider: 'demo-seed',
+      subject: 'DEMO-persona-ana',
+      displayName: 'Ana DEMO',
+      email: 'ana.demo@example.test',
+    };
+
+    expect(() => admission.assertExistingIdentity?.(persona, profile)).toThrow(
+      ForbiddenException,
+    );
+    expect(() =>
+      admission.assertExistingIdentity?.(persona, {
+        ...profile,
+        displayName: 'Ana DEMO corrected',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      admission.assertExistingIdentity?.(OWNER, profile),
+    ).not.toThrow();
+  });
+
   it('presents only the configured owner and the scenario personas', async () => {
     const seed = identity();
     await expect(

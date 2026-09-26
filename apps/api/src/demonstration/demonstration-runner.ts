@@ -52,6 +52,8 @@ export type DemonstrationStopReason =
   | 'grant-revoked'
   | 'persona-not-synthetic';
 
+export const DEMONSTRATION_PERSONA_NOT_SYNTHETIC = 'persona-not-synthetic';
+
 export interface DemonstrationWorkspaceLine {
   readonly scenario: string;
   readonly workspace: { readonly id: string; readonly name: string };
@@ -211,7 +213,7 @@ class DemonstrationApi {
     const payload = await response.text();
     if (!response.ok)
       throw new DemonstrationStepStop(
-        stopReasonFor(response.status),
+        stopReasonFor(response.status, payload),
         response.status,
       );
     if (!payload) return null;
@@ -256,13 +258,33 @@ class DemonstrationApi {
   }
 }
 
-function stopReasonFor(status: number): DemonstrationStopReason {
+function stopReasonFor(
+  status: number,
+  payload: string,
+): DemonstrationStopReason {
+  if (
+    status === 403 &&
+    responseMessage(payload) === DEMONSTRATION_PERSONA_NOT_SYNTHETIC
+  )
+    return DEMONSTRATION_PERSONA_NOT_SYNTHETIC;
   if (status === 401 || status === 403) return 'denied';
   if (status === 404) return 'not-found';
   if (status === 409) return 'conflict';
   if (status === 400 || status === 422) return 'rejected';
   if (status >= 500) return 'unavailable';
   return 'unexpected-response';
+}
+
+function responseMessage(payload: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(payload);
+    if (typeof value !== 'object' || value === null || Array.isArray(value))
+      return undefined;
+    const message = Object.fromEntries(Object.entries(value)).message;
+    return typeof message === 'string' ? message : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function unexpected(): DemonstrationStepStop {
@@ -439,7 +461,10 @@ class DemonstrationRun {
     );
     if (text(actor, 'workspaceId') !== this.workspace()) throw unexpected();
     if (!text(actor, 'displayName').includes(DEMONSTRATION_MARKER))
-      throw new DemonstrationStepStop('persona-not-synthetic', null);
+      throw new DemonstrationStepStop(
+        DEMONSTRATION_PERSONA_NOT_SYNTHETIC,
+        null,
+      );
     const membershipId = text(actor, 'workspaceMembershipId');
     this.memberships.set(step.persona, membershipId);
     return before.memberships.has(membershipId)

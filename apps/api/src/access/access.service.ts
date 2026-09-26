@@ -113,6 +113,10 @@ export class AccessService {
       }
 
       if (internalUser.status !== 'active') throw new ForbiddenException();
+      if (admissionDecision && !createdInternalUser)
+        this.admission.assertExistingIdentity?.(principal, {
+          displayName: internalUser.displayName,
+        });
 
       if (admissionWorkspace) {
         await database

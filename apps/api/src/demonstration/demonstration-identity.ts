@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import type { AccessAdmission } from '../access/access-admission.js';
 import type { ExternalPrincipal } from '../access/access.types.js';
 import type {
   ExternalIdentityVerifier,
@@ -22,8 +23,12 @@ import type {
   ProviderInvitationResult,
   WorkspaceInvitationProvider,
 } from '../access/workspace-invitation-provider.js';
-import type { DemonstrationPrincipal } from './demonstration-runner.js';
 import {
+  DEMONSTRATION_PERSONA_NOT_SYNTHETIC,
+  type DemonstrationPrincipal,
+} from './demonstration-runner.js';
+import {
+  DEMONSTRATION_MARKER,
   DEMONSTRATION_PERSONA_PROVIDER,
   type DemonstrationPersona,
 } from './demonstration-scenario.js';
@@ -31,6 +36,27 @@ import {
 export const DEMONSTRATION_TOKEN_HEADER = 'x-demonstration-seed-token';
 export const DEMONSTRATION_PRINCIPAL_HEADER = 'x-demonstration-seed-principal';
 const OWNER_PRINCIPAL = 'owner';
+
+/**
+ * Seed composition only. A persisted persona that no longer carries the
+ * synthetic marker is rejected inside Access's admission transaction before
+ * it can gain a Workspace Membership. Other providers keep normal admission.
+ */
+export function protectDemonstrationPersonaAdmission(
+  admission: AccessAdmission,
+): AccessAdmission {
+  return {
+    resolve: (principal) => admission.resolve(principal),
+    assertExistingIdentity(principal, identity) {
+      admission.assertExistingIdentity?.(principal, identity);
+      if (
+        principal.provider === DEMONSTRATION_PERSONA_PROVIDER &&
+        !identity.displayName.includes(DEMONSTRATION_MARKER)
+      )
+        throw new ForbiddenException(DEMONSTRATION_PERSONA_NOT_SYNTHETIC);
+    },
+  };
+}
 
 /**
  * The seed-only identity verifier. It exists only inside the seed's own
