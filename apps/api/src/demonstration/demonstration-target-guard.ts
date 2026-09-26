@@ -1,5 +1,6 @@
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { Client } from 'pg';
+import { DEMONSTRATION_MARKER } from './demonstration-scenario.js';
 
 /**
  * Read-only classification of a seed target. It runs in one read-only
@@ -8,7 +9,10 @@ import { Client } from 'pg';
  */
 
 export type DemonstrationTargetRefusal =
-  'schema-not-latest' | 'other-workspace-present' | 'company-name-held';
+  | 'schema-not-latest'
+  | 'other-workspace-present'
+  | 'workspace-name-without-demo'
+  | 'company-name-held';
 
 export type DemonstrationTargetClassification =
   | {
@@ -70,7 +74,7 @@ async function classify(
 
   const workspaces = await rows(
     client,
-    'SELECT id::text AS id FROM workspaces',
+    'SELECT id::text AS id, name FROM workspaces',
   );
   if (
     workspaces.some(
@@ -79,6 +83,12 @@ async function classify(
     )
   )
     return { kind: 'refused', reason: 'other-workspace-present' };
+  const workspace = workspaces.find(
+    (row) =>
+      column(row, 'id').toLowerCase() === input.workspaceId.toLowerCase(),
+  );
+  if (workspace && !column(workspace, 'name').includes(DEMONSTRATION_MARKER))
+    return { kind: 'refused', reason: 'workspace-name-without-demo' };
 
   const companies = await rows(
     client,

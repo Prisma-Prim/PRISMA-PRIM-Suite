@@ -52,7 +52,8 @@ export interface DemonstrationPersona {
   /** The one Company whose context the persona's business steps use. */
   readonly company: DemonstrationCompanyKey;
   /** The provisional role profile, indexed by register row SUB-RO-02. */
-  readonly profile: 'Manager' | 'Consultant' | 'Restricted member';
+  readonly profile:
+    'DEMO Manager' | 'DEMO Consultant' | 'DEMO Restricted member';
 }
 
 export interface DemonstrationContact {
@@ -225,7 +226,7 @@ export const DEMONSTRATION_PERSONAS = [
     displayName: 'Ana DEMO',
     email: 'ana.demo@example.test',
     company: 'prisma-prim',
-    profile: 'Manager',
+    profile: 'DEMO Manager',
   },
   {
     key: 'ion',
@@ -233,7 +234,7 @@ export const DEMONSTRATION_PERSONAS = [
     displayName: 'Ion DEMO',
     email: 'ion.demo@example.test',
     company: 'prisma-prim',
-    profile: 'Consultant',
+    profile: 'DEMO Consultant',
   },
   {
     key: 'maria',
@@ -241,7 +242,7 @@ export const DEMONSTRATION_PERSONAS = [
     displayName: 'Maria DEMO',
     email: 'maria.demo@example.test',
     company: 'bic',
-    profile: 'Manager',
+    profile: 'DEMO Manager',
   },
   {
     key: 'victor',
@@ -249,7 +250,7 @@ export const DEMONSTRATION_PERSONAS = [
     displayName: 'Victor DEMO',
     email: 'victor.demo@example.test',
     company: 'ecg',
-    profile: 'Restricted member',
+    profile: 'DEMO Restricted member',
   },
 ] as const satisfies readonly DemonstrationPersona[];
 

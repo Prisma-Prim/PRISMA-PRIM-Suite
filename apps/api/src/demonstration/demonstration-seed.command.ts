@@ -36,6 +36,7 @@ export type DemonstrationSeedRefusal =
   | 'configuration-incomplete'
   | 'confirmation-required'
   | 'confirmation-mismatch'
+  | 'production-environment'
   | 'workspace-name-without-demo'
   | 'owner-provider-reserved'
   | DemonstrationTargetRefusal;
@@ -95,6 +96,8 @@ export async function runDemonstrationSeedCommand(
     };
   };
 
+  if (input.environment.NODE_ENV?.trim() === 'production')
+    return refuse('production-environment');
   const confirmation = readConfirmation(input.argv);
   if (confirmation.kind === 'invalid') return refuse('invalid-arguments');
   const target = readTarget(input.environment);

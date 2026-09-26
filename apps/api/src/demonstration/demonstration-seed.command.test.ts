@@ -109,6 +109,12 @@ describe('demonstration seed command refusals before any database access', () =>
       }),
       'owner-provider-reserved',
     ],
+    [
+      'a production environment',
+      CONFIRMED,
+      environment(UNREACHABLE_DATABASE_URL, { NODE_ENV: 'production' }),
+      'production-environment',
+    ],
   ])('refuses %s with a named reason', async (_case, argv, env, reason) => {
     const { result, lines } = await seed(argv, env);
     expect(result).toEqual({
@@ -151,7 +157,12 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       CONFIRMED,
       environment(database.targetUrl),
     );
-    expect(result).toMatchObject({ exitCode: 2, refusal: reason });
+    expect(result).toMatchObject({
+      exitCode: 2,
+      outcome: 'refused',
+      refusal: reason,
+      providerCallAttempts: 0,
+    });
     expect(lines).toEqual([{ scenario: 'demo-v1', result: 'refused', reason }]);
     expect(await snapshot()).toEqual(before);
   }
@@ -185,6 +196,22 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     await pool.query('DELETE FROM workspaces WHERE id = $1', [
       OTHER_WORKSPACE_ID,
     ]);
+
+    // The configured id cannot turn an existing non-DEMO Workspace into a target.
+    await pool.query(
+      `INSERT INTO workspaces (id, name) VALUES ($1, 'PRISMA Workspace')`,
+      [WORKSPACE_ID],
+    );
+    await expectRefusedWithoutWrites('workspace-name-without-demo');
+    expect(
+      (
+        await pool.query<{ name: string }>(
+          'SELECT name FROM workspaces WHERE id = $1',
+          [WORKSPACE_ID],
+        )
+      ).rows,
+    ).toEqual([{ name: 'PRISMA Workspace' }]);
+    await pool.query('DELETE FROM workspaces WHERE id = $1', [WORKSPACE_ID]);
 
     // No confirmation, against the real target: nothing is written.
     const beforeUnconfirmed = await snapshot();
@@ -229,25 +256,25 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
           key: 'ana',
           displayName: 'Ana DEMO',
           company: 'PRISMA-PRIM',
-          profile: 'Manager',
+          profile: 'DEMO Manager',
         },
         {
           key: 'ion',
           displayName: 'Ion DEMO',
           company: 'PRISMA-PRIM',
-          profile: 'Consultant',
+          profile: 'DEMO Consultant',
         },
         {
           key: 'maria',
           displayName: 'Maria DEMO',
           company: 'BIC',
-          profile: 'Manager',
+          profile: 'DEMO Manager',
         },
         {
           key: 'victor',
           displayName: 'Victor DEMO',
           company: 'ECG',
-          profile: 'Restricted member',
+          profile: 'DEMO Restricted member',
           bundles: ['Company Context Access'],
         },
       ],

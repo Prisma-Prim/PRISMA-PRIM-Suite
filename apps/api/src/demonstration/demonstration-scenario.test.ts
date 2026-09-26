@@ -16,10 +16,10 @@ const RELEASED_DEMO_V1_STEPS: readonly (readonly [string, string])[] = [
   ['company.prisma-prim', '3d595f7784362dd3'],
   ['company.bic', '86999e4d3dcd60de'],
   ['company.ecg', '1500577ae93db259'],
-  ['persona.ana', '1ebbd7a9916f09c5'],
-  ['persona.ion', '7ddd6f83addc4905'],
-  ['persona.maria', 'b088f458853cbef4'],
-  ['persona.victor', '54ef7420c7f351fe'],
+  ['persona.ana', '7b7daaf59b175331'],
+  ['persona.ion', '56e2e30be897ec49'],
+  ['persona.maria', 'c7a1b85bd35a1427'],
+  ['persona.victor', '32c89b7dc77baa50'],
   ['grant.ana.context', '83a97638c3d6964f'],
   ['grant.ana.director-client', 'a62822c1a77923d7'],
   ['grant.ana.project', '15b7484cf1203417'],
@@ -98,6 +98,7 @@ const RELEASED_DEMO_V1_STEPS: readonly (readonly [string, string])[] = [
 // links; every other string is a closed code or a scenario-internal key.
 const DISPLAY_TEXT_FIELDS = new Set([
   'displayName',
+  'profile',
   'address',
   'businessActivity',
   'name',
@@ -254,10 +255,10 @@ describe('demonstration scenario demo-v1', () => {
         persona.profile,
       ]),
     ).toEqual([
-      ['Ana DEMO', 'prisma-prim', 'Manager'],
-      ['Ion DEMO', 'prisma-prim', 'Consultant'],
-      ['Maria DEMO', 'bic', 'Manager'],
-      ['Victor DEMO', 'ecg', 'Restricted member'],
+      ['Ana DEMO', 'prisma-prim', 'DEMO Manager'],
+      ['Ion DEMO', 'prisma-prim', 'DEMO Consultant'],
+      ['Maria DEMO', 'bic', 'DEMO Manager'],
+      ['Victor DEMO', 'ecg', 'DEMO Restricted member'],
     ]);
     const bundlesOf = (persona: string) =>
       stepsOf('grant')
