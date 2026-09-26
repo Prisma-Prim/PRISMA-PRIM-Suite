@@ -375,11 +375,19 @@ export function Select({
   useEffect(() => {
     const owner = triggerRef.current?.form;
     if (!owner) return;
-    const restoreInitialValue = () =>
-      onValueChange(resetValue ?? initialValueRef.current);
+    let listening = true;
+    const restoreInitialValue = (event: Event) => {
+      queueMicrotask(() => {
+        if (!listening || event.defaultPrevented) return;
+        onValueChange(resetValue ?? initialValueRef.current);
+      });
+    };
     owner.addEventListener('reset', restoreInitialValue);
-    return () => owner.removeEventListener('reset', restoreInitialValue);
-  }, [onValueChange, resetValue]);
+    return () => {
+      listening = false;
+      owner.removeEventListener('reset', restoreInitialValue);
+    };
+  }, [form, onValueChange, resetValue]);
 
   useEffect(
     () => () => {

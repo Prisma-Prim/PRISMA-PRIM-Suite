@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Select } from './Select';
@@ -312,7 +312,7 @@ describe('Select', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('submits its value, enforces required and restores the reset value', () => {
+  it('submits its value, enforces required and restores the reset value', async () => {
     const changes: string[] = [];
     const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
     function FormExample() {
@@ -358,9 +358,85 @@ describe('Select', () => {
     form.requestSubmit();
     expect(onSubmit).toHaveBeenCalledOnce();
 
-    fireEvent.reset(form);
+    await act(async () => form.reset());
     expect(changes.at(-1)).toBe('alpha');
     expect(select).toHaveTextContent('Alpha');
+  });
+
+  it('keeps native and Select values when form reset is canceled', async () => {
+    const onValueChange = vi.fn();
+    render(
+      <form
+        aria-label="Canceled reset form"
+        onReset={(event) => event.preventDefault()}
+      >
+        <label>
+          Native field
+          <input name="native" defaultValue="initial" />
+        </label>
+        <label htmlFor="canceled-reset-select">Canceled reset choice</label>
+        <Select
+          id="canceled-reset-select"
+          value="gamma"
+          options={options}
+          resetValue="alpha"
+          onValueChange={onValueChange}
+        />
+      </form>,
+    );
+    const form = screen.getByRole('form', { name: 'Canceled reset form' });
+    const nativeField = screen.getByRole('textbox', { name: 'Native field' });
+    const select = screen.getByRole('combobox', {
+      name: 'Canceled reset choice',
+    });
+    if (!(form instanceof HTMLFormElement)) throw new Error('Expected form');
+
+    fireEvent.change(nativeField, { target: { value: 'edited' } });
+    await act(async () => form.reset());
+
+    expect(nativeField).toHaveValue('edited');
+    expect(select).toHaveTextContent('Gamma');
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it('moves reset handling to a changed external form and cleans it up', async () => {
+    const onValueChange = vi.fn();
+    function Example({ owner }: Readonly<{ owner: string }>) {
+      return (
+        <>
+          <form id="form-a" aria-label="Form A" />
+          <form id="form-b" aria-label="Form B" />
+          <label htmlFor="external-form-select">External form choice</label>
+          <Select
+            id="external-form-select"
+            form={owner}
+            value="gamma"
+            options={options}
+            resetValue="alpha"
+            onValueChange={onValueChange}
+          />
+        </>
+      );
+    }
+    const view = render(<Example owner="form-a" />);
+    const formA = screen.getByRole('form', { name: 'Form A' });
+    const formB = screen.getByRole('form', { name: 'Form B' });
+    if (!(formA instanceof HTMLFormElement)) throw new Error('Expected form A');
+    if (!(formB instanceof HTMLFormElement)) throw new Error('Expected form B');
+
+    view.rerender(<Example owner="form-b" />);
+    await act(async () => formA.reset());
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    await act(async () => formB.reset());
+    expect(onValueChange).toHaveBeenCalledOnce();
+    expect(onValueChange).toHaveBeenLastCalledWith('alpha');
+
+    onValueChange.mockClear();
+    formB.reset();
+    view.unmount();
+    await Promise.resolve();
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 
   it('lets native validation identify the first invalid field and forwards its focus', () => {
