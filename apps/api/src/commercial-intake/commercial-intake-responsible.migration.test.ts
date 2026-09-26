@@ -31,7 +31,7 @@ it.skipIf(!databaseUrl)(
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'opportunity_reassignment_upgrade',
+      namePrefix: 'opp_reassignment_upgrade',
     });
     let previous: string | undefined;
     try {
