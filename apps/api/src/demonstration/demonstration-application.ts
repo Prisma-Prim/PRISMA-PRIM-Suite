@@ -6,6 +6,7 @@ import {
   ACCESS_ADMISSION,
   configuredAccessAdmission,
 } from '../access/access-admission.js';
+import { SYNCHRONIZE_ACCESS_IDENTITY_PROFILE } from '../access/access.service.js';
 import { EXTERNAL_IDENTITY_VERIFIER } from '../access/external-identity-verifier.js';
 import { IDENTITY_SESSION_REVOKER } from '../access/identity-session-revoker.js';
 import { VerifiedPrincipalAdapter } from '../access/verified-principal.adapter.js';
@@ -102,6 +103,11 @@ export async function startDemonstrationApplication(
           ),
         }),
       )
+      // Existing seed principals retain their persisted profile. Actor status,
+      // membership, grants and Company authorization are still resolved afresh
+      // by AccessService on every request.
+      .overrideProvider(SYNCHRONIZE_ACCESS_IDENTITY_PROFILE)
+      .useValue(false)
       .overrideProvider(EXTERNAL_IDENTITY_VERIFIER)
       .useValue(input.identity)
       .overrideProvider(VerifiedPrincipalAdapter)

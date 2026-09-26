@@ -29,6 +29,10 @@ const bootstrapWorkspacePermissions = [
   'client.manage',
 ] satisfies readonly WorkspacePermission[];
 
+export const SYNCHRONIZE_ACCESS_IDENTITY_PROFILE = Symbol(
+  'SYNCHRONIZE_ACCESS_IDENTITY_PROFILE',
+);
+
 @Injectable()
 export class AccessService {
   constructor(
@@ -37,6 +41,8 @@ export class AccessService {
     @Inject(ACCESS_ADMISSION)
     private readonly admission: AccessAdmission,
     private readonly companyContextAuthorization: CompanyContextAuthorization,
+    @Inject(SYNCHRONIZE_ACCESS_IDENTITY_PROFILE)
+    private readonly synchronizeIdentityProfile: boolean,
   ) {}
 
   async resolveActor(
@@ -139,7 +145,7 @@ export class AccessService {
           .onConflictDoNothing();
       }
 
-      if (!createdInternalUser) {
+      if (!createdInternalUser && this.synchronizeIdentityProfile) {
         const [updatedInternalUser] = await database
           .update(internalUsers)
           .set({

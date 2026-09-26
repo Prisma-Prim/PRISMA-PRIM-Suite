@@ -134,6 +134,27 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
   let database: IsolatedPostgresTestDatabase;
   let pool: Pool;
 
+  async function identitySnapshot() {
+    return (
+      await pool.query<{
+        id: string;
+        provider: string;
+        subject: string;
+        displayName: string;
+        email: string;
+        status: string;
+        createdAt: string;
+        updatedAt: string;
+      }>(
+        `SELECT id, external_provider AS provider, external_subject AS subject,
+                display_name AS "displayName", email, status,
+                created_at::text AS "createdAt", updated_at::text AS "updatedAt"
+           FROM internal_users
+          ORDER BY external_provider, external_subject`,
+      )
+    ).rows;
+  }
+
   async function snapshot(): Promise<Record<string, number>> {
     const tables = await pool.query<{ schema: string; name: string }>(
       `SELECT table_schema AS schema, table_name AS name
@@ -295,41 +316,71 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       ],
     });
     // Only the configured owner and the dedicated persona principals exist.
-    expect(
-      (
-        await pool.query(
-          `SELECT external_provider AS provider, external_subject AS subject, display_name AS "displayName"
-             FROM internal_users ORDER BY external_provider, external_subject`,
-        )
-      ).rows,
-    ).toEqual([
+    expect(await identitySnapshot()).toEqual([
       {
+        id: expect.any(String),
         provider: 'demo-seed',
         subject: 'DEMO-persona-ana',
         displayName: 'Ana DEMO',
+        email: 'ana.demo@example.test',
+        status: 'active',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       },
       {
+        id: expect.any(String),
         provider: 'demo-seed',
         subject: 'DEMO-persona-ion',
         displayName: 'Ion DEMO',
+        email: 'ion.demo@example.test',
+        status: 'active',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       },
       {
+        id: expect.any(String),
         provider: 'demo-seed',
         subject: 'DEMO-persona-maria',
         displayName: 'Maria DEMO',
+        email: 'maria.demo@example.test',
+        status: 'active',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       },
       {
+        id: expect.any(String),
         provider: 'demo-seed',
         subject: 'DEMO-persona-victor',
         displayName: 'Victor DEMO',
+        email: 'victor.demo@example.test',
+        status: 'active',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       },
       {
+        id: expect.any(String),
         provider: 'local-demo',
         subject: 'local-demonstration-user',
         displayName: 'DEMO Workspace owner',
+        email: 'workspace-owner@example.test',
+        status: 'active',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       },
     ]);
 
+    await pool.query(
+      `UPDATE internal_users
+          SET updated_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'`,
+    );
+    await pool.query(
+      `UPDATE internal_users
+          SET display_name = 'Ana DEMO corrected',
+              email = 'ana.corrected.demo@example.test'
+        WHERE external_provider = 'demo-seed'
+          AND external_subject = 'DEMO-persona-ana'`,
+    );
+    const identitiesBeforeReplay = await identitySnapshot();
     const afterFirst = await snapshot();
     const second = await seed(CONFIRMED, environment(database.targetUrl));
     expect(second.result).toMatchObject({
@@ -338,6 +389,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     });
     for (const line of second.lines.slice(1, -1))
       expect(['replayed', 'present']).toContain(outcomeOf(line));
+    expect(await identitySnapshot()).toEqual(identitiesBeforeReplay);
     expect(await snapshot()).toEqual(afterFirst);
 
     // A scenario Company display name held by a Company the seed did not register.
