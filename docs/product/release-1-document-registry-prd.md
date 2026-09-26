@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; wider governance remains Draft
-**Version:** 0.7
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; wider governance remains Draft
+**Version:** 0.8
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -119,7 +119,7 @@ Still blocking wider governance ticket decomposition (not the bounded working-re
 - representative Release 1 Document families and purposes;
 - per-family responsibility matrix;
 - exact confidentiality classes and who may open content;
-- exact draft-to-official/promotion/correction authority;
+- per-family draft-to-official authority (section 21 applies one provisional Approver rule to every family);
 - exact retention schedule and archive/restoration rules;
 - reusable-evidence rules and file-format policy;
 - whether Release 1 uses upload, external links or both;
@@ -140,7 +140,7 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-The working-reference registration slice is approved in section 17, Project association in section 18, bounded working-reference correction in section 19 and its read-only correction history in section 20. Wider registration families, official promotion, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
+The working-reference registration slice is approved in section 17, Project association in section 18, bounded working-reference correction in section 19, its read-only correction history in section 20 and provisional official Versions in section 21. Wider registration families, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
 
 ## 16. Evidence authority boundary
 
@@ -194,7 +194,8 @@ browser journeys. No schema backfill grants additional permissions.
 
 Official promotion, signatures, numbering, replacement, archival/retention,
 uploads, Google integration, byte preservation, evidence reuse,
-generation/OCR/AI and the wider role taxonomy remain deferred. This tracer does
+generation/OCR/AI and the wider role taxonomy remain deferred. Section 21
+later authorizes provisional official Versions. This tracer does
 not complete the parent Document Registry capability. Section 18 separately
 authorizes only the working Project-association boundary; section 19 authorizes
 only in-place correction of this unverified working reference.
@@ -321,7 +322,8 @@ for an explicit retry after an uncertain result, requires reload after conflict,
 and invalidates drafts and late responses when Company, session, membership or
 permission context changes. Uploads, URL fetching, storage integration, new
 Versions or Representations, Client reassignment, Project mutation, official
-governance and deletion remain outside this slice.
+governance and deletion remain outside this slice. Section 21 restricts this
+correction to the current draft Version.
 
 ## 20. Approved working-reference correction history (#369)
 
@@ -359,3 +361,70 @@ collapsed; losing access, or Representation read, removes the rows or prior URLs
 already shown. This creates no official Version, legal validity, restore or
 export, and it changes neither the ledger nor the empty public metadata of
 `document.corrected`.
+
+## 21. Approved provisional official Document Versions (#400)
+
+Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this section normalizes the content-status dimension of formal Versions for every registered Document, which today means the working questionnaires of section 17. It applies Iurie's confirmed rules:
+
+- an approved official Document is never modified silently;
+- current and previous Versions stay visible, with who approved them and when (coverage S03-Q04 and S03-Q06);
+- issuing an official Document requires Iurie's approval (#81 sessions 1 and 24, items 705–706).
+
+The mechanism, bounds and permission names are delegated provisional choices, not newly collected Iurie evidence. Iurie validates or corrects them against a demonstration.
+
+**Versions.** Each Document has Versions numbered from 1, at most 50. Each has a content status of `draft`, `official` or `superseded`. The Version created at registration is Version 1 `draft`. A Document has at most one draft and at most one official Version, and may have no official Version.
+
+Content status is one dimension only. Approval rationale, transmission, receipt, signature, archive and numbering remain separate facts (decision record §10.3, DEC-129), and `official` implies none of them.
+
+**Designation.** A holder of Company Document Approver v1 (authorization PRD §8) who also has Document metadata and Representation read designates the current draft as official. One transaction:
+
+- makes the draft `official`, recording the actor and server time;
+- freezes its reference, and the Document's title and purpose at that moment, with the Version;
+- makes the previously official Version, if any, `superseded`, recording the superseding Version.
+
+A designated Version is never corrected in place. A superseded Version stays readable with its reference, designation and supersession.
+
+First-tenant configuration grants Approver v1 only to Iurie's membership in each Company. This is an assignment, not a product role or hard-coded identity. Because the per-family responsibility matrix is incomplete (S03-Q02 Partial), no family-specific rule exists. A member holding both bundles may designate a Version they prepared; both acts stay attributed.
+
+Designation freezes only what the system records: reference values and metadata. It does not store, fetch or verify external content, which may still change at its source. It does not make the Version an Approved Document for knowledge indexing.
+
+**New draft.** When an official Version exists and no draft does, a holder of Company Document Registrar v3 starts the next Version as `draft`, copying the official Version's reference.
+
+The section 19 working correction now applies only to the current draft: title and purpose on the Document, and the URL of the draft's reference. While no draft exists, the Document is correction read-only.
+
+**References in this slice.** Each Version holds exactly one unverified external reference under section 17. Version 1 holds the registration reference, and each new draft holds a copy of the official Version's reference. The reference of an official or superseded Version never changes. Registrations that existed before this section become Version 1.
+
+**Guarantees.** Every Version command and every section 19 correction share the Document's working revision as one concurrency token. Each committed command:
+
+- requires the expected revision and increments it exactly once;
+- commits, together, the Version change, one durable receipt, one Activity Log event and the original Client operational-use fence advance.
+
+Among concurrent commands on one observed revision, at most one commits; the others conflict. Exact retries, scoped to the actor and Workspace, revalidate current authority and return the recorded result.
+
+Every command requires the original Client and its Company relationship to remain active. A superseded original stays readable and read-only, as in section 19. Reading Versions follows the Document detail read boundary, and URLs require Representation read.
+
+**Events.** The events are `document.version.drafted` and `document.version.designated_official` (with the superseded Version number), projected as Activity Log PRD section 7 states.
+
+**Provisional choices for Iurie's validation:**
+
+- Approver v1 is held only by Iurie;
+- at most 50 Versions;
+- a new draft copies the official reference;
+- no reason or note on designation;
+- no discarding of a draft;
+- no review or rejection state.
+
+Excluded, and not presented as business fact:
+
+- uploads, bytes, checksums and provider storage (DEC-181);
+- fetching or verifying external content;
+- Document families and per-family approvers (S03-Q01, S03-Q02);
+- an "in review" state, rejection and approval notes;
+- official numbering;
+- transmission, receipt and signature evidence, and e-signature (DEC-136);
+- templates and generation;
+- archive, restore and deletion;
+- discarding a draft;
+- several or typed references per Version, their removal, and references appended to an official Version, such as a signed scan;
+- Evidence Links and knowledge indexing;
+- Offer and Contract Documents, which reuse this model only through their own capability sections.

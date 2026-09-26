@@ -28,10 +28,12 @@ type AssignmentBundle =
   | 'company-context'
   | 'director-client'
   | 'document-registrar'
+  | 'document-approver'
   | 'document-project-organizer'
   | 'commercial-intake'
   | 'service-catalogue'
   | 'pricing-configuration'
+  | 'pricing-user'
   | 'commercial-activity-reader'
   | 'project'
   | 'project-approver';
@@ -42,11 +44,13 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
   'document-registrar': '/company-document-registrar-assignments',
+  'document-approver': '/company-document-approver-assignments',
   'document-project-organizer':
     '/company-document-project-organizer-assignments',
   'commercial-intake': '/company-commercial-intake-assignments',
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
+  'pricing-user': '/company-pricing-user-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
@@ -464,12 +468,14 @@ export function CompanyContextAccess({
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
+                value === 'pricing-user' ||
                 value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
                 value === 'document-registrar' ||
                 value === 'project' ||
+                value === 'document-approver' ||
                 value === 'project-approver'
               )
                 setBundle(value);
@@ -485,6 +491,7 @@ export function CompanyContextAccess({
             <option value="pricing-configuration">
               {copy.pricingConfigurationBundle}
             </option>
+            <option value="pricing-user">{copy.pricingUserBundle}</option>
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
             </option>
@@ -494,6 +501,9 @@ export function CompanyContextAccess({
             </option>
             <option value="document-registrar">
               {copy.documentRegistrarBundle}
+            </option>
+            <option value="document-approver">
+              {copy.documentApproverBundle}
             </option>
             <option value="project">{copy.projectBundle}</option>
             <option value="project-approver">
@@ -512,6 +522,10 @@ export function CompanyContextAccess({
           {bundle === 'project-approver' && (
             <p>{copy.projectApproverPrerequisites}</p>
           )}
+          {bundle === 'document-approver' && (
+            <p>{copy.documentApproverPrerequisites}</p>
+          )}
+          {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy.currentStateLabel}:{' '}
@@ -591,10 +605,12 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'commercial-intake': copy.commercialIntakeBundle,
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
+    'pricing-user': copy.pricingUserBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',
+    'document-approver': copy.documentApproverBundle,
     project: copy.projectBundle,
     'project-approver': copy.projectApproverBundle,
     'director-client': 'Company Director Client Access',

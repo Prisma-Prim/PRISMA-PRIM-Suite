@@ -6,6 +6,9 @@ export const companyContextAccessCopy = {
   bundleLabel: 'Access bundle',
   documentProjectOrganizerBundle: 'Company Document Project Organizer',
   documentRegistrarBundle: 'Company Document Registrar',
+  documentApproverBundle: 'Company Document Approver',
+  documentApproverPrerequisites:
+    'Company Document Approver v1 grants only the designation of a draft Document Version as official. Company context, Document and reference read, and Client read must already be authorized separately, for example through Company Document Registrar.',
   companyContextBundle: 'Company Context Access',
   projectBundle: 'Company Project Access',
   commercialIntakeBundle: 'Company Commercial Intake',
@@ -19,6 +22,9 @@ export const companyContextAccessCopy = {
   projectApproverBundle: 'Company Project Approver',
   projectApproverPrerequisites:
     'Changes the Project lifecycle only; Project and Client read are authorized separately.',
+  pricingUserBundle: 'Company Pricing User',
+  pricingUserPrerequisites:
+    'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
   taskManagerBundle: 'Company Task Manager',
   taskManagerPrerequisites:
     'Company Task Manager v1 grants Task read and management only. Company context, Project read and Client read must already be authorized separately.',
@@ -54,6 +60,10 @@ export const companyContextAccessCopy = {
       'granted Company Document Registrar',
     'company_document_registrar_assignment.revoked':
       'revoked Company Document Registrar',
+    'company_document_approver_assignment.granted':
+      'granted Company Document Approver',
+    'company_document_approver_assignment.revoked':
+      'revoked Company Document Approver',
     'company_project_assignment.granted': 'granted Company Project Access',
     'company_project_assignment.revoked': 'revoked Company Project Access',
     'company_commercial_intake_assignment.granted':
@@ -76,6 +86,8 @@ export const companyContextAccessCopy = {
       'granted Company Project Approver',
     'company_project_approver_assignment.revoked':
       'revoked Company Project Approver',
+    'company_pricing_user_assignment.granted': 'granted Company Pricing User',
+    'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
     'company_context_assignment.granted': 'granted Company Context Access',
     'company_context_assignment.revoked': 'revoked Company Context Access',
     'company_director_client_assignment.granted':

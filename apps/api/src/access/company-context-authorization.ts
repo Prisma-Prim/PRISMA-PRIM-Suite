@@ -15,7 +15,12 @@ import {
   taskPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE,
+  documentApproverPermissionsFor,
   documentPermissionsFor,
+  isDocumentPermissionSetVersion,
+  type DocumentPermission,
+  type DocumentPermissionSetVersion,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE,
   projectApproverPermissionsFor,
@@ -37,12 +42,22 @@ import {
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   pricingConfigurationPermissionsFor,
   type CompanyPricingConfigurationPermission,
+  COMPANY_PRICING_USER_BUNDLE,
+  pricingUserPermissionsFor,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
   ...COMPANY_CONTEXT_USE_BUNDLES,
   COMPANY_PROJECT_ACCESS_BUNDLE,
 ] as const;
+
+// Every captured Registrar version carries Document metadata and
+// Representation read; null or unknown versions fail closed.
+const DOCUMENT_READ_REGISTRAR_VERSIONS = [
+  'v1',
+  'v2',
+  'v3',
+] as const satisfies readonly DocumentPermissionSetVersion[];
 
 @Injectable()
 export class CompanyContextAuthorization {
@@ -218,7 +233,9 @@ export class CompanyContextAuthorization {
           ),
           eq(companyRoleAssignments.companyId, companyId),
           eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...DOCUMENT_READ_REGISTRAR_VERSIONS,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
@@ -252,10 +269,58 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // `document.correct` exists in captured Registrar v2 and v3; a legacy v1
+  // assignment fails closed.
   async requireDocumentCorrection(actor: ActorContext): Promise<string> {
+    return this.requireLockedDocumentAuthority(actor, 'document.correct', {
+      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+      versions: ['v2', 'v3'],
+    });
+  }
+
+  // `document.version.manage` exists only in captured Registrar v3.
+  async requireDocumentVersionManagement(actor: ActorContext): Promise<string> {
+    return this.requireLockedDocumentAuthority(
+      actor,
+      'document.version.manage',
+      { bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE, versions: ['v3'] },
+    );
+  }
+
+  // Designation requires a live captured Company Document Approver v1 in
+  // addition to the delivered Document read authority, which any Registrar
+  // version provides. The Approver itself grants neither.
+  async requireDocumentVersionDesignation(
+    actor: ActorContext,
+  ): Promise<string> {
+    return this.requireLockedDocumentAuthority(
+      actor,
+      'document.version.designate_official',
+      { bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE, versions: ['v1'] },
+    );
+  }
+
+  /**
+   * A Document command's live authority: the locked Document read authority,
+   * Representation read, the required permission and its captured assignment
+   * locked `FOR SHARE`, which serializes the command against revocation.
+   */
+  private async requireLockedDocumentAuthority(
+    actor: ActorContext,
+    permission: DocumentPermission,
+    grant:
+      | {
+          bundle: typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE;
+          versions: readonly DocumentPermissionSetVersion[];
+        }
+      | {
+          bundle: typeof COMPANY_DOCUMENT_APPROVER_BUNDLE;
+          versions: readonly ['v1'];
+        },
+  ): Promise<string> {
     const companyId = await this.requireDocumentAccess(actor, true);
     if (
-      !actor.activeCompany?.documentPermissions?.includes('document.correct') ||
+      !actor.activeCompany?.documentPermissions?.includes(permission) ||
       !actor.activeCompany.documentPermissions.includes(
         'document.reference.read',
       )
@@ -272,8 +337,10 @@ export class CompanyContextAuthorization {
             actor.workspaceMembershipId,
           ),
           eq(companyRoleAssignments.companyId, companyId),
-          eq(companyRoleAssignments.bundle, COMPANY_DOCUMENT_REGISTRAR_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v2'),
+          eq(companyRoleAssignments.bundle, grant.bundle),
+          inArray(companyRoleAssignments.permissionSetVersion, [
+            ...grant.versions,
+          ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
       )
@@ -545,35 +612,38 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
-  // Company Pricing Configuration v1 grants configuration authority only.
-  // Company context must already follow from an independent assignment, and a
-  // locked read serializes a command against a concurrent revocation.
+  // Configuration read is carried by a live captured Company Pricing
+  // Configuration v1 or Company Pricing User v1 assignment, and management by
+  // Configuration v1 alone (pricing PRD section 10). A bundle is accepted only
+  // when its own captured permissions include every required one, so neither
+  // lends the other anything. Company context must already follow from an
+  // independent assignment, and a locked read serializes a command against a
+  // concurrent revocation.
   async requirePricingConfigurationAccess(
     actor: ActorContext,
     required: readonly CompanyPricingConfigurationPermission[],
     lock = false,
   ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    const permissions =
-      actor.activeCompany?.pricingConfigurationPermissions ?? [];
-    if (
-      !companyId ||
-      required.some((permission) => !permissions.includes(permission))
-    )
-      throw new ForbiddenException();
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (carriesEvery(company?.pricingConfigurationPermissions, required))
+      grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
+    if (carriesEvery(company?.pricingUserPermissions, required))
+      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
+    if (!company || grants.length === 0) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
-      companyId,
-      capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE),
+      company.id,
+      anyCapturedGrant(grants),
       lock,
     );
-    await this.requireLiveCompanyContext(actor, companyId, lock);
-    return companyId;
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
   }
 
-  // Offering read is carried by a live captured Company Service Catalogue v1
-  // or Company Pricing Configuration v1 assignment (pricing PRD section 10).
-  // Neither bundle confers any other permission of the other.
+  // Offering read is carried by a live captured Company Service Catalogue v1,
+  // Company Pricing Configuration v1 or Company Pricing User v1 assignment
+  // (pricing PRD section 10). None confers any other permission of another.
   async requireOfferingReadAccess(actor: ActorContext): Promise<string> {
     const company = actor.activeCompany;
     const grants: SQL[] = [];
@@ -587,11 +657,13 @@ export class CompanyContextAuthorization {
       )
     )
       grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
+    if (company?.pricingUserPermissions?.includes('commercial.offering.read'))
+      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
     if (!company || grants.length === 0) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
-      sql`(${sql.join(grants, sql` OR `)})`,
+      anyCapturedGrant(grants),
       false,
     );
     await this.requireLiveCompanyContext(actor, company.id, false);
@@ -735,10 +807,12 @@ export class CompanyContextAuthorization {
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
+        COMPANY_PRICING_USER_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
+        COMPANY_DOCUMENT_APPROVER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -795,12 +869,21 @@ export class CompanyContextAuthorization {
           'document.project.manage',
         ];
       }
+      // Like the Organizer, the Approver contributes only its designation
+      // permission and never Company context.
+      if (
+        row.bundle === COMPANY_DOCUMENT_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...documentApproverPermissionsFor(row.permissionSetVersion),
+        ];
+        company.documentApproverAssignmentId = row.assignmentId;
+        company.documentApproverPermissionSetVersion = 'v1';
+      }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
-        if (
-          row.permissionSetVersion !== 'v1' &&
-          row.permissionSetVersion !== 'v2'
-        )
-          continue;
+        if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;
         const permissions = documentPermissionsFor(row.permissionSetVersion);
         company.documentPermissions = [
           ...(company.documentPermissions ?? []),
@@ -881,6 +964,18 @@ export class CompanyContextAuthorization {
         company.projectApproverPermissionAssignmentId = row.assignmentId;
         company.projectApproverPermissionSetVersion = 'v1';
       }
+      // Pricing User likewise contributes its captured permissions only and
+      // never authorizes Company context by itself.
+      if (
+        row.bundle === COMPANY_PRICING_USER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.pricingUserPermissions = [
+          ...pricingUserPermissionsFor(row.permissionSetVersion),
+        ];
+        company.pricingUserPermissionAssignmentId = row.assignmentId;
+        company.pricingUserPermissionSetVersion = 'v1';
+      }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
@@ -906,12 +1001,29 @@ function capturedGrant(
   bundle:
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE,
+    | typeof COMPANY_PROJECT_APPROVER_BUNDLE
+    | typeof COMPANY_PRICING_USER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
     'v1',
   )})`;
+}
+
+// Any one of the alternative live captured grants satisfies a check.
+function anyCapturedGrant(grants: readonly SQL[]): SQL {
+  return sql`(${sql.join([...grants], sql` OR `)})`;
+}
+
+// A captured bundle satisfies a check only through its own permissions.
+function carriesEvery(
+  captured: readonly string[] | undefined,
+  required: readonly string[],
+): boolean {
+  return (
+    captured !== undefined &&
+    required.every((permission) => captured.includes(permission))
+  );
 }
 
 export type CompanyContextVisibility =

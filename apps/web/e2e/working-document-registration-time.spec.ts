@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -5,6 +6,10 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import {
+  DOCUMENT_VERSIONS_PATH,
+  draftVersionsOf,
+} from './document-versions.fixture';
 
 const company = {
   id: 'registration-time-company',
@@ -126,7 +131,7 @@ test('shows the registration time of listed and opened Working Documents', async
   await expect(detail.getByRole('definition')).toHaveText(
     await applicationDateTime(secondDocument.createdAt),
   );
-  await expect(detail.locator('time')).toHaveAttribute(
+  await expect(detail.getByRole('definition').locator('time')).toHaveAttribute(
     'datetime',
     secondDocument.createdAt,
   );
@@ -152,7 +157,7 @@ test('shows the registration time of listed and opened Working Documents', async
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   const classicDetail = page.locator('#documents article');
   await expect(
     classicDetail.getByRole('heading', { name: secondDocument.title }),
@@ -215,6 +220,8 @@ async function interceptApplication(page: Page, mutationRequests: string[]) {
       const opened = [firstDocument, secondDocument].find(
         (candidate) => candidate.id === path.split('/')[3],
       );
+      if (opened && DOCUMENT_VERSIONS_PATH.test(path))
+        return route.fulfill({ json: draftVersionsOf(opened) });
       return opened
         ? route.fulfill({ json: opened })
         : route.fulfill({ status: 404 });

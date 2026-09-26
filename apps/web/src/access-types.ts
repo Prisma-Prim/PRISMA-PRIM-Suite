@@ -50,6 +50,14 @@ export interface ActorContext {
     >;
     pricingConfigurationPermissionAssignmentId?: string;
     pricingConfigurationPermissionSetVersion?: 'v1';
+    pricingUserPermissions?: Array<
+      | 'commercial.offering.read'
+      | 'commercial.pricing.configuration.read'
+      | 'commercial.pricing.calculate'
+      | 'commercial.pricing.snapshot.read'
+    >;
+    pricingUserPermissionAssignmentId?: string;
+    pricingUserPermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
@@ -63,9 +71,14 @@ export interface ActorContext {
       | 'document.register'
       | 'document.reference.read'
       | 'document.correct'
+      | 'document.version.manage'
+      | 'document.version.designate_official'
       | 'document.project.manage'
     >;
-    documentPermissionSetVersion?: 'v1' | 'v2';
+    documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
+    /** The live Company Document Approver assignment, if any. */
+    documentApproverAssignmentId?: string;
+    documentApproverPermissionSetVersion?: 'v1';
     clientPermissionAssignmentId?: string;
     clientPermissionSetVersion?: 'v1' | 'v2';
   };

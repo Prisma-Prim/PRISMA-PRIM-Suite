@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -202,7 +203,7 @@ test('retries an uncertain reversal explicitly from fresh Prisme history', async
   await navigateUnion(page, 'Clients');
   const menu = page.getByRole('button', { name: 'Open navigation' });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(reversal.getByLabel('Reason for reversal')).toHaveValue(
     'Restore the separate dossiers deliberately.',
   );

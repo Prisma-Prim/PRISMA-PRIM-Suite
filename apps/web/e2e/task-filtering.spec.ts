@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
@@ -296,7 +297,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(page.getByLabel('Search Tasks')).toBeVisible();
   await page.getByLabel('Task status').selectOption('all');
   const classicNavigation = page.getByRole('navigation', { name: 'Tasks' });

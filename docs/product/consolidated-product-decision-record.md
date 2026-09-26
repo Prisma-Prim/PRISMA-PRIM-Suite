@@ -1830,11 +1830,11 @@ Every screen specifies loading, empty, success, validation, permission-denied, u
 
 ### 18.3 Localization and business vocabulary
 
-The localization foundation exists from Release 1. Initial product content supports Romanian, Russian and English; French remains an extension. User locale, Document language, Client communication language and Company default language are separate settings.
+The localization foundation exists from Release 1. Romanian is the default interface language when no valid explicit choice exists, independently of browser or operating-system language. The supported interface choices are Romanian, Russian, French and English. A supported explicit choice controls the interface; an invalid or unsupported saved choice falls back to Romanian. Interface locale, Document language, Client communication language and Company default language are separate settings.
 
 Stable semantic identifiers drive logic. Display labels, stage names, notifications, document templates and help are localized resources. Changing a translation or tenant label never changes stored business meaning.
 
-Dates, numbers, currencies, names and search normalization respect locale while canonical values remain unambiguous. The repository, code, API and technical specifications remain English.
+Dates, numbers, accessible names and errors respect the chosen interface locale while canonical values, business content, prices, currencies, timezone rules, permissions and identifiers remain unchanged. Missing interface translations fall back to Romanian and are reported by release checks. The repository, code, API and technical specifications remain English.
 
 ### 18.4 Bounded configuration
 
@@ -2775,7 +2775,7 @@ Accessibility is part of acceptance for new user-facing work, including keyboard
 
 #### DEC-200 — Establish localization from Release 1
 
-Initial product content supports Romanian, Russian and English; French is deferred. User locale, Document language, Client communication language and Company default are distinct.
+Romanian is the default interface language when no valid explicit choice exists, independently of browser or operating-system language. The supported interface choices are Romanian, Russian, French and English. A supported explicit choice controls the interface; an invalid or unsupported saved choice falls back to Romanian. Interface locale, Document language, Client communication language and Company default are distinct. This supersedes the earlier current rule that deferred French, based on Dan's explicit instruction on 2026-09-26; it does not rewrite historical evidence or attribute a new decision to Iurie.
 
 #### DEC-201 — Separate stable semantics from labels and translations
 

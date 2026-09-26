@@ -8,11 +8,13 @@ import type {
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
+  COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
+  COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
@@ -124,6 +126,8 @@ export type CanonicalActivityEvent =
         | 'company_document_project_organizer_assignment.revoked'
         | 'company_document_registrar_assignment.granted'
         | 'company_document_registrar_assignment.revoked'
+        | 'company_document_approver_assignment.granted'
+        | 'company_document_approver_assignment.revoked'
         | 'company_project_assignment.granted'
         | 'company_project_assignment.revoked'
         | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
@@ -136,6 +140,8 @@ export type CanonicalActivityEvent =
         | 'company_service_catalogue_assignment.revoked'
         | 'company_pricing_configuration_assignment.granted'
         | 'company_pricing_configuration_assignment.revoked'
+        | 'company_pricing_user_assignment.granted'
+        | 'company_pricing_user_assignment.revoked'
         | 'company_commercial_activity_reader_assignment.granted'
         | 'company_commercial_activity_reader_assignment.revoked'
         | 'company_project_approver_assignment.granted'
@@ -152,6 +158,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
+          | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
@@ -159,6 +166,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+          | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       };
       transitionId: string;
@@ -212,6 +220,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
     | 'company_document_registrar_assignment.revoked'
+    | 'company_document_approver_assignment.granted'
+    | 'company_document_approver_assignment.revoked'
     | 'company_project_assignment.granted'
     | 'company_project_assignment.revoked'
     | typeof COMPANY_CONTEXT_ASSIGNMENT_GRANTED_ACTION
@@ -224,6 +234,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_service_catalogue_assignment.revoked'
     | 'company_pricing_configuration_assignment.granted'
     | 'company_pricing_configuration_assignment.revoked'
+    | 'company_pricing_user_assignment.granted'
+    | 'company_pricing_user_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
     | 'company_project_approver_assignment.granted'
@@ -285,6 +297,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
+          | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
@@ -292,6 +305,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+          | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
@@ -338,6 +352,33 @@ export interface DocumentCorrectedActivityEvent {
     companyId: string;
   };
   metadata: Record<string, never>;
+}
+/**
+ * One committed Version command, projected from the Document-owned command
+ * table. Metadata carries Version numbers only, never a title, purpose, URL
+ * or Project identity.
+ */
+export type DocumentVersionActivityEvent =
+  | DocumentVersionActivityEventBase<
+      'document.version.drafted',
+      { versionNumber: number; sourceVersionNumber: number }
+    >
+  | DocumentVersionActivityEventBase<
+      'document.version.designated_official',
+      { versionNumber: number; supersededVersionNumber: number | null }
+    >;
+interface DocumentVersionActivityEventBase<Action extends string, Metadata> {
+  id: string;
+  action: Action;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'document';
+    documentId: string;
+    documentTitle: string;
+    companyId: string;
+  };
+  metadata: Metadata;
 }
 export interface DocumentProjectActivityEvent {
   id: string;
@@ -388,6 +429,7 @@ export type ActivityLogEvent =
   | CommercialActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
+  | DocumentVersionActivityEvent
   | ProjectCreatedActivityEvent
   | ProjectResponsibleChangedActivityEvent
   | ProjectLifecycleChangedActivityEvent;

@@ -38,10 +38,12 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_director_client_access',
   'company_document_project_organizer',
   'company_document_registrar',
+  'company_document_approver',
   'company_project_access',
   'company_commercial_intake',
   'company_service_catalogue',
   'company_pricing_configuration',
+  'company_pricing_user',
   'company_commercial_activity_reader',
   'company_project_approver',
 ]);
@@ -316,11 +318,13 @@ export const companyRoleAssignments = pgTable(
           AND ${table.permissionSetVersion} IS NOT NULL
           AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text IN ('company_document_registrar', 'company_commercial_intake', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
+        (${table.bundle}::text = 'company_document_registrar' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2', 'v3'))
         OR
-        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_project_approver') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        (${table.bundle}::text IN ('company_commercial_intake', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_commercial_activity_reader', 'company_project_approver')
+        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader', 'company_project_approver') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        OR
+        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader', 'company_project_approver')
           AND ${table.permissionSetVersion} IS NULL)
       )`,
     ),
@@ -665,6 +669,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_document_project_organizer_assignment.revoked',
   'company_document_registrar_assignment.granted',
   'company_document_registrar_assignment.revoked',
+  'company_document_approver_assignment.granted',
+  'company_document_approver_assignment.revoked',
   'company_project_assignment.granted',
   'company_project_assignment.revoked',
   'company_commercial_intake_assignment.granted',
@@ -673,6 +679,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_service_catalogue_assignment.revoked',
   'company_pricing_configuration_assignment.granted',
   'company_pricing_configuration_assignment.revoked',
+  'company_pricing_user_assignment.granted',
+  'company_pricing_user_assignment.revoked',
   'company_commercial_activity_reader_assignment.granted',
   'company_commercial_activity_reader_assignment.revoked',
   'company_project_approver_assignment.granted',
@@ -725,11 +733,13 @@ export const activityLogEvents = pgTable(
               | 'Company Director Client Access'
               | 'Company Document Project Organizer'
               | 'Company Document Registrar'
+              | 'Company Document Approver'
               | 'Company Project Access'
               | 'Company Commercial Intake'
               | 'Company Service Catalogue'
               | 'Company Pricing Configuration'
               | 'Company Commercial Activity Reader'
+              | 'Company Pricing User'
               | 'Company Project Approver';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }

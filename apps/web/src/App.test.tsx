@@ -407,6 +407,10 @@ describe('App', () => {
         'granted Company Document Registrar',
       'company_document_registrar_assignment.revoked':
         'revoked Company Document Registrar',
+      'company_document_approver_assignment.granted':
+        'granted Company Document Approver',
+      'company_document_approver_assignment.revoked':
+        'revoked Company Document Approver',
       'company_project_assignment.granted': 'granted Company Project Access',
       'company_project_assignment.revoked': 'revoked Company Project Access',
       'company_commercial_intake_assignment.granted':
@@ -429,6 +433,8 @@ describe('App', () => {
         'granted Company Project Approver',
       'company_project_approver_assignment.revoked':
         'revoked Company Project Approver',
+      'company_pricing_user_assignment.granted': 'granted Company Pricing User',
+      'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
       'company_director_client_assignment.granted':

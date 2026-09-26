@@ -13,10 +13,12 @@ export interface WorkingDocument {
   createdAt: string;
   createdByMembershipId: string;
   workingRevision: number;
+  /** Allowed only while the original Client is active and a draft exists. */
   correction: 'allowed' | 'read-only';
+  /** The working Version: the draft if one exists, otherwise the official one. */
   version: {
     id: string;
-    status: 'draft';
+    status: 'draft' | 'official';
     representation: {
       id: string;
       kind: 'external-reference';

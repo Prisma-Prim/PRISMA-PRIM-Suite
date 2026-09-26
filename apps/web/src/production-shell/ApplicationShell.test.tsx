@@ -1,4 +1,10 @@
-import { act, render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ApplicationShell, type ApplicationSection } from './ApplicationShell';
 
@@ -24,6 +30,34 @@ const sections: ApplicationSection[] = [
     ),
   },
 ];
+
+it('offers no Classic switch in the default frame or its opened navigation', () => {
+  window.history.replaceState(null, '', '/#clients');
+  render(
+    <ApplicationShell
+      context={{
+        actorName: 'Director',
+        workspaceName: 'Workspace',
+        companyName: 'Company',
+      }}
+      sections={sections}
+      companyContext={<span>Company context</span>}
+      userArea={<span>Director profile</span>}
+    >
+      Classic heading
+    </ApplicationShell>,
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Use classic frame' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Open navigation' }));
+  expect(
+    screen.queryByRole('button', { name: 'Use classic frame' }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText('Director profile')).toBeInTheDocument();
+  expect(screen.getByText('Company context')).toBeInTheDocument();
+  window.history.replaceState(null, '', '/');
+});
 
 describe.each(['classic', 'prisme'] as const)(
   '%s section navigation',
