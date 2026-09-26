@@ -1,5 +1,5 @@
 {
-  "id": "382cf03e-9505-4c83-ac11-9156ba829c75",
+  "id": "62325b76-6e23-4512-aaf9-8ef4247ff6f0",
   "prevId": "28ad593c-c8dd-48ff-bed0-83514da879f6",
   "version": "7",
   "dialect": "postgresql",
@@ -3337,338 +3337,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.client_legal_entities": {
-      "name": "client_legal_entities",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_account_id": {
-          "name": "client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "legal_name": {
-          "name": "legal_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tax_id": {
-          "name": "tax_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "legal_address": {
-          "name": "legal_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by_internal_user_id": {
-          "name": "created_by_internal_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_workspace_membership_id": {
-          "name": "created_by_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "client_legal_entities_client_unique": {
-          "name": "client_legal_entities_client_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "client_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "client_legal_entities_client_fk": {
-          "name": "client_legal_entities_client_fk",
-          "tableFrom": "client_legal_entities",
-          "tableTo": "client_accounts",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "client_legal_entities_creator_membership_fk": {
-          "name": "client_legal_entities_creator_membership_fk",
-          "tableFrom": "client_legal_entities",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "created_by_workspace_membership_id",
-            "created_by_internal_user_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id",
-            "internal_user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "client_legal_entities_legal_name_check": {
-          "name": "client_legal_entities_legal_name_check",
-          "value": "char_length(\"client_legal_entities\".\"legal_name\") BETWEEN 1 AND 200"
-        },
-        "client_legal_entities_tax_id_check": {
-          "name": "client_legal_entities_tax_id_check",
-          "value": "\"client_legal_entities\".\"tax_id\" IS NULL OR char_length(\"client_legal_entities\".\"tax_id\") BETWEEN 1 AND 500"
-        },
-        "client_legal_entities_legal_address_check": {
-          "name": "client_legal_entities_legal_address_check",
-          "value": "\"client_legal_entities\".\"legal_address\" IS NULL OR char_length(\"client_legal_entities\".\"legal_address\") BETWEEN 1 AND 2000"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.client_legal_entity_commands": {
-      "name": "client_legal_entity_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "action": {
-          "name": "action",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_account_id": {
-          "name": "client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "legal_entity_id": {
-          "name": "legal_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expected_client_version": {
-          "name": "expected_client_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "intent": {
-          "name": "intent",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "client_legal_entity_commands_actor_key_unique": {
-          "name": "client_legal_entity_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_workspace_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "client_legal_entity_commands_actor_fk": {
-          "name": "client_legal_entity_commands_actor_fk",
-          "tableFrom": "client_legal_entity_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "client_legal_entity_commands_client_fk": {
-          "name": "client_legal_entity_commands_client_fk",
-          "tableFrom": "client_legal_entity_commands",
-          "tableTo": "client_accounts",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "client_legal_entity_commands_relationship_fk": {
-          "name": "client_legal_entity_commands_relationship_fk",
-          "tableFrom": "client_legal_entity_commands",
-          "tableTo": "client_company_relationships",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id",
-            "company_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "client_account_id",
-            "company_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "client_legal_entity_commands_legal_entity_fk": {
-          "name": "client_legal_entity_commands_legal_entity_fk",
-          "tableFrom": "client_legal_entity_commands",
-          "tableTo": "client_legal_entities",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id",
-            "legal_entity_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "client_account_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "client_legal_entity_commands_action_check": {
-          "name": "client_legal_entity_commands_action_check",
-          "value": "(\"client_legal_entity_commands\".\"action\" = 'register' AND \"client_legal_entity_commands\".\"legal_entity_id\" IS NULL)\n        OR (\"client_legal_entity_commands\".\"action\" = 'correct' AND \"client_legal_entity_commands\".\"legal_entity_id\" IS NOT NULL)"
-        },
-        "client_legal_entity_commands_positive_version_check": {
-          "name": "client_legal_entity_commands_positive_version_check",
-          "value": "\"client_legal_entity_commands\".\"expected_client_version\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.workspace_invitation_commands": {
       "name": "workspace_invitation_commands",
       "schema": "",
@@ -6273,6 +5941,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -6556,6 +6231,10 @@
         "tasks_date_check": {
           "name": "tasks_date_check",
           "value": "\"tasks\".\"due_date\" IS NULL OR (\"tasks\".\"due_date\" >= DATE '0001-01-01' AND \"tasks\".\"due_date\" <= DATE '9999-12-31')"
+        },
+        "tasks_priority_check": {
+          "name": "tasks_priority_check",
+          "value": "\"tasks\".\"priority\" IN ('normal', 'important', 'critical')"
         },
         "tasks_blockage_reason_check": {
           "name": "tasks_blockage_reason_check",
@@ -9133,9 +8812,7 @@
         "company_commercial_activity_reader_assignment.revoked",
         "client.created",
         "client_company_relationship.established",
-        "client.corrected",
-        "client_legal_entity.registered",
-        "client_legal_entity.corrected"
+        "client.corrected"
       ]
     },
     "public.activity_log_target_type": {
