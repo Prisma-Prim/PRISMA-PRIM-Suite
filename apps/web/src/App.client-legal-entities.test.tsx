@@ -231,11 +231,11 @@ function mutations(requests: EntityRequest[]) {
 }
 async function openAdd() {
   const region = await section();
-  fireEvent.click(
-    await within(region).findByRole('button', {
-      name: 'Add legal entity or branch',
-    }),
-  );
+  const add = await within(region).findByRole('button', {
+    name: 'Add legal entity or branch',
+  });
+  await waitFor(() => expect(add).toBeEnabled());
+  fireEvent.click(add);
   return within(region).getByRole('form', {
     name: 'Add a legal entity or branch',
   });
@@ -575,6 +575,117 @@ describe('Client legal entities and branches', () => {
       within(region).getByText('Str. Industrială 5, Chișinău'),
     ).toBeVisible();
     expect(screen.getByText('Version 4')).toBeVisible();
+  });
+
+  it('observes the dossier version of its own confirmed correction before the next registration', async () => {
+    const { requests, dossierCorrections } = renderDossier({
+      entities: [branch],
+    });
+    const region = await section();
+    await within(region).findByText(branch.legalName);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Correct Client dossier' }),
+    );
+    const correction = screen.getByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correction).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 393' },
+    });
+    fireEvent.click(
+      within(correction).getByRole('button', { name: 'Save correction' }),
+    );
+    expect(
+      await screen.findByText(
+        'Client correction saved with attributable history.',
+      ),
+    ).toBeVisible();
+    expect(dossierCorrections).toEqual([
+      expect.objectContaining({ expectedVersion: 3 }),
+    ]);
+    await waitFor(() =>
+      expect(
+        requests.filter((request) => request.method === 'GET'),
+      ).toHaveLength(2),
+    );
+
+    const form = await openAdd();
+    fill(form, { 'Exact legal name': logistic.legalName });
+    save(form);
+    expect(
+      await within(region).findByText('Legal entity or branch recorded.'),
+    ).toBeVisible();
+    expect(mutations(requests)).toEqual([
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({ expectedClientVersion: 4 }),
+      }),
+    ]);
+    expect(screen.getByText('Version 5')).toBeVisible();
+    // One refresh per observed dossier version, never a fetch storm.
+    expect(requests.filter((request) => request.method === 'GET')).toHaveLength(
+      2,
+    );
+  });
+
+  it('keeps an open entity draft on its observed version after a dossier correction', async () => {
+    const { requests } = renderDossier({ entities: [branch] });
+    const region = await section();
+    await within(region).findByText(branch.legalName);
+    const form = await openAdd();
+    fill(form, { 'Exact legal name': logistic.legalName });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Correct Client dossier' }),
+    );
+    const correction = screen.getByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correction).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 393' },
+    });
+    fireEvent.click(
+      within(correction).getByRole('button', { name: 'Save correction' }),
+    );
+    expect(await screen.findByText('Version 4')).toBeVisible();
+    expect(within(form).getByLabelText('Exact legal name')).toHaveValue(
+      logistic.legalName,
+    );
+    expect(requests.filter((request) => request.method === 'GET')).toHaveLength(
+      1,
+    );
+
+    save(form);
+    expect(
+      await within(form).findByText(
+        'This Client dossier changed before your change was saved. Reload the legal entities and branches before trying again.',
+      ),
+    ).toBeVisible();
+    expect(mutations(requests)).toEqual([
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({ expectedClientVersion: 3 }),
+      }),
+    ]);
+    fireEvent.click(
+      within(form).getByRole('button', {
+        name: 'Reload legal entities and branches',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        requests.filter((request) => request.method === 'GET'),
+      ).toHaveLength(2),
+    );
+    const next = await openAdd();
+    fill(next, { 'Exact legal name': logistic.legalName });
+    save(next);
+    expect(
+      await within(region).findByText('Legal entity or branch recorded.'),
+    ).toBeVisible();
+    expect(mutations(requests).at(-1)?.body).toMatchObject({
+      expectedClientVersion: 4,
+    });
   });
 
   it('never renders a list response for a previous Client', async () => {

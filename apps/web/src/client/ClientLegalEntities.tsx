@@ -73,10 +73,12 @@ type Outcome =
 /**
  * The additional Client Legal Entities of one visible dossier. Mutations use
  * the version observed with the list; each confirmed one hands the new Client
- * version back to the dossier owner.
+ * version back to the dossier owner. When the owner confirms a newer dossier
+ * version, a closed section refreshes once; an open form keeps its version.
  */
 export function ClientLegalEntities({
   clientAccountId,
+  dossierVersion,
   companyContextId,
   canUpdate,
   identity,
@@ -87,6 +89,8 @@ export function ClientLegalEntities({
   onActivityRecorded,
 }: {
   clientAccountId: string;
+  /** The dossier version its owner last observed or confirmed. */
+  dossierVersion: number;
   companyContextId: string;
   canUpdate: boolean;
   identity: BrowserIdentity;
@@ -102,6 +106,10 @@ export function ClientLegalEntities({
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [editor, setEditor] = useState<Editor>({ mode: 'closed' });
   const [outcome, setOutcome] = useState<Outcome>({ status: 'idle' });
+  /** The one quiet refresh started for a newer dossier version. */
+  const [refresh, setRefresh] = useState<
+    { dossierVersion: number; pending: boolean } | undefined
+  >(undefined);
   const heading = useRef<HTMLHeadingElement>(null);
   const fields = useRef<Partial<Record<DraftField, HTMLElement | null>>>({});
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
@@ -135,39 +143,43 @@ export function ClientLegalEntities({
     [companyContextId, identity],
   );
 
-  const load = useCallback(async (): Promise<void> => {
-    setList({ status: 'loading' });
-    await runLatestAuthenticatedRequest({
-      pending: pendingList,
-      identity,
-      execute: (api, signal) =>
-        api.request<unknown>(
-          `/clients/${encodeURIComponent(clientAccountId)}/legal-entities`,
-          { companyContextId, signal },
-        ),
-      async onResult(result, signal) {
-        if (signal.aborted) return;
-        const rejection = await rejectedAccess(result, signal);
-        if (signal.aborted) return;
-        if (rejection || result.status === 'notFound') {
-          setList({ status: 'unavailable' });
-          return;
-        }
-        if (result.status !== 'ok') {
-          setList({ status: 'error' });
-          return;
-        }
-        setList({
-          status: 'ready',
-          ...readClientLegalEntityList(result.value),
-        });
-      },
-      onError: () => setList({ status: 'error' }),
-    });
-  }, [clientAccountId, companyContextId, identity, rejectedAccess]);
+  /** A quiet refresh keeps the current list visible until the new read. */
+  const load = useCallback(
+    async ({ quiet }: { quiet: boolean }): Promise<void> => {
+      if (!quiet) setList({ status: 'loading' });
+      await runLatestAuthenticatedRequest({
+        pending: pendingList,
+        identity,
+        execute: (api, signal) =>
+          api.request<unknown>(
+            `/clients/${encodeURIComponent(clientAccountId)}/legal-entities`,
+            { companyContextId, signal },
+          ),
+        async onResult(result, signal) {
+          if (signal.aborted) return;
+          const rejection = await rejectedAccess(result, signal);
+          if (signal.aborted) return;
+          if (rejection || result.status === 'notFound') {
+            setList({ status: 'unavailable' });
+            return;
+          }
+          if (result.status !== 'ok') {
+            setList({ status: 'error' });
+            return;
+          }
+          setList({
+            status: 'ready',
+            ...readClientLegalEntityList(result.value),
+          });
+        },
+        onError: () => setList({ status: 'error' }),
+      });
+    },
+    [clientAccountId, companyContextId, identity, rejectedAccess],
+  );
 
   useEffect(() => {
-    void load();
+    void load({ quiet: false });
     return () => {
       pendingList.current?.abort();
       pendingMutation.current?.abort();
@@ -195,7 +207,7 @@ export function ClientLegalEntities({
 
   function reload() {
     close();
-    void load();
+    void load({ quiet: false });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -300,6 +312,26 @@ export function ClientLegalEntities({
   const ready = list.status === 'ready' ? list : undefined;
   const editing = editor.mode !== 'closed';
   const submitting = outcome.status === 'submitting';
+  // The owner confirmed a newer dossier version than this list observed, for
+  // example its own correction. A closed section refreshes once for it, and
+  // no form opens until that refresh settles; an open form is never rebased.
+  const behindDossier =
+    ready !== undefined && ready.clientVersion < dossierVersion;
+  const awaitingRefresh =
+    behindDossier &&
+    (refresh?.dossierVersion !== dossierVersion || refresh.pending);
+  useEffect(() => {
+    if (!behindDossier || editing || refresh?.dossierVersion === dossierVersion)
+      return;
+    setRefresh({ dossierVersion, pending: true });
+    void load({ quiet: true }).then(() =>
+      setRefresh((current) =>
+        current?.dossierVersion === dossierVersion
+          ? { dossierVersion, pending: false }
+          : current,
+      ),
+    );
+  }, [behindDossier, dossierVersion, editing, load, refresh]);
   return (
     <section className="client-legal-entities" aria-labelledby={titleId}>
       <div className="client-legal-entities-heading">
@@ -313,7 +345,7 @@ export function ClientLegalEntities({
           <button
             type="button"
             className="client-secondary-action"
-            disabled={editing}
+            disabled={editing || awaitingRefresh}
             onClick={() =>
               open({
                 mode: 'add',
@@ -339,8 +371,8 @@ export function ClientLegalEntities({
       <ListContent
         list={list}
         canUpdate={canUpdate}
-        editing={editing}
-        onRetry={() => void load()}
+        editing={editing || awaitingRefresh}
+        onRetry={() => void load({ quiet: false })}
         onCorrect={(legalEntity) => {
           if (!ready) return;
           open({

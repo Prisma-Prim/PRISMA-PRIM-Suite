@@ -506,6 +506,7 @@ export function ClientDossierPanel({
       <ClientLegalEntities
         key={dossier.id}
         clientAccountId={dossier.id}
+        dossierVersion={dossier.version}
         companyContextId={companyContextId}
         canUpdate={canUpdate}
         identity={identity}
