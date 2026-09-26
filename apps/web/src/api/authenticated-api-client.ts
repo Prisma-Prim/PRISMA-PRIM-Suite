@@ -11,6 +11,8 @@ export type ApiResult<T> =
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
       reason?: undefined;
+      /** The machine-readable code of a coded conflict body, if any. */
+      code?: string;
     }
   | { status: 'validation'; message?: string };
 
@@ -67,7 +69,9 @@ export async function createAuthenticatedApiClient(
               duplicateReviewReference: body.duplicate_review_reference,
             };
           }
-          return { status: 'conflict' };
+          return isRecord(body) && typeof body.code === 'string'
+            ? { status: 'conflict', code: body.code }
+            : { status: 'conflict' };
         }
         if (response.status === 400) {
           const body = await optionalJson(response);

@@ -21,7 +21,10 @@ export const documentsCopy = {
   openDossier: 'Open Client dossier',
   warning:
     'The external content is unverified and may change. This draft reference is not an official preserved original.',
+  officialWarning:
+    'The external content is unverified and may change at its source. An official Version freezes only its recorded reference, title and purpose; it is not a preserved original.',
   draft: 'Draft questionnaire · Company-confidential',
+  official: 'Official questionnaire · Company-confidential',
   registrationTime: 'Registration time',
   project: 'Project',
   notLinkedToProject: 'Not linked to a Project',
@@ -45,4 +48,6 @@ export const documentsCopy = {
   activityTarget: 'Working Document',
   activity: 'registered a working Document reference',
   correctionActivity: 'corrected a working Document reference',
+  versionDraftedActivity: 'started a new draft Document Version',
+  versionDesignatedActivity: 'designated an official Document Version',
 } as const;

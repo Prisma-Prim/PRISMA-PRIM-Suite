@@ -82,6 +82,8 @@ export const workingDocuments = pgTable(
     ),
   ],
 );
+/** A Document has at most this many Versions (Document Registry PRD §21). */
+export const MAXIMUM_DOCUMENT_VERSIONS = 50;
 export const documentVersions = pgTable(
   'document_versions',
   {
@@ -89,17 +91,43 @@ export const documentVersions = pgTable(
     workspaceId: uuid('workspace_id').notNull(),
     companyId: uuid('company_id').notNull(),
     documentId: uuid('document_id').notNull(),
-    status: text('status').notNull().default('draft'),
+    number: integer('number').notNull(),
+    status: text('status', { enum: ['draft', 'official', 'superseded'] })
+      .notNull()
+      .default('draft'),
+    createdByMembershipId: uuid('created_by_membership_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    designatedByMembershipId: uuid('designated_by_membership_id'),
+    designatedAt: timestamp('designated_at', { withTimezone: true }),
+    frozenTitle: text('frozen_title'),
+    frozenPurpose: text('frozen_purpose'),
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
+    supersededByVersionId: uuid('superseded_by_version_id'),
   },
   (table) => [
-    uniqueIndex('document_versions_document_unique').on(
+    uniqueIndex('document_versions_number_unique').on(
       table.workspaceId,
       table.companyId,
       table.documentId,
+      table.number,
     ),
+    uniqueIndex('document_versions_draft_unique')
+      .on(table.workspaceId, table.companyId, table.documentId)
+      .where(sql`${table.status} = 'draft'`),
+    uniqueIndex('document_versions_official_unique')
+      .on(table.workspaceId, table.companyId, table.documentId)
+      .where(sql`${table.status} = 'official'`),
     uniqueIndex('document_versions_scope_unique').on(
       table.workspaceId,
       table.companyId,
+      table.id,
+    ),
+    uniqueIndex('document_versions_document_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.documentId,
       table.id,
     ),
     foreignKey({
@@ -111,7 +139,69 @@ export const documentVersions = pgTable(
         workingDocuments.id,
       ],
     }),
-    check('document_versions_draft_check', sql`${table.status} = 'draft'`),
+    foreignKey({
+      name: 'document_versions_creator_fk',
+      columns: [table.workspaceId, table.createdByMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_versions_designator_fk',
+      columns: [table.workspaceId, table.designatedByMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_versions_successor_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.documentId,
+        table.supersededByVersionId,
+      ],
+      foreignColumns: [
+        table.workspaceId,
+        table.companyId,
+        table.documentId,
+        table.id,
+      ],
+    }),
+    check(
+      'document_versions_number_check',
+      sql`${table.number} BETWEEN 1 AND 50`,
+    ),
+    // Content status is one dimension: a draft carries no designation, an
+    // official Version its designation and frozen snapshot, and a superseded
+    // one additionally its supersession by another Version.
+    check(
+      'document_versions_state_check',
+      sql`(
+        (${table.status} = 'draft'
+          AND ${table.designatedByMembershipId} IS NULL
+          AND ${table.designatedAt} IS NULL
+          AND ${table.frozenTitle} IS NULL
+          AND ${table.frozenPurpose} IS NULL
+          AND ${table.supersededAt} IS NULL
+          AND ${table.supersededByVersionId} IS NULL)
+        OR
+        (${table.status} IN ('official', 'superseded')
+          AND ${table.designatedByMembershipId} IS NOT NULL
+          AND ${table.designatedAt} IS NOT NULL
+          AND ${table.frozenTitle} IS NOT NULL
+          AND ${table.frozenPurpose} IS NOT NULL
+          AND ((${table.status} = 'official'
+              AND ${table.supersededAt} IS NULL
+              AND ${table.supersededByVersionId} IS NULL)
+            OR (${table.status} = 'superseded'
+              AND ${table.supersededAt} IS NOT NULL
+              AND ${table.supersededByVersionId} IS NOT NULL
+              AND ${table.supersededByVersionId} <> ${table.id})))
+      ) IS TRUE`,
+    ),
   ],
 );
 export const documentRepresentations = pgTable(
@@ -236,6 +326,95 @@ export const documentCorrectionCommands = pgTable(
     check(
       'document_correction_commands_state_check',
       sql`${table.expectedRevision} >= 1 AND ((${table.outcome} = 'corrected' AND ${table.revision} = ${table.expectedRevision} + 1) OR (${table.outcome} = 'unchanged' AND ${table.revision} = ${table.expectedRevision}))`,
+    ),
+  ],
+);
+
+/**
+ * Each committed Version command is its append-only durable receipt and its
+ * one Activity Log event. The action is a checked text value, so a later
+ * slice can extend it additively.
+ */
+export const documentVersionCommands = pgTable(
+  'document_version_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    action: text('action', {
+      enum: ['drafted', 'designated_official'],
+    }).notNull(),
+    versionId: uuid('version_id').notNull(),
+    versionNumber: integer('version_number').notNull(),
+    /** The source Version of a draft, or the Version a designation superseded. */
+    relatedVersionNumber: integer('related_version_number'),
+    actorMembershipId: uuid('actor_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    requestFingerprint: text('request_fingerprint').notNull(),
+    expectedRevision: integer('expected_revision').notNull(),
+    revision: integer('revision').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('document_version_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.actorMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('document_version_commands_revision_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.documentId,
+      table.revision,
+    ),
+    foreignKey({
+      name: 'document_version_commands_document_fk',
+      columns: [table.workspaceId, table.companyId, table.documentId],
+      foreignColumns: [
+        workingDocuments.workspaceId,
+        workingDocuments.companyId,
+        workingDocuments.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_version_commands_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.documentId,
+        table.versionId,
+      ],
+      foreignColumns: [
+        documentVersions.workspaceId,
+        documentVersions.companyId,
+        documentVersions.documentId,
+        documentVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_version_commands_actor_fk',
+      columns: [table.workspaceId, table.actorMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    check(
+      'document_version_commands_state_check',
+      sql`(
+        ${table.expectedRevision} >= 1
+        AND ${table.revision} = ${table.expectedRevision} + 1
+        AND ${table.versionNumber} BETWEEN 1 AND 50
+        AND ((${table.action} = 'drafted'
+            AND ${table.relatedVersionNumber} IS NOT NULL
+            AND ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1)
+          OR (${table.action} = 'designated_official'
+            AND (${table.relatedVersionNumber} IS NULL
+              OR ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1)))
+      ) IS TRUE`,
     ),
   ],
 );

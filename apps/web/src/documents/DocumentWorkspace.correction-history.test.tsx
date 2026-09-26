@@ -12,6 +12,22 @@ import type { ActorContext } from '../access-types';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
+/**
+ * Every opened detail mounts its Versions section. These tests prove other
+ * behaviour, so that read is answered as safely unavailable before the test's
+ * own transport sees it.
+ */
+function stubFetch(
+  fetcher: (input: string, init?: RequestInit) => unknown,
+): void {
+  vi.stubGlobal('fetch', (input: string, init?: RequestInit) =>
+    /^\/api\/documents\/[^/]+\/versions$/u.test(
+      new URL(input, 'http://localhost').pathname,
+    )
+      ? Promise.resolve(new Response(null, { status: 404 }))
+      : fetcher(input, init),
+  );
+}
 
 const correctingActor: ActorContext = {
   internalUserId: 'user',
@@ -170,7 +186,7 @@ function serve({
     const row = detail(id);
     return row ? Response.json(row) : new Response(null, { status: 404 });
   });
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   return { fetcher, historyRequests };
 }
 async function openDocument(title = document.title) {

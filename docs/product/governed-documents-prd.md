@@ -74,6 +74,8 @@ before/after ledger. It preserves Document, draft Version and Representation
 identity. Official or evidentiary content remains subject to the immutable-Version
 rules above.
 
+Document Registry PRD [section 21](release-1-document-registry-prd.md#21-approved-provisional-official-document-versions-400) provisionally implements the content-status part of this dimension: `draft → official → superseded`, with frozen official Versions.
+
 ## 7. Permissions
 
 Permissions distinguish reading metadata, reading content, registering Documents, creating formal Versions, reviewing/approving, managing Templates, attaching evidence, managing Locations and authorizing archive/purge.
