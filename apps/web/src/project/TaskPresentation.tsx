@@ -1,9 +1,12 @@
 import { useId, type FormEvent } from 'react';
-import type {
-  Assignee,
-  TaskDeclaration,
-  TaskEvent,
-  TaskView,
+import {
+  readTaskPriority,
+  taskPriorities,
+  type Assignee,
+  type TaskDeclaration,
+  type TaskEvent,
+  type TaskPriority,
+  type TaskView,
 } from './task-response';
 import { taskCopy as copy } from './task.copy';
 
@@ -11,6 +14,7 @@ export type Draft = {
   title: string;
   assigneeMembershipId: string;
   dueDate: string;
+  priority: TaskPriority;
 };
 export function TaskFieldsForm({
   draft,
@@ -94,6 +98,25 @@ export function TaskFieldsForm({
           }
         />
       </label>
+      <label>
+        {copy.priority}
+        <select
+          value={draft.priority}
+          disabled={disabled}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              priority: readTaskPriority(event.target.value),
+            })
+          }
+        >
+          {taskPriorities.map((priority) => (
+            <option key={priority} value={priority}>
+              {copy.priorities[priority]}
+            </option>
+          ))}
+        </select>
+      </label>
       <button type="submit" disabled={disabled}>
         {editing ? copy.save : copy.create}
       </button>
@@ -119,12 +142,21 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
               · {copy.version} {event.metadata.version}
             </p>
             {event.action === 'task.created' && (
-              <p>
-                {event.metadata.initial.title} ·{' '}
-                {event.metadata.initial.assignee?.displayLabel ??
-                  copy.unassigned}{' '}
-                · {event.metadata.initial.dueDate ?? copy.noDate}
-              </p>
+              <>
+                <p>
+                  {event.metadata.initial.title} ·{' '}
+                  {event.metadata.initial.assignee?.displayLabel ??
+                    copy.unassigned}{' '}
+                  · {event.metadata.initial.dueDate ?? copy.noDate}
+                </p>
+                {/* A creation recorded before priority existed shows no priority line. */}
+                {event.metadata.initial.priority && (
+                  <p>
+                    {copy.priority}:{' '}
+                    {copy.priorities[event.metadata.initial.priority]}
+                  </p>
+                )}
+              </>
             )}
             {event.action === 'task.updated' && (
               <dl>
@@ -155,6 +187,23 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                     }
                     after={event.metadata.changes.dueDate.after ?? copy.noDate}
                   />
+                )}
+                {event.metadata.changes.priority && (
+                  <div>
+                    <dt>{copy.priority}</dt>
+                    <dd>
+                      {copy.priorityChange({
+                        before:
+                          copy.priorities[
+                            event.metadata.changes.priority.before
+                          ],
+                        after:
+                          copy.priorities[
+                            event.metadata.changes.priority.after
+                          ],
+                      })}
+                    </dd>
+                  </div>
                 )}
               </dl>
             )}

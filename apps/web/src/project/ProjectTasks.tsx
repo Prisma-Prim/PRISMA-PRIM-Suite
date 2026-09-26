@@ -26,6 +26,7 @@ import {
   type Assignee,
   type TaskEvent,
   type TaskMove,
+  type TaskPriority,
   type TaskState,
   type TaskView,
 } from './task-response';
@@ -67,6 +68,7 @@ type Command = { key: string } & (
         title: string;
         assigneeMembershipId: string | null;
         dueDate: string | null;
+        priority: TaskPriority;
       };
     }
   | {
@@ -77,6 +79,7 @@ type Command = { key: string } & (
         title?: string;
         assigneeMembershipId?: string | null;
         dueDate?: string | null;
+        priority?: TaskPriority;
       };
     }
   | {
@@ -119,7 +122,12 @@ type ResolvedDateFilter =
   | { kind: 'undated' }
   | { kind: 'unusable' }
   | { kind: 'range'; from: string | null; through: string | null };
-const emptyDraft: Draft = { title: '', assigneeMembershipId: '', dueDate: '' };
+const emptyDraft: Draft = {
+  title: '',
+  assigneeMembershipId: '',
+  dueDate: '',
+  priority: 'normal',
+};
 const everyAssignee: AssigneeFilter = { kind: 'all' };
 const everyDate: DateFilter = { kind: 'all' };
 const openBound: DateBound = { kind: 'open' };
@@ -442,6 +450,7 @@ function TaskProject({
               title: task.title,
               assigneeMembershipId: task.assignee?.workspaceMembershipId ?? '',
               dueDate: task.dueDate ?? '',
+              priority: task.priority,
             }
           : emptyDraft,
     );
@@ -632,6 +641,7 @@ function TaskProject({
       title,
       assigneeMembershipId: draft.assigneeMembershipId || null,
       dueDate: draft.dueDate || null,
+      priority: draft.priority,
     };
     if (selected && current && isOpenTaskState(current.task.status))
       void run({
@@ -647,6 +657,9 @@ function TaskProject({
             : {}),
           ...(body.dueDate !== current.task.dueDate
             ? { dueDate: body.dueDate }
+            : {}),
+          ...(body.priority !== current.task.priority
+            ? { priority: body.priority }
             : {}),
         },
       });
@@ -882,6 +895,9 @@ function TaskProject({
                     <span className="task-status">
                       {copy.states[task.status]}
                     </span>
+                    <span className="task-priority">
+                      {copy.priority}: {copy.priorities[task.priority]}
+                    </span>
                     <span>
                       {task.assignee?.displayLabel ?? copy.unassigned} ·{' '}
                       {task.dueDate ?? copy.noDate}
@@ -921,6 +937,10 @@ function TaskProject({
                     <div>
                       <dt>{copy.dueDate}</dt>
                       <dd>{current.task.dueDate ?? copy.noDate}</dd>
+                    </div>
+                    <div>
+                      <dt>{copy.priority}</dt>
+                      <dd>{copy.priorities[current.task.priority]}</dd>
                     </div>
                     <div>
                       <dt>{copy.createdBy}</dt>

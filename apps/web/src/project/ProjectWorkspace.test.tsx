@@ -943,6 +943,7 @@ describe('Client identity changes', () => {
     title: 'Keep this Task draft',
     assignee: null,
     dueDate: null,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,

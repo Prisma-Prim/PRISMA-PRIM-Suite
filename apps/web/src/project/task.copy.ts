@@ -1,4 +1,4 @@
-import type { TaskEvent, TaskState } from './task-response';
+import type { TaskEvent, TaskPriority, TaskState } from './task-response';
 
 export const taskCopy = {
   activityTarget: 'Task',
@@ -44,6 +44,14 @@ export const taskCopy = {
   assignee: 'Responsible member',
   dueDate: 'Due date',
   noDate: 'No due date',
+  priority: 'Priority',
+  priorities: {
+    normal: 'Normal',
+    important: 'Important',
+    critical: 'Critical',
+  } satisfies Record<TaskPriority, string>,
+  priorityChange: ({ before, after }: { before: string; after: string }) =>
+    `${before} → ${after}`,
   unassigned: 'Unassigned',
   noMembers:
     'No eligible responsible members. You can leave the Task unassigned.',

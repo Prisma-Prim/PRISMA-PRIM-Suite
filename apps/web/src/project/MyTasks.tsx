@@ -158,6 +158,10 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
                     )}
                   </dd>
                 </div>
+                <div>
+                  <dt>{taskCopy.priority}</dt>
+                  <dd>{taskCopy.priorities[task.priority]}</dd>
+                </div>
               </dl>
               {onOpenTask && (
                 <button

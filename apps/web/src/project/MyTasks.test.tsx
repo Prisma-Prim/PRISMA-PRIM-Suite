@@ -66,6 +66,7 @@ function assigned(
     title,
     assignee: { workspaceMembershipId: 'member', displayLabel: 'Owner · 1' },
     dueDate,
+    priority: 'normal',
     status: 'todo',
     completion: null,
     version: 1,
@@ -143,15 +144,34 @@ it.each(['classic', 'prisme'] as const)(
     );
     await screen.findByRole('list', { name: copy.listLabel });
     expect(rows()).toEqual([
-      ['Early notes', 'ISO preparation', 'Synthetic Client', '0099-12-31'],
+      [
+        'Early notes',
+        'ISO preparation',
+        'Synthetic Client',
+        '0099-12-31',
+        'Normal',
+      ],
       [
         'September notes',
         'Audit preparation',
         'Second Synthetic Client',
         '2026-09-30',
+        'Normal',
       ],
-      ['October notes', 'ISO preparation', 'Synthetic Client', '2026-10-05'],
-      ['Undated notes', 'ISO preparation', 'Synthetic Client', 'No due date'],
+      [
+        'October notes',
+        'ISO preparation',
+        'Synthetic Client',
+        '2026-10-05',
+        'Normal',
+      ],
+      [
+        'Undated notes',
+        'ISO preparation',
+        'Synthetic Client',
+        'No due date',
+        'Normal',
+      ],
     ]);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe('/api/assigned-tasks');
@@ -170,12 +190,59 @@ it.each(['classic', 'prisme'] as const)(
   },
 );
 
-it('shows each open row with its execution state and no count, badge or ranking', async () => {
+it('labels each row with its priority as text while keeping the server date order', async () => {
   stub(
     page([
-      { ...september, status: 'in_progress' },
+      { ...september, priority: 'normal' },
+      { ...october, priority: 'critical' },
+      { ...undated, priority: 'important' },
+    ]),
+  );
+  render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
+  await screen.findByRole('list', { name: copy.listLabel });
+  // A critical Task due later stays below a normal Task due earlier.
+  expect(rows()).toEqual([
+    [
+      'September notes',
+      'Audit preparation',
+      'Second Synthetic Client',
+      '2026-09-30',
+      'Normal',
+    ],
+    [
+      'October notes',
+      'ISO preparation',
+      'Synthetic Client',
+      '2026-10-05',
+      'Critical',
+    ],
+    [
+      'Undated notes',
+      'ISO preparation',
+      'Synthetic Client',
+      'No due date',
+      'Important',
+    ],
+  ]);
+  const list = screen.getByRole('list', { name: copy.listLabel });
+  expect(
+    within(list)
+      .getAllByRole('term')
+      .filter((term) => term.textContent === taskCopy.priority),
+  ).toHaveLength(3);
+  expect(region()).not.toHaveTextContent(
+    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+|critical\s+|important\s+)?tasks?\b/i,
+  );
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+});
+
+it('shows each open row with its execution state and priority and no count, badge or ranking', async () => {
+  stub(
+    page([
+      { ...september, status: 'in_progress', priority: 'important' },
       {
         ...october,
+        priority: 'critical',
         status: 'blocked',
         version: 2,
         blockage: {
@@ -198,8 +265,14 @@ it('shows each open row with its execution state and no count, badge or ranking'
   expect(started).toHaveTextContent('In progress');
   expect(blocked).toHaveTextContent('Blocked');
   expect(open).toHaveTextContent('To do');
+  // A blocked critical Task keeps the server's date order.
+  expect(rows().map((row) => row.at(-1))).toEqual([
+    'Important',
+    'Critical',
+    'Normal',
+  ]);
   expect(region()).not.toHaveTextContent(
-    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+|blocked\s+)?tasks?\b/i,
+    /\b(overdue|urgent|late)\b|\b\d+\s+(open\s+|blocked\s+|critical\s+|important\s+)?tasks?\b/i,
   );
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
 });
@@ -313,7 +386,13 @@ it('reads Client authority from Company client.read as well as client.manage', a
   );
   await screen.findByRole('list', { name: copy.listLabel });
   expect(rows()).toEqual([
-    ['October notes', 'ISO preparation', 'Synthetic Client', '2026-10-05'],
+    [
+      'October notes',
+      'ISO preparation',
+      'Synthetic Client',
+      '2026-10-05',
+      'Normal',
+    ],
   ]);
 });
 
@@ -325,7 +404,13 @@ it('shows an error with Retry and then the list read by Retry', async () => {
   fireEvent.click(screen.getByRole('button', { name: copy.retry }));
   await screen.findByRole('list', { name: copy.listLabel });
   expect(rows()).toEqual([
-    ['October notes', 'ISO preparation', 'Synthetic Client', '2026-10-05'],
+    [
+      'October notes',
+      'ISO preparation',
+      'Synthetic Client',
+      '2026-10-05',
+      'Normal',
+    ],
   ]);
   expect(calls).toHaveLength(2);
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -376,6 +461,17 @@ it.each([
     'an impossible due date',
     { tasks: [{ ...october, dueDate: '2026-02-30' }] },
   ],
+  ['an unknown priority', { tasks: [{ ...october, priority: 'Critical' }] }],
+  [
+    'a missing priority',
+    {
+      tasks: [
+        Object.fromEntries(
+          Object.entries(october).filter(([field]) => field !== 'priority'),
+        ),
+      ],
+    },
+  ],
 ])('fails closed without rows for %s', async (_case, body) => {
   stub(() => Response.json(body));
   render(<MyTasks actor={actor} identity={deterministicBrowserIdentity()} />);
@@ -390,7 +486,13 @@ it('re-reads on Refresh so a completed Task disappears', async () => {
   fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
   await waitFor(() =>
     expect(rows()).toEqual([
-      ['October notes', 'ISO preparation', 'Synthetic Client', '2026-10-05'],
+      [
+        'October notes',
+        'ISO preparation',
+        'Synthetic Client',
+        '2026-10-05',
+        'Normal',
+      ],
     ]),
   );
   expect(calls).toHaveLength(2);
@@ -425,7 +527,13 @@ it.each(['newer first', 'older first'])(
     }
     await new Promise((settle) => setTimeout(settle, 0));
     expect(rows()).toEqual([
-      ['October notes', 'ISO preparation', 'Synthetic Client', '2026-10-05'],
+      [
+        'October notes',
+        'ISO preparation',
+        'Synthetic Client',
+        '2026-10-05',
+        'Normal',
+      ],
     ]);
   },
 );
@@ -507,6 +615,7 @@ it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
         'ISO preparation',
         'Synthetic Client',
         replacement.dueDate ?? taskCopy.noDate,
+        'Normal',
       ],
     ]);
     expect(screen.queryByText('September notes')).not.toBeInTheDocument();
