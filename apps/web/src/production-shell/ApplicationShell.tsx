@@ -26,6 +26,7 @@ export interface ApplicationSection {
     | 'documents'
     | 'requests'
     | 'catalogue'
+    | 'pricing'
     | 'projects'
     | 'my-tasks'
     | 'clients'

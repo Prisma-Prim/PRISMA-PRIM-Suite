@@ -29,6 +29,8 @@ const targetTypes = {
   'company_commercial_intake_assignment.revoked': 'company_role_assignment',
   'company_service_catalogue_assignment.granted': 'company_role_assignment',
   'company_service_catalogue_assignment.revoked': 'company_role_assignment',
+  'company_pricing_configuration_assignment.granted': 'company_role_assignment',
+  'company_pricing_configuration_assignment.revoked': 'company_role_assignment',
   'company_commercial_activity_reader_assignment.granted':
     'company_role_assignment',
   'company_commercial_activity_reader_assignment.revoked':

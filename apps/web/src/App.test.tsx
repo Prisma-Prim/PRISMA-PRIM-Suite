@@ -417,6 +417,10 @@ describe('App', () => {
         'granted Company Service Catalogue',
       'company_service_catalogue_assignment.revoked':
         'revoked Company Service Catalogue',
+      'company_pricing_configuration_assignment.granted':
+        'granted Company Pricing Configuration',
+      'company_pricing_configuration_assignment.revoked':
+        'revoked Company Pricing Configuration',
       'company_commercial_activity_reader_assignment.granted':
         'granted Company Commercial Activity Reader',
       'company_commercial_activity_reader_assignment.revoked':

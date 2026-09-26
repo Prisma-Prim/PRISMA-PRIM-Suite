@@ -324,10 +324,7 @@ export class CommercialCatalogueService {
     cursorInput: unknown,
     limitInput: unknown,
   ): Promise<CompanyServiceOfferingPage> {
-    const companyId = await this.authorization.requireServiceCatalogueAccess(
-      actor,
-      ['commercial.offering.read'],
-    );
+    const companyId = await this.authorization.requireOfferingReadAccess(actor);
     const limit = readCatalogueLimit(limitInput);
     const cursor = readCatalogueCursor(cursorInput);
     const rows = await this.databaseContext.connection
@@ -374,10 +371,7 @@ export class CommercialCatalogueService {
     actor: ActorContext,
     offeringId: string,
   ): Promise<CompanyServiceOfferingRecord> {
-    const companyId = await this.authorization.requireServiceCatalogueAccess(
-      actor,
-      ['commercial.offering.read'],
-    );
+    const companyId = await this.authorization.requireOfferingReadAccess(actor);
     const offering = await this.findOffering(
       actor.workspaceId,
       companyId,

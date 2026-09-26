@@ -24,6 +24,7 @@ const bundleLabels = {
   director: 'Company Director Client Access',
   commercial: 'Company Commercial Intake',
   catalogue: 'Company Service Catalogue',
+  pricing: 'Company Pricing Configuration',
   reader: 'Company Commercial Activity Reader',
   project: 'Company Project Access',
 } as const;
@@ -32,6 +33,7 @@ const serverVersions = {
   director: 'v2',
   commercial: 'v2',
   catalogue: 'v1',
+  pricing: 'v1',
   reader: 'v1',
   project: 'v2',
 } as const;
@@ -382,6 +384,25 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a version on Company Context Access',
       assignment: { bundle: 'Company Context Access', version: 'v1' },
+    },
+    {
+      name: 'a null Pricing Configuration version',
+      assignment: { bundle: 'Company Pricing Configuration', version: null },
+    },
+    {
+      name: 'no Pricing Configuration version',
+      assignment: {
+        bundle: 'Company Pricing Configuration',
+        version: undefined,
+      },
+    },
+    {
+      name: 'a v2 Pricing Configuration version',
+      assignment: { bundle: 'Company Pricing Configuration', version: 'v2' },
+    },
+    {
+      name: 'a V1 Pricing Configuration version',
+      assignment: { bundle: 'Company Pricing Configuration', version: 'V1' },
     },
     {
       name: 'an unknown bundle label',
@@ -1373,6 +1394,84 @@ describe('CompanyContextAccess', () => {
     expect(await screen.findByText(/Current server state:/)).toHaveTextContent(
       /^Current server state: Granted — captured version v1$/,
     );
+  });
+
+  it('grants and revokes Company Pricing Configuration v1 through the existing administration', async () => {
+    let active = false;
+    const commands: { method: string; path: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(administration(active ? 'pricing' : undefined));
+        if (path.startsWith('/api/company-pricing-configuration-assignments')) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'configuration-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Pricing Configuration',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    fireEvent.change(screen.getByLabelText('Access bundle'), {
+      target: { value: 'pricing-configuration' },
+    });
+    expect(
+      screen.getByRole('option', { name: 'Company Pricing Configuration' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Company Pricing Configuration v1 grants offering read and Pricing Rule configuration only/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    expect(screen.getByText(capturedVersionExplanation)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-pricing-configuration-assignments',
+        key: expect.any(String),
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-pricing-configuration-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+      },
+    ]);
+    expect(commands[0]?.key).not.toBe(commands[1]?.key);
   });
 
   it('grants Company Commercial Activity Reader through the existing administration', async () => {
