@@ -51,7 +51,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
     fullPage: true,
   });
   await intake.getByRole('button', { name: 'Capture Request' }).click();
-  await expect(intake.getByRole('alert')).toHaveText(
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
     'Enter the required request and Opportunity fields.',
   );
   await captureRequest(page, intake, {
@@ -114,7 +114,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await intake.getByRole('button', { name: 'Edit next action' }).click();
   await intake.getByLabel('Next action').fill('   ');
   await intake.getByRole('button', { name: 'Save next action' }).click();
-  await expect(intake.getByRole('alert')).toHaveText(
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
     'Enter a next action between 1 and 500 characters.',
   );
   await intake.getByLabel('Next action').fill(editedNextAction);
@@ -127,7 +127,9 @@ test('captures and reopens manual Client Requests through the real API and Postg
   );
   await intake.getByRole('button', { name: 'Save next action' }).click();
   expect((await updateResponse).status()).toBe(200);
-  await expect(intake.getByRole('alert')).toHaveText('Next action saved.');
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
+    'Next action saved.',
+  );
   await expect(
     intake.getByText(`Next action: ${editedNextAction}`, { exact: true }),
   ).toBeVisible();
@@ -183,7 +185,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await intake.getByRole('button', { name: 'Edit next action' }).click();
   await intake.getByLabel('Next action').fill(`Stale edit ${suffix}`);
   await intake.getByRole('button', { name: 'Save next action' }).click();
-  await expect(intake.getByRole('alert')).toHaveText(
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
     'This Opportunity changed since you loaded it. Reload the Request before editing again.',
   );
   await expect(intake.getByLabel('Next action')).toHaveCount(0);
@@ -252,7 +254,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await revokeClientAccess(page);
   try {
     await intake.getByRole('button', { name: 'Capture Request' }).click();
-    await expect(intake.getByRole('alert')).toHaveText(
+    await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
       'The selected Client is no longer available. Refresh the Client search before trying again.',
     );
   } finally {
@@ -265,7 +267,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await expect(intake.getByLabel('Original request text')).toHaveValue(
     'Unavailable Client request',
   );
-  await expect(intake.getByRole('alert')).toBeVisible();
+  await expect(intake.locator(':scope > [role="alert"]')).toBeVisible();
   // Both viewport projects share one acceptance database, so only the rows
   // loaded in this run are a stable expectation.
   const loadedBeforeFilter = await listItems.count();
@@ -581,7 +583,9 @@ test('opens the Request from its commercial Activity events through the real API
   );
   await intake.getByRole('button', { name: 'Save next action' }).click();
   expect((await updateResponse).status()).toBe(200);
-  await expect(intake.getByRole('alert')).toHaveText('Next action saved.');
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
+    'Next action saved.',
+  );
   await intake.getByRole('button', { name: 'Back to Requests' }).click();
 
   await grantCommercialActivityReader(page);

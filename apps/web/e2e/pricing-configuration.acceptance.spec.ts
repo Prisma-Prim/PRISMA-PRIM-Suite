@@ -770,9 +770,17 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
       throw new Error('Expected non-empty offering labels.');
     await panel.getByLabel(offeringALabel, { exact: true }).check();
     await panel.getByLabel(offeringBLabel, { exact: true }).check();
-    const quantities = panel.getByLabel('Quantity', { exact: true });
-    await quantities.nth(0).fill('2.5');
-    await quantities.nth(1).fill('1');
+    // Catalogue order is newest first; quantities belong to offering identity.
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringALabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('2.5');
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringBLabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('1');
     await panel.getByRole('button', { name: 'Calculate and save' }).focus();
     await expect(
       panel.getByRole('button', { name: 'Calculate and save' }),
@@ -782,7 +790,7 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     await expect(panel.getByText('38.08 EUR', { exact: true })).toBeVisible();
     await expect(panel.getByText('346.72 EUR', { exact: true })).toBeVisible();
     await expect(
-      panel.getByText('Illustrative and provisional').first(),
+      panel.locator('header').getByText('Illustrative and provisional'),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
@@ -812,6 +820,9 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     ).toBeVisible();
     await expect(
       reloadedPanel.getByText('2.5 × 123.4500 EUR/illustrative-unit'),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText('1 × 0.0050 EUR/illustrative-unit'),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({

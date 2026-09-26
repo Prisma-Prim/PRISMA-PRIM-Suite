@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -195,13 +196,18 @@ function renderPanel(opportunityId = OPPORTUNITY_A, value = actor) {
 }
 
 async function selectWorkedExample(): Promise<void> {
-  fireEvent.click(await screen.findByLabelText('Illustrative service A'));
-  fireEvent.click(screen.getByLabelText('Illustrative label B'));
-  const [firstQuantity, secondQuantity] = screen.getAllByLabelText('Quantity');
-  if (!firstQuantity || !secondQuantity)
-    throw new Error('Expected two quantity inputs.');
-  fireEvent.change(firstQuantity, { target: { value: '2.5' } });
-  fireEvent.change(secondQuantity, { target: { value: '1' } });
+  for (const [label, quantity] of [
+    ['Illustrative service A', '2.5'],
+    ['Illustrative label B', '1'],
+  ] as const) {
+    const checkbox = await screen.findByLabelText(label);
+    const offering = checkbox.closest('fieldset');
+    if (!offering) throw new Error('Expected the offering quantity group.');
+    fireEvent.click(checkbox);
+    fireEvent.change(within(offering).getByLabelText('Quantity'), {
+      target: { value: quantity },
+    });
+  }
 }
 
 function postCalls(
@@ -269,6 +275,32 @@ describe('PricingSnapshotPanel', () => {
       expect.stringContaining(`${snapshotPath(OPPORTUNITY_A)}/${saved.id}`),
       expect.anything(),
     );
+  });
+
+  it('keeps quantities attached to their offerings when the catalogue returns newest first', async () => {
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      'GET /api/commercial-catalogue/offerings': () =>
+        Response.json({ items: [...offerings].reverse() }),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(snapshot(), { status: 201 }),
+    });
+    renderPanel();
+    await selectWorkedExample();
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    await screen.findByText('346.72 EUR');
+    expect(postCalls(fetchMock)).toEqual([
+      {
+        body: {
+          pricingRuleVersionNumber: 3,
+          lines: [
+            { offeringId: OFFERING_B, tariffVersionNumber: 2, quantity: '1' },
+            { offeringId: OFFERING_A, tariffVersionNumber: 4, quantity: '2.5' },
+          ],
+        },
+        idempotencyKey: expect.any(String),
+      },
+    ]);
   });
 
   it('keeps the exact payload and key while an outcome is uncertain and retries only that command', async () => {
