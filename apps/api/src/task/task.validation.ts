@@ -128,6 +128,10 @@ export function cancelInput(value: unknown) {
 export function assignedTasksQuery(value: unknown): void {
   keys(object(value), []);
 }
+/** The Company overdue-Task list takes no query parameter either. */
+export function overdueTasksQuery(value: unknown): void {
+  keys(object(value), []);
+}
 function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid stored Task text.');
   return value;

@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import {
   actorContextFixture,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
@@ -134,6 +135,14 @@ async function installServer(page: Page) {
     if (path === '/api/companies') return route.fulfill({ json: [company] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 2,
+          open_projects: projects.length,
+          overdue_tasks: 0,
+        }),
+      });
     if (path === '/api/clients')
       return route.fulfill({ json: [atelier, beta] });
     if (path === '/api/documents') return route.fulfill({ json: [] });

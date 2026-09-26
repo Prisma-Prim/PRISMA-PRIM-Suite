@@ -41,10 +41,28 @@ export type TaskView = TaskFields & {
         cancellation: TaskDeclaration;
       }
   );
+/** The Project list's own labels for a Task row. */
+export interface TaskProjectLabels {
+  id: string;
+  title: string;
+  clientDisplayName: string;
+}
 /** An open Task assigned to the reader, with the Project list's own labels. */
-export type AssignedTaskView = TaskView & {
-  project: { id: string; title: string; clientDisplayName: string };
+export type AssignedTaskView = TaskView & { project: TaskProjectLabels };
+/**
+ * An open Task of the reader's Project list due before the read's today, with
+ * the Project list's own labels and its whole calendar days overdue.
+ */
+export type OverdueTaskView = TaskView & {
+  project: TaskProjectLabels;
+  daysOverdue: number;
 };
+/** The Company overdue Tasks at one today: the count and at most the requested rows. */
+export interface CompanyOverdueTasks {
+  companyId: string;
+  total: number;
+  tasks: OverdueTaskView[];
+}
 export type TaskChanges = {
   [K in keyof TaskFields]?: { before: TaskFields[K]; after: TaskFields[K] };
 };
