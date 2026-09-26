@@ -151,9 +151,9 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
   await edit.click();
 
   const save = intake.getByRole('button', { name: 'Save next action' });
-  const cancel = intake.getByRole('button', {
-    name: 'Cancel next action edit',
-  });
+  const cancel = intake
+    .locator('form.commercial-intake-next-action')
+    .getByRole('button', { name: 'Cancel', exact: true });
   await expect(save).toHaveCSS('background-color', 'rgb(100, 81, 232)');
   await expect(cancel).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   await intake.getByLabel('Next action').fill('Discarded draft');
