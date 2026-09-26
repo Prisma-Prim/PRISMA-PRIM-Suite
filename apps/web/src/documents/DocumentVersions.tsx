@@ -446,6 +446,10 @@ function Designation({ version }: { version: DocumentVersion }) {
             <dt>{copy.frozenTitle}</dt>
             <dd>{version.frozen.title}</dd>
           </dl>
+          <dl className="working-document-version-frozen">
+            <dt>{copy.frozenPurpose}</dt>
+            <dd>{version.frozen.purpose}</dd>
+          </dl>
           {version.status === 'superseded' ? (
             <Attribution
               label={copy.supersededBy(version.supersededByVersionNumber)}

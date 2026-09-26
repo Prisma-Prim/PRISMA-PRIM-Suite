@@ -19,6 +19,7 @@ export const documentVersionsCopy = {
   designatedBy: (displayName: string) =>
     `Designated official by ${displayName}`,
   frozenTitle: 'Frozen title',
+  frozenPurpose: 'Frozen purpose',
   supersededBy: (number: number) => `Superseded by Version ${number}`,
   frozenNotice:
     'The recorded reference and title of this official Version are frozen. The linked external content is not stored or verified here and may change at its source.',

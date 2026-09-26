@@ -128,12 +128,13 @@ const official = (
   url: string,
   granted = true,
   title = TITLE,
+  purpose = 'Evaluate the initial situation',
 ) => ({
   ...draft(number, url, granted),
   status: 'official',
   designatedAt: number === 1 ? DESIGNATED_1 : DESIGNATED_2,
   designatedBy: { displayName: 'Document Approver' },
-  frozen: { title, purpose: 'Evaluate the initial situation' },
+  frozen: { title, purpose },
 });
 const superseded = (number: number, url: string, granted = true) => ({
   ...official(number, url, granted),
@@ -250,7 +251,13 @@ describe('the Document Versions section', () => {
         'read-only',
       ),
       versions: versionsRead(5, [
-        official(2, V2_URL, true, 'Chestionar corectat'),
+        official(
+          2,
+          V2_URL,
+          true,
+          'Chestionar corectat',
+          'Assess the revised scope',
+        ),
         superseded(1, V1_URL),
       ]),
     });
@@ -285,6 +292,7 @@ describe('the Document Versions section', () => {
       `Designated official by Document Approver${formatApplicationDateTime(DESIGNATED_2)}`,
     );
     expect(second).toHaveTextContent('Frozen titleChestionar corectat');
+    expect(second).toHaveTextContent('Frozen purposeAssess the revised scope');
     expect(second).toHaveTextContent(
       'The recorded reference and title of this official Version are frozen. The linked external content is not stored or verified here and may change at its source.',
     );
@@ -300,6 +308,10 @@ describe('the Document Versions section', () => {
     ).toBeInTheDocument();
     expect(first).toHaveTextContent('Superseded');
     expect(first).toHaveTextContent(`Frozen title${TITLE}`);
+    expect(first).toHaveTextContent(
+      'Frozen purposeEvaluate the initial situation',
+    );
+    expect(first).not.toHaveTextContent('Assess the revised scope');
     expect(first).toHaveTextContent(
       `Superseded by Version 2${formatApplicationDateTime(DESIGNATED_2)}`,
     );
