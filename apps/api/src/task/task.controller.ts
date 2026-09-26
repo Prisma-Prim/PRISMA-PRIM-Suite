@@ -46,6 +46,12 @@ export class TaskController {
   ) {
     return this.tasks.listAssigned(actor(request), query);
   }
+  @Get('overdue-tasks') listOverdue(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.tasks.listOverdue(actor(request), query);
+  }
   @Get('tasks/:taskId') read(
     @Req() request: ActorContextRequest,
     @Param('taskId') id: string,

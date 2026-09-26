@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
+  operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
 
@@ -57,6 +58,14 @@ test('creates and opens a Project, then switches local panels without reloading 
         },
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: 1,
+          open_projects: projects.length,
+          overdue_tasks: 0,
+        }),
+      });
     if (path === '/api/clients') return route.fulfill({ json: [client] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });
