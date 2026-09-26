@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskEvent, TaskView } from '../src/project/task-response';
@@ -181,6 +182,10 @@ async function installServer(page: Page) {
       if (path === `${ownerPath}/responsible`)
         return route.fulfill({
           json: { ...unassignedResponsibility, mutable },
+        });
+      if (path === `${ownerPath}/lifecycle`)
+        return route.fulfill({
+          json: { ...preparatoryLifecycle, mutable },
         });
     }
     for (const task of tasks) {

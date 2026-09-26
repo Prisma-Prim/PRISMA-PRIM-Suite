@@ -425,6 +425,10 @@ describe('App', () => {
         'granted Company Commercial Activity Reader',
       'company_commercial_activity_reader_assignment.revoked':
         'revoked Company Commercial Activity Reader',
+      'company_project_approver_assignment.granted':
+        'granted Company Project Approver',
+      'company_project_approver_assignment.revoked':
+        'revoked Company Project Approver',
       'company_context_assignment.granted': 'granted Company Context Access',
       'company_context_assignment.revoked': 'revoked Company Context Access',
       'company_director_client_assignment.granted':

@@ -11,6 +11,10 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project-lifecycle.test-fixtures';
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -30,6 +34,17 @@ afterEach(() => {
   document.documentElement.lang = '';
   vi.unstubAllGlobals();
 });
+/** Serves each opened Project's lifecycle section before the test's own stub. */
+function stubFetch(
+  name: 'fetch',
+  serve: (url: string, init?: RequestInit) => Promise<Response>,
+) {
+  vi.stubGlobal(name, (url: string, init?: RequestInit) =>
+    isLifecycleRead(url)
+      ? Promise.resolve(Response.json(preparatoryLifecycle))
+      : serve(url, init),
+  );
+}
 const applicationDateTime = (value: string) =>
   new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
@@ -50,7 +65,7 @@ const validProject = {
 
 it('reports the existing load error when a listed Project carries a non-instant registration time', async () => {
   document.documentElement.lang = 'en';
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) =>
       Response.json(
@@ -80,7 +95,7 @@ it('reports the existing load error when a listed Project carries a non-instant 
 it('keeps the loaded Projects and reports the existing error when a reopened Project carries an impossible registration time', async () => {
   document.documentElement.lang = 'en';
   let malformed = true;
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/clients')
@@ -140,7 +155,7 @@ it('keeps the loaded Projects and reports the existing error when a reopened Pro
 it('keeps the create draft and the request key when the created Project carries a non-instant registration time', async () => {
   document.documentElement.lang = 'en';
   const keys: string[] = [];
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string, options?: RequestInit) => {
       if (options?.method === 'POST') {
@@ -217,7 +232,7 @@ it('shows the persisted registration time of each loaded Project row and of the 
           : [listedProject],
     ),
   );
-  vi.stubGlobal('fetch', fetch);
+  stubFetch('fetch', fetch);
 
   render(
     <ProjectWorkspace
@@ -258,7 +273,7 @@ it('shows the persisted registration time of each loaded Project row and of the 
     'datetime',
     reopenedProject.createdAt,
   );
-  // The responsible member row reads its own sub-resource.
+  // The responsible member and lifecycle sections read their own sub-resources.
   expect(
     fetch.mock.calls
       .slice(readsAfterLoad)
@@ -297,7 +312,7 @@ it('filters loaded Projects by visible title or Client without requesting again 
         : projects,
     ),
   );
-  vi.stubGlobal('fetch', fetch);
+  stubFetch('fetch', fetch);
 
   render(
     <ProjectWorkspace
@@ -339,7 +354,7 @@ it('filters loaded Projects by visible title or Client without requesting again 
     screen.getByText('No Project matches this search.'),
   ).toBeInTheDocument();
   expect(
-    screen.queryByText('No preparatory Projects for this Company yet.'),
+    screen.queryByText('No Projects for this Company yet.'),
   ).not.toBeInTheDocument();
 });
 
@@ -367,7 +382,7 @@ it('uses an authorized dossier identity for navigation and an exact loaded filte
       createdAt: '2026-09-19T00:00:00.000Z',
     },
   ];
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/clients') return Response.json([]);
@@ -432,7 +447,7 @@ it('does not expose Project-to-dossier navigation without a derived authorized d
     clientDisplayName: 'Visible Client',
     createdAt: '2026-09-19T00:00:00.000Z',
   };
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) =>
       Response.json(
@@ -477,7 +492,7 @@ it('keeps an opened detail while filtering and reflects its authoritative reopen
     title: 'Food safety preparation',
     clientDisplayName: 'Beta Certification',
   };
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/clients')
@@ -548,7 +563,7 @@ it('resets the local Project filter when the active Company changes', async () =
       createdAt: '2026-09-19T00:00:00.000Z',
     },
   } satisfies Record<string, object>;
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) =>
       Response.json(
@@ -602,7 +617,7 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
     createdAt: '2026-09-19T00:00:00.000Z',
   };
   let created = false;
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string, options?: RequestInit) => {
       if (url === '/api/clients')
@@ -620,7 +635,7 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
   const props = { actor, identity: deterministicBrowserIdentity() };
   const view = render(<ProjectWorkspace {...props} />);
   expect(
-    await screen.findByText('No preparatory Projects for this Company yet.'),
+    await screen.findByText('No Projects for this Company yet.'),
   ).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Project title'), {
     target: { value: 'ISO preparation' },
@@ -632,14 +647,20 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
   expect(
     await screen.findByRole('heading', { name: 'ISO preparation' }),
   ).toBeInTheDocument();
-  expect(
-    screen.getByText(
-      'Preparation only. This record does not authorize work to start.',
-    ),
-  ).toBeInTheDocument();
   const projectDetail = screen.getByRole('article', {
     name: 'ISO preparation',
   });
+  // The notice stays beside the registration form and on the preparatory Project.
+  expect(
+    screen.getAllByText(
+      'Preparation only. This record does not authorize work to start.',
+    ),
+  ).toHaveLength(2);
+  expect(
+    within(projectDetail).getByText(
+      'Preparation only. This record does not authorize work to start.',
+    ),
+  ).toBeInTheDocument();
   expect(projectDetail.firstElementChild).toBe(
     screen.getByRole('heading', { name: 'ISO preparation' }),
   );
@@ -671,7 +692,7 @@ it('clears a previously opened Project when the server revokes access', async ()
     createdAt: '2026-09-19T00:00:00.000Z',
   };
   let denied = false;
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (denied) return new Response(null, { status: 403 });
@@ -719,7 +740,7 @@ it('reuses a stable request key after an uncertain create result', async () => {
     clientDisplayName: 'Synthetic Client',
     createdAt: '2026-09-19T00:00:00.000Z',
   };
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string, options?: RequestInit) => {
       if (options?.method === 'POST') {
@@ -777,7 +798,7 @@ it('presents the existing preparatory Project detail in Prisme without changing 
     clientDisplayName: 'Synthetic Client',
     createdAt: '2026-09-19T00:00:00.000Z',
   };
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/clients')
@@ -857,7 +878,7 @@ it('passes Open Document unchanged to the opened Project’s linked Documents', 
       },
     },
   };
-  vi.stubGlobal(
+  stubFetch(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/clients')
@@ -1038,7 +1059,7 @@ describe('Client identity changes', () => {
       if (!found) throw new Error(`Nothing is held for ${route}`);
       return found;
     }
-    vi.stubGlobal(
+    stubFetch(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         const request: ServerRequest = {

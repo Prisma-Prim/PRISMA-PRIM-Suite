@@ -17,6 +17,8 @@ import {
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   documentPermissionsFor,
   COMPANY_PROJECT_ACCESS_BUNDLE,
+  COMPANY_PROJECT_APPROVER_BUNDLE,
+  projectApproverPermissionsFor,
   isProjectPermissionSetVersion,
   projectPermissionsFor,
   type CompanyProjectPermissionSetVersion,
@@ -298,6 +300,30 @@ export class CompanyContextAuthorization {
     if (!actor.activeCompany?.projectPermissions?.includes('project.update'))
       throw new ForbiddenException();
     return this.requireProjectAssignment(actor, ['v2'], lock);
+  }
+
+  // Company Project Approver v1 carries only the lifecycle permissions. Its
+  // holder independently needs current Project read and Client read in the
+  // active Company. A locked read serializes a transition against the
+  // revocation of any of them.
+  async requireProjectLifecycleTransition(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const companyId = await this.requireProjectAccess(actor, lock);
+    if (
+      !actor.activeCompany?.projectApproverPermissions?.includes(
+        'project.lifecycle.transition',
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      capturedGrant(COMPANY_PROJECT_APPROVER_BUNDLE),
+      lock,
+    );
+    return companyId;
   }
 
   private async requireProjectAssignment(
@@ -712,6 +738,7 @@ export class CompanyContextAuthorization {
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
+        COMPANY_PROJECT_APPROVER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -842,6 +869,18 @@ export class CompanyContextAuthorization {
         company.pricingConfigurationPermissionAssignmentId = row.assignmentId;
         company.pricingConfigurationPermissionSetVersion = 'v1';
       }
+      // The approver contributes its captured lifecycle permissions only; it
+      // never authorizes Company context or Project read by itself.
+      if (
+        row.bundle === COMPANY_PROJECT_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.projectApproverPermissions = [
+          ...projectApproverPermissionsFor(row.permissionSetVersion),
+        ];
+        company.projectApproverPermissionAssignmentId = row.assignmentId;
+        company.projectApproverPermissionSetVersion = 'v1';
+      }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
@@ -866,7 +905,8 @@ export class CompanyContextAuthorization {
 function capturedGrant(
   bundle:
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
-    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE,
+    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
+    | typeof COMPANY_PROJECT_APPROVER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,

@@ -3,6 +3,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project/project-lifecycle.test-fixtures';
 
 const company = {
   id: 'company-1',
@@ -74,6 +78,7 @@ function serve(current: ActorContext) {
       if (path === '/api/activity-log') return Response.json({ events });
       if (path === '/api/projects') return Response.json([project]);
       if (path === `/api/projects/${project.id}`) return Response.json(project);
+      if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
       if (path === `/api/projects/${project.id}/responsible`)
         return Response.json({
           responsible: ion,

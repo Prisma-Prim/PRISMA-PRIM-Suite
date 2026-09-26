@@ -33,7 +33,8 @@ type AssignmentBundle =
   | 'service-catalogue'
   | 'pricing-configuration'
   | 'commercial-activity-reader'
-  | 'project';
+  | 'project'
+  | 'project-approver';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
@@ -49,6 +50,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
+  'project-approver': '/company-project-approver-assignments',
 };
 type AdministrationLoadState =
   | { status: 'loading' }
@@ -467,7 +469,8 @@ export function CompanyContextAccess({
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
                 value === 'document-registrar' ||
-                value === 'project'
+                value === 'project' ||
+                value === 'project-approver'
               )
                 setBundle(value);
             }}
@@ -493,6 +496,9 @@ export function CompanyContextAccess({
               {copy.documentRegistrarBundle}
             </option>
             <option value="project">{copy.projectBundle}</option>
+            <option value="project-approver">
+              {copy.projectApproverBundle}
+            </option>
             <option value="task-manager">{copy.taskManagerBundle}</option>
           </select>
 
@@ -502,6 +508,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
+          )}
+          {bundle === 'project-approver' && (
+            <p>{copy.projectApproverPrerequisites}</p>
           )}
           {workspaceMembershipId && companyId && (
             <p role="status">
@@ -587,6 +596,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',
     project: copy.projectBundle,
+    'project-approver': copy.projectApproverBundle,
     'director-client': 'Company Director Client Access',
     'company-context': 'Company Context Access',
   };

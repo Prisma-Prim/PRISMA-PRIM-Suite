@@ -1,7 +1,7 @@
 export const projectCopy = {
   eyebrow: 'Operations',
   title: 'Projects',
-  navDescription: 'Register and reopen preparatory Projects.',
+  navDescription: 'Register and reopen Projects.',
   warning: 'Preparation only. This record does not authorize work to start.',
   projectTitle: 'Project title',
   client: 'Client',
@@ -9,7 +9,7 @@ export const projectCopy = {
   create: 'Create Project',
   searchLabel: 'Find Projects',
   searchPlaceholder: 'Search by Project or Client',
-  empty: 'No preparatory Projects for this Company yet.',
+  empty: 'No Projects for this Company yet.',
   noMatches: 'No Project matches this search.',
   loading: 'Loading Projects…',
   denied:
@@ -23,7 +23,6 @@ export const projectCopy = {
   registeredPrefix: 'Registered:',
   openDossier: 'Open Client dossier',
   companyPrefix: 'Company:',
-  status: 'Preparatory',
   noClients:
     'Create or relate a Client to this Company before registering a Project.',
   activityTarget: 'Project',
@@ -59,6 +58,8 @@ export const projectCopy = {
       'The responsible member or your access changed. Reload before making another change.',
     rejected:
       'The selected member can no longer be named responsible. Reload and choose again.',
+    responsibleRequired:
+      'An active or on-hold Project needs a responsible member. Choose a replacement instead.',
     uncertain:
       'The change is not confirmed. Retry the same change to safely recover its recorded result.',
     retry: 'Retry responsible member change',

@@ -6,6 +6,8 @@ import { CompanyDocumentProjectOrganizerAssignmentController } from './access/co
 import { ProjectController } from './project/project.controller.js';
 import { ProjectResponsibilityController } from './project/project-responsibility.controller.js';
 import { ProjectModule } from './project/project.module.js';
+import { ProjectLifecycleController } from './project/project-lifecycle.controller.js';
+import { ProjectLifecycleModule } from './project/project-lifecycle.module.js';
 import { CompanyProjectAssignmentController } from './access/company-project-assignment.controller.js';
 import { WorkspaceSessionRevocationController } from './access/workspace-session-revocation.controller.js';
 import { WorkspaceSessionRevocationService } from './access/workspace-session-revocation.service.js';
@@ -53,12 +55,14 @@ import { PricingConfigurationModule } from './pricing-configuration/pricing-conf
 import { PricingConfigurationController } from './pricing-configuration/pricing-configuration.controller.js';
 import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
+import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 
 @Module({
   imports: [
     TaskModule,
     DocumentsModule,
     ProjectModule,
+    ProjectLifecycleModule,
     AccessModule,
     AccountabilityModule,
     ClientModule,
@@ -77,7 +81,9 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
     ProjectResponsibilityController,
+    ProjectLifecycleController,
     CompanyProjectAssignmentController,
+    CompanyProjectApproverAssignmentController,
     WorkspaceInvitationAcceptanceController,
     WorkspaceInvitationController,
     ClientUnionController,

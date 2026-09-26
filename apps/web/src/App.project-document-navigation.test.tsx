@@ -7,6 +7,10 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 
@@ -157,6 +161,7 @@ function installTransport(
         return respond({ id: `assignment-grant-${state.grants}` }, 201);
       }
       if (path.endsWith('/assigned-tasks')) return respond({ tasks: [] });
+      if (isLifecycleRead(path)) return respond(preparatoryLifecycle);
       if (path.endsWith('/clients'))
         return respond([{ ...client, relatedToActiveCompany: true }]);
       if (path.endsWith('/projects'))

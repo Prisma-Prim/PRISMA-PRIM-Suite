@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import type { TaskView } from '../src/project/task-response';
@@ -449,6 +450,8 @@ async function interceptApplication(
       return route.fulfill({ json: { members: [] } });
     if (path === `/api/projects/${project.id}/responsible`)
       return route.fulfill({ json: unassignedResponsibility });
+    if (path === `/api/projects/${project.id}/lifecycle`)
+      return route.fulfill({ json: preparatoryLifecycle });
     if (path === `/api/projects/${project.id}/tasks`) {
       onListRead();
       return route.fulfill({ json: { mutable: true, tasks } });

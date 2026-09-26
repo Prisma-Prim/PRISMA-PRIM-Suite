@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { PROJECT_STATUSES } from '../../project/project-lifecycle.types.js';
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
 
 export const projects = pgTable(
@@ -19,7 +20,7 @@ export const projects = pgTable(
     companyId: uuid('company_id').notNull(),
     clientAccountId: uuid('client_account_id').notNull(),
     title: text('title').notNull(),
-    status: text('status', { enum: ['preparatory'] })
+    status: text('status', { enum: PROJECT_STATUSES })
       .default('preparatory')
       .notNull(),
     createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
@@ -48,6 +49,9 @@ export const projects = pgTable(
     responsibilityChangedAt: timestamp('responsibility_changed_at', {
       withTimezone: true,
     }),
+    // The lifecycle version token (Project/Task PRD section 23), separate
+    // from the responsibility revision.
+    lifecycleRevision: integer('lifecycle_revision').default(0).notNull(),
   },
   (table) => [
     uniqueIndex('projects_workspace_id_id_unique').on(
@@ -118,7 +122,20 @@ export const projects = pgTable(
       'projects_title_check',
       sql`length(${table.title}) BETWEEN 1 AND 200 AND ${table.title} = btrim(${table.title})`,
     ),
-    check('projects_preparatory_check', sql`${table.status} = 'preparatory'`),
+    check(
+      'projects_status_check',
+      sql`${table.status} IN ('preparatory', 'active', 'on_hold', 'completed', 'cancelled')`,
+    ),
+    // Only a committed transition leaves `preparatory`, and none returns to it.
+    check(
+      'projects_lifecycle_revision_check',
+      sql`${table.lifecycleRevision} >= 0 AND (${table.status} = 'preparatory') = (${table.lifecycleRevision} = 0)`,
+    ),
+    // An active or on-hold Project always has a responsible member.
+    check(
+      'projects_lifecycle_responsible_check',
+      sql`${table.status} NOT IN ('active', 'on_hold') OR ${table.responsibleMembershipId} IS NOT NULL`,
+    ),
     check(
       'projects_responsible_check',
       sql`(${table.responsibleMembershipId} IS NULL) = (${table.responsibleDisplayLabel} IS NULL)`,

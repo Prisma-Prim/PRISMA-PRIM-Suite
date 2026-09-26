@@ -13,6 +13,7 @@ import type {
 } from '../src/documents/document-response';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
 
@@ -121,6 +122,8 @@ async function installProjectDocumentsFixture(page: Page) {
     }
     if (path === `/api/projects/${project.id}/responsible`)
       return route.fulfill({ json: unassignedResponsibility });
+    if (path === `/api/projects/${project.id}/lifecycle`)
+      return route.fulfill({ json: preparatoryLifecycle });
     if (
       path === `/api/projects/${project.id}/documents` ||
       path === `/api/projects/${project.id}/eligible-documents`

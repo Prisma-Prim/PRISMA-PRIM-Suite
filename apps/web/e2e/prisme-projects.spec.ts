@@ -1,8 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import type { ProjectLifecycle } from '../src/project/project-lifecycle-response';
 import {
   actorContextFixture,
-  unassignedResponsibility,
+  preparatoryLifecycle,
 } from './actor-context.fixture';
+
+const ana = {
+  workspaceMembershipId: 'ana-membership',
+  displayLabel: 'Ana-Maria Ionescu-Vasilescu Șerbănescu · 3F',
+};
+const exceptionReason =
+  'Lucrările încep pe baza acordului preliminar semnat; Oferta aprobată și Contractul sunt în curs de finalizare cu departamentul juridic al clientului.';
+const holdReason =
+  'Clientul a cerut o pauză până la confirmarea datei auditului de certificare ISO 9001 de către organismul de certificare.';
+
+async function expectNoHorizontalOverflow(page: Page) {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+}
 
 test('creates and opens a Project, then switches local panels without reloading them', async ({
   page,
@@ -29,11 +47,111 @@ test('creates and opens a Project, then switches local panels without reloading 
   };
   const projects = [existingProject];
   const reads = { tasks: 0, documents: 0 };
+  let lifecycle: ProjectLifecycle = preparatoryLifecycle;
+  const transitions: unknown[] = [];
+
+  /** Applies one section 23 transition to the created Project. */
+  function transition(body: unknown): unknown {
+    const occurredAt = new Date(
+      Date.UTC(2026, 8, 26, 10, lifecycle.lifecycleRevision),
+    ).toISOString();
+    const actor = { displayName: actorContextFixture.displayName };
+    const lifecycleRevision = lifecycle.lifecycleRevision + 1;
+    if (typeof body !== 'object' || body === null || !('action' in body))
+      throw new Error('Unexpected lifecycle command.');
+    transitions.push(body);
+    switch (body.action) {
+      case 'activate':
+        lifecycle = {
+          status: 'active',
+          lifecycleRevision,
+          mutable: true,
+          start: {
+            declaredAt: occurredAt,
+            declaredBy: actor,
+            declaration: {
+              approvedOffer: 'missing',
+              contractOrPrecontract: 'missing',
+              projectPlan: 'present',
+              initialDocuments: 'present',
+              deadlines: 'present',
+              financialConditions: 'missing',
+              risks: 'present',
+            },
+            exception: {
+              reason: exceptionReason,
+              completionResponsible: ana,
+              completionDueDate: '2026-10-15',
+            },
+          },
+          transitions: [
+            {
+              action: 'activate',
+              lifecycleRevision,
+              from: 'preparatory',
+              to: 'active',
+              occurredAt,
+              actor,
+              withStartException: true,
+            },
+          ],
+        };
+        break;
+      case 'hold':
+        lifecycle = {
+          ...lifecycle,
+          status: 'on_hold',
+          lifecycleRevision,
+          transitions: [
+            {
+              action: 'hold',
+              lifecycleRevision,
+              from: 'active',
+              to: 'on_hold',
+              occurredAt,
+              actor,
+              reason: holdReason,
+            },
+            ...lifecycle.transitions,
+          ],
+        };
+        break;
+      case 'resume':
+        lifecycle = {
+          ...lifecycle,
+          status: 'active',
+          lifecycleRevision,
+          transitions: [
+            {
+              action: 'resume',
+              lifecycleRevision,
+              from: 'on_hold',
+              to: 'active',
+              occurredAt,
+              actor,
+            },
+            ...lifecycle.transitions,
+          ],
+        };
+        break;
+      default:
+        throw new Error('Unexpected lifecycle action.');
+    }
+    const [last] = lifecycle.transitions;
+    return {
+      projectId: createdProject.id,
+      action: last?.action,
+      from: last?.from,
+      to: last?.to,
+      lifecycleRevision,
+    };
+  }
 
   await page.route('**/api/**', (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const companyContext = request.headers()['x-company-context-id'];
+    const created = { ...createdProject, status: lifecycle.status };
     if (path === '/api/access/current-actor')
       return route.fulfill({
         json: {
@@ -44,6 +162,12 @@ test('creates and opens a Project, then switches local panels without reloading 
                 activeCompany: {
                   ...company,
                   projectPermissions: ['project.read', 'project.create'],
+                  projectApproverPermissions: [
+                    'project.lifecycle.transition',
+                    'project.close',
+                  ],
+                  projectApproverPermissionAssignmentId: 'approver-grant',
+                  projectApproverPermissionSetVersion: 'v1',
                   taskPermissions: ['task.read', 'task.manage'],
                   taskPermissionAssignmentId: 'task-manager-grant',
                   taskPermissionSetVersion: 'v1',
@@ -67,13 +191,16 @@ test('creates and opens a Project, then switches local panels without reloading 
       });
       expect(request.headers()['idempotency-key']).toBeTruthy();
       projects.push(createdProject);
-      return route.fulfill({ status: 201, json: createdProject });
+      return route.fulfill({ status: 201, json: created });
     }
-    if (path === '/api/projects') return route.fulfill({ json: projects });
+    if (path === '/api/projects')
+      return route.fulfill({
+        json: projects.map((row) => (row.id === created.id ? created : row)),
+      });
     if (path === `/api/projects/${existingProject.id}`)
       return route.fulfill({ json: existingProject });
     if (path === `/api/projects/${createdProject.id}`)
-      return route.fulfill({ json: createdProject });
+      return route.fulfill({ json: created });
     if (path === `/api/projects/${createdProject.id}/tasks`) {
       reads.tasks += 1;
       return route.fulfill({ json: { mutable: true, tasks: [] } });
@@ -81,7 +208,31 @@ test('creates and opens a Project, then switches local panels without reloading 
     if (path === `/api/projects/${createdProject.id}/eligible-task-assignees`)
       return route.fulfill({ json: { members: [] } });
     if (path === `/api/projects/${createdProject.id}/responsible`)
-      return route.fulfill({ json: unassignedResponsibility });
+      return route.fulfill({
+        json: {
+          responsible: ana,
+          revision: 1,
+          lastChange: {
+            actorDisplayName: actorContextFixture.displayName,
+            occurredAt: '2026-09-26T09:00:00.000Z',
+          },
+          mutable: true,
+        },
+      });
+    if (path === `/api/projects/${createdProject.id}/lifecycle`)
+      return route.fulfill({ json: lifecycle });
+    if (
+      path ===
+      `/api/projects/${createdProject.id}/eligible-start-exception-members`
+    )
+      return route.fulfill({ json: { members: [ana] } });
+    if (
+      path === `/api/projects/${createdProject.id}/lifecycle-transitions` &&
+      request.method() === 'POST'
+    ) {
+      expect(request.headers()['idempotency-key']).toBeTruthy();
+      return route.fulfill({ json: transition(request.postDataJSON()) });
+    }
     if (path === `/api/projects/${createdProject.id}/documents`) {
       reads.documents += 1;
       return route.fulfill({ json: { mutable: true, documents: [] } });
@@ -102,8 +253,23 @@ test('creates and opens a Project, then switches local panels without reloading 
   await page.goto('/?frame=prisme#projects');
 
   await expect(page.getByLabel('Project title')).toBeVisible();
+  const projectList = page.getByRole('list', { name: 'Projects' });
+  await expect(
+    projectList
+      .getByRole('listitem')
+      .filter({ hasText: existingProject.title })
+      .getByText('Preparatory', { exact: true }),
+  ).toBeVisible();
   await page.getByLabel('Project title').fill(createdProject.title);
   await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  // The preparation notice stays beside the registration form.
+  await expect(
+    page
+      .locator('form')
+      .getByText(
+        'Preparation only. This record does not authorize work to start.',
+      ),
+  ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('prisme-projects-create.png'),
     fullPage: true,
@@ -117,13 +283,12 @@ test('creates and opens a Project, then switches local panels without reloading 
     exact: true,
   });
   await expect(projectHeading).toBeVisible();
+  const article = page.getByRole('article', { name: createdProject.title });
   await expect(
-    page
-      .getByRole('article', { name: createdProject.title })
-      .getByText(`Client: ${client.displayName}`),
+    article.getByText(`Client: ${client.displayName}`),
   ).toBeVisible();
   await expect(
-    page.getByText(
+    article.getByText(
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeVisible();
@@ -171,6 +336,118 @@ test('creates and opens a Project, then switches local panels without reloading 
   await tasksTab.click();
   await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
 
+  // Activate with a start exception, then hold and resume (issue #406).
+  const lifecycleSection = article.getByRole('region', { name: 'Lifecycle' });
+  await expect(
+    lifecycleSection.getByText('Preparatory', { exact: true }),
+  ).toBeVisible();
+  await lifecycleSection
+    .getByRole('button', { name: 'Activate Project' })
+    .click();
+  const declaration = lifecycleSection.getByRole('form', {
+    name: 'Start declaration',
+  });
+  for (const item of [
+    'Approved Offer',
+    'Contract or precontract',
+    'Financial conditions',
+  ])
+    await declaration
+      .getByRole('group', { name: item })
+      .getByRole('radio', { name: 'Missing' })
+      .check();
+  for (const item of [
+    'Project plan',
+    'Initial documents',
+    'Deadlines',
+    'Relevant risks',
+  ])
+    await declaration
+      .getByRole('group', { name: item })
+      .getByRole('radio', { name: 'Present' })
+      .press('Space');
+  await declaration.getByLabel('Start exception reason').fill(exceptionReason);
+  await expect(declaration.getByLabel('To be completed by')).toHaveValue(
+    ana.workspaceMembershipId,
+  );
+  await declaration.getByLabel('Completion deadline').fill('2026-10-15');
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-activation-form.png'),
+    fullPage: true,
+  });
+  await declaration.getByRole('button', { name: 'Activate' }).focus();
+  await page.keyboard.press('Enter');
+
+  await expect(
+    lifecycleSection.getByText('Start declaration — declared, not verified'),
+  ).toBeVisible();
+  await expect(lifecycleSection).toContainText(
+    `To be completed by ${ana.displayLabel} by 2026-10-15`,
+  );
+  await expect(article.getByText('Active', { exact: true })).toHaveCount(2);
+  await expect(
+    projectList
+      .getByRole('listitem')
+      .filter({ hasText: createdProject.title })
+      .getByText('Active', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    article.getByText(
+      'Preparation only. This record does not authorize work to start.',
+    ),
+  ).toHaveCount(0);
+
+  await lifecycleSection.getByRole('button', { name: 'Put on hold' }).click();
+  await lifecycleSection.getByLabel('Hold reason').fill(holdReason);
+  await lifecycleSection
+    .getByRole('button', { name: 'Put Project on hold' })
+    .click();
+  await expect(lifecycleSection).toContainText(`Hold reason${holdReason}`);
+  await expect(article.getByText('On hold', { exact: true })).toHaveCount(2);
+  await lifecycleSection
+    .getByRole('button', { name: 'Resume Project' })
+    .click();
+  await lifecycleSection
+    .getByRole('button', { name: 'Confirm resumption' })
+    .click();
+  await expect(
+    lifecycleSection.getByRole('button', { name: 'Put on hold' }),
+  ).toBeVisible();
+  const history = lifecycleSection.getByRole('list');
+  await expect(history.getByRole('listitem')).toHaveCount(3);
+  await expect(history.getByRole('listitem').first()).toContainText('Resumed');
+  expect(transitions).toEqual([
+    {
+      action: 'activate',
+      expectedLifecycleRevision: 0,
+      declaration: {
+        approvedOffer: 'missing',
+        contractOrPrecontract: 'missing',
+        projectPlan: 'present',
+        initialDocuments: 'present',
+        deadlines: 'present',
+        financialConditions: 'missing',
+        risks: 'present',
+      },
+      startException: {
+        reason: exceptionReason,
+        completionMembershipId: ana.workspaceMembershipId,
+        completionDueDate: '2026-10-15',
+      },
+    },
+    { action: 'hold', expectedLifecycleRevision: 1, reason: holdReason },
+    { action: 'resume', expectedLifecycleRevision: 2 },
+  ]);
+  // No transition re-read or rebased the open Task draft.
+  await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectNoHorizontalOverflow(page);
+  await lifecycleSection.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-lifecycle.png'),
+    fullPage: true,
+  });
+
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Use classic frame' }).click();
@@ -180,18 +457,33 @@ test('creates and opens a Project, then switches local panels without reloading 
       .locator('#project-documents-panel')
       .getByRole('region', { name: 'Working Documents', exact: true }),
   ).toBeVisible();
+  const classicLifecycle = page.getByRole('region', { name: 'Lifecycle' });
+  await expect(
+    classicLifecycle.getByText('Start declaration — declared, not verified'),
+  ).toBeVisible();
+  await expect(classicLifecycle.getByRole('listitem')).toHaveCount(3);
+  await expect(
+    classicLifecycle.getByRole('button', { name: 'Put on hold' }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-lifecycle-classic.png'),
+    fullPage: true,
+  });
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
   expect(reads).toEqual(readsAfterOpen);
 
-  const rawIds = [company.id, client.id, existingProject.id, createdProject.id];
+  const rawIds = [
+    company.id,
+    client.id,
+    existingProject.id,
+    createdProject.id,
+    ana.workspaceMembershipId,
+  ];
   for (const id of rawIds)
     await expect(page.getByText(id, { exact: true })).toHaveCount(0);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  await expectNoHorizontalOverflow(page);
   await page.screenshot({
     path: testInfo.outputPath('prisme-projects-detail.png'),
     fullPage: true,

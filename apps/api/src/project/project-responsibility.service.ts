@@ -33,8 +33,9 @@ const STALE =
   'The responsible member changed. Reload before choosing another member.';
 
 /**
- * A preparatory Project's one accountable member. Being responsible grants no
- * access, assigns no Task and changes nothing else about the Project.
+ * A Project's one accountable member. Being responsible grants no access,
+ * assigns no Task and never changes the Project lifecycle, which requires the
+ * member while the Project is active or on hold (Project/Task PRD section 23).
  */
 @Injectable()
 export class ProjectResponsibilityService {
@@ -121,6 +122,18 @@ export class ProjectResponsibilityService {
       const current = await this.row(actor, companyId, projectId, true);
       if (current.responsibilityRevision !== command.expectedRevision)
         throw new ConflictException(STALE);
+      // Read under the Project row lock, which a lifecycle transition also
+      // takes after the same Client locks: the two serialize.
+      if (
+        command.workspaceMembershipId === null &&
+        (current.status === 'active' || current.status === 'on_hold')
+      )
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'project_responsible_required',
+          message:
+            'Choose a replacement instead of clearing the responsible member.',
+        });
       const before = responsibleOf(current);
       const receipt = {
         actor,

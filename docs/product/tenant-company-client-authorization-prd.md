@@ -125,6 +125,16 @@ bounded manual mutations under the Project/Task PRD.
 
 The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
 
+The [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406) adds the opt-in **Company Project Approver v1**. It contains exactly `project.lifecycle.transition` (activate, hold, resume) and `project.close` (complete, cancel): the separate lifecycle-transition and close permissions of Project/Task PRD section 8 and decision record §8.1.
+
+An active administrator with `company.assignment.manage` explicitly grants or revokes the captured v1 assignment for an active same-Workspace membership and an active Company, through the existing Company assignment administration. No existing bundle, assignment, Workspace ownership or migration backfill confers it. Null or unknown captured versions fail closed.
+
+It confers no Company context; no Project read, create or update authority; and no Task, Document, Client or administration authority. Its holder transitions a Project only while independently holding current Project read and Client read for that Project in the active Company.
+
+Its lifecycle is `company_project_approver_assignment.granted` and `company_project_approver_assignment.revoked`. It follows the canonical Company-scoped permission-transition convention stated above for the Company Commercial Activity Reader, including metadata limited to the bundle label and exactly one event per actual state change.
+
+First-tenant configuration grants it only to Iurie's membership in each Company. This is an assignment, not a hard-coded identity.
+
 The [working-reference correction slice](release-1-document-registry-prd.md#19-approved-unverified-working-reference-correction-250)
 adds `document.correct` only through captured **Company Document Registrar v2**.
 Registrar v1 remains exactly `document.read`, `document.register` and

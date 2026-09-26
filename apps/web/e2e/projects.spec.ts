@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
 
@@ -76,6 +77,8 @@ test('registers and reopens a Company preparatory Project after reload', async (
       expect(request.headers()['x-company-context-id']).toBe(company.id);
       if (path.endsWith('/responsible'))
         return route.fulfill({ json: unassignedResponsibility });
+      if (path.endsWith('/lifecycle'))
+        return route.fulfill({ json: preparatoryLifecycle });
       if (request.method() === 'POST') {
         expect(request.postDataJSON()).toEqual({
           title: project.title,
@@ -103,7 +106,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
   await expect(
-    page.getByText('No preparatory Projects for this Company yet.'),
+    page.getByText('No Projects for this Company yet.'),
   ).toBeVisible();
   const clientLabel = page.locator('label[for="project-client"]');
   const clientSelect = page.getByLabel('Client', { exact: true });
@@ -173,9 +176,14 @@ test('registers and reopens a Company preparatory Project after reload', async (
     project.createdAt,
   );
   await expect(
-    page.getByText(
+    projectDetail.getByText(
       'Preparation only. This record does not authorize work to start.',
     ),
+  ).toBeVisible();
+  await expect(
+    projectDetail
+      .getByRole('region', { name: 'Lifecycle' })
+      .getByText('Preparatory', { exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(

@@ -8,6 +8,10 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { taskCopy } from './project/task.copy';
@@ -184,6 +188,8 @@ function installServer() {
         inB ? [otherCompanyProject] : [atelierProject, betaProject],
       );
     if (inB) return new Response(null, { status: 404 });
+    if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
+      return Response.json(preparatoryLifecycle);
     for (const owner of [atelierProject, betaProject]) {
       const path = `/api/projects/${owner.id}`;
       if (route === `GET ${path}`) return Response.json(owner);

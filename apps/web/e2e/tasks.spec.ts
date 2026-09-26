@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   unassignedResponsibility,
 } from './actor-context.fixture';
 import {
@@ -75,6 +76,8 @@ test('manages manual Tasks through the production shell with retained retry and 
       return route.fulfill({ json: project });
     if (path === `/api/projects/${project.id}/responsible`)
       return route.fulfill({ json: unassignedResponsibility });
+    if (path === `/api/projects/${project.id}/lifecycle`)
+      return route.fulfill({ json: preparatoryLifecycle });
     if (!path.includes('/tasks') && !path.endsWith('/eligible-task-assignees'))
       return route.fulfill({ status: 403 });
     expect(request.headers()['x-company-context-id']).toBe(company.id);
@@ -359,9 +362,14 @@ test('manages manual Tasks through the production shell with retained retry and 
   await expect(history.getByText('Before: 2026-10-15')).toBeVisible();
   await expect(history.getByText('Priority: Critical')).toBeVisible();
   await expect(history.getByText('Critical → Important')).toBeVisible();
-  await expect(page.getByText('Preparatory', { exact: true })).toBeVisible();
+  const detail = page.getByRole('article', { name: project.title });
   await expect(
-    page.getByText(
+    detail
+      .getByRole('region', { name: 'Lifecycle' })
+      .getByText('Preparatory', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    detail.getByText(
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeVisible();
@@ -513,6 +521,8 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
       return route.fulfill({ json: project });
     if (path === `/api/projects/${project.id}/responsible`)
       return route.fulfill({ json: unassignedResponsibility });
+    if (path === `/api/projects/${project.id}/lifecycle`)
+      return route.fulfill({ json: preparatoryLifecycle });
     if (path === '/api/assigned-tasks')
       return route.fulfill({
         json: {
