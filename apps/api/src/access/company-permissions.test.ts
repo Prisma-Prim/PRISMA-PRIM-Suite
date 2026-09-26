@@ -7,6 +7,7 @@ import {
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
   pricingConfigurationPermissionsFor,
+  pricingUserPermissionsFor,
   projectPermissionsFor,
   serviceCataloguePermissionsFor,
   taskPermissionsFor,
@@ -15,6 +16,46 @@ import {
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Pricing User permission sets', () => {
+  it('resolves exactly the four captured v1 Pricing User permissions', () => {
+    expect(pricingUserPermissionsFor('v1')).toEqual([
+      'commercial.offering.read',
+      'commercial.pricing.configuration.read',
+      'commercial.pricing.calculate',
+      'commercial.pricing.snapshot.read',
+    ]);
+  });
+
+  it('shares only offering and configuration read with Configuration v1', () => {
+    const pricingUser: readonly string[] = pricingUserPermissionsFor('v1');
+    const configuration: readonly string[] =
+      pricingConfigurationPermissionsFor('v1');
+    expect(
+      pricingUser.filter((permission) => configuration.includes(permission)),
+    ).toEqual([
+      'commercial.offering.read',
+      'commercial.pricing.configuration.read',
+    ]);
+    expect(configuration).not.toContain('commercial.pricing.calculate');
+    expect(configuration).not.toContain('commercial.pricing.snapshot.read');
+  });
+
+  it('shares only offering read with Catalogue v1', () => {
+    const pricingUser: readonly string[] = pricingUserPermissionsFor('v1');
+    const catalogue: readonly string[] = serviceCataloguePermissionsFor('v1');
+    expect(
+      pricingUser.filter((permission) => catalogue.includes(permission)),
+    ).toEqual(['commercial.offering.read']);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(pricingUserPermissionsFor(version)).toEqual([]);
+    },
+  );
+});
 
 describe('Company Pricing Configuration permission sets', () => {
   it('resolves exactly the captured v1 configuration permissions', () => {
