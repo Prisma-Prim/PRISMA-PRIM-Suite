@@ -693,6 +693,9 @@ function SnapshotDetail({
           <li key={`${snapshot.id}:${line.position}`}>
             <strong>{line.commercialLabel ?? line.serviceName}</strong>
             <span>
+              {copy.tariff}: {line.tariffVersionNumber}
+            </span>
+            <span>
               {line.quantity} × {line.unitAmount} {line.currency}/{line.unit}
             </span>
             <span>

@@ -277,6 +277,40 @@ describe('PricingSnapshotPanel', () => {
     );
   });
 
+  it('reopens a snapshot with its stored Tariff Version after an identical successor is published', async () => {
+    const historical = snapshot();
+    stubApi({
+      ...baseRoutes(),
+      [`GET /api/pricing-configuration/offerings/${OFFERING_A}/tariff-scope`]:
+        () =>
+          Response.json({
+            offeringId: OFFERING_A,
+            current: tariff(OFFERING_A, 5),
+          }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json({ items: [historical] }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}/${historical.id}`]: () =>
+        Response.json(historical),
+    });
+
+    renderPanel();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: /Reopen snapshot: 346\.72 EUR/u,
+      }),
+    );
+
+    const closeButton = await screen.findByRole('button', {
+      name: 'Close snapshot',
+    });
+    const detail = closeButton.closest('section');
+    if (!detail) throw new Error('Expected the reopened snapshot detail');
+    expect(within(detail).getByText('Tariff Version: 4')).toBeInTheDocument();
+    expect(
+      within(detail).queryByText('Tariff Version: 5'),
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps quantities attached to their offerings when the catalogue returns newest first', async () => {
     const fetchMock = stubApi({
       ...baseRoutes(),
