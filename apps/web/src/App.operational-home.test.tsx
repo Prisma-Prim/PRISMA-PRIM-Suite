@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -230,7 +231,7 @@ const overduePanel = (company: { displayName: string }) =>
 async function selectCompany(companyId: string) {
   const selector = () =>
     screen.getByLabelText('Active Company', { exact: true });
-  fireEvent.change(selector(), { target: { value: companyId } });
+  changeValue(selector(), companyId);
   await waitFor(() => {
     expect(selector()).toHaveValue(companyId);
     expect(selector()).toBeEnabled();
@@ -387,9 +388,7 @@ describe('Operational home through App', () => {
     server.state.actor = (companyId) => actorFor(companyId, 'v2');
     server.state.refuseSearch = true;
     server.state.clientsInA = 4;
-    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-      target: { value: 'Demo' },
-    });
+    changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
     await screen.findByRole('button', { name: cardName('active_clients', 4) });
     expect(server.count(homeRoute)).toBe(2);

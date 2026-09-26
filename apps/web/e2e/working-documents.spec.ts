@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -208,9 +209,10 @@ test('registers and reopens a Company-confidential working reference', async ({
   await page.goto('/?frame=prisme#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await expect(
@@ -227,7 +229,19 @@ test('registers and reopens a Company-confidential working reference', async ({
     path: testInfo.outputPath('documents-empty.png'),
     fullPage: true,
   });
-  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  const clientSelect = page.getByLabel('Client', { exact: true });
+  const registrationForm = clientSelect.locator('xpath=ancestor::form');
+  expect(
+    await registrationForm.evaluate((form: HTMLFormElement) =>
+      form.checkValidity(),
+    ),
+  ).toBe(false);
+  await registrationForm.evaluate((form: HTMLFormElement) =>
+    form.requestSubmit(),
+  );
+  await expect(clientSelect).toBeFocused();
+
+  await selectOption(clientSelect, client.id);
   await page.getByLabel('Title', { exact: true }).fill(document.title);
   await page.getByLabel('Purpose', { exact: true }).fill(document.purpose);
   await page
@@ -386,7 +400,8 @@ test('registers and reopens a Company-confidential working reference', async ({
     .click();
   await expect(entry).toHaveCount(1);
   expect(historyReads).toBe(3);
-  await expect(page.getByLabel('Title', { exact: true })).toHaveValue(
+  await expectValue(
+    page.getByLabel('Title', { exact: true }),
     'Competing correction intention',
   );
   correctionConflict = true;
@@ -684,12 +699,13 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   await page.goto('/?frame=prisme#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  await selectOption(page.getByLabel('Client', { exact: true }), client.id);
   await page.getByLabel('Title', { exact: true }).fill(firstTitle);
   await page.getByLabel('Purpose', { exact: true }).fill(purpose);
   await page.getByLabel('External HTTPS link').fill(firstUrl);

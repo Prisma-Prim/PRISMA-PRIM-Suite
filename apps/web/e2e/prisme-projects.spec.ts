@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -104,16 +105,17 @@ test('creates and opens a Project, then switches local panels without reloading 
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
 
   await expect(page.getByLabel('Project title')).toBeVisible();
   await page.getByLabel('Project title').fill(createdProject.title);
-  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  await selectOption(page.getByLabel('Client', { exact: true }), client.id);
   await page.screenshot({
     path: testInfo.outputPath('prisme-projects-create.png'),
     fullPage: true,
@@ -179,19 +181,19 @@ test('creates and opens a Project, then switches local panels without reloading 
     documentsPanel.getByText('No working Documents attached.'),
   ).toBeVisible();
   await tasksTab.click();
-  await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
-  await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(page.getByLabel('Task title'), taskDraft);
   await expect(
     page
       .locator('#project-documents-panel')
       .getByRole('region', { name: 'Working Documents', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
   expect(reads).toEqual(readsAfterOpen);
 
   const rawIds = [company.id, client.id, existingProject.id, createdProject.id];

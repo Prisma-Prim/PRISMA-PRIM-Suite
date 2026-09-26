@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -260,7 +261,7 @@ async function openLinkedDocument() {
 async function selectCompany(companyId: string) {
   const selector = () =>
     screen.getByLabelText('Active Company', { exact: true });
-  fireEvent.change(selector(), { target: { value: companyId } });
+  changeValue(selector(), companyId);
   await waitFor(() => {
     expect(selector()).toHaveValue(companyId);
     expect(selector()).toBeEnabled();
@@ -291,9 +292,7 @@ describe('Opening the linked Project from a working Document through App', () =>
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await chooseProjectRow(betaRow);
-    fireEvent.change(await waitFor(visibleTaskTitle), {
-      target: { value: taskDraft },
-    });
+    changeValue(await waitFor(visibleTaskTitle), taskDraft);
 
     navigateTo('Working Documents');
     const documentDetail = await openLinkedDocument();
@@ -349,9 +348,7 @@ describe('Opening the linked Project from a working Document through App', () =>
     const server = installServer();
     render(<App identity={deterministicBrowserIdentity()} />);
     await chooseProjectRow(betaRow);
-    fireEvent.change(await waitFor(visibleTaskTitle), {
-      target: { value: taskDraft },
-    });
+    changeValue(await waitFor(visibleTaskTitle), taskDraft);
     fireEvent.click(
       within(projectsRegion()).getByRole('button', { name: 'Create Task' }),
     );
@@ -401,13 +398,11 @@ describe('Opening the linked Project from a working Document through App', () =>
       waiting: 'a Project registration is pending',
       prepare: async (server: ReturnType<typeof installServer>) => {
         await projectRow(betaRow);
-        fireEvent.change(
+        changeValue(
           within(projectsRegion()).getByLabelText('Project title'),
-          { target: { value: registeredProject.title } },
+          registeredProject.title,
         );
-        fireEvent.change(within(projectsRegion()).getByLabelText('Client'), {
-          target: { value: beta.id },
-        });
+        changeValue(within(projectsRegion()).getByLabelText('Client'), beta.id);
         server.hold('POST /api/projects');
         fireEvent.click(
           within(projectsRegion()).getByRole('button', {

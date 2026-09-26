@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -404,9 +405,10 @@ it('ignores a late reply of the previous Company and hides the section in a Comp
     (request) => request.path === SCOPE && request.companyId === companyA.id,
   );
 
-  fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-    target: { value: companyC.id },
-  });
+  changeValue(
+    screen.getByLabelText('Active Company', { exact: true }),
+    companyC.id,
+  );
   await screen.findByText(copy.noCurrent);
   const section = await pricingSection();
   expect(section).toHaveTextContent(companyC.displayName);
@@ -418,9 +420,10 @@ it('ignores a late reply of the previous Company and hides the section in a Comp
   expect(screen.queryByText('Company A rule A')).toBeNull();
   expect(screen.queryByText(copy.head(2))).toBeNull();
 
-  fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-    target: { value: companyB.id },
-  });
+  changeValue(
+    screen.getByLabelText('Active Company', { exact: true }),
+    companyB.id,
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('region', { name: 'Pricing Configuration' }),
@@ -444,7 +447,7 @@ it('remounts the whole section when Pricing User is granted, granted again or re
 
   // Revalidating an unchanged actor keeps the mounted section and its draft.
   const kept = within(await pricingSection()).getByLabelText(copy.label);
-  fireEvent.change(kept, { target: { value: 'Kept draft' } });
+  changeValue(kept, 'Kept draft');
   const actorReads = () =>
     vi
       .mocked(fetch)
@@ -452,7 +455,7 @@ it('remounts the whole section when Pricing User is granted, granted again or re
         input.toString().endsWith('/access/current-actor'),
       ).length;
   const readsBefore = actorReads();
-  fireEvent.change(activeCompany(), { target: { value: companyA.id } });
+  changeValue(activeCompany(), companyA.id);
   await waitFor(() => expect(actorReads()).toBeGreaterThan(readsBefore));
   expect(within(await pricingSection()).getByLabelText(copy.label)).toHaveValue(
     'Kept draft',
@@ -464,14 +467,15 @@ it('remounts the whole section when Pricing User is granted, granted again or re
     [configuration('configuration-a')],
   ]) {
     const draft = within(await pricingSection()).getByLabelText(copy.label);
-    fireEvent.change(draft, { target: { value: 'Unsent draft' } });
+    changeValue(draft, 'Unsent draft');
     expect(draft).toHaveValue('Unsent draft');
 
     // Re-selecting the Company revalidates the actor from the server.
     state.actors[companyA.id] = actorIn(companyA, ...grants);
-    fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-      target: { value: companyA.id },
-    });
+    changeValue(
+      screen.getByLabelText('Active Company', { exact: true }),
+      companyA.id,
+    );
     await waitFor(() =>
       expect(
         within(

@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 
@@ -140,6 +141,30 @@ test('administers both existing Company access bundles by member and Company nam
   ).toBeVisible();
   await expect(page.getByText('Target: Mila Popescu — BIC')).toBeVisible();
   await page.goto('/?frame=prisme#access');
+  const memberSelect = page.getByLabel('Workspace member');
+  await memberSelect.click();
+  await expect(
+    page.getByRole('listbox', { name: 'Workspace member' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `company-access-member-select-open-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+  await page.keyboard.press('Escape');
+  const bundleSelect = page.getByLabel('Access bundle');
+  await bundleSelect.click();
+  await expect(
+    page.getByRole('listbox', { name: 'Access bundle' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `company-access-bundle-select-open-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+  await page.keyboard.press('Escape');
   await selectTargets('Company Context Access');
 
   await page.getByRole('button', { name: 'Revoke access' }).click();
@@ -196,13 +221,13 @@ test('administers both existing Company access bundles by member and Company nam
   async function selectTargets(
     bundle: 'Company Context Access' | 'Company Director Client Access',
   ) {
-    await page.getByLabel('Workspace member').selectOption({
+    await selectOption(page.getByLabel('Workspace member'), {
       label: 'Mila Popescu — mila@example.test',
     });
-    await page
-      .getByLabel('Company', { exact: true })
-      .selectOption({ label: 'BIC' });
-    await page.getByLabel('Access bundle').selectOption({ label: bundle });
+    await selectOption(page.getByLabel('Company', { exact: true }), {
+      label: 'BIC',
+    });
+    await selectOption(page.getByLabel('Access bundle'), { label: bundle });
   }
 
   function administrationState() {
@@ -341,9 +366,9 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   });
 
   await page.goto('/?frame=prisme#access');
-  await page
-    .getByLabel('Member to suspend')
-    .selectOption({ label: 'Mila Popescu — mila@example.test' });
+  await selectOption(page.getByLabel('Member to suspend'), {
+    label: 'Mila Popescu — mila@example.test',
+  });
   await page.getByRole('button', { name: 'Review suspension' }).click();
   await expect(
     page.getByRole('region', {
@@ -377,9 +402,9 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
     fullPage: true,
   });
 
-  await page
-    .getByLabel('Member to suspend')
-    .selectOption({ label: 'Ada Ionescu — ada@example.test' });
+  await selectOption(page.getByLabel('Member to suspend'), {
+    label: 'Ada Ionescu — ada@example.test',
+  });
   await page.getByRole('button', { name: 'Review suspension' }).click();
   await page.getByRole('button', { name: 'Suspend access' }).click();
   await expect(
@@ -471,9 +496,9 @@ test('recovers from last-holder suspension protection without reporting success'
   });
 
   await page.goto('/?frame=prisme#access');
-  await page
-    .getByLabel('Member to suspend')
-    .selectOption({ label: 'Mila Popescu — mila@example.test' });
+  await selectOption(page.getByLabel('Member to suspend'), {
+    label: 'Mila Popescu — mila@example.test',
+  });
   await page.getByRole('button', { name: 'Review suspension' }).click();
   await page.getByRole('button', { name: 'Suspend access' }).click();
 

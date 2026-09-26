@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -352,9 +353,10 @@ test('selects and restores one server-validated Company context', async ({
       .filter({ hasText: 'Select a Company' }),
   ).toBeVisible();
 
-  await companyContext
-    .getByLabel('Active Company')
-    .selectOption(companies[1]!.id);
+  await selectOption(
+    companyContext.getByLabel('Active Company'),
+    companies[1]!.id,
+  );
   await expect(
     companyContext.locator('dd').filter({ hasText: 'North Star Consulting' }),
   ).toBeVisible();
@@ -368,9 +370,10 @@ test('selects and restores one server-validated Company context', async ({
     )
     .toBe(companies[1]!.id);
 
-  await companyContext
-    .getByLabel('Active Company')
-    .selectOption(companies[0]!.id);
+  await selectOption(
+    companyContext.getByLabel('Active Company'),
+    companies[0]!.id,
+  );
   await expect(
     companyContext.locator('dd').filter({ hasText: 'Atlas Assurance' }),
   ).toBeVisible();
@@ -438,27 +441,27 @@ test('does not clear a newer Company when an older registration is rejected', as
   );
 
   await page.goto('/?frame=classic');
-  await page.getByLabel('Active Company').selectOption(companies[0]!.id);
-  await expect(page.getByLabel('Active Company')).toHaveValue(companies[0]!.id);
+  await selectOption(page.getByLabel('Active Company'), companies[0]!.id);
+  await expectValue(page.getByLabel('Active Company'), companies[0]!.id);
   await page.getByLabel('Company display name').fill('Delayed registration');
   await page.getByRole('button', { name: 'Register Company' }).click();
   await expect.poll(() => pendingRegistration !== undefined).toBe(true);
 
-  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
-  await expect(page.getByLabel('Active Company')).toHaveValue(companies[1]!.id);
+  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
+  await expectValue(page.getByLabel('Active Company'), companies[1]!.id);
   await pendingRegistration!.fulfill({
     status: 403,
     json: { message: 'Forbidden', statusCode: 403 },
   });
 
-  await expect(page.getByLabel('Active Company')).toHaveValue(companies[1]!.id);
+  await expectValue(page.getByLabel('Active Company'), companies[1]!.id);
   await expect(
     page
       .getByRole('region', { name: 'Company context' })
       .locator('dd')
       .filter({ hasText: 'Company B' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Company display name')).toHaveValue('');
+  await expectValue(page.getByLabel('Company display name'), '');
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
   ).toBeEnabled();
@@ -516,7 +519,8 @@ test('shows clear zero and one active Company states', async ({ page }) => {
 
   companies = [onlyCompany];
   await page.reload();
-  await expect(companyContext.getByLabel('Active Company')).toHaveValue(
+  await expectValue(
+    companyContext.getByLabel('Active Company'),
     onlyCompany.id,
   );
   await expect(
@@ -561,8 +565,8 @@ test('does not share a saved Company context between Workspace members', async (
   );
 
   await page.goto('/?frame=classic');
-  await page.getByLabel('Active Company').selectOption(company.id);
-  await expect(page.getByLabel('Active Company')).toHaveValue(company.id);
+  await selectOption(page.getByLabel('Active Company'), company.id);
+  await expectValue(page.getByLabel('Active Company'), company.id);
 
   actor = {
     ...actorContextFixture,
@@ -573,7 +577,7 @@ test('does not share a saved Company context between Workspace members', async (
   };
   await page.reload();
 
-  await expect(page.getByLabel('Active Company')).toHaveValue('');
+  await expectValue(page.getByLabel('Active Company'), '');
   expect(secondMembershipSelections).toEqual([]);
 });
 
@@ -655,9 +659,10 @@ test('clears a stale persisted Company and recovers through safe reselection', a
     .poll(() => page.evaluate((key) => localStorage.getItem(key), storageKey))
     .toBeNull();
 
-  await companyContext
-    .getByLabel('Active Company')
-    .selectOption(availableCompany.id);
+  await selectOption(
+    companyContext.getByLabel('Active Company'),
+    availableCompany.id,
+  );
   await expect(
     companyContext.locator('dd').filter({ hasText: 'Recovery Provider' }),
   ).toBeVisible();
@@ -786,12 +791,12 @@ test('grants, selects, and revokes narrow Company context access', async ({
   });
 
   await page.goto('/?frame=classic');
-  await page.getByLabel('Workspace member').selectOption({
+  await selectOption(page.getByLabel('Workspace member'), {
     label: `${member.displayName} — ${member.email}`,
   });
-  await page
-    .getByLabel('Company', { exact: true })
-    .selectOption({ label: company.displayName });
+  await selectOption(page.getByLabel('Company', { exact: true }), {
+    label: company.displayName,
+  });
   await page.getByRole('button', { name: 'Grant access' }).click();
   await expect(
     page.getByText('Access granted. Server state refreshed.'),
@@ -806,7 +811,7 @@ test('grants, selects, and revokes narrow Company context access', async ({
   await expect(
     page.getByRole('option', { name: unassignedCompany.displayName }),
   ).toHaveCount(0);
-  await page.getByLabel('Active Company').selectOption(company.id);
+  await selectOption(page.getByLabel('Active Company'), company.id);
   await expect(
     page
       .getByRole('region', { name: 'Company context' })
@@ -816,12 +821,12 @@ test('grants, selects, and revokes narrow Company context access', async ({
 
   identity = 'owner';
   await page.reload();
-  await page.getByLabel('Workspace member').selectOption({
+  await selectOption(page.getByLabel('Workspace member'), {
     label: `${member.displayName} — ${member.email}`,
   });
-  await page
-    .getByLabel('Company', { exact: true })
-    .selectOption({ label: company.displayName });
+  await selectOption(page.getByLabel('Company', { exact: true }), {
+    label: company.displayName,
+  });
   await page.getByRole('button', { name: 'Revoke access' }).click();
   await expect(
     page.getByText('Access revoked. Server state refreshed.'),
@@ -1062,7 +1067,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   });
 
   await page.goto('/?frame=classic');
-  await page.getByLabel('Active Company').selectOption(companies[0]!.id);
+  await selectOption(page.getByLabel('Active Company'), companies[0]!.id);
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
   await page.getByLabel('Client display name').fill(client.displayName);
@@ -1075,7 +1080,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     page.getByText(`${actorContextFixture.displayName} created a Client`),
   ).toBeVisible();
 
-  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
+  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
   await expect(page.getByText('No Clients for BIC yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
   await page.getByLabel('Find a shared Client').fill('Exemplu');
@@ -1397,12 +1402,12 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   });
 
   await page.goto('/?frame=classic');
-  await page.getByLabel('Access bundle').selectOption('director-client');
+  await selectOption(page.getByLabel('Access bundle'), 'director-client');
   for (const director of [directors.a, directors.b]) {
-    await page.getByLabel('Workspace member').selectOption({
+    await selectOption(page.getByLabel('Workspace member'), {
       label: `${director.displayName} — ${director.email}`,
     });
-    await page.getByLabel('Company', { exact: true }).selectOption({
+    await selectOption(page.getByLabel('Company', { exact: true }), {
       label: director.company.displayName,
     });
     await Promise.all([
@@ -1449,7 +1454,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
 
   identity = 'owner';
   await page.reload();
-  await page.getByLabel('Active Company').selectOption(companies[1]!.id);
+  await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
   await page.getByLabel('Find a shared Client').fill('Director Client');
   await page.getByRole('button', { name: 'Search Clients' }).click();
   await page.getByRole('button', { name: 'Add to BIC' }).click();
@@ -1470,11 +1475,11 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
 
   identity = 'owner';
   await page.reload();
-  await page.getByLabel('Access bundle').selectOption('director-client');
-  await page.getByLabel('Workspace member').selectOption({
+  await selectOption(page.getByLabel('Access bundle'), 'director-client');
+  await selectOption(page.getByLabel('Workspace member'), {
     label: `${directors.a.displayName} — ${directors.a.email}`,
   });
-  await page.getByLabel('Company', { exact: true }).selectOption({
+  await selectOption(page.getByLabel('Company', { exact: true }), {
     label: directors.a.company.displayName,
   });
   await Promise.all([
@@ -1753,11 +1758,11 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     page.getByRole('button', { name: 'Review possible duplicate 1' }),
   ).toHaveCount(0);
 
-  await page.getByLabel('Access bundle').selectOption('director-client');
-  await page.getByLabel('Workspace member').selectOption({
+  await selectOption(page.getByLabel('Access bundle'), 'director-client');
+  await selectOption(page.getByLabel('Workspace member'), {
     label: `${resolverActor.displayName} — ${resolverActor.email}`,
   });
-  await page.getByLabel('Company', { exact: true }).selectOption({
+  await selectOption(page.getByLabel('Company', { exact: true }), {
     label: candidateCompany.displayName,
   });
   const companyAccess = page.getByRole('region', { name: 'Company access' });

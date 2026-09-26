@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -35,9 +36,7 @@ function respond(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status });
 }
 function fillName(value = 'Same Client') {
-  fireEvent.change(screen.getByLabelText('Client display name'), {
-    target: { value },
-  });
+  changeValue(screen.getByLabelText('Client display name'), value);
 }
 async function openRegistration() {
   fireEvent.click(await screen.findByRole('button', { name: 'New Client' }));
@@ -103,19 +102,18 @@ describe('Client ownership through App', () => {
       );
       await openRegistration();
       fillName();
-      fireEvent.change(screen.getByLabelText('IDNO / tax code'), {
-        target: { value: 'TAX-231' },
-      });
+      changeValue(screen.getByLabelText('IDNO / tax code'), 'TAX-231');
       fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
-      fireEvent.change(
+      changeValue(
         within(screen.getByRole('group', { name: 'Contact 1' })).getByLabelText(
           'Contact name',
         ),
-        { target: { value: 'Ana' } },
+        'Ana',
       );
-      fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-        target: { value: 'Draft search' },
-      });
+      changeValue(
+        screen.getByLabelText('Find a shared Client'),
+        'Draft search',
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
       await screen.findByText(
         'The Client creation could not be confirmed. Retry the same details safely.',
@@ -123,9 +121,9 @@ describe('Client ownership through App', () => {
       expect(commands).toHaveLength(1);
       expect(commands[0]?.key).toBeTruthy();
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
       } else if (boundary === 'session' || boundary === 'membership') {
         if (boundary === 'membership')
@@ -168,15 +166,13 @@ describe('Client ownership through App', () => {
       ).not.toBeInTheDocument();
       expect(screen.getByLabelText('Find a shared Client')).toHaveValue('');
       fillName();
-      fireEvent.change(screen.getByLabelText('IDNO / tax code'), {
-        target: { value: 'TAX-231' },
-      });
+      changeValue(screen.getByLabelText('IDNO / tax code'), 'TAX-231');
       fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
-      fireEvent.change(
+      changeValue(
         within(screen.getByRole('group', { name: 'Contact 1' })).getByLabelText(
           'Contact name',
         ),
-        { target: { value: 'Ana' } },
+        'Ana',
       );
       fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
       await waitFor(() => expect(commands).toHaveLength(2));
@@ -247,14 +243,12 @@ describe('Client ownership through App', () => {
       const actorReadsBeforeRefresh = actorReads;
 
       if (refresh === 'Company re-selection') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyA.id } },
+          companyA.id,
         );
       } else {
-        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-          target: { value: 'Refreshed' },
-        });
+        changeValue(screen.getByLabelText('Find a shared Client'), 'Refreshed');
         fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       }
       await waitFor(() => expect(actorReads).toBe(actorReadsBeforeRefresh + 1));
@@ -332,9 +326,10 @@ describe('Client ownership through App', () => {
     fillName('Old Company Client');
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
     await waitFor(() => expect(release).toBeDefined());
-    fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-      target: { value: companyB.id },
-    });
+    changeValue(
+      screen.getByLabelText('Active Company', { exact: true }),
+      companyB.id,
+    );
     await screen.findByText('No Clients for Company B yet.');
     await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
     const readsBeforeLateResponse = activityReads;

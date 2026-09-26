@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -518,9 +519,10 @@ it('refreshes an open history from the ledger after a successful correction and 
   fireEvent.click(
     within(detail).getByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(within(detail).getByLabelText('Title'), {
-    target: { value: 'Corrected questionnaire' },
-  });
+  changeValue(
+    within(detail).getByLabelText('Title'),
+    'Corrected questionnaire',
+  );
   fireEvent.click(
     within(detail).getByRole('button', { name: 'Save correction' }),
   );

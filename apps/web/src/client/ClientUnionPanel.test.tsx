@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -72,10 +73,11 @@ async function completeComparison() {
   );
   const form = await screen.findByRole('form', { name: 'Confirm union' });
   for (const select of within(form).getAllByRole('combobox'))
-    fireEvent.change(select, { target: { value: first.id } });
-  fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-    target: { value: 'Same verified legal identity.' },
-  });
+    changeValue(select, first.id);
+  changeValue(
+    within(form).getByLabelText('Reason for this union'),
+    'Same verified legal identity.',
+  );
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
   return form;
@@ -219,9 +221,10 @@ describe('Client union UI public journey', () => {
     expect(within(capturedCompanies).getByText('BIC')).toBeVisible();
     expect(screen.queryByText('internal-operation')).not.toBeInTheDocument();
     const reversal = screen.getByRole('form', { name: 'Reverse union' });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     expect(await screen.findByText(/Union reversed\./)).toBeVisible();
@@ -276,9 +279,10 @@ describe('Client union UI public journey', () => {
     const reversal = await screen.findByRole('form', {
       name: 'Reverse union',
     });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers deliberately.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers deliberately.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -356,9 +360,10 @@ describe('Client union UI public journey', () => {
     const reversal = await screen.findByRole('form', {
       name: 'Reverse union',
     });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     expect(await screen.findByText(/Union reversed\./)).toBeVisible();
@@ -425,9 +430,10 @@ describe('Client union UI public journey', () => {
     const reversal = await screen.findByRole('form', {
       name: 'Reverse union',
     });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     await screen.findByText(/Union reversed\./);
@@ -483,9 +489,10 @@ describe('Client union UI public journey', () => {
       const reversal = await screen.findByRole('form', {
         name: 'Reverse union',
       });
-      fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-        target: { value: 'Restore the separate dossiers.' },
-      });
+      changeValue(
+        within(reversal).getByLabelText('Reason for reversal'),
+        'Restore the separate dossiers.',
+      );
       fireEvent.click(within(reversal).getByRole('checkbox'));
       fireEvent.submit(reversal);
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -547,7 +554,7 @@ describe('Client union UI public journey', () => {
     expect(acknowledgement).toHaveAttribute('aria-invalid', 'true');
     expect(reason).toHaveAttribute('maxlength', '2000');
     expect(fetcher).toHaveBeenCalledTimes(3);
-    fireEvent.change(reason, { target: { value: '  ' } });
+    changeValue(reason, '  ');
     fireEvent.click(acknowledgement);
     fireEvent.submit(reversal);
     expect(fetcher).toHaveBeenCalledTimes(3);
@@ -590,15 +597,11 @@ describe('Client union UI public journey', () => {
       name: 'Reverse union',
     });
     const reason = within(reversal).getByLabelText('Reason for reversal');
-    fireEvent.change(reason, {
-      target: { value: 'Restore the separate dossiers.' },
-    });
+    changeValue(reason, 'Restore the separate dossiers.');
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     await screen.findByRole('alert');
-    fireEvent.change(reason, {
-      target: { value: 'Restore them after a fresh review.' },
-    });
+    changeValue(reason, 'Restore them after a fresh review.');
     fireEvent.submit(reversal);
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(5));
     expect(fetcher.mock.calls[4]?.[1].headers['idempotency-key']).not.toBe(
@@ -698,9 +701,10 @@ describe('Client union UI public journey', () => {
     const reversal = await screen.findByRole('form', {
       name: 'Reverse union',
     });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.submit(reversal);
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
@@ -767,9 +771,10 @@ describe('Client union UI public journey', () => {
       const reversal = await screen.findByRole('form', {
         name: 'Reverse union',
       });
-      fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-        target: { value: 'Restore the separate dossiers.' },
-      });
+      changeValue(
+        within(reversal).getByLabelText('Reason for reversal'),
+        'Restore the separate dossiers.',
+      );
       fireEvent.click(within(reversal).getByRole('checkbox'));
       fireEvent.submit(reversal);
       await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
@@ -1393,16 +1398,16 @@ describe('Client union UI public journey', () => {
     const form = await screen.findByRole('form', { name: 'Confirm union' });
     const address = within(form).getByRole('combobox', { name: 'Address' });
     expect(address).not.toHaveAccessibleDescription();
-    fireEvent.change(address, { target: { value: second.id } });
+    changeValue(address, second.id);
     expect(address).toHaveAccessibleDescription(
       'Value to retain from Source 2 Chisinau',
     );
-    fireEvent.change(address, { target: { value: first.id } });
+    changeValue(address, first.id);
     expect(address).toHaveAccessibleDescription(
       'Value to retain from Source 1 Not provided',
     );
     expect(within(form).queryByText('Chisinau')).not.toBeInTheDocument();
-    fireEvent.change(address, { target: { value: '' } });
+    changeValue(address, '');
     expect(address).not.toHaveAccessibleDescription();
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
@@ -1418,18 +1423,20 @@ describe('Client union UI public journey', () => {
     fireEvent.submit(form);
     for (const select of within(form).getAllByRole('combobox')) {
       expect(select).toHaveAttribute('aria-invalid', 'true');
-      fireEvent.change(select, { target: { value: first.id } });
+      changeValue(select, first.id);
     }
     fireEvent.submit(form);
     expect(fetcher).toHaveBeenCalledTimes(1);
-    fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-      target: { value: ' '.repeat(20) },
-    });
+    changeValue(
+      within(form).getByLabelText('Reason for this union'),
+      ' '.repeat(20),
+    );
     fireEvent.submit(form);
     expect(fetcher).toHaveBeenCalledTimes(1);
-    fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-      target: { value: 'Verified reason.' },
-    });
+    changeValue(
+      within(form).getByLabelText('Reason for this union'),
+      'Verified reason.',
+    );
     fireEvent.submit(form);
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [firstAck] = within(form).getAllByRole('checkbox');
@@ -1494,9 +1501,10 @@ describe('Client union UI public journey', () => {
     const form = await completeComparison();
     fireEvent.submit(form);
     await screen.findByRole('alert');
-    fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-      target: { value: 'A changed verified reason.' },
-    });
+    changeValue(
+      within(form).getByLabelText('Reason for this union'),
+      'A changed verified reason.',
+    );
     fireEvent.submit(form);
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
     expect(fetcher.mock.calls[2]?.[1].headers['idempotency-key']).not.toBe(

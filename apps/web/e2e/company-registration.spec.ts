@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -124,7 +125,7 @@ test('registers, reads and server-activates the first Company after an exact unc
   await expect(
     selector.getByRole('option', { name: company.displayName }),
   ).toHaveCount(1);
-  await selector.selectOption(company.id);
+  await selectOption(selector, company.id);
   await expect.poll(() => Boolean(pendingSelection)).toBe(true);
   await expect(page.locator('.prisme-breadcrumb')).not.toContainText(
     company.displayName,
@@ -139,7 +140,7 @@ test('registers, reads and server-activates the first Company after an exact unc
       },
     },
   });
-  await expect(selector).toHaveValue(company.id);
+  await expectValue(selector, company.id);
   await expect(page.locator('.prisme-breadcrumb')).toContainText(
     company.displayName,
   );

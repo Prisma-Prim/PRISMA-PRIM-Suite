@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import {
   expect,
   test,
@@ -38,7 +39,7 @@ test('keeps a Client registration across an equivalent Company refresh through t
     name: 'Primary navigation',
   });
   const clients = page.locator('.client-workspace');
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
   await navigate(page, navigation, 'Clients', narrow);
   await clients
     .getByRole('button', { name: 'New Client', exact: true })
@@ -177,16 +178,16 @@ async function refreshActiveCompany(
 ): Promise<void> {
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
   const confirmation = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/access/current-actor' &&
       response.request().method() === 'GET',
   );
-  await company.selectOption({ label: 'PRISMA-PRIM' });
+  await selectOption(company, { label: 'PRISMA-PRIM' });
   expect((await confirmation).status()).toBe(200);
   await expect(company).toBeEnabled();
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }

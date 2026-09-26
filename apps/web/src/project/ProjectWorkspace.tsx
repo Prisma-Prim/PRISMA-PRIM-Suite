@@ -19,6 +19,7 @@ import { projectCopy as copy } from './project.copy';
 import { projectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import { taskCopy } from './task.copy';
 import './project.css';
 
@@ -657,36 +658,32 @@ export function ProjectWorkspace({
               {isPrisme ? (
                 <div className="project-client-field">
                   <label htmlFor="project-client">{copy.client}</label>
-                  <select
+                  <Select
                     id="project-client"
                     value={clientAccountId}
-                    onChange={(event) => setClientAccountId(event.target.value)}
                     disabled={pending}
-                  >
-                    <option value="">{copy.selectClient}</option>
-                    {load.clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.displayName}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={copy.selectClient}
+                    options={load.clients.map((client) => ({
+                      value: client.id,
+                      label: client.displayName,
+                    }))}
+                    onValueChange={setClientAccountId}
+                  />
                 </div>
               ) : (
                 <>
                   <label htmlFor="project-client">{copy.client}</label>
-                  <select
+                  <Select
                     id="project-client"
                     value={clientAccountId}
-                    onChange={(event) => setClientAccountId(event.target.value)}
                     disabled={pending}
-                  >
-                    <option value="">{copy.selectClient}</option>
-                    {load.clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.displayName}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={copy.selectClient}
+                    options={load.clients.map((client) => ({
+                      value: client.id,
+                      label: client.displayName,
+                    }))}
+                    onValueChange={setClientAccountId}
+                  />
                 </>
               )}
               {load.clients.length === 0 && <p>{copy.noClients}</p>}
