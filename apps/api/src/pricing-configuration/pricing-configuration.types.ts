@@ -115,3 +115,12 @@ export interface TariffVersionPage {
   readonly nextCursor?: string;
   readonly provisional: true;
 }
+
+export interface CreatePricingSnapshotCommand {
+  readonly pricingRuleVersionNumber: number;
+  readonly lines: readonly {
+    readonly offeringId: string;
+    readonly tariffVersionNumber: number;
+    readonly quantity: string;
+  }[];
+}
