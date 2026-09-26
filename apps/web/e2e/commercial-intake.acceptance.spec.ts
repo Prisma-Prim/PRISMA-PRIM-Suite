@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import {
   expect,
   test,
@@ -260,7 +261,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(intake.getByLabel('Original request text')).toHaveValue(
     'Unavailable Client request',
   );
@@ -529,7 +530,7 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await dossier.getByRole('button', { name: 'Open Client Requests' }).click();
   await expect(page.locator('#requests')).toBeFocused();
   await expect(scope).toBeVisible();

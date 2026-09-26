@@ -1,10 +1,11 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
 
-test('keeps Classic as an explicit reload-stable rollback and accepts legacy Prisme links', async ({
+test('keeps explicit legacy Classic URLs reload-stable and accepts legacy Prisme links', async ({
   page,
 }) => {
   await page.route('**/api/**', (route) => {
@@ -41,6 +42,18 @@ test('keeps Classic as an explicit reload-stable rollback and accepts legacy Pri
   await expect(
     page.getByRole('heading', { name: 'Companies', exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Use classic frame' }),
+  ).toHaveCount(0);
+  const menu = page.getByRole('button', { name: 'Open navigation' });
+  if (await menu.isVisible()) await menu.click();
+  await expect(
+    page.getByRole('button', { name: 'Use classic frame' }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath('prisme-without-classic-switch.png'),
+    fullPage: true,
+  });
 });
 
 test('keeps every authorized MVP section reachable from the default frame', async ({
@@ -305,7 +318,7 @@ test('keeps registration retries, section selection and focus across presentatio
   await expect(page.getByRole('alert')).toBeVisible();
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(page).toHaveURL(/\?source=preserved&frame=classic#companies$/);
   await expect(name).toHaveValue('Company draft');
   await page.getByRole('button', { name: 'Try Prisme' }).click();
@@ -379,12 +392,12 @@ for (const startInPrisme of [false, true]) {
       await page.getByRole('button', { name: 'Open navigation' }).focus();
       await page.keyboard.press('Enter');
     }
-    await page
-      .getByRole('button', {
-        name: startInPrisme ? 'Use classic frame' : 'Try Prisme',
-      })
-      .focus();
-    await page.keyboard.press('Enter');
+    if (startInPrisme) {
+      await enterClassicCompatibility(page);
+    } else {
+      await page.getByRole('button', { name: 'Try Prisme' }).focus();
+      await page.keyboard.press('Enter');
+    }
 
     const focusTarget = startInPrisme
       ? page.getByRole('button', {

@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -156,7 +157,7 @@ test('shows the registration time of listed and opened Working Documents', async
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   const classicDetail = page.locator('#documents article');
   await expect(
     classicDetail.getByRole('heading', { name: secondDocument.title }),
