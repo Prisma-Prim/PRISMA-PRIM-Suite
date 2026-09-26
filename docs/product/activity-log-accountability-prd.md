@@ -97,7 +97,7 @@ Accountability records `task.created`, `task.updated`, `task.status.changed`,
 `task.completed`, `task.cancelled` and `task.reopened` through its public recording
 boundary. Each material action has
 one event targeting the original Company-owned Task, with server actor membership,
-time and resulting Task version. Typed facts retain the initial title/assignee/date,
+time and resulting Task version. Typed facts retain the initial title/assignee/date/priority,
 the prior and new values of corrected fields, the prior and new state of each
 transition, and the blockage or cancellation reason where the
 [Project/Task PRD §20](release-1-project-task-prd.md#20-approved-task-execution-states-365)

@@ -66,8 +66,7 @@ it.skipIf(!databaseUrl)(
         !Array.isArray(journal.entries)
       )
         throw new Error('Invalid migration journal.');
-      const entries: unknown[] = journal.entries.slice(0, 33);
-      const tags = entries.map((entry) => {
+      const allTags = journal.entries.map((entry: unknown) => {
         if (
           typeof entry !== 'object' ||
           entry === null ||
@@ -78,7 +77,14 @@ it.skipIf(!databaseUrl)(
           throw new Error('Invalid migration tag.');
         return entry.tag;
       });
-      expect(tags.at(-1)).toBe('0032_pricing_rule_versions');
+      // Locate this migration by name so journal renumbering keeps the seam:
+      // every earlier migration builds the pre-Version schema.
+      const versionsIndex = allTags.findIndex((tag) =>
+        tag.endsWith('_official_document_versions'),
+      );
+      expect(versionsIndex).toBeGreaterThan(0);
+      const entries: unknown[] = journal.entries.slice(0, versionsIndex);
+      const tags = allTags.slice(0, versionsIndex);
       previous = await mkdtemp(join(tmpdir(), 'prisma-400-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(

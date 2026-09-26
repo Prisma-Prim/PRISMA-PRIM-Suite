@@ -1,6 +1,6 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks and the Project responsible member approved by #238, #246, #347 and #367; remaining capability Draft  
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375; remaining capability Draft  
 **Version:** 0.7  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
@@ -185,8 +185,8 @@ not be the assignee or creator. No deletion or archive is introduced; §20 adds 
 The Project remains `preparatory`. Neither a Task assignment nor completion grants
 access, approves operational execution, closes a nonconformity, satisfies a
 required-evidence gate or changes a Document/Contract state. There are no reminders,
-automatic assignment, urgency rules, priorities, dependencies or background state
-transitions.
+automatic assignment, urgency rules, automatic priorities, dependencies or background
+state transitions; §22 adds a manual priority.
 
 ### Authority and responsible member
 
@@ -280,7 +280,8 @@ Companies and unreadable Projects are excluded. The read reveals no other member
 Task and no count of them.
 
 Each row shows the Task title, its due date or "No due date", the Project title
-and the Client label the Project list shows. A superseded original Client keeps
+and the Client label the Project list shows. Each row also shows the Task's
+priority (§22); it does not change the order. A superseded original Client keeps
 its original label, without canonical union or other-Company detail. Rows are
 ordered by due date ascending, compared as exact `YYYY-MM-DD` text without
 timezone conversion, with undated Tasks last; ties follow creation time, then
@@ -308,7 +309,7 @@ States are manual declarations. They grant no access, satisfy no gate, trigger n
 
 My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
 
-Priorities, descriptions, dependencies, structured blocker details, reason vocabularies, dashboard counts or queues, and Project lifecycle effects remain separate decisions.
+Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details, reason vocabularies, dashboard counts or queues, and Project lifecycle effects remain separate decisions.
 
 ## 21. Approved Project responsible member (#367)
 
@@ -327,3 +328,13 @@ The Project remains `preparatory`. These remain separate decisions:
 - multiple or role-specific responsibles;
 - substitution;
 - responsibility-based notifications.
+
+## 22. Approved manual Task priority (#375)
+
+Dan approved reusable provisional MVP choices for later business validation on 2026-09-24. This section normalizes the Task priority that Iurie confirmed in Session 13 (_normal / important / critic_) and that the consolidated decision record §9.4 lists as an essential field. The three levels are sourced; their manual handling below is a delegated product choice, not newly collected Iurie evidence.
+
+Every Task has exactly one priority: `normal`, `important` or `critical`. A manager with `task.manage` and the §18 prerequisites chooses it at creation or changes it through the §18 edit while the Task is editable under its owning execution rule (§18, refined independently by §20); a Task created without a choice, and every Task that existed before this section, is `normal`. A closed Task keeps its priority read-only. A priority change is a corrected field of `task.updated`, under the §18 rules for version, idempotency, replay, historical Clients, the reversal fence and normalized no-ops.
+
+Priority is a manual declaration. It grants no access, satisfies no gate, changes no Task or Project state, and triggers no reminder, escalation, notification or automatic assignment. It does not reorder the Project Task list or My Tasks and adds no filter, count, badge, queue or urgency rule.
+
+Automatic priority rules, priority-based ordering or filtering, and escalation or notification of important or critical Tasks remain separate decisions.
