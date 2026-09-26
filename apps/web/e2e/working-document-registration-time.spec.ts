@@ -127,7 +127,7 @@ test('shows the registration time of listed and opened Working Documents', async
   await expect(detail.getByRole('definition')).toHaveText(
     await applicationDateTime(secondDocument.createdAt),
   );
-  await expect(detail.locator('time')).toHaveAttribute(
+  await expect(detail.getByRole('definition').locator('time')).toHaveAttribute(
     'datetime',
     secondDocument.createdAt,
   );

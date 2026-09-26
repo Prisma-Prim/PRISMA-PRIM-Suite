@@ -15,7 +15,7 @@ export const companyContextAccessCopy = {
   serviceCatalogueBundle: 'Company Service Catalogue',
   pricingConfigurationBundle: 'Company Pricing Configuration',
   pricingConfigurationPrerequisites:
-    'Company Pricing Configuration v1 grants offering read and Pricing Rule configuration only: reading and publishing illustrative Pricing Rule Versions. Company context must already be authorized separately.',
+    'Company Pricing Configuration v1 grants offering read and pricing configuration only: reading and publishing illustrative Pricing Rule Versions and Tariff Versions. Company context must already be authorized separately.',
   commercialActivityReaderBundle: 'Company Commercial Activity Reader',
   commercialActivityReaderPrerequisites:
     'Company Commercial Activity Reader v1 grants commercial Activity Log read only. Company context and the commercial target read of each event must already be authorized separately.',

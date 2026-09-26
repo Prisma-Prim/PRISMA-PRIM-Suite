@@ -1,0 +1,137 @@
+.tariff-versions {
+  display: grid;
+  gap: 1rem;
+  max-width: 70rem;
+  min-width: 0;
+}
+
+.tariff-versions-heading p,
+.tariff-versions-notice p,
+.tariff-versions-panel p,
+.tariff-versions-panel h3 {
+  margin: 0;
+}
+
+.tariff-versions-heading h2 {
+  margin: 0.25rem 0;
+}
+
+.tariff-versions-heading > p:first-child {
+  color: var(--shell-muted, currentColor);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tariff-versions-notice,
+.tariff-versions-panel,
+.tariff-versions-list li {
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.75rem;
+  background: var(--shell-surface, transparent);
+}
+
+.tariff-versions-notice,
+.tariff-versions-panel,
+.tariff-versions-panel > section {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.tariff-versions-notice,
+.tariff-versions-panel {
+  padding: 1rem;
+}
+
+.tariff-versions-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.tariff-versions-panel form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tariff-versions-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.tariff-versions input,
+.tariff-versions select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.tariff-versions button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.tariff-versions-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tariff-versions-list li,
+.tariff-versions-version {
+  display: grid;
+  gap: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.tariff-versions-list li {
+  padding: 0.75rem;
+}
+
+.tariff-versions-state,
+.tariff-versions-amount {
+  font-weight: 700;
+}
+
+.tariff-versions-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tariff-versions-badge {
+  justify-self: start;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tariff-versions button:focus-visible,
+.tariff-versions input:focus-visible,
+.tariff-versions select:focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--shell-focus, currentColor) 42%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .tariff-versions-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
