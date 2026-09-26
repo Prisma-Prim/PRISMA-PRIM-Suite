@@ -647,6 +647,12 @@ describeWithPostgres('Access REST API', () => {
     const first = await fetch(`${origin}/api/access/current-actor`, {
       headers: identityHeaders(),
     }).then((response) => response.json());
+    await pool.query(
+      `UPDATE internal_users
+          SET updated_at = TIMESTAMPTZ '2026-01-01 00:00:00+00'
+        WHERE id = $1`,
+      [first.internalUserId],
+    );
     const updatedResponse = await fetch(`${origin}/api/access/current-actor`, {
       headers: identityHeaders({
         'x-test-display-name': 'Ada Popescu',
@@ -663,6 +669,26 @@ describeWithPostgres('Access REST API', () => {
       displayName: 'Ada Popescu',
       email: 'ada.popescu@example.test',
     });
+    const persisted = await pool.query<{
+      display_name: string;
+      email: string;
+      updated_at: Date;
+    }>(
+      `SELECT display_name, email, updated_at
+         FROM internal_users
+        WHERE id = $1`,
+      [first.internalUserId],
+    );
+    expect(persisted.rows).toEqual([
+      {
+        display_name: 'Ada Popescu',
+        email: 'ada.popescu@example.test',
+        updated_at: expect.any(Date),
+      },
+    ]);
+    expect(persisted.rows[0]?.updated_at.getTime()).toBeGreaterThan(
+      Date.parse('2026-01-01T00:00:00.000Z'),
+    );
   });
 
   it('returns 403 for an inactive Internal User', async () => {

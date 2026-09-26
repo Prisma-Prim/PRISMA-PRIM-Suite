@@ -80,4 +80,35 @@ export const operationalHomeCopy = {
     closeName: 'Close the overdue Tasks',
     retry: 'Retry',
   },
+  attention: {
+    title: 'My attention',
+    listLabel: 'Tasks that need your attention',
+    empty: ({ company, today }: Context) =>
+      `Nothing needs your attention in ${company} on ${today}.`,
+    truncated: ({ shown, total }: { shown: number; total: number }) =>
+      `Showing ${shown} of ${total} Tasks that need your attention.`,
+    overdueBy: (days: number) =>
+      days === 1 ? 'Overdue by 1 day' : `Overdue by ${days} days`,
+    critical: 'Critical',
+    blocked: 'Blocked',
+    dueToday: 'Due today',
+    dueIn: (days: number) =>
+      days === 1 ? 'Due in 1 day' : `Due in ${days} days`,
+    state: 'State',
+    dueDate: 'Due date',
+    noDate: 'No due date',
+    project: 'Project',
+    client: 'Client',
+    open: 'Open',
+    openTask: ({
+      task,
+      project,
+      client,
+    }: {
+      task: string;
+      project: string;
+      client: string;
+    }) => `Open ${task} in ${project} (${client})`,
+    seeAll: 'See all in My Tasks',
+  },
 };

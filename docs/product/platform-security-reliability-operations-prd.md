@@ -42,7 +42,7 @@ Security controls support business evidence and risk management without claiming
 
 ## 5. Environment and data rules
 
-Development, test and production are distinct. Production secrets and data are not copied into lower environments by default. Test fixtures are synthetic or anonymized and purpose-limited.
+Development, test and production are distinct. Production secrets and data are not copied into lower environments by default. Test fixtures are synthetic or anonymized and purpose-limited. Synthetic demonstration data follows section 17.
 
 Schema and deployment changes use reviewed migrations, compatible rollout plans and rollback/recovery thinking. Production never uses uncontrolled schema push.
 
@@ -135,3 +135,21 @@ Question source: S10.
 ## 16. Readiness
 
 This PRD governs all releases. Release 1 tickets require a minimum threat model, tenant-isolation design, environment boundary and provisional recovery assumptions. Production release remains blocked until recovery and incident controls are tested.
+
+## 17. Approved provisional demonstration data (#409)
+
+Under Dan's delegation of reversible provisional MVP choices (2026-09-20, renewed 2026-09-24), this section decides how synthetic demonstration data enters a non-production environment, so that Iurie can walk a business file and validate the provisional choices (Commercial Workflow PRD section 15). It is not Iurie evidence.
+
+**Purpose-limited target.** A demonstration seed runs only against a dedicated demonstration Workspace: the configured bootstrap Workspace, whose name contains `DEMO`, in a database that holds no other Workspace. The operator explicitly confirms that Workspace's identifier on every run. No option seeds any other Workspace, and production seeding does not exist. The demonstration environment is non-production (DEC-175) and never receives real Client data (DEC-176).
+
+**One architecture.** The seed creates data only through the public commands of the owning modules, with their authorization, validation, idempotency, versions and Activity events (decision record 14.16). It never writes, migrates, corrects, resets or deletes storage directly. It adds no route, permission, response, identity mode or provider call to the served application. Illustrative configuration keeps the provenance that its owning PRD fixes.
+
+**Identity and attribution.** Inside its own short-lived process, the seed presents only two kinds of principal: the configured Workspace owner, for Company registration, grants and the Client–Company relationship that only Workspace Client management may establish, and synthetic persona principals of a dedicated provider, for every other step. Events are attributed either to the operator who ran the seed or to a persona whose name marks it as synthetic. Running the seed requires the target's database credential and confers nothing beyond it. No production build or runtime accepts deterministic identity.
+
+**Synthetic content.** Every displayed text that the scenario supplies contains `DEMO`. Contact data and links use reserved example domains, and identifiers use a `DEMO-` prefix. The scenario uses no telephone number, bank account, real identifier or real Client name. Provider Company display names are first-tenant configuration (Product Vision section 15).
+
+**Replay and preservation.** Each scenario step has a stable key. A repeated run creates no record, version, receipt or event, and an interrupted run converges when repeated. The seed never overwrites a user's change, re-grants revoked authority or supersedes configuration that an operator published. It stops at the first refused step and reports it. Released steps are immutable, and a later scenario version only appends steps.
+
+**Provisional choices.** Iurie validates the following against the demonstration: the persona set and its role profiles, the example records and dates, and the `DEMO` marker rules. They are indexed, with every other MVP stand-in, in the [first-tenant substitution register](first-tenant-substitution-register.md).
+
+Excluded: grants to real members, invitations, hosting and deployment, reset or removal of demonstration data, and any real price, template, clause or Client fact.

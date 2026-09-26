@@ -1,3 +1,5 @@
+import type { TaskAttention } from '../task/task.types.js';
+
 /** The Company summaries of Operational Dashboard PRD §17.2, in their fixed order. */
 export const COMPANY_SUMMARY_KINDS = [
   'active_clients',
@@ -19,4 +21,5 @@ export interface OperationalHomeView {
   companyId: string;
   today: string;
   summaries: CompanySummary[];
+  attention?: TaskAttention;
 }
