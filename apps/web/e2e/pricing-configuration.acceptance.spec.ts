@@ -444,14 +444,6 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
   }
 });
 
-// The browser member M, acting through the API for the configuration steps.
-const primaryMemberHeaders = {
-  'x-test-external-provider': 'local-demo',
-  'x-test-external-subject': 'local-demonstration-user',
-  'x-test-display-name': 'Ada Ionescu',
-  'x-test-email': 'ada@example.test',
-};
-
 test('shows Pricing Configuration read-only to a Company Pricing User', async ({
   page,
 }, testInfo) => {
