@@ -32,6 +32,7 @@ type AssignmentBundle =
   | 'commercial-intake'
   | 'service-catalogue'
   | 'pricing-configuration'
+  | 'pricing-user'
   | 'commercial-activity-reader'
   | 'project';
 // Indexing by the selected bundle makes a new bundle a type error until its
@@ -46,6 +47,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'commercial-intake': '/company-commercial-intake-assignments',
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
+  'pricing-user': '/company-pricing-user-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
@@ -462,6 +464,7 @@ export function CompanyContextAccess({
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
+                value === 'pricing-user' ||
                 value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
@@ -482,6 +485,7 @@ export function CompanyContextAccess({
             <option value="pricing-configuration">
               {copy.pricingConfigurationBundle}
             </option>
+            <option value="pricing-user">{copy.pricingUserBundle}</option>
             <option value="commercial-activity-reader">
               {copy.commercialActivityReaderBundle}
             </option>
@@ -503,6 +507,7 @@ export function CompanyContextAccess({
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
           )}
+          {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy.currentStateLabel}:{' '}
@@ -582,6 +587,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'commercial-intake': copy.commercialIntakeBundle,
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
+    'pricing-user': copy.pricingUserBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,

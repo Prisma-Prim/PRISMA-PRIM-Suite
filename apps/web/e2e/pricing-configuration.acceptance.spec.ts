@@ -1,4 +1,12 @@
-import { expect, test, type Page, type Response } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+  type Response,
+} from '@playwright/test';
+
+import { canonicalDateTimeLocalValue } from '../src/pricing-configuration/datetime-local-test-helper';
 
 const apiOrigin = 'http://127.0.0.1:4174';
 const apiAdministratorHeaders = {
@@ -22,6 +30,42 @@ const primaryMemberHeaders = {
 };
 const marker = 'Illustrative configuration: provisional records';
 const tariffMarker = 'Illustrative tariffs: provisional records';
+
+test('fills canonical local datetimes without changing their intended instants', async ({
+  page,
+}) => {
+  await page.setContent(
+    '<label>Effective from <input type="datetime-local" step="1"></label>',
+  );
+  const field = page.getByLabel('Effective from', { exact: true });
+
+  for (const example of [
+    {
+      input: '2026-09-26T11:34:00',
+      canonical: '2026-09-26T11:34',
+    },
+    {
+      input: '2026-09-26T11:34:27',
+      canonical: '2026-09-26T11:34:27',
+    },
+  ]) {
+    const intendedEpoch = await page.evaluate(
+      (localDateTime) => new Date(localDateTime).getTime(),
+      example.input,
+    );
+
+    await fillDateTimeLocal(field, example.input);
+
+    await expect(field).toHaveValue(example.canonical);
+    expect(
+      await field.evaluate((element) => {
+        if (!(element instanceof HTMLInputElement))
+          throw new Error('Expected a datetime-local input.');
+        return new Date(element.value).getTime();
+      }),
+    ).toBe(intendedEpoch);
+  }
+});
 
 test('publishes illustrative Pricing Rule and Tariff Versions through the real API and PostgreSQL', async ({
   page,
@@ -444,6 +488,215 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
   }
 });
 
+test('shows Pricing Configuration read-only to a Company Pricing User', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const companyName = `Pricing user ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
+  const target = {
+    workspaceMembershipId: requiredEnvironment(
+      'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+    ),
+    companyId: await createCompany(page, companyName),
+  };
+  const granted = new Set<
+    'company-context' | 'company-pricing-configuration' | 'company-pricing-user'
+  >();
+  try {
+    for (const bundle of [
+      'company-context',
+      'company-pricing-configuration',
+    ] as const) {
+      await changeAssignment(page, { operation: 'grant', bundle, ...target });
+      granted.add(bundle);
+    }
+    // 1. M publishes rule v1, current shortly, and a scheduled v2.
+    const startA = Math.ceil((Date.now() + 5_000) / 1_000) * 1_000;
+    expect(
+      await publishThroughApi(page, target.companyId, {
+        label: 'Illustrative rule A',
+        effectiveFrom: new Date(startA).toISOString(),
+        expectedActiveVersionNumber: null,
+      }),
+    ).toBe(201);
+    expect(
+      await publishThroughApi(page, target.companyId, {
+        label: 'Illustrative rule B',
+        effectiveFrom: new Date(startA + 2 * 60 * 60 * 1_000).toISOString(),
+        expectedActiveVersionNumber: 1,
+      }),
+    ).toBe(201);
+
+    // 2. Configuration is revoked and Company Pricing User is granted.
+    await changeAssignment(page, {
+      operation: 'revoke',
+      bundle: 'company-pricing-configuration',
+      ...target,
+    });
+    await changeAssignment(page, {
+      operation: 'grant',
+      bundle: 'company-pricing-user',
+      ...target,
+    });
+    granted.add('company-pricing-user');
+    const offerings = await page.request.get(
+      `${apiOrigin}/api/commercial-catalogue/offerings`,
+      {
+        headers: {
+          ...primaryMemberHeaders,
+          'x-company-context-id': target.companyId,
+        },
+      },
+    );
+    expect(offerings.status()).toBe(200);
+    expect(
+      await publishThroughApi(page, target.companyId, {
+        label: 'Pricing user rule',
+        effectiveFrom: new Date(startA + 3 * 60 * 60 * 1_000).toISOString(),
+        expectedActiveVersionNumber: 2,
+      }),
+    ).toBe(403);
+
+    // 3. Once v1 has started, M sees the configuration read-only.
+    await page.waitForTimeout(Math.max(0, startA - Date.now() + 1_500));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const companySelect = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    await selectCompany(page, companySelect, companyName, narrow);
+    await navigate(page, navigation, 'Pricing Configuration', narrow);
+    const configuration = page.locator('.pricing-configuration');
+    await expect(
+      configuration.getByText(marker, { exact: true }),
+    ).toBeVisible();
+    const current = configuration.getByRole('region', {
+      name: 'Current Pricing Rule Version',
+    });
+    await expect(current).toContainText('Version 1');
+    await expect(current).toContainText('Illustrative rule A');
+    await expect(current.locator('.pricing-configuration-state')).toHaveText(
+      'Current',
+    );
+    const scheduled = configuration.getByRole('list', {
+      name: 'Scheduled successors',
+    });
+    await expect(scheduled.getByRole('listitem')).toHaveCount(1);
+    await expect(scheduled.getByRole('listitem').first()).toContainText(
+      'Version 2',
+    );
+    await expect(
+      configuration.getByText(
+        'Head: version 2. A new publication follows this version.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      configuration
+        .getByRole('list', { name: 'Pricing Rule Versions' })
+        .getByRole('listitem'),
+    ).toHaveCount(2);
+    await expect(
+      configuration.getByRole('button', { name: 'Publish version' }),
+    ).toHaveCount(0);
+    await expect(
+      configuration.getByLabel('Label', { exact: true }),
+    ).toHaveCount(0);
+    // The read-only screen stays operable from the keyboard.
+    const reload = configuration.getByRole('button', {
+      name: 'Reload Pricing Rule Versions',
+    });
+    await reload.focus();
+    await expect(reload).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(current).toContainText('Illustrative rule A');
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`pricing-user-read-only-${suffix}.png`),
+      fullPage: true,
+    });
+
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Use classic frame' }).click();
+    await expect(
+      configuration.getByText(marker, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      configuration.getByRole('button', { name: 'Publish version' }),
+    ).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`pricing-user-read-only-classic-${suffix}.png`),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Try Prisme' }).click();
+
+    // 4. Pricing User is revoked: after a reload no section remains.
+    await changeAssignment(page, {
+      operation: 'revoke',
+      bundle: 'company-pricing-user',
+      ...target,
+    });
+    await page.reload();
+    await selectCompany(page, companySelect, companyName, narrow);
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(
+      navigation.getByRole('link', {
+        name: 'Pricing Configuration',
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(page.locator('.pricing-configuration')).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath(`pricing-user-revoked-${suffix}.png`),
+      fullPage: true,
+    });
+    const refused = await page.request.get(
+      `${apiOrigin}/api/pricing-configuration/rule-scope`,
+      {
+        headers: {
+          ...primaryMemberHeaders,
+          'x-company-context-id': target.companyId,
+        },
+      },
+    );
+    expect(refused.status()).toBe(403);
+  } finally {
+    // Revoking an assignment that is already revoked is an idempotent no-op.
+    for (const bundle of [...granted].reverse())
+      await changeAssignment(page, { operation: 'revoke', bundle, ...target });
+  }
+});
+
+async function publishThroughApi(
+  page: Page,
+  companyId: string,
+  data: {
+    label: string;
+    effectiveFrom: string;
+    expectedActiveVersionNumber: number | null;
+  },
+): Promise<number> {
+  const response = await page.request.post(
+    `${apiOrigin}/api/pricing-configuration/rule-versions`,
+    {
+      headers: {
+        ...primaryMemberHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-pricing-user-${crypto.randomUUID()}`,
+        'x-company-context-id': companyId,
+      },
+      data,
+    },
+  );
+  return response.status();
+}
+
 async function createCompany(page: Page, displayName: string): Promise<string> {
   const response = await page.request.post(`${apiOrigin}/api/companies`, {
     headers: {
@@ -477,6 +730,7 @@ async function changeAssignment(
     bundle:
       | 'company-context'
       | 'company-pricing-configuration'
+      | 'company-pricing-user'
       | 'company-service-catalogue';
     workspaceMembershipId: string;
     companyId: string;
@@ -582,9 +836,10 @@ async function fillTariffDraft(
   await tariffs
     .getByLabel('Tax label', { exact: true })
     .fill('Illustrative tax');
-  await tariffs
-    .getByLabel(`Effective from (${zone})`, { exact: true })
-    .fill(draft.effectiveFrom);
+  await fillDateTimeLocal(
+    tariffs.getByLabel(`Effective from (${zone})`, { exact: true }),
+    draft.effectiveFrom,
+  );
 }
 
 async function publishTariff(page: Page, offeringId: string): Promise<number> {
@@ -625,9 +880,14 @@ async function fillDraft(
 ): Promise<void> {
   const configuration = page.locator('.pricing-configuration');
   await configuration.getByLabel('Label', { exact: true }).fill(label);
-  await configuration
-    .getByLabel(`Effective from (${zone})`, { exact: true })
-    .fill(effectiveFrom);
+  await fillDateTimeLocal(
+    configuration.getByLabel(`Effective from (${zone})`, { exact: true }),
+    effectiveFrom,
+  );
+}
+
+async function fillDateTimeLocal(field: Locator, value: string): Promise<void> {
+  await field.fill(canonicalDateTimeLocalValue(value));
 }
 
 async function publish(page: Page): Promise<number> {

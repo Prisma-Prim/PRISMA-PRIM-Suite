@@ -15,6 +15,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { projects } from '../database/schema/index.js';
+import { isOpenProjectStatus } from './project-status.js';
 
 type ProjectRow = typeof projects.$inferSelect;
 @Injectable()
@@ -45,6 +46,13 @@ export class ProjectService {
       const reference = references.get(row.clientAccountId);
       return reference ? [this.projectView(row, reference)] : [];
     });
+  }
+
+  /** The open Projects of the reader's Project list; it runs inside the caller's snapshot. */
+  async countOpen(actor: ActorContext): Promise<number> {
+    return (await this.list(actor)).filter((project) =>
+      isOpenProjectStatus(project.status),
+    ).length;
   }
 
   async read(actor: ActorContext, id: string) {

@@ -1,6 +1,9 @@
 import { expect, test, type Route } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 test('renders the production shell at the normal application entry point', async ({
   page,
@@ -900,6 +903,14 @@ test('creates and reuses one shared Client identity across two Company contexts'
   await page.route('**/api/companies', (route) =>
     route.fulfill({ json: companies }),
   );
+  await page.route('**/api/operational-home', (route) => {
+    const companyId = route.request().headers()['x-company-context-id'] ?? '';
+    return route.fulfill({
+      json: operationalHomeFixture(companyId, {
+        active_clients: relatedCompanyIds.has(companyId) ? 1 : 0,
+      }),
+    });
+  });
   await page.route('**/api/activity-log', (route) => {
     const companyId = route.request().headers()['x-company-context-id'];
     return route.fulfill({
@@ -1275,6 +1286,16 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       });
     },
   );
+  // Only the Client directory read is held, so only its summary appears.
+  await page.route('**/api/operational-home', (route) => {
+    const companyId = route.request().headers()['x-company-context-id'] ?? '';
+    return route.fulfill({
+      json: operationalHomeFixture(companyId, {
+        active_clients:
+          clientCreated && relatedCompanyIds.has(companyId) ? 1 : 0,
+      }),
+    });
+  });
   await page.route('**/api/activity-log', (route) =>
     route.fulfill({
       json: {
@@ -1580,6 +1601,12 @@ test('upgrades complete authority before reviewing and attaching an exact-ID dup
     if (url.pathname.endsWith('/access/current-actor')) {
       return route.fulfill({ json: resolverActor });
     }
+    if (url.pathname.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(attemptedCompany.id, {
+          active_clients: candidateAttached ? 1 : 0,
+        }),
+      });
     if (url.pathname.endsWith('/company-context-assignments/administration')) {
       return route.fulfill({ json: administration() });
     }

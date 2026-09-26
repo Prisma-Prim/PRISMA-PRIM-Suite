@@ -35,6 +35,8 @@ import {
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   pricingConfigurationPermissionsFor,
   type CompanyPricingConfigurationPermission,
+  COMPANY_PRICING_USER_BUNDLE,
+  pricingUserPermissionsFor,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -519,35 +521,38 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
-  // Company Pricing Configuration v1 grants configuration authority only.
-  // Company context must already follow from an independent assignment, and a
-  // locked read serializes a command against a concurrent revocation.
+  // Configuration read is carried by a live captured Company Pricing
+  // Configuration v1 or Company Pricing User v1 assignment, and management by
+  // Configuration v1 alone (pricing PRD section 10). A bundle is accepted only
+  // when its own captured permissions include every required one, so neither
+  // lends the other anything. Company context must already follow from an
+  // independent assignment, and a locked read serializes a command against a
+  // concurrent revocation.
   async requirePricingConfigurationAccess(
     actor: ActorContext,
     required: readonly CompanyPricingConfigurationPermission[],
     lock = false,
   ): Promise<string> {
-    const companyId = actor.activeCompany?.id;
-    const permissions =
-      actor.activeCompany?.pricingConfigurationPermissions ?? [];
-    if (
-      !companyId ||
-      required.some((permission) => !permissions.includes(permission))
-    )
-      throw new ForbiddenException();
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (carriesEvery(company?.pricingConfigurationPermissions, required))
+      grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
+    if (carriesEvery(company?.pricingUserPermissions, required))
+      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
+    if (!company || grants.length === 0) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
-      companyId,
-      capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE),
+      company.id,
+      anyCapturedGrant(grants),
       lock,
     );
-    await this.requireLiveCompanyContext(actor, companyId, lock);
-    return companyId;
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
   }
 
-  // Offering read is carried by a live captured Company Service Catalogue v1
-  // or Company Pricing Configuration v1 assignment (pricing PRD section 10).
-  // Neither bundle confers any other permission of the other.
+  // Offering read is carried by a live captured Company Service Catalogue v1,
+  // Company Pricing Configuration v1 or Company Pricing User v1 assignment
+  // (pricing PRD section 10). None confers any other permission of another.
   async requireOfferingReadAccess(actor: ActorContext): Promise<string> {
     const company = actor.activeCompany;
     const grants: SQL[] = [];
@@ -561,11 +566,13 @@ export class CompanyContextAuthorization {
       )
     )
       grants.push(capturedGrant(COMPANY_PRICING_CONFIGURATION_BUNDLE));
+    if (company?.pricingUserPermissions?.includes('commercial.offering.read'))
+      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
     if (!company || grants.length === 0) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
-      sql`(${sql.join(grants, sql` OR `)})`,
+      anyCapturedGrant(grants),
       false,
     );
     await this.requireLiveCompanyContext(actor, company.id, false);
@@ -709,6 +716,7 @@ export class CompanyContextAuthorization {
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
+        COMPANY_PRICING_USER_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -842,6 +850,18 @@ export class CompanyContextAuthorization {
         company.pricingConfigurationPermissionAssignmentId = row.assignmentId;
         company.pricingConfigurationPermissionSetVersion = 'v1';
       }
+      // Pricing User likewise contributes its captured permissions only and
+      // never authorizes Company context by itself.
+      if (
+        row.bundle === COMPANY_PRICING_USER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.pricingUserPermissions = [
+          ...pricingUserPermissionsFor(row.permissionSetVersion),
+        ];
+        company.pricingUserPermissionAssignmentId = row.assignmentId;
+        company.pricingUserPermissionSetVersion = 'v1';
+      }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
@@ -866,12 +886,29 @@ export class CompanyContextAuthorization {
 function capturedGrant(
   bundle:
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
-    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE,
+    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
+    | typeof COMPANY_PRICING_USER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
     'v1',
   )})`;
+}
+
+// Any one of the alternative live captured grants satisfies a check.
+function anyCapturedGrant(grants: readonly SQL[]): SQL {
+  return sql`(${sql.join([...grants], sql` OR `)})`;
+}
+
+// A captured bundle satisfies a check only through its own permissions.
+function carriesEvery(
+  captured: readonly string[] | undefined,
+  required: readonly string[],
+): boolean {
+  return (
+    captured !== undefined &&
+    required.every((permission) => captured.includes(permission))
+  );
 }
 
 export type CompanyContextVisibility =

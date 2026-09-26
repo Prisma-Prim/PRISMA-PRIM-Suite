@@ -1,5 +1,8 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 const company = { id: 'company-navigation', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'company-second', displayName: 'BIC' };
@@ -102,6 +105,13 @@ function routeApi(page: Page, documentPermissions: string[]) {
       return route.fulfill({ json: [company, otherCompany] });
     if (path === '/api/activity-log')
       return route.fulfill({ json: { events: [] } });
+    if (path === '/api/operational-home')
+      return route.fulfill({
+        json:
+          companyContext === otherCompany.id
+            ? operationalHomeFixture(otherCompany.id, { active_clients: 0 })
+            : operationalHomeFixture(company.id, { active_clients: 2 }),
+      });
     if (path === '/api/clients')
       return route.fulfill({
         json: companyContext === otherCompany.id ? [] : [client, homonymClient],

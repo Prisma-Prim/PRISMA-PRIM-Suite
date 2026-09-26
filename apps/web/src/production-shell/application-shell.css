@@ -784,7 +784,8 @@
   line-height: 1.08;
 }
 
-.production-content-surface > p:last-child {
+.production-content-surface > p:last-child,
+.production-content-surface > .production-home-introduction {
   max-width: 42rem;
   margin: 1.25rem 0 0;
   color: var(--shell-muted);

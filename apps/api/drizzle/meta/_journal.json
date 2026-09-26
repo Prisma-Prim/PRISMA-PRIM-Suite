@@ -250,8 +250,8 @@
     {
       "idx": 35,
       "version": "7",
-      "when": 1790424972795,
-      "tag": "0035_client_legal_entities",
+      "when": 1790421222426,
+      "tag": "0035_company_pricing_user",
       "breakpoints": true
     }
   ]

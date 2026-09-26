@@ -124,6 +124,7 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'company_commercial_intake_assignment',
     'company_service_catalogue_assignment',
     'company_pricing_configuration_assignment',
+    'company_pricing_user_assignment',
     'company_commercial_activity_reader_assignment',
     'company_context_assignment',
     'company_director_client_assignment',

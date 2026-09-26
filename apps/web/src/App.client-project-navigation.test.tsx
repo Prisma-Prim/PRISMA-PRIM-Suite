@@ -118,6 +118,16 @@ function installTransport(options: { united?: boolean } = {}) {
         return respond(actorFor(companyContextId ?? companyA.id));
       if (path.endsWith('/companies')) return respond([companyA, companyB]);
       if (path.endsWith('/activity-log')) return respond({ events: [] });
+      if (path.endsWith('/operational-home'))
+        return respond({
+          companyId: companyContextId ?? companyA.id,
+          today: '2026-09-27',
+          summaries: [
+            { kind: 'active_clients', count: state.united ? 1 : 2 },
+            { kind: 'open_projects', count: 1 },
+            { kind: 'overdue_tasks', count: 0 },
+          ],
+        });
       if (path.includes('/client-duplicate-reviews?'))
         return respond({ items: [], next_cursor: null });
       if (path.endsWith('/projects')) {
@@ -380,6 +390,25 @@ describe('Client dossier and Project navigation through App', () => {
     expect(projectSearch()).toHaveValue('');
     await waitFor(() => expect(transport.projectListReads).toBe(2));
     expect(projectRows()).toEqual([historicalRow]);
+  });
+
+  it('opens the Project list from the Company summary without the Client restriction App holds', async () => {
+    const transport = installTransport();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await screen.findByRole('navigation', { name: 'Primary navigation' });
+    const dossier = await openDossier(firstClient.displayName);
+    openClientProjects(dossier);
+    expect(projectSearch()).toHaveValue(firstClient.displayName);
+    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open Projects: 1. Open the Project list',
+      }),
+    );
+    await waitFor(() => expect(projectSearch()).toHaveValue(''));
+    expect(projectRows()).toEqual([historicalRow]);
+    expect(transport.projectListReads).toBe(1);
   });
 
   it('does not restore a previous Company’s Project restriction when the member returns to that Company', async () => {

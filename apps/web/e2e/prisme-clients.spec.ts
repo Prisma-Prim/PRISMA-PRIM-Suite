@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { actorContextFixture } from './actor-context.fixture';
+import {
+  actorContextFixture,
+  operationalHomeFixture,
+} from './actor-context.fixture';
 
 test('finds and deliberately reuses one Client across Companies in Prisme', async ({
   page,
@@ -204,6 +207,12 @@ test('keeps a Client retry and pending command through disclosure, navigation an
     if (path.endsWith('/companies')) return route.fulfill({ json: [company] });
     if (path.endsWith('/activity-log'))
       return route.fulfill({ json: { events: [] } });
+    if (path.endsWith('/operational-home'))
+      return route.fulfill({
+        json: operationalHomeFixture(company.id, {
+          active_clients: created ? 1 : 0,
+        }),
+      });
     if (path.endsWith('/clients') && request.method() === 'POST') {
       commands.push({
         body: request.postData(),

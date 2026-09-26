@@ -7,6 +7,7 @@ import type {
   CompanyCommercialIntakePermissionSetVersion,
   CompanyServiceCataloguePermission,
   CompanyPricingConfigurationPermission,
+  CompanyPricingUserPermission,
   CompanyCommercialActivityPermission,
   CompanyProjectPermission,
 } from './company-permissions.js';
@@ -43,6 +44,9 @@ export interface ActiveCompanyContext {
   pricingConfigurationPermissions?: CompanyPricingConfigurationPermission[];
   pricingConfigurationPermissionAssignmentId?: string;
   pricingConfigurationPermissionSetVersion?: 'v1';
+  pricingUserPermissions?: CompanyPricingUserPermission[];
+  pricingUserPermissionAssignmentId?: string;
+  pricingUserPermissionSetVersion?: 'v1';
   commercialActivityPermissions?: CompanyCommercialActivityPermission[];
   commercialActivityPermissionSetVersion?: 'v1';
   clientPermissionAssignmentId?: string;

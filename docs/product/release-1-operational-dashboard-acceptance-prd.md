@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Draft — audited interview evidence received; role and metric definitions pending  
-**Version:** 0.3  
+**Status:** Operational home approved by #398 (section 17); remaining capability Draft — role journeys and metrics beyond section 17 pending  
+**Version:** 0.4  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -111,12 +111,14 @@ The current audited evidence supports these directions:
 - mobile access and quick approvals are desired directions;
 - generic dedicated queues for matters requiring Iurie's decision, overdue risks and commercial exceptions are supported.
 
+Section 17 decides the operational home: its first metrics with formulas, time basis, Company scope and drill-downs, the overdue (delayed-work) definition, and the attention rules, bound and ordering.
+
 Still blocking ticket decomposition:
 
-- first useful home actions for every initial role;
-- exact approval queue contents and delayed-work queue contents;
-- metric names actually used in practice, formulas, time basis, Company scope and drill-down definitions;
-- urgency thresholds and ordering rules;
+- home actions for roles beyond section 17;
+- exact approval queue contents;
+- metrics beyond section 17 and the names used in practice;
+- urgency thresholds beyond section 17;
 - complete reminder catalogue by Project type and any external reminder channels;
 - Romanian/Russian/English language matrix and organization-specific terminology;
 - representative empty/error states tied to real roles;
@@ -137,8 +139,87 @@ Question sources: S00, S02 and S11. Provenance owner: `docs/product/iurie-busine
 
 ## 15. Readiness
 
-Ticket decomposition remains blocked on initial role journeys, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. The current coverage audit narrows the evidence boundary but does not make this final integrated acceptance slice ready.
+Ticket decomposition remains blocked on initial role journeys, approved next-action rules, metric definitions and the readiness of the underlying Release 1 capabilities. The current coverage audit narrows the evidence boundary but does not make this final integrated acceptance slice ready. Section 17 approves the bounded operational home slices. The integrated section 12 acceptance journey remains blocked as stated.
 
 ## 16. Evidence authority boundary
 
 Issue #81 preserves raw interview evidence. The coverage matrix owns its semantic coverage classifications and blocker deltas. Neither artifact authorizes metric formulas, ranking, automatic prioritization or dashboard permissions by itself. Future implementation issues must cite this PRD after the relevant product evidence has been normalized here.
+
+## 17. Approved operational home (#398)
+
+Dan approved reusable provisional MVP choices for later business validation on 2026-09-24. This section normalizes the first operational home from these sources:
+
+- the first dashboard of the MASTER v1.1 requirements document (decision record §1): active Clients, active Projects and overdue Tasks;
+- Iurie's daily-view answers: S00-Q11, and issue #81 session 28, which asks for an immediate-attention list of 3–10 items and a next-7-days view and delegates the prioritization formula to Dan;
+- issue #81 session 13 (normal, important and critical priority);
+- DEC-196 and DEC-209.
+
+The definitions, time basis, thresholds, ordering and bounds below are delegated product choices, not newly collected Iurie evidence. Iurie validates them against a demonstration.
+
+### 17.1 Scope and time basis
+
+The operational home belongs to the active Company of one Workspace. It composes the public reads of the Client, Project and Task capabilities and stores nothing. No dashboard permission exists. Each block appears only when the reader holds, in the active Company, the read that owns its records; otherwise it is omitted without a zero, placeholder or explanation. A reader holding none of those reads has no operational home.
+
+**Today** is the calendar date in `Europe/Chisinau` at the server instant sampled once for a read. Every rule and count in that read uses that date, and the read returns it. Due dates remain exact `YYYY-MM-DD` values compared without conversion (Project/Task PRD §18). `Europe/Chisinau` is the provisional Workspace default (decision record §18.4); configurable Workspace or Company time zones are deferred.
+
+**Shared behaviour:**
+
+- Reads record no Activity Log event, command outcome, version or fence change, and send no notification.
+- A failed read shows as unavailable with a retry, never as zero.
+- Every read revalidates current authority.
+- Switching Company replaces every block, and a reply belonging to a previous Company, session or authority is discarded.
+- Desktop and narrow widths use the same reads and authorization.
+
+### 17.2 Company summaries
+
+| Summary            | Counts                                                                                                                                                                                                                                             | Shown with                                                                      | Opens                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Active Clients** | Active Client Accounts whose relationship with the active Company is active: exactly the Company Client directory. Superseded Clients, archived relationships and other Companies' relationships are excluded.                                     | The Client directory read (Company `client.read`, or Workspace `client.manage`) | The Client directory                                          |
+| **Open Projects**  | Projects of the active Company in the reader's Project list whose lifecycle status is open. Every delivered Project is `preparatory`, which is open. A lifecycle slice that adds statuses classifies each one; completed and cancelled are closed. | Project read (Project/Task PRD §15)                                             | The Project list in its default view, without a Client filter |
+| **Overdue Tasks**  | Open Tasks (`todo`, `in_progress`, `blocked`) in Projects of the reader's Project list, whatever their responsible member and including unassigned Tasks, whose due date is before today. Undated Tasks and Tasks due today are not overdue.       | Task read (Project/Task PRD §18)                                                | The Company overdue-Task list                                 |
+
+Each summary is a whole count:
+
+- no currency;
+- no confidentiality beyond the owning read;
+- freshness equal to the read instant;
+- it equals the number of records its drill-down lists for the same reader and state.
+
+A label never broadens its definition. In particular, "Open Projects" is not "active Projects" until a Project lifecycle distinguishes them.
+
+The **Company overdue-Task list** shows the counted Tasks in the My Tasks row shape (Project/Task PRD §19), each with its responsible member or Unassigned and its whole days overdue. It is ordered by due date (oldest first), then creation time, then identifier. It shows at most 100 rows with the total, and each row opens the Task in its Project.
+
+### 17.3 My attention
+
+My attention lists the reader's own open Tasks (the My Tasks set of Project/Task PRD §19) that match at least one rule:
+
+| Rule     | Condition                                        |
+| -------- | ------------------------------------------------ |
+| Overdue  | due date before today                            |
+| Critical | priority `critical` (manual Task priority, #375) |
+| Blocked  | state `blocked`                                  |
+| Due soon | due date from today to today + 7 days, inclusive |
+
+**Labels.** A row names every rule it matches, with day-precise wording such as "Overdue by 3 days", "Due today" or "Due in 2 days".
+
+**Ordering.** The first matching rule, in table order, places a row. Within one rule, rows follow:
+
+1. due date ascending, with undated Tasks last;
+2. then priority: critical, important, normal;
+3. then creation time;
+4. then identifier.
+
+**Bound and links.** The block shows at most 10 rows and states how many Tasks match. It links to My Tasks, and each row opens its Task in its Project (#377).
+
+My Tasks keeps its own order and presentation. This deterministic ordering is the formula that session 28 delegates; it is not the AI-generated prioritization excluded by section 5. The Critical rule and the priority tie-break apply once manual Task priority is delivered. A follow-up slice delivers this block and records its issue here.
+
+### 17.4 Excluded
+
+- "What changed since yesterday" (session 28), a later Activity Log candidate;
+- a separate next-7-days view beyond the Due soon rule;
+- money, invoices, payments, audits, trainings, nonconformities, certificates and approval queues, whose capabilities do not exist;
+- Workspace-wide or "All Companies" views, which will reuse these definitions;
+- commercial dashboards and Opportunity next actions;
+- configurable widgets, personalization, saved views, thresholds and time zones;
+- reminders, escalation and notification channels;
+- telemetry, exports and AI recommendations.
