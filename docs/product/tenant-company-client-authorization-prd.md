@@ -135,6 +135,16 @@ transition. Runtime authorization requires the live v2 assignment and all read
 prerequisites; null or unknown versions fail closed. No other Client, Project,
 Workspace or Company permission substitutes for correction authority.
 
+The [provisional official Version slice](release-1-document-registry-prd.md#21-approved-provisional-official-document-versions-400) adds `document.version.manage` only through captured **Company Document Registrar v3** (v2 plus `document.version.manage`). That permission authorizes the Version-management commands the Document Registry PRD section 21 defines. The slice adds `document.version.designate_official` only through the new opt-in **Company Document Approver v1**, which contains exactly that permission.
+
+Registrar v1 and v2 assignments never expand in place. A fresh grant after explicit revocation captures v3, and every delivered Registrar check accepts v3 wherever it accepts v2.
+
+An active administrator with `company.assignment.manage` explicitly grants or revokes the captured Approver v1 for an active same-Workspace membership and an active Company, through the existing Company assignment administration. No existing bundle, assignment, Workspace ownership or migration backfill confers it. It confers no Company context, Document or Representation read, Client read, correction or version-management authority. Null or unknown versions of either bundle fail closed.
+
+Its lifecycle is `company_document_approver_assignment.granted` and `company_document_approver_assignment.revoked`. It follows the canonical Company-scoped permission-transition convention stated in this section for the Company Commercial Activity Reader, including metadata limited to the bundle label and exactly one event per actual state change.
+
+First-tenant configuration grants Approver v1 only to Iurie; this is an assignment, not a hard-coded identity.
+
 The [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and

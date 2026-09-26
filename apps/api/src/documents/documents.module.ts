@@ -6,6 +6,8 @@ import { DatabaseModule } from '../database/database.module.js';
 import { ClientModule } from '../client/client.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
 import { DocumentsService } from './documents.service.js';
+import { DocumentReadBoundary } from './document-read-boundary.js';
+import { DocumentVersionsService } from './document-versions.service.js';
 @Module({
   imports: [
     ProjectModule,
@@ -14,7 +16,12 @@ import { DocumentsService } from './documents.service.js';
     ClientModule,
     AccountabilityModule,
   ],
-  providers: [DocumentsService, DocumentProjectsService],
-  exports: [DocumentsService, DocumentProjectsService],
+  providers: [
+    DocumentsService,
+    DocumentProjectsService,
+    DocumentReadBoundary,
+    DocumentVersionsService,
+  ],
+  exports: [DocumentsService, DocumentProjectsService, DocumentVersionsService],
 })
 export class DocumentsModule {}

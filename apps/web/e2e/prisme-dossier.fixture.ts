@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, type Page, type Route, type TestInfo } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import type { ClientContact } from '../src/client/ClientContactEditor';
@@ -269,7 +270,8 @@ export async function changeFrame(
 ) {
   const menu = page.getByRole('button', { name: 'Open navigation' });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name }).click();
+  if (name === 'Use classic frame') await enterClassicCompatibility(page);
+  else await page.getByRole('button', { name }).click();
 }
 
 export async function captureDossier(

@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test, type Page, type Response } from '@playwright/test';
 
 test('defines a shared Service and records a Company offering through the real API and PostgreSQL', async ({
@@ -130,7 +131,7 @@ test('defines a shared Service and records a Company offering through the real A
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(catalogue.getByText(disclaimer, { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.getByRole('button', { name: 'Try Prisme' }).click();

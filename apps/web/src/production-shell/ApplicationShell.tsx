@@ -124,10 +124,7 @@ export function ApplicationShell({
   }, [isPrisme, url.hash]);
 
   function changePresentation() {
-    const nextUrl = getPresentationUrl(
-      new URL(window.location.href),
-      isPrisme ? 'classic' : 'prisme',
-    );
+    const nextUrl = getPresentationUrl(new URL(window.location.href), 'prisme');
     window.history.replaceState(window.history.state, '', nextUrl);
     setLocation(nextUrl.href);
     setIsNavigationOpen(false);
@@ -177,7 +174,7 @@ export function ApplicationShell({
       type="button"
       onClick={changePresentation}
     >
-      {isPrisme ? copy.returnToClassic : copy.optIn}
+      {copy.optIn}
     </button>
   );
   const menuControl = (
@@ -315,7 +312,6 @@ export function ApplicationShell({
           </ul>
           {isPrisme && (
             <div className="prisme-sidebar-bottom">
-              {presentationControl}
               <div className="prisme-user-area">{userArea}</div>
             </div>
           )}

@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -278,7 +279,7 @@ test('keeps a Client retry and pending command through disclosure, navigation an
     .click();
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(name).toHaveValue(client.displayName);
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(name).toBeHidden();

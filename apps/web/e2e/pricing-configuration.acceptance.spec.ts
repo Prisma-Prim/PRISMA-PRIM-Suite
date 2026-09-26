@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import {
   expect,
   test,
@@ -420,7 +421,7 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
 
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page.getByRole('button', { name: 'Use classic frame' }).click();
+    await enterClassicCompatibility(page);
     await expect(
       configuration.getByText(marker, { exact: true }),
     ).toBeVisible();
@@ -621,7 +622,7 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
 
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page.getByRole('button', { name: 'Use classic frame' }).click();
+    await enterClassicCompatibility(page);
     await expect(
       configuration.getByText(marker, { exact: true }),
     ).toBeVisible();

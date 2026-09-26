@@ -130,6 +130,7 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',
     'company_document_registrar_assignment',
+    'company_document_approver_assignment',
   ].flatMap((assignment): Array<[string, Record<string, unknown>]> => [
     [`${assignment}.granted`, roleAssignmentTarget],
     [`${assignment}.revoked`, roleAssignmentTarget],
@@ -186,6 +187,17 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'document.corrected',
     { type: 'document', documentId: 'document-1', companyId },
   ],
+  ...['document.version.drafted', 'document.version.designated_official'].map(
+    (action): [string, Record<string, unknown>] => [
+      action,
+      {
+        type: 'document',
+        documentId: 'document-1',
+        documentTitle: 'Audit contract',
+        companyId,
+      },
+    ],
+  ),
   ['document.project.linked', documentProjectTarget],
   ['document.project.unlinked', documentProjectTarget],
   ['client_request.created', requestTarget],

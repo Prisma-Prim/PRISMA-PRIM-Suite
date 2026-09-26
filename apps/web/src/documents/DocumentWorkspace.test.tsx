@@ -12,6 +12,23 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { DocumentWorkspace } from './DocumentWorkspace';
+/**
+ * Every opened detail mounts its Versions section. These tests prove other
+ * behaviour, so that read is answered as safely unavailable before the test's
+ * own transport sees it.
+ */
+function stubFetch(
+  fetcher: (input: string, init?: RequestInit) => unknown,
+): void {
+  vi.stubGlobal('fetch', (input: string, init?: RequestInit) =>
+    /^\/api\/documents\/[^/]+\/versions$/u.test(
+      new URL(input, 'http://localhost').pathname,
+    )
+      ? Promise.resolve(new Response(null, { status: 404 }))
+      : fetcher(input, init),
+  );
+}
+
 const actor: ActorContext = {
   internalUserId: 'user',
   workspaceMembershipId: 'member',
@@ -72,8 +89,7 @@ const listedRegistrationTime = `Registration time${new Intl.DateTimeFormat(
 ).format(new Date(document.createdAt))}`;
 afterEach(() => vi.unstubAllGlobals());
 it('presents real Working Documents in Prisme while preserving the Classic public markup', async () => {
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -155,7 +171,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
         : firstCompanyDocuments,
     );
   });
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   const view = render(<DocumentWorkspace actor={actor} identity={identity} />);
   const workspace = await screen.findByRole('region', {
     name: 'Working Documents',
@@ -275,7 +291,7 @@ function dossierFetcher(documents = dossierDocuments) {
 it('restricts loaded working Documents to one dossier identity and returns to that dossier', async () => {
   const openClientDossier = vi.fn();
   const fetcher = dossierFetcher();
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   const view = render(
     <DocumentWorkspace
       actor={actor}
@@ -380,7 +396,7 @@ it('restricts loaded working Documents to one dossier identity and returns to th
   ]);
 });
 it('keeps an open correction draft when a dossier restriction arrives', async () => {
-  vi.stubGlobal('fetch', dossierFetcher());
+  stubFetch(dossierFetcher());
   const view = render(<DocumentWorkspace actor={actor} identity={identity} />);
   fireEvent.click(
     await screen.findByRole('button', { name: 'Homonym questionnaire' }),
@@ -426,8 +442,7 @@ it.each([
   'reconciles an arrived dossier restriction after correction %s resolves',
   async (_completion, failFirstAttempt) => {
     let patchAttempts = 0;
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url.endsWith('/clients')) return Response.json([]);
         if (init?.method === 'PATCH') {
@@ -504,8 +519,7 @@ it.each([
   'keeps the open Document when a correction %s ends under an unchanged dossier restriction',
   async (completion, action) => {
     let patchAttempts = 0;
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url.endsWith('/clients')) return Response.json([]);
         if (init?.method === 'PATCH') {
@@ -603,8 +617,7 @@ const dossierWorkspace = (
 it('keeps the derived-refresh debt when a union completes during a correction reload', async () => {
   let united = false;
   const detailReads: Array<() => void> = [];
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients')) return Response.json([]);
       const current = united
@@ -683,8 +696,7 @@ it.each([
       clientDisplayName: 'Canonical Registered Client',
     };
     let listReads = 0;
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url.endsWith('/clients'))
           return Response.json([
@@ -843,7 +855,7 @@ async function confirmLateRegistration({
   onOpenClientDossier: (clientDossierId: string) => void;
 }) {
   const requests = lateRegistrationFetcher();
-  vi.stubGlobal('fetch', requests.fetcher);
+  stubFetch(requests.fetcher);
   const view = render(
     lateRegistrationWorkspace({
       clientIdentityRevision: 0,
@@ -1052,7 +1064,7 @@ it('never offers the superseded dossier target when a late registration is no lo
 });
 it('retries a registration with the exact same command and withholds a target superseded meanwhile', async () => {
   const { fetcher, posts, detailReads, listReads } = lateRegistrationFetcher();
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   const openClientDossier = vi.fn();
   const view = render(
     lateRegistrationWorkspace({
@@ -1208,7 +1220,7 @@ it.each([
   'keeps the latest view when the member %s before a registration confirms',
   async (_navigation, startFilter, navigations, expectedTitles) => {
     const { fetcher, posts } = scopedRegistrationFetcher();
-    vi.stubGlobal('fetch', fetcher);
+    stubFetch(fetcher);
     const onActivityRecorded = vi.fn();
     const workspace = (clientFilter?: typeof dossierA) => (
       <DocumentWorkspace
@@ -1257,7 +1269,7 @@ it.each([
   'retries a registration for %s exactly under an unchanged dossier restriction',
   async (_client, clientId, registered, opensRegistered) => {
     const { fetcher, posts } = scopedRegistrationFetcher();
-    vi.stubGlobal('fetch', fetcher);
+    stubFetch(fetcher);
     const onActivityRecorded = vi.fn();
     const openClientDossier = vi.fn();
     render(
@@ -1331,7 +1343,7 @@ function expectRegistrationDraft(draft: typeof submittedDraft) {
 /** Renders the workspace a scoped registration is submitted from. */
 function renderScopedRegistration(startFilter?: typeof dossierA) {
   const requests = scopedRegistrationFetcher();
-  vi.stubGlobal('fetch', requests.fetcher);
+  stubFetch(requests.fetcher);
   const onActivityRecorded = vi.fn();
   const workspace = (clientFilter?: typeof dossierA) => (
     <DocumentWorkspace
@@ -1461,8 +1473,7 @@ it('retries a registration whose response was lost after the view changed with t
 });
 it('retires a pending detail read when a dossier restriction arrives', async () => {
   const detailReads: Array<() => void> = [];
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       const opened = dossierDocuments.find((candidate) =>
@@ -1506,8 +1517,7 @@ it('retires a pending detail read when a dossier restriction arrives', async () 
 });
 it('refreshes the dossier target of a preserved correction once that correction ends', async () => {
   let united = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       const current = united
@@ -1559,8 +1569,7 @@ it.each([
   async (_lifecycle, correctionOpen) => {
     let united = false;
     const refreshes: Array<ReturnType<typeof deferredResponse>> = [];
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string) => {
         if (url.endsWith('/clients')) return Response.json([]);
         if (!url.endsWith(`/documents/${supersededDossierDocument.id}`))
@@ -1615,8 +1624,7 @@ it.each([
 it('withholds the superseded dossier target of an open Document after its identity refresh fails', async () => {
   let united = false;
   let readsAfterUnion = 0;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (!url.endsWith(`/documents/${supersededDossierDocument.id}`))
@@ -1749,7 +1757,7 @@ it.each([
   'withholds a superseded dossier action from the first commit of a Client union and of its reversal, for a Document %s',
   async (_publication, publish) => {
     const projections = currentProjectionFetcher();
-    vi.stubGlobal('fetch', projections.fetcher);
+    stubFetch(projections.fetcher);
     const openClientDossier = vi.fn();
     const dossierActionOnDelivery = new Map<number, boolean>();
     const host = (clientIdentityRevision: number) => (
@@ -1823,7 +1831,7 @@ it.each([
   'matches no row a Client %s left stale to %s dossier restriction until a current list read lands',
   async (_transition, restriction, previousProjection, currentProjection) => {
     const requests = heldDocumentRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const superseded = restrictionTo(previousProjection);
     const initialRestriction =
       restriction === 'the active' ? superseded : undefined;
@@ -1894,7 +1902,7 @@ it.each([
   'never matches rows from a correction reload that began before a Client union and landed %s',
   async (_order, refreshFailsFirst) => {
     const requests = heldDocumentRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const original = { ...document, ...originalProjection };
     const corrected = {
       ...original,
@@ -1974,7 +1982,7 @@ it.each([
   'keeps the current rows and outcome when an identity refresh superseded by a newer correction reload %s late',
   async (_outcome, lateRefreshOutcome) => {
     const requests = heldDocumentRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const original = { ...document, ...originalProjection };
     const corrected = {
       ...document,
@@ -2053,7 +2061,7 @@ it.each([
 );
 it('keeps a registration confirmed before a Client union listed but out of its superseded restriction when the refresh fails', async () => {
   const requests = heldDocumentRequests();
-  vi.stubGlobal('fetch', requests.fetcher);
+  stubFetch(requests.fetcher);
   const view = render(dossierWorkspace(0));
   await waitFor(() => expect(requests.lists).toHaveLength(1));
   requests.lists[0]?.resolve(Response.json([]));
@@ -2100,8 +2108,7 @@ it('keeps a registration confirmed before a Client union listed but out of its s
 it('discards a delayed Document load that would republish a superseded projection', async () => {
   let united = false;
   const listReads: Array<() => void> = [];
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       const rows = [
@@ -2137,7 +2144,7 @@ it('discards a delayed Document load that would republish a superseded projectio
   expect(screen.queryByText(/Superseded display name/)).not.toBeInTheDocument();
 });
 it('does not offer dossier navigation for a Document without a derived dossier identity', async () => {
-  vi.stubGlobal('fetch', dossierFetcher());
+  stubFetch(dossierFetcher());
   render(
     <DocumentWorkspace
       actor={actor}
@@ -2156,7 +2163,7 @@ it('does not offer dossier navigation for a Document without a derived dossier i
   ).not.toBeInTheDocument();
 });
 it('hides no readable Document from the unfiltered view without a dossier projection', async () => {
-  vi.stubGlobal('fetch', dossierFetcher());
+  stubFetch(dossierFetcher());
   render(<DocumentWorkspace actor={actor} identity={identity} />);
   const list = await screen.findByRole('list');
   expect(
@@ -2174,8 +2181,7 @@ it('hides no readable Document from the unfiltered view without a dossier projec
 });
 it('registers and reopens an unverified Company-confidential questionnaire reference', async () => {
   let saved = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients'))
         return Response.json([
@@ -2218,8 +2224,7 @@ it('registers and reopens an unverified Company-confidential questionnaire refer
 it('corrects an existing working reference and reloads its authoritative values', async () => {
   const requests: Array<{ body: string | null; key: string | null }> = [];
   let corrected = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (init?.method === 'PATCH') {
@@ -2285,8 +2290,7 @@ it('corrects an existing working reference and reloads its authoritative values'
 it('retries an uncertain correction with the exact same command', async () => {
   const patches: Array<{ body: string | null; key: string | null }> = [];
   let corrected = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (init?.method === 'PATCH') {
@@ -2343,8 +2347,7 @@ it('retries an uncertain correction with the exact same command', async () => {
 });
 it('keeps a superseded original Client reference readable but correction read-only', async () => {
   const readOnly = { ...document, correction: 'read-only' };
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2364,8 +2367,7 @@ it('keeps a superseded original Client reference readable but correction read-on
 });
 it('requires reload after a correction revision conflict', async () => {
   let reloaded = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (init?.method === 'PATCH') return new Response(null, { status: 409 });
@@ -2403,7 +2405,7 @@ it('requires reload after a correction revision conflict', async () => {
 });
 it('denies Client-only users without requesting Document records', async () => {
   const fetcher = vi.fn();
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   render(
     <DocumentWorkspace
       actor={{
@@ -2424,8 +2426,7 @@ it('denies Client-only users without requesting Document records', async () => {
 });
 it('shows a recoverable load error and retries the public query', async () => {
   let error = true;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async () =>
       error ? new Response('', { status: 500 }) : Response.json([]),
     ),
@@ -2452,8 +2453,7 @@ it('shows the persisted registration time of listed and opened working reference
       globalThis.document.documentElement.lang || navigator.language,
       { dateStyle: 'medium', timeStyle: 'short' },
     ).format(new Date(value));
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2515,8 +2515,7 @@ it('keeps the registration time of the opened reference through correction editi
   let answerFirstPatch: (response: Response) => void = () => undefined;
   let patches = 0;
   let corrected = false;
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (init?.method === 'PATCH') {
@@ -2592,8 +2591,7 @@ it('does not render a denied external reference', async () => {
       },
     },
   };
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2614,8 +2612,7 @@ it('does not render a denied external reference', async () => {
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });
 it('fails closed instead of rendering an unsafe external reference returned by the API', async () => {
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2643,8 +2640,7 @@ it('fails closed instead of rendering an unsafe external reference returned by t
 });
 it('fails closed instead of rendering a non-instant registration time in the loaded list', async () => {
   const nonInstant = { ...document, createdAt: '0' };
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(url.endsWith('/clients') ? [] : [nonInstant]),
     ),
@@ -2663,8 +2659,7 @@ it('keeps the loaded list usable when an opened reference carries an impossible 
     ...document,
     createdAt: '2026-02-30T08:00:00.000Z',
   };
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2687,8 +2682,7 @@ it('keeps the loaded list usable when an opened reference carries an impossible 
 });
 it('reports a failure instead of presenting a registered reference with a non-instant registration time', async () => {
   const nonInstant = { ...document, createdAt: '2026' };
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients'))
         return Response.json([{ id: 'client', displayName: 'Client' }]);
@@ -2751,8 +2745,7 @@ function projectRow(): string | null {
 }
 it('shows a current Project reader the linked Project or an explicit unlinked state on each fresh open', async () => {
   const details = [linkedToProject, notLinkedToProject];
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (url.endsWith('/documents/document'))
@@ -2782,8 +2775,7 @@ it.each([
     notLinkedToProject,
   ],
 ])('shows no Project row when %s', async (_case, reader, opened) => {
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) =>
       Response.json(
         url.endsWith('/clients')
@@ -2811,7 +2803,7 @@ it('hides a previously read Project as soon as the revalidated actor loses proje
           : [document],
     ),
   );
-  vi.stubGlobal('fetch', fetcher);
+  stubFetch(fetcher);
   const view = render(
     <DocumentWorkspace actor={projectReader} identity={identity} />,
   );
@@ -2845,8 +2837,7 @@ it.each([
 ])(
   'rejects a detail response carrying %s as invalid',
   async (_case, projectAssociation) => {
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string) =>
         Response.json(
           url.endsWith('/clients')
@@ -2872,8 +2863,7 @@ it.each([
 );
 it('reports a registration whose Project association is malformed instead of opening it', async () => {
   const posts: string[] = [];
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients'))
         return Response.json([{ id: 'client', displayName: 'Client' }]);
@@ -2913,8 +2903,7 @@ it('reports a registration whose Project association is malformed instead of ope
   expect(posts).toHaveLength(1);
 });
 it('opens a confirmed registration with the association it was answered with', async () => {
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/clients'))
         return Response.json([{ id: 'client', displayName: 'Client' }]);
@@ -2951,8 +2940,7 @@ it.each(['corrected', 'unchanged'] satisfies Array<'corrected' | 'unchanged'>)(
   'keeps the Project row through editing and a %s correction save',
   async (outcome) => {
     let saved = false;
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url.endsWith('/clients')) return Response.json([]);
         if (init?.method === 'PATCH') {
@@ -3009,8 +2997,7 @@ it('never shows the Project of a detail read the member has already left', async
   const [historical, homonym] = dossierDocuments;
   if (!historical || !homonym) throw new Error('Expected dossier Documents.');
   const heldHistoricalRead = deferredResponse();
-  vi.stubGlobal(
-    'fetch',
+  stubFetch(
     vi.fn(async (url: string) => {
       if (url.endsWith('/clients')) return Response.json([]);
       if (url.endsWith(`/documents/${historical.id}`))
@@ -3205,7 +3192,7 @@ describe('a requested Document', () => {
 
   it('waits for a pending registration and leaves its command and draft unchanged', async () => {
     const requests = recordedRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await waitFor(() => expect(requests.lists()).toHaveLength(1));
     answer(requests.lists()[0], Response.json([document, requested]));
@@ -3249,7 +3236,7 @@ describe('a requested Document', () => {
 
   it('opens after a confirmed registration settles', async () => {
     const requests = recordedRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await waitFor(() => expect(requests.lists()).toHaveLength(1));
     answer(requests.lists()[0], Response.json([document, requested]));
@@ -3299,7 +3286,7 @@ describe('a requested Document', () => {
             ? ['uncertain', 'corrected']
             : ['corrected'],
       });
-      vi.stubGlobal('fetch', requests.fetcher);
+      stubFetch(requests.fetcher);
       const view = render(workspace());
       await beginCorrection();
       if (correctionState === 'uncertain') {
@@ -3345,7 +3332,7 @@ describe('a requested Document', () => {
 
   it('holds the request while a correction command is pending, without aborting it', async () => {
     const requests = recordedRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await waitFor(() => expect(requests.lists()).toHaveLength(1));
     answer(requests.lists()[0], Response.json([document, requested]));
@@ -3406,7 +3393,7 @@ describe('a requested Document', () => {
 
   it('opens only the newest of the requests held behind a correction', async () => {
     const requests = answeredRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await beginCorrection();
     view.rerender(
@@ -3431,7 +3418,7 @@ describe('a requested Document', () => {
 
   it('never renders a late reply to a superseded request and re-reads a repeated one', async () => {
     const requests = recordedRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await waitFor(() => expect(requests.lists()).toHaveLength(1));
     answer(requests.lists()[0], Response.json([document, requested, newer]));
@@ -3471,8 +3458,7 @@ describe('a requested Document', () => {
   ])(
     'shows the existing state for a %s Document',
     async (_case, status, message) => {
-      vi.stubGlobal(
-        'fetch',
+      stubFetch(
         vi.fn(async (url: string) =>
           url.endsWith('/clients')
             ? Response.json([])
@@ -3496,8 +3482,7 @@ describe('a requested Document', () => {
 
   it('rejects the session for an unauthorized Document read', async () => {
     const rejectSession = vi.fn(async () => undefined);
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string) =>
         url.endsWith('/clients')
           ? Response.json([])
@@ -3521,8 +3506,7 @@ describe('a requested Document', () => {
 
   it('keeps a superseded original Client reference readable but correction read-only', async () => {
     const readOnly = { ...requested, correction: 'read-only' };
-    vi.stubGlobal(
-      'fetch',
+    stubFetch(
       vi.fn(async (url: string) =>
         url.endsWith('/clients')
           ? Response.json([])
@@ -3546,7 +3530,7 @@ describe('a requested Document', () => {
 
   it('never replays a request it was mounted with or one the shell retired', async () => {
     const requests = answeredRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const mounted = { documentId: requested.id, requestId: 4 };
     const view = render(workspace({ requestedDocument: mounted }));
     await beginCorrection();
@@ -3570,7 +3554,7 @@ describe('a requested Document', () => {
 
   it('lets a newer dossier restriction supersede a held request', async () => {
     const requests = answeredRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     await beginCorrection();
     const request = { documentId: requested.id, requestId: 1 };
@@ -3598,7 +3582,7 @@ describe('a requested Document', () => {
 
   it('keeps the search text and dossier restriction it opens under', async () => {
     const requests = answeredRequests();
-    vi.stubGlobal('fetch', requests.fetcher);
+    stubFetch(requests.fetcher);
     const view = render(workspace());
     const filter = await screen.findByRole('searchbox', {
       name: 'Filter working Documents',
@@ -3623,7 +3607,7 @@ describe('a requested Document', () => {
 
   it('reads the Document under the current Client identity after a union', async () => {
     const projections = currentProjectionFetcher();
-    vi.stubGlobal('fetch', projections.fetcher);
+    stubFetch(projections.fetcher);
     const openClientDossier = vi.fn();
     const view = render(
       workspace({

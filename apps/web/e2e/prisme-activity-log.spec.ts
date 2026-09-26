@@ -1,3 +1,4 @@
+import { enterClassicCompatibility } from './classic-compatibility';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -111,7 +112,7 @@ test('presents real Activity Log events in server order and preserves them acros
 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Use classic frame' }).click();
+  await enterClassicCompatibility(page);
   await expect(page).toHaveURL(/\?frame=classic#activity$/);
   await expect(activity).toBeVisible();
   await expect(rows).toHaveCount(events.length);
