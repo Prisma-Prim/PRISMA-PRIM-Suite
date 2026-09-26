@@ -16,6 +16,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 const WORKSPACE_ID = '00000000-0000-4000-8000-000000000418';
 const OWNER = memberHeaders('workspace-owner');
+const CONFIGURATION_MEMBER = memberHeaders('snapshot-configuration-member');
 const ASSIGNMENTS = {
   catalogue: '/company-service-catalogue-assignments',
   configuration: '/company-pricing-configuration-assignments',
@@ -28,6 +29,12 @@ let clockSequence: Date[] = [];
 const serverClock: ServerClock = {
   now: () => new Date((clockSequence.shift() ?? instant).getTime()),
 };
+
+interface HeldTransaction {
+  connection: PoolClient;
+  backendPid: number;
+  released: boolean;
+}
 
 interface Fixture {
   companyId: string;
@@ -62,6 +69,11 @@ withPostgres('Pricing Snapshots REST', () => {
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Pricing Snapshot Workspace',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'snapshot-configuration-member',
+            workspaceId: WORKSPACE_ID,
+          },
           {
             provider: 'deterministic-test',
             subject: 'snapshot-pricing-only-member',
@@ -304,9 +316,19 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     expect(created.clientReference).toEqual({
       originalClientId: originalClient.id,
-      currentClientId: originalClient.id,
       displayName: 'Original snapshot Client',
     });
+
+    // Workspace Client management exposes the original reference above.
+    // Current dossier navigation additionally requires Company Client read.
+    await command(
+      '/company-director-client-assignments',
+      {
+        companyId: fixture.companyId,
+        workspaceMembershipId: fixture.membershipId,
+      },
+      'snapshot-original-company-client-read',
+    );
 
     const otherCompany = entity(
       await command(
@@ -374,10 +396,13 @@ withPostgres('Pricing Snapshots REST', () => {
         ),
       ),
     );
-    expect(afterUnion.clientReference).toEqual({
-      originalClientId: originalClient.id,
-      currentClientId: currentClient.id,
-      displayName: 'Current snapshot Client',
+    expect(afterUnion).toEqual({
+      ...created,
+      clientReference: {
+        originalClientId: originalClient.id,
+        currentClientId: currentClient.id,
+        displayName: 'Original snapshot Client',
+      },
     });
 
     const restrictedHeaders = memberHeaders('snapshot-pricing-only-member');
@@ -414,6 +439,11 @@ withPostgres('Pricing Snapshots REST', () => {
     expect(restrictedSnapshot).not.toHaveProperty('clientReference');
     expect(JSON.stringify(restrictedSnapshot)).not.toContain(
       'Current snapshot Client',
+    );
+    expect(JSON.stringify(restrictedSnapshot)).not.toContain(originalClient.id);
+    expect(JSON.stringify(restrictedSnapshot)).not.toContain(currentClient.id);
+    expect(JSON.stringify(restrictedSnapshot)).not.toContain(
+      'Original snapshot Client',
     );
     expect(restrictedSnapshot.total).toBe('346.72');
   });
@@ -468,7 +498,6 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     expect(stale.status).toBe(409);
     expect(await json(stale)).toEqual({
-      statusCode: 409,
       code: 'STALE_PRICING_RULE_VERSION',
       message: 'The declared version has been taken over.',
       headVersionNumber: 2,
@@ -589,8 +618,11 @@ withPostgres('Pricing Snapshots REST', () => {
       'concurrent-retry',
       fixture.companyId,
     );
-    await waitForBlockedBy(pricingRevocation.backendPid);
-    await release(pricingRevocation);
+    try {
+      await waitForBlockedBy(pricingRevocation.backendPid);
+    } finally {
+      await release(pricingRevocation);
+    }
     expect((await revokedReplay).status).toBe(403);
     expect(
       (await request(`${path}/${first.id}`, fixture.companyId)).status,
@@ -633,8 +665,11 @@ withPostgres('Pricing Snapshots REST', () => {
       'target-replay',
       targetFixture.companyId,
     );
-    await waitForBlockedBy(targetRevocation.backendPid);
-    await release(targetRevocation);
+    try {
+      await waitForBlockedBy(targetRevocation.backendPid);
+    } finally {
+      await release(targetRevocation);
+    }
     expect((await hiddenReplay).status).toBe(403);
     expect(
       (
@@ -653,10 +688,11 @@ withPostgres('Pricing Snapshots REST', () => {
             ORDER BY company_id`,
         )
       ).rows,
-    ).toEqual([
-      { company_id: fixture.companyId, snapshots: 1 },
-      { company_id: targetFixture.companyId, snapshots: 1 },
-    ]);
+    ).toEqual(
+      [fixture.companyId, targetFixture.companyId]
+        .sort()
+        .map((company_id) => ({ company_id, snapshots: 1 })),
+    );
   });
 
   it('records a later committedAt without rechecking a validity boundary passed after calculatedAt', async () => {
@@ -730,122 +766,143 @@ withPostgres('Pricing Snapshots REST', () => {
     );
   });
 
-  it('serializes calculation against publication and rolls back snapshot, lines, event and receipt at every injected write failure', async () => {
+  it('holds publication behind a calculation until its checked snapshot commits', async () => {
     const fixture = await prepared();
-    const path = snapshotsPath(fixture.opportunityId);
+    await prepareConfigurationMember(fixture);
+    const calculationInstant = instant.toISOString();
     const triggerLock = await holdAdvisoryLock('pricing-snapshot-insert');
-    await pool.query(`
-      CREATE FUNCTION test_pause_snapshot_insert() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN
-        PERFORM pg_advisory_xact_lock(hashtextextended('pricing-snapshot-insert', 0));
-        RETURN NEW;
-      END $$;
-      CREATE TRIGGER test_pause_snapshot_insert
-        BEFORE INSERT ON pricing_snapshots
-        FOR EACH ROW EXECUTE FUNCTION test_pause_snapshot_insert();
-    `);
-    const calculation = post(
-      path,
-      calculationBody(fixture),
-      'barrier-calculation',
-      fixture.companyId,
-    );
-    await waitForBlockedBy(triggerLock.backendPid);
-    instant = new Date('2026-04-02T00:00:00.000Z');
-    const publication = post(
-      '/pricing-configuration/rule-versions',
-      ruleBody(1),
-      'barrier-publication',
-      fixture.companyId,
-    );
-    await waitForAdvisoryWaiters(2);
-    await release(triggerLock);
-    expect((await calculation).status).toBe(201);
-    expect((await publication).status).toBe(201);
-    await pool.query(
-      'DROP TRIGGER test_pause_snapshot_insert ON pricing_snapshots; DROP FUNCTION test_pause_snapshot_insert()',
-    );
+    try {
+      await pool.query(`
+        CREATE FUNCTION test_pause_snapshot_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(hashtextextended('pricing-snapshot-insert', 0));
+          RETURN NEW;
+        END $$;
+        CREATE TRIGGER test_pause_snapshot_insert
+          BEFORE INSERT ON pricing_snapshots
+          FOR EACH ROW EXECUTE FUNCTION test_pause_snapshot_insert();
+      `);
+      const calculation = post(
+        snapshotsPath(fixture.opportunityId),
+        calculationBody(fixture),
+        'barrier-calculation',
+        fixture.companyId,
+      );
+      const calculationPid = await waitForBlockedBy(
+        triggerLock.backendPid,
+        true,
+      );
+      instant = new Date('2026-04-02T00:00:00.000Z');
+      const publication = post(
+        '/pricing-configuration/rule-versions',
+        ruleBody(1),
+        'barrier-publication',
+        fixture.companyId,
+        CONFIGURATION_MEMBER,
+      );
+      await waitForBlockedBy(calculationPid, true);
+      await release(triggerLock);
+      const calculationResponse = await calculation;
+      expect(calculationResponse.status).toBe(201);
+      const created = snapshot(await json(calculationResponse));
+      expect(created).toMatchObject({
+        calculatedAt: calculationInstant,
+        pricingRuleVersion: { id: fixture.rule.id, versionNumber: 1 },
+        total: '346.72',
+      });
+      const publicationResponse = await publication;
+      expect(publicationResponse.status).toBe(201);
+      expect(record(await json(publicationResponse)).version).toMatchObject({
+        versionNumber: 2,
+        createdAt: instant.toISOString(),
+      });
+    } finally {
+      await release(triggerLock);
+      await pool.query(
+        'DROP TRIGGER IF EXISTS test_pause_snapshot_insert ON pricing_snapshots; DROP FUNCTION IF EXISTS test_pause_snapshot_insert()',
+      );
+    }
+  });
 
-    // Reverse ordering: publication holds the rule scope exclusively while
-    // its insert is paused. Calculation waits, samples only after publication
-    // commits, and refuses the declared predecessor as stale.
-    const reverse = await prepared();
+  it('waits for publication before checking and refusing a taken-over declared rule', async () => {
+    const fixture = await prepared();
+    await prepareConfigurationMember(fixture);
     const publicationLock = await holdAdvisoryLock('pricing-rule-insert');
-    await pool.query(`
-      CREATE FUNCTION test_pause_rule_insert() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN
-        PERFORM pg_advisory_xact_lock(hashtextextended('pricing-rule-insert', 0));
-        RETURN NEW;
-      END $$;
-      CREATE TRIGGER test_pause_rule_insert
-        BEFORE INSERT ON pricing_rule_versions
-        FOR EACH ROW EXECUTE FUNCTION test_pause_rule_insert();
-    `);
-    instant = new Date(instant.getTime() + 1_000);
-    const heldPublication = post(
-      '/pricing-configuration/rule-versions',
-      ruleBody(1),
-      'publication-first',
-      reverse.companyId,
-    );
-    await waitForBlockedBy(publicationLock.backendPid);
-    const waitingCalculation = post(
-      snapshotsPath(reverse.opportunityId),
-      calculationBody(reverse),
-      'calculation-second',
-      reverse.companyId,
-    );
-    await waitForAdvisoryWaiters(2);
-    await release(publicationLock);
-    expect((await heldPublication).status).toBe(201);
-    const staleCalculation = await waitingCalculation;
-    expect(staleCalculation.status).toBe(409);
-    expect(record(await json(staleCalculation)).code).toBe(
-      'STALE_PRICING_RULE_VERSION',
-    );
-    await pool.query(
-      'DROP TRIGGER test_pause_rule_insert ON pricing_rule_versions; DROP FUNCTION test_pause_rule_insert()',
-    );
+    try {
+      await pool.query(`
+        CREATE FUNCTION test_pause_rule_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(hashtextextended('pricing-rule-insert', 0));
+          RETURN NEW;
+        END $$;
+        CREATE TRIGGER test_pause_rule_insert
+          BEFORE INSERT ON pricing_rule_versions
+          FOR EACH ROW EXECUTE FUNCTION test_pause_rule_insert();
+      `);
+      instant = new Date(instant.getTime() + 1_000);
+      const heldPublication = post(
+        '/pricing-configuration/rule-versions',
+        ruleBody(1),
+        'publication-first',
+        fixture.companyId,
+        CONFIGURATION_MEMBER,
+      );
+      const publicationPid = await waitForBlockedBy(
+        publicationLock.backendPid,
+        true,
+      );
+      const waitingCalculation = post(
+        snapshotsPath(fixture.opportunityId),
+        calculationBody(fixture),
+        'calculation-second',
+        fixture.companyId,
+      );
+      await waitForBlockedBy(publicationPid, true);
+      await release(publicationLock);
+      expect((await heldPublication).status).toBe(201);
+      const staleCalculation = await waitingCalculation;
+      expect(staleCalculation.status).toBe(409);
+      expect(record(await json(staleCalculation)).code).toBe(
+        'STALE_PRICING_RULE_VERSION',
+      );
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 0, lines: 0, events: 0, receipts: 0 },
+      ]);
+    } finally {
+      await release(publicationLock);
+      await pool.query(
+        'DROP TRIGGER IF EXISTS test_pause_rule_insert ON pricing_rule_versions; DROP FUNCTION IF EXISTS test_pause_rule_insert()',
+      );
+    }
+  });
 
-    for (const [table, key, triggerWhen] of [
-      ['pricing_snapshots', 'fail-snapshot', ''],
-      ['pricing_snapshot_lines', 'fail-line', ''],
-      [
-        'pricing_configuration_events',
-        'fail-event',
-        "WHEN (NEW.action = 'pricing_snapshot.created')",
-      ],
-      [
-        'pricing_configuration_commands',
-        'fail-receipt',
-        "WHEN (NEW.command = 'pricing_snapshot.calculate')",
-      ],
-    ] as const) {
-      const failed = await prepared();
-      const failedPath = snapshotsPath(failed.opportunityId);
+  it.each([
+    ['pricing_snapshots', 'fail-snapshot', ''],
+    ['pricing_snapshot_lines', 'fail-line', ''],
+    [
+      'pricing_configuration_events',
+      'fail-event',
+      "WHEN (NEW.action = 'pricing_snapshot.created')",
+    ],
+    [
+      'pricing_configuration_commands',
+      'fail-receipt',
+      "WHEN (NEW.command = 'pricing_snapshot.calculate')",
+    ],
+  ] as const)(
+    'rolls back every snapshot write and releases publication after a %s failure',
+    async (table, key, triggerWhen) => {
+      const fixture = await prepared();
+      await prepareConfigurationMember(fixture);
+      const path = snapshotsPath(fixture.opportunityId);
       const functionName = `test_fail_${table}`;
-      const readSnapshotWriteState = () =>
-        pool.query(
-          `SELECT
-             (SELECT count(*)::integer FROM pricing_snapshots
-               WHERE workspace_id = $1 AND company_id = $2) AS snapshots,
-             (SELECT count(*)::integer FROM pricing_snapshot_lines
-               WHERE workspace_id = $1 AND company_id = $2) AS lines,
-             (SELECT count(*)::integer FROM pricing_configuration_events
-               WHERE workspace_id = $1 AND company_id = $2
-                 AND action = 'pricing_snapshot.created') AS events,
-             (SELECT count(*)::integer FROM pricing_configuration_commands
-               WHERE workspace_id = $1 AND company_id = $2
-                 AND command = 'pricing_snapshot.calculate') AS receipts`,
-          [WORKSPACE_ID, failed.companyId],
-        );
-      const beforeFailure = (await readSnapshotWriteState()).rows;
+      const beforeFailure = (await readSnapshotWriteState(fixture)).rows;
       expect(beforeFailure).toEqual([
         { snapshots: 0, lines: 0, events: 0, receipts: 0 },
       ]);
       const failureLock = await holdAdvisoryLock(key);
-      let released = false;
-      await pool.query(`
+      try {
+        await pool.query(`
         CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
           PERFORM pg_advisory_xact_lock(hashtextextended('${key}', 0));
@@ -856,66 +913,114 @@ withPostgres('Pricing Snapshots REST', () => {
           FOR EACH ROW ${triggerWhen}
           EXECUTE FUNCTION ${functionName}();
       `);
-      const failedCalculation = post(
-        failedPath,
-        calculationBody(failed),
-        key,
-        failed.companyId,
-      );
-      await waitForBlockedBy(failureLock.backendPid);
-      instant = new Date(instant.getTime() + 1_000);
-      let publicationSettled = false;
-      const waitingPublication = post(
-        '/pricing-configuration/rule-versions',
-        ruleBody(1),
-        `publication-after-${key}`,
-        failed.companyId,
-      ).then((response) => {
-        publicationSettled = true;
-        return response;
-      });
-      await waitForAdvisoryWaiters(2);
-      expect(publicationSettled).toBe(false);
-      try {
+        const failedCalculation = post(
+          path,
+          calculationBody(fixture),
+          key,
+          fixture.companyId,
+        );
+        const calculationPid = await waitForBlockedBy(
+          failureLock.backendPid,
+          true,
+        );
+        instant = new Date(instant.getTime() + 1_000);
+        let publicationSettled = false;
+        const waitingPublication = post(
+          '/pricing-configuration/rule-versions',
+          ruleBody(1),
+          `publication-after-${key}`,
+          fixture.companyId,
+          CONFIGURATION_MEMBER,
+        ).then((response) => {
+          publicationSettled = true;
+          return response;
+        });
+        await waitForBlockedBy(calculationPid, true);
+        expect(publicationSettled).toBe(false);
         await release(failureLock);
-        released = true;
         expect((await failedCalculation).status).toBe(500);
         expect((await waitingPublication).status).toBe(201);
         expect(publicationSettled).toBe(true);
       } finally {
-        if (!released) await release(failureLock);
+        await release(failureLock);
         await pool.query(`
-          DROP TRIGGER ${functionName} ON ${table};
-          DROP FUNCTION ${functionName}()
-        `);
+        DROP TRIGGER IF EXISTS ${functionName} ON ${table};
+        DROP FUNCTION IF EXISTS ${functionName}()
+      `);
       }
-      expect((await readSnapshotWriteState()).rows).toEqual(beforeFailure);
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual(
+        beforeFailure,
+      );
       expect(
         (
           await post(
-            failedPath,
+            path,
             {
               pricingRuleVersionNumber: 2,
-              lines: calculationBody(failed).lines,
+              lines: calculationBody(fixture).lines,
             },
             key,
-            failed.companyId,
+            fixture.companyId,
           )
         ).status,
       ).toBe(201);
-    }
-    expect(
-      (
-        await pool.query(
-          `SELECT count(*)::integer AS snapshots FROM pricing_snapshots
-            WHERE id NOT IN (
-              SELECT result_pricing_snapshot_id FROM pricing_configuration_commands
-               WHERE command = 'pricing_snapshot.calculate'
-            )`,
-        )
-      ).rows,
-    ).toEqual([{ snapshots: 0 }]);
-  });
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 1, lines: 2, events: 1, receipts: 1 },
+      ]);
+      expect(
+        (
+          await pool.query(`
+      SELECT count(*)::integer AS snapshots FROM pricing_snapshots
+       WHERE id NOT IN (
+         SELECT result_pricing_snapshot_id FROM pricing_configuration_commands
+          WHERE command = 'pricing_snapshot.calculate'
+       )
+    `)
+        ).rows,
+      ).toEqual([{ snapshots: 0 }]);
+    },
+  );
+
+  function readSnapshotWriteState(fixture: Fixture) {
+    return pool.query(
+      `SELECT
+         (SELECT count(*)::integer FROM pricing_snapshots
+           WHERE workspace_id = $1 AND company_id = $2) AS snapshots,
+         (SELECT count(*)::integer FROM pricing_snapshot_lines
+           WHERE workspace_id = $1 AND company_id = $2) AS lines,
+         (SELECT count(*)::integer FROM pricing_configuration_events
+           WHERE workspace_id = $1 AND company_id = $2
+             AND action = 'pricing_snapshot.created') AS events,
+         (SELECT count(*)::integer FROM pricing_configuration_commands
+           WHERE workspace_id = $1 AND company_id = $2
+             AND command = 'pricing_snapshot.calculate') AS receipts`,
+      [WORKSPACE_ID, fixture.companyId],
+    );
+  }
+
+  async function prepareConfigurationMember(fixture: Fixture): Promise<void> {
+    // A separate actor avoids profile synchronization waiting on the first
+    // actor's locked Internal User before reaching the pricing scope lock.
+    const actor = record(
+      await json(
+        await request('/access/current-actor', undefined, {
+          headers: CONFIGURATION_MEMBER,
+        }),
+      ),
+    );
+    for (const path of [
+      '/company-context-assignments',
+      ASSIGNMENTS.configuration,
+    ])
+      await command(
+        path,
+        {
+          companyId: fixture.companyId,
+          workspaceMembershipId: stringField(actor, 'workspaceMembershipId'),
+        },
+        `configuration-member-${path}`,
+      );
+  }
 
   async function prepared(
     variant:
@@ -1096,83 +1201,94 @@ withPostgres('Pricing Snapshots REST', () => {
     );
   }
 
-  async function holdAdvisoryLock(key: string): Promise<{
-    connection: PoolClient;
-    backendPid: number;
-  }> {
+  async function holdTransaction(
+    acquire: (connection: PoolClient) => Promise<void>,
+  ): Promise<HeldTransaction> {
     const connection = await pool.connect();
-    await connection.query('BEGIN');
-    const backend = await connection.query<{ backendPid: number }>(
-      'SELECT pg_backend_pid() AS "backendPid"',
-    );
-    const backendPid = backend.rows[0]?.backendPid;
-    if (backendPid === undefined) throw new Error('Missing blocker backend.');
-    await connection.query(
-      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-      [key],
-    );
-    return { connection, backendPid };
+    try {
+      await connection.query('BEGIN');
+      const backend = await connection.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = backend.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      await acquire(connection);
+      return { connection, backendPid, released: false };
+    } catch (error) {
+      try {
+        await connection.query('ROLLBACK');
+      } finally {
+        connection.release();
+      }
+      throw error;
+    }
+  }
+
+  async function holdAdvisoryLock(key: string): Promise<HeldTransaction> {
+    return holdTransaction(async (connection) => {
+      await connection.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [key],
+      );
+    });
   }
 
   async function holdRevocation(
     fixture: Fixture,
     bundle: 'company_pricing_user' | 'company_commercial_intake',
-  ): Promise<{ connection: PoolClient; backendPid: number }> {
-    const connection = await pool.connect();
-    await connection.query('BEGIN');
-    const backend = await connection.query<{ backendPid: number }>(
-      'SELECT pg_backend_pid() AS "backendPid"',
-    );
-    const backendPid = backend.rows[0]?.backendPid;
-    if (backendPid === undefined)
-      throw new Error('Missing revocation backend.');
-    const revoked = await connection.query(
-      `UPDATE company_role_assignments
-          SET revoked_at = now(), updated_at = now()
-        WHERE workspace_id = $1 AND company_id = $2
-          AND workspace_membership_id = $3
-          AND bundle::text = $4 AND revoked_at IS NULL
-        RETURNING id`,
-      [WORKSPACE_ID, fixture.companyId, fixture.membershipId, bundle],
-    );
-    if (revoked.rowCount !== 1)
-      throw new Error(`Expected one ${bundle} assignment to revoke.`);
-    return { connection, backendPid };
-  }
-
-  async function release(lock: { connection: PoolClient }): Promise<void> {
-    await lock.connection.query('COMMIT');
-    lock.connection.release();
-  }
-
-  async function waitForBlockedBy(backendPid: number): Promise<void> {
-    for (let attempt = 0; attempt < 200; attempt += 1) {
-      const result = await pool.query<{ blocked: boolean }>(
-        `SELECT EXISTS (
-           SELECT 1 FROM pg_stat_activity
-            WHERE datname = current_database()
-              AND $1::integer = ANY(pg_blocking_pids(pid))
-         ) AS blocked`,
-        [backendPid],
+  ): Promise<HeldTransaction> {
+    return holdTransaction(async (connection) => {
+      const revoked = await connection.query(
+        `UPDATE company_role_assignments
+            SET revoked_at = now(), updated_at = now()
+          WHERE workspace_id = $1 AND company_id = $2
+            AND workspace_membership_id = $3
+            AND bundle::text = $4 AND revoked_at IS NULL
+          RETURNING id`,
+        [WORKSPACE_ID, fixture.companyId, fixture.membershipId, bundle],
       );
-      if (result.rows[0]?.blocked) return;
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-    throw new Error('The operation did not reach the observed barrier.');
+      if (revoked.rowCount !== 1)
+        throw new Error(`Expected one ${bundle} assignment to revoke.`);
+    });
   }
 
-  async function waitForAdvisoryWaiters(count: number): Promise<void> {
-    for (let attempt = 0; attempt < 200; attempt += 1) {
-      const result = await pool.query<{ waiting: number }>(
-        `SELECT count(*)::integer AS waiting
-           FROM pg_locks
-          WHERE locktype = 'advisory' AND NOT granted
-            AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
-      );
-      if (result.rows[0]?.waiting === count) return;
-      await new Promise((resolve) => setTimeout(resolve, 25));
+  async function release(lock: HeldTransaction): Promise<void> {
+    if (lock.released) return;
+    try {
+      await lock.connection.query('COMMIT');
+    } finally {
+      lock.released = true;
+      lock.connection.release();
     }
-    throw new Error('The operations did not reach both advisory barriers.');
+  }
+
+  async function waitForBlockedBy(
+    backendPid: number,
+    advisory = false,
+  ): Promise<number> {
+    // Observe the actual holder -> waiter edge, not unrelated advisory locks.
+    // Fail before Vitest's test deadline so finally can release held clients.
+    const deadline = Date.now() + 2_000;
+    do {
+      const result = await pool.query<{ pid: number }>(
+        `SELECT pid FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND $1::integer = ANY(pg_blocking_pids(pid))
+            AND (NOT $2::boolean OR wait_event = 'advisory')`,
+        [backendPid, advisory],
+      );
+      const waiter = result.rows[0];
+      if (waiter) return waiter.pid;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    } while (Date.now() < deadline);
+    const activity = await pool.query(
+      `SELECT pid, wait_event_type, wait_event, pg_blocking_pids(pid) AS blockers,
+              left(query, 240) AS query
+         FROM pg_stat_activity WHERE datname = current_database()`,
+    );
+    throw new Error(
+      `No ${advisory ? 'advisory ' : ''}waiter behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
+    );
   }
 
   async function request(
@@ -1195,10 +1311,12 @@ withPostgres('Pricing Snapshots REST', () => {
     body: unknown,
     key: string,
     companyId?: string,
+    headers: Readonly<Record<string, string>> = OWNER,
   ): Promise<Response> {
     return request(path, companyId, {
       method: 'POST',
       headers: {
+        ...headers,
         'content-type': 'application/json',
         'idempotency-key': key,
       },
