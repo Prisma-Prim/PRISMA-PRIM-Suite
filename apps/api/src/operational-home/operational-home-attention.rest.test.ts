@@ -87,7 +87,13 @@ describe.skipIf(!databaseUrl)(
         'TRUNCATE activity_log_events, workspaces, internal_users CASCADE',
       );
       companyA = text(
-        object(await command('/companies', { displayName: 'PRISMA-PRIM' })).id,
+        object(
+          await command(
+            '/companies',
+            { displayName: 'PRISMA-PRIM' },
+            { company: '' },
+          ),
+        ).id,
       );
       ownerMembershipId = text(
         object(await read('/access/current-actor')).workspaceMembershipId,
