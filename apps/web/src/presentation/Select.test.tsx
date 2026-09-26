@@ -78,6 +78,58 @@ describe('Select', () => {
     expect(select).toHaveFocus();
   });
 
+  it.each(['Escape', 'Tab'])(
+    'keeps the committed ARIA selection while highlighting and dismissing with %s',
+    (dismissKey) => {
+      const onValueChange = vi.fn();
+      function Example() {
+        const [value, setValue] = useState('alpha');
+        return (
+          <>
+            <label htmlFor="committed-select">Committed choice</label>
+            <Select
+              id="committed-select"
+              value={value}
+              options={options}
+              onValueChange={(nextValue) => {
+                setValue(nextValue);
+                onValueChange(nextValue);
+              }}
+            />
+          </>
+        );
+      }
+      render(<Example />);
+      const select = screen.getByRole('combobox', { name: 'Committed choice' });
+      fireEvent.keyDown(select, { key: 'Enter' });
+      fireEvent.keyDown(select, { key: 'ArrowDown' });
+      const highlighted = screen.getByRole('option', { name: 'Gamma' });
+      expect(select).toHaveAttribute('aria-activedescendant', highlighted.id);
+      expect(highlighted).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByRole('option', { selected: true })).toHaveTextContent(
+        'Alpha',
+      );
+      expect(onValueChange).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(select, { key: dismissKey });
+      expect(select).toHaveAttribute('aria-expanded', 'false');
+      expect(select).toHaveTextContent('Alpha');
+      expect(onValueChange).not.toHaveBeenCalled();
+      fireEvent.keyDown(select, { key: 'Enter' });
+      expect(screen.getByRole('option', { selected: true })).toHaveTextContent(
+        'Alpha',
+      );
+      fireEvent.keyDown(select, { key: 'ArrowDown' });
+      fireEvent.keyDown(select, { key: 'Enter' });
+      expect(onValueChange).toHaveBeenCalledExactlyOnceWith('gamma');
+      expect(select).toHaveTextContent('Gamma');
+      fireEvent.keyDown(select, { key: 'Enter' });
+      expect(screen.getByRole('option', { selected: true })).toHaveTextContent(
+        'Gamma',
+      );
+    },
+  );
+
   it('closes and restores focus without reporting a change when the current option is chosen again', () => {
     const onValueChange = vi.fn();
     render(
@@ -199,7 +251,7 @@ describe('Select', () => {
     );
     expect(screen.getByRole('option', { name: 'Gamma' })).toHaveAttribute(
       'aria-selected',
-      'true',
+      'false',
     );
 
     fireEvent.keyDown(select, { key: 'Home' });

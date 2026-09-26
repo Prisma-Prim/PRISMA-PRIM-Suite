@@ -178,6 +178,8 @@ function serve(state: ApiState) {
       if (path === '/api/companies')
         return Response.json([companyA, companyB, companyC]);
       if (path === '/api/activity-log') return Response.json({ events: [] });
+      if (path === '/api/clients/search')
+        return Response.json({ message: 'Forbidden' }, { status: 403 });
       if (path === SCOPE || path === VERSIONS) {
         const rules = companyId ? state.rules[companyId] : undefined;
         if (!companyId || !rules || state.refused.has(companyId))
@@ -432,9 +434,14 @@ it('ignores a late reply of the previous Company and hides the section in a Comp
 });
 
 it('remounts the whole section when Pricing User is granted, granted again or revoked', async () => {
+  const clientReader: Grants = { clientPermissions: ['client.read'] };
   const state: ApiState = {
     actors: {
-      [companyA.id]: actorIn(companyA, configuration('configuration-a')),
+      [companyA.id]: actorIn(
+        companyA,
+        configuration('configuration-a'),
+        clientReader,
+      ),
     },
     rules: { [companyA.id]: publishedRules('Company A') },
     refused: new Set(),
@@ -442,8 +449,10 @@ it('remounts the whole section when Pricing User is granted, granted again or re
   serve(state);
   window.history.replaceState(null, '', '/?frame=classic');
   render(<App identity={deterministicBrowserIdentity()} />);
-  const activeCompany = () =>
-    screen.getByLabelText('Active Company', { exact: true });
+  const revalidateAccess = () => {
+    changeValue(screen.getByLabelText('Find a shared Client'), 'Example');
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+  };
 
   // Revalidating an unchanged actor keeps the mounted section and its draft.
   const kept = within(await pricingSection()).getByLabelText(copy.label);
@@ -455,7 +464,8 @@ it('remounts the whole section when Pricing User is granted, granted again or re
         input.toString().endsWith('/access/current-actor'),
       ).length;
   const readsBefore = actorReads();
-  changeValue(activeCompany(), companyA.id);
+  // A real refused search revalidates the actor without replacing the Company.
+  revalidateAccess();
   await waitFor(() => expect(actorReads()).toBeGreaterThan(readsBefore));
   expect(within(await pricingSection()).getByLabelText(copy.label)).toHaveValue(
     'Kept draft',
@@ -470,11 +480,11 @@ it('remounts the whole section when Pricing User is granted, granted again or re
     changeValue(draft, 'Unsent draft');
     expect(draft).toHaveValue('Unsent draft');
 
-    // Re-selecting the Company revalidates the actor from the server.
-    state.actors[companyA.id] = actorIn(companyA, ...grants);
-    changeValue(
-      screen.getByLabelText('Active Company', { exact: true }),
-      companyA.id,
+    state.actors[companyA.id] = actorIn(companyA, ...grants, clientReader);
+    const readsBeforeChange = actorReads();
+    revalidateAccess();
+    await waitFor(() =>
+      expect(actorReads()).toBeGreaterThan(readsBeforeChange),
     );
     await waitFor(() =>
       expect(

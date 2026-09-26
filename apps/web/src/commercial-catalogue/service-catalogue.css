@@ -70,7 +70,7 @@
   resize: vertical;
 }
 
-.service-catalogue-panel button {
+.service-catalogue-panel button:not(:where(.shared-select__trigger)) {
   width: fit-content;
   max-width: 100%;
   padding: 0.65rem 0.85rem;
@@ -156,7 +156,7 @@
   text-transform: uppercase;
 }
 
-.service-catalogue button:focus-visible,
+.service-catalogue button:not(:where(.shared-select__trigger)):focus-visible,
 .service-catalogue input:focus-visible,
 .service-catalogue textarea:focus-visible,
 .service-catalogue select:focus-visible {

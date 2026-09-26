@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
@@ -71,6 +72,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   const search = navigation.getByLabel('Search Tasks');
   const status = navigation.getByLabel('Task status');
   await expectValue(status, 'all');
+  await expectSelectAppearance(status);
   await expect(listed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',

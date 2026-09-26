@@ -251,8 +251,13 @@ describe('Client ownership through App', () => {
         changeValue(screen.getByLabelText('Find a shared Client'), 'Refreshed');
         fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       }
-      await waitFor(() => expect(actorReads).toBe(actorReadsBeforeRefresh + 1));
-      await waitFor(() => expect(activityReads).toBe(2));
+      // Choosing the committed Company again closes the Select without a command.
+      // A refused Client search still revalidates through the access owner.
+      const refreshCount = refresh === 'Company re-selection' ? 0 : 1;
+      await waitFor(() =>
+        expect(actorReads).toBe(actorReadsBeforeRefresh + refreshCount),
+      );
+      await waitFor(() => expect(activityReads).toBe(1 + refreshCount));
 
       expect(commands[0]?.signal?.aborted).toBe(false);
       expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
@@ -281,7 +286,7 @@ describe('Client ownership through App', () => {
       expect(
         screen.getAllByText('Client created and linked to the active Company.'),
       ).toHaveLength(1);
-      await waitFor(() => expect(activityReads).toBe(3));
+      await waitFor(() => expect(activityReads).toBe(2 + refreshCount));
       expect(commands).toHaveLength(outcome === 'settles' ? 1 : 2);
     },
   );

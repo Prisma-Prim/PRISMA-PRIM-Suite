@@ -314,7 +314,7 @@
 }
 
 .company-registration button,
-.client-workspace button {
+.client-workspace button:not(:where(.shared-select__trigger)) {
   min-height: 2.75rem;
   padding: 0.65rem 1rem;
   border: 0;
@@ -326,7 +326,7 @@
 }
 
 .company-registration button:disabled,
-.client-workspace button:disabled {
+.client-workspace button:not(:where(.shared-select__trigger)):disabled {
   cursor: wait;
   opacity: 0.65;
 }

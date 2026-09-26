@@ -484,7 +484,7 @@ export function Select({
                       tabIndex={-1}
                       className="shared-select__option"
                       disabled={option.disabled}
-                      aria-selected={isActive}
+                      aria-selected={isSelected}
                       data-value={option.value}
                       data-active={isActive || undefined}
                       data-selected={isSelected || undefined}

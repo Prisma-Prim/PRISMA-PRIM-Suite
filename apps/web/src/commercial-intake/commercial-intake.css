@@ -72,7 +72,7 @@
   resize: vertical;
 }
 
-.commercial-intake-form button,
+.commercial-intake-form button:not(:where(.shared-select__trigger)),
 .commercial-intake-detail button,
 .commercial-intake-list button {
   width: fit-content;
@@ -212,7 +212,8 @@
 }
 
 .commercial-intake-workspace:focus-visible,
-.commercial-intake-workspace button:focus-visible,
+.commercial-intake-workspace
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .commercial-intake-workspace input:focus-visible,
 .commercial-intake-workspace textarea:focus-visible {
   outline: 3px solid

@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
@@ -230,6 +231,7 @@ test('registers and reopens a Company-confidential working reference', async ({
     fullPage: true,
   });
   const clientSelect = page.getByLabel('Client', { exact: true });
+  await expectSelectAppearance(clientSelect);
   const registrationForm = clientSelect.locator('xpath=ancestor::form');
   expect(
     await registrationForm.evaluate((form: HTMLFormElement) =>

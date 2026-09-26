@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import {
@@ -243,6 +244,15 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
       tariffs.getByText(tariffMarker, { exact: true }),
     ).toBeVisible();
     await chooseOffering(page, offeringA);
+    await expectSelectAppearance(
+      tariffs.getByRole('combobox', {
+        name: 'Company Service Offering',
+        exact: true,
+      }),
+    );
+    await expectSelectAppearance(
+      tariffs.getByLabel('Currency', { exact: true }),
+    );
     await expect(tariffs.getByText(/^No current version/u)).toBeVisible();
     await expect(
       tariffs.getByText(

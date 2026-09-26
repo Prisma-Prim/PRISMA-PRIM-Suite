@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
@@ -115,6 +116,7 @@ test('creates and opens a Project, then switches local panels without reloading 
 
   await expect(page.getByLabel('Project title')).toBeVisible();
   await page.getByLabel('Project title').fill(createdProject.title);
+  await expectSelectAppearance(page.getByLabel('Client', { exact: true }));
   await selectOption(page.getByLabel('Client', { exact: true }), client.id);
   await page.screenshot({
     path: testInfo.outputPath('prisme-projects-create.png'),
@@ -171,6 +173,9 @@ test('creates and opens a Project, then switches local panels without reloading 
   ).toBeVisible();
   const taskDraft = 'Prepare the certification interview';
   await tasksPanel.getByLabel('Task title').fill(taskDraft);
+  await expectSelectAppearance(
+    tasksPanel.getByRole('combobox', { name: 'Priority', exact: true }),
+  );
   const readsAfterOpen = { ...reads };
 
   await documentsTab.click();

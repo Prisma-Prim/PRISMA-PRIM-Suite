@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
@@ -110,6 +111,8 @@ test('administers both existing Company access bundles by member and Company nam
     page.getByRole('heading', { name: 'Company access' }),
   ).toBeVisible();
   await selectTargets('Company Context Access');
+  await expectSelectAppearance(page.getByLabel('Workspace member'));
+  await expectSelectAppearance(page.getByLabel('Access bundle'));
   await expect(page.getByText(/Current server state:/)).toContainText(
     'Not granted',
   );

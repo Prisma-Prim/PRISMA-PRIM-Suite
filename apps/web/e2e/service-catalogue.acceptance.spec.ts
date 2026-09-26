@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Response } from '@playwright/test';
@@ -22,6 +23,7 @@ test('defines a shared Service and records a Company offering through the real A
   });
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expectSelectAppearance(company);
   await company.click();
   await expect(
     page.getByRole('listbox', { name: 'Active Company' }),
@@ -79,6 +81,7 @@ test('defines a shared Service and records a Company offering through the real A
   const serviceDefinition = catalogue.getByLabel('Service Definition', {
     exact: true,
   });
+  await expectSelectAppearance(serviceDefinition);
   await serviceDefinition.click();
   await expect(
     page.getByRole('listbox', { name: 'Service Definition' }),

@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
@@ -56,6 +57,12 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   expect(state.commands).toHaveLength(0);
   await captureUnion(page, testInfo, 'union-incomplete');
   await chooseUnion(page);
+  await expectSelectAppearance(
+    unionForm(page).getByRole('combobox', {
+      name: 'Canonical Client dossier',
+      exact: true,
+    }),
+  );
   const address = unionForm(page).getByRole('combobox', {
     name: 'Address',
     exact: true,

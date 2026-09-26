@@ -70,7 +70,7 @@
   outline: 3px solid #4b36b5;
   outline-offset: 2px;
 }
-.task-filters button {
+.task-filters button:not(:where(.shared-select__trigger)) {
   align-self: end;
   min-height: 2.5rem;
   padding: 0.55rem 0.65rem;
@@ -181,7 +181,10 @@
   font-size: 1.15rem;
 }
 .prisme-shell .project-tasks--prisme .task-header > button,
-.prisme-shell .project-tasks--prisme .task-filters button,
+.prisme-shell
+  .project-tasks--prisme
+  .task-filters
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .project-tasks--prisme .task-panel > button,
 .prisme-shell .project-tasks--prisme .task-actions button,
 .prisme-shell

@@ -1,3 +1,4 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import {
@@ -933,6 +934,9 @@ async function searchAndSelectClient(
     .getByLabel('Search Clients by name', { exact: true })
     .fill(clientName);
   await intake.getByRole('button', { name: 'Search Clients' }).click();
+  await expectSelectAppearance(
+    intake.getByLabel('Existing Client', { exact: true }),
+  );
   await selectOption(intake.getByLabel('Existing Client', { exact: true }), {
     label: clientName,
   });
