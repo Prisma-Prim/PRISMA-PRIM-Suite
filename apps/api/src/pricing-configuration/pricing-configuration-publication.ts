@@ -15,11 +15,20 @@ import type { VersionSupersession } from './pricing-configuration.types.js';
 type ReceiptRow = typeof pricingConfigurationCommands.$inferSelect;
 
 export interface PublicationReceipt {
-  readonly command: ReceiptRow['command'];
+  readonly command: 'pricing_rule_version.publish' | 'tariff_version.publish';
   readonly fingerprint: string;
-  readonly outcome: ReceiptRow['outcome'];
+  readonly outcome: 'PUBLISHED' | 'UNCHANGED';
   readonly versionId: string;
 }
+
+export interface PricingSnapshotReceipt {
+  readonly command: 'pricing_snapshot.calculate';
+  readonly fingerprint: string;
+  readonly outcome: 'CREATED';
+  readonly snapshotId: string;
+}
+
+export type PricingCommandReceipt = PublicationReceipt | PricingSnapshotReceipt;
 
 // A Company's Pricing Rule Versions form one scope; each offering's Tariff
 // Versions form another. A scope's protection exists before its first
@@ -93,7 +102,7 @@ export async function findPublicationReceipt(
     companyId,
     idempotencyKey,
   }: { actor: ActorContext; companyId: string; idempotencyKey: string },
-): Promise<PublicationReceipt | undefined> {
+): Promise<PricingCommandReceipt | undefined> {
   const [receipt] = await connection
     .select()
     .from(pricingConfigurationCommands)
@@ -108,7 +117,7 @@ export async function findPublicationReceipt(
         eq(pricingConfigurationCommands.idempotencyKey, idempotencyKey),
       ),
     );
-  return receipt ? publicationReceipt(receipt) : undefined;
+  return receipt ? pricingCommandReceipt(receipt) : undefined;
 }
 
 export async function recordPublicationReceipt(
@@ -134,25 +143,78 @@ export async function recordPublicationReceipt(
       command === 'pricing_rule_version.publish' ? versionId : null,
     resultTariffVersionId:
       command === 'tariff_version.publish' ? versionId : null,
+    resultPricingSnapshotId: null,
+    createdAt: input.createdAt,
+  });
+}
+
+export async function recordPricingSnapshotReceipt(
+  connection: NodePgDatabase,
+  input: {
+    actor: ActorContext;
+    companyId: string;
+    idempotencyKey: string;
+    fingerprint: string;
+    snapshotId: string;
+    createdAt: Date;
+  },
+): Promise<void> {
+  await connection.insert(pricingConfigurationCommands).values({
+    workspaceId: input.actor.workspaceId,
+    companyId: input.companyId,
+    actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+    command: 'pricing_snapshot.calculate',
+    idempotencyKey: input.idempotencyKey,
+    fingerprint: input.fingerprint,
+    outcome: 'CREATED',
+    resultPricingRuleVersionId: null,
+    resultTariffVersionId: null,
+    resultPricingSnapshotId: input.snapshotId,
     createdAt: input.createdAt,
   });
 }
 
 // The database check keeps exactly one result reference, of the command's
 // own kind; a stored receipt that breaks it is not replayed.
-function publicationReceipt(row: ReceiptRow): PublicationReceipt {
-  const [versionId, otherVersionId] =
-    row.command === 'pricing_rule_version.publish'
-      ? [row.resultPricingRuleVersionId, row.resultTariffVersionId]
-      : [row.resultTariffVersionId, row.resultPricingRuleVersionId];
-  if (versionId === null || otherVersionId !== null)
-    throw new Error('The pricing configuration receipt is incomplete.');
-  return {
-    command: row.command,
-    fingerprint: row.fingerprint,
-    outcome: row.outcome,
-    versionId,
-  };
+function pricingCommandReceipt(row: ReceiptRow): PricingCommandReceipt {
+  switch (row.command) {
+    case 'pricing_rule_version.publish':
+    case 'tariff_version.publish': {
+      const [versionId, otherVersionId] =
+        row.command === 'pricing_rule_version.publish'
+          ? [row.resultPricingRuleVersionId, row.resultTariffVersionId]
+          : [row.resultTariffVersionId, row.resultPricingRuleVersionId];
+      if (
+        versionId === null ||
+        otherVersionId !== null ||
+        row.resultPricingSnapshotId !== null ||
+        (row.outcome !== 'PUBLISHED' && row.outcome !== 'UNCHANGED')
+      )
+        throw new Error('The pricing publication receipt is incomplete.');
+      return {
+        command: row.command,
+        fingerprint: row.fingerprint,
+        outcome: row.outcome,
+        versionId,
+      };
+    }
+    case 'pricing_snapshot.calculate':
+      if (
+        row.outcome !== 'CREATED' ||
+        row.resultPricingSnapshotId === null ||
+        row.resultPricingRuleVersionId !== null ||
+        row.resultTariffVersionId !== null
+      )
+        throw new Error('The Pricing Snapshot receipt is incomplete.');
+      return {
+        command: row.command,
+        fingerprint: row.fingerprint,
+        outcome: row.outcome,
+        snapshotId: row.resultPricingSnapshotId,
+      };
+    default:
+      return assertNever(row.command);
+  }
 }
 
 // The fingerprint covers the Company, any target and the payload exactly as

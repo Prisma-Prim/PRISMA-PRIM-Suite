@@ -10,6 +10,7 @@ import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import './commercial-intake.css';
 
@@ -917,6 +918,8 @@ export function CommercialIntakeWorkspace({
       ) : null}
       {selected ? (
         <RequestDetail
+          actor={actor}
+          identity={identity}
           request={selected.request}
           onBack={closeDetail}
           pending={pending}
@@ -952,6 +955,9 @@ export function CommercialIntakeWorkspace({
                 }
               : undefined
           }
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
         />
       ) : (
         <>
@@ -1358,18 +1364,28 @@ type NextActionEditor = {
 };
 
 function RequestDetail({
+  actor,
+  identity,
   request,
   onBack,
   pending,
   onOpenClientDossier,
   nextAction,
+  onCompanyContextRejected,
+  onActorRevalidated,
+  onWorkspaceAccessRejected,
 }: {
+  actor: ActorContext;
+  identity: BrowserIdentity;
   request: ClientRequest;
   onBack: () => void;
   pending: boolean;
   /** Offered only for a current dossier identity, never a name or original id. */
   onOpenClientDossier: (() => void) | undefined;
   nextAction: NextActionEditor | undefined;
+  onCompanyContextRejected: (companyContextId: string) => void;
+  onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
+  onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   return (
     <article
@@ -1455,6 +1471,15 @@ function RequestDetail({
           <NextActionEditForm editor={nextAction} pending={pending} />
         ) : null}
       </section>
+      <PricingSnapshotPanel
+        key={`${request.initialOpportunity.id}:${actor.activeCompany?.pricingUserPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.pricingUserPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.pricingUserPermissions?.join(',') ?? ''}`}
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
     </article>
   );
 }

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   foreignKey,
+  index,
   integer,
   jsonb,
   numeric,
@@ -11,8 +12,12 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { companyServiceOfferings } from './commercial-catalogue.js';
-import { companies, workspaceMemberships } from './core.js';
+import {
+  companyServiceOfferings,
+  serviceDefinitions,
+} from './commercial-catalogue.js';
+import { clientRequests, opportunities } from './commercial-intake.js';
+import { clientAccounts, companies, workspaceMemberships } from './core.js';
 
 // Every pricing configuration record is illustrative in this slice, and the
 // only rule shape is server-fixed. The database pins both so no later write
@@ -76,6 +81,12 @@ export const pricingRuleVersions = pgTable(
       table.workspaceId,
       table.companyId,
       table.id,
+    ),
+    uniqueIndex('pricing_rule_versions_scope_id_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+      table.versionNumber,
     ),
     uniqueIndex('pricing_rule_versions_number_unique').on(
       table.workspaceId,
@@ -217,6 +228,13 @@ export const tariffVersions = pgTable(
       table.offeringId,
       table.id,
     ),
+    uniqueIndex('tariff_versions_offering_id_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offeringId,
+      table.id,
+      table.versionNumber,
+    ),
     uniqueIndex('tariff_versions_number_unique').on(
       table.workspaceId,
       table.companyId,
@@ -322,6 +340,299 @@ export const tariffVersions = pgTable(
   ],
 );
 
+// One immutable calculation result. Configuration advances never update this
+// row or its lines; a deliberate recalculation creates another snapshot.
+export const pricingSnapshots = pgTable(
+  'pricing_snapshots',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    clientRequestId: uuid('client_request_id').notNull(),
+    originalClientAccountId: uuid('original_client_account_id'),
+    pricingRuleVersionId: uuid('pricing_rule_version_id').notNull(),
+    pricingRuleVersionNumber: integer('pricing_rule_version_number').notNull(),
+    ruleShape: text('rule_shape', { enum: [PRICING_RULE_SHAPE] }).notNull(),
+    roundingMode: text('rounding_mode', {
+      enum: [PRICING_ROUNDING_MODE],
+    }).notNull(),
+    roundingScale: integer('rounding_scale')
+      .$type<typeof PRICING_ROUNDING_SCALE>()
+      .notNull(),
+    taxApplication: text('tax_application', {
+      enum: [PRICING_TAX_APPLICATION],
+    }).notNull(),
+    currency: text('currency', { enum: TARIFF_CURRENCIES }).notNull(),
+    subtotal: numeric('subtotal', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    taxTotal: numeric('tax_total', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    total: numeric('total', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    calculatedByInternalUserId: uuid(
+      'calculated_by_internal_user_id',
+    ).notNull(),
+    calculatedByWorkspaceMembershipId: uuid(
+      'calculated_by_workspace_membership_id',
+    ).notNull(),
+    calculatedAt: timestamp('calculated_at', { withTimezone: true }).notNull(),
+    committedAt: timestamp('committed_at', { withTimezone: true }).notNull(),
+    version: integer('version').default(1).notNull(),
+    provenance: text('provenance', { enum: [PRICING_PROVENANCE] })
+      .default(PRICING_PROVENANCE)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('pricing_snapshots_scope_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+    ),
+    uniqueIndex('pricing_snapshots_line_trace_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+      table.currency,
+      table.ruleShape,
+    ),
+    index('pricing_snapshots_opportunity_newest_index').on(
+      table.workspaceId,
+      table.companyId,
+      table.opportunityId,
+      table.calculatedAt,
+      table.id,
+    ),
+    foreignKey({
+      name: 'pricing_snapshots_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'pricing_snapshots_opportunity_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.clientRequestId,
+        table.opportunityId,
+      ],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.clientRequestId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshots_request_fk',
+      columns: [table.workspaceId, table.companyId, table.clientRequestId],
+      foreignColumns: [
+        clientRequests.workspaceId,
+        clientRequests.companyId,
+        clientRequests.id,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshots_original_client_fk',
+      columns: [table.workspaceId, table.originalClientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'pricing_snapshots_rule_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.pricingRuleVersionId,
+        table.pricingRuleVersionNumber,
+      ],
+      foreignColumns: [
+        pricingRuleVersions.workspaceId,
+        pricingRuleVersions.companyId,
+        pricingRuleVersions.id,
+        pricingRuleVersions.versionNumber,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshots_calculator_fk',
+      columns: [
+        table.workspaceId,
+        table.calculatedByWorkspaceMembershipId,
+        table.calculatedByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'pricing_snapshots_trace_check',
+      sql`${table.version} = 1
+        AND ${table.provenance} = 'ILLUSTRATIVE'
+        AND ${table.ruleShape} = 'UNIT_PRICE_TIMES_QUANTITY'
+        AND ${table.roundingMode} = 'HALF_UP'
+        AND ${table.roundingScale} = 2
+        AND ${table.taxApplication} = 'PER_LINE'
+        AND ${table.pricingRuleVersionNumber} >= 1
+        AND ${table.committedAt} >= ${table.calculatedAt}
+        AND ${table.subtotal} >= 0
+        AND ${table.taxTotal} >= 0
+        AND ${table.total} = ${table.subtotal} + ${table.taxTotal}`,
+    ),
+  ],
+);
+
+// Submitted order and every copied source value make each stored line a
+// complete replayable trace, without consulting current configuration.
+export const pricingSnapshotLines = pgTable(
+  'pricing_snapshot_lines',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    snapshotId: uuid('snapshot_id').notNull(),
+    lineNumber: integer('line_number').notNull(),
+    serviceDefinitionId: uuid('service_definition_id').notNull(),
+    serviceCode: text('service_code').notNull(),
+    serviceName: text('service_name').notNull(),
+    offeringId: uuid('offering_id').notNull(),
+    commercialLabel: text('commercial_label'),
+    tariffVersionId: uuid('tariff_version_id').notNull(),
+    tariffVersionNumber: integer('tariff_version_number').notNull(),
+    unit: text('unit').notNull(),
+    unitAmount: numeric('unit_amount', {
+      precision: 11,
+      scale: 4,
+      mode: 'string',
+    }).notNull(),
+    currency: text('currency', { enum: TARIFF_CURRENCIES }).notNull(),
+    taxRatePercent: numeric('tax_rate_percent', {
+      precision: 5,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    taxLabel: text('tax_label').notNull(),
+    quantity: numeric('quantity', {
+      precision: 12,
+      scale: 3,
+      mode: 'string',
+    }).notNull(),
+    quantityInput: text('quantity_input').notNull(),
+    ruleShape: text('rule_shape', { enum: [PRICING_RULE_SHAPE] }).notNull(),
+    rawLineAmount: numeric('raw_line_amount', {
+      precision: 28,
+      scale: 7,
+      mode: 'string',
+    }).notNull(),
+    lineNet: numeric('line_net', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    rawLineTax: numeric('raw_line_tax', {
+      precision: 28,
+      scale: 7,
+      mode: 'string',
+    }).notNull(),
+    lineTax: numeric('line_tax', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('pricing_snapshot_lines_order_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.snapshotId,
+      table.lineNumber,
+    ),
+    uniqueIndex('pricing_snapshot_lines_offering_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.snapshotId,
+      table.offeringId,
+    ),
+    foreignKey({
+      name: 'pricing_snapshot_lines_snapshot_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.snapshotId,
+        table.currency,
+        table.ruleShape,
+      ],
+      foreignColumns: [
+        pricingSnapshots.workspaceId,
+        pricingSnapshots.companyId,
+        pricingSnapshots.id,
+        pricingSnapshots.currency,
+        pricingSnapshots.ruleShape,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshot_lines_definition_fk',
+      columns: [table.workspaceId, table.serviceDefinitionId],
+      foreignColumns: [serviceDefinitions.workspaceId, serviceDefinitions.id],
+    }),
+    foreignKey({
+      name: 'pricing_snapshot_lines_offering_definition_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offeringId,
+        table.serviceDefinitionId,
+      ],
+      foreignColumns: [
+        companyServiceOfferings.workspaceId,
+        companyServiceOfferings.companyId,
+        companyServiceOfferings.id,
+        companyServiceOfferings.serviceDefinitionId,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshot_lines_tariff_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offeringId,
+        table.tariffVersionId,
+        table.tariffVersionNumber,
+      ],
+      foreignColumns: [
+        tariffVersions.workspaceId,
+        tariffVersions.companyId,
+        tariffVersions.offeringId,
+        tariffVersions.id,
+        tariffVersions.versionNumber,
+      ],
+    }),
+    check(
+      'pricing_snapshot_lines_trace_check',
+      sql`${table.lineNumber} BETWEEN 1 AND 20
+        AND ${table.tariffVersionNumber} >= 1
+        AND ${table.ruleShape} = 'UNIT_PRICE_TIMES_QUANTITY'
+        AND ${table.unitAmount} > 0
+        AND ${table.quantity} > 0
+        AND ${table.quantityInput}::numeric = ${table.quantity}
+        AND ${table.taxRatePercent} BETWEEN 0 AND 100
+        AND ${table.rawLineAmount} >= 0
+        AND ${table.lineNet} >= 0
+        AND ${table.rawLineTax} >= 0
+        AND ${table.lineTax} >= 0`,
+    ),
+  ],
+);
+
 // One durable receipt per (actor, Company, key), including UNCHANGED no-ops
 // that allocated no version and recorded no event. Rule and tariff
 // publications share this one key namespace; each receipt references exactly
@@ -334,13 +645,20 @@ export const pricingConfigurationCommands = pgTable(
     companyId: uuid('company_id').notNull(),
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     command: text('command', {
-      enum: ['pricing_rule_version.publish', 'tariff_version.publish'],
+      enum: [
+        'pricing_rule_version.publish',
+        'tariff_version.publish',
+        'pricing_snapshot.calculate',
+      ],
     }).notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     fingerprint: text('fingerprint').notNull(),
-    outcome: text('outcome', { enum: ['PUBLISHED', 'UNCHANGED'] }).notNull(),
+    outcome: text('outcome', {
+      enum: ['PUBLISHED', 'UNCHANGED', 'CREATED'],
+    }).notNull(),
     resultPricingRuleVersionId: uuid('result_pricing_rule_version_id'),
     resultTariffVersionId: uuid('result_tariff_version_id'),
+    resultPricingSnapshotId: uuid('result_pricing_snapshot_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -357,6 +675,9 @@ export const pricingConfigurationCommands = pgTable(
     uniqueIndex('pricing_configuration_commands_tariff_published_unique')
       .on(table.workspaceId, table.companyId, table.resultTariffVersionId)
       .where(sql`${table.outcome} = 'PUBLISHED'`),
+    uniqueIndex('pricing_configuration_commands_snapshot_unique')
+      .on(table.workspaceId, table.companyId, table.resultPricingSnapshotId)
+      .where(sql`${table.command} = 'pricing_snapshot.calculate'`),
     foreignKey({
       name: 'pricing_configuration_commands_company_fk',
       columns: [table.workspaceId, table.companyId],
@@ -396,17 +717,40 @@ export const pricingConfigurationCommands = pgTable(
         tariffVersions.id,
       ],
     }),
+    foreignKey({
+      name: 'pricing_configuration_commands_snapshot_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.resultPricingSnapshotId,
+      ],
+      foreignColumns: [
+        pricingSnapshots.workspaceId,
+        pricingSnapshots.companyId,
+        pricingSnapshots.id,
+      ],
+    }),
     // Exactly one result reference, of the kind the command publishes.
     check(
       'pricing_configuration_commands_result_check',
       sql`(
         (${table.command} = 'pricing_rule_version.publish'
+          AND ${table.outcome} IN ('PUBLISHED', 'UNCHANGED')
           AND ${table.resultPricingRuleVersionId} IS NOT NULL
-          AND ${table.resultTariffVersionId} IS NULL)
+          AND ${table.resultTariffVersionId} IS NULL
+          AND ${table.resultPricingSnapshotId} IS NULL)
         OR
         (${table.command} = 'tariff_version.publish'
+          AND ${table.outcome} IN ('PUBLISHED', 'UNCHANGED')
           AND ${table.resultTariffVersionId} IS NOT NULL
-          AND ${table.resultPricingRuleVersionId} IS NULL)
+          AND ${table.resultPricingRuleVersionId} IS NULL
+          AND ${table.resultPricingSnapshotId} IS NULL)
+        OR
+        (${table.command} = 'pricing_snapshot.calculate'
+          AND ${table.outcome} = 'CREATED'
+          AND ${table.resultPricingSnapshotId} IS NOT NULL
+          AND ${table.resultPricingRuleVersionId} IS NULL
+          AND ${table.resultTariffVersionId} IS NULL)
       )`,
     ),
   ],
@@ -421,10 +765,15 @@ export const pricingConfigurationEvents = pgTable(
     workspaceId: uuid('workspace_id').notNull(),
     companyId: uuid('company_id').notNull(),
     action: text('action', {
-      enum: ['pricing_rule_version.published', 'tariff_version.published'],
+      enum: [
+        'pricing_rule_version.published',
+        'tariff_version.published',
+        'pricing_snapshot.created',
+      ],
     }).notNull(),
     pricingRuleVersionId: uuid('pricing_rule_version_id'),
     tariffVersionId: uuid('tariff_version_id'),
+    pricingSnapshotId: uuid('pricing_snapshot_id'),
     actorInternalUserId: uuid('actor_internal_user_id').notNull(),
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
@@ -437,6 +786,9 @@ export const pricingConfigurationEvents = pgTable(
     uniqueIndex('pricing_configuration_events_tariff_published_unique')
       .on(table.workspaceId, table.tariffVersionId)
       .where(sql`${table.action} = 'tariff_version.published'`),
+    uniqueIndex('pricing_configuration_events_snapshot_created_unique')
+      .on(table.workspaceId, table.pricingSnapshotId)
+      .where(sql`${table.action} = 'pricing_snapshot.created'`),
     foreignKey({
       name: 'pricing_configuration_events_company_fk',
       columns: [table.workspaceId, table.companyId],
@@ -461,6 +813,15 @@ export const pricingConfigurationEvents = pgTable(
       ],
     }),
     foreignKey({
+      name: 'pricing_configuration_events_snapshot_fk',
+      columns: [table.workspaceId, table.companyId, table.pricingSnapshotId],
+      foreignColumns: [
+        pricingSnapshots.workspaceId,
+        pricingSnapshots.companyId,
+        pricingSnapshots.id,
+      ],
+    }),
+    foreignKey({
       name: 'pricing_configuration_events_actor_fk',
       columns: [
         table.workspaceId,
@@ -479,11 +840,18 @@ export const pricingConfigurationEvents = pgTable(
       sql`(
         (${table.action} = 'pricing_rule_version.published'
           AND ${table.pricingRuleVersionId} IS NOT NULL
-          AND ${table.tariffVersionId} IS NULL)
+          AND ${table.tariffVersionId} IS NULL
+          AND ${table.pricingSnapshotId} IS NULL)
         OR
         (${table.action} = 'tariff_version.published'
           AND ${table.tariffVersionId} IS NOT NULL
-          AND ${table.pricingRuleVersionId} IS NULL)
+          AND ${table.pricingRuleVersionId} IS NULL
+          AND ${table.pricingSnapshotId} IS NULL)
+        OR
+        (${table.action} = 'pricing_snapshot.created'
+          AND ${table.pricingSnapshotId} IS NOT NULL
+          AND ${table.pricingRuleVersionId} IS NULL
+          AND ${table.tariffVersionId} IS NULL)
       )`,
     ),
     // Metadata carries identifiers, the version number, provenance and, for a
@@ -501,6 +869,7 @@ export const pricingConfigurationEvents = pgTable(
           AND jsonb_typeof(${table.metadata} -> 'versionNumber') = 'number'
           AND jsonb_typeof(${table.metadata} -> 'provenance') = 'string'
           AND ${table.metadata} ->> 'provenance' = 'ILLUSTRATIVE'
+          AND ${table.pricingSnapshotId} IS NULL
       ) IS TRUE
       OR (
         ${table.action} = 'tariff_version.published'
@@ -509,6 +878,20 @@ export const pricingConfigurationEvents = pgTable(
           AND ${table.metadata} ->> 'tariffVersionId' = ${table.tariffVersionId}::text
           AND jsonb_typeof(${table.metadata} -> 'offeringId') = 'string'
           AND jsonb_typeof(${table.metadata} -> 'versionNumber') = 'number'
+          AND jsonb_typeof(${table.metadata} -> 'provenance') = 'string'
+          AND ${table.metadata} ->> 'provenance' = 'ILLUSTRATIVE'
+          AND jsonb_typeof(${table.metadata} -> 'currency') = 'string'
+          AND ${table.metadata} ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')
+          AND ${table.pricingSnapshotId} IS NULL
+      ) IS TRUE
+      OR (
+        ${table.action} = 'pricing_snapshot.created'
+          AND ${table.metadata} - 'pricingSnapshotId' - 'opportunityId' - 'lineCount' - 'provenance' - 'currency' = '{}'::jsonb
+          AND jsonb_typeof(${table.metadata} -> 'pricingSnapshotId') = 'string'
+          AND ${table.metadata} ->> 'pricingSnapshotId' = ${table.pricingSnapshotId}::text
+          AND jsonb_typeof(${table.metadata} -> 'opportunityId') = 'string'
+          AND jsonb_typeof(${table.metadata} -> 'lineCount') = 'number'
+          AND (${table.metadata} ->> 'lineCount')::integer BETWEEN 1 AND 20
           AND jsonb_typeof(${table.metadata} -> 'provenance') = 'string'
           AND ${table.metadata} ->> 'provenance' = 'ILLUSTRATIVE'
           AND jsonb_typeof(${table.metadata} -> 'currency') = 'string'

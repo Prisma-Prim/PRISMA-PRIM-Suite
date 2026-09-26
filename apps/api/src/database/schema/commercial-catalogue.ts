@@ -128,6 +128,12 @@ export const companyServiceOfferings = pgTable(
       table.companyId,
       table.id,
     ),
+    uniqueIndex('company_service_offerings_scope_id_definition_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+      table.serviceDefinitionId,
+    ),
     index('company_service_offerings_company_newest_index').on(
       table.workspaceId,
       table.companyId,
