@@ -56,7 +56,7 @@ describe.skipIf(!databaseUrl)(
       if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
       database = await createIsolatedPostgresTestDatabase({
         baseDatabaseUrl: databaseUrl,
-        namePrefix: 'operational_home_attention',
+        namePrefix: 'home_attention',
       });
       harness = await createPostgresRestTestHarness({
         databaseUrl: database.targetUrl,
