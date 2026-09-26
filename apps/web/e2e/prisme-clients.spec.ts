@@ -72,6 +72,8 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
           involvedCompanyDisplayNames: ['BIC', 'PRISMA-PRIM'],
         },
       });
+    if (url.pathname.endsWith('/legal-entities'))
+      return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
     if (url.pathname.endsWith('/union-history'))
       return route.fulfill({ json: [] });
     if (url.pathname.endsWith('/clients')) {

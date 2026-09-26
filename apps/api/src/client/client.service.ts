@@ -41,6 +41,15 @@ import {
   throwDuplicateReviewConflict,
 } from './client-duplicate-review.service.js';
 import type { ClientMutationOutcome } from './client-duplicate-review.types.js';
+import {
+  normalizeLegalEntityCorrection,
+  normalizeLegalEntityRegistration,
+} from './client-legal-entity-validation.js';
+import { ClientLegalEntityService } from './client-legal-entity.service.js';
+import type {
+  ClientLegalEntityList,
+  ClientLegalEntityMutationResult,
+} from './client-legal-entity.types.js';
 import { sameJsonValue } from './json-structural-equality.js';
 
 const SEARCH_RESULT_LIMIT = 20;
@@ -54,6 +63,7 @@ export class ClientService {
     private readonly accountability: AccountabilityService,
     private readonly dossiers: ClientDossierService,
     private readonly duplicateReviews: ClientDuplicateReviewService,
+    private readonly legalEntities: ClientLegalEntityService,
   ) {}
 
   async query(
@@ -172,6 +182,53 @@ export class ClientService {
     );
     if (history.kind === 'invalid-cursor') throw invalidHistoryCursor();
     return history.page;
+  }
+
+  /** Additional legal entities share the dossier read's authority and refusals. */
+  readLegalEntities(
+    actor: ActorContext,
+    clientAccountId: string,
+  ): Promise<ClientLegalEntityList> {
+    const companyId = requireCompanyClientPermission(actor, 'client.read');
+    return this.legalEntities.list(actor, companyId, clientAccountId);
+  }
+
+  /** Registration requires exactly the dossier correction authority. */
+  registerLegalEntity(
+    actor: ActorContext,
+    command: {
+      clientAccountId: string;
+      body: unknown;
+      idempotencyKey: string | undefined;
+    },
+  ): Promise<ClientLegalEntityMutationResult> {
+    const companyId = requireCompanyClientPermission(actor, 'client.update');
+    return this.legalEntities.execute(actor, companyId, {
+      action: 'register',
+      clientAccountId: command.clientAccountId,
+      ...normalizeLegalEntityRegistration(command.body),
+      idempotencyKey: requireIdempotencyKey(command.idempotencyKey),
+    });
+  }
+
+  /** Correction requires exactly the dossier correction authority. */
+  correctLegalEntity(
+    actor: ActorContext,
+    command: {
+      clientAccountId: string;
+      legalEntityId: string;
+      body: unknown;
+      idempotencyKey: string | undefined;
+    },
+  ): Promise<ClientLegalEntityMutationResult> {
+    const companyId = requireCompanyClientPermission(actor, 'client.update');
+    return this.legalEntities.execute(actor, companyId, {
+      action: 'correct',
+      clientAccountId: command.clientAccountId,
+      legalEntityId: command.legalEntityId,
+      ...normalizeLegalEntityCorrection(command.body),
+      idempotencyKey: requireIdempotencyKey(command.idempotencyKey),
+    });
   }
 
   private async listForActiveCompany(

@@ -272,6 +272,8 @@ function installTransport(options: { united?: boolean } = {}): Transport {
               involvedCompanyDisplayNames: [companyA.displayName],
             });
       }
+      if (path.endsWith('/legal-entities'))
+        return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
     }),
   );

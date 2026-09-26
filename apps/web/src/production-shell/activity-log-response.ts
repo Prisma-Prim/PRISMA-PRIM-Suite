@@ -45,6 +45,8 @@ const targetTypes = {
   'company_document_registrar_assignment.revoked': 'company_role_assignment',
   'client.created': 'client_account',
   'client.corrected': 'client_account',
+  'client_legal_entity.registered': 'client_account',
+  'client_legal_entity.corrected': 'client_account',
   'client_company_relationship.established': 'client_company_relationship',
   'project.created': 'project',
   'project.responsible.changed': 'project',

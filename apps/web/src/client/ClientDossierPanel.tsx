@@ -26,6 +26,7 @@ import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import { ClientCorrectionHistory } from './ClientCorrectionHistory';
+import { ClientLegalEntities } from './ClientLegalEntities';
 import './client-dossier.css';
 
 interface ClientDossierView {
@@ -117,6 +118,9 @@ export function ClientDossierPanel({
     status: 'idle',
   });
   const [draft, setDraft] = useState<DossierDraft>(emptyDraft());
+  // A confirmed legal-entity change refreshes the displayed version only; the
+  // correction draft keeps the version it observed.
+  const [confirmedVersion, setConfirmedVersion] = useState(0);
   const correctionRetryCommand = useRef<RetryCommand | undefined>(undefined);
   const pendingDossier = useRef<AbortController | undefined>(undefined);
   const pendingCorrection = useRef<AbortController | undefined>(undefined);
@@ -182,6 +186,7 @@ export function ClientDossierPanel({
     setCorrectionState({ status: 'idle' });
     setCorrectionOpen(false);
     setDraft(emptyDraft());
+    setConfirmedVersion(0);
     if (!clientAccountId) {
       setDossierState({ status: 'idle' });
       return;
@@ -334,6 +339,7 @@ export function ClientDossierPanel({
   if (dossierState.status !== 'ready') return null;
 
   const dossier = dossierState.dossier;
+  const displayedVersion = Math.max(dossier.version, confirmedVersion);
   const correctionFeedback = (
     <div key="correction-feedback" className="client-correction-feedback">
       {correctionState.status === 'submitting' && (
@@ -394,7 +400,7 @@ export function ClientDossierPanel({
             {dossier.displayName}
           </h3>
           <p className="client-dossier-version">
-            {copy.version(dossier.version)}
+            {copy.version(displayedVersion)}
           </p>
         </div>
         {isPrisme && canUpdate && (
@@ -497,6 +503,20 @@ export function ClientDossierPanel({
           )}
         </section>
       </div>
+      <ClientLegalEntities
+        key={dossier.id}
+        clientAccountId={dossier.id}
+        companyContextId={companyContextId}
+        canUpdate={canUpdate}
+        identity={identity}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        onClientVersionChanged={(version) =>
+          setConfirmedVersion((current) => Math.max(current, version))
+        }
+        onActivityRecorded={onActivityRecorded}
+      />
       <ClientCorrectionHistory
         clientAccountId={dossier.id}
         dossierVersion={dossier.version}

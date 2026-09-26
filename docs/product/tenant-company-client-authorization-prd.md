@@ -247,7 +247,7 @@ Material blockers that remain:
 
 - first-tenant role/permission bundles beyond the approved Company Director Client slice and wider approval delegation;
 - legitimate exceptional support-access cases, authorization boundary and restricted periods;
-- exact Client Legal Entity and branch modelling for the representative complex case;
+- the Client Legal Entity capabilities excluded by [Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393);
 - asynchronous multi-person duplicate approval and general fuzzy-matching evaluation against real examples;
 - broader deactivation expectations and final `All Companies` product behaviour.
 

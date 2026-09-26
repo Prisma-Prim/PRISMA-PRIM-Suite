@@ -127,6 +127,8 @@ function routeApi(page: Page, documentPermissions: string[]) {
     ])
       if (path === `/api/documents/${document.id}`)
         return route.fulfill({ json: document });
+    if (path.endsWith('/legal-entities'))
+      return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
     return route.fulfill({ status: 404 });
   };
   return {

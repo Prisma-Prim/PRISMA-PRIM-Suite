@@ -166,6 +166,8 @@ test('compares existing Clients, confirms their union and reverses it', async ({
         json: { outcome: 'reversed', clientIds: [firstId, secondId] },
       });
     }
+    if (path.endsWith('/legal-entities'))
+      return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
     return route.fulfill({ status: 404 });
   });
 

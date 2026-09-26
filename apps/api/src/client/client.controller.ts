@@ -23,6 +23,10 @@ import type {
   ClientDossierFieldsInput,
   ClientDossierView,
 } from './client.types.js';
+import type {
+  ClientLegalEntityList,
+  ClientLegalEntityMutationResult,
+} from './client-legal-entity.types.js';
 
 @Controller('clients')
 @UseGuards(ActorContextAdapter)
@@ -91,6 +95,47 @@ export class ClientController {
     return this.clients.readCorrectionHistory(request.actorContext!, {
       clientAccountId,
       cursor,
+    });
+  }
+
+  @Get(':clientAccountId/legal-entities')
+  listLegalEntities(
+    @Req() request: ActorContextRequest,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+  ): Promise<ClientLegalEntityList> {
+    return this.clients.readLegalEntities(
+      request.actorContext!,
+      clientAccountId,
+    );
+  }
+
+  @Post(':clientAccountId/legal-entities')
+  registerLegalEntity(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+    @Body() body: unknown,
+  ): Promise<ClientLegalEntityMutationResult> {
+    return this.clients.registerLegalEntity(request.actorContext!, {
+      clientAccountId,
+      body,
+      idempotencyKey,
+    });
+  }
+
+  @Patch(':clientAccountId/legal-entities/:legalEntityId')
+  correctLegalEntity(
+    @Req() request: ActorContextRequest,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('clientAccountId', new ParseUUIDPipe()) clientAccountId: string,
+    @Param('legalEntityId', new ParseUUIDPipe()) legalEntityId: string,
+    @Body() body: unknown,
+  ): Promise<ClientLegalEntityMutationResult> {
+    return this.clients.correctLegalEntity(request.actorContext!, {
+      clientAccountId,
+      legalEntityId,
+      body,
+      idempotencyKey,
     });
   }
 

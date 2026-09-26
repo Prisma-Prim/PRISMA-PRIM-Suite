@@ -43,6 +43,12 @@ type ClientRow = Pick<
   | 'version'
 >;
 
+interface DossierTarget {
+  workspaceId: string;
+  companyId: string;
+  clientAccountId: string;
+}
+
 export interface CorrectClientDossierCommand {
   clientAccountId: string;
   expectedVersion: number;
@@ -71,17 +77,69 @@ export class ClientDossierService {
     return this.toDossier(client, workspaceId);
   }
 
-  /** Refuses exactly as `read` does, without building the dossier view. */
-  async requireReadable(input: {
-    workspaceId: string;
-    companyId: string;
-    clientAccountId: string;
-  }): Promise<void> {
-    await this.requireRelatedClient(
+  /**
+   * Refuses exactly as `read` does, without building the dossier view, and
+   * returns the version it observed.
+   */
+  async requireReadable(input: DossierTarget): Promise<{ version: number }> {
+    const client = await this.requireRelatedClient(
       input.workspaceId,
       input.companyId,
       input.clientAccountId,
     );
+    return { version: client.version };
+  }
+
+  /**
+   * Refuses an exact replay as a correction replay does: the relationship
+   * must still be active, while a since-superseded Client stays replayable.
+   */
+  async requireReplayable(input: DossierTarget): Promise<void> {
+    await this.requireRelatedClient(
+      input.workspaceId,
+      input.companyId,
+      input.clientAccountId,
+      ['active', 'superseded'],
+    );
+  }
+
+  /**
+   * Applies one change that shares the dossier concurrency token, inside the
+   * caller's transaction. Like a correction, it locks the active related
+   * Client, requires the expected version before the change runs and then
+   * advances the version by exactly one. It refuses as `read` does, or with
+   * the delivered stale conflict.
+   */
+  async applyVersionedChange<T>(
+    input: DossierTarget & { expectedVersion: number },
+    change: () => Promise<T>,
+  ): Promise<{ clientVersion: number; value: T }> {
+    const current = await this.findRelatedClient(
+      input.workspaceId,
+      input.companyId,
+      input.clientAccountId,
+      { lock: true },
+    );
+    if (!current) throw new NotFoundException();
+    if (current.version !== input.expectedVersion) throw staleDossier();
+    const value = await change();
+    const [advanced] = await this.databaseContext.connection
+      .update(clientAccounts)
+      .set({
+        version: sql`${clientAccounts.version} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, input.workspaceId),
+          eq(clientAccounts.id, input.clientAccountId),
+          eq(clientAccounts.status, 'active'),
+          eq(clientAccounts.version, input.expectedVersion),
+        ),
+      )
+      .returning({ version: clientAccounts.version });
+    if (!advanced) throw staleDossier();
+    return { clientVersion: advanced.version, value };
   }
 
   async correct(
@@ -152,9 +210,7 @@ export class ClientDossierService {
         { lock: true },
       );
       if (!current) throw new NotFoundException();
-      if (current.version !== command.expectedVersion) {
-        throw new ConflictException('The Client dossier has changed.');
-      }
+      if (current.version !== command.expectedVersion) throw staleDossier();
       const materialChanges = materialCorrectionChanges(
         current,
         command.changes,
@@ -204,9 +260,7 @@ export class ClientDossierService {
           ),
         )
         .returning(clientSelection());
-      if (!updated) {
-        throw new ConflictException('The Client dossier has changed.');
-      }
+      if (!updated) throw staleDossier();
 
       const result = await this.toDossier(updated, actor.workspaceId);
       await this.databaseContext.connection
@@ -375,6 +429,10 @@ export class ClientDossierService {
       ),
     };
   }
+}
+
+function staleDossier(): ConflictException {
+  return new ConflictException('The Client dossier has changed.');
 }
 
 function clientSelection() {

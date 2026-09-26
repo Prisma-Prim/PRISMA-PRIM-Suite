@@ -99,6 +99,8 @@ function renderDossier(history: HistoryRoute) {
       if (path.endsWith('/access/current-actor'))
         return respond(directorActor());
       if (path.endsWith('/clients/client-one')) return respond(dossier);
+      if (path.endsWith('/legal-entities'))
+        return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
     }),
   );
@@ -408,6 +410,8 @@ describe('Client correction history', () => {
             version: 4,
           });
         if (path.endsWith('/clients/client-one')) return respond(dossier);
+        if (path.endsWith('/legal-entities'))
+          return respond({ clientVersion: 1, legalEntities: [] });
         throw new Error('Unexpected API request: ' + path);
       }),
     );
@@ -484,6 +488,8 @@ describe('Client correction history', () => {
         }
         if (path.endsWith('/clients/client-one')) return respond(dossier);
         if (path.endsWith('/clients/client-two')) return respond(otherDossier);
+        if (path.endsWith('/legal-entities'))
+          return respond({ clientVersion: 1, legalEntities: [] });
         throw new Error('Unexpected API request: ' + path);
       }),
     );

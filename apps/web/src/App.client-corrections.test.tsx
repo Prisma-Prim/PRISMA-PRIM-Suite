@@ -134,6 +134,8 @@ describe('Client correction ownership', () => {
           if (path.endsWith('/clients/client-one')) return respond(dossier);
           if (path.endsWith('/clients/client-two'))
             return respond(otherDossier);
+          if (path.endsWith('/legal-entities'))
+            return respond({ clientVersion: 1, legalEntities: [] });
           throw new Error('Unexpected API request: ' + path);
         }),
       );
@@ -257,6 +259,8 @@ describe('Client correction ownership', () => {
           if (path.endsWith('/clients/client-one')) return respond(dossier);
           if (path.endsWith('/clients/client-two'))
             return respond(otherDossier);
+          if (path.endsWith('/legal-entities'))
+            return respond({ clientVersion: 1, legalEntities: [] });
           throw new Error('Unexpected API request: ' + path);
         }),
       );
@@ -324,6 +328,8 @@ describe('Client correction ownership', () => {
           return respond({}, 503);
         }
         if (path.endsWith('/clients/client-one')) return respond(dossier);
+        if (path.endsWith('/legal-entities'))
+          return respond({ clientVersion: 1, legalEntities: [] });
         throw new Error('Unexpected API request: ' + path);
       }),
     );
@@ -365,7 +371,24 @@ describe('Client correction ownership', () => {
   });
 
   it('keeps the defensive canUpdate=false boundary without inventing a read-only role', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(respond(dossier));
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === undefined &&
+        input.toString().endsWith('/legal-entities')
+          ? respond({
+              clientVersion: 1,
+              legalEntities: [
+                {
+                  id: 'legal-entity-1',
+                  legalName: 'Exemplu Filiala SRL',
+                  taxId: null,
+                  legalAddress: null,
+                  createdAt: '2026-09-26T08:00:00.000Z',
+                },
+              ],
+            })
+          : respond(dossier),
+    );
     vi.stubGlobal('fetch', fetchMock);
     render(
       <ApplicationPresentation value="prisme">
@@ -387,6 +410,20 @@ describe('Client correction ownership', () => {
     expect(
       screen.queryByRole('form', { name: 'Correct Client dossier' }),
     ).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The legal entities stay readable without add or correct forms.
+    expect(await screen.findByText('Exemplu Filiala SRL')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Add legal entity or branch' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Correct Exemplu Filiala SRL' }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([input]) => input.toString())).toEqual([
+      '/api/clients/client-one',
+      '/api/clients/client-one/legal-entities',
+    ]);
+    expect(
+      fetchMock.mock.calls.every(([, init]) => init?.method === undefined),
+    ).toBe(true);
   });
 });

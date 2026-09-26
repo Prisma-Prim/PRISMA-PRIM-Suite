@@ -100,6 +100,8 @@ for (const frame of ['classic', 'prisme'] as const) {
       if (path === '/api/documents') return route.fulfill({ json: [] });
       if (path.endsWith('/documents'))
         return route.fulfill({ json: { mutable: false, documents: [] } });
+      if (path.endsWith('/legal-entities'))
+        return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
       return route.fulfill({ status: 404 });
     });
 
@@ -386,6 +388,8 @@ for (const frame of ['classic', 'prisme'] as const) {
       if (path === '/api/documents') return route.fulfill({ json: [] });
       if (path.endsWith('/documents'))
         return route.fulfill({ json: { mutable: false, documents: [] } });
+      if (path.endsWith('/legal-entities'))
+        return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
       return route.fulfill({ status: 404 });
     });
 

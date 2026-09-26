@@ -28,6 +28,7 @@ import { ClientWorkspace } from './client/ClientWorkspace';
 import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
+import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
 import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
@@ -674,6 +675,7 @@ function activityDescription(event: ActivityLogEvent): string {
     ...companyContextAccessCopy.activityActionLabels,
     ...workspaceMembershipSuspensionCopy.activityActionLabels,
     ...clientWorkspaceCopy.activityActionLabels,
+    ...clientLegalEntitiesCopy.activityActionLabels,
     ...clientUnionCopy.actionLabels,
     ...commercialIntakeCopy.activityActionLabels,
     ...workspaceInvitationsCopy.activityActionLabels,

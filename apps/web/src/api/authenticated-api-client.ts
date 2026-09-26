@@ -8,6 +8,7 @@ export type ApiResult<T> =
       reason: 'possibleDuplicateReviewRequired';
       duplicateReviewReference: string;
     }
+  | { status: 'conflict'; reason: 'clientLegalEntityCapacityExceeded' }
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
       reason?: undefined;
@@ -67,6 +68,14 @@ export async function createAuthenticatedApiClient(
               duplicateReviewReference: body.duplicate_review_reference,
             };
           }
+          if (
+            isRecord(body) &&
+            body.code === 'client_legal_entity_capacity_exceeded'
+          )
+            return {
+              status: 'conflict',
+              reason: 'clientLegalEntityCapacityExceeded',
+            };
           return { status: 'conflict' };
         }
         if (response.status === 400) {

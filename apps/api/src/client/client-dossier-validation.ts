@@ -214,7 +214,12 @@ function requireDisplayName(value: unknown): string {
   return normalized;
 }
 
-function optionalText(
+/**
+ * The delivered optional dossier text normalization: absent or null is
+ * missing, text is trimmed, empty becomes null and the trimmed value is
+ * bounded in UTF-16 code units.
+ */
+export function optionalText(
   value: unknown,
   label: string,
   maximumLength: number,
