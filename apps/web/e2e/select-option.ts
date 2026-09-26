@@ -16,6 +16,12 @@ export async function openSelect(select: Locator): Promise<Locator> {
   const controlledId = await trigger.getAttribute('aria-controls');
   if (!controlledId) throw new Error('Select does not identify its listbox');
   await expect(listbox).toHaveAttribute('id', controlledId);
+  const typography = await trigger.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { fontFamily: style.fontFamily, fontSize: style.fontSize };
+  });
+  await expect(listbox).toHaveCSS('font-family', typography.fontFamily);
+  await expect(listbox).toHaveCSS('font-size', typography.fontSize);
   return listbox;
 }
 

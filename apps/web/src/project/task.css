@@ -65,7 +65,8 @@
   font-size: 0.9rem;
 }
 .task-filters input:focus-visible,
-.task-filters select:focus-visible {
+.task-filters select:focus-visible,
+.task-filters .shared-select__trigger:focus-visible {
   outline: 3px solid #4b36b5;
   outline-offset: 2px;
 }

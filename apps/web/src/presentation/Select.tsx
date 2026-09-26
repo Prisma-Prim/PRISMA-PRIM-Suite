@@ -95,6 +95,8 @@ export function Select({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>();
   const [position, setPosition] = useState<MenuPosition>();
+  const [menuTypography, setMenuTypography] =
+    useState<Pick<CSSProperties, 'fontFamily' | 'fontSize'>>();
   const [prismePortal, setPrismePortal] = useState(false);
   const [listboxLabel, setListboxLabel] = useState('');
 
@@ -152,6 +154,11 @@ export function Select({
     const trigger = triggerRef.current;
     if (!trigger) return;
     const bounds = trigger.getBoundingClientRect();
+    const triggerStyle = getComputedStyle(trigger);
+    setMenuTypography({
+      fontFamily: triggerStyle.fontFamily,
+      fontSize: triggerStyle.fontSize,
+    });
     setPrismePortal(trigger.closest('.prisme-shell') !== null);
     setListboxLabel(accessibleLabel(trigger, title, displayValue));
     const viewportWidth = document.documentElement.clientWidth;
@@ -308,6 +315,7 @@ export function Select({
       case 'Escape':
         if (open) {
           event.preventDefault();
+          event.stopPropagation();
           closeMenu({ restoreFocus: true });
         }
         break;
@@ -452,7 +460,7 @@ export function Select({
           <div
             ref={popupRef}
             className={`shared-select__portal${prismePortal ? ' shared-select__portal--prisme' : ''}`}
-            style={menuStyle}
+            style={{ ...menuStyle, ...menuTypography }}
             data-placement={position.placement}
           >
             <div

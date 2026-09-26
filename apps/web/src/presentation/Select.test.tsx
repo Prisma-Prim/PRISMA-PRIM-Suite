@@ -321,3 +321,25 @@ describe('Select', () => {
     ).toHaveFocus();
   });
 });
+
+it('keeps the trigger typography in its portalled menu', () => {
+  render(
+    <>
+      <style>{'#font-select { font-family: Arial; font-size: 18px; }'}</style>
+      <label htmlFor="font-select">Font example</label>
+      <Select
+        id="font-select"
+        value="alpha"
+        options={options}
+        onValueChange={vi.fn()}
+      />
+    </>,
+  );
+  const trigger = screen.getByRole('combobox', { name: 'Font example' });
+  expect(getComputedStyle(trigger).fontFamily).toBe('Arial');
+  fireEvent.click(trigger);
+
+  const menu = screen.getByRole('listbox', { name: 'Font example' });
+  expect(getComputedStyle(menu).fontFamily).toBe('Arial');
+  expect(getComputedStyle(menu).fontSize).toBe('18px');
+});
