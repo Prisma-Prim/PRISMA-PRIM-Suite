@@ -128,6 +128,14 @@ export function readCompanyOverdueTasks(
     // Exact YYYY-MM-DD values order as their text.
     if (dueDate === null || dueDate >= result.today)
       throw new Error('Invalid overdue Task date');
+    // UTC midnight measures calendar days without daylight-saving offsets;
+    // today remains the server-provided business date, never the browser clock.
+    const calendarDays =
+      (Date.parse(`${result.today}T00:00:00Z`) -
+        Date.parse(`${dueDate}T00:00:00Z`)) /
+      86_400_000;
+    if (daysOverdue !== calendarDays)
+      throw new Error('Inconsistent overdue Task day count');
     switch (task.status) {
       case 'todo':
       case 'in_progress':

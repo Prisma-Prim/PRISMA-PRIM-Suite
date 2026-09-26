@@ -19,6 +19,10 @@ type Props = {
   /** The active Company; App remounts the region for any other Company or authority. */
   company: OperationalHomeCompany;
   identity: BrowserIdentity;
+  /** Destinations currently offered by App's captured authority. */
+  availableSummaries: Record<CompanySummaryKind, boolean>;
+  /** App's existing Company selection owns actor refresh and remounting. */
+  onRevalidateAuthority: () => Promise<void>;
   onOpenClients: () => void;
   onOpenProjects: () => void;
   /** Opens an overdue Task in its Project; rows offer Open only when supplied. */
@@ -45,6 +49,8 @@ const icons = {
 export function OperationalHome({
   company,
   identity,
+  availableSummaries,
+  onRevalidateAuthority,
   onOpenClients,
   onOpenProjects,
   onOpenTask,
@@ -74,11 +80,18 @@ export function OperationalHome({
           if (!signal.aborted) setLoad({ kind: 'denied' });
         } else if (result.status === 'forbidden') setLoad({ kind: 'denied' });
         else if (result.status !== 'ok') setLoad({ kind: 'error' });
-        else
-          setLoad({
-            kind: 'ready',
-            view: readOperationalHome(result.value, company.id),
-          });
+        else {
+          const view = readOperationalHome(result.value, company.id);
+          if (view.summaries.some(({ kind }) => !availableSummaries[kind])) {
+            // A newly granted read must mount its destination before a card
+            // can expose it. Changed authority remounts this region and reads
+            // again; an unchanged or failed refresh exposes no stale links.
+            await onRevalidateAuthority();
+            if (!signal.aborted) setLoad({ kind: 'error' });
+            return;
+          }
+          setLoad({ kind: 'ready', view });
+        }
       },
       onError: () => setLoad({ kind: 'error' }),
     });

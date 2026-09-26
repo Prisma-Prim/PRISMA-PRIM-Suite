@@ -91,6 +91,7 @@ function installServer(
     actor: initial.actor ?? ((companyId: string) => actorFor(companyId)),
     refuseSearch: false,
     clientsInA: counts[companyA.id]?.active_clients ?? 0,
+    showProjectSummaries: true,
   };
   const requests: ServerRequest[] = [];
   const holding = new Set<string>();
@@ -118,7 +119,10 @@ function installServer(
           },
           { kind: 'open_projects', count: current.open_projects },
           { kind: 'overdue_tasks', count: current.overdue_tasks },
-        ],
+        ].filter(
+          (entry) =>
+            state.showProjectSummaries || entry.kind === 'active_clients',
+        ),
       });
     }
     if (route === 'GET /api/overdue-tasks')
@@ -430,6 +434,62 @@ describe('Operational home through App', () => {
     );
     expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
     expect(window.location.href).not.toContain(overdueTask.id);
+  });
+
+  it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer({
+      actor: () => ({
+        ...actorFor(companyA.id),
+        activeCompany: {
+          ...companyA,
+          clientPermissions: ['client.read'],
+        },
+      }),
+    });
+    server.state.showProjectSummaries = false;
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await screen.findByRole('button', { name: cardName('active_clients', 3) });
+    expect(screen.queryByRole('region', { name: 'Projects' })).toBeNull();
+
+    server.state.actor = (companyId) => actorFor(companyId);
+    server.state.showProjectSummaries = true;
+    server.hold('GET /api/access/current-actor', companyA.id);
+    fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
+    await waitFor(() =>
+      expect(server.count('GET /api/access/current-actor', companyA.id)).toBe(
+        1,
+      ),
+    );
+    expect(
+      screen.queryByRole('button', { name: cardName('open_projects', 2) }),
+    ).toBeNull();
+    await server.release('GET /api/access/current-actor', companyA.id);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: cardName('open_projects', 2) }),
+    );
+    expect(
+      await screen.findByRole('region', { name: 'Projects' }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: cardName('overdue_tasks', 1) }),
+    );
+    const panel = await screen.findByRole('region', {
+      name: copy.overdue.title({ company: companyA.displayName }),
+    });
+    fireEvent.click(
+      await within(panel).findByRole('button', {
+        name: copy.overdue.openTask({
+          task: overdueTask.title,
+          project: project.title,
+          client: project.clientDisplayName,
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
+    );
   });
 
   it.each([

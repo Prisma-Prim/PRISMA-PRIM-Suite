@@ -136,6 +136,12 @@ function renderHome(
     <OperationalHome
       company={company}
       identity={deterministicBrowserIdentity()}
+      availableSummaries={{
+        active_clients: true,
+        open_projects: true,
+        overdue_tasks: true,
+      }}
+      onRevalidateAuthority={async () => undefined}
       {...callbacks}
       {...props}
     />,
@@ -168,6 +174,28 @@ afterEach(() => {
 });
 
 describe('Company summary', () => {
+  it('exposes no counts when refreshed destinations remain unavailable after authority revalidation', async () => {
+    const revalidation = deferred<void>();
+    const onRevalidateAuthority = vi.fn(() => revalidation.promise);
+    stub({ '/api/operational-home': [home()] });
+    renderHome({
+      availableSummaries: {
+        active_clients: true,
+        open_projects: false,
+        overdue_tasks: false,
+      },
+      onRevalidateAuthority,
+    });
+    await waitFor(() => expect(onRevalidateAuthority).toHaveBeenCalledOnce());
+    expect(region()).toHaveTextContent(copy.loading);
+    expect(within(region()).queryByRole('list')).toBeNull();
+    revalidation.resolve();
+    expect(await within(region()).findByRole('alert')).toHaveTextContent(
+      copy.error,
+    );
+    expect(within(region()).queryByRole('list')).toBeNull();
+  });
+
   it('shows loading, then each server count as a card with its exact label, definition and destination', async () => {
     const reply = deferred<Response>();
     const server = stub({ '/api/operational-home': [() => reply.promise] });
@@ -504,6 +532,10 @@ describe('Overdue Tasks panel', () => {
     ['a Task due today', overdueList([{ ...collect, dueDate: today }])],
     ['an undated Task', overdueList([{ ...collect, dueDate: null }])],
     ['a zero day count', overdueList([{ ...collect, daysOverdue: 0 }])],
+    [
+      'an inconsistent positive day count',
+      overdueList([{ ...collect, daysOverdue: 1 }]),
+    ],
     ['more rows than the total', overdueList([collect, draft], 1)],
   ])('fails closed on %s', async (_case, reply) => {
     stub({ '/api/operational-home': [home()], '/api/overdue-tasks': [reply] });

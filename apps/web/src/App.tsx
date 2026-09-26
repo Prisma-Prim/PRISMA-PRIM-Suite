@@ -290,6 +290,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           displayName: activeCompany.displayName,
         }}
         identity={identity}
+        availableSummaries={{
+          active_clients: canAccessClients,
+          open_projects: canAccessProjects,
+          overdue_tasks: canReadTasks(access.actor),
+        }}
+        onRevalidateAuthority={() => selectCompany(activeCompany.id)}
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
           setProjectClientFilter(undefined);
