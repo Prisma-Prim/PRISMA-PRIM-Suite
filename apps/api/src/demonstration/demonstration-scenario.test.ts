@@ -13,38 +13,38 @@ const scenario = DEMONSTRATION_SCENARIO;
 // Every released step key with the fingerprint of its payload (a persona step
 // includes its persona definition). A later scenario version may only append.
 const RELEASED_DEMO_V1_STEPS: readonly (readonly [string, string])[] = [
-  ['company.prisma-prim', '3d595f7784362dd3'],
-  ['company.bic', '86999e4d3dcd60de'],
-  ['company.ecg', '1500577ae93db259'],
-  ['persona.ana', '7b7daaf59b175331'],
-  ['persona.ion', '56e2e30be897ec49'],
-  ['persona.maria', 'c7a1b85bd35a1427'],
-  ['persona.victor', '32c89b7dc77baa50'],
-  ['grant.ana.context', '83a97638c3d6964f'],
-  ['grant.ana.director-client', 'a62822c1a77923d7'],
-  ['grant.ana.project', '15b7484cf1203417'],
-  ['grant.ana.task-manager', 'a43d36a61f52021b'],
-  ['grant.ana.document-registrar', 'b2278037ca4223a0'],
-  ['grant.ana.document-project-organizer', 'e3bbf9ec1dfe34d8'],
-  ['grant.ana.commercial-intake', 'd1b901ea2153c8c5'],
-  ['grant.ana.commercial-activity-reader', '5b268dfd8df3543c'],
-  ['grant.ana.service-catalogue', 'a375febaecd3c2d5'],
-  ['grant.ana.pricing-configuration', '7f709721850c7c11'],
-  ['grant.ion.context', '0c075fc9a18fd675'],
-  ['grant.ion.director-client', '7fa0e253aca41246'],
-  ['grant.ion.project', '34c9e3072b10e580'],
-  ['grant.ion.task-manager', 'ad465321c8a4d7d5'],
-  ['grant.maria.context', '8083ee46ab6dc2f3'],
-  ['grant.maria.director-client', 'f716ab25d512f723'],
-  ['grant.maria.project', '047a319f7db12607'],
-  ['grant.maria.task-manager', 'a54dc2cb70a7b746'],
-  ['grant.maria.document-registrar', '74fa5fdb73cd1a62'],
-  ['grant.maria.document-project-organizer', '6c371446c0fe738a'],
-  ['grant.maria.commercial-intake', 'a91f4d0ffa23d2e9'],
-  ['grant.maria.commercial-activity-reader', '05ddbfdd34edeacf'],
-  ['grant.maria.service-catalogue', '0fa4cbc766fe738b'],
-  ['grant.maria.pricing-configuration', 'f733113f235a1eff'],
-  ['grant.victor.context', 'fcc75509352d7dac'],
+  ['company.prisma-prim', '0307a89febd4e267'],
+  ['company.bic', '0045f4ca78ebf682'],
+  ['company.ecg', '1c676b23d77461c1'],
+  ['persona.ana', 'dd134ac4153b07c9'],
+  ['persona.ion', '225bd169670ab92b'],
+  ['persona.maria', '76c307c6c2f5e869'],
+  ['persona.victor', '5701630429ddbe2c'],
+  ['grant.ana.context', 'fa4112f280ad197b'],
+  ['grant.ana.director-client', 'bc3f6aab6470f39e'],
+  ['grant.ana.project', '9da78dc655aebd01'],
+  ['grant.ana.task-manager', '3ceed8acd07b8634'],
+  ['grant.ana.document-registrar', '6b2f288e35839a36'],
+  ['grant.ana.document-project-organizer', '1b67042b409bd1bf'],
+  ['grant.ana.commercial-intake', 'b252a737b601e61d'],
+  ['grant.ana.commercial-activity-reader', '9a7a4f92e6e1a0ce'],
+  ['grant.ana.service-catalogue', '8f1e106030591eba'],
+  ['grant.ana.pricing-configuration', '66a55985d5d9218f'],
+  ['grant.ion.context', '76a3cd03068f006f'],
+  ['grant.ion.director-client', 'c131cd72bde576f8'],
+  ['grant.ion.project', '98c8094b25ca340c'],
+  ['grant.ion.task-manager', 'ab0c177eed73dfe3'],
+  ['grant.maria.context', '4821584e42338a8b'],
+  ['grant.maria.director-client', '98b31294e8c56b76'],
+  ['grant.maria.project', '0348f77c07d920a7'],
+  ['grant.maria.task-manager', 'ed8174c6425a4b76'],
+  ['grant.maria.document-registrar', 'bfd25c007a6792bb'],
+  ['grant.maria.document-project-organizer', '17cdcbba42cd9c69'],
+  ['grant.maria.commercial-intake', 'bc93410a2e9dcc23'],
+  ['grant.maria.commercial-activity-reader', '55df47c06198d069'],
+  ['grant.maria.service-catalogue', 'c23ab8bd3e50eeda'],
+  ['grant.maria.pricing-configuration', 'e806bf006cbe5f6d'],
+  ['grant.victor.context', 'c199ed636b57c665'],
   ['client.grup-demo', '9b5415202c4fe97b'],
   ['client.demo-lactate', '80244027d0577af3'],
   ['client.demo-construct', '82afb5f4fa85d7fb'],
@@ -80,18 +80,18 @@ const RELEASED_DEMO_V1_STEPS: readonly (readonly [string, string])[] = [
   ['request.grup-demo-iso14001.next-action', '49359dfeffae7943'],
   ['request.unidentified-iso9001', 'f3ed751f98258a82'],
   ['request.demo-construct-iso45001', '06dc1e0c5263dd7c'],
-  ['catalogue.demo-iso9001-cons', '2f10589928c11d1b'],
-  ['catalogue.demo-iso9001-cons.offering', '0b024691d0d1186f'],
-  ['catalogue.demo-iso22000-cons', '176d14a6963bccd7'],
-  ['catalogue.demo-iso22000-cons.offering', '7430eeb640607757'],
-  ['catalogue.demo-iso14001-cons', '582c5cbe51e13c68'],
-  ['catalogue.demo-iso14001-cons.offering', 'b9952cdee604e7ff'],
-  ['catalogue.demo-iso9001-cert', '0f19faac6cb821c6'],
-  ['catalogue.demo-iso9001-cert.offering', '0b1175de8aa64512'],
-  ['catalogue.demo-iso45001-cert', '5dcf1790e9f490c6'],
-  ['catalogue.demo-iso45001-cert.offering', '774bbcb7359dd39a'],
-  ['pricing.prisma-prim.rule-v1', 'd5bb5b279c53b054'],
-  ['pricing.bic.rule-v1', '281857166267736f'],
+  ['catalogue.demo-iso9001-cons', '7d97769b7f5909a7'],
+  ['catalogue.demo-iso9001-cons.offering', '75a5a4a7bd8ff1f7'],
+  ['catalogue.demo-iso22000-cons', '92d4c46e6457362e'],
+  ['catalogue.demo-iso22000-cons.offering', '899cfe72267265f5'],
+  ['catalogue.demo-iso14001-cons', 'b4b0f1650fb39f52'],
+  ['catalogue.demo-iso14001-cons.offering', '9210b999eec5dd10'],
+  ['catalogue.demo-iso9001-cert', '0a1c6b9011745ff8'],
+  ['catalogue.demo-iso9001-cert.offering', 'de1214da7e60429c'],
+  ['catalogue.demo-iso45001-cert', 'e25f113458049484'],
+  ['catalogue.demo-iso45001-cert.offering', '72067f8eb6fa8b04'],
+  ['pricing.prisma-prim.rule-v1', '6469c9bbe45fbc6c'],
+  ['pricing.bic.rule-v1', '62c86bd63ee09c32'],
 ];
 
 // Scenario fields holding displayed free text, identifiers, contact data and
@@ -151,15 +151,20 @@ function canonical(value: unknown): string {
 }
 
 function fingerprint(step: DemonstrationStep): string {
+  // Register links are provenance metadata, not command payload. All business
+  // values and keys remain pinned independently of index corrections.
+  const business = Object.fromEntries(
+    Object.entries(step).filter(([key]) => key !== 'register'),
+  );
   const payload =
     step.kind === 'persona.provision'
       ? {
-          ...step,
+          ...business,
           persona: scenario.personas.find(
             (persona) => persona.key === step.persona,
           ),
         }
-      : step;
+      : business;
   return createHash('sha256')
     .update(canonical(payload))
     .digest('hex')

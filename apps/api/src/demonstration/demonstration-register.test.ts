@@ -63,6 +63,7 @@ const REGISTER_IDS = [
   'SUB-HO-02',
   'SUB-UX-01',
   'SUB-EN-01',
+  'SUB-DE-01',
 ];
 // AC-UNIVERSAL-03 (Sarcina row M01-AC13, candidate): « acceptat, acceptat
 // cu corectări, respins sau amânat », plus the empty undecided state.
@@ -141,7 +142,7 @@ function column(row: Record<string, string>, name: string): string {
 }
 
 describe('first-tenant substitution register', () => {
-  it('commits the 39 rows with the agreed columns and decision vocabulary', async () => {
+  it('commits the agreed rows and example/date index with the decision vocabulary', async () => {
     const rows = await registerRows();
     expect(rows.map((row) => column(row, 'id'))).toEqual(REGISTER_IDS);
     for (const row of rows) {
@@ -205,31 +206,54 @@ describe('first-tenant substitution register', () => {
     const steps = new Map(
       DEMONSTRATION_SCENARIO.steps.map((step) => [step.key, step]),
     );
-    const standIns = DEMONSTRATION_SCENARIO.steps.filter(
-      (step) =>
-        step.kind === 'company.register' ||
-        step.kind === 'persona.provision' ||
-        step.kind === 'grant' ||
-        step.kind === 'catalogue.definition' ||
-        step.kind === 'catalogue.offering' ||
-        step.kind === 'pricing.rule',
-    );
+    const standIns = DEMONSTRATION_SCENARIO.steps;
     for (const step of standIns)
       expect(step.register, `${step.key} register`).toBeDefined();
-    const seeded = new Map<string, string>();
+    const seeded = new Map<string, Set<string>>();
     for (const row of rows) {
       const keys = column(row, 'seed_key');
       if (!keys) continue;
       for (const key of keys.split(';')) {
         expect(steps.has(key), `${row.id} seed key ${key}`).toBe(true);
-        expect(steps.get(key)?.register).toBe(row.id);
-        seeded.set(key, column(row, 'id'));
+        const owners = seeded.get(key) ?? new Set<string>();
+        owners.add(column(row, 'id'));
+        seeded.set(key, owners);
       }
     }
     for (const step of DEMONSTRATION_SCENARIO.steps) {
       if (!step.register) continue;
       expect(ids.has(step.register), step.key).toBe(true);
-      expect(seeded.get(step.key), step.key).toBe(step.register);
+      expect(seeded.get(step.key)?.has(step.register), step.key).toBe(true);
     }
+  });
+
+  it('indexes every concrete operational example and calendar date under the canonical demonstration owner', async () => {
+    const rows = await registerRows();
+    const examples = rows.find((row) => row.id === 'SUB-DE-01');
+    if (!examples) throw new Error('Missing demonstration example owner.');
+    expect(examples.owner_link).toBe(
+      'platform-security-reliability-operations-prd.md#17-approved-provisional-demonstration-data-409',
+    );
+    const keys = new Set(column(examples, 'seed_key').split(';'));
+    for (const step of DEMONSTRATION_SCENARIO.steps) {
+      if (
+        /^(client|project|task|document|request|opportunity)\./u.test(step.kind)
+      )
+        expect(keys.has(step.key), step.key).toBe(true);
+      if (step.kind === 'task.create') {
+        expect(keys.has(step.key), `${step.key} due ${step.dueDate}`).toBe(
+          true,
+        );
+        for (const id of ['SUB-TA-01', 'SUB-HO-01']) {
+          const owner = rows.find((row) => row.id === id);
+          expect(
+            owner?.seed_key?.split(';'),
+            `${id}: ${step.dueDate}`,
+          ).toContain(step.key);
+        }
+      }
+    }
+    expect(examples.evidence_refs).toContain('not Iurie evidence');
+    expect(examples.request_ro).toBe('');
   });
 });

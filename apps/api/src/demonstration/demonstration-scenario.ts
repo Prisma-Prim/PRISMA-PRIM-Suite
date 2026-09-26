@@ -42,7 +42,15 @@ export type DemonstrationBundle =
 
 /** Rows of the first-tenant substitution register named by scenario steps. */
 export type DemonstrationRegisterId =
-  'SUB-CO-01' | 'SUB-RO-01' | 'SUB-RO-02' | 'SUB-PR-01' | 'SUB-PR-03';
+  | 'SUB-CO-01'
+  | 'SUB-RO-01'
+  | 'SUB-RO-02'
+  | 'SUB-PR-01'
+  | 'SUB-PR-03'
+  | 'SUB-DE-01'
+  | 'SUB-PJ-01'
+  | 'SUB-TA-01'
+  | 'SUB-DO-01';
 
 export interface DemonstrationPersona {
   readonly key: DemonstrationPersonaKey;
@@ -210,7 +218,7 @@ export type DemonstrationAction =
 
 export type DemonstrationStep = {
   readonly key: string;
-  readonly register?: DemonstrationRegisterId;
+  readonly register: DemonstrationRegisterId;
 } & DemonstrationAction;
 
 export interface DemonstrationScenario {
@@ -359,6 +367,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   ...grants('victor', 'ecg', RESTRICTED_BUNDLES),
   {
     key: 'client.grup-demo',
+    register: 'SUB-DE-01',
     kind: 'client.register',
     actor: 'ana',
     client: 'grup-demo',
@@ -389,6 +398,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'client.demo-lactate',
+    register: 'SUB-DE-01',
     kind: 'client.register',
     actor: 'ana',
     client: 'demo-lactate',
@@ -399,6 +409,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'client.demo-construct',
+    register: 'SUB-DE-01',
     kind: 'client.register',
     actor: 'maria',
     client: 'demo-construct',
@@ -409,12 +420,14 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'client.grup-demo.bic-relationship',
+    register: 'SUB-DE-01',
     kind: 'client.relate',
     company: 'bic',
     client: 'grup-demo',
   },
   {
     key: 'project.iso22000-implementation',
+    register: 'SUB-PJ-01',
     kind: 'project.create',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -423,6 +436,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso22000-implementation.responsible',
+    register: 'SUB-PJ-01',
     kind: 'project.responsible',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -431,6 +445,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso9001-consulting',
+    register: 'SUB-PJ-01',
     kind: 'project.create',
     actor: 'ana',
     project: 'iso9001-consulting',
@@ -439,6 +454,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso9001-consulting.responsible',
+    register: 'SUB-PJ-01',
     kind: 'project.responsible',
     actor: 'ana',
     project: 'iso9001-consulting',
@@ -447,6 +463,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso9001-certification-audit',
+    register: 'SUB-PJ-01',
     kind: 'project.create',
     actor: 'maria',
     project: 'iso9001-certification-audit',
@@ -455,6 +472,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso9001-certification-audit.responsible',
+    register: 'SUB-PJ-01',
     kind: 'project.responsible',
     actor: 'maria',
     project: 'iso9001-certification-audit',
@@ -463,6 +481,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso45001-certification-audit',
+    register: 'SUB-PJ-01',
     kind: 'project.create',
     actor: 'maria',
     project: 'iso45001-certification-audit',
@@ -471,6 +490,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'project.iso45001-certification-audit.responsible',
+    register: 'SUB-PJ-01',
     kind: 'project.responsible',
     actor: 'maria',
     project: 'iso45001-certification-audit',
@@ -479,6 +499,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.haccp-plan-review',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -490,6 +511,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.prerequisite-programmes',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -501,6 +523,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.prerequisite-programmes.start',
+    register: 'SUB-TA-01',
     kind: 'task.transition',
     actor: 'ion',
     task: 'prerequisite-programmes',
@@ -508,6 +531,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.kick-off-meeting',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -519,6 +543,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.kick-off-meeting.complete',
+    register: 'SUB-TA-01',
     kind: 'task.transition',
     actor: 'ion',
     task: 'kick-off-meeting',
@@ -526,6 +551,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.supplier-records',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ion',
     project: 'iso22000-implementation',
@@ -537,6 +563,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.supplier-records.block',
+    register: 'SUB-TA-01',
     kind: 'task.transition',
     actor: 'ion',
     task: 'supplier-records',
@@ -548,6 +575,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.gap-analysis',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ana',
     project: 'iso9001-consulting',
@@ -559,6 +587,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.internal-audit-training',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'ana',
     project: 'iso9001-consulting',
@@ -570,6 +599,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.internal-audit-training.cancel',
+    register: 'SUB-TA-01',
     kind: 'task.transition',
     actor: 'ana',
     task: 'internal-audit-training',
@@ -581,6 +611,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.audit-plan',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'maria',
     project: 'iso9001-certification-audit',
@@ -592,6 +623,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.audit-team',
+    register: 'SUB-TA-01',
     kind: 'task.create',
     actor: 'maria',
     project: 'iso45001-certification-audit',
@@ -603,6 +635,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'task.audit-team.start',
+    register: 'SUB-TA-01',
     kind: 'task.transition',
     actor: 'maria',
     task: 'audit-team',
@@ -610,6 +643,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso22000-questionnaire',
+    register: 'SUB-DO-01',
     kind: 'document.register',
     actor: 'ana',
     document: 'iso22000-questionnaire',
@@ -620,6 +654,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso22000-questionnaire.link',
+    register: 'SUB-DO-01',
     kind: 'document.link',
     actor: 'ana',
     document: 'iso22000-questionnaire',
@@ -628,6 +663,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso9001-questionnaire',
+    register: 'SUB-DO-01',
     kind: 'document.register',
     actor: 'ana',
     document: 'iso9001-questionnaire',
@@ -638,6 +674,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso9001-questionnaire.link',
+    register: 'SUB-DO-01',
     kind: 'document.link',
     actor: 'ana',
     document: 'iso9001-questionnaire',
@@ -646,6 +683,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso45001-questionnaire',
+    register: 'SUB-DO-01',
     kind: 'document.register',
     actor: 'maria',
     document: 'iso45001-questionnaire',
@@ -656,6 +694,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'document.iso45001-questionnaire.link',
+    register: 'SUB-DO-01',
     kind: 'document.link',
     actor: 'maria',
     document: 'iso45001-questionnaire',
@@ -664,6 +703,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'request.grup-demo-iso14001',
+    register: 'SUB-DE-01',
     kind: 'request.create',
     actor: 'ana',
     request: 'grup-demo-iso14001',
@@ -680,6 +720,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'request.grup-demo-iso14001.next-action',
+    register: 'SUB-DE-01',
     kind: 'opportunity.next-action',
     actor: 'ana',
     request: 'grup-demo-iso14001',
@@ -688,6 +729,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'request.unidentified-iso9001',
+    register: 'SUB-DE-01',
     kind: 'request.create',
     actor: 'ana',
     request: 'unidentified-iso9001',
@@ -704,6 +746,7 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
   {
     key: 'request.demo-construct-iso45001',
+    register: 'SUB-DE-01',
     kind: 'request.create',
     actor: 'maria',
     request: 'demo-construct-iso45001',

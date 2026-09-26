@@ -29,6 +29,8 @@ withPostgres(
     }, 60_000);
 
     afterEach(async () => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
       await database?.close();
     });
 
@@ -221,6 +223,122 @@ withPostgres(
       },
       30_000,
     );
+
+    it('publishes after a Workspace wait, exactly retries a lost reply and converges without another publication', async () => {
+      const realFetch = globalThis.fetch;
+      const pause = await database.targetPool.connect();
+      let delayed = false;
+      let published: unknown;
+      let replayed: unknown;
+      const lines: unknown[] = [];
+      const wallStart = new Date();
+      vi.setSystemTime(wallStart);
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (
+          delayed ||
+          init?.method !== 'POST' ||
+          !String(input).endsWith('/pricing-configuration/rule-versions')
+        )
+          return realFetch(input, init);
+        delayed = true;
+        await pause.query('BEGIN');
+        await pause.query('LOCK TABLE workspaces IN ROW EXCLUSIVE MODE');
+        const pending = realFetch(input, init);
+        try {
+          await waitForTableWaiter('workspaces', 'ShareRowExclusiveLock');
+          // Advance only Date, not timers: a confirmed database wait exceeds
+          // the former five-second margin without sleeping in the test.
+          vi.setSystemTime(new Date(wallStart.getTime() + 60_000));
+        } finally {
+          await pause.query('ROLLBACK');
+        }
+        const response = await pending;
+        expect(response.status).toBe(201);
+        published = await response.json();
+        // Delivery is uncertain. Retry the exact public command, including its
+        // key and payload; a new key or refreshed start would hide this defect.
+        const retry = await realFetch(input, init);
+        expect(retry.status).toBe(201);
+        replayed = await retry.json();
+        expect(replayed).toEqual(published);
+        throw new Error('Simulated lost publication reply');
+      });
+      try {
+        expect(await run((line) => lines.push(JSON.parse(line)))).toMatchObject(
+          {
+            outcome: 'stopped',
+            exitCode: 3,
+          },
+        );
+        expect(delayed).toBe(true);
+        expect(published).toMatchObject({
+          outcome: 'PUBLISHED',
+          version: { versionNumber: 1, provisional: true },
+        });
+        expect(lines.at(-1)).toMatchObject({
+          step: 'pricing.prisma-prim.rule-v1',
+          reason: 'unavailable',
+        });
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT id FROM pricing_rule_versions',
+            )
+          ).rows,
+        ).toHaveLength(1);
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT id FROM pricing_configuration_events',
+            )
+          ).rows,
+        ).toHaveLength(1);
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT * FROM pricing_configuration_commands',
+            )
+          ).rows,
+        ).toHaveLength(1);
+        const resumed: unknown[] = [];
+        expect(
+          await run((line) => resumed.push(JSON.parse(line))),
+        ).toMatchObject({
+          outcome: 'converged',
+        });
+        expect(resumed).toContainEqual(
+          expect.objectContaining({
+            step: 'pricing.prisma-prim.rule-v1',
+            outcome: 'present',
+          }),
+        );
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT id FROM pricing_rule_versions',
+            )
+          ).rows,
+        ).toHaveLength(2);
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT id FROM pricing_configuration_events',
+            )
+          ).rows,
+        ).toHaveLength(2);
+        expect(
+          (
+            await database.targetPool.query(
+              'SELECT * FROM pricing_configuration_commands',
+            )
+          ).rows,
+        ).toHaveLength(2);
+        await expectCompanyWritesAndReleasedProtection(3);
+      } finally {
+        await pause.query('ROLLBACK');
+        pause.release();
+      }
+    }, 60_000);
 
     it('closes the application and releases protection when manifest output throws', async () => {
       await expect(

@@ -115,15 +115,13 @@ export interface DemonstrationRunOptions {
     principal: DemonstrationPrincipal,
   ) => Readonly<Record<string, string>>;
   readonly scenario?: DemonstrationScenario;
-  /** The run's own instant; pricing publications start just after it. */
-  readonly now?: () => Date;
+  /** Match the seed application's fixed run clock; pricing starts just after it. */
+  readonly now: () => Date;
   readonly onLine?: (line: DemonstrationManifestLine) => void;
 }
 
 export const DEMONSTRATION_OWNER_STEP = 'workspace.owner';
 
-/** Back-dating is refused (Pricing PRD 11.3), so a first version starts just after the run instant. */
-const PRICING_START_LEAD_MILLISECONDS = 5_000;
 const MAXIMUM_PAGES = 1_000;
 
 const BUNDLE_ROUTES = {
@@ -885,8 +883,10 @@ class DemonstrationRun {
       };
     }
     const start = new Date(
-      Math.ceil(this.now().getTime() / 1_000) * 1_000 +
-        PRICING_START_LEAD_MILLISECONDS,
+      // The next whole second is strictly after the shared run instant. This
+      // is not a timeout margin: the seed server keeps that same clock while
+      // its ordinary publication policy executes, however long locks take.
+      (Math.floor(this.now().getTime() / 1_000) + 1) * 1_000,
     );
     const result = record(
       await this.api.send({
@@ -1041,7 +1041,7 @@ export async function runDemonstrationScenario(
   const run = new DemonstrationRun(
     new DemonstrationApi(options.origin, options.headersFor),
     scenario,
-    options.now ?? (() => new Date()),
+    options.now,
   );
   const entries: DemonstrationManifestEntry[] = [];
   let current = DEMONSTRATION_OWNER_STEP;

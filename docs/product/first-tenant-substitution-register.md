@@ -34,6 +34,7 @@ The decision vocabulary follows the candidate, non-canonical Sarcina criterion A
 - Iurie's decisions are recorded first on a trial evidence issue, then copied into `decision` and `decision_ref` by a documentation pull request. An accepted or corrected row is resolved only when a focused issue amends its owning PRD row.
 - Real materials go to Dan through a controlled channel and never into Git. Client examples are anonymized, and no password, signing secret, private key or bulk Client archive is ever sent by chat or email ([decision record 22.6](consolidated-product-decision-record.md#226-access-oversight-and-representative-evidence)).
 - Rows whose `seed_key` names demonstration steps are checked against the scenario by `apps/api/src/demonstration/demonstration-register.test.ts`.
+- A step names its primary register row in the manifest. Several rows may index the same step when it illustrates several choices: for example, a Task exercises execution/priority rules, Home due-date behavior, and a synthetic example. `SUB-DE-01` indexes every operational example and calendar date under Platform PRD section 17; it records no real Client fact or Iurie evidence.
 
 ## Materials checklist
 

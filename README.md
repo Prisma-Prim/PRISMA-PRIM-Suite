@@ -137,6 +137,8 @@ docker compose exec postgres psql -U prisma_prim -d prisma_prim \
 
 The demonstration seed fills a dedicated demonstration Workspace with the versioned synthetic scenario `demo-v1` through the public API: PRISMA-PRIM, BIC and ECG, four `DEMO` personas with provisional role profiles, and illustrative Clients, Projects, Tasks, Documents, Requests, Service offerings and Pricing Rule Versions. [Platform PRD section 17](docs/product/platform-security-reliability-operations-prd.md#17-approved-provisional-demonstration-data-409) owns its rules, and the [first-tenant substitution register](docs/product/first-tenant-substitution-register.md) indexes what each stand-in replaces.
 
+The seed process fixes its server clock at startup and shares that instant with its runner. A first Pricing Rule starts at the next whole second of that synthetic run, so waiting for database locks cannot expire the request. The normal application continues to use real time; pricing validation, receipts and permissions are unchanged.
+
 > **Warning:** never point the seed at a database that holds real or shared data. It refuses a target whose configured Workspace name lacks `DEMO`, that holds another Workspace, or that is not at the latest migration, but a dedicated demonstration database is the operator's responsibility.
 
 Prepare a dedicated database, give the configured bootstrap Workspace a name that contains `DEMO`, and migrate it:

@@ -13,6 +13,7 @@ import { VerifiedPrincipalAdapter } from '../access/verified-principal.adapter.j
 import { INVITATION_ACCEPTANCE_PROVIDER } from '../access/workspace-invitation-acceptance-provider.js';
 import { WORKSPACE_INVITATION_PROVIDER } from '../access/workspace-invitation-provider.js';
 import { AppModule } from '../app.module.js';
+import { SERVER_CLOCK } from '../clock/server-clock.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { DATABASE } from '../database/database.constants.js';
 import { DemonstrationDatabaseContext } from './demonstration-database-context.js';
@@ -29,6 +30,8 @@ import {
 export interface DemonstrationApplication {
   /** The loopback origin the seed runner calls; nothing else is served. */
   readonly origin: string;
+  /** Shared run instant for public pricing payloads and server validation. */
+  readonly now: () => Date;
   close(): Promise<void>;
 }
 
@@ -55,6 +58,11 @@ export interface DemonstrationApplicationInput {
 export async function startDemonstrationApplication(
   input: DemonstrationApplicationInput,
 ): Promise<DemonstrationApplication> {
+  // Only this short-lived synthetic composition owns a fixed clock. Request
+  // transit and database lock waits cannot expire its first pricing start.
+  // The served application's ServerClockModule continues to use real time.
+  const runInstant = new Date().getTime();
+  const now = () => new Date(runInstant);
   const connectionUrl = new URL(input.databaseUrl);
   // Put this last in the URL options: node-postgres gives URL settings priority
   // over Pool options. Even a configured options value must retain this guard.
@@ -86,6 +94,8 @@ export async function startDemonstrationApplication(
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DATABASE)
       .useValue(database)
+      .overrideProvider(SERVER_CLOCK)
+      .useValue({ now })
       .overrideProvider(DatabaseContext)
       .useValue(new DemonstrationDatabaseContext(database, input.bootstrap))
       .overrideProvider(ACCESS_ADMISSION)
@@ -122,7 +132,7 @@ export async function startDemonstrationApplication(
     application = moduleRef.createNestApplication({ logger: false });
     application.setGlobalPrefix('api');
     await application.listen(0, '127.0.0.1');
-    return { origin: await application.getUrl(), close };
+    return { origin: await application.getUrl(), now, close };
   } catch (error) {
     await close();
     throw error;

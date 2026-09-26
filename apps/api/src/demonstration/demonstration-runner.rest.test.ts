@@ -33,6 +33,7 @@ const OWNER_IDENTITY = {
   email: 'operator@example.test',
 };
 const OWNER: DemonstrationPrincipal = { kind: 'owner' };
+const RUN_CLOCK = { now: () => new Date('2026-09-26T12:00:00.000Z') };
 const EVENT_TABLES = {
   activity_log_events: 'actor_workspace_membership_id',
   commercial_catalogue_events: 'actor_workspace_membership_id',
@@ -145,7 +146,12 @@ withPostgres('demonstration runner through the public REST API', () => {
   function run(
     scenario: DemonstrationScenario = DEMONSTRATION_SCENARIO,
   ): Promise<DemonstrationRunResult> {
-    return runDemonstrationScenario({ origin, headersFor, scenario });
+    return runDemonstrationScenario({
+      origin,
+      headersFor,
+      scenario,
+      now: RUN_CLOCK.now,
+    });
   }
 
   function prefix(untilStep: string, inclusive = true): DemonstrationScenario {
@@ -329,6 +335,7 @@ withPostgres('demonstration runner through the public REST API', () => {
     });
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
+      serverClock: RUN_CLOCK,
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
@@ -817,7 +824,7 @@ withPostgres('demonstration runner through the public REST API', () => {
       key: 'operator-published-rule',
       body: {
         label: 'DEMO operator rule',
-        effectiveFrom: new Date(Date.now() + 60_000).toISOString(),
+        effectiveFrom: '2026-09-26T12:01:00.000Z',
         expectedActiveVersionNumber: null,
       },
     });
