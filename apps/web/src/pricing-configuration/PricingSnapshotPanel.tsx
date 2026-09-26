@@ -207,6 +207,9 @@ export function PricingSnapshotPanel({
       commandRequest.current?.abort();
       commandRequest.current = undefined;
       setPending(false);
+      olderRequest.current?.abort();
+      olderRequest.current = undefined;
+      setOlderPending(false);
       loadRequest.current?.abort();
       const controller = new AbortController();
       loadRequest.current = controller;
@@ -455,30 +458,36 @@ export function PricingSnapshotPanel({
     const controller = new AbortController();
     olderRequest.current = controller;
     setOlderPending(true);
-    const result = await request({
-      path: `${snapshotBasePath(opportunityId)}?limit=${pageSize}&cursor=${encodeURIComponent(view.nextCursor)}`,
-      signal: controller.signal,
-    });
-    if (controller.signal.aborted) return;
-    if (await handleAccess(result, controller.signal)) {
-      setView({ kind: 'denied' });
-    } else if (result.status === 200 && isSnapshotPage(result.body)) {
-      const page = result.body;
-      setView((current) =>
-        current.kind === 'ready'
-          ? {
-              ...current,
-              snapshots: [...current.snapshots, ...page.items],
-              ...(page.nextCursor
-                ? { nextCursor: page.nextCursor }
-                : { nextCursor: undefined }),
-            }
-          : current,
-      );
-    }
-    if (olderRequest.current === controller) {
-      olderRequest.current = undefined;
-      setOlderPending(false);
+    try {
+      const result = await request({
+        path: `${snapshotBasePath(opportunityId)}?limit=${pageSize}&cursor=${encodeURIComponent(view.nextCursor)}`,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if (await handleAccess(result, controller.signal)) {
+        setView({ kind: 'denied' });
+      } else if (result.status === 200 && isSnapshotPage(result.body)) {
+        const page = result.body;
+        setView((current) =>
+          current.kind === 'ready'
+            ? {
+                ...current,
+                snapshots: [...current.snapshots, ...page.items],
+                ...(page.nextCursor
+                  ? { nextCursor: page.nextCursor }
+                  : { nextCursor: undefined }),
+              }
+            : current,
+        );
+      }
+    } catch (error: unknown) {
+      if (!(error instanceof DOMException && error.name === 'AbortError'))
+        throw error;
+    } finally {
+      if (olderRequest.current === controller) {
+        olderRequest.current = undefined;
+        setOlderPending(false);
+      }
     }
   }
 
@@ -901,7 +910,7 @@ function isSnapshot(value: unknown): value is PricingSnapshot {
     typeof value.subtotal === 'string' &&
     typeof value.taxTotal === 'string' &&
     typeof value.total === 'string' &&
-    typeof value.calculatedAt === 'string' &&
+    isDisplayableInstant(value.calculatedAt) &&
     typeof value.committedAt === 'string' &&
     value.provenance === 'ILLUSTRATIVE' &&
     value.provisional === true &&
@@ -936,6 +945,11 @@ function isCurrency(value: unknown): value is Currency {
   return (
     value === 'MDL' || value === 'EUR' || value === 'RON' || value === 'USD'
   );
+}
+function isDisplayableInstant(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const instant = new Date(value);
+  return !Number.isNaN(instant.getTime()) && instant.toISOString() === value;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

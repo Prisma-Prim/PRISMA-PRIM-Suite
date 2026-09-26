@@ -460,6 +460,144 @@ describe('PricingSnapshotPanel', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    { mode: 'when the transport honors abort', honorsAbort: true },
+    { mode: 'when the transport returns a late reply', honorsAbort: false },
+  ])(
+    'ignores an obsolete older page after reload and keeps the reloaded list cursor $mode',
+    async ({ honorsAbort }) => {
+      const initial = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000011',
+        '11.11',
+      );
+      const reloaded = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000012',
+        '22.22',
+      );
+      const obsolete = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000013',
+        '33.33',
+      );
+      const freshOlder = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000014',
+        '44.44',
+      );
+      let resolveObsolete: ((response: Response) => void) | undefined;
+      let rejectObsolete: ((reason: DOMException) => void) | undefined;
+      const obsoletePage = new Promise<Response>((resolve, reject) => {
+        resolveObsolete = resolve;
+        rejectObsolete = reject;
+      });
+      const requestedCursors: string[] = [];
+      let firstPageCalls = 0;
+      stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: (_call, _init, url) => {
+          const cursor = url.searchParams.get('cursor');
+          if (cursor) {
+            requestedCursors.push(cursor);
+            if (cursor === 'obsolete-cursor') {
+              if (honorsAbort)
+                _init?.signal?.addEventListener(
+                  'abort',
+                  () =>
+                    rejectObsolete?.(new DOMException('Aborted', 'AbortError')),
+                  { once: true },
+                );
+              return obsoletePage;
+            }
+            if (cursor === 'fresh-cursor')
+              return Response.json({ items: [freshOlder] });
+            throw new Error(`Unexpected snapshot cursor ${cursor}`);
+          }
+          firstPageCalls += 1;
+          return Response.json(
+            firstPageCalls === 1
+              ? { items: [initial], nextCursor: 'obsolete-cursor' }
+              : { items: [reloaded], nextCursor: 'fresh-cursor' },
+          );
+        },
+        [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+          Response.json({ code: 'STALE_TARIFF_VERSION' }, { status: 409 }),
+      });
+
+      renderPanel();
+      expect(
+        await screen.findByRole('button', { name: /11\.11 EUR/u }),
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Load older snapshots' }),
+      );
+      await waitFor(() =>
+        expect(requestedCursors).toEqual(['obsolete-cursor']),
+      );
+
+      await selectWorkedExample();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Calculate and save' }),
+      );
+      expect(
+        await screen.findByText(/Configuration changed/u),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Reload pricing' }));
+      expect(
+        await screen.findByRole('button', { name: /22\.22 EUR/u }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /11\.11 EUR/u }),
+      ).not.toBeInTheDocument();
+
+      resolveObsolete?.(
+        Response.json({ items: [obsolete], nextCursor: 'wrong-cursor' }),
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(
+        screen.queryByRole('button', { name: /33\.33 EUR/u }),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Load older snapshots' }),
+      );
+      await waitFor(() =>
+        expect(requestedCursors).toEqual(['obsolete-cursor', 'fresh-cursor']),
+      );
+      expect(
+        await screen.findByRole('button', { name: /44\.44 EUR/u }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /22\.22 EUR/u }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('shows pricing as unavailable for a malformed calculation timestamp', async () => {
+    stubApi({
+      ...baseRoutes(),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json({
+          items: [
+            {
+              ...snapshot(),
+              calculatedAt: 'not-a-canonical-instant',
+            },
+          ],
+        }),
+    });
+
+    renderPanel();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Pricing could not be loaded. Try again.',
+    );
+  });
+
   it('ignores an old Opportunity reply after the mounted target changes', async () => {
     let resolveOld: ((response: Response) => void) | undefined;
     const oldPage = new Promise<Response>((resolve) => {
