@@ -32,7 +32,8 @@
     "typecheck": "pnpm --recursive typecheck",
     "validate:iurie-coverage": "node scripts/validate-iurie-coverage.mjs",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",
-    "db:migrate": "pnpm --filter @prisma-prim/api db:migrate"
+    "db:migrate": "pnpm --filter @prisma-prim/api db:migrate",
+    "demo:seed": "pnpm --filter @prisma-prim/api demo:seed"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
