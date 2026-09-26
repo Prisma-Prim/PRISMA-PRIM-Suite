@@ -484,7 +484,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       result: 'stopped',
       step: 'persona.ana',
       reason: 'persona-not-synthetic',
-      status: null,
+      status: 403,
     });
     expect(await identitySnapshot()).toEqual(identitiesBeforeProfileStop);
     expect(await snapshot()).toEqual(rowsBeforeProfileStop);
