@@ -15,6 +15,7 @@ import { documentsCopy as copy } from './documents.copy';
 import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
 import { DocumentVersions } from './DocumentVersions';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './documents.css';
 type Load =
@@ -1131,19 +1132,17 @@ export function DocumentWorkspace({
                   onSubmit={(event) => void submit(event)}
                 >
                   <label htmlFor="document-client">{copy.client}</label>
-                  <select
+                  <Select
                     id="document-client"
                     required
                     value={clientId}
-                    onChange={(event) => setClientId(event.target.value)}
-                  >
-                    <option value="">{copy.selectClient}</option>
-                    {state.clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.displayName}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={copy.selectClient}
+                    options={state.clients.map((client) => ({
+                      value: client.id,
+                      label: client.displayName,
+                    }))}
+                    onValueChange={setClientId}
+                  />
                   <label>
                     {copy.titleLabel}
                     <input

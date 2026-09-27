@@ -32,6 +32,7 @@ import {
 } from './task-response';
 import { taskCopy as copy } from './task.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { Select } from '../presentation/Select';
 import './task.css';
 import {
   TaskDeclarationFacts,
@@ -784,59 +785,55 @@ function TaskProject({
                         onChange={(event) => setTaskSearch(event.target.value)}
                       />
                     </label>
-                    <label>
+                    <label htmlFor={`${dateRangeErrorId}-status-filter`}>
                       <span>{copy.statusFilterLabel}</span>
-                      <select
+                      <Select
+                        id={`${dateRangeErrorId}-status-filter`}
                         value={taskFilter}
-                        onChange={(event) => {
-                          const nextFilter = event.target.value;
+                        options={[
+                          { value: 'all', label: copy.all },
+                          ...taskStates.map((state) => ({
+                            value: state,
+                            label: copy.states[state],
+                          })),
+                        ]}
+                        onValueChange={(nextFilter) => {
                           if (nextFilter === 'all') setTaskFilter(nextFilter);
                           const state = taskStates.find(
                             (candidate) => candidate === nextFilter,
                           );
                           if (state) setTaskFilter(state);
                         }}
-                      >
-                        <option value="all">{copy.all}</option>
-                        {taskStates.map((state) => (
-                          <option key={state} value={state}>
-                            {copy.states[state]}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </label>
-                    <label>
+                    <label htmlFor={`${dateRangeErrorId}-assignee-filter`}>
                       <span>{copy.assigneeFilterLabel}</span>
-                      <select
+                      <Select
+                        id={`${dateRangeErrorId}-assignee-filter`}
                         value={assigneeFilterValue(assigneeFilter)}
-                        onChange={(event) =>
-                          selectAssigneeFilter(event.target.value)
-                        }
-                      >
-                        <option value="all">{copy.all}</option>
-                        <option value="unassigned">{copy.unassigned}</option>
-                        {[...assigneeOptions.values()].map((member) => (
-                          <option
-                            key={member.workspaceMembershipId}
-                            value={`${memberValuePrefix}${member.workspaceMembershipId}`}
-                          >
-                            {member.displayLabel}
-                          </option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: 'all', label: copy.all },
+                          { value: 'unassigned', label: copy.unassigned },
+                          ...[...assigneeOptions.values()].map((member) => ({
+                            value: `${memberValuePrefix}${member.workspaceMembershipId}`,
+                            label: member.displayLabel,
+                          })),
+                        ]}
+                        onValueChange={(value) => selectAssigneeFilter(value)}
+                      />
                     </label>
-                    <label>
+                    <label htmlFor={`${dateRangeErrorId}-date-filter`}>
                       <span>{copy.dateFilterLabel}</span>
-                      <select
+                      <Select
+                        id={`${dateRangeErrorId}-date-filter`}
                         value={dateFilter.kind}
-                        onChange={(event) =>
-                          selectDateFilter(event.target.value)
-                        }
-                      >
-                        <option value="all">{copy.allDates}</option>
-                        <option value="undated">{copy.withoutDate}</option>
-                        <option value="range">{copy.dateRange}</option>
-                      </select>
+                        options={[
+                          { value: 'all', label: copy.allDates },
+                          { value: 'undated', label: copy.withoutDate },
+                          { value: 'range', label: copy.dateRange },
+                        ]}
+                        onValueChange={selectDateFilter}
+                      />
                     </label>
                     {dateFilter.kind === 'range' && (
                       <>

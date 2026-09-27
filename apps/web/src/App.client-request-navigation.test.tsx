@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -354,10 +355,11 @@ async function uniteFirstIntoSecond(dossier: HTMLElement) {
   );
   const form = await screen.findByRole('form', { name: 'Confirm union' });
   for (const select of within(form).getAllByRole('combobox'))
-    fireEvent.change(select, { target: { value: secondClient.id } });
-  fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-    target: { value: 'Reviewed both saved dossiers.' },
-  });
+    changeValue(select, secondClient.id);
+  changeValue(
+    within(form).getByLabelText('Reason for this union'),
+    'Reviewed both saved dossiers.',
+  );
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
   fireEvent.submit(form);
@@ -509,9 +511,10 @@ describe('Client dossier and Client Request navigation through App', () => {
       }),
     );
     const reversal = await screen.findByRole('form', { name: 'Reverse union' });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers deliberately.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers deliberately.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.click(
       within(reversal).getByRole('button', { name: 'Reverse union' }),
@@ -544,12 +547,12 @@ describe('Client dossier and Client Request navigation through App', () => {
     );
 
     const company = screen.getByLabelText('Active Company', { exact: true });
-    fireEvent.change(company, { target: { value: companyB.id } });
+    changeValue(company, companyB.id);
     await waitFor(() =>
       expect(listedRequests()).toEqual(['Company B Request']),
     );
     expect(restrictionScope()).not.toBeInTheDocument();
-    fireEvent.change(company, { target: { value: companyA.id } });
+    changeValue(company, companyA.id);
 
     await waitFor(() => expect(listedRequests()).toHaveLength(3));
     expect(restrictionScope()).not.toBeInTheDocument();

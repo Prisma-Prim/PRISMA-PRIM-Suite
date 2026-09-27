@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -97,9 +98,10 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
   await page.goto('/?frame=prisme#clients');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(companyA.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    companyA.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
@@ -135,9 +137,10 @@ test('finds and deliberately reuses one Client across Companies in Prisme', asyn
   });
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(companyB.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    companyB.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await expect(page.getByText('No Clients for BIC yet.')).toBeVisible();
@@ -280,11 +283,11 @@ test('keeps a Client retry and pending command through disclosure, navigation an
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
-  await expect(name).toHaveValue(client.displayName);
+  await expectValue(name, client.displayName);
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(name).toBeHidden();
   await trigger.click();
-  await expect(name).toHaveValue(client.displayName);
+  await expectValue(name, client.displayName);
   await page
     .getByRole('button', { name: 'Create Client', exact: true })
     .click();
@@ -412,15 +415,11 @@ test('keeps Director fields and ordered Contacts through validation and an opaqu
     'aria-describedby',
     'client-create-validation',
   );
-  await expect(first.getByLabel('Contact telephone')).toHaveValue(
-    '+373 60 333 444',
-  );
+  await expectValue(first.getByLabel('Contact telephone'), '+373 60 333 444');
   expect(submissions).toBe(0);
   await page.getByRole('button', { name: 'Close registration' }).click();
   await page.getByRole('button', { name: 'New Client', exact: true }).click();
-  await expect(first.getByLabel('Contact telephone')).toHaveValue(
-    '+373 60 333 444',
-  );
+  await expectValue(first.getByLabel('Contact telephone'), '+373 60 333 444');
   await first.getByLabel('Contact name').fill('Ana');
   await page.getByRole('button', { name: 'Add Contact', exact: true }).click();
   const second = page.getByRole('group', { name: 'Contact 2', exact: true });
@@ -444,9 +443,7 @@ test('keeps Director fields and ordered Contacts through validation and an opaqu
   await expect(
     page.getByRole('heading', { name: 'Possible duplicate reviews' }),
   ).toHaveCount(0);
-  await expect(second.getByLabel('Contact email')).toHaveValue(
-    'ion@example.test',
-  );
+  await expectValue(second.getByLabel('Contact email'), 'ion@example.test');
   expect(submissions).toBe(1);
   expect(activityReads).toBe(readsBeforeConflict);
   expect(

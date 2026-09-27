@@ -10,6 +10,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   type AssignmentBundleLabel,
@@ -407,60 +408,87 @@ export function CompanyContextAccess({
           <label htmlFor="context-access-member">
             {copy.workspaceMemberLabel}
           </label>
-          <select
+          <Select
             id="context-access-member"
             value={workspaceMembershipId}
             disabled={busy}
-            onChange={(event) => {
+            placeholder={copy.selectMember}
+            options={data.members.map((member) => ({
+              value: member.workspaceMembershipId,
+              label: disambiguatedLabel(
+                memberLabel(member),
+                member.workspaceMembershipId,
+                duplicateMemberLabels,
+              ),
+            }))}
+            onValueChange={(value) => {
               resetCommand();
-              setWorkspaceMembershipId(event.target.value);
+              setWorkspaceMembershipId(value);
             }}
-          >
-            <option value="">{copy.selectMember}</option>
-            {data.members.map((member) => (
-              <option
-                key={member.workspaceMembershipId}
-                value={member.workspaceMembershipId}
-              >
-                {disambiguatedLabel(
-                  memberLabel(member),
-                  member.workspaceMembershipId,
-                  duplicateMemberLabels,
-                )}
-              </option>
-            ))}
-          </select>
+          />
 
           <label htmlFor="context-access-company">{copy.companyLabel}</label>
-          <select
+          <Select
             id="context-access-company"
             value={companyId}
             disabled={busy}
-            onChange={(event) => {
+            placeholder={copy.selectCompany}
+            options={data.companies.map((company) => ({
+              value: company.id,
+              label: disambiguatedLabel(
+                company.displayName,
+                company.id,
+                duplicateCompanyLabels,
+              ),
+            }))}
+            onValueChange={(value) => {
               resetCommand();
-              setCompanyId(event.target.value);
+              setCompanyId(value);
             }}
-          >
-            <option value="">{copy.selectCompany}</option>
-            {data.companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {disambiguatedLabel(
-                  company.displayName,
-                  company.id,
-                  duplicateCompanyLabels,
-                )}
-              </option>
-            ))}
-          </select>
+          />
 
           <label htmlFor="context-access-bundle">{copy.bundleLabel}</label>
-          <select
+          <Select
             id="context-access-bundle"
             value={bundle}
             disabled={busy}
-            onChange={(event) => {
+            options={[
+              { value: 'company-context', label: copy.companyContextBundle },
+              {
+                value: 'commercial-intake',
+                label: copy.commercialIntakeBundle,
+              },
+              {
+                value: 'service-catalogue',
+                label: copy.serviceCatalogueBundle,
+              },
+              {
+                value: 'pricing-configuration',
+                label: copy.pricingConfigurationBundle,
+              },
+              { value: 'pricing-user', label: copy.pricingUserBundle },
+              {
+                value: 'commercial-activity-reader',
+                label: copy.commercialActivityReaderBundle,
+              },
+              { value: 'director-client', label: copy.directorClientBundle },
+              {
+                value: 'document-project-organizer',
+                label: copy.documentProjectOrganizerBundle,
+              },
+              {
+                value: 'document-registrar',
+                label: copy.documentRegistrarBundle,
+              },
+              {
+                value: 'document-approver',
+                label: copy.documentApproverBundle,
+              },
+              { value: 'project', label: copy.projectBundle },
+              { value: 'task-manager', label: copy.taskManagerBundle },
+            ]}
+            onValueChange={(value) => {
               resetCommand();
-              const value = event.target.value;
               if (
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
@@ -477,34 +505,7 @@ export function CompanyContextAccess({
               )
                 setBundle(value);
             }}
-          >
-            <option value="company-context">{copy.companyContextBundle}</option>
-            <option value="commercial-intake">
-              {copy.commercialIntakeBundle}
-            </option>
-            <option value="service-catalogue">
-              {copy.serviceCatalogueBundle}
-            </option>
-            <option value="pricing-configuration">
-              {copy.pricingConfigurationBundle}
-            </option>
-            <option value="pricing-user">{copy.pricingUserBundle}</option>
-            <option value="commercial-activity-reader">
-              {copy.commercialActivityReaderBundle}
-            </option>
-            <option value="director-client">{copy.directorClientBundle}</option>
-            <option value="document-project-organizer">
-              {copy.documentProjectOrganizerBundle}
-            </option>
-            <option value="document-registrar">
-              {copy.documentRegistrarBundle}
-            </option>
-            <option value="document-approver">
-              {copy.documentApproverBundle}
-            </option>
-            <option value="project">{copy.projectBundle}</option>
-            <option value="task-manager">{copy.taskManagerBundle}</option>
-          </select>
+          />
 
           {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
           {bundle === 'commercial-activity-reader' && (

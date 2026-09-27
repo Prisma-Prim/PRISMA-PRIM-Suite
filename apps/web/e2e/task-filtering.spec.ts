@@ -1,4 +1,6 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import {
@@ -50,9 +52,10 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -68,7 +71,8 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   const listed = navigation.getByRole('listitem').getByRole('button');
   const search = navigation.getByLabel('Search Tasks');
   const status = navigation.getByLabel('Task status');
-  await expect(status).toHaveValue('all');
+  await expectValue(status, 'all');
+  await expectSelectAppearance(status);
   await expect(listed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',
@@ -77,23 +81,25 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   expect(listReads).toBe(1);
 
   const responsible = navigation.getByLabel('Task responsible member');
-  await expect(responsible).toHaveValue('all');
+  await expectValue(responsible, 'all');
   // The eligible-member query answers with no member, so these options come from the loaded rows.
-  await expect(responsible.getByRole('option')).toHaveText([
+  const responsibleChoices = await openSelect(responsible);
+  await expect(responsibleChoices.getByRole('option')).toHaveText([
     'All',
     'Unassigned',
     'Ana Pop',
     'Ion Radu',
   ]);
-  await responsible.selectOption({ label: 'Unassigned' });
+  await responsible.press('Escape');
+  await selectOption(responsible, { label: 'Unassigned' });
   await expect(listed).toHaveText(['Review archive notes']);
-  await responsible.selectOption({ label: 'Ana Pop' });
+  await selectOption(responsible, { label: 'Ana Pop' });
   await expect(listed).toHaveText(['Collect preparation notes']);
-  await status.selectOption('done');
+  await selectOption(status, 'done');
   await expect(
     navigation.getByText('No Tasks match the current filters.'),
   ).toBeVisible();
-  await status.selectOption('all');
+  await selectOption(status, 'all');
   await search.focus();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
@@ -108,19 +114,21 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
       (element) => getComputedStyle(element).outlineColor,
     ),
   ).toBe('rgb(75, 54, 181)');
-  await responsible.selectOption({ label: 'All' });
+  await selectOption(responsible, { label: 'All' });
   expect(listReads).toBe(1);
 
   const dates = navigation.getByLabel('Task date filter');
-  await expect(dates.getByRole('option')).toHaveText([
+  const dateChoices = await openSelect(dates);
+  await expect(dateChoices.getByRole('option')).toHaveText([
     'All dates',
     'Without a date',
     'Date range',
   ]);
-  await dates.selectOption({ label: 'Without a date' });
+  await dates.press('Escape');
+  await selectOption(dates, { label: 'Without a date' });
   await expect(listed).toHaveText(['Review archive notes']);
   // A Date range never keeps an undated Task, even while both bounds stay open.
-  await dates.selectOption({ label: 'Date range' });
+  await selectOption(dates, { label: 'Date range' });
   await expect(listed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',
@@ -184,7 +192,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     await from.evaluate((element) => getComputedStyle(element).outlineColor),
   ).toBe('rgb(75, 54, 181)');
   await navigation.getByRole('button', { name: 'Reset date filter' }).click();
-  await expect(dates).toHaveValue('all');
+  await expectValue(dates, 'all');
   await expect(navigation.getByLabel('Task date from')).toHaveCount(0);
   await expect(navigation.getByRole('alert')).toHaveCount(0);
   await expect(listed).toHaveText([
@@ -204,7 +212,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   ).toBe('rgb(75, 54, 181)');
   await search.fill('EVIDENCE');
   await expect(listed).toHaveText(['Archive preparation evidence']);
-  await status.selectOption('todo');
+  await selectOption(status, 'todo');
   await expect(
     navigation.getByText('No Tasks match the current filters.'),
   ).toBeVisible();
@@ -213,14 +221,14 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   ).toHaveCount(0);
   expect(listReads).toBe(1);
 
-  await status.selectOption('done');
+  await selectOption(status, 'done');
   await navigation
     .getByRole('button', { name: 'Archive preparation evidence' })
     .click();
   await expect(
     region.getByRole('heading', { name: 'Archive preparation evidence' }),
   ).toBeVisible();
-  await status.selectOption('todo');
+  await selectOption(status, 'todo');
   await expect(
     navigation.getByText('No Tasks match the current filters.'),
   ).toBeVisible();
@@ -232,6 +240,38 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await navigation
     .getByRole('button', { name: 'Collect preparation notes' })
     .click();
+  const taskForm = region.locator('form');
+  const taskAssignee = taskForm.getByLabel('Responsible member');
+  const taskPriority = taskForm.getByLabel('Priority');
+  const saveTask = taskForm.getByRole('button', {
+    name: 'Save Task',
+    exact: true,
+  });
+  await expect(taskAssignee).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  );
+  await expect(taskPriority).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  );
+  await expect(saveTask).toHaveCSS('background-color', 'rgb(100, 81, 232)');
+  await expect(saveTask).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await region.getByLabel('Task title').focus();
+  await page.keyboard.press('Tab');
+  await expect(taskAssignee).toBeFocused();
+  expect(
+    await taskAssignee.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).toBe('solid');
+  expect(
+    await taskAssignee.evaluate(
+      (element) => getComputedStyle(element).outlineColor,
+    ),
+  ).toBe('rgb(75, 54, 181)');
+  await expectSelectAppearance(taskAssignee);
+  await expectSelectAppearance(taskPriority);
   await region.getByLabel('Task title').fill('Unsaved preparation title');
   await search.fill('review archive');
   await expect(
@@ -240,7 +280,8 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await expect(
     region.getByRole('heading', { name: 'Collect preparation notes' }),
   ).toBeVisible();
-  await expect(region.getByLabel('Task title')).toHaveValue(
+  await expectValue(
+    region.getByLabel('Task title'),
     'Unsaved preparation title',
   );
   const readsBeforeTabs = listReads;
@@ -252,9 +293,10 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   ).toBeVisible();
   await page.getByRole('tab', { name: 'Tasks', exact: true }).click();
   await expect(page.getByRole('tabpanel', { name: 'Tasks' })).toBeVisible();
-  await expect(search).toHaveValue('review archive');
-  await expect(status).toHaveValue('todo');
-  await expect(region.getByLabel('Task title')).toHaveValue(
+  await expectValue(search, 'review archive');
+  await expectValue(status, 'todo');
+  await expectValue(
+    region.getByLabel('Task title'),
     'Unsaved preparation title',
   );
   expect(listReads).toBe(readsBeforeTabs);
@@ -298,7 +340,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
   await expect(page.getByLabel('Search Tasks')).toBeVisible();
-  await page.getByLabel('Task status').selectOption('all');
+  await selectOption(page.getByLabel('Task status'), 'all');
   const classicNavigation = page.getByRole('navigation', { name: 'Tasks' });
   const classicListed = classicNavigation
     .getByRole('listitem')
@@ -324,7 +366,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   ).toBe('rgb(75, 54, 181)');
 
   const classicResponsible = page.getByLabel('Task responsible member');
-  await expect(classicResponsible).toHaveValue('all');
+  await expectValue(classicResponsible, 'all');
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await expect(classicResponsible).toBeFocused();
@@ -338,13 +380,13 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
       (element) => getComputedStyle(element).outlineColor,
     ),
   ).toBe('rgb(75, 54, 181)');
-  await classicResponsible.selectOption({ label: 'Unassigned' });
+  await selectOption(classicResponsible, { label: 'Unassigned' });
   await expect(classicListed).toHaveText(['Review archive notes']);
-  await classicResponsible.selectOption({ label: 'All' });
+  await selectOption(classicResponsible, { label: 'All' });
 
   const classicDates = page.getByLabel('Task date filter');
-  await expect(classicDates).toHaveValue('all');
-  await classicDates.selectOption({ label: 'Date range' });
+  await expectValue(classicDates, 'all');
+  await selectOption(classicDates, { label: 'Date range' });
   const classicFrom = page.getByLabel('Task date from');
   await classicDates.focus();
   await page.keyboard.press('Tab');
@@ -362,7 +404,7 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await classicFrom.fill('2026-11-01');
   await expect(classicListed).toHaveText(['Archive preparation evidence']);
   await page.getByRole('button', { name: 'Reset date filter' }).click();
-  await expect(classicDates).toHaveValue('all');
+  await expectValue(classicDates, 'all');
   await expect(classicListed).toHaveText([
     'Collect preparation notes',
     'Archive preparation evidence',

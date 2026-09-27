@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -122,9 +123,10 @@ for (const frame of ['classic', 'prisme'] as const) {
     await page.goto(`/?frame=${frame}#projects`);
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#projects`);
@@ -175,7 +177,7 @@ for (const frame of ['classic', 'prisme'] as const) {
     await expect(
       page.getByRole('heading', { name: reopenedProject.title }),
     ).toBeVisible();
-    await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+    await expectValue(page.getByLabel('Task title'), taskDraft);
 
     await search.fill('no matching project');
     await expect(
@@ -187,9 +189,10 @@ for (const frame of ['classic', 'prisme'] as const) {
 
     await search.fill('new');
     await page.getByLabel('Project title').fill(createdProject.title);
-    await page
-      .getByLabel('Client', { exact: true })
-      .selectOption(createdProject.clientAccountId);
+    await selectOption(
+      page.getByLabel('Client', { exact: true }),
+      createdProject.clientAccountId,
+    );
     await page
       .getByRole('button', { name: 'Create Project', exact: true })
       .click();

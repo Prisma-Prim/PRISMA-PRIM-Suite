@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ApplicationShell, type ApplicationSection } from './ApplicationShell';
+import { Select } from '../presentation/Select';
 
 const sections: ApplicationSection[] = [
   {
@@ -97,3 +98,54 @@ describe.each(['classic', 'prisme'] as const)(
     });
   },
 );
+
+it('dismisses the Company menu before letting Escape close navigation', () => {
+  window.history.replaceState(null, '', '/?frame=prisme#clients');
+  render(
+    <ApplicationShell
+      context={{
+        actorName: 'Director',
+        workspaceName: 'Workspace',
+        companyName: 'Company',
+      }}
+      sections={sections}
+      companyContext={
+        <>
+          <label htmlFor="navigation-company">Active Company</label>
+          <Select
+            id="navigation-company"
+            value="company"
+            options={[{ value: 'company', label: 'Company' }]}
+            onValueChange={() => undefined}
+          />
+        </>
+      }
+      userArea={null}
+    >
+      Classic heading
+    </ApplicationShell>,
+  );
+  const navigationToggle = screen.getByRole('button', {
+    name: 'Open navigation',
+  });
+  fireEvent.click(navigationToggle);
+  const companySelect = screen.getByRole('combobox', {
+    name: 'Active Company',
+  });
+  fireEvent.click(companySelect);
+  expect(screen.getByRole('listbox', { name: 'Active Company' })).toBeVisible();
+
+  fireEvent.keyDown(companySelect, { key: 'Escape' });
+
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  expect(navigationToggle).toHaveAccessibleName('Close navigation');
+  expect(navigationToggle).toHaveAttribute('aria-expanded', 'true');
+  expect(companySelect).toHaveFocus();
+
+  fireEvent.keyDown(companySelect, { key: 'Escape' });
+
+  expect(navigationToggle).toHaveAccessibleName('Open navigation');
+  expect(navigationToggle).toHaveAttribute('aria-expanded', 'false');
+  expect(navigationToggle).toHaveFocus();
+  window.history.replaceState(null, '', '/');
+});

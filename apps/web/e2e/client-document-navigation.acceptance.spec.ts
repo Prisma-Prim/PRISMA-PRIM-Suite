@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -90,7 +91,7 @@ test('navigates between one Client dossier and its working Documents through the
     .click();
 
   await expect(page.locator('#documents')).toBeFocused();
-  await expect(documentFilter).toHaveValue(clientName);
+  await expectValue(documentFilter, clientName);
   await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
   await expect(
     workingDocuments.getByRole('button', { name: documentTitle, exact: true }),
@@ -135,7 +136,7 @@ test('navigates between one Client dossier and its working Documents through the
     .getByRole('button', { name: 'Open Client working Documents' })
     .click();
   await expect(page.locator('#documents')).toBeFocused();
-  await expect(documentFilter).toHaveValue(clientName);
+  await expectValue(documentFilter, clientName);
   await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
   await expect(
     workingDocuments.getByRole('button', { name: documentTitle, exact: true }),
@@ -217,7 +218,7 @@ async function selectCompany(
 ): Promise<void> {
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await company.selectOption({ label: 'PRISMA-PRIM' });
+  await selectOption(company, { label: 'PRISMA-PRIM' });
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }

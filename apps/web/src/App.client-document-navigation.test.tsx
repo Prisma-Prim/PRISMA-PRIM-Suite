@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   fireEvent,
   render,
@@ -285,10 +286,11 @@ async function uniteFirstIntoSecond(dossier: HTMLElement) {
   );
   const form = await screen.findByRole('form', { name: 'Confirm union' });
   for (const select of within(form).getAllByRole('combobox'))
-    fireEvent.change(select, { target: { value: secondClient.id } });
-  fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-    target: { value: 'Reviewed both saved dossiers.' },
-  });
+    changeValue(select, secondClient.id);
+  changeValue(
+    within(form).getByLabelText('Reason for this union'),
+    'Reviewed both saved dossiers.',
+  );
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
   fireEvent.submit(form);
@@ -366,9 +368,10 @@ describe('Client dossier and working Document navigation through App', () => {
       }),
     );
     const reversal = await screen.findByRole('form', { name: 'Reverse union' });
-    fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-      target: { value: 'Restore the separate dossiers deliberately.' },
-    });
+    changeValue(
+      within(reversal).getByLabelText('Reason for reversal'),
+      'Restore the separate dossiers deliberately.',
+    );
     fireEvent.click(within(reversal).getByRole('checkbox'));
     fireEvent.click(
       within(reversal).getByRole('button', { name: 'Reverse union' }),
@@ -451,13 +454,13 @@ describe('Client dossier and working Document navigation through App', () => {
     );
 
     const company = screen.getByLabelText('Active Company', { exact: true });
-    fireEvent.change(company, { target: { value: companyB.id } });
+    changeValue(company, companyB.id);
     await waitFor(() =>
       expect(documentTitles()).toEqual([
         expect.stringContaining('Other Company questionnaire'),
       ]),
     );
-    fireEvent.change(company, { target: { value: companyA.id } });
+    changeValue(company, companyA.id);
 
     await waitFor(() => expect(documentTitles()).toHaveLength(2));
     expect(documentFilter()).toHaveValue('');
@@ -479,16 +482,18 @@ describe('Client dossier and working Document navigation through App', () => {
     const access = await screen.findByRole('region', {
       name: 'Company access',
     });
-    fireEvent.change(within(access).getByLabelText('Workspace member'), {
-      target: { value: membershipId },
-    });
-    fireEvent.change(
-      within(access).getByLabelText('Company', { exact: true }),
-      { target: { value: companyA.id } },
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      membershipId,
     );
-    fireEvent.change(within(access).getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      companyA.id,
+    );
+    changeValue(
+      within(access).getByLabelText('Access bundle'),
+      'director-client',
+    );
     fireEvent.click(
       within(access).getByRole('button', { name: 'Grant access' }),
     );

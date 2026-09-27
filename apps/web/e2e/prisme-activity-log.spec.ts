@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -229,9 +230,10 @@ test('opens the Request of a commercial event from the Classic Activity Log with
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/?frame=classic#activity');
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   const activity = page.getByRole('region', { name: 'Activity Log' });
   const openRequest = activity
     .getByRole('listitem')

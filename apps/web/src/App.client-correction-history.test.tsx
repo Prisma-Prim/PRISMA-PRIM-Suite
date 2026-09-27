@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -434,9 +435,7 @@ describe('Client correction history', () => {
       screen.getByRole('button', { name: 'Correct Client dossier' }),
     );
     const form = screen.getByRole('form', { name: 'Correct Client dossier' });
-    fireEvent.change(within(form).getByLabelText('Telephone'), {
-      target: { value: '+373 60 000 348' },
-    });
+    changeValue(within(form).getByLabelText('Telephone'), '+373 60 000 348');
     fireEvent.click(
       within(form).getByRole('button', { name: 'Save correction' }),
     );
@@ -510,9 +509,10 @@ describe('Client correction history', () => {
     await openDossier(dossier.displayName);
     const history = await expandHistory();
     expect(await listedCorrections(history)).toHaveLength(1);
-    fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-      target: { value: companyB.id },
-    });
+    changeValue(
+      screen.getByLabelText('Active Company', { exact: true }),
+      companyB.id,
+    );
     await screen.findByText('Clients in Company B');
     expect(screen.queryByText(/Corrected by/u)).not.toBeInTheDocument();
     expect(

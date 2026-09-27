@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   fireEvent,
   render,
@@ -227,7 +228,7 @@ async function openProjectWithTaskDraft() {
     await within(projects).findByRole('button', { name: projectRow }),
   );
   await within(projectsRegion()).findByRole('article', { name: project.title });
-  fireEvent.change(await waitFor(taskTitle), { target: { value: taskDraft } });
+  changeValue(await waitFor(taskTitle), taskDraft);
 }
 async function openLinkedDocument() {
   const panel = within(projectsRegion()).getByRole('region', {
@@ -330,7 +331,7 @@ describe('Project detail and working Document navigation through App', () => {
     await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
 
     const company = screen.getByLabelText('Active Company', { exact: true });
-    fireEvent.change(company, { target: { value: companyB.id } });
+    changeValue(company, companyB.id);
     // Each Company mounts its own Documents section; query it afresh.
     await waitFor(() =>
       expect(
@@ -341,7 +342,7 @@ describe('Project detail and working Document navigation through App', () => {
     );
     expect(within(projectsRegion()).queryByRole('article')).toBeNull();
     transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
-    fireEvent.change(company, { target: { value: companyA.id } });
+    changeValue(company, companyA.id);
 
     await waitFor(() =>
       expect(
@@ -365,16 +366,18 @@ describe('Project detail and working Document navigation through App', () => {
     await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
 
     const access = screen.getByRole('region', { name: 'Company access' });
-    fireEvent.change(within(access).getByLabelText('Workspace member'), {
-      target: { value: membershipId },
-    });
-    fireEvent.change(
-      within(access).getByLabelText('Company', { exact: true }),
-      { target: { value: companyA.id } },
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      membershipId,
     );
-    fireEvent.change(within(access).getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      companyA.id,
+    );
+    changeValue(
+      within(access).getByLabelText('Access bundle'),
+      'director-client',
+    );
     fireEvent.click(
       within(access).getByRole('button', { name: 'Grant access' }),
     );

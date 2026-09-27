@@ -73,7 +73,7 @@
   font: inherit;
 }
 
-.tariff-versions button {
+.tariff-versions button:not(:where(.shared-select__trigger)) {
   width: fit-content;
   max-width: 100%;
   padding: 0.65rem 0.85rem;
@@ -122,7 +122,7 @@
   text-transform: uppercase;
 }
 
-.tariff-versions button:focus-visible,
+.tariff-versions button:not(:where(.shared-select__trigger)):focus-visible,
 .tariff-versions input:focus-visible,
 .tariff-versions select:focus-visible {
   outline: 3px solid

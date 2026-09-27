@@ -5,6 +5,7 @@ import {
   actorContextFixture,
   operationalHomeFixture,
 } from './actor-context.fixture';
+import { selectOption } from './select-option';
 
 export const firstId = '24100000-0000-4000-8000-000000000001';
 export const secondId = '24100000-0000-4000-8000-000000000002';
@@ -218,10 +219,11 @@ export async function chooseUnion(page: Page) {
   const form = unionForm(page);
   await expect(form).toBeVisible();
   for (const select of await form.getByRole('combobox').all())
-    await select.selectOption(secondId);
-  await form
-    .getByRole('combobox', { name: 'Telephone', exact: true })
-    .selectOption(firstId);
+    await selectOption(select, secondId);
+  await selectOption(
+    form.getByRole('combobox', { name: 'Telephone', exact: true }),
+    firstId,
+  );
   await form
     .getByLabel('Reason for this union')
     .fill('Reviewed both saved dossiers and all affected Companies.');

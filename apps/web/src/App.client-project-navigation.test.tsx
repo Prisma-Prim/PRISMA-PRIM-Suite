@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   fireEvent,
   render,
@@ -247,9 +248,7 @@ async function openProjectWithTaskDraft() {
   await within(projectsRegion()).findByRole('article', {
     name: historicalProject.title,
   });
-  fireEvent.change(await waitFor(taskTitle), {
-    target: { value: taskDraft },
-  });
+  changeValue(await waitFor(taskTitle), taskDraft);
 }
 async function openDossier(displayName: string) {
   navigateTo('Clients');
@@ -272,10 +271,11 @@ async function uniteFirstIntoSecond(dossier: HTMLElement) {
   );
   const form = await screen.findByRole('form', { name: 'Confirm union' });
   for (const select of within(form).getAllByRole('combobox'))
-    fireEvent.change(select, { target: { value: secondClient.id } });
-  fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-    target: { value: 'Reviewed both saved dossiers.' },
-  });
+    changeValue(select, secondClient.id);
+  changeValue(
+    within(form).getByLabelText('Reason for this union'),
+    'Reviewed both saved dossiers.',
+  );
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
   fireEvent.submit(form);
@@ -293,9 +293,10 @@ async function reverseUnion(dossier: HTMLElement) {
     }),
   );
   const reversal = await screen.findByRole('form', { name: 'Reverse union' });
-  fireEvent.change(within(reversal).getByLabelText('Reason for reversal'), {
-    target: { value: 'Restore the separate dossiers deliberately.' },
-  });
+  changeValue(
+    within(reversal).getByLabelText('Reason for reversal'),
+    'Restore the separate dossiers deliberately.',
+  );
   fireEvent.click(within(reversal).getByRole('checkbox'));
   fireEvent.click(
     within(reversal).getByRole('button', { name: 'Reverse union' }),
@@ -420,14 +421,14 @@ describe('Client dossier and Project navigation through App', () => {
     await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
 
     const company = screen.getByLabelText('Active Company', { exact: true });
-    fireEvent.change(company, { target: { value: companyB.id } });
+    changeValue(company, companyB.id);
     await waitFor(() =>
       expect(projectRows()).toEqual([
         `${otherCompanyProject.title} Client: ${otherCompanyProject.clientDisplayName}`,
       ]),
     );
     expect(projectSearch()).toHaveValue('');
-    fireEvent.change(company, { target: { value: companyA.id } });
+    changeValue(company, companyA.id);
 
     await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
     expect(projectSearch()).toHaveValue('');

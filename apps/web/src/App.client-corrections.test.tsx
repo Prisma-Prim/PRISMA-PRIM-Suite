@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -71,9 +72,7 @@ async function openCorrection(client = dossier.displayName) {
   await waitFor(() => expect(correctionForm()).toBeVisible());
 }
 function changeTelephone(value = 'Private draft') {
-  fireEvent.change(within(correctionForm()).getByLabelText('Telephone'), {
-    target: { value },
-  });
+  changeValue(within(correctionForm()).getByLabelText('Telephone'), value);
 }
 function submit() {
   fireEvent.click(
@@ -144,9 +143,9 @@ describe('Client correction ownership', () => {
       );
       await openCorrection();
       changeTelephone();
-      fireEvent.change(
+      changeValue(
         within(correctionForm()).getByLabelText('Contact name'),
-        { target: { value: 'Private Contact' } },
+        'Private Contact',
       );
       submit();
       await screen.findByText(
@@ -155,9 +154,9 @@ describe('Client correction ownership', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Close correction' }));
       expect(commands[0]?.key).toBeTruthy();
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session') {
@@ -181,9 +180,10 @@ describe('Client correction ownership', () => {
                 }),
           },
         };
-        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-          target: { value: 'Refresh authority' },
-        });
+        changeValue(
+          screen.getByLabelText('Find a shared Client'),
+          'Refresh authority',
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       }
       if (boundary !== 'Client')
@@ -209,9 +209,9 @@ describe('Client correction ownership', () => {
         within(correctionForm()).getByLabelText('Contact name'),
       ).toHaveValue('Saved Contact');
       changeTelephone();
-      fireEvent.change(
+      changeValue(
         within(correctionForm()).getByLabelText('Contact name'),
-        { target: { value: 'Private Contact' } },
+        'Private Contact',
       );
       submit();
       await waitFor(() => expect(commands).toHaveLength(2));
@@ -272,9 +272,9 @@ describe('Client correction ownership', () => {
       submit();
       await waitFor(() => expect(release).toBeDefined());
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session') {

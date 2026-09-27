@@ -11,6 +11,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
+import { Select } from '../presentation/Select';
 import { serviceCatalogueCopy as copy } from './service-catalogue.copy';
 import './service-catalogue.css';
 
@@ -564,7 +565,11 @@ export function ServiceCatalogueWorkspace({
                 }
               />
             </div>
-            <button type="submit" disabled={pending}>
+            <button
+              className="service-catalogue-action service-catalogue-action--primary"
+              type="submit"
+              disabled={pending}
+            >
               {copy.defineService}
             </button>
           </form>
@@ -612,24 +617,22 @@ export function ServiceCatalogueWorkspace({
               <label htmlFor={fieldId + '-definition'}>
                 {copy.offeredDefinition}
               </label>
-              <select
+              <Select
                 id={fieldId + '-definition'}
                 value={offeringForm.serviceDefinitionId}
-                onChange={(event) =>
+                placeholder={copy.selectDefinition}
+                options={definitionChoices.map((definition) => ({
+                  value: definition.id,
+                  label: `${definition.code} — ${definition.name}`,
+                }))}
+                onValueChange={(value) =>
                   setOfferingForm((current) => ({
                     ...current,
-                    serviceDefinitionId: event.target.value,
+                    serviceDefinitionId: value,
                   }))
                 }
                 required
-              >
-                <option value="">{copy.selectDefinition}</option>
-                {definitionChoices.map((definition) => (
-                  <option key={definition.id} value={definition.id}>
-                    {definition.code} — {definition.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             {definitions.kind === 'ready' && definitionChoices.length === 0 ? (
               <p>{copy.noDefinitionsToOffer}</p>
@@ -650,7 +653,11 @@ export function ServiceCatalogueWorkspace({
               />
             </div>
             <small>{copy.commercialLabelHelp}</small>
-            <button type="submit" disabled={pending}>
+            <button
+              className="service-catalogue-action service-catalogue-action--primary"
+              type="submit"
+              disabled={pending}
+            >
               {copy.offerService}
             </button>
           </form>
@@ -723,7 +730,11 @@ function CatalogueList<T extends { id: string }>({
     return (
       <>
         <p role="alert">{error}</p>
-        <button type="button" onClick={onReload}>
+        <button
+          className="service-catalogue-action service-catalogue-action--secondary"
+          type="button"
+          onClick={onReload}
+        >
           {retry}
         </button>
       </>
@@ -743,6 +754,7 @@ function CatalogueList<T extends { id: string }>({
       {state.olderPage === 'error' ? <p role="alert">{olderError}</p> : null}
       {nextCursor ? (
         <button
+          className="service-catalogue-action service-catalogue-action--secondary"
           type="button"
           disabled={state.olderPage === 'loading'}
           onClick={() => onLoadOlder(nextCursor)}

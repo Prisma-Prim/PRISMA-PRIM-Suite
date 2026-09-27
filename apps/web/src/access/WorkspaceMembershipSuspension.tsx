@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { workspaceMembershipSuspensionCopy as copy } from './workspace-membership-suspension.copy';
 
@@ -196,25 +197,20 @@ export function WorkspaceMembershipSuspension({
           <label htmlFor="workspace-access-suspension-member">
             {copy.memberLabel}
           </label>
-          <select
+          <Select
             id="workspace-access-suspension-member"
             value={workspaceMembershipId}
             disabled={disabled || pending}
-            onChange={(event) => {
+            placeholder={copy.selectMember}
+            options={members.map((member) => ({
+              value: member.workspaceMembershipId,
+              label: member.label,
+            }))}
+            onValueChange={(value) => {
               reset();
-              setWorkspaceMembershipId(event.target.value);
+              setWorkspaceMembershipId(value);
             }}
-          >
-            <option value="">{copy.selectMember}</option>
-            {members.map((member) => (
-              <option
-                key={member.workspaceMembershipId}
-                value={member.workspaceMembershipId}
-              >
-                {member.label}
-              </option>
-            ))}
-          </select>
+          />
           <button
             type="button"
             className={isPrisme ? 'company-access-secondary-action' : undefined}

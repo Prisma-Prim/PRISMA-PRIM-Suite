@@ -1,4 +1,5 @@
 import { useId, type FormEvent } from 'react';
+import { Select } from '../presentation/Select';
 import {
   readTaskPriority,
   taskPriorities,
@@ -33,6 +34,7 @@ export function TaskFieldsForm({
   onChange: (draft: Draft) => void;
   onSubmit: (event: FormEvent) => void;
 }) {
+  const fieldId = useId();
   const unavailableMember =
     current?.assignee &&
     members &&
@@ -55,33 +57,35 @@ export function TaskFieldsForm({
           }
         />
       </label>
-      <label>
+      <label htmlFor={fieldId + '-assignee'}>
         {copy.assignee}
-        <select
+        <Select
+          id={fieldId + '-assignee'}
           value={draft.assigneeMembershipId}
           disabled={disabled}
-          onChange={(event) =>
+          placeholder={copy.unassigned}
+          options={[
+            ...(unavailableMember && current?.assignee
+              ? [
+                  {
+                    value: current.assignee.workspaceMembershipId,
+                    label: current.assignee.displayLabel,
+                    disabled: true,
+                  },
+                ]
+              : []),
+            ...(members ?? []).map((member) => ({
+              value: member.workspaceMembershipId,
+              label: member.displayLabel,
+            })),
+          ]}
+          onValueChange={(value) =>
             onChange({
               ...draft,
-              assigneeMembershipId: event.target.value,
+              assigneeMembershipId: value,
             })
           }
-        >
-          <option value="">{copy.unassigned}</option>
-          {unavailableMember && current.assignee && (
-            <option value={current.assignee.workspaceMembershipId} disabled>
-              {current.assignee.displayLabel}
-            </option>
-          )}
-          {members?.map((member) => (
-            <option
-              key={member.workspaceMembershipId}
-              value={member.workspaceMembershipId}
-            >
-              {member.displayLabel}
-            </option>
-          ))}
-        </select>
+        />
       </label>
       {members?.length === 0 && <p>{copy.noMembers}</p>}
       {unavailableMember && <p>{copy.memberUnavailable}</p>}
@@ -98,24 +102,23 @@ export function TaskFieldsForm({
           }
         />
       </label>
-      <label>
+      <label htmlFor={fieldId + '-priority'}>
         {copy.priority}
-        <select
+        <Select
+          id={fieldId + '-priority'}
           value={draft.priority}
           disabled={disabled}
-          onChange={(event) =>
+          options={taskPriorities.map((priority) => ({
+            value: priority,
+            label: copy.priorities[priority],
+          }))}
+          onValueChange={(value) =>
             onChange({
               ...draft,
-              priority: readTaskPriority(event.target.value),
+              priority: readTaskPriority(value),
             })
           }
-        >
-          {taskPriorities.map((priority) => (
-            <option key={priority} value={priority}>
-              {copy.priorities[priority]}
-            </option>
-          ))}
-        </select>
+        />
       </label>
       <button type="submit" disabled={disabled}>
         {editing ? copy.save : copy.create}

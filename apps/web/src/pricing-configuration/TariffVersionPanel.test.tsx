@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -327,9 +328,10 @@ function renderPanel(props: { actor?: ActorContext } = {}) {
 }
 
 async function chooseOffering(offeringId = OFFERING_A) {
-  fireEvent.change(await screen.findByLabelText('Company Service Offering'), {
-    target: { value: offeringId },
-  });
+  changeValue(
+    await screen.findByLabelText('Company Service Offering'),
+    offeringId,
+  );
 }
 
 type DraftInput = {
@@ -363,7 +365,7 @@ function fillDraft(draft: DraftInput) {
   ];
   for (const [name, field] of fields) {
     const value = draft[name];
-    if (value !== undefined) fireEvent.change(field(), { target: { value } });
+    if (value !== undefined) changeValue(field(), value);
   }
 }
 
@@ -428,15 +430,15 @@ describe('TariffVersionPanel', () => {
       screen.getByText('Loading Company Service Offerings…'),
     ).toBeInTheDocument();
     const select = await screen.findByLabelText('Company Service Offering');
+    fireEvent.click(select);
     expect(
-      within(select)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      screen.getAllByRole('option').map((option) => option.textContent),
     ).toEqual([
       'Choose an offering',
       'Illustrative service A (ILLUSTRATIVE-SERVICE-A)',
       'Illustrative service B (ILLUSTRATIVE-SERVICE-B) — Illustrative label B',
     ]);
+    fireEvent.click(select);
     expect(
       screen.getByText(/^Choose an offering to see and publish/u),
     ).toBeInTheDocument();
@@ -568,11 +570,12 @@ describe('TariffVersionPanel', () => {
     // closed choice.
     for (const label of ['Unit amount', 'Tax rate percent'])
       expect(screen.getByLabelText(label)).toHaveAttribute('type', 'text');
+    const currency = screen.getByLabelText('Currency');
+    fireEvent.click(currency);
     expect(
-      within(screen.getByLabelText('Currency'))
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+      screen.getAllByRole('option').map((option) => option.textContent),
     ).toEqual(['Choose a currency', 'MDL', 'EUR', 'RON', 'USD']);
+    fireEvent.click(currency);
     fillDraft({
       ...validDraft,
       unit: '  unit  ',
