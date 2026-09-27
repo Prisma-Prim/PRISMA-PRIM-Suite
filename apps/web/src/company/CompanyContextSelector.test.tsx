@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { CompanyContextSelector } from './CompanyContextSelector';
@@ -24,6 +24,36 @@ describe('CompanyContextSelector', () => {
       ),
     ).toBeVisible();
     expect(screen.queryByText(/Register a Company/)).not.toBeInTheDocument();
+  });
+
+  it('does not reload the active Company when it is selected again', () => {
+    const onSelect = vi.fn(async () => undefined);
+    render(
+      <CompanyContextSelector
+        actor={{
+          ...memberActor,
+          activeCompany: { id: 'company-a', displayName: 'Company A' },
+        }}
+        state={{
+          status: 'ready',
+          cardinality: 'many',
+          companies: [
+            { id: 'company-a', displayName: 'Company A' },
+            { id: 'company-b', displayName: 'Company B' },
+          ],
+          selection: { status: 'idle' },
+        }}
+        onSelect={onSelect}
+      />,
+    );
+
+    const select = screen.getByRole('combobox', { name: 'Active Company' });
+    fireEvent.click(select);
+    fireEvent.click(screen.getByRole('option', { name: 'Company A' }));
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(select).toHaveFocus();
+    expect(select).toHaveAttribute('aria-expanded', 'false');
   });
 });
 

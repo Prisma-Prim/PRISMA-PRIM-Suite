@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -238,15 +239,12 @@ function keyOf(init: RequestInit | undefined): string | undefined {
   return headers['idempotency-key'];
 }
 function fillCapture() {
-  fireEvent.change(screen.getByLabelText(copy.originalText), {
-    target: { value: 'Exact original text' },
-  });
-  fireEvent.change(screen.getByLabelText(copy.opportunityTitle), {
-    target: { value: 'Qualify the request' },
-  });
-  fireEvent.change(screen.getByLabelText(copy.nextAction), {
-    target: { value: 'Call back' },
-  });
+  changeValue(screen.getByLabelText(copy.originalText), 'Exact original text');
+  changeValue(
+    screen.getByLabelText(copy.opportunityTitle),
+    'Qualify the request',
+  );
+  changeValue(screen.getByLabelText(copy.nextAction), 'Call back');
 }
 function expectCaptureDraft() {
   expect(screen.getByLabelText(copy.originalText)).toHaveValue(
@@ -258,13 +256,9 @@ function expectCaptureDraft() {
   expect(screen.getByLabelText(copy.nextAction)).toHaveValue('Call back');
 }
 async function chooseClient() {
-  fireEvent.change(screen.getByLabelText(copy.clientSearch), {
-    target: { value: 'Synthetic' },
-  });
+  changeValue(screen.getByLabelText(copy.clientSearch), 'Synthetic');
   fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
-  fireEvent.change(await screen.findByLabelText(copy.existingClient), {
-    target: { value: 'client-1' },
-  });
+  changeValue(await screen.findByLabelText(copy.existingClient), 'client-1');
 }
 const clientSearchPath = 'GET /api/clients/search?query=Synthetic';
 const clientChoices = () =>
@@ -280,9 +274,7 @@ async function editOpenedRequest(draft: string) {
   fireEvent.click(
     await screen.findByRole('button', { name: copy.editNextAction }),
   );
-  fireEvent.change(screen.getByLabelText(copy.nextAction), {
-    target: { value: draft },
-  });
+  changeValue(screen.getByLabelText(copy.nextAction), draft);
 }
 async function settleEffects() {
   await act(async () => {
@@ -847,9 +839,7 @@ describe('CommercialIntakeWorkspace requested Request', () => {
     const view = renderWorkspace();
     view.update({ clientRestriction: firstDossier });
     await waitFor(() => expect(listedSubjects()).toEqual(['Dossier Request']));
-    fireEvent.change(screen.getByLabelText(copy.filterLabel), {
-      target: { value: 'Dossier' },
-    });
+    changeValue(screen.getByLabelText(copy.filterLabel), 'Dossier');
 
     view.update({ requestedRequest: requested(1) });
     expect(

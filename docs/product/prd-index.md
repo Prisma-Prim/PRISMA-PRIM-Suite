@@ -12,14 +12,15 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 
 ## 2. Source and process authorities
 
-| Authority                                                                                | Purpose                                                                        |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-213 and interview evidence map  |
-| [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                             |
-| [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets |
-| [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                          |
-| [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                     |
-| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Pinned question-to-answer provenance and historical coverage states            |
+| Authority                                                                                | Purpose                                                                                                         |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [Consolidated Product Decision Record](consolidated-product-decision-record.md)          | Approved reconciliation rationale, DEC-001–DEC-213 and interview evidence map                                   |
+| [Product Vision PRD](product-vision-prd.md)                                              | Product position, roadmap, outcomes and boundaries                                                              |
+| [Specification and Vertical Ticketing Standard](specification-and-ticketing-standard.md) | PRD readiness, tracker hierarchy and Matt Pocock-style vertical tracer bullets                                  |
+| [Iurie Business Interview Agent Handoff](iurie-business-interview-agent-handoff.md)      | Read-only brief for Iurie's Codex interview assistant                                                           |
+| [Iurie Business Question Bank — Romanian](iurie-business-question-bank-ro.md)            | Business evidence questions and structured answer contract                                                      |
+| [Iurie Interview Coverage Matrix](iurie-business-answer-coverage.md)                     | Pinned question-to-answer provenance and historical coverage states                                             |
+| [First-tenant Substitution Register](first-tenant-substitution-register.md)              | Provisional MVP stand-ins, the real configuration or document that replaces each, and Iurie's recorded decision |
 
 ## 3. Evidence and non-canonical reconciliation
 

@@ -254,7 +254,9 @@
   color: var(--shell-muted);
   font-size: 0.7rem;
 }
-.prisme-shell .client-workspace button:focus-visible,
+.prisme-shell
+  .client-workspace
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .prisme-shell .client-workspace input:focus-visible {
   outline: 2px solid var(--shell-focus);
   outline-offset: 3px;

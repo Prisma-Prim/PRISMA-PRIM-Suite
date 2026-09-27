@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -107,9 +108,10 @@ test('filters loaded Working Documents locally and resets at the Company boundar
   await page.goto('/?frame=prisme#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(firstCompany.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    firstCompany.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
 
@@ -157,7 +159,8 @@ test('filters loaded Working Documents locally and resets at the Company boundar
   await workspace.getByLabel('Title', { exact: true }).fill('Unsaved title');
   await filter.fill('hidden while detail stays open');
   await expect(workspace.locator('article')).toBeVisible();
-  await expect(workspace.getByLabel('Title', { exact: true })).toHaveValue(
+  await expectValue(
+    workspace.getByLabel('Title', { exact: true }),
     'Unsaved title',
   );
 
@@ -177,12 +180,11 @@ test('filters loaded Working Documents locally and resets at the Company boundar
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
-  await expect(page.getByLabel('Filter working Documents')).toHaveValue(
+  await expectValue(
+    page.getByLabel('Filter working Documents'),
     'hidden while detail stays open',
   );
-  await expect(page.getByLabel('Title', { exact: true })).toHaveValue(
-    'Unsaved title',
-  );
+  await expectValue(page.getByLabel('Title', { exact: true }), 'Unsaved title');
   await page.getByLabel('Filter working Documents').focus();
   await expect(page.getByLabel('Filter working Documents')).toBeFocused();
   expect(
@@ -203,13 +205,14 @@ test('filters loaded Working Documents locally and resets at the Company boundar
     fullPage: true,
   });
 
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(secondCompany.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    secondCompany.id,
+  );
   await expect(
     page.getByRole('button', { name: secondCompanyDocument.title }),
   ).toBeVisible();
-  await expect(page.getByLabel('Filter working Documents')).toHaveValue('');
+  await expectValue(page.getByLabel('Filter working Documents'), '');
   await expect(page.getByLabel('Title', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Unsaved title')).toHaveCount(0);
   expect(listReads).toEqual([firstCompany.id, secondCompany.id]);

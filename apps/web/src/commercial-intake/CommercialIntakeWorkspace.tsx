@@ -10,6 +10,7 @@ import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import {
   OpportunityResponsible,
   type ResponsibleCandidate,
@@ -1367,20 +1368,18 @@ export function CommercialIntakeWorkspace({
                       <label htmlFor="commercial-intake-client">
                         {copy.existingClient}
                       </label>
-                      <select
+                      <Select
                         id="commercial-intake-client"
                         value={form.clientAccountId}
-                        onChange={(event) =>
-                          updateField('clientAccountId', event.target.value)
+                        placeholder={copy.noClient}
+                        options={clientSearch.clients.map((client) => ({
+                          value: client.id,
+                          label: client.displayName,
+                        }))}
+                        onValueChange={(value) =>
+                          updateField('clientAccountId', value)
                         }
-                      >
-                        <option value="">{copy.noClient}</option>
-                        {clientSearch.clients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.displayName}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </>
                   ) : (
                     <p>{copy.clientSearchEmpty}</p>

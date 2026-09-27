@@ -1,3 +1,4 @@
+import { Select } from '../presentation/Select';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 
 /** An eligible member: a membership identifier and a label, never email. */
@@ -136,26 +137,24 @@ function ResponsibleChoice({
       {others.length === 0 ? (
         <p>{copy.responsibleNoOtherMember}</p>
       ) : (
-        <label>
-          {copy.responsibleChoice}
-          <select
+        <>
+          <label htmlFor="commercial-intake-responsible-choice">
+            {copy.responsibleChoice}
+          </label>
+          <Select
+            id="commercial-intake-responsible-choice"
             value={edit.selection}
-            onChange={(event) => editor.onSelect(event.target.value)}
+            placeholder={
+              currentEligible ? undefined : copy.responsibleSelectMember
+            }
+            options={edit.members.map((member) => ({
+              value: member.workspaceMembershipId,
+              label: member.displayLabel,
+            }))}
+            onValueChange={editor.onSelect}
             disabled={saving || edit.kind === 'uncertain'}
-          >
-            {currentEligible ? null : (
-              <option value="">{copy.responsibleSelectMember}</option>
-            )}
-            {edit.members.map((member) => (
-              <option
-                key={member.workspaceMembershipId}
-                value={member.workspaceMembershipId}
-              >
-                {member.displayLabel}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </>
       )}
       {saving ? <p role="status">{copy.responsibleSaving}</p> : null}
       <div className="commercial-intake-next-action-actions">

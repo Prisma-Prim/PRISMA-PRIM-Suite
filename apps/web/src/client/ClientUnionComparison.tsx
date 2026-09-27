@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent, type Ref } from 'react';
+import { Select } from '../presentation/Select';
 import {
   unionFields,
   type UnionComparison,
@@ -183,22 +184,25 @@ export function ClientUnionComparison({
       >
         <fieldset disabled={busy || capacityExceeded}>
           <legend>{copy.decisions}</legend>
-          <label>
+          <label htmlFor={id + '-canonical'}>
             {copy.canonical}
-            <select
+            <Select
+              id={id + '-canonical'}
               required
               value={canonicalClientId}
-              onChange={(event) => setCanonical(event.target.value)}
-              aria-invalid={attempted && !canonicalClientId}
-              aria-describedby={errorId}
-            >
-              <option value="">{copy.choose}</option>
-              {comparison.clients.map((client, index) => (
-                <option key={client.id} value={client.id}>
-                  {copy.source({ number: index + 1, name: client.displayName })}
-                </option>
-              ))}
-            </select>
+              disabled={busy || capacityExceeded}
+              placeholder={copy.choose}
+              invalid={attempted && !canonicalClientId}
+              describedBy={errorId}
+              options={comparison.clients.map((client, index) => ({
+                value: client.id,
+                label: copy.source({
+                  number: index + 1,
+                  name: client.displayName,
+                }),
+              }))}
+              onValueChange={setCanonical}
+            />
           </label>
           <p className="client-union-choice-hint">{copy.chooseFields}</p>
           <div className="client-union-field-choices">
@@ -210,30 +214,30 @@ export function ClientUnionComparison({
               const valueId = source ? id + '-' + field + '-value' : undefined;
               return (
                 <div key={field}>
-                  <label>
+                  <label htmlFor={id + '-' + field}>
                     {labels[field]}
-                    <select
+                    <Select
+                      id={id + '-' + field}
                       required
                       value={fields[field]}
-                      onChange={(event) =>
-                        setFields({ ...fields, [field]: event.target.value })
+                      disabled={busy || capacityExceeded}
+                      placeholder={copy.choose}
+                      options={comparison.clients.map((client, index) => ({
+                        value: client.id,
+                        label: copy.source({
+                          number: index + 1,
+                          name: client.displayName,
+                        }),
+                      }))}
+                      onValueChange={(value) =>
+                        setFields({ ...fields, [field]: value })
                       }
-                      aria-invalid={attempted && !fields[field]}
-                      aria-describedby={
+                      invalid={attempted && !fields[field]}
+                      describedBy={
                         [valueId, errorId].filter(Boolean).join(' ') ||
                         undefined
                       }
-                    >
-                      <option value="">{copy.choose}</option>
-                      {comparison.clients.map((client, index) => (
-                        <option key={client.id} value={client.id}>
-                          {copy.source({
-                            number: index + 1,
-                            name: client.displayName,
-                          })}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   {source && (
                     <p id={valueId} className="client-union-retained-value">

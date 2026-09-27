@@ -1,4 +1,5 @@
 import type { ActorContext } from '../access-types';
+import { Select } from '../presentation/Select';
 import type { CompanyContextState } from '../production-shell/useProductionShellContext';
 import { companyContextCopy as copy } from './company-context.copy';
 
@@ -50,22 +51,20 @@ export function CompanyContextSelector({
       {state.status === 'ready' && state.companies.length > 0 && (
         <div className="company-context-control">
           <label htmlFor="active-company-context">{copy.activeCompany}</label>
-          <select
+          <Select
             id="active-company-context"
             title={actor.activeCompany?.displayName ?? copy.chooseCompany}
             value={actor.activeCompany?.id ?? ''}
             disabled={state.selection.status === 'pending'}
-            onChange={(event) => {
-              if (event.target.value) void onSelect(event.target.value);
+            placeholder={copy.chooseCompany}
+            options={state.companies.map((company) => ({
+              value: company.id,
+              label: company.displayName,
+            }))}
+            onValueChange={(value) => {
+              if (value) void onSelect(value);
             }}
-          >
-            <option value="">{copy.chooseCompany}</option>
-            {state.companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.displayName}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       )}
     </section>

@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -157,9 +158,10 @@ async function attachReview() {
   );
 }
 function revalidateAuthority() {
-  fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-    target: { value: 'Check current authority' },
-  });
+  changeValue(
+    screen.getByLabelText('Find a shared Client'),
+    'Check current authority',
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
 }
 
@@ -194,9 +196,9 @@ describe('duplicate review ownership through App', () => {
       await screen.findByText(attachedCopy);
       await waitFor(() => expect(state.activityReads).toBeGreaterThan(1));
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session' || boundary === 'identity') {
@@ -256,9 +258,9 @@ describe('duplicate review ownership through App', () => {
       await attachReview();
       await waitFor(() => expect(release).toBeDefined());
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session') {
@@ -374,9 +376,10 @@ describe('duplicate review ownership through App', () => {
     await attachReview();
     await screen.findByText(attachedCopy);
     fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
-    fireEvent.change(screen.getByLabelText('Client display name'), {
-      target: { value: 'Another rejected proposal' },
-    });
+    changeValue(
+      screen.getByLabelText('Client display name'),
+      'Another rejected proposal',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
     await screen.findByText(/No Client was created or changed/);
     await waitFor(() =>

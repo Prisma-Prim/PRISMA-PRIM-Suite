@@ -131,7 +131,9 @@
   color: var(--shell-muted);
 }
 
-.prisme-shell .working-documents--prisme button,
+.prisme-shell
+  .working-documents--prisme
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .working-documents--prisme a {
   width: fit-content;
   max-width: 100%;
@@ -150,16 +152,22 @@
   text-decoration: none;
 }
 
-.prisme-shell .working-documents--prisme button {
+.prisme-shell
+  .working-documents--prisme
+  button:not(:where(.shared-select__trigger)) {
   cursor: pointer;
 }
 
-.prisme-shell .working-documents--prisme button:disabled {
+.prisme-shell
+  .working-documents--prisme
+  button:not(:where(.shared-select__trigger)):disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.prisme-shell .working-documents--prisme button:focus-visible,
+.prisme-shell
+  .working-documents--prisme
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .prisme-shell .working-documents--prisme input:focus-visible,
 .prisme-shell .working-documents--prisme textarea:focus-visible,
 .prisme-shell .working-documents--prisme select:focus-visible,

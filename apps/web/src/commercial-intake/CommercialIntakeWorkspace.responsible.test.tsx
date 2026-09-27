@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { changeValue, selectOptionLabels } from '../test/select-option';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 
@@ -228,11 +229,8 @@ async function openRequest() {
   );
   return screen.findByRole('article', { name: 'Solicitare audit request-1' });
 }
-function responsibleSelect(): HTMLSelectElement {
-  const select = screen.getByLabelText(copy.responsibleChoice);
-  if (!(select instanceof HTMLSelectElement))
-    throw new Error('Expected the responsible actor choice.');
-  return select;
+function responsibleSelect(): HTMLElement {
+  return screen.getByRole('combobox', { name: copy.responsibleChoice });
 }
 function keyOf(init: RequestInit | undefined): string | undefined {
   const headers = init?.headers;
@@ -290,14 +288,11 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
 
     // The recorded member is preselected; only labels are offered.
     expect(responsibleSelect()).toHaveValue(ada.workspaceMembershipId);
-    expect(
-      within(responsibleSelect())
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual([adaCandidate.displayLabel, ionCandidate.displayLabel]);
-    fireEvent.change(responsibleSelect(), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    expect(selectOptionLabels(responsibleSelect())).toEqual([
+      adaCandidate.displayLabel,
+      ionCandidate.displayLabel,
+    ]);
+    changeValue(responsibleSelect(), ion.workspaceMembershipId);
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -393,9 +388,7 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     expect(
       screen.getByRole('button', { name: copy.saveResponsible }),
     ).toBeDisabled();
-    fireEvent.change(responsibleSelect(), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(responsibleSelect(), ion.workspaceMembershipId);
     expect(
       screen.getByRole('button', { name: copy.saveResponsible }),
     ).toBeEnabled();
@@ -417,9 +410,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -466,9 +460,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.responsibleReloadList }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -495,9 +490,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -532,9 +528,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -563,9 +560,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -617,9 +615,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
 
     view.selectActor(reader);
     expect(screen.getByRole('alert')).toHaveTextContent(copy.responsibleDenied);
@@ -695,9 +694,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    fireEvent.change(await screen.findByLabelText(copy.responsibleChoice), {
-      target: { value: ion.workspaceMembershipId },
-    });
+    changeValue(
+      await screen.findByLabelText(copy.responsibleChoice),
+      ion.workspaceMembershipId,
+    );
 
     view.update({
       requestedRequest: { clientRequestId: 'request-2', requestId: 1 },
