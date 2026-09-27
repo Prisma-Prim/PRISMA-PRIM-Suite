@@ -1,4 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+} from '../test/render-with-interface-locale';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Select } from './Select';

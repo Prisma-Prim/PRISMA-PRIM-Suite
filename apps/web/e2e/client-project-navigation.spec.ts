@@ -850,6 +850,13 @@ for (const frame of ['classic', 'prisme'] as const) {
     await expect(attentionRows).toHaveCount(5);
     await expect(attentionRows.nth(0)).toContainText(collect.title);
     await expect(attentionRows.nth(0)).toContainText('Overdue by 7 days');
+    await expect(attentionRows.nth(0).locator('time')).toHaveText(
+      'Sep 20, 2026',
+    );
+    await expect(attentionRows.nth(0).locator('time')).toHaveAttribute(
+      'datetime',
+      '2026-09-20',
+    );
     await expect(attentionRows.nth(1)).toContainText('Approve audit plan');
     await expect(attentionRows.nth(1)).toContainText('Critical');
     await expect(attentionRows.nth(1)).toContainText('No due date');
@@ -868,13 +875,13 @@ for (const frame of ['classic', 'prisme'] as const) {
       throw new Error('Expected the attention queue and Company summary.');
     expect(attentionBox.y).toBeLessThan(cardsBox.y);
     await expect(summary).toContainText(
-      `Counted on 2026-09-27 from the records you can open in ${company.displayName}.`,
+      `Counted on Sep 27, 2026 from the records you can open in ${company.displayName}.`,
     );
     await expect(clientsCard).toHaveAccessibleDescription(
       `Clients with an active relationship with ${company.displayName}`,
     );
     await expect(overdueCard).toHaveAccessibleDescription(
-      'Open Tasks due before 2026-09-27 in Projects you can open',
+      'Open Tasks due before Sep 27, 2026 in Projects you can open',
     );
     const boxes = await Promise.all(
       [clientsCard, projectsCard, overdueCard].map(async (target) => {

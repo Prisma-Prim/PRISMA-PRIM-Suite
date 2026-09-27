@@ -7,6 +7,15 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: 'http://127.0.0.1:4173',
+          localStorage: [{ name: 'prisma-prim.interface-locale', value: 'en' }],
+        },
+      ],
+    },
   },
   projects: [
     {

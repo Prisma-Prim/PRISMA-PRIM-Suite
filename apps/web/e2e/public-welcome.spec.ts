@@ -27,6 +27,19 @@ test('invited visitors reach sign-in from a focused public welcome', async ({
   ).toBe(true);
 
   await page.keyboard.press('Tab');
+  const language = page.getByRole('combobox', { name: 'Interface language' });
+  await expect(language).toBeFocused();
+  expect(
+    await language.evaluate(
+      (element) => getComputedStyle(element).outlineStyle,
+    ),
+  ).not.toBe('none');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(language).toBeFocused();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await page.keyboard.press('Tab');
   const signIn = page.getByRole('link', { name: 'Continue to sign in' });
   await expect(signIn).toBeFocused();
   expect(
@@ -37,7 +50,7 @@ test('invited visitors reach sign-in from a focused public welcome', async ({
     fullPage: true,
   });
 
-  await signIn.click();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole('alert')).toHaveText(
     'Sign in is required to access this workspace.',
