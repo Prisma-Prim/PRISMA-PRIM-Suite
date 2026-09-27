@@ -1,6 +1,6 @@
 import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -688,13 +688,18 @@ test('changes the responsible actor of a Request within its Company through the 
 
     await intake.getByRole('button', { name: 'Change responsible' }).click();
     const choice = intake.getByLabel('New responsible actor', { exact: true });
-    await expect(choice).toHaveValue(
+    await expectValue(
+      choice,
       requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID'),
     );
-    await expect(
-      choice.locator('option', { hasText: /^Ion Popa · [0-9A-Z]+$/u }),
-    ).toHaveCount(1);
-    await choice.selectOption(colleague);
+    const choices = await openSelect(choice);
+    const colleagueOption = choices.getByRole('option', {
+      name: /^Ion Popa · [0-9A-Z]+$/u,
+    });
+    await expect(colleagueOption).toHaveCount(1);
+    await expect(colleagueOption).toHaveAttribute('data-value', colleague);
+    await colleagueOption.click();
+    await expectValue(choice, colleague);
     await expect(
       intake.getByRole('button', { name: 'Edit next action' }),
     ).toBeDisabled();
