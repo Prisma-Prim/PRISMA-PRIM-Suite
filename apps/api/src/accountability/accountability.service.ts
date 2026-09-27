@@ -323,6 +323,38 @@ export class AccountabilityService {
       });
   }
 
+  // Recorded but projected by no Activity read surface. The metadata is a
+  // correlation trace only: identifiers, line count, provenance and currency
+  // are safe; copied labels, quantities, rates and amounts stay out of it.
+  async recordPricingSnapshotCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    pricingSnapshotId: string;
+    opportunityId: string;
+    lineCount: number;
+    currency: TariffCurrency;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(pricingConfigurationEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'pricing_snapshot.created',
+        pricingSnapshotId: input.pricingSnapshotId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          pricingSnapshotId: input.pricingSnapshotId,
+          opportunityId: input.opportunityId,
+          lineCount: input.lineCount,
+          provenance: PRICING_PROVENANCE,
+          currency: input.currency,
+        },
+      });
+  }
+
   /**
    * Commercial events are projected only inside the server-validated active
    * Company that owns them, for an actor holding the opt-in reader bundle who
