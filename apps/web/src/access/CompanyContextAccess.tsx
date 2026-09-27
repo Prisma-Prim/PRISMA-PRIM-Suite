@@ -35,6 +35,7 @@ type AssignmentBundle =
   | 'service-catalogue'
   | 'pricing-configuration'
   | 'pricing-user'
+  | 'pricing-adjustment'
   | 'commercial-activity-reader'
   | 'project'
   | 'project-approver';
@@ -52,6 +53,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'pricing-user': '/company-pricing-user-assignments',
+  'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
@@ -470,6 +472,10 @@ export function CompanyContextAccess({
               },
               { value: 'pricing-user', label: copy.pricingUserBundle },
               {
+                value: 'pricing-adjustment',
+                label: copy.pricingAdjustmentBundle,
+              },
+              {
                 value: 'commercial-activity-reader',
                 label: copy.commercialActivityReaderBundle,
               },
@@ -498,6 +504,7 @@ export function CompanyContextAccess({
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
+                value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
@@ -525,6 +532,9 @@ export function CompanyContextAccess({
             <p>{copy.documentApproverPrerequisites}</p>
           )}
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {bundle === 'pricing-adjustment' && (
+            <p>{copy.pricingAdjustmentPrerequisites}</p>
+          )}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy.currentStateLabel}:{' '}
@@ -605,6 +615,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
     'pricing-user': copy.pricingUserBundle,
+    'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,

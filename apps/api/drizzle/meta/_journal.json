@@ -281,6 +281,13 @@
       "when": 1790505866622,
       "tag": "0039_project_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790512546187,
+      "tag": "0040_pricing_adjustments",
+      "breakpoints": true
     }
   ]
 }

@@ -122,5 +122,10 @@ export interface CreatePricingSnapshotCommand {
     readonly offeringId: string;
     readonly tariffVersionNumber: number;
     readonly quantity: string;
+    readonly adjustment?: {
+      readonly type: 'FIXED_NET_DISCOUNT';
+      readonly netReduction: string;
+      readonly reason: string;
+    };
   }[];
 }

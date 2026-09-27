@@ -35,6 +35,7 @@ const actor: ActorContext = {
       'commercial.pricing.calculate',
       'commercial.pricing.snapshot.read',
     ],
+    pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
   },
 };
 
@@ -95,6 +96,12 @@ function snapshot(
         lineNet: '308.63',
         rawLineTax: '38.0849420',
         lineTax: '38.08',
+        adjustment: null,
+        netReduction: '0.00',
+        taxReduction: '0.00',
+        adjustedLineNet: '308.63',
+        adjustedRawLineTax: '38.0849420',
+        adjustedLineTax: '38.08',
       },
       {
         position: 2,
@@ -113,6 +120,12 @@ function snapshot(
         lineNet: '0.01',
         rawLineTax: '0.0000000',
         lineTax: '0.00',
+        adjustment: null,
+        netReduction: '0.00',
+        taxReduction: '0.00',
+        adjustedLineNet: '0.01',
+        adjustedRawLineTax: '0.0000000',
+        adjustedLineTax: '0.00',
       },
     ],
     subtotal: '308.64',
@@ -122,6 +135,50 @@ function snapshot(
     committedAt: '2026-09-26T10:00:01.000Z',
     provenance: 'ILLUSTRATIVE',
     provisional: true,
+  };
+}
+
+function adjustedSnapshot() {
+  const value = snapshot();
+  return {
+    ...value,
+    lines: [
+      {
+        ...value.lines[0],
+        adjustment: {
+          type: 'FIXED_NET_DISCOUNT',
+          netReduction: '8.63',
+          taxReduction: '1.06',
+          reason: 'Exact synthetic adjustment reason',
+          appliedByWorkspaceMembershipId: 'membership-adjuster',
+          appliedAt: '2026-09-26T10:00:00.000Z',
+        },
+        netReduction: '8.63',
+        taxReduction: '1.06',
+        adjustedLineNet: '300.00',
+        adjustedRawLineTax: '37.0200000',
+        adjustedLineTax: '37.02',
+      },
+      {
+        ...value.lines[1],
+        adjustment: {
+          type: 'FIXED_NET_DISCOUNT',
+          netReduction: '0.01',
+          taxReduction: '0.00',
+          reason: 'Full synthetic line adjustment',
+          appliedByWorkspaceMembershipId: 'membership-adjuster',
+          appliedAt: '2026-09-26T10:00:00.000Z',
+        },
+        netReduction: '0.01',
+        taxReduction: '0.00',
+        adjustedLineNet: '0.00',
+        adjustedRawLineTax: '0.0000000',
+        adjustedLineTax: '0.00',
+      },
+    ],
+    subtotal: '300.00',
+    taxTotal: '37.02',
+    total: '337.02',
   };
 }
 
@@ -211,6 +268,22 @@ async function selectWorkedExample(): Promise<void> {
   }
 }
 
+async function enterFirstAdjustment(): Promise<void> {
+  const firstOffering = (
+    await screen.findByLabelText('Illustrative service A')
+  ).closest('fieldset');
+  if (!firstOffering) throw new Error('Expected the first offering group.');
+  fireEvent.click(
+    within(firstOffering).getByLabelText('Apply a fixed net discount'),
+  );
+  fireEvent.change(within(firstOffering).getByLabelText('Net reduction'), {
+    target: { value: '8.63' },
+  });
+  fireEvent.change(within(firstOffering).getByLabelText('Adjustment reason'), {
+    target: { value: 'Exact synthetic adjustment reason' },
+  });
+}
+
 function postCalls(
   fetchMock: ReturnType<typeof stubApi>,
   opportunityId = OPPORTUNITY_A,
@@ -284,6 +357,114 @@ describe('PricingSnapshotPanel', () => {
       expect.stringContaining(`${snapshotPath(OPPORTUNITY_A)}/${saved.id}`),
       expect.anything(),
     );
+  });
+
+  it('submits and reopens the exact adjustment trace for an authorized actor', async () => {
+    const saved = adjustedSnapshot();
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(saved, { status: 201 }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}/${saved.id}`]: () =>
+        Response.json(saved),
+    });
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(await screen.findByText('337.02 EUR')).toBeInTheDocument();
+    expect(postCalls(fetchMock)).toEqual([
+      {
+        body: {
+          pricingRuleVersionNumber: 3,
+          lines: [
+            {
+              offeringId: OFFERING_A,
+              tariffVersionNumber: 4,
+              quantity: '2.5',
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '8.63',
+                reason: 'Exact synthetic adjustment reason',
+              },
+            },
+            { offeringId: OFFERING_B, tariffVersionNumber: 2, quantity: '1' },
+          ],
+        },
+        idempotencyKey: expect.any(String),
+      },
+    ]);
+    expect(
+      screen.getByText('Original net and tax: 308.63 + 38.08 EUR'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Net reduction: 8.63 EUR')).toBeInTheDocument();
+    expect(screen.getByText('Tax reduction: 1.06 EUR')).toBeInTheDocument();
+    expect(
+      screen.getByText('Adjustment reason: Exact synthetic adjustment reason'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Adjusted net and tax: 300.00 + 37.02 EUR'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'Adjustment applied by Workspace Membership: membership-adjuster',
+      ),
+    ).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close snapshot' }));
+    fireEvent.click(screen.getByRole('button', { name: /Reopen snapshot/u }));
+    expect(
+      await screen.findByText(
+        'Adjustment reason: Exact synthetic adjustment reason',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('does not expose adjustment entry without the captured adjustment permission', async () => {
+    if (!actor.activeCompany) throw new Error('Expected an active Company.');
+    const pricingOnlyActor: ActorContext = {
+      ...actor,
+      activeCompany: {
+        ...actor.activeCompany,
+        pricingAdjustmentPermissions: [],
+      },
+    };
+    stubApi(baseRoutes());
+    renderPanel(OPPORTUNITY_A, pricingOnlyActor);
+
+    fireEvent.click(await screen.findByLabelText('Illustrative service A'));
+
+    expect(
+      screen.queryByLabelText('Apply a fixed net discount'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Net reduction')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Adjustment reason'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps invalid adjustment values for correction and does not submit them', async () => {
+    const fetchMock = stubApi(baseRoutes());
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reduction = screen.getByLabelText('Net reduction');
+    const reason = screen.getByLabelText('Adjustment reason');
+    fireEvent.change(reduction, { target: { value: '0.00' } });
+    fireEvent.change(reason, { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Correct the highlighted values and try again.',
+    );
+    expect(reduction).toHaveValue('0.00');
+    expect(reason).toHaveValue('   ');
+    expect(reduction).toHaveAttribute('aria-invalid', 'true');
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toHaveLength(0);
   });
 
   it('limits a calculation to 20 selected offerings and lets the user replace one', async () => {
@@ -731,12 +912,19 @@ describe('PricingSnapshotPanel', () => {
     });
     renderPanel();
     await selectWorkedExample();
+    await enterFirstAdjustment();
     fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
     expect(
       await screen.findByText(/outcome is uncertain/u),
     ).toBeInTheDocument();
     expect(screen.getAllByLabelText('Quantity')[0]).toHaveValue('2.5');
     expect(screen.getAllByLabelText('Quantity')[0]).toBeDisabled();
+    expect(screen.getByLabelText('Net reduction')).toHaveValue('8.63');
+    expect(screen.getByLabelText('Net reduction')).toBeDisabled();
+    expect(screen.getByLabelText('Adjustment reason')).toHaveValue(
+      'Exact synthetic adjustment reason',
+    );
+    expect(screen.getByLabelText('Adjustment reason')).toBeDisabled();
     fireEvent.click(
       screen.getByRole('button', { name: 'Retry the same calculation' }),
     );
