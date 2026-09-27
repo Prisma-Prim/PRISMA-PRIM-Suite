@@ -89,7 +89,9 @@ export function isProjectStatus(value: unknown): value is ProjectStatus {
   return PROJECT_STATUSES.some((status) => status === value);
 }
 
-export function isClosedProjectStatus(status: ProjectStatus): boolean {
+export function isClosedProjectStatus(
+  status: ProjectStatus,
+): status is 'completed' | 'cancelled' {
   return status === 'completed' || status === 'cancelled';
 }
 
