@@ -1,4 +1,5 @@
 import { ProjectDocuments } from './ProjectDocuments';
+import { ProjectLifecycle, ProjectStatusLabel } from './ProjectLifecycle';
 import { ProjectResponsible } from './ProjectResponsible';
 import { ProjectTasks, type RequestedTask } from './ProjectTasks';
 import {
@@ -21,6 +22,11 @@ import { ApplicationPresentation } from '../production-shell/application-present
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { taskCopy } from './task.copy';
+import {
+  isProjectStatus,
+  type ProjectStatus,
+} from './project-lifecycle-response';
+import type { ResponsibleMember } from './project-responsible-response';
 import './project.css';
 
 type ProjectView = {
@@ -30,7 +36,7 @@ type ProjectView = {
   clientDossierId?: string;
   clientDisplayName: string;
   title: string;
-  status: 'preparatory';
+  status: ProjectStatus;
   createdAt: string;
 };
 type ClientChoice = { id: string; displayName: string };
@@ -110,6 +116,13 @@ export function ProjectWorkspace({
   const [clientAccountId, setClientAccountId] = useState('');
   const [feedback, setFeedback] = useState('');
   const [pending, setPending] = useState(false);
+  /** The opened Project's responsible member as its own section last read it. */
+  const [responsibleRead, setResponsibleRead] = useState<{
+    projectId: string;
+    responsible: ResponsibleMember | null;
+  } | null>(null);
+  /** The detail re-read after a confirmed lifecycle change; never a write. */
+  const detailRefresh = useRef<AbortController | null>(null);
   /** The detail read or registration in flight; never a list read. */
   const request = useRef<AbortController | null>(null);
   /**
@@ -273,7 +286,9 @@ export function ProjectWorkspace({
   // started under it.
   useEffect(() => {
     request.current?.abort();
+    detailRefresh.current?.abort();
     setSelected(null);
+    setResponsibleRead(null);
     setFilter({ kind: 'text', query: '' });
     setFeedback('');
     setPending(false);
@@ -287,6 +302,7 @@ export function ProjectWorkspace({
     return () => {
       request.current?.abort();
       listRequest.current?.abort();
+      detailRefresh.current?.abort();
     };
   }, [
     actor.workspaceId,
@@ -393,6 +409,51 @@ export function ProjectWorkspace({
     });
   }, [requestedProject, load.kind, pending]);
 
+  /**
+   * Re-reads the opened Project after a confirmed lifecycle change or an
+   * explicit reload, so its header status and list row follow the section.
+   * The opened Project and every draft below it stay in place.
+   */
+  async function reloadDetail(projectId: string) {
+    detailRefresh.current?.abort();
+    const controller = new AbortController();
+    detailRefresh.current = controller;
+    const startedUnder = identityRevision.current;
+    if (!companyId) return;
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (controller.signal.aborted) return;
+      const result = await api.request<unknown>(
+        `/projects/${encodeURIComponent(projectId)}`,
+        { companyContextId: companyId, signal: controller.signal },
+      );
+      if (controller.signal.aborted) return;
+      if (result.status === 'unauthorized') {
+        await identity.rejectSession();
+        return;
+      }
+      if (result.status === 'forbidden') {
+        deny();
+        return;
+      }
+      if (
+        result.status !== 'ok' ||
+        !isProject(result.value) ||
+        result.value.id !== projectId
+      )
+        throw new Error('Refresh failed');
+      const project = result.value;
+      if (identityRevision.current === startedUnder)
+        setSelected((current) =>
+          current?.project.id === project.id
+            ? { ...current, project, identityRevision: startedUnder }
+            : current,
+        );
+      refreshRow(project, startedUnder);
+    } catch {
+      if (!controller.signal.aborted) setFeedback(copy.error);
+    }
+  }
   async function run(
     path: string,
     projectRequest: ProjectRequest = { kind: 'open' },
@@ -577,7 +638,6 @@ export function ProjectWorkspace({
           </p>
         </>
       )}
-      <p className="project-warning">{copy.warning}</p>
       {load.kind === 'loading' && <p role="status">{copy.loading}</p>}
       {load.kind === 'denied' && <p role="alert">{copy.denied}</p>}
       {load.kind === 'error' && <p role="alert">{copy.error}</p>}
@@ -635,6 +695,9 @@ export function ProjectWorkspace({
                     {copy.clientPrefix} {project.clientDisplayName}
                   </span>
                 </button>
+                <p className="project-list-status">
+                  <ProjectStatusLabel status={project.status} />
+                </p>
                 <ProjectRegistrationTime registeredAt={project.createdAt} />
               </li>
             ))}
@@ -646,6 +709,7 @@ export function ProjectWorkspace({
               className={isPrisme ? 'project-registration' : undefined}
               onSubmit={submit}
             >
+              <p className="project-warning">{copy.warning}</p>
               <label>
                 {copy.projectTitle}
                 <input
@@ -705,7 +769,9 @@ export function ProjectWorkspace({
         >
           {isPrisme ? (
             <div className="project-detail-overview">
-              <p className="prisme-eyebrow">{copy.status}</p>
+              <p className="project-detail-status">
+                <ProjectStatusLabel status={selected.project.status} />
+              </p>
               <h3 id="selected-project-title">{selected.project.title}</h3>
               <p className="project-detail-client">
                 {copy.clientPrefix} {selected.project.clientDisplayName}
@@ -713,6 +779,9 @@ export function ProjectWorkspace({
               <ProjectRegistrationTime
                 registeredAt={selected.project.createdAt}
               />
+              {selected.project.status === 'preparatory' && (
+                <p className="project-warning">{copy.warning}</p>
+              )}
               {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={dossierTarget}
@@ -723,13 +792,18 @@ export function ProjectWorkspace({
           ) : (
             <>
               <h3 id="selected-project-title">{selected.project.title}</h3>
-              <p>{copy.status}</p>
+              <p className="project-detail-status">
+                <ProjectStatusLabel status={selected.project.status} />
+              </p>
               <p className="project-detail-client">
                 {copy.clientPrefix} {selected.project.clientDisplayName}
               </p>
               <ProjectRegistrationTime
                 registeredAt={selected.project.createdAt}
               />
+              {selected.project.status === 'preparatory' && (
+                <p className="project-warning">{copy.warning}</p>
+              )}
               {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={dossierTarget}
@@ -738,11 +812,28 @@ export function ProjectWorkspace({
               )}
             </>
           )}
+          <ProjectLifecycle
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            responsible={
+              responsibleRead?.projectId === selected.project.id
+                ? responsibleRead.responsible
+                : undefined
+            }
+            onProjectChanged={() => reloadDetail(selected.project.id)}
+            onActivityRecorded={onActivityRecorded}
+          />
           <ProjectResponsible
             actor={actor}
             identity={identity}
             projectId={selected.project.id}
             onActivityRecorded={onActivityRecorded}
+            onResponsibleRead={(projectId, responsible) =>
+              setResponsibleRead(
+                responsible === undefined ? null : { projectId, responsible },
+              )
+            }
           />
           {isPrisme && (
             <div className="project-detail-tabs" role="tablist">
@@ -854,7 +945,7 @@ function isProject(value: unknown): value is ProjectView {
       (key) => typeof value[key] === 'string',
     ) &&
     isTimestamp(value.createdAt) &&
-    value.status === 'preparatory' &&
+    isProjectStatus(value.status) &&
     (value.clientDossierId === undefined ||
       typeof value.clientDossierId === 'string')
   );

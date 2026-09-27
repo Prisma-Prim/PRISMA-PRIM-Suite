@@ -105,6 +105,10 @@ markup and behavior. The Project's original Client, active Company and preparati
 meaning remain explicit. Document registration, correction and Project–Document
 association behavior are unchanged by this presentation slice.
 
+The Project cards and the detail header show the lifecycle status as the `/ui-baseline`
+Status pill, and detail mounts the `ProjectLifecycle` section above the responsible
+member in both frames (#406).
+
 `ProjectTasks` and `TaskPresentation` continue to own the existing manual Task list,
 detail, draft, mutation, reload and history contracts. Prisme adds only local cards,
 fine borders, action hierarchy and visible focus treatment. It does not reinterpret

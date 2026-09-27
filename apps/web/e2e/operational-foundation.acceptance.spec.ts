@@ -104,9 +104,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
     projects.getByRole('heading', { name: projectTitle, exact: true }),
   ).toBeVisible();
   await expect(
-    projects.getByText(
-      'Preparation only. This record does not authorize work to start.',
-    ),
+    projects
+      .getByRole('article', { name: projectTitle })
+      .getByText(
+        'Preparation only. This record does not authorize work to start.',
+      ),
   ).toBeVisible();
   await expectNoHorizontalOverflow(page);
 

@@ -12,6 +12,7 @@ import type {
   COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
+  COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
 } from './company-permissions.js';
 import type {
   CompanyCommercialIntakePermissionSetVersion,
@@ -33,7 +34,8 @@ export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
   | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
   | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
-  | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL;
+  | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+  | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
 
 interface CompanyContextAssignmentRecordBase {
   id: string;
@@ -47,7 +49,8 @@ export type CompanyContextAssignmentRecord =
       bundle:
         | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
         | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
-        | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL;
+        | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
+        | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     })
   | (CompanyContextAssignmentRecordBase & {

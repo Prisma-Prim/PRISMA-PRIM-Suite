@@ -216,7 +216,7 @@ a Project may have many such Documents. Workspace, responsible Company and exact
 stored original Client identity must match at both ends. Linking does not
 reinterpret a Client union, rewrite original references, create a Version or
 change the draft, confidentiality or unverified external-reference status.
-The Project remains preparatory. The association is working-material organization,
+Linking or removal never changes the Project lifecycle (Project/Task PRD section 23). The association is working-material organization,
 not accepted evidence, a complete start dossier or operational approval.
 
 An explicit link changes unlinked to linked; an explicit removal changes linked

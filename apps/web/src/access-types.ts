@@ -21,6 +21,11 @@ export interface ActorContext {
     projectPermissions?: Array<
       'project.read' | 'project.create' | 'project.update'
     >;
+    projectApproverPermissions?: Array<
+      'project.lifecycle.transition' | 'project.close'
+    >;
+    projectApproverPermissionAssignmentId?: string;
+    projectApproverPermissionSetVersion?: 'v1';
     commercialIntakePermissions?: Array<
       | 'commercial.request.read'
       | 'commercial.request.create'

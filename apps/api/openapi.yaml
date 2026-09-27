@@ -1365,6 +1365,204 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentVersionConflict'
+  /api/company-project-approver-assignments:
+    post:
+      operationId: grantCompanyProjectApproverAssignment
+      summary: Grant the opt-in Company Project Approver v1 bundle to an active Workspace Membership
+      description: >-
+        Captures v1, which contains exactly `project.lifecycle.transition` and
+        `project.close`. It confers no Company context, Project read, Client
+        read or any other authority. Exactly one
+        `company_project_approver_assignment.granted` event is recorded per
+        actual state change; a repeat, a replay or a denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active captured Company Project Approver v1 assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectApproverAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-project-approver-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyProjectApproverAssignment
+      summary: Revoke the Company Project Approver assignment
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked captured Company Project Approver assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectApproverAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/projects/{projectId}/lifecycle:
+    get:
+      operationId: readProjectLifecycle
+      summary: Read a Project's lifecycle status, start declaration and transition history
+      description: >-
+        Project/Task PRD section 23. Requires exactly the Project detail read;
+        authority, visibility and the read share one repeatable-read snapshot,
+        and every refusal returns the status and safe body of
+        `GET /api/projects/{projectId}`. A superseded original Client stays
+        readable with `mutable: false`. Reading writes nothing.
+      tags:
+        - Project
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: The current lifecycle and at most the 50 most recent transitions, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectLifecycle'
+        '400':
+          description: The Project id is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks current Project read or Client read in a valid active Company, exactly as for Project detail.
+        '404':
+          description: No Project with a readable original Client is visible in the active Company, exactly as for Project detail.
+  /api/projects/{projectId}/eligible-start-exception-members:
+    get:
+      operationId: listEligibleStartExceptionMembers
+      summary: List the members who may be named to complete a start exception
+      description: >-
+        The Project/Task PRD section 21 eligibility, offered only to a live
+        Company Project Approver `project.lifecycle.transition` holder with
+        Project read and Client read. It reveals no email, count of excluded
+        members or exclusion reason. A superseded original Client returns the
+        detail's safe not-found.
+      tags:
+        - Project
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: The eligible members, by label.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - members
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectLifecycleMember'
+        '400':
+          description: The Project id is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks the live Approver, Project read or Client read.
+        '404':
+          description: The Project is not visible, or its original Client is superseded.
+  /api/projects/{projectId}/lifecycle-transitions:
+    post:
+      operationId: transitionProjectLifecycle
+      summary: Activate, hold or resume a Project at its observed lifecycle revision
+      description: >-
+        Requires a live Company Project Approver v1 `project.lifecycle.transition`
+        plus the Project detail read and Client read. One transaction takes the
+        per-actor key lock, checks live authority and visibility, resolves an
+        exact replay, locks the original Client identity then relationship and
+        the Project row, and checks the revision and state. A commit writes the
+        status and revision, the transition record (plus the immutable start
+        declaration on activation), one durable receipt, exactly one
+        `project.lifecycle.changed` event and the original Client
+        operational-use fence advance. An exact replay first revalidates live
+        authority and visibility and then returns the recorded body without any
+        new write. No transition changes a Task, Document association, Request
+        or responsible member. `complete` and `cancel` are not accepted in this
+        slice.
+      tags:
+        - Project
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectLifecycleTransitionCommand'
+      responses:
+        '200':
+          description: The committed transition, or the recorded result of an exact replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectLifecycleReceipt'
+        '400':
+          description: >-
+            The key is missing; the action is unknown (including `complete` and
+            `cancel`); a body key is missing or unknown; an identifier, reason,
+            date or declaration value is malformed; a start exception is
+            present with no missing item or absent with one; or the completion
+            member is unavailable.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks the live Approver, Project read or Client read.
+        '404':
+          description: The Project is not visible, or its original Client is superseded.
+        '409':
+          description: >-
+            `project_lifecycle_conflict` for a stale or exhausted revision,
+            `project_lifecycle_transition_invalid` for a source status the
+            action does not leave, `project_responsible_required` for an
+            activation without a responsible member, or a plain conflict when
+            the Idempotency-Key was already used for another Project, action or
+            body. Nothing is written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProjectLifecycleConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
   /api/operational-home:
     get:
       operationId: readOperationalHome
@@ -1459,6 +1657,13 @@ components:
     DocumentId:
       in: path
       name: documentId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProjectId:
+      in: path
+      name: projectId
       required: true
       schema:
         type: string
@@ -1672,6 +1877,7 @@ components:
       oneOf:
         - $ref: '#/components/schemas/OrdinaryActivityLogEvent'
         - $ref: '#/components/schemas/ClientUnionProjection'
+        - $ref: '#/components/schemas/ProjectLifecycleChangedActivityEvent'
     OrdinaryActivityLogEvent:
       type: object
       additionalProperties: false
@@ -1698,6 +1904,8 @@ components:
             - company_context_assignment.revoked
             - company_director_client_assignment.granted
             - company_director_client_assignment.revoked
+            - company_project_approver_assignment.granted
+            - company_project_approver_assignment.revoked
             - client.created
             - client_company_relationship.established
             - client.corrected
@@ -1810,6 +2018,7 @@ components:
           enum:
             - Company Context Access
             - Company Director Client Access
+            - Company Project Approver
     ClientCorrectedMetadata:
       type: object
       additionalProperties: false
@@ -2163,6 +2372,7 @@ components:
           enum:
             - Company Context Access
             - Company Director Client Access
+            - Company Project Approver
         permissionSetVersion:
           type:
             - string
@@ -2314,6 +2524,382 @@ components:
           const: v1
         active:
           type: boolean
+    CompanyProjectApproverAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Project Approver
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    ProjectStatus:
+      type: string
+      description: >-
+        Project/Task PRD section 23. `preparatory`, `active` and `on_hold` are
+        open; `completed` and `cancelled` are closed. This slice reaches only
+        the three open statuses.
+      enum:
+        - preparatory
+        - active
+        - on_hold
+        - completed
+        - cancelled
+    ProjectLifecycleMember:
+      type: object
+      additionalProperties: false
+      required:
+        - workspaceMembershipId
+        - displayLabel
+      properties:
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        displayLabel:
+          type: string
+    ProjectStartDeclaration:
+      type: object
+      additionalProperties: false
+      description: Declared, not verified.
+      required:
+        - approvedOffer
+        - contractOrPrecontract
+        - projectPlan
+        - initialDocuments
+        - deadlines
+        - financialConditions
+        - risks
+      properties:
+        approvedOffer:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        contractOrPrecontract:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        projectPlan:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        initialDocuments:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        deadlines:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        financialConditions:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+        risks:
+          $ref: '#/components/schemas/ProjectStartDeclarationValue'
+    ProjectStartDeclarationValue:
+      type: string
+      enum:
+        - present
+        - missing
+    ProjectReason:
+      type: string
+      description: Trimmed text of 1–500 characters.
+      minLength: 1
+      maxLength: 500
+    ProjectStartException:
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+        - completionResponsible
+        - completionDueDate
+      properties:
+        reason:
+          $ref: '#/components/schemas/ProjectReason'
+        completionResponsible:
+          $ref: '#/components/schemas/ProjectLifecycleMember'
+        completionDueDate:
+          type: string
+          format: date
+    ProjectStart:
+      type: object
+      additionalProperties: false
+      required:
+        - declaredAt
+        - declaredBy
+        - declaration
+        - exception
+      properties:
+        declaredAt:
+          type: string
+          format: date-time
+        declaredBy:
+          $ref: '#/components/schemas/ProjectLifecycleActor'
+        declaration:
+          $ref: '#/components/schemas/ProjectStartDeclaration'
+        exception:
+          description: Null when every item is present.
+          oneOf:
+            - $ref: '#/components/schemas/ProjectStartException'
+            - type: 'null'
+    ProjectLifecycleActor:
+      type: object
+      additionalProperties: false
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+    ProjectLifecycleTransition:
+      type: object
+      required:
+        - action
+        - lifecycleRevision
+        - from
+        - to
+        - occurredAt
+        - actor
+      description: >-
+        Discriminated by `action`: `activate` adds `withStartException`,
+        `hold` and `cancel` add `reason`, `complete` adds `note`.
+      properties:
+        action:
+          type: string
+          enum:
+            - activate
+            - hold
+            - resume
+            - complete
+            - cancel
+        lifecycleRevision:
+          type: integer
+          minimum: 1
+        from:
+          $ref: '#/components/schemas/ProjectStatus'
+        to:
+          $ref: '#/components/schemas/ProjectStatus'
+        occurredAt:
+          type: string
+          format: date-time
+        actor:
+          $ref: '#/components/schemas/ProjectLifecycleActor'
+        withStartException:
+          type: boolean
+        reason:
+          $ref: '#/components/schemas/ProjectReason'
+        note:
+          $ref: '#/components/schemas/ProjectReason'
+    ProjectLifecycle:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - lifecycleRevision
+        - mutable
+        - start
+        - transitions
+      properties:
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        lifecycleRevision:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: The lifecycle version token; 0 until the first transition.
+        mutable:
+          type: boolean
+          description: True only while the original Client is active and actively related to the Company.
+        start:
+          description: Null before activation.
+          oneOf:
+            - $ref: '#/components/schemas/ProjectStart'
+            - type: 'null'
+        transitions:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ProjectLifecycleTransition'
+    ProjectLifecycleTransitionCommand:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expectedLifecycleRevision
+            - declaration
+          description: A `startException` is required when any item is missing and forbidden otherwise.
+          properties:
+            action:
+              type: string
+              const: activate
+            expectedLifecycleRevision:
+              $ref: '#/components/schemas/ProjectLifecycleRevision'
+            declaration:
+              $ref: '#/components/schemas/ProjectStartDeclaration'
+            startException:
+              type: object
+              additionalProperties: false
+              required:
+                - reason
+                - completionMembershipId
+                - completionDueDate
+              properties:
+                reason:
+                  $ref: '#/components/schemas/ProjectReason'
+                completionMembershipId:
+                  type: string
+                  format: uuid
+                completionDueDate:
+                  type: string
+                  format: date
+                  description: An exact YYYY-MM-DD date, years 0001–9999; past dates are allowed.
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expectedLifecycleRevision
+            - reason
+          properties:
+            action:
+              type: string
+              const: hold
+            expectedLifecycleRevision:
+              $ref: '#/components/schemas/ProjectLifecycleRevision'
+            reason:
+              $ref: '#/components/schemas/ProjectReason'
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expectedLifecycleRevision
+          properties:
+            action:
+              type: string
+              const: resume
+            expectedLifecycleRevision:
+              $ref: '#/components/schemas/ProjectLifecycleRevision'
+    ProjectLifecycleRevision:
+      type: integer
+      minimum: 0
+      maximum: 2147483647
+    ProjectLifecycleReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - projectId
+        - action
+        - from
+        - to
+        - lifecycleRevision
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+            - activate
+            - hold
+            - resume
+        from:
+          $ref: '#/components/schemas/ProjectStatus'
+        to:
+          $ref: '#/components/schemas/ProjectStatus'
+        lifecycleRevision:
+          type: integer
+          minimum: 1
+    ProjectLifecycleConflict:
+      type: object
+      additionalProperties: false
+      description: Carries no status, member or declaration value.
+      required:
+        - statusCode
+        - code
+        - message
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        code:
+          type: string
+          enum:
+            - project_lifecycle_conflict
+            - project_lifecycle_transition_invalid
+            - project_responsible_required
+        message:
+          type: string
+    ProjectLifecycleChangedActivityEvent:
+      type: object
+      additionalProperties: false
+      description: >-
+        Projected like `project.responsible.changed`: only in the recording
+        Company, to actors with current Project read and the original
+        Client/Company boundary. Metadata never carries a reason, declared
+        item, member, date or Task data.
+      required:
+        - id
+        - action
+        - occurredAt
+        - actor
+        - target
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          const: project.lifecycle.changed
+        occurredAt:
+          type: string
+          format: date-time
+        actor:
+          $ref: '#/components/schemas/ActivityLogInternalUserReference'
+        target:
+          type: object
+          additionalProperties: false
+          required:
+            - type
+            - projectId
+            - projectTitle
+            - companyId
+          properties:
+            type:
+              type: string
+              const: project
+            projectId:
+              type: string
+              format: uuid
+            projectTitle:
+              type: string
+            companyId:
+              type: string
+              format: uuid
+        metadata:
+          type: object
+          additionalProperties: false
+          required:
+            - lifecycleRevision
+            - from
+            - to
+          properties:
+            lifecycleRevision:
+              type: integer
+              minimum: 1
+            from:
+              $ref: '#/components/schemas/ProjectStatus'
+            to:
+              $ref: '#/components/schemas/ProjectStatus'
+            withStartException:
+              type: boolean
+              description: Present only on an activation.
     RegisterCompanyInput:
       type: object
       additionalProperties: false
@@ -3323,6 +3909,21 @@ components:
           enum:
             - v1
             - v2
+        projectApproverPermissions:
+          type: array
+          uniqueItems: true
+          description: Present only while a live captured Company Project Approver v1 assignment exists in the active Company.
+          items:
+            type: string
+            enum:
+              - project.lifecycle.transition
+              - project.close
+        projectApproverPermissionAssignmentId:
+          type: string
+          format: uuid
+        projectApproverPermissionSetVersion:
+          type: string
+          const: v1
     ClientUnionDossier:
       type: object
       additionalProperties: false

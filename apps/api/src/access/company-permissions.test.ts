@@ -11,6 +11,7 @@ import {
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
   pricingConfigurationPermissionsFor,
+  projectApproverPermissionsFor,
   pricingUserPermissionsFor,
   projectPermissionsFor,
   serviceCataloguePermissionsFor,
@@ -321,6 +322,30 @@ describe('Company Commercial Activity Reader permission sets', () => {
     'fails closed for an unsupported version: %s',
     (version) => {
       expect(commercialActivityPermissionsFor(version)).toEqual([]);
+    },
+  );
+});
+
+describe('Company Project Approver permission sets', () => {
+  it('resolves exactly the captured v1 lifecycle permissions', () => {
+    expect(projectApproverPermissionsFor('v1')).toEqual([
+      'project.lifecycle.transition',
+      'project.close',
+    ]);
+  });
+
+  it('is conferred by no Project Access version', () => {
+    for (const version of ['v1', 'v2'])
+      for (const permission of projectApproverPermissionsFor('v1')) {
+        const granted: readonly string[] = projectPermissionsFor(version);
+        expect(granted).not.toContain(permission);
+      }
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2'])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(projectApproverPermissionsFor(version)).toEqual([]);
     },
   );
 });

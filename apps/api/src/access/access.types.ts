@@ -11,6 +11,7 @@ import type {
   CompanyCommercialActivityPermission,
   CompanyOpportunityManagerPermission,
   CompanyProjectPermission,
+  CompanyProjectApproverPermission,
 } from './company-permissions.js';
 
 export interface ExternalPrincipal {
@@ -39,6 +40,9 @@ export interface ActiveCompanyContext {
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';
   projectPermissions?: CompanyProjectPermission[];
+  projectApproverPermissions?: CompanyProjectApproverPermission[];
+  projectApproverPermissionAssignmentId?: string;
+  projectApproverPermissionSetVersion?: 'v1';
   commercialIntakePermissions?: CompanyCommercialIntakePermission[];
   commercialIntakePermissionAssignmentId?: string;
   commercialIntakePermissionSetVersion?: CompanyCommercialIntakePermissionSetVersion;

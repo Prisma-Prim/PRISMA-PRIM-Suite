@@ -9,6 +9,10 @@ export type ProjectStatus = (typeof projects.$inferSelect)['status'];
  */
 const PROJECT_STATUS_PHASES = {
   preparatory: 'open',
+  active: 'open',
+  on_hold: 'open',
+  completed: 'closed',
+  cancelled: 'closed',
 } as const satisfies Record<ProjectStatus, 'open' | 'closed'>;
 
 export function isOpenProjectStatus(status: ProjectStatus): boolean {

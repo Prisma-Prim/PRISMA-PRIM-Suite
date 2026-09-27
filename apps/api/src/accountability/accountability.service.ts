@@ -3,6 +3,11 @@ import type {
   ProjectResponsibleChangedActivityEvent,
   ProjectResponsibleMember,
 } from '../project/project-responsibility.types.js';
+import type {
+  ProjectLifecycleChangedActivityEvent,
+  ProjectLifecycleEventMetadata,
+  ProjectLifecycleTransitionRecord,
+} from '../project/project-lifecycle.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
@@ -13,6 +18,8 @@ import {
   tasks,
   projectCreationEvents,
   projectResponsibilityEvents,
+  projectLifecycleTransitions,
+  projectStartDeclarations,
   projects,
   activityLogEvents,
   documentRegistrationEvents,
@@ -203,6 +210,36 @@ export class AccountabilityService {
         beforeDisplayLabel: input.before?.displayLabel ?? null,
         afterMembershipId: input.after?.workspaceMembershipId ?? null,
         afterDisplayLabel: input.after?.displayLabel ?? null,
+        occurredAt: input.occurredAt,
+      });
+  }
+
+  // The append-only `project.lifecycle.changed` record. The caller commits it
+  // with the status, revision, start record, receipt and original Client fence.
+  async recordProjectLifecycleChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    occurredAt: Date;
+    lifecycleRevision: number;
+    transition: ProjectLifecycleTransitionRecord;
+  }): Promise<void> {
+    const { transition } = input;
+    await this.databaseContext.connection
+      .insert(projectLifecycleTransitions)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        lifecycleRevision: input.lifecycleRevision,
+        action: transition.action,
+        fromStatus: transition.from,
+        toStatus: transition.to,
+        reason: transition.action === 'hold' ? transition.reason : null,
+        note: null,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorDisplayName: input.actor.displayName,
         occurredAt: input.occurredAt,
       });
   }
@@ -614,6 +651,103 @@ export class AccountabilityService {
         after: recordedMember(event.afterMembershipId, event.afterDisplayLabel),
       },
     }));
+  }
+
+  // The `project.responsible.changed` boundary: the recording Company only,
+  // current Project and Client read, and the original Client–Company
+  // relationship. Metadata carries no reason, declaration, member or date.
+  private async projectLifecycleEvents(
+    actor: ActorContext,
+  ): Promise<ProjectLifecycleChangedActivityEvent[]> {
+    if (
+      !actor.activeCompany?.projectPermissions?.includes('project.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !actor.activeCompany.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        event: projectLifecycleTransitions,
+        actorName: internalUsers.displayName,
+        projectTitle: projects.title,
+        startDeclared: projectStartDeclarations.id,
+        startException: projectStartDeclarations.exceptionReason,
+      })
+      .from(projectLifecycleTransitions)
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.workspaceId, projectLifecycleTransitions.workspaceId),
+          eq(projects.companyId, projectLifecycleTransitions.companyId),
+          eq(projects.id, projectLifecycleTransitions.projectId),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, projectLifecycleTransitions.actorInternalUserId),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            projects.clientAccountId,
+          ),
+          eq(clientCompanyRelationships.companyId, projects.companyId),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .leftJoin(
+        projectStartDeclarations,
+        and(
+          eq(
+            projectStartDeclarations.workspaceId,
+            projectLifecycleTransitions.workspaceId,
+          ),
+          eq(
+            projectStartDeclarations.projectId,
+            projectLifecycleTransitions.projectId,
+          ),
+        ),
+      )
+      .where(
+        and(
+          eq(projectLifecycleTransitions.workspaceId, actor.workspaceId),
+          eq(projectLifecycleTransitions.companyId, actor.activeCompany.id),
+        ),
+      )
+      .orderBy(
+        desc(projectLifecycleTransitions.occurredAt),
+        desc(projectLifecycleTransitions.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.flatMap(
+      ({ event, actorName, projectTitle, startDeclared, startException }) => {
+        const metadata = lifecycleEventMetadata(
+          event,
+          startDeclared === null ? undefined : startException !== null,
+        );
+        if (!metadata) return [];
+        const projected: ProjectLifecycleChangedActivityEvent = {
+          id: event.id,
+          action: 'project.lifecycle.changed',
+          occurredAt: event.occurredAt.toISOString(),
+          actor: {
+            internalUserId: event.actorInternalUserId,
+            displayName: actorName,
+          },
+          target: {
+            type: 'project',
+            projectId: event.projectId,
+            projectTitle,
+            companyId: event.companyId,
+          },
+          metadata,
+        };
+        return [projected];
+      },
+    );
   }
 
   async recordClientUnion(input: {
@@ -1589,6 +1723,7 @@ export class AccountabilityService {
       ...(await this.readTaskHistory(actor)),
       ...(await this.projectEvents(actor)),
       ...(await this.projectResponsibilityEvents(actor)),
+      ...(await this.projectLifecycleEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentVersionEvents(actor)),
@@ -1682,6 +1817,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_commercial_activity_reader_assignment.revoked':
     case 'company_opportunity_manager_assignment.granted':
     case 'company_opportunity_manager_assignment.revoked':
+    case 'company_project_approver_assignment.granted':
+    case 'company_project_approver_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
@@ -1865,6 +2002,50 @@ function canonicalTarget(event: PersistedActivityTarget) {
       };
     default:
       return assertNever(event.targetType);
+  }
+}
+
+/**
+ * A stored transition is an external boundary: a pair that is not exactly one
+ * section 23 transition, or an activation without its start record, is
+ * omitted rather than projected.
+ */
+function lifecycleEventMetadata(
+  event: Pick<
+    typeof projectLifecycleTransitions.$inferSelect,
+    'action' | 'fromStatus' | 'toStatus' | 'lifecycleRevision'
+  >,
+  withStartException: boolean | undefined,
+): ProjectLifecycleEventMetadata | undefined {
+  const { fromStatus: from, toStatus: to, lifecycleRevision } = event;
+  switch (event.action) {
+    case 'activate':
+      return from === 'preparatory' &&
+        to === 'active' &&
+        withStartException !== undefined
+        ? { lifecycleRevision, from, to, withStartException }
+        : undefined;
+    case 'hold':
+      return from === 'active' && to === 'on_hold'
+        ? { lifecycleRevision, from, to }
+        : undefined;
+    case 'resume':
+      return from === 'on_hold' && to === 'active'
+        ? { lifecycleRevision, from, to }
+        : undefined;
+    case 'complete':
+      return from === 'active' && to === 'completed'
+        ? { lifecycleRevision, from, to }
+        : undefined;
+    case 'cancel':
+      return (from === 'preparatory' ||
+        from === 'active' ||
+        from === 'on_hold') &&
+        to === 'cancelled'
+        ? { lifecycleRevision, from, to }
+        : undefined;
+    default:
+      return assertNever(event.action);
   }
 }
 

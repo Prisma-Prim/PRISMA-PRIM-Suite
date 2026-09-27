@@ -12,10 +12,17 @@ export type ApiResult<T> =
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
       reason?: undefined;
-      /** The machine-readable code of a coded conflict body, if any. */
+      /** A conflict's machine-readable `code`, when the server states one. */
       code?: string;
     }
   | { status: 'validation'; message?: string };
+
+/** The machine-readable code of a conflict other than a duplicate review. */
+export function conflictCode(result: ApiResult<unknown>): string | undefined {
+  return result.status === 'conflict' && result.reason === undefined
+    ? result.code
+    : undefined;
+}
 
 export interface ApiRequest {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -78,9 +85,10 @@ export async function createAuthenticatedApiClient(
               status: 'conflict',
               reason: 'clientLegalEntityCapacityExceeded',
             };
-          return isRecord(body) && typeof body.code === 'string'
-            ? { status: 'conflict', code: body.code }
-            : { status: 'conflict' };
+          const code = codeFrom(body);
+          return code === undefined
+            ? { status: 'conflict' }
+            : { status: 'conflict', code };
         }
         if (response.status === 400) {
           const body = await optionalJson(response);
@@ -137,6 +145,12 @@ async function optionalJson(response: Response): Promise<unknown> {
 function messageFrom(value: unknown): string | undefined {
   return isRecord(value) && typeof value.message === 'string'
     ? value.message
+    : undefined;
+}
+
+function codeFrom(value: unknown): string | undefined {
+  return isRecord(value) && typeof value.code === 'string'
+    ? value.code
     : undefined;
 }
 

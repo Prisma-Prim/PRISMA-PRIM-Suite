@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import {
+  conflictCode,
+  createAuthenticatedApiClient,
+} from '../api/authenticated-api-client';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import {
@@ -14,12 +17,22 @@ import {
 import { projectCopy } from './project.copy';
 
 const copy = projectCopy.responsible;
+const refusalCopy = {
+  conflict: copy.conflict,
+  rejected: copy.rejected,
+  'responsible-required': copy.responsibleRequired,
+} as const;
 
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string;
   onActivityRecorded?: () => void | Promise<void>;
+  /** Each read's responsible member, or undefined once it is unknown. */
+  onResponsibleRead?: (
+    projectId: string,
+    responsible: ResponsibleMember | null | undefined,
+  ) => void;
 };
 type Read =
   | { kind: 'loading' | 'denied' | 'missing' | 'error' }
@@ -34,7 +47,10 @@ type Command = {
 type Mutation =
   | { kind: 'idle' }
   | { kind: 'pending' | 'uncertain'; command: Command }
-  | { kind: 'reload-required'; reason: 'conflict' | 'rejected' };
+  | {
+      kind: 'reload-required';
+      reason: 'conflict' | 'rejected' | 'responsible-required';
+    };
 
 /**
  * The Project's accountable member, mounted once in Project detail. It is keyed
@@ -60,6 +76,7 @@ function Responsible({
   identity,
   projectId,
   onActivityRecorded,
+  onResponsibleRead,
 }: Props) {
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' });
@@ -87,6 +104,7 @@ function Responsible({
   /** Lost authority or a missing Project retires every draft and command. */
   function retire(kind: 'denied' | 'missing') {
     abortAll();
+    onResponsibleRead?.(projectId, undefined);
     setRead({ kind });
     setEditor({ kind: 'closed' });
     setMutation({ kind: 'idle' });
@@ -123,9 +141,14 @@ function Responsible({
         return;
       }
       if (result.status !== 'ok') throw new Error('Unavailable');
-      setRead({ kind: 'ready', value: readResponsibility(result.value) });
+      const value = readResponsibility(result.value);
+      setRead({ kind: 'ready', value });
+      onResponsibleRead?.(projectId, value.responsible);
     } catch {
-      if (!controller.signal.aborted) setRead({ kind: 'error' });
+      if (!controller.signal.aborted) {
+        setRead({ kind: 'error' });
+        onResponsibleRead?.(projectId, undefined);
+      }
     }
   }
   useEffect(() => {
@@ -218,7 +241,12 @@ function Responsible({
         setEditor({ kind: 'closed' });
         setMutation({
           kind: 'reload-required',
-          reason: result.status === 'conflict' ? 'conflict' : 'rejected',
+          reason:
+            result.status === 'validation'
+              ? 'rejected'
+              : conflictCode(result) === 'project_responsible_required'
+                ? 'responsible-required'
+                : 'conflict',
         });
         return;
       }
@@ -354,9 +382,7 @@ function Responsible({
       {busy && <p role="status">{copy.saving}</p>}
       {feedback && <p role="status">{feedback}</p>}
       {mutation.kind === 'reload-required' && (
-        <p role="alert">
-          {mutation.reason === 'conflict' ? copy.conflict : copy.rejected}
-        </p>
+        <p role="alert">{refusalCopy[mutation.reason]}</p>
       )}
       {mutation.kind === 'uncertain' && <p role="alert">{copy.uncertain}</p>}
       <div className="project-responsible-actions">

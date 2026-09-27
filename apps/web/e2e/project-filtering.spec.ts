@@ -2,6 +2,7 @@ import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
@@ -109,6 +110,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: { members: [] } });
       if (path.endsWith('/responsible'))
         return route.fulfill({ json: unassignedResponsibility });
+      if (path.endsWith('/lifecycle'))
+        return route.fulfill({ json: preparatoryLifecycle });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
       if (path === '/api/assigned-tasks')
@@ -184,7 +187,7 @@ for (const frame of ['classic', 'prisme'] as const) {
       page.getByText('No Project matches this search.'),
     ).toBeVisible();
     await expect(
-      page.getByText('No preparatory Projects for this Company yet.'),
+      page.getByText('No Projects for this Company yet.'),
     ).toHaveCount(0);
 
     await search.fill('new');

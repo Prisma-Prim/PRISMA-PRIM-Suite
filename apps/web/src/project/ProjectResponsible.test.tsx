@@ -276,6 +276,59 @@ it('requires an explicit reload after a conflict or a rejected member', async ()
   ).toHaveLength(2);
 });
 
+it('explains that an active or on-hold Project keeps a responsible member and reports each read', async () => {
+  const onResponsibleRead = vi.fn();
+  const { puts } = server({
+    state: {
+      responsible: ion,
+      revision: 1,
+      lastChange: { actorDisplayName: 'Ana', occurredAt: changedAt },
+      mutable: true,
+    },
+    change: (call) =>
+      call.body !== null &&
+      typeof call.body === 'object' &&
+      'workspaceMembershipId' in call.body &&
+      call.body.workspaceMembershipId === null
+        ? Response.json(
+            {
+              statusCode: 409,
+              code: 'project_responsible_required',
+              message:
+                'Choose a replacement instead of clearing the responsible member.',
+            },
+            { status: 409 },
+          )
+        : undefined,
+  });
+  show({ onResponsibleRead });
+  expect(
+    await within(region()).findByText('Ion Popa · 3F', { selector: 'dd' }),
+  ).toBeInTheDocument();
+  expect(onResponsibleRead).toHaveBeenLastCalledWith('project', ion);
+  fireEvent.click(within(region()).getByRole('button', { name: 'Change' }));
+  await within(region()).findByLabelText('Choose the responsible member');
+  fireEvent.click(
+    within(region()).getByRole('button', { name: 'Clear responsible member' }),
+  );
+  expect(
+    await within(region()).findByText(
+      'An active or on-hold Project needs a responsible member. Choose a replacement instead.',
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    within(region()).getByRole('button', { name: 'Reload responsible member' }),
+  );
+  await choose(maria);
+  await waitFor(() =>
+    expect(onResponsibleRead).toHaveBeenLastCalledWith('project', maria),
+  );
+  expect(puts().map((call) => call.body)).toEqual([
+    { expectedRevision: 1, workspaceMembershipId: null },
+    { expectedRevision: 1, workspaceMembershipId: 'maria' },
+  ]);
+});
+
 it('preserves an uncertain change and retries it with the same body and key', async () => {
   let failures = 1;
   const { puts } = server({
