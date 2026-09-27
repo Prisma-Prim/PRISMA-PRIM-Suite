@@ -194,6 +194,7 @@ it.skipIf(!databaseUrl)(
         'company_role_assignments',
         'activity_log_events',
       ];
+      const projectsIndex = preserved.indexOf('projects');
       const snapshot = () =>
         Promise.all(
           preserved.map(
@@ -206,9 +207,19 @@ it.skipIf(!databaseUrl)(
 
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
 
-      // Additive: nothing but the Version row changes, and no backfill
-      // confers Registrar v3 or the Approver.
-      expect(await snapshot()).toEqual(before);
+      // Additive: the Version row and the later Project lifecycle column are
+      // the only changes, and no backfill confers Registrar v3 or the Approver.
+      const after = await snapshot();
+      expect(after).toEqual(
+        before.map((rows, index) =>
+          index === projectsIndex
+            ? rows.map((row) => ({ ...row, lifecycle_revision: 0 }))
+            : rows,
+        ),
+      );
+      expect(after[projectsIndex].map((row) => row.lifecycle_revision)).toEqual(
+        [0],
+      );
       expect(
         (
           await query(
