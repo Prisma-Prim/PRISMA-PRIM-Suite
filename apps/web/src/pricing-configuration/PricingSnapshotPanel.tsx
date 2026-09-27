@@ -9,6 +9,7 @@ import './pricing-snapshots.css';
 
 const quantityGrammar = /^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$/u;
 const pageSize = 25;
+const maximumCalculationLines = 20;
 const calculationTimeoutMs = 15_000;
 
 type Currency = 'MDL' | 'EUR' | 'RON' | 'USD';
@@ -89,7 +90,12 @@ type CalculationAttempt = {
   idempotencyKey: string;
 };
 type Feedback =
-  'invalid' | 'stale' | 'not-effective' | 'mixed-currency' | 'conflict';
+  | 'invalid'
+  | 'too-many-lines'
+  | 'stale'
+  | 'not-effective'
+  | 'mixed-currency'
+  | 'conflict';
 type DetailState =
   | { kind: 'closed' }
   | { kind: 'loading'; snapshotId: string }
@@ -346,6 +352,13 @@ export function PricingSnapshotPanel({
 
   async function submit(attempt?: CalculationAttempt): Promise<void> {
     if (view.kind !== 'ready' || !view.rule || !companyId || pending) return;
+    if (
+      !attempt &&
+      countSelectedOfferings(view, drafts) > maximumCalculationLines
+    ) {
+      setFeedback('too-many-lines');
+      return;
+    }
     const nextAttempt = attempt ?? calculationAttempt(view, drafts);
     if (!nextAttempt) {
       setFeedback('invalid');
@@ -526,6 +539,11 @@ export function PricingSnapshotPanel({
     }
   }
 
+  const selectedOfferingCount =
+    view.kind === 'ready' ? countSelectedOfferings(view, drafts) : 0;
+  const selectionLimitReached =
+    selectedOfferingCount >= maximumCalculationLines;
+
   return (
     <section
       className="pricing-snapshot-panel"
@@ -563,6 +581,11 @@ export function PricingSnapshotPanel({
               <p>
                 {copy.ruleVersion}: {view.rule.versionNumber}
               </p>
+              <p id={`${fieldId}-selection-limit`} aria-live="polite">
+                {selectionLimitReached
+                  ? copy.selectionLimitReached
+                  : copy.selectionLimit}
+              </p>
               <div className="pricing-snapshot-lines">
                 {view.offerings.map((offering) => {
                   const draft = drafts[offering.id] ?? {
@@ -578,14 +601,18 @@ export function PricingSnapshotPanel({
                         <input
                           type="checkbox"
                           checked={draft.selected}
+                          disabled={!draft.selected && selectionLimitReached}
+                          aria-describedby={`${fieldId}-selection-limit`}
                           onChange={(event) =>
-                            setDrafts((current) => ({
-                              ...current,
-                              [offering.id]: {
-                                ...draft,
-                                selected: event.target.checked,
-                              },
-                            }))
+                            event.target.checked && selectionLimitReached
+                              ? setFeedback('too-many-lines')
+                              : setDrafts((current) => ({
+                                  ...current,
+                                  [offering.id]: {
+                                    ...draft,
+                                    selected: event.target.checked,
+                                  },
+                                }))
                           }
                         />
                         {offering.commercialLabel ??
@@ -807,7 +834,12 @@ function calculationAttempt(
   const selected = view.offerings.filter(
     (offering) => drafts[offering.id]?.selected,
   );
-  if (lines.length === 0 || lines.length !== selected.length) return undefined;
+  if (
+    lines.length === 0 ||
+    lines.length > maximumCalculationLines ||
+    lines.length !== selected.length
+  )
+    return undefined;
   return {
     payload: JSON.stringify({
       pricingRuleVersionNumber: view.rule.versionNumber,
@@ -815,6 +847,14 @@ function calculationAttempt(
     }),
     idempotencyKey: crypto.randomUUID(),
   };
+}
+
+function countSelectedOfferings(
+  view: ReadyState,
+  drafts: Record<string, DraftLine>,
+): number {
+  return view.offerings.filter((offering) => drafts[offering.id]?.selected)
+    .length;
 }
 
 function validQuantity(value: string): boolean {
@@ -883,6 +923,8 @@ function feedbackCopy(feedback: Feedback): string {
   switch (feedback) {
     case 'invalid':
       return copy.corrected;
+    case 'too-many-lines':
+      return copy.tooManyLines;
     case 'stale':
       return copy.stale;
     case 'not-effective':

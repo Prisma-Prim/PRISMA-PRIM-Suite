@@ -11,6 +11,11 @@ export const pricingSnapshotCopy = {
   offering: 'Offering',
   tariff: 'Tariff Version',
   quantity: 'Quantity',
+  selectionLimit: 'Select up to 20 offerings.',
+  selectionLimitReached:
+    '20 offerings selected. Deselect one before choosing another.',
+  tooManyLines:
+    'You can select up to 20 offerings. Deselect one before calculating.',
   calculate: 'Calculate and save',
   calculating: 'Calculating…',
   retry: 'Retry the same calculation',

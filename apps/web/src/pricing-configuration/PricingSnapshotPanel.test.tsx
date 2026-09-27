@@ -286,6 +286,95 @@ describe('PricingSnapshotPanel', () => {
     );
   });
 
+  it('limits a calculation to 20 selected offerings and lets the user replace one', async () => {
+    const manyOfferings = Array.from({ length: 21 }, (_, index) => {
+      const number = index + 1;
+      return {
+        id: `20000000-0000-4000-8000-${String(number).padStart(12, '0')}`,
+        serviceDefinition: {
+          code: `SERVICE-${number}`,
+          name: `Selectable service ${number}`,
+        },
+        commercialLabel: null,
+      };
+    });
+    const routes: Record<string, Responder> = {
+      ...baseRoutes(),
+      'GET /api/commercial-catalogue/offerings': () =>
+        Response.json({ items: manyOfferings }),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(snapshot(), { status: 201 }),
+    };
+    for (const offering of manyOfferings) {
+      routes[
+        `GET /api/pricing-configuration/offerings/${offering.id}/tariff-scope`
+      ] = () =>
+        Response.json({
+          offeringId: offering.id,
+          current: tariff(offering.id, 1),
+        });
+    }
+    const fetchMock = stubApi(routes);
+    renderPanel();
+
+    for (let index = 0; index < 20; index += 1) {
+      const checkbox = await screen.findByLabelText(
+        `Selectable service ${index + 1}`,
+      );
+      const offering = checkbox.closest('fieldset');
+      if (!offering) throw new Error('Expected the offering quantity group.');
+      fireEvent.click(checkbox);
+      fireEvent.change(within(offering).getByLabelText('Quantity'), {
+        target: { value: String(index + 1) },
+      });
+    }
+
+    const first = screen.getByLabelText('Selectable service 1');
+    const twentyFirst = screen.getByLabelText('Selectable service 21');
+    expect(twentyFirst).toBeDisabled();
+    expect(twentyFirst).toHaveAccessibleDescription(
+      '20 offerings selected. Deselect one before choosing another.',
+    );
+    expect(
+      screen.getByText(
+        '20 offerings selected. Deselect one before choosing another.',
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(first);
+    expect(twentyFirst).toBeEnabled();
+    const firstOffering = first.closest('fieldset');
+    if (!firstOffering)
+      throw new Error('Expected the first offering quantity group.');
+    expect(within(firstOffering).getByLabelText('Quantity')).toHaveValue('1');
+    fireEvent.click(twentyFirst);
+    const lastOffering = twentyFirst.closest('fieldset');
+    if (!lastOffering)
+      throw new Error('Expected the last offering quantity group.');
+    fireEvent.change(within(lastOffering).getByLabelText('Quantity'), {
+      target: { value: '21' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    await waitFor(() => expect(postCalls(fetchMock)).toHaveLength(1));
+    const [call] = postCalls(fetchMock);
+    expect(call?.body).toEqual({
+      pricingRuleVersionNumber: 3,
+      lines: [
+        ...manyOfferings.slice(1, 20).map((offering, index) => ({
+          offeringId: offering.id,
+          tariffVersionNumber: 1,
+          quantity: String(index + 2),
+        })),
+        {
+          offeringId: manyOfferings[20]?.id,
+          tariffVersionNumber: 1,
+          quantity: '21',
+        },
+      ],
+    });
+  });
+
   it('reopens a snapshot with its stored Tariff Version after an identical successor is published', async () => {
     const historical = snapshot();
     stubApi({
