@@ -20,6 +20,7 @@ const TARIFF = '00000000-0000-4000-8000-000000004589';
 const SNAPSHOT = '00000000-0000-4000-8000-000000004590';
 const LINE = '00000000-0000-4000-8000-000000004591';
 const ADJUSTMENT = '00000000-0000-4000-8000-000000004592';
+const EVENT_SNAPSHOT = '00000000-0000-4000-8000-000000004597';
 const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 const FOREIGN_KEY_VIOLATION = '23503';
@@ -261,6 +262,23 @@ it.skipIf(!databaseUrl)(
         }),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
+      await query(
+        `INSERT INTO pricing_snapshots (id, workspace_id, company_id, opportunity_id,
+           client_request_id, original_client_account_id, pricing_rule_version_id,
+           pricing_rule_version_number, rule_shape, rounding_mode, rounding_scale,
+           tax_application, currency, subtotal, tax_total, total,
+           calculated_by_internal_user_id, calculated_by_workspace_membership_id,
+           calculated_at, committed_at, version, provenance)
+         SELECT $1, workspace_id, company_id, opportunity_id, client_request_id,
+           original_client_account_id, pricing_rule_version_id, pricing_rule_version_number,
+           rule_shape, rounding_mode, rounding_scale, tax_application, currency, subtotal,
+           tax_total, total, calculated_by_internal_user_id,
+           calculated_by_workspace_membership_id, calculated_at, committed_at, version,
+           provenance
+         FROM pricing_snapshots
+         WHERE id = $2`,
+        [EVENT_SNAPSHOT, SNAPSHOT],
+      );
       const insertEvent = (metadata: Record<string, unknown>) =>
         query(
           `INSERT INTO pricing_configuration_events (workspace_id, company_id, action,
@@ -270,25 +288,28 @@ it.skipIf(!databaseUrl)(
           [
             WORKSPACE,
             COMPANY,
-            SNAPSHOT,
+            EVENT_SNAPSHOT,
             USER,
             MEMBERSHIP,
             JSON.stringify(metadata),
           ],
         );
       const eventMetadata = {
-        pricingSnapshotId: SNAPSHOT,
+        pricingSnapshotId: EVENT_SNAPSHOT,
         opportunityId: OPPORTUNITY,
         lineCount: 1,
         adjustmentCount: 1,
         provenance: 'ILLUSTRATIVE',
         currency: 'EUR',
       };
-      await insertEvent(eventMetadata);
       for (const adjustmentCount of [-1, 1.5, 21, '1'])
         await expect(
           insertEvent({ ...eventMetadata, adjustmentCount }),
-        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+        ).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'pricing_configuration_events_action_metadata_check',
+        });
+      await insertEvent(eventMetadata);
     } finally {
       await database.close();
       if (
