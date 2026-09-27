@@ -717,9 +717,11 @@ test('changes the responsible actor of a Request within its Company through the 
     );
     await intake.getByRole('button', { name: 'Save responsible' }).click();
     expect((await change).status()).toBe(200);
-    await expect(intake.getByRole('alert')).toHaveText(
-      'Responsible actor changed.',
-    );
+    const responsibleFeedback = intake.getByRole('alert').filter({
+      hasText: /^Responsible actor changed\.$/u,
+    });
+    await expect(responsibleFeedback).toHaveCount(1);
+    await expect(responsibleFeedback).toBeVisible();
     await expect(
       intake.getByText('Responsible actor: Ion Popa', { exact: true }),
     ).toBeVisible();

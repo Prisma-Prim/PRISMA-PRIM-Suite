@@ -264,7 +264,9 @@ async function refreshActiveCompany({
     companyId,
   );
   const actualActor: unknown = await refreshedActor.json();
-  expect(actualActor).toEqual(expectedActor);
+  expect(withCanonicalDocumentPermissionOrder(actualActor)).toEqual(
+    withCanonicalDocumentPermissionOrder(expectedActor),
+  );
   expect((await activity).status()).toBe(200);
   // The enabled Search action proves the recovery callback has finished before
   // the held registration is released; observing the HTTP reply alone does not.
@@ -279,6 +281,34 @@ async function refreshActiveCompany({
   await clients
     .getByRole('button', { name: 'Back to Company Clients', exact: true })
     .click();
+}
+
+// Independent document bundles are read without a database row-order contract.
+// Compare their exact permission multiset, retaining duplicates and every other
+// actor field so changed grants, versions, identities or scope still fail.
+function withCanonicalDocumentPermissionOrder(value: unknown): unknown {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('activeCompany' in value) ||
+    typeof value.activeCompany !== 'object' ||
+    value.activeCompany === null ||
+    !('documentPermissions' in value.activeCompany)
+  )
+    return value;
+  const permissions: unknown = value.activeCompany.documentPermissions;
+  if (
+    !Array.isArray(permissions) ||
+    !permissions.every((permission: unknown) => typeof permission === 'string')
+  )
+    return value;
+  return {
+    ...value,
+    activeCompany: {
+      ...value.activeCompany,
+      documentPermissions: [...permissions].sort(),
+    },
+  };
 }
 
 async function receipt(
