@@ -267,6 +267,13 @@
       "when": 1790437058192,
       "tag": "0037_pricing_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790498388274,
+      "tag": "0038_previous_scorpion",
+      "breakpoints": true
     }
   ]
 }

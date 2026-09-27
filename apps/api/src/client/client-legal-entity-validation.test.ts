@@ -63,6 +63,34 @@ describe('Client legal entity request normalization', () => {
     });
   });
 
+  it('rejects database-incompatible NUL characters from every stored field', () => {
+    const fields = [
+      ['legalName', 'Demo\0 SRL', 'Client legal entity name'],
+      ['taxId', '1002\0', 'Client legal entity tax ID'],
+      ['legalAddress', 'Str. Demo\0 5', 'Client legal entity address'],
+    ] as const;
+
+    for (const [field, value, label] of fields) {
+      expect(
+        rejection(() =>
+          normalizeLegalEntityRegistration({
+            expectedClientVersion: 1,
+            legalName: 'Demo SRL',
+            [field]: value,
+          }),
+        ),
+      ).toBe(`${label} must not contain NUL characters.`);
+      expect(
+        rejection(() =>
+          normalizeLegalEntityCorrection({
+            expectedClientVersion: 1,
+            changes: { [field]: value },
+          }),
+        ),
+      ).toBe(`${label} must not contain NUL characters.`);
+    }
+  });
+
   it('accepts the exact bounds and rejects every malformed request', () => {
     expect(
       normalizeLegalEntityRegistration({

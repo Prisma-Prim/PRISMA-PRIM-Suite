@@ -118,24 +118,33 @@ function requireLegalName(value: unknown): string {
   if (normalized.length > MAXIMUM_LEGAL_NAME_LENGTH) {
     throw new BadRequestException('Client legal entity name is too long.');
   }
-  return normalized;
+  return requireNulFree(normalized, 'Client legal entity name');
 }
 
 /** The delivered dossier tax-ID normalization: trimmed, empty becomes null. */
 function normalizeTaxId(value: unknown): string | null {
-  return optionalText(
-    value,
+  return requireNulFree(
+    optionalText(value, 'Client legal entity tax ID', MAXIMUM_TAX_ID_LENGTH),
     'Client legal entity tax ID',
-    MAXIMUM_TAX_ID_LENGTH,
   );
 }
 
 function normalizeLegalAddress(value: unknown): string | null {
-  return optionalText(
-    value,
+  return requireNulFree(
+    optionalText(
+      value,
+      'Client legal entity address',
+      MAXIMUM_LEGAL_ADDRESS_LENGTH,
+    ),
     'Client legal entity address',
-    MAXIMUM_LEGAL_ADDRESS_LENGTH,
   );
+}
+
+function requireNulFree<T extends string | null>(value: T, label: string): T {
+  if (value?.includes('\0')) {
+    throw new BadRequestException(`${label} must not contain NUL characters.`);
+  }
+  return value;
 }
 
 function requireFields(

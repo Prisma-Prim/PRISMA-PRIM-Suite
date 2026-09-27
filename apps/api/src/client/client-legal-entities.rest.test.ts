@@ -614,6 +614,10 @@ describe.skipIf(!databaseUrl)(
           'Client legal entity name is too long.',
         ],
         [
+          { expectedClientVersion: 4, legalName: 'Demo\0 SRL' },
+          'Client legal entity name must not contain NUL characters.',
+        ],
+        [
           { expectedClientVersion: 4, legalName: 'Demo', taxId: 42 },
           'Client legal entity tax ID must be text or null.',
         ],
@@ -626,12 +630,24 @@ describe.skipIf(!databaseUrl)(
           'Client legal entity tax ID is too long.',
         ],
         [
+          { expectedClientVersion: 4, legalName: 'Demo', taxId: '1002\0' },
+          'Client legal entity tax ID must not contain NUL characters.',
+        ],
+        [
           {
             expectedClientVersion: 4,
             legalName: 'Demo',
             legalAddress: 'a'.repeat(2_001),
           },
           'Client legal entity address is too long.',
+        ],
+        [
+          {
+            expectedClientVersion: 4,
+            legalName: 'Demo',
+            legalAddress: 'Str. Demo\0 5',
+          },
+          'Client legal entity address must not contain NUL characters.',
         ],
         [
           { expectedClientVersion: 4, legalName: 'Demo', branchCode: 'B1' },
@@ -666,8 +682,23 @@ describe.skipIf(!databaseUrl)(
           'Client legal entity name is required.',
         ],
         [
+          { expectedClientVersion: 4, changes: { legalName: 'Demo\0 SRL' } },
+          'Client legal entity name must not contain NUL characters.',
+        ],
+        [
+          { expectedClientVersion: 4, changes: { taxId: '1002\0' } },
+          'Client legal entity tax ID must not contain NUL characters.',
+        ],
+        [
           { expectedClientVersion: 4, changes: { legalAddress: 7 } },
           'Client legal entity address must be text or null.',
+        ],
+        [
+          {
+            expectedClientVersion: 4,
+            changes: { legalAddress: 'Str. Demo\0 5' },
+          },
+          'Client legal entity address must not contain NUL characters.',
         ],
         [
           { expectedClientVersion: 4, changes: { registryStatus: 'ok' } },

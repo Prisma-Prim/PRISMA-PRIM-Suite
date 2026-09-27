@@ -7,8 +7,8 @@ import { expect, it } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const MIGRATION_TAG = '0035_client_legal_entities';
-const PREVIOUS_TAG = '0034_tariff_versions';
+const MIGRATION_TAG = '0038_previous_scorpion';
+const PREVIOUS_TAG = '0037_pricing_snapshots';
 const WORKSPACE = '00000000-0000-4000-8000-000000000393';
 const OTHER_WORKSPACE = '00000000-0000-4000-8000-000000003939';
 const USER = '00000000-0000-4000-8000-000000003931';
