@@ -137,6 +137,31 @@ test('exposes invitations independently of administration and refuses unauthoriz
   await expect(page.getByLabel('Expire dans ce nombre de jours')).toHaveValue(
     '7',
   );
+  await page.getByLabel('E-mail du destinataire').clear();
+  await page.getByLabel('Expire dans ce nombre de jours').clear();
+  await page.getByRole('button', { name: 'Envoyer l’invitation' }).click();
+  await expect(
+    page.getByText('Saisissez l’e-mail du destinataire.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Saisissez le nombre de jours avant l’expiration.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(issueBodies).toHaveLength(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-invitations-validation-fr-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
+  await page.getByLabel('E-mail du destinataire').fill(invitation.email);
+  await page.getByLabel('Expire dans ce nombre de jours').fill('7');
   await page.getByRole('button', { name: 'Envoyer l’invitation' }).click();
   await expect(page.getByRole('alert')).toContainText(
     'n’a pas pu être confirmée',

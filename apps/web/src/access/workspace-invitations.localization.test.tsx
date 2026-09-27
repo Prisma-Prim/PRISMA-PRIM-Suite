@@ -1,4 +1,8 @@
-import { render as testingLibraryRender, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render as testingLibraryRender,
+  screen,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -105,6 +109,58 @@ const localeCases = [
   reload: string;
 }>[];
 
+const validationCases = [
+  {
+    locale: 'ro',
+    email: 'E-mailul destinatarului',
+    expiry: 'Expiră în zile',
+    send: 'Trimiteți invitația',
+    emailRequired: 'Introduceți e-mailul destinatarului.',
+    expiryRequired: 'Introduceți numărul de zile până la expirare.',
+    emailInvalid: 'Introduceți o adresă de e-mail validă.',
+    expiryInvalid: 'Introduceți un număr întreg între 1 și 30.',
+  },
+  {
+    locale: 'ru',
+    email: 'Электронная почта получателя',
+    expiry: 'Срок действия в днях',
+    send: 'Отправить приглашение',
+    emailRequired: 'Введите адрес электронной почты получателя.',
+    expiryRequired: 'Введите количество дней до истечения срока.',
+    emailInvalid: 'Введите действительный адрес электронной почты.',
+    expiryInvalid: 'Введите целое число от 1 до 30.',
+  },
+  {
+    locale: 'fr',
+    email: 'E-mail du destinataire',
+    expiry: 'Expire dans ce nombre de jours',
+    send: 'Envoyer l’invitation',
+    emailRequired: 'Saisissez l’e-mail du destinataire.',
+    expiryRequired: 'Saisissez le nombre de jours avant l’expiration.',
+    emailInvalid: 'Saisissez une adresse e-mail valide.',
+    expiryInvalid: 'Saisissez un nombre entier compris entre 1 et 30.',
+  },
+  {
+    locale: 'en',
+    email: 'Recipient email',
+    expiry: 'Expires in days',
+    send: 'Send invitation',
+    emailRequired: 'Enter the recipient email.',
+    expiryRequired: 'Enter the number of days before expiry.',
+    emailInvalid: 'Enter a valid email address.',
+    expiryInvalid: 'Enter a whole number between 1 and 30.',
+  },
+] as const satisfies readonly Readonly<{
+  locale: InterfaceLocale;
+  email: string;
+  expiry: string;
+  send: string;
+  emailRequired: string;
+  expiryRequired: string;
+  emailInvalid: string;
+  expiryInvalid: string;
+}>[];
+
 const invitation = {
   id: 'invitation-467',
   email: 'recipient@example.test',
@@ -185,6 +241,48 @@ describe('localized Workspace invitation boundaries', () => {
       ).toBeVisible();
       expect(screen.getByRole('button', { name: accept })).toBeVisible();
       expect(screen.queryByText(/invitationAcceptance\./u)).toBeNull();
+    },
+  );
+
+  it.each(validationCases)(
+    'renders invitation-owned validation in $locale without sending invalid commands',
+    async ({
+      locale,
+      email,
+      expiry,
+      send,
+      emailRequired,
+      expiryRequired,
+      emailInvalid,
+      expiryInvalid,
+    }) => {
+      const transport = vi.fn(async () =>
+        Response.json({ invitations: [], nextCursor: null }),
+      );
+      vi.stubGlobal('fetch', transport);
+      renderAtLocale(
+        locale,
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />,
+      );
+
+      const emailInput = await screen.findByLabelText(email);
+      const expiryInput = screen.getByLabelText(expiry);
+      fireEvent.change(expiryInput, { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: send }));
+      expect(await screen.findByText(emailRequired)).toBeVisible();
+      expect(screen.getByText(expiryRequired)).toBeVisible();
+
+      fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
+      fireEvent.change(expiryInput, { target: { value: '1.5' } });
+      fireEvent.click(screen.getByRole('button', { name: send }));
+      expect(await screen.findByText(emailInvalid)).toBeVisible();
+      expect(screen.getByText(expiryInvalid)).toBeVisible();
+      expect(transport).toHaveBeenCalledTimes(1);
     },
   );
 
