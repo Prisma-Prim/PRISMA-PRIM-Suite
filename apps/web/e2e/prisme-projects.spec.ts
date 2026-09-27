@@ -504,7 +504,7 @@ test('creates and opens a Project, then switches local panels without reloading 
     lifecycleSection.getByText('Start declaration — declared, not verified'),
   ).toBeVisible();
   await expect(lifecycleSection).toContainText(
-    `To be completed by ${ana.displayLabel} by 2026-10-15`,
+    `To be completed by ${ana.displayLabel} by Oct 15, 2026`,
   );
   await expect(article.getByText('Active', { exact: true })).toHaveCount(2);
   await expect(

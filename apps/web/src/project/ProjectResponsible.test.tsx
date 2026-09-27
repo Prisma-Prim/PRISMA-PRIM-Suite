@@ -5,10 +5,11 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProjectResponsible as ProjectResponsibleComponent } from './ProjectResponsible';
 import type { ProjectStatus } from './project-lifecycle-response';
 
@@ -137,12 +138,15 @@ function region() {
 function show(props: Partial<Parameters<typeof ProjectResponsible>[0]> = {}) {
   const identity = deterministicBrowserIdentity();
   const view = render(
-    <ProjectResponsible
-      actor={actor}
-      identity={identity}
-      projectId="project"
-      {...props}
-    />,
+    <>
+      <LocaleSwitch />
+      <ProjectResponsible
+        actor={actor}
+        identity={identity}
+        projectId="project"
+        {...props}
+      />
+    </>,
   );
   return { ...view, identity };
 }
@@ -409,20 +413,63 @@ it('preserves an uncertain change and retries it with the same body and key', as
       'The change is not confirmed. Retry the same change to safely recover its recorded result.',
     ),
   ).toBeInTheDocument();
-  expect(within(region()).queryByRole('button', { name: 'Change' })).toBeNull();
+  const responsibleRegion = region();
+  expect(
+    within(responsibleRegion).queryByRole('button', { name: 'Change' }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
   fireEvent.click(
-    within(region()).getByRole('button', {
-      name: 'Retry responsible member change',
+    within(responsibleRegion).getByRole('button', {
+      name: 'Réessayer la modification du membre responsable',
     }),
   );
   expect(
-    await within(region()).findByText('Ion Popa · 3F', { selector: 'dd' }),
+    await within(responsibleRegion).findByText('Ion Popa · 3F', {
+      selector: 'dd',
+    }),
   ).toBeInTheDocument();
   const [first, retried] = puts();
   expect(retried).toEqual(first);
   expect(first?.key).toEqual(expect.any(String));
   expect(onActivityRecorded).toHaveBeenCalledTimes(1);
 });
+
+it('preserves the responsible-member draft while the interface locale changes', async () => {
+  const { puts } = server();
+  show();
+  fireEvent.click(
+    await within(region()).findByRole('button', { name: 'Change' }),
+  );
+  changeValue(
+    await within(region()).findByLabelText('Choose the responsible member'),
+    maria.workspaceMembershipId,
+  );
+  const responsibleRegion = region();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+
+  expect(
+    within(responsibleRegion).getByLabelText(
+      'Choisissez le membre responsable',
+    ),
+  ).toHaveTextContent(maria.displayLabel);
+  fireEvent.click(
+    within(responsibleRegion).getByRole('button', { name: 'Enregistrer' }),
+  );
+  await within(responsibleRegion).findByText('Membre responsable enregistré.');
+  expect(puts().map((call) => call.body)).toEqual([
+    { expectedRevision: 0, workspaceMembershipId: maria.workspaceMembershipId },
+  ]);
+});
+
+function LocaleSwitch() {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <button type="button" onClick={() => changeLocale('fr')}>
+      Passer en français
+    </button>
+  );
+}
 
 it('keeps the responsible member readable without change controls under a historical Client', async () => {
   const { calls } = server({
