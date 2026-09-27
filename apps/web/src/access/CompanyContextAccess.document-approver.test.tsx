@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -38,15 +39,9 @@ function administration(
   };
 }
 function chooseTargetsAndBundle(bundle: string) {
-  fireEvent.change(screen.getByLabelText('Workspace member'), {
-    target: { value: memberId },
-  });
-  fireEvent.change(screen.getByLabelText('Company', { exact: true }), {
-    target: { value: companyId },
-  });
-  fireEvent.change(screen.getByLabelText('Access bundle'), {
-    target: { value: bundle },
-  });
+  selectOption(screen.getByLabelText('Workspace member'), memberId);
+  selectOption(screen.getByLabelText('Company', { exact: true }), companyId);
+  selectOption(screen.getByLabelText('Access bundle'), bundle);
 }
 
 describe('Company Document Approver administration', () => {
@@ -101,9 +96,9 @@ describe('Company Document Approver administration', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargetsAndBundle('document-approver');
-    expect(
-      screen.getByRole('option', { name: 'Company Document Approver' }),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Access bundle')).toHaveTextContent(
+      'Company Document Approver',
+    );
     expect(
       screen.getByText(
         /Company Document Approver v1 grants only the designation of a draft Document Version as official/u,

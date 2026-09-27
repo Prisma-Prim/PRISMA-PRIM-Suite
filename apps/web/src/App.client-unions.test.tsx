@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -170,13 +171,15 @@ async function openComparison() {
 }
 function chooseSecond(form: HTMLElement) {
   for (const select of within(form).getAllByRole('combobox'))
-    fireEvent.change(select, { target: { value: second.id } });
-  fireEvent.change(within(form).getByLabelText('Telephone', { exact: true }), {
-    target: { value: first.id },
-  });
-  fireEvent.change(within(form).getByLabelText('Reason for this union'), {
-    target: { value: 'Reviewed both saved dossiers.' },
-  });
+    changeValue(select, second.id);
+  changeValue(
+    within(form).getByLabelText('Telephone', { exact: true }),
+    first.id,
+  );
+  changeValue(
+    within(form).getByLabelText('Reason for this union'),
+    'Reviewed both saved dossiers.',
+  );
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
 }
@@ -294,9 +297,9 @@ describe('persisted Client union through App', () => {
           name: second.displayName,
         });
       } else if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session' || boundary === 'identity') {
@@ -327,9 +330,10 @@ describe('persisted Client union through App', () => {
                 : { clientPermissions: ['client.read'] }),
           },
         };
-        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-          target: { value: 'Check authority' },
-        });
+        changeValue(
+          screen.getByLabelText('Find a shared Client'),
+          'Check authority',
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       }
       await waitFor(() => expect(signal?.aborted).toBe(true));
@@ -385,9 +389,9 @@ describe('persisted Client union through App', () => {
       fireEvent.submit(form);
       await screen.findByText(/Union confirmed\./);
       if (boundary === 'Company') {
-        fireEvent.change(
+        changeValue(
           screen.getByLabelText('Active Company', { exact: true }),
-          { target: { value: companyB.id } },
+          companyB.id,
         );
         await screen.findByText('Clients in Company B');
       } else if (boundary === 'session' || boundary === 'identity') {
@@ -418,9 +422,10 @@ describe('persisted Client union through App', () => {
                 : { clientPermissions: ['client.read'] }),
           },
         };
-        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-          target: { value: 'Check authority' },
-        });
+        changeValue(
+          screen.getByLabelText('Find a shared Client'),
+          'Check authority',
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       }
       await waitFor(() =>

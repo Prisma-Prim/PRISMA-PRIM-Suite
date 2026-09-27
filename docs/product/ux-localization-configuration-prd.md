@@ -67,6 +67,12 @@ Responsive web precedes native mobile. Named acceptance viewports cover desktop,
 
 Target WCAG 2.2 AA through semantic structure, keyboard operation, focus visibility, contrast, text resizing, touch targets, accessible names, error association and non-color-only meaning.
 
+Production single-choice fields use the shared Select contract delivered by
+[#421](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/421). Its copy stays
+with the owning feature, ready for localization, while the shared control owns
+the visible listbox, keyboard and typeahead behaviour, form participation,
+focus handling, and viewport-safe placement.
+
 Generated Documents have separate accessibility requirements where applicable.
 
 ## 7. Localization and terminology

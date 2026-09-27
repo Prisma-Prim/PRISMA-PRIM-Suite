@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { pricingConfigurationCopy } from './pricing-configuration/pricing-configuration.copy';
 import { tariffVersionCopy } from './pricing-configuration/tariff-version.copy';
+import { selectOption } from './test/select-option';
 
 const company = {
   id: 'company-1',
@@ -154,9 +155,9 @@ it('offers the configuration screen in both frames to a configuration reader', a
   expect(
     await within(tariffs).findByText(tariffVersionCopy.illustrativeMarker),
   ).toBeVisible();
-  fireEvent.change(
+  selectOption(
     await within(tariffs).findByLabelText(tariffVersionCopy.offering),
-    { target: { value: OFFERING_ID } },
+    OFFERING_ID,
   );
   expect(
     await within(tariffs).findByText(tariffVersionCopy.noCurrent),

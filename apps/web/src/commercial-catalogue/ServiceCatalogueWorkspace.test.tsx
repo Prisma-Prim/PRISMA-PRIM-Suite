@@ -12,6 +12,7 @@ import {
   type BrowserIdentity,
 } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { changeValue, selectOption } from '../test/select-option';
 import { ServiceCatalogueWorkspace } from './ServiceCatalogueWorkspace';
 
 const actor: ActorContext = {
@@ -152,7 +153,7 @@ function renderWorkspace(
 function labelTexts(control: HTMLElement): (string | null)[] {
   if (!(
     control instanceof HTMLInputElement ||
-    control instanceof HTMLSelectElement ||
+    control instanceof HTMLButtonElement ||
     control instanceof HTMLTextAreaElement
   ))
     throw new Error('Expected a labelable form control.');
@@ -160,12 +161,8 @@ function labelTexts(control: HTMLElement): (string | null)[] {
 }
 
 function fillDefinition(code: string, name: string) {
-  fireEvent.change(screen.getByLabelText('Service code'), {
-    target: { value: code },
-  });
-  fireEvent.change(screen.getByLabelText('Service name'), {
-    target: { value: name },
-  });
+  changeValue(screen.getByLabelText('Service code'), code);
+  changeValue(screen.getByLabelText('Service name'), name);
 }
 
 describe('ServiceCatalogueWorkspace', () => {
@@ -214,9 +211,7 @@ describe('ServiceCatalogueWorkspace', () => {
 
     fillDefinition('iso-9001_gap', definition.name);
     expect(screen.getByLabelText('Service code')).toHaveValue('ISO-9001_GAP');
-    fireEvent.change(screen.getByLabelText('Description'), {
-      target: { value: definition.description },
-    });
+    changeValue(screen.getByLabelText('Description'), definition.description);
     fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Service Definition ISO-9001_GAP recorded.',
@@ -247,9 +242,10 @@ describe('ServiceCatalogueWorkspace', () => {
       definition.id,
     );
 
-    fireEvent.change(screen.getByLabelText('Commercial label'), {
-      target: { value: offering.commercialLabel },
-    });
+    changeValue(
+      screen.getByLabelText('Commercial label'),
+      offering.commercialLabel,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
     expect(
       await screen.findByText(
@@ -276,12 +272,11 @@ describe('ServiceCatalogueWorkspace', () => {
     renderWorkspace();
     await screen.findByRole('list', { name: 'Service Definitions' });
     fillDefinition(definition.code, definition.name);
-    fireEvent.change(screen.getByLabelText('Description'), {
-      target: { value: definition.description },
-    });
-    fireEvent.change(screen.getByLabelText('Commercial label'), {
-      target: { value: offering.commercialLabel },
-    });
+    changeValue(screen.getByLabelText('Description'), definition.description);
+    changeValue(
+      screen.getByLabelText('Commercial label'),
+      offering.commercialLabel,
+    );
 
     for (const label of [
       'Service code',
@@ -356,9 +351,7 @@ describe('ServiceCatalogueWorkspace', () => {
     const name = supplementary.repeat(160);
     const description = supplementary.repeat(2_000);
     fillDefinition('EMOJI', name);
-    fireEvent.change(screen.getByLabelText('Description'), {
-      target: { value: description },
-    });
+    changeValue(screen.getByLabelText('Description'), description);
     fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Service Definition ISO-9001_GAP recorded.',
@@ -372,9 +365,7 @@ describe('ServiceCatalogueWorkspace', () => {
     );
 
     const commercialLabel = supplementary.repeat(160);
-    fireEvent.change(screen.getByLabelText('Commercial label'), {
-      target: { value: commercialLabel },
-    });
+    changeValue(screen.getByLabelText('Commercial label'), commercialLabel);
     fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
     expect(
       await screen.findByText(
@@ -412,9 +403,10 @@ describe('ServiceCatalogueWorkspace', () => {
     );
 
     fillDefinition('EMOJI', supplementary.repeat(160));
-    fireEvent.change(screen.getByLabelText('Description'), {
-      target: { value: supplementary.repeat(2_001) },
-    });
+    changeValue(
+      screen.getByLabelText('Description'),
+      supplementary.repeat(2_001),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Enter a service code of 1 to 40 characters',
@@ -423,12 +415,11 @@ describe('ServiceCatalogueWorkspace', () => {
       supplementary.repeat(2_001),
     );
 
-    fireEvent.change(screen.getByLabelText('Service Definition'), {
-      target: { value: definition.id },
-    });
-    fireEvent.change(screen.getByLabelText('Commercial label'), {
-      target: { value: supplementary.repeat(161) },
-    });
+    selectOption(screen.getByLabelText('Service Definition'), definition.id);
+    changeValue(
+      screen.getByLabelText('Commercial label'),
+      supplementary.repeat(161),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
     expect(
       screen.getByText(
@@ -471,12 +462,8 @@ describe('ServiceCatalogueWorkspace', () => {
     });
     renderWorkspace();
     await screen.findByRole('list', { name: 'Company Service Offerings' });
-    fireEvent.change(screen.getByLabelText('Service Definition'), {
-      target: { value: definition.id },
-    });
-    fireEvent.change(screen.getByLabelText('Commercial label'), {
-      target: { value: 'Another label' },
-    });
+    selectOption(screen.getByLabelText('Service Definition'), definition.id);
+    changeValue(screen.getByLabelText('Commercial label'), 'Another label');
     fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(

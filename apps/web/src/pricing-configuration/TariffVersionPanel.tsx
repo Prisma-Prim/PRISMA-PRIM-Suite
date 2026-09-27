@@ -11,6 +11,7 @@ import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import { clockChangeRefusal, localInstant } from './local-instant';
 import { tariffVersionCopy as copy } from './tariff-version.copy';
 import './tariff-versions.css';
@@ -714,22 +715,20 @@ export function TariffVersionPanel({
         {offerings.kind === 'ready' && offerings.items.length > 0 ? (
           <div className="tariff-versions-field">
             <label htmlFor={`${fieldId}-offering`}>{copy.offering}</label>
-            <select
+            <Select
               id={`${fieldId}-offering`}
               value={offeringId ?? ''}
-              onChange={(event) => chooseOffering(event.target.value)}
-            >
-              <option value="">{copy.chooseOffering}</option>
-              {offerings.items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {copy.offeringOption({
-                    name: item.serviceDefinition.name,
-                    code: item.serviceDefinition.code,
-                    commercialLabel: item.commercialLabel,
-                  })}
-                </option>
-              ))}
-            </select>
+              placeholder={copy.chooseOffering}
+              options={offerings.items.map((item) => ({
+                value: item.id,
+                label: copy.offeringOption({
+                  name: item.serviceDefinition.name,
+                  code: item.serviceDefinition.code,
+                  commercialLabel: item.commercialLabel,
+                }),
+              }))}
+              onValueChange={chooseOffering}
+            />
           </div>
         ) : null}
         {offerings.kind === 'ready' && offerings.morePage === 'loading' ? (
@@ -850,22 +849,20 @@ export function TariffVersionPanel({
                     <label htmlFor={`${fieldId}-currency`}>
                       {copy.currency}
                     </label>
-                    <select
+                    <Select
                       id={`${fieldId}-currency`}
                       value={draft.currency}
-                      onChange={(event) => {
-                        const currency = readCurrency(event.target.value);
+                      placeholder={copy.chooseCurrency}
+                      options={currencies.map((currency) => ({
+                        value: currency,
+                        label: currency,
+                      }))}
+                      onValueChange={(value) => {
+                        const currency = readCurrency(value);
                         setDraft((current) => ({ ...current, currency }));
                       }}
                       required
-                    >
-                      <option value="">{copy.chooseCurrency}</option>
-                      {currencies.map((currency) => (
-                        <option key={currency} value={currency}>
-                          {currency}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <TextField
                     id={`${fieldId}-rate`}

@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -47,9 +48,9 @@ test('operates the delivered Client, Project, Task and working Document journey 
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await company.selectOption({ label: 'PRISMA-PRIM' });
+  await selectOption(company, { label: 'PRISMA-PRIM' });
   await expect(company).toBeEnabled();
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 
@@ -91,7 +92,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
     projects.getByRole('heading', { name: projectTitle, exact: true }),
   ).toHaveCount(0);
   await projects.getByLabel('Project title').fill(projectTitle);
-  await projects.getByLabel('Client', { exact: true }).selectOption({
+  await selectOption(projects.getByLabel('Client', { exact: true }), {
     label: clientName,
   });
   const projectResponse = page.waitForResponse(
@@ -111,7 +112,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
 
   await tasks.getByLabel('Task title').fill(taskTitle);
   const priority = tasks.locator('form').getByLabel('Priority');
-  await priority.selectOption({ label: 'Critical' });
+  await selectOption(priority, { label: 'Critical' });
   const taskResponse = page.waitForResponse(
     mutationResponse('POST', `/api/projects/${projectId}/tasks`),
   );
@@ -126,12 +127,10 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const responsibleMember = tasks
     .locator('form')
     .getByLabel('Responsible member');
-  await responsibleMember.selectOption({ index: 1 });
-  await expect(responsibleMember.locator('option:checked')).toContainText(
-    'Ada Ionescu',
-  );
+  await selectOption(responsibleMember, { index: 1 });
+  await expect(responsibleMember).toContainText('Ada Ionescu');
   await tasks.getByLabel('Due date').fill('2026-10-15');
-  await priority.selectOption({ label: 'Important' });
+  await selectOption(priority, { label: 'Important' });
   await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
   await expect(
     tasks.locator('dd').getByText('Ada Ionescu', { exact: true }),
@@ -229,8 +228,8 @@ test('operates the delivered Client, Project, Task and working Document journey 
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
   await expect(page).toHaveURL(/\?frame=classic#projects$/u);
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
-  await expect(tasks.getByLabel('Task title')).toHaveValue(preservedDraft);
+  await expect(company).toHaveText('PRISMA-PRIM');
+  await expectValue(tasks.getByLabel('Task title'), preservedDraft);
   await expect(
     tasks.getByRole('button', { name: 'Retry pending Task change' }),
   ).toBeVisible();
@@ -250,7 +249,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   );
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(page).toHaveURL(/\/#projects$/u);
-  await expect(tasks.getByLabel('Task title')).toHaveValue(preservedDraft);
+  await expectValue(tasks.getByLabel('Task title'), preservedDraft);
   await expect(
     tasks.getByRole('button', { name: 'Retry pending Task change' }),
   ).toBeVisible();
@@ -277,7 +276,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expectNoHorizontalOverflow(page);
 
   await navigate(page, navigation, 'Working Documents', narrow);
-  await workingDocuments.getByLabel('Client', { exact: true }).selectOption({
+  await selectOption(workingDocuments.getByLabel('Client', { exact: true }), {
     label: clientName,
   });
   await workingDocuments
@@ -440,7 +439,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
     .click();
   await navigate(page, navigation, 'Projects', narrow);
   await projects.getByRole('tab', { name: 'Tasks', exact: true }).click();
-  await expect(tasks.getByLabel('Task title')).toHaveValue(documentOpenDraft);
+  await expectValue(tasks.getByLabel('Task title'), documentOpenDraft);
 
   // Opening the linked Project from its Document keeps another Project's
   // Task draft and records nothing.
@@ -448,7 +447,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const otherProjectDraft = `Draft kept while opening the linked Project ${suffix}`;
   const visibleTasks = tasks.filter({ visible: true });
   await projects.getByLabel('Project title').fill(otherProjectTitle);
-  await projects.getByLabel('Client', { exact: true }).selectOption({
+  await selectOption(projects.getByLabel('Client', { exact: true }), {
     label: clientName,
   });
   const otherProjectResponse = page.waitForResponse(
@@ -499,9 +498,7 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     projects.getByRole('heading', { name: otherProjectTitle, exact: true }),
   ).toBeVisible();
-  await expect(visibleTasks.getByLabel('Task title')).toHaveValue(
-    otherProjectDraft,
-  );
+  await expectValue(visibleTasks.getByLabel('Task title'), otherProjectDraft);
 
   await page.goto('/#activity');
   await expect(activity).toBeVisible();
@@ -667,11 +664,10 @@ async function nameResponsible(
     .getByRole('button', { name: 'Change', exact: true })
     .click();
   const chooser = responsible.getByLabel('Choose the responsible member');
-  const value = await chooser
-    .locator('option', { hasText: name })
-    .getAttribute('value');
-  if (!value) throw new Error(`${name} is not an eligible responsible member.`);
-  await chooser.selectOption(value);
+  const choices = await openSelect(chooser);
+  const member = choices.getByRole('option', { name });
+  await expect(member).toHaveCount(1);
+  await member.click();
   const saved = page.waitForResponse(
     mutationResponse('PUT', `/api/projects/${projectId}/responsible`),
   );

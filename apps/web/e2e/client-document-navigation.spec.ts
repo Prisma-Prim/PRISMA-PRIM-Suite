@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import {
   actorContextFixture,
@@ -188,7 +189,7 @@ for (const frame of ['classic', 'prisme'] as const) {
         return bounds.top < window.innerHeight && bounds.bottom > 0;
       }),
     ).toBe(true);
-    await expect(documentFilter).toHaveValue(client.displayName);
+    await expectValue(documentFilter, client.displayName);
     // Identity equality, never the displayed name shared with the homonym Client.
     await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
     await expect(
@@ -233,7 +234,7 @@ for (const frame of ['classic', 'prisme'] as const) {
         exact: true,
       }),
     ).toBeVisible();
-    await expect(documentFilter).toHaveValue('');
+    await expectValue(documentFilter, '');
 
     expect(
       await page.evaluate(
@@ -297,9 +298,10 @@ async function selectCompany(
   const narrow = frame === 'prisme' && projectName === 'narrow';
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(companyId);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    companyId,
+  );
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }

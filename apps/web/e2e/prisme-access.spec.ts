@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -131,7 +132,8 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
   await page.reload();
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(page.getByLabel('Active Company', { exact: true })).toHaveValue(
+  await expectValue(
+    page.getByLabel('Active Company', { exact: true }),
     companyA.id,
   );
   expect(validations).toBeGreaterThan(0);
@@ -143,13 +145,20 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
   await expect(context.getByRole('alert')).toHaveText(
     'Your previous Company context is no longer available. Choose an active Company.',
   );
+  const companySelect = page.getByRole('combobox', {
+    name: 'Active Company',
+    exact: true,
+  });
+  const companyChoices = await openSelect(companySelect);
   await expect(
-    context.getByRole('option', { name: companyA.displayName }),
+    companyChoices.getByRole('option', { name: companyA.displayName }),
   ).toHaveCount(0);
+  await companySelect.press('Escape');
   revoked = false;
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(companyB.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    companyB.id,
+  );
   // The server decides the active context; an unconfirmed selection must not be displayed as active.
   await expect(page.locator('.prisme-breadcrumb')).not.toContainText(
     companyB.displayName,
@@ -158,7 +167,8 @@ test('revalidates a sole Company, drops a stale preference and recovers from rev
   await page.reload();
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(page.getByLabel('Active Company', { exact: true })).toHaveValue(
+  await expectValue(
+    page.getByLabel('Active Company', { exact: true }),
     companyA.id,
   );
   if (testInfo.project.name === 'narrow')
@@ -208,8 +218,8 @@ test('discards a late previous-Company result and removes the frame on logout', 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   const selector = page.getByLabel('Active Company', { exact: true });
-  await selector.selectOption(companyA.id);
-  await expect(selector).toHaveValue(companyA.id);
+  await selectOption(selector, companyA.id);
+  await expectValue(selector, companyA.id);
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.getByLabel('Company display name').fill('Delayed private result');
@@ -217,8 +227,8 @@ test('discards a late previous-Company result and removes the frame on logout', 
   await expect.poll(() => Boolean(pendingRegistration)).toBe(true);
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await selector.selectOption(companyB.id);
-  await expect(selector).toHaveValue(companyB.id);
+  await selectOption(selector, companyB.id);
+  await expectValue(selector, companyB.id);
   if (!pendingRegistration) throw new Error('Expected pending registration');
   await pendingRegistration.fulfill({ status: 403 });
   await expect(page.locator('.prisme-breadcrumb')).toContainText(
@@ -226,7 +236,7 @@ test('discards a late previous-Company result and removes the frame on logout', 
   );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
-  await expect(page.getByLabel('Company display name')).toHaveValue('');
+  await expectValue(page.getByLabel('Company display name'), '');
   await expect(
     page.getByRole('button', { name: 'Register Company' }),
   ).toBeEnabled();

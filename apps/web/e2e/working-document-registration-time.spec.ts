@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
@@ -76,9 +77,10 @@ test('shows the registration time of listed and opened Working Documents', async
   await page.goto('/?frame=prisme#documents');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
 
