@@ -1,7 +1,7 @@
 import type { ActorContext } from '../access-types';
 import { Select } from '../presentation/Select';
 import type { CompanyContextState } from '../production-shell/useProductionShellContext';
-import { companyContextCopy as copy } from './company-context.copy';
+import { useCompanyContextCopy } from './company-context.copy';
 
 export function CompanyContextSelector({
   actor,
@@ -12,6 +12,7 @@ export function CompanyContextSelector({
   state: CompanyContextState;
   onSelect: (companyId: string) => Promise<void>;
 }) {
+  const copy = useCompanyContextCopy();
   return (
     <section
       className="company-context"

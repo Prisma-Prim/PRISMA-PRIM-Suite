@@ -1,4 +1,5 @@
 import { taskCopy } from './project/task.copy';
+import { useAppCopy } from './app.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
 import { projectDocumentsCopy } from './project/project-documents.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
@@ -15,7 +16,7 @@ import {
   type RequestedDocument,
 } from './documents/DocumentWorkspace';
 import { documentsCopy } from './documents/documents.copy';
-import { prismeCopy } from './production-shell/prisme/prisme.copy';
+import { usePrismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
@@ -44,6 +45,8 @@ import {
 } from './production-shell/useProductionShellContext';
 
 export function App({ identity }: { identity: BrowserIdentity }) {
+  const copy = useAppCopy();
+  const prismeCopy = usePrismeCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [projectClientFilter, setProjectClientFilter] = useState<{
     navigationContext: string;
@@ -168,7 +171,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   if (!identity.loaded)
     return (
       <main className="production-access-state">
-        <p role="status">Verifying your access…</p>
+        <p role="status">{copy.checkingAccess}</p>
       </main>
     );
   if (!identity.signedIn) return <>{identity.signedOutView}</>;
@@ -176,9 +179,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
 
   if (access.status !== 'active') {
     const messages: Record<'checking' | 'forbidden' | 'error', string> = {
-      checking: 'Verifying your access…',
-      forbidden: 'Your access to this workspace is inactive.',
-      error: 'We could not verify your access. Please try again.',
+      checking: copy.checkingAccess,
+      forbidden: copy.inactiveAccess,
+      error: copy.accessError,
     };
     return (
       <main className="production-access-state">
@@ -396,8 +399,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   if (access.actor.activeCompany && canAccessClients)
     sections.push({
       id: 'documents',
-      label: documentsCopy.title,
-      description: documentsCopy.description,
+      ...prismeCopy.sections.documents,
       content: (
         <DocumentWorkspace
           key={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
@@ -481,8 +483,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   if (canAccessProjects && access.actor.activeCompany)
     sections.push({
       id: 'projects',
-      label: projectCopy.title,
-      description: projectCopy.navDescription,
+      ...prismeCopy.sections.projects,
       content: (
         <ProjectWorkspace
           key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
@@ -599,7 +600,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           <strong>{access.actor.displayName}</strong>
           <small>{access.actor.email}</small>
           <button type="button" onClick={() => void identity.signOut()}>
-            Sign out
+            {copy.signOut}
           </button>
         </span>
       }
@@ -607,11 +608,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     >
       <ApplicationContentSurface>
         <p className="eyebrow">{access.actor.workspaceName}</p>
-        <h1>Welcome to PRISMA-PRIM Suite</h1>
-        <p className="production-home-introduction">
-          This workspace is ready to host your organization&apos;s workflows as
-          they become available.
-        </p>
+        <h1>{copy.homeTitle}</h1>
+        <p className="production-home-introduction">{copy.homeIntroduction}</p>
         {operationalHome}
       </ApplicationContentSurface>
     </ApplicationShell>

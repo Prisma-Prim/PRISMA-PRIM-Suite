@@ -1,5 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocaleStorageKey,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
 import { MyAttention } from './MyAttention';
 import { operationalHomeCopy as copy } from './operational-home.copy';
 import { readOperationalHome } from './operational-home-response';
@@ -16,6 +21,10 @@ const attribution = {
   workspaceMembershipId: 'membership-ana',
   displayName: 'Ana',
 };
+
+afterEach(() => {
+  localStorage.removeItem(interfaceLocaleStorageKey);
+});
 function task(
   id: string,
   title: string,
@@ -74,6 +83,16 @@ const tasks = [
   }),
 ];
 
+const localizedLargeOverdueLabels: ReadonlyArray<{
+  locale: InterfaceLocale;
+  label: string;
+}> = [
+  { locale: 'ro', label: 'Restantă de 1.234 zile' },
+  { locale: 'ru', label: 'Просрочено на 1 234 дн.' },
+  { locale: 'fr', label: 'En retard de 1 234 jours' },
+  { locale: 'en', label: 'Overdue by 1,234 days' },
+];
+
 function attention(matchingCount = tasks.length) {
   const view = readOperationalHome(
     {
@@ -92,16 +111,19 @@ function attention(matchingCount = tasks.length) {
 }
 
 it('shows every Task fact and rule, then opens the Task and My Tasks through existing intents', () => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   const onOpenTask = vi.fn();
   const onOpenMyTasks = vi.fn();
   render(
-    <MyAttention
-      attention={attention()}
-      company={company}
-      today={today}
-      onOpenTask={onOpenTask}
-      onOpenMyTasks={onOpenMyTasks}
-    />,
+    <InterfaceLocaleProvider>
+      <MyAttention
+        attention={attention()}
+        company={company}
+        today={today}
+        onOpenTask={onOpenTask}
+        onOpenMyTasks={onOpenMyTasks}
+      />
+    </InterfaceLocaleProvider>,
   );
   const region = screen.getByRole('region', { name: copy.attention.title });
   const rows = within(region).getAllByRole('listitem');
@@ -114,7 +136,7 @@ it('shows every Task fact and rule, then opens the Task and My Tasks through exi
   expect(rows[1]).toHaveTextContent('No due date');
   expect(rows[2]).toHaveTextContent('Blocked');
   expect(rows[3]).toHaveTextContent('Due today');
-  expect(rows[3]).toHaveTextContent(today);
+  expect(rows[3]).toHaveTextContent('Sep 27, 2026');
   expect(rows[4]).toHaveTextContent('Due in 5 days');
   for (const row of rows) {
     expect(row).toHaveTextContent(project.title);
@@ -140,28 +162,77 @@ it('shows every Task fact and rule, then opens the Task and My Tasks through exi
 });
 
 it('states the empty Company/date and the bounded total', () => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   const { rerender } = render(
-    <MyAttention
-      attention={{ matchingCount: 0, tasks: [] }}
-      company={company}
-      today={today}
-      onOpenMyTasks={() => undefined}
-    />,
+    <InterfaceLocaleProvider>
+      <MyAttention
+        attention={{ matchingCount: 0, tasks: [] }}
+        company={company}
+        today={today}
+        onOpenMyTasks={() => undefined}
+      />
+    </InterfaceLocaleProvider>,
   );
   expect(
     screen.getByRole('region', { name: copy.attention.title }),
   ).toHaveTextContent(
-    'Nothing needs your attention in PRISMA-PRIM on 2026-09-27.',
+    'Nothing needs your attention in PRISMA-PRIM on Sep 27, 2026.',
   );
   rerender(
-    <MyAttention
-      attention={attention(12)}
-      company={company}
-      today={today}
-      onOpenMyTasks={() => undefined}
-    />,
+    <InterfaceLocaleProvider>
+      <MyAttention
+        attention={attention(12)}
+        company={company}
+        today={today}
+        onOpenMyTasks={() => undefined}
+      />
+    </InterfaceLocaleProvider>,
   );
   expect(
     screen.getByRole('region', { name: copy.attention.title }),
   ).toHaveTextContent('Showing 5 of 12 Tasks that need your attention.');
 });
+
+it.each(localizedLargeOverdueLabels)(
+  'renders a large overdue day count in $locale without changing its canonical value',
+  ({ locale, label }) => {
+    localStorage.setItem(interfaceLocaleStorageKey, locale);
+    const overdueTask = task(
+      'long-overdue',
+      'Review historical evidence',
+      '2023-05-12',
+      {
+        rules: ['overdue'],
+        dueInDays: -1_234,
+      },
+    );
+    const view = readOperationalHome(
+      {
+        companyId: company.id,
+        today,
+        summaries: [],
+        attention: { matchingCount: 1, tasks: [overdueTask] },
+      },
+      {
+        companyId: company.id,
+        workspaceMembershipId: attribution.workspaceMembershipId,
+      },
+    );
+    if (!view.attention) throw new Error('Expected attention fixture.');
+
+    render(
+      <InterfaceLocaleProvider>
+        <MyAttention
+          attention={view.attention}
+          company={company}
+          today={today}
+          onOpenMyTasks={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+
+    expect(view.attention.tasks[0]?.dueInDays).toBe(-1_234);
+    const region = screen.getByRole('region', { name: /.+/ });
+    expect(within(region).getByRole('listitem').textContent).toContain(label);
+  },
+);

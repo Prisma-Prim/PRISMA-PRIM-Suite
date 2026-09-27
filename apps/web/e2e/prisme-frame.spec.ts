@@ -153,6 +153,7 @@ test('keeps every authorized MVP section reachable from the default frame', asyn
   context = 'administration';
   await page.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem('prisma-prim.interface-locale', 'en');
     sessionStorage.setItem('mvp-section-context', 'administration');
   });
   await page.reload();
