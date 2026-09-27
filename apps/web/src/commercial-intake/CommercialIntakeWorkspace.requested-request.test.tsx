@@ -94,6 +94,7 @@ function detail(
     capturedByWorkspaceMembershipId: 'membership-1',
     capturedAt: '2026-09-20T10:00:00.000Z',
     version: 1,
+    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `${subject} Opportunity`,

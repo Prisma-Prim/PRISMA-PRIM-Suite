@@ -144,6 +144,7 @@ function requestDetail() {
     capturedByWorkspaceMembershipId: membershipId,
     capturedAt: '2026-09-24T10:05:00.000Z',
     version: 1,
+    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: opportunityId,
       title: 'Audit readiness',

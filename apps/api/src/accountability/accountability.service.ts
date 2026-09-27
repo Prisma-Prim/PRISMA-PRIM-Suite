@@ -299,6 +299,26 @@ export class AccountabilityService {
       });
   }
 
+  async recordClientRequestClientAssociated(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'client_request.client_associated',
+        metadata: { requestVersion: 2 },
+      });
+  }
+
   // Recorded but projected by no Activity read surface. Metadata carries
   // identifiers, the version number and provenance only, never the label; the
   // caller commits it with the publication itself.

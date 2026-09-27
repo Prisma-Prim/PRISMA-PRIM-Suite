@@ -13,6 +13,7 @@ import type { CommercialActivityEvent } from './accountability.types.js';
  */
 const COMMERCIAL_ACTIVITY_TARGETS = {
   'client_request.created': 'client_request',
+  'client_request.client_associated': 'client_request',
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
 } as const satisfies Record<string, CommercialTargetKind>;
@@ -22,6 +23,7 @@ export type CommercialActivityAction = keyof typeof COMMERCIAL_ACTIVITY_TARGETS;
 // Listed explicitly so an unmapped action cannot reach the projection.
 const COMMERCIAL_ACTIVITY_ACTIONS: readonly CommercialActivityAction[] = [
   'client_request.created',
+  'client_request.client_associated',
   'opportunity.created',
   'opportunity.next_action.updated',
 ];
@@ -91,6 +93,10 @@ export function eligibleCommercialActions(
  */
 const COMMERCIAL_ACTIVITY_METADATA = {
   'client_request.created': { versionField: 'requestVersion', version: 1 },
+  'client_request.client_associated': {
+    versionField: 'requestVersion',
+    version: 2,
+  },
   'opportunity.created': { versionField: 'opportunityVersion', version: 1 },
   'opportunity.next_action.updated': {
     versionField: 'opportunityVersion',
@@ -98,7 +104,7 @@ const COMMERCIAL_ACTIVITY_METADATA = {
   },
 } as const satisfies Record<
   CommercialActivityAction,
-  { versionField: string; version: 1 | 'resulting' }
+  { versionField: string; version: 1 | 2 | 'resulting' }
 >;
 
 /**

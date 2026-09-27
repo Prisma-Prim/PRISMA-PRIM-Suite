@@ -162,8 +162,9 @@ export class CommercialIntakeService {
   }
 
   // Pricing reuses this exact Commercial Intake read boundary. The captured
-  // assignment is held under a share lock, while the Opportunity row is only
-  // read, so unrelated next-action updates do not wait on a calculation.
+  // assignment and Request are held under share locks, while the Opportunity
+  // row is only read. Client association is therefore ordered on the Request,
+  // and unrelated next-action updates do not wait on a calculation.
   async requireReadablePricingOpportunity(
     actor: ActorContext,
     opportunityId: string,
@@ -195,7 +196,8 @@ export class CommercialIntakeService {
           eq(opportunities.companyId, companyId),
           eq(opportunities.id, opportunityId.toLowerCase()),
         ),
-      );
+      )
+      .for('share', { of: clientRequests });
     if (!target) throw new NotFoundException();
     return target;
   }
@@ -765,7 +767,11 @@ function detailView({
   responsibleDisplayName: string;
   client?: NonNullable<CommercialIntakeDetail['clientReference']>;
 }): CommercialIntakeDetail {
-  if (request.version !== 1 || opportunity.version < 1)
+  if (
+    (request.version !== 1 && request.version !== 2) ||
+    (request.version === 2 && !request.clientAccountId) ||
+    opportunity.version < 1
+  )
     throw new Error('Unsupported commercial intake version.');
   return {
     id: request.id,
@@ -778,6 +784,11 @@ function detailView({
     capturedByWorkspaceMembershipId: request.capturedByWorkspaceMembershipId,
     capturedAt: request.capturedAt.toISOString(),
     version: request.version,
+    clientAssociationStatus: request.clientAccountId
+      ? client
+        ? 'visible'
+        : 'hidden'
+      : 'absent',
     ...(request.clientAccountId && client
       ? {
           clientReference: client,

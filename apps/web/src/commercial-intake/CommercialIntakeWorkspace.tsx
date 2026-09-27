@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -13,6 +14,7 @@ import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { RequestClientAssociation } from './RequestClientAssociation';
 import './commercial-intake.css';
 
 type ResponsibleActor = { workspaceMembershipId: string; displayName: string };
@@ -40,7 +42,8 @@ type ClientRequest = {
   originalText: string;
   capturedByWorkspaceMembershipId: string;
   capturedAt: string;
-  version: 1;
+  version: 1 | 2;
+  clientAssociationStatus: 'absent' | 'hidden' | 'visible';
   clientReference?: {
     originalClientId: string;
     currentClientId?: string;
@@ -245,6 +248,11 @@ export function CommercialIntakeWorkspace({
     actor.activeCompany?.commercialIntakePermissions?.includes(
       'commercial.opportunity.next_action.update',
     ) === true;
+  const canAssociateClient =
+    canSearchClients &&
+    actor.activeCompany?.commercialIntakePermissions?.includes(
+      'commercial.request.client.associate',
+    ) === true;
 
   const request = useCallback(
     async ({
@@ -309,7 +317,11 @@ export function CommercialIntakeWorkspace({
       result: HttpResult,
       companyContextId: string,
       signal: AbortSignal,
-      resource: 'intake' | 'client-search' | 'next-action-update' = 'intake',
+      resource:
+        | 'intake'
+        | 'client-search'
+        | 'client-association'
+        | 'next-action-update' = 'intake',
     ): Promise<'ok' | 'retained' | 'rejected'> => {
       if (signal.aborted) return 'rejected';
       if (result.status === 401) {
@@ -956,6 +968,31 @@ export function CommercialIntakeWorkspace({
                 }
               : undefined
           }
+          clientAssociation={
+            companyId &&
+            canAssociateClient &&
+            selected.request.clientAssociationStatus === 'absent' ? (
+              <RequestClientAssociation
+                identity={identity}
+                companyId={companyId}
+                requestId={selected.request.id}
+                expectedVersion={selected.request.version}
+                request={request}
+                handleAccess={handleAccess}
+                onAssociated={async (value) => {
+                  if (!isClientRequest(value)) return false;
+                  setSelected({
+                    request: value,
+                    identityRevision: identityRevision.current,
+                  });
+                  setFeedback(copy.clientAssociationSuccess);
+                  await onActivityRecorded();
+                  await loadRequests(companyId);
+                  return true;
+                }}
+              />
+            ) : undefined
+          }
           onCompanyContextRejected={onCompanyContextRejected}
           onActorRevalidated={onActorRevalidated}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
@@ -1370,6 +1407,7 @@ function RequestDetail({
   pending,
   onOpenClientDossier,
   nextAction,
+  clientAssociation,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -1382,6 +1420,7 @@ function RequestDetail({
   /** Offered only for a current dossier identity, never a name or original id. */
   onOpenClientDossier: (() => void) | undefined;
   nextAction: NextActionEditor | undefined;
+  clientAssociation: ReactNode;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -1444,8 +1483,19 @@ function RequestDetail({
               ) : null}
             </dd>
           </div>
+        ) : request.clientAssociationStatus === 'absent' ? (
+          <div>
+            <dt>{copy.client}</dt>
+            <dd>{copy.noClientAssociated}</dd>
+          </div>
+        ) : request.clientAssociationStatus === 'hidden' ? (
+          <div>
+            <dt>{copy.client}</dt>
+            <dd>{copy.clientAssociationHidden}</dd>
+          </div>
         ) : null}
       </dl>
+      {clientAssociation}
       <section>
         <h4>{copy.initialOpportunity}</h4>
         <p>{request.initialOpportunity.title}</p>
@@ -1605,8 +1655,23 @@ function isClientRequest(value: unknown): value is ClientRequest {
     typeof value.originalText === 'string' &&
     typeof value.capturedByWorkspaceMembershipId === 'string' &&
     isDisplayableTimestamp(value.capturedAt) &&
-    value.version === 1 &&
+    (value.version === 1 || value.version === 2) &&
     isInitialOpportunity(value.initialOpportunity) &&
+    (value.clientAssociationStatus === 'absent' ||
+      value.clientAssociationStatus === 'hidden' ||
+      value.clientAssociationStatus === 'visible') &&
+    !(
+      value.clientAssociationStatus === 'absent' &&
+      (value.version !== 1 || value.clientReference !== undefined)
+    ) &&
+    !(
+      value.clientAssociationStatus === 'visible' &&
+      value.clientReference === undefined
+    ) &&
+    !(
+      value.clientReference !== undefined &&
+      value.clientAssociationStatus !== 'visible'
+    ) &&
     (value.clientReference === undefined ||
       isClientReference(value.clientReference))
   );

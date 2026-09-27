@@ -1054,11 +1054,11 @@ export type CompanyContextVisibility =
   | { kind: 'assigned-active'; companyIds: readonly string[] };
 
 export type CommercialIntakeAccessMode =
-  'read' | 'create' | 'update-next-action';
+  'read' | 'create' | 'update-next-action' | 'associate-client';
 
 // Runtime authorization evaluates the captured assignment version. Reads and
-// creates accept every captured version that carries them; the next-action
-// update exists only in captured v2, so a legacy v1 assignment fails closed.
+// creates accept every captured version that carries them. Later mutations
+// require the exact captured versions that introduced their permission.
 function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
   required: readonly CompanyCommercialIntakePermission[];
   capturedVersions: readonly CompanyCommercialIntakePermissionSetVersion[];
@@ -1067,7 +1067,7 @@ function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
     case 'read':
       return {
         required: ['commercial.request.read', 'commercial.opportunity.read'],
-        capturedVersions: ['v1', 'v2'],
+        capturedVersions: ['v1', 'v2', 'v3'],
       };
     case 'create':
       return {
@@ -1075,7 +1075,7 @@ function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
           'commercial.request.create',
           'commercial.opportunity.create',
         ],
-        capturedVersions: ['v1', 'v2'],
+        capturedVersions: ['v1', 'v2', 'v3'],
       };
     case 'update-next-action':
       return {
@@ -1084,7 +1084,15 @@ function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
           'commercial.opportunity.read',
           'commercial.opportunity.next_action.update',
         ],
-        capturedVersions: ['v2'],
+        capturedVersions: ['v2', 'v3'],
+      };
+    case 'associate-client':
+      return {
+        required: [
+          'commercial.request.read',
+          'commercial.request.client.associate',
+        ],
+        capturedVersions: ['v3'],
       };
     default:
       return assertNeverMode(mode);

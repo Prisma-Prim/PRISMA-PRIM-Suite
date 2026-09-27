@@ -216,6 +216,49 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await clients.getByRole('button', { name: 'Close registration' }).click();
 
   await navigate(page, navigation, 'Client Requests', narrow);
+  await expect(
+    intake.getByText('No Client associated', { exact: true }),
+  ).toBeVisible();
+  await searchAndSelectClient(intake, clientName);
+  const associationResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/commercial-intake\/requests\/[^/]+\/client-association$/u.test(
+        new URL(response.url()).pathname,
+      ),
+  );
+  await intake
+    .getByRole('button', { name: 'Confirm Client association' })
+    .click();
+  expect((await associationResponse).status()).toBe(200);
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
+    'Client associated.',
+  );
+  await expect(
+    intake.getByRole('heading', { name: 'Associate a Client' }),
+  ).toHaveCount(0);
+  await expect(
+    intake
+      .locator('.commercial-intake-detail dl > div')
+      .filter({ has: page.getByRole('term').filter({ hasText: /^Client$/u }) })
+      .getByRole('definition'),
+  ).toContainText(clientName);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-client-association-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+
+  await page.reload();
+  await requestButton.click();
+  await expect(
+    intake
+      .locator('.commercial-intake-detail dl > div')
+      .filter({ has: page.getByRole('term').filter({ hasText: /^Client$/u }) })
+      .getByRole('definition'),
+  ).toContainText(clientName);
   await intake.getByRole('button', { name: 'Back to Requests' }).click();
   await captureRequest(page, intake, {
     originalText: linkedOriginalText,
@@ -353,6 +396,13 @@ test('captures and reopens manual Client Requests through the real API and Postg
     await expect(
       activity
         .getByText('Ada Ionescu created an initial Opportunity', {
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
+    await expect(
+      activity
+        .getByText('Ada Ionescu associated a Client with a Request', {
           exact: true,
         })
         .first(),

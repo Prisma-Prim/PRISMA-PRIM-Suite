@@ -5,7 +5,7 @@ const CAPTURED_VERSIONS = {
   'Company Director Client Access': ['v1', 'v2'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],
-  'Company Commercial Intake': ['v1', 'v2'],
+  'Company Commercial Intake': ['v1', 'v2', 'v3'],
   'Company Document Project Organizer': ['v1'],
   'Company Project Access': ['v1', 'v2'],
   'Company Task Manager': ['v1'],
