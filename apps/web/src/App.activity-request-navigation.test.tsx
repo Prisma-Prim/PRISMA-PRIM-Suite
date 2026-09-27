@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -241,9 +242,10 @@ function openRequestIn(row: HTMLElement) {
   fireEvent.click(within(row).getByRole('button', { name: 'Open Request' }));
 }
 function selectCompany(companyId: string) {
-  fireEvent.change(screen.getByLabelText('Active Company', { exact: true }), {
-    target: { value: companyId },
-  });
+  changeValue(
+    screen.getByLabelText('Active Company', { exact: true }),
+    companyId,
+  );
 }
 
 // jsdom implements neither scrolling nor motion media queries. The real
@@ -461,9 +463,10 @@ describe('opening the Request from its commercial Activity event', () => {
         name: 'Edit next action',
       }),
     );
-    fireEvent.change(within(requestsRegion()).getByLabelText('Next action'), {
-      target: { value: 'Book the audit window' },
-    });
+    changeValue(
+      within(requestsRegion()).getByLabelText('Next action'),
+      'Book the audit window',
+    );
 
     navigateTo('Activity Log');
     openRequestIn(await activityRow('updated an Opportunity next action'));

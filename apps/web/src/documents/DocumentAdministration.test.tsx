@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CompanyContextAccess } from '../access/CompanyContextAccess';
@@ -68,15 +69,9 @@ it.each([
     });
     vi.stubGlobal('fetch', fetcher);
     render(<CompanyContextAccess actor={actor} identity={identity} />);
-    fireEvent.change(await screen.findByLabelText('Workspace member'), {
-      target: { value: 'member' },
-    });
-    fireEvent.change(screen.getByLabelText('Company', { exact: true }), {
-      target: { value: 'company' },
-    });
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value },
-    });
+    changeValue(await screen.findByLabelText('Workspace member'), 'member');
+    changeValue(screen.getByLabelText('Company', { exact: true }), 'company');
+    changeValue(screen.getByLabelText('Access bundle'), value);
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
     expect(
       await screen.findByText('Access granted. Server state refreshed.'),

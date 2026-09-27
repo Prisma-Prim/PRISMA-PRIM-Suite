@@ -54,7 +54,7 @@
   overflow-wrap: anywhere;
 }
 
-.prisme-shell button,
+.prisme-shell button:not(:where(.shared-select__trigger)),
 .prisme-shell input,
 .prisme-shell select,
 .prisme-shell textarea {

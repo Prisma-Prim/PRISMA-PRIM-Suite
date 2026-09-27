@@ -1,4 +1,6 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -264,7 +266,8 @@ test('captures and reopens manual Client Requests through the real API and Postg
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
-  await expect(intake.getByLabel('Original request text')).toHaveValue(
+  await expectValue(
+    intake.getByLabel('Original request text'),
     'Unavailable Client request',
   );
   await expect(intake.locator(':scope > [role="alert"]')).toBeVisible();
@@ -281,9 +284,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await expect(filter).toBeFocused();
   await expectNoHorizontalOverflow(page);
   await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(
-    intake.getByLabel('Existing Client').locator('option:checked'),
-  ).toHaveText(clientName);
+  await expect(intake.getByLabel('Existing Client')).toHaveText(clientName);
 
   await seedRequestsPastListBound(page, suffix);
   await page.reload();
@@ -319,13 +320,13 @@ test('captures and reopens manual Client Requests through the real API and Postg
     intake.getByText('Client Request detail', { exact: true }),
   ).toBeVisible();
   await intake.getByRole('button', { name: 'Back to Requests' }).click();
-  await expect(filter).toHaveValue(`Qualify ${suffix} commercial request`);
+  await expectValue(filter, `Qualify ${suffix} commercial request`);
   await expect(listItems).toHaveCount(1);
   await clearFilter.click();
   await expect(
     intake.getByText(`Bounded list Request ${suffix} 7`, { exact: true }),
   ).toBeVisible();
-  await expect(filter).toHaveValue('');
+  await expectValue(filter, '');
 
   await navigate(page, navigation, 'Activity Log', narrow);
   const activity = page.locator('.activity-log');
@@ -885,7 +886,7 @@ async function selectCompany(
 ): Promise<void> {
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await company.selectOption({ label: 'PRISMA-PRIM' });
+  await selectOption(company, { label: 'PRISMA-PRIM' });
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }
@@ -937,9 +938,12 @@ async function searchAndSelectClient(
     .getByLabel('Search Clients by name', { exact: true })
     .fill(clientName);
   await intake.getByRole('button', { name: 'Search Clients' }).click();
-  await intake
-    .getByLabel('Existing Client', { exact: true })
-    .selectOption({ label: clientName });
+  await expectSelectAppearance(
+    intake.getByLabel('Existing Client', { exact: true }),
+  );
+  await selectOption(intake.getByLabel('Existing Client', { exact: true }), {
+    label: clientName,
+  });
 }
 
 function mutationResponse(method: string, pathname: string) {

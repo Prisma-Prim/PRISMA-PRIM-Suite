@@ -65,11 +65,12 @@
   font-size: 0.9rem;
 }
 .task-filters input:focus-visible,
-.task-filters select:focus-visible {
+.task-filters select:focus-visible,
+.task-filters .shared-select__trigger:focus-visible {
   outline: 3px solid #4b36b5;
   outline-offset: 2px;
 }
-.task-filters button {
+.task-filters button:not(:where(.shared-select__trigger)) {
   align-self: end;
   min-height: 2.5rem;
   padding: 0.55rem 0.65rem;
@@ -180,10 +181,16 @@
   font-size: 1.15rem;
 }
 .prisme-shell .project-tasks--prisme .task-header > button,
-.prisme-shell .project-tasks--prisme .task-filters button,
+.prisme-shell
+  .project-tasks--prisme
+  .task-filters
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .project-tasks--prisme .task-panel > button,
 .prisme-shell .project-tasks--prisme .task-actions button,
-.prisme-shell .project-tasks--prisme form button,
+.prisme-shell
+  .project-tasks--prisme
+  form
+  button:not(:where(.shared-select__trigger)),
 .prisme-shell .project-tasks--prisme nav > button {
   min-height: 36px;
   border: 1px solid var(--shell-line);
@@ -194,7 +201,10 @@
   cursor: pointer;
 }
 .prisme-shell .project-tasks--prisme .task-panel > button,
-.prisme-shell .project-tasks--prisme form button {
+.prisme-shell
+  .project-tasks--prisme
+  form
+  button:not(:where(.shared-select__trigger)) {
   border-color: #6652e7;
   color: #fff;
   background: #6451e8;

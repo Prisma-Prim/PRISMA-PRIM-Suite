@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import {
@@ -191,7 +192,7 @@ test('compares existing Clients, confirms their union and reverses it', async ({
   await expect(union.getByText('Dana', { exact: true })).toBeVisible();
   const confirm = union.getByRole('form', { name: 'Confirm union' });
   for (const select of await confirm.getByRole('combobox').all())
-    await select.selectOption(firstId);
+    await selectOption(select, firstId);
   await confirm
     .getByLabel('Reason for this union')
     .fill('Same verified legal identity.');

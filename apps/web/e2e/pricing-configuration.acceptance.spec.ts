@@ -1,4 +1,6 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -57,7 +59,7 @@ test('fills canonical local datetimes without changing their intended instants',
 
     await fillDateTimeLocal(field, example.input);
 
-    await expect(field).toHaveValue(example.canonical);
+    await expectValue(field, example.canonical);
     expect(
       await field.evaluate((element) => {
         if (!(element instanceof HTMLInputElement))
@@ -138,9 +140,10 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
     );
     const startA = await localDateTime(page, 60_000);
     await fillDraft(page, zone, 'Illustrative rule A', startA.local);
-    await expect(
+    await expectValue(
       configuration.getByLabel('Label', { exact: true }),
-    ).toHaveValue('Illustrative rule A');
+      'Illustrative rule A',
+    );
     expect(await publish(page)).toBe(201);
     await expect(
       configuration.getByText('Version 1 published.', { exact: true }),
@@ -212,9 +215,10 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
         { exact: true },
       ),
     ).toBeVisible();
-    await expect(
+    await expectValue(
       secondConfiguration.getByLabel('Label', { exact: true }),
-    ).toHaveValue('Second tab rule');
+      'Second tab rule',
+    );
     await secondTab.close();
 
     // 5. Resubmitting v2's content unchanged allocates no version.
@@ -240,6 +244,15 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
       tariffs.getByText(tariffMarker, { exact: true }),
     ).toBeVisible();
     await chooseOffering(page, offeringA);
+    await expectSelectAppearance(
+      tariffs.getByRole('combobox', {
+        name: 'Company Service Offering',
+        exact: true,
+      }),
+    );
+    await expectSelectAppearance(
+      tariffs.getByLabel('Currency', { exact: true }),
+    );
     await expect(tariffs.getByText(/^No current version/u)).toBeVisible();
     await expect(
       tariffs.getByText(
@@ -332,9 +345,10 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
         { exact: true },
       ),
     ).toBeVisible();
-    await expect(
+    await expectValue(
       secondTariffs.getByLabel('Unit amount', { exact: true }),
-    ).toHaveValue('99');
+      '99',
+    );
     await tariffTab.close();
 
     // 12. Resubmitting v2's content with 123.45 changes nothing: amounts
@@ -1066,8 +1080,8 @@ async function chooseOffering(
   const select = page
     .locator('.tariff-versions')
     .getByLabel('Company Service Offering', { exact: true });
-  await select.selectOption({ label: offering.label });
-  await expect(select.locator('option:checked')).toHaveText(offering.label);
+  await selectOption(select, { label: offering.label });
+  await expect(select).toHaveText(offering.label);
 }
 
 async function fillTariffDraft(
@@ -1080,9 +1094,10 @@ async function fillTariffDraft(
   await tariffs
     .getByLabel('Unit amount', { exact: true })
     .fill(draft.unitAmount);
-  await tariffs
-    .getByLabel('Currency', { exact: true })
-    .selectOption(draft.currency ?? 'EUR');
+  await selectOption(
+    tariffs.getByLabel('Currency', { exact: true }),
+    draft.currency ?? 'EUR',
+  );
   await tariffs.getByLabel('Tax rate percent', { exact: true }).fill('12.34');
   await tariffs
     .getByLabel('Tax label', { exact: true })
@@ -1166,8 +1181,8 @@ async function selectCompany(
 ): Promise<void> {
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await company.selectOption({ label });
-  await expect(company.locator('option:checked')).toHaveText(label);
+  await selectOption(company, { label });
+  await expect(company).toHaveText(label);
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }

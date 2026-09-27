@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -194,12 +195,8 @@ const settle = () =>
   act(async () => await new Promise((resolve) => setTimeout(resolve)));
 async function startRegistration(server: ReturnType<typeof projectServer>) {
   await screen.findByRole('button', { name: betaRow });
-  fireEvent.change(screen.getByLabelText('Project title'), {
-    target: { value: registeredProject.title },
-  });
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: beta.id },
-  });
+  changeValue(screen.getByLabelText('Project title'), registeredProject.title);
+  changeValue(screen.getByLabelText('Client'), beta.id);
   server.hold('POST /api/projects');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   return server.requested('POST /api/projects');
@@ -215,7 +212,7 @@ describe('Requested Project opens', () => {
     );
     fireEvent.click(screen.getByRole('tab', { name: 'Working Documents' }));
     const search = screen.getByRole('searchbox', { name: 'Find Projects' });
-    fireEvent.change(search, { target: { value: 'demo' } });
+    changeValue(search, 'demo');
 
     const renamedClient = 'Atelier Demo SRL (current name)';
     server.hold(atelierDetail);

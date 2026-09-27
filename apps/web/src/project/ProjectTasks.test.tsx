@@ -1,4 +1,9 @@
 import {
+  changeValue,
+  selectOptionByLabel,
+  selectOptionLabels,
+} from '../test/select-option';
+import {
   fireEvent,
   render,
   screen,
@@ -192,9 +197,7 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
     }),
   );
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
-  fireEvent.change(await within(tasks).findByLabelText('Task title'), {
-    target: { value: task.title },
-  });
+  changeValue(await within(tasks).findByLabelText('Task title'), task.title);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Create Task' }));
   await within(tasks).findByRole('heading', { name: task.title });
   expect(
@@ -206,9 +209,10 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
       name: 'Collect preparation notes',
     }),
   );
-  fireEvent.change(await within(tasks).findByLabelText('Task title'), {
-    target: { value: 'Review preparation notes' },
-  });
+  changeValue(
+    await within(tasks).findByLabelText('Task title'),
+    'Review preparation notes',
+  );
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByRole('heading', {
     name: 'Review preparation notes',
@@ -350,22 +354,16 @@ it('filters loaded Tasks locally by title and current status while preserving se
   const fetchCount = fetcher.mock.calls.length;
 
   expect(within(taskList).getByLabelText('Task status')).toHaveValue('all');
-  fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
-    target: { value: 'ARCHIVE' },
-  });
+  changeValue(within(taskList).getByLabelText('Search Tasks'), 'ARCHIVE');
   expect(listedTitles(tasks)).toEqual([
     'Archive preparation evidence',
     'Review archive notes',
   ]);
 
-  fireEvent.change(within(taskList).getByLabelText('Task status'), {
-    target: { value: 'done' },
-  });
+  changeValue(within(taskList).getByLabelText('Task status'), 'done');
   expect(listedTitles(tasks)).toEqual(['Archive preparation evidence']);
 
-  fireEvent.change(within(taskList).getByLabelText('Search Tasks'), {
-    target: { value: 'missing title' },
-  });
+  changeValue(within(taskList).getByLabelText('Search Tasks'), 'missing title');
   expect(
     within(taskList).getByText('No Tasks match the current filters.'),
   ).toBeInTheDocument();
@@ -421,20 +419,7 @@ function responsibleFilter(tasks: HTMLElement) {
   return within(tasks).getByLabelText('Task responsible member');
 }
 function responsibleLabels(tasks: HTMLElement) {
-  return within(responsibleFilter(tasks))
-    .getAllByRole('option')
-    .map((option) => option.textContent);
-}
-function responsibleValue(select: HTMLElement, label: string, occurrence = 0) {
-  const option = within(select)
-    .getAllByRole('option')
-    .flatMap((candidate) =>
-      candidate instanceof HTMLOptionElement && candidate.textContent === label
-        ? [candidate]
-        : [],
-    )[occurrence];
-  if (!option) throw new Error(`Missing responsible member option ${label}`);
-  return option.value;
+  return selectOptionLabels(responsibleFilter(tasks));
 }
 function selectResponsible(
   tasks: HTMLElement,
@@ -442,9 +427,7 @@ function selectResponsible(
   occurrence = 0,
 ): void {
   const select = responsibleFilter(tasks);
-  fireEvent.change(select, {
-    target: { value: responsibleValue(select, label, occurrence) },
-  });
+  selectOptionByLabel(select, label, occurrence);
 }
 async function openFilteredTasks(
   taskActor: ActorContext = actor,
@@ -497,14 +480,10 @@ it('filters loaded Tasks by responsible member and combines it with the title an
     'Collect Ana evidence',
     'Archive Ana evidence',
   ]);
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'todo' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
   expect(listedTitles(tasks)).toEqual(['Collect Ana evidence']);
 
-  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
-    target: { value: 'Ion' },
-  });
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'Ion');
   expect(
     within(tasks).getByText('No Tasks match the current filters.'),
   ).toBeInTheDocument();
@@ -573,17 +552,18 @@ it('separates homonymous responsible members and keeps the open detail and draft
     'Ana Pop',
   ]);
   const select = responsibleFilter(tasks);
-  expect(responsibleValue(select, 'Ana Pop', 0)).not.toEqual(
-    responsibleValue(select, 'Ana Pop', 1),
-  );
+  fireEvent.click(select);
+  const homonymValues = screen
+    .getAllByRole('option', { name: 'Ana Pop' })
+    .map((option) => option.getAttribute('data-value'));
+  expect(homonymValues[0]).not.toEqual(homonymValues[1]);
+  fireEvent.click(select);
 
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Collect Ana evidence' }),
   );
   await within(tasks).findByRole('heading', { name: 'Collect Ana evidence' });
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'Unsaved correction' },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), 'Unsaved correction');
 
   selectResponsible(tasks, 'Ana Pop', 1);
   expect(listedTitles(tasks)).toEqual(['Draft homonym report']);
@@ -624,9 +604,7 @@ it('resets the responsible-member filter to All when an authoritative refresh re
     },
   });
   const tasks = await openFilteredTasks();
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'todo' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
   selectResponsible(tasks, 'Ana Pop');
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Collect Ana evidence' }),
@@ -674,22 +652,13 @@ function datedFixture() {
   });
 }
 function dateFilter(tasks: HTMLElement) {
-  const select = within(tasks).getByLabelText('Task date filter');
-  if (!(select instanceof HTMLSelectElement))
-    throw new Error('Missing date filter');
-  return select;
+  return within(tasks).getByLabelText('Task date filter');
 }
 function selectedDateOption(tasks: HTMLElement) {
-  return dateFilter(tasks).selectedOptions[0]?.textContent;
+  return dateFilter(tasks).textContent;
 }
 function selectDateFilter(tasks: HTMLElement, label: string) {
-  const select = dateFilter(tasks);
-  const option = within(select)
-    .getAllByRole('option')
-    .find((candidate) => candidate.textContent === label);
-  if (!(option instanceof HTMLOptionElement))
-    throw new Error(`Missing date filter option ${label}`);
-  fireEvent.change(select, { target: { value: option.value } });
+  selectOptionByLabel(dateFilter(tasks), label);
 }
 type BoundLabel = 'Task date from' | 'Task date through';
 function boundInput(tasks: HTMLElement, label: BoundLabel) {
@@ -766,13 +735,9 @@ it('finds loaded Tasks inside an inclusive calendar date range and combines it w
 
   enterBound(tasks, 'Task date from', '');
   enterBound(tasks, 'Task date through', '');
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'todo' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
   expect(listedTitles(tasks)).toEqual(['Collect October evidence']);
-  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
-    target: { value: 'november' },
-  });
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'november');
   expect(
     within(tasks).getByText('No Tasks match the current filters.'),
   ).toBeInTheDocument();
@@ -871,9 +836,7 @@ it('resets the date filter explicitly while keeping the other filters', async ()
   const tasks = await openFilteredTasks();
   selectDateFilter(tasks, 'Date range');
   enterBound(tasks, 'Task date from', '2026-11-01');
-  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
-    target: { value: 'evidence' },
-  });
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'evidence');
   expect(listedTitles(tasks)).toEqual(['Archive November evidence']);
 
   fireEvent.click(
@@ -932,9 +895,7 @@ it('keeps the selected Task, its draft and the exact uncertain command while a d
   await within(tasks).findByRole('heading', {
     name: 'Collect October evidence',
   });
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'Unsaved correction' },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), 'Unsaved correction');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByRole('button', {
     name: 'Retry pending Task change',
@@ -1015,9 +976,7 @@ it('reapplies the date range to the authoritative rows after a completion refres
     '2026-10-31',
   );
 
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'todo' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
   expect(
     within(tasks).getByText('No Tasks match the current filters.'),
   ).toBeInTheDocument();
@@ -1100,17 +1059,13 @@ it('keeps the selected detail, draft and exact retry command when filters hide i
     />,
   );
   const tasks = await openSavedTask();
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'Unsaved correction' },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), 'Unsaved correction');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByRole('button', {
     name: 'Retry pending Task change',
   });
 
-  fireEvent.change(within(tasks).getByLabelText('Search Tasks'), {
-    target: { value: 'another' },
-  });
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'another');
   expect(
     within(tasks).queryByRole('button', { name: savedTask.title }),
   ).not.toBeInTheDocument();
@@ -1182,9 +1137,7 @@ it('refreshes filtered navigation after complete and reopen while keeping the op
   );
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
   await within(tasks).findByRole('navigation', { name: 'Tasks' });
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'todo' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
   fireEvent.click(within(tasks).getByRole('button', { name: savedTask.title }));
   await within(tasks).findByRole('heading', { name: savedTask.title });
 
@@ -1197,9 +1150,7 @@ it('refreshes filtered navigation after complete and reopen while keeping the op
     within(tasks).getByRole('heading', { name: savedTask.title }),
   ).toBeInTheDocument();
 
-  fireEvent.change(within(tasks).getByLabelText('Task status'), {
-    target: { value: 'done' },
-  });
+  changeValue(within(tasks).getByLabelText('Task status'), 'done');
   expect(
     within(tasks).getByRole('button', { name: savedTask.title }),
   ).toBeInTheDocument();
@@ -1251,9 +1202,7 @@ it('keeps the original edit key and expected version across Task navigation and 
     />,
   );
   const tasks = await openSavedTask();
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'My correction' },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), 'My correction');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByRole('button', {
     name: 'Retry pending Task change',
@@ -1325,12 +1274,8 @@ it('preserves useful drafts when changing Tasks and returning', async () => {
     />,
   );
   const tasks = await openSavedTask();
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'Unsaved correction' },
-  });
-  fireEvent.change(within(tasks).getByLabelText('Due date'), {
-    target: { value: '2026-10-15' },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), 'Unsaved correction');
+  changeValue(within(tasks).getByLabelText('Due date'), '2026-10-15');
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Another preparation Task' }),
   );
@@ -1401,12 +1346,13 @@ it('preserves an ineligible historical assignee while allowing a title-only corr
     />,
   );
   const tasks = await openSavedTask();
+  const assigneeSelect = within(tasks).getByLabelText('Responsible member');
+  fireEvent.click(assigneeSelect);
   expect(
-    within(tasks).getByRole('option', { name: assignee.displayLabel }),
+    screen.getByRole('option', { name: assignee.displayLabel }),
   ).toBeDisabled();
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: 'Corrected title' },
-  });
+  fireEvent.click(assigneeSelect);
+  changeValue(within(tasks).getByLabelText('Task title'), 'Corrected title');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByText('Task change recorded.');
   expect(command).toEqual({ expectedVersion: 1, title: 'Corrected title' });
@@ -1807,10 +1753,10 @@ it('starts, blocks with a validated reason, resumes, cancels with a reason and r
     within(tasks).getByText('Enter a reason of 1–500 characters.'),
   ).toBeInTheDocument();
   expect(reason).toHaveAttribute('aria-invalid', 'true');
-  fireEvent.change(reason, { target: { value: `  ${'x'.repeat(501)}  ` } });
+  changeValue(reason, `  ${'x'.repeat(501)}  `);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   expect(commands).toHaveLength(1);
-  fireEvent.change(reason, { target: { value: `  ${blockageReason}  ` } });
+  changeValue(reason, `  ${blockageReason}  `);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   await waitForState(tasks, 'Blocked');
   expect(commands.at(-1)).toMatchObject({
@@ -1839,9 +1785,10 @@ it('starts, blocks with a validated reason, resumes, cancels with a reason and r
   ).toBeNull();
 
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
-  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
-    target: { value: 'Duplicate of A' },
-  });
+  changeValue(
+    within(tasks).getByLabelText('Cancellation reason'),
+    'Duplicate of A',
+  );
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Keep current state' }),
   );
@@ -1849,9 +1796,10 @@ it('starts, blocks with a validated reason, resumes, cancels with a reason and r
   expect(commands).toHaveLength(3);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
   expect(within(tasks).getByLabelText('Cancellation reason')).toHaveValue('');
-  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
-    target: { value: 'Duplicate of A' },
-  });
+  changeValue(
+    within(tasks).getByLabelText('Cancellation reason'),
+    'Duplicate of A',
+  );
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Save cancellation' }),
   );
@@ -1913,13 +1861,13 @@ it('counts reason characters as Unicode code points like the server', async () =
 
   fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
   const reason = within(tasks).getByLabelText('Blockage reason');
-  fireEvent.change(reason, { target: { value: `  ${blockage}😀  ` } });
+  changeValue(reason, `  ${blockage}😀  `);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   expect(
     within(tasks).getByText('Enter a reason of 1–500 characters.'),
   ).toBeInTheDocument();
   expect(commands).toHaveLength(0);
-  fireEvent.change(reason, { target: { value: `  ${blockage}  ` } });
+  changeValue(reason, `  ${blockage}  `);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   await waitForState(tasks, 'Blocked');
   expect(commands.at(-1)?.body).toEqual({
@@ -1933,9 +1881,7 @@ it('counts reason characters as Unicode code points like the server', async () =
 
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
   const cancellationField = within(tasks).getByLabelText('Cancellation reason');
-  fireEvent.change(cancellationField, {
-    target: { value: `${cancellation}𝒜` },
-  });
+  changeValue(cancellationField, `${cancellation}𝒜`);
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Save cancellation' }),
   );
@@ -1943,7 +1889,7 @@ it('counts reason characters as Unicode code points like the server', async () =
     within(tasks).getByText('Enter a reason of 1–500 characters.'),
   ).toBeInTheDocument();
   expect(commands).toHaveLength(1);
-  fireEvent.change(cancellationField, { target: { value: cancellation } });
+  changeValue(cancellationField, cancellation);
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Save cancellation' }),
   );
@@ -1978,9 +1924,7 @@ it('preserves the exact blockage payload and key for an explicit retry after an 
   );
   const tasks = await openSavedTask();
   fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
-  fireEvent.change(within(tasks).getByLabelText('Blockage reason'), {
-    target: { value: blockageReason },
-  });
+  changeValue(within(tasks).getByLabelText('Blockage reason'), blockageReason);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   await within(tasks).findByText(
     'The result is not confirmed. Retry the same change to safely recover its recorded result.',
@@ -2013,9 +1957,10 @@ it('requires an explicit reload after a conflicting cancellation', async () => {
   );
   const tasks = await openSavedTask();
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
-  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
-    target: { value: 'Duplicate of A' },
-  });
+  changeValue(
+    within(tasks).getByLabelText('Cancellation reason'),
+    'Duplicate of A',
+  );
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Save cancellation' }),
   );
@@ -2099,9 +2044,10 @@ it('drops an open reason draft and a late transition reply when the authorizatio
   const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
   let tasks = await openSavedTask();
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
-  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
-    target: { value: 'Unsaved reason' },
-  });
+  changeValue(
+    within(tasks).getByLabelText('Cancellation reason'),
+    'Unsaved reason',
+  );
   view.rerender(
     <ProjectWorkspace
       actor={{ ...actor, workspaceMembershipId: 'replacement' }}
@@ -2138,18 +2084,13 @@ const unsavedFields = {
   priority: 'critical',
 };
 function enterUnsavedFields(tasks: HTMLElement) {
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: unsavedFields.title },
-  });
-  fireEvent.change(within(tasks).getByLabelText('Responsible member'), {
-    target: { value: unsavedFields.assigneeMembershipId },
-  });
-  fireEvent.change(within(tasks).getByLabelText('Due date'), {
-    target: { value: unsavedFields.dueDate },
-  });
-  fireEvent.change(within(tasks).getByLabelText('Priority'), {
-    target: { value: unsavedFields.priority },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), unsavedFields.title);
+  changeValue(
+    within(tasks).getByLabelText('Responsible member'),
+    unsavedFields.assigneeMembershipId,
+  );
+  changeValue(within(tasks).getByLabelText('Due date'), unsavedFields.dueDate);
+  changeValue(within(tasks).getByLabelText('Priority'), unsavedFields.priority);
 }
 // A move remounts the form, so every check queries the current fields.
 function formFields(tasks: HTMLElement) {
@@ -2202,9 +2143,7 @@ it('keeps unsaved title, responsible member, date and priority through moves bet
   await expectFormFields(tasks, unsavedFields);
 
   fireEvent.click(within(tasks).getByRole('button', { name: 'Mark blocked' }));
-  fireEvent.change(within(tasks).getByLabelText('Blockage reason'), {
-    target: { value: blockageReason },
-  });
+  changeValue(within(tasks).getByLabelText('Blockage reason'), blockageReason);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save blockage' }));
   await waitForState(tasks, 'Blocked');
   await expectFormFields(tasks, unsavedFields);
@@ -2272,9 +2211,7 @@ it('discards a kept draft when the Task changed after its own move, so newer fie
     />,
   );
   const tasks = await openSavedTask();
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: unsavedFields.title },
-  });
+  changeValue(within(tasks).getByLabelText('Task title'), unsavedFields.title);
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Mark in progress' }),
   );
@@ -2318,9 +2255,10 @@ it('consumes the draft when the Task is completed or cancelled, so reopening sho
 
   enterUnsavedFields(tasks);
   fireEvent.click(within(tasks).getByRole('button', { name: 'Cancel Task' }));
-  fireEvent.change(within(tasks).getByLabelText('Cancellation reason'), {
-    target: { value: 'Duplicate of A' },
-  });
+  changeValue(
+    within(tasks).getByLabelText('Cancellation reason'),
+    'Duplicate of A',
+  );
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Save cancellation' }),
   );
@@ -2385,11 +2323,14 @@ it('offers All plus the five states in the status filter and filters on the real
   const tasks = await screen.findByRole('region', { name: 'Tasks' });
   const filter = await within(tasks).findByLabelText('Task status');
   expect(filter).toHaveValue('all');
-  expect(
-    within(filter)
-      .getAllByRole('option')
-      .map((option) => option.textContent),
-  ).toEqual(['All', 'To do', 'In progress', 'Blocked', 'Done', 'Cancelled']);
+  expect(selectOptionLabels(filter)).toEqual([
+    'All',
+    'To do',
+    'In progress',
+    'Blocked',
+    'Done',
+    'Cancelled',
+  ]);
   expect(
     Array.from(
       tasks.querySelectorAll('.task-list .task-status'),
@@ -2403,7 +2344,7 @@ it('offers All plus the five states in the status filter and filters on the real
     ['done', 'Finished work'],
     ['cancelled', 'Dropped work'],
   ]) {
-    fireEvent.change(filter, { target: { value } });
+    changeValue(filter, value);
     expect(listedTitles(tasks)).toEqual([title]);
   }
 });
@@ -2558,15 +2499,13 @@ it('creates a Critical Task, shows its priority label in the list, detail and hi
   const tasks = await openProjectTasks();
   const priority = await within(tasks).findByLabelText('Priority');
   expect(priority).toHaveValue('normal');
-  expect(
-    within(priority)
-      .getAllByRole('option')
-      .map((option) => option.textContent),
-  ).toEqual(['Normal', 'Important', 'Critical']);
-  fireEvent.change(within(tasks).getByLabelText('Task title'), {
-    target: { value: priorityTask.title },
-  });
-  fireEvent.change(priority, { target: { value: 'critical' } });
+  expect(selectOptionLabels(priority)).toEqual([
+    'Normal',
+    'Important',
+    'Critical',
+  ]);
+  changeValue(within(tasks).getByLabelText('Task title'), priorityTask.title);
+  changeValue(priority, 'critical');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Create Task' }));
   await within(tasks).findByRole('heading', { name: priorityTask.title });
   await within(tasks).findByText('Task change recorded.');
@@ -2588,7 +2527,7 @@ it('creates a Critical Task, shows its priority label in the list, detail and hi
 
   const edit = within(tasks).getByLabelText('Priority');
   expect(edit).toHaveValue('critical');
-  fireEvent.change(edit, { target: { value: 'important' } });
+  changeValue(edit, 'important');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByText('Important', { selector: 'dd' });
   expect(commands[1]?.body).toEqual({
@@ -2631,9 +2570,7 @@ it('keeps an uncertain priority change and its key for an explicit retry and req
     },
   });
   const tasks = await openPriorityTask();
-  fireEvent.change(within(tasks).getByLabelText('Priority'), {
-    target: { value: 'important' },
-  });
+  changeValue(within(tasks).getByLabelText('Priority'), 'important');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   fireEvent.click(
     await within(tasks).findByRole('button', {
@@ -2649,9 +2586,7 @@ it('keeps an uncertain priority change and its key for an explicit retry and req
   });
   expect(commands[0]?.key).toBeTruthy();
 
-  fireEvent.change(within(tasks).getByLabelText('Priority'), {
-    target: { value: 'normal' },
-  });
+  changeValue(within(tasks).getByLabelText('Priority'), 'normal');
   fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
   await within(tasks).findByText(
     'This Task or its permissions changed. Reload the Task before making another change.',
@@ -2869,9 +2804,7 @@ it('keeps a priority draft across Task navigation and drops it when the authoriz
   const identity = deterministicBrowserIdentity();
   const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
   const tasks = await openSavedTask();
-  fireEvent.change(within(tasks).getByLabelText('Priority'), {
-    target: { value: 'critical' },
-  });
+  changeValue(within(tasks).getByLabelText('Priority'), 'critical');
   fireEvent.click(
     within(tasks).getByRole('button', { name: 'Another preparation Task' }),
   );

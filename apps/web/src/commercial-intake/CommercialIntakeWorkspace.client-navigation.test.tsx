@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -335,7 +336,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     renderNavigation({ clientRestriction: firstDossier });
     await waitFor(() => expect(listedSubjects()).toHaveLength(2));
 
-    fireEvent.change(filterInput(), { target: { value: 'follow-up' } });
+    changeValue(filterInput(), 'follow-up');
     expect(listedSubjects()).toEqual(['First Client follow-up']);
     fireEvent.click(screen.getByRole('button', { name: copy.filterClear }));
     expect(listedSubjects()).toEqual([
@@ -344,7 +345,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     ]);
     expect(restriction()).toBeVisible();
 
-    fireEvent.change(filterInput(), { target: { value: 'follow-up' } });
+    changeValue(filterInput(), 'follow-up');
     fireEvent.click(
       screen.getByRole('button', { name: copy.restrictionClear }),
     );
@@ -426,7 +427,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     });
     renderNavigation({ clientRestriction: firstDossier });
     await waitFor(() => expect(listedSubjects()).toHaveLength(2));
-    fireEvent.change(filterInput(), { target: { value: 'follow-up' } });
+    changeValue(filterInput(), 'follow-up');
     openRow('First Client follow-up');
     expect(
       await screen.findByText('Original source of First Client follow-up'),
@@ -551,9 +552,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: copy.editNextAction }),
     );
-    fireEvent.change(screen.getByLabelText(copy.nextAction), {
-      target: { value: 'Book the audit call' },
-    });
+    changeValue(screen.getByLabelText(copy.nextAction), 'Book the audit call');
 
     view.update({ clientRestriction: firstDossier });
     expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
@@ -603,9 +602,10 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: copy.editNextAction }),
     );
-    fireEvent.change(screen.getByLabelText(copy.nextAction), {
-      target: { value: 'Confirm the audit window' },
-    });
+    changeValue(
+      screen.getByLabelText(copy.nextAction),
+      'Confirm the audit window',
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.saveNextAction }));
     expect(
       await screen.findByText(copy.nextActionUncertain, {
@@ -659,15 +659,15 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     });
     renderNavigation({ clientRestriction: firstDossier });
     await waitFor(() => expect(listedSubjects()).toHaveLength(2));
-    fireEvent.change(screen.getByLabelText(copy.originalText), {
-      target: { value: 'Exact original text' },
-    });
-    fireEvent.change(screen.getByLabelText(copy.opportunityTitle), {
-      target: { value: 'Qualify the request' },
-    });
-    fireEvent.change(screen.getByLabelText(copy.nextAction), {
-      target: { value: 'Call back' },
-    });
+    changeValue(
+      screen.getByLabelText(copy.originalText),
+      'Exact original text',
+    );
+    changeValue(
+      screen.getByLabelText(copy.opportunityTitle),
+      'Qualify the request',
+    );
+    changeValue(screen.getByLabelText(copy.nextAction), 'Call back');
     fireEvent.click(screen.getByRole('button', { name: copy.capture }));
 
     expect(
@@ -694,15 +694,15 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     });
     const view = renderNavigation({});
     await waitFor(() => expect(listedSubjects()).toHaveLength(4));
-    fireEvent.change(screen.getByLabelText(copy.originalText), {
-      target: { value: 'Exact original text' },
-    });
-    fireEvent.change(screen.getByLabelText(copy.opportunityTitle), {
-      target: { value: 'Qualify the request' },
-    });
-    fireEvent.change(screen.getByLabelText(copy.nextAction), {
-      target: { value: 'Call back' },
-    });
+    changeValue(
+      screen.getByLabelText(copy.originalText),
+      'Exact original text',
+    );
+    changeValue(
+      screen.getByLabelText(copy.opportunityTitle),
+      'Qualify the request',
+    );
+    changeValue(screen.getByLabelText(copy.nextAction), 'Call back');
     fireEvent.click(screen.getByRole('button', { name: copy.capture }));
     expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
 
@@ -989,15 +989,15 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       });
       const view = renderNavigation({ onOpenClientDossier: openDossier });
       await screen.findByText(copy.empty('PRISMA-PRIM'));
-      fireEvent.change(screen.getByLabelText(copy.originalText), {
-        target: { value: 'Exact original text' },
-      });
-      fireEvent.change(screen.getByLabelText(copy.opportunityTitle), {
-        target: { value: 'Qualify the request' },
-      });
-      fireEvent.change(screen.getByLabelText(copy.nextAction), {
-        target: { value: 'Call back' },
-      });
+      changeValue(
+        screen.getByLabelText(copy.originalText),
+        'Exact original text',
+      );
+      changeValue(
+        screen.getByLabelText(copy.opportunityTitle),
+        'Qualify the request',
+      );
+      changeValue(screen.getByLabelText(copy.nextAction), 'Call back');
       fireEvent.click(screen.getByRole('button', { name: copy.capture }));
       view.update({ clientIdentityRevision: 1 });
 
@@ -1036,9 +1036,10 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: copy.editNextAction }),
       );
-      fireEvent.change(screen.getByLabelText(copy.nextAction), {
-        target: { value: 'Book the audit call' },
-      });
+      changeValue(
+        screen.getByLabelText(copy.nextAction),
+        'Book the audit call',
+      );
       fireEvent.click(
         screen.getByRole('button', { name: copy.saveNextAction }),
       );
@@ -1101,9 +1102,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: copy.editNextAction }),
       );
-      fireEvent.change(screen.getByLabelText(copy.nextAction), {
-        target: { value: 'Draft step' },
-      });
+      changeValue(screen.getByLabelText(copy.nextAction), 'Draft step');
 
       view.update({ clientIdentityRevision: 1 });
       await waitFor(() => expect(returnAction()).toBeVisible());

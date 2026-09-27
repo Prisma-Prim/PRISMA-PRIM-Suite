@@ -846,6 +846,9 @@ describe('the Document Versions section', () => {
       <DocumentWorkspace actor={approver} identity={identity} />,
     );
     await openDocument();
+    await waitFor(() =>
+      expect(reads(requests, '/api/documents/document/versions')).toBe(1),
+    );
     // The Approver assignment is revoked while the first read is pending.
     view.rerender(
       <DocumentWorkspace actor={actorWith(READER)} identity={identity} />,

@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -319,15 +320,18 @@ async function openDetailForEditing(props: WorkspaceProps = {}) {
 }
 
 function fillRequiredFields() {
-  fireEvent.change(screen.getByLabelText('Original request text'), {
-    target: { value: createdRequest.originalText },
-  });
-  fireEvent.change(screen.getByLabelText('Opportunity title'), {
-    target: { value: createdRequest.initialOpportunity.title },
-  });
-  fireEvent.change(screen.getByLabelText('Next action'), {
-    target: { value: createdRequest.initialOpportunity.nextAction },
-  });
+  changeValue(
+    screen.getByLabelText('Original request text'),
+    createdRequest.originalText,
+  );
+  changeValue(
+    screen.getByLabelText('Opportunity title'),
+    createdRequest.initialOpportunity.title,
+  );
+  changeValue(
+    screen.getByLabelText('Next action'),
+    createdRequest.initialOpportunity.nextAction,
+  );
 }
 
 describe('CommercialIntakeWorkspace', () => {
@@ -705,12 +709,11 @@ describe('CommercialIntakeWorkspace', () => {
     );
     renderWorkspace();
     await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
-    fireEvent.change(screen.getByLabelText('Original request text'), {
-      target: { value: 'A real request' },
-    });
-    fireEvent.change(screen.getByLabelText('Source label'), {
-      target: { value: 'Phone note' },
-    });
+    changeValue(
+      screen.getByLabelText('Original request text'),
+      'A real request',
+    );
+    changeValue(screen.getByLabelText('Source label'), 'Phone note');
     fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -747,12 +750,10 @@ describe('CommercialIntakeWorkspace', () => {
       renderWorkspace();
       await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
       fillRequiredFields();
-      fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-        target: { value: 'Synthetic' },
-      });
+      changeValue(screen.getByLabelText('Search Clients by name'), 'Synthetic');
       fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       const client = await screen.findByLabelText('Existing Client');
-      fireEvent.change(client, { target: { value: 'client-1' } });
+      changeValue(client, 'client-1');
       fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -787,15 +788,11 @@ describe('CommercialIntakeWorkspace', () => {
 
     renderWorkspace();
     await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
-    fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-      target: { value: 'Synthetic' },
-    });
+    changeValue(screen.getByLabelText('Search Clients by name'), 'Synthetic');
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
     const client = await screen.findByLabelText('Existing Client');
-    fireEvent.change(client, { target: { value: 'client-1' } });
-    fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-      target: { value: '' },
-    });
+    changeValue(client, 'client-1');
+    changeValue(screen.getByLabelText('Search Clients by name'), '');
     expect(screen.queryByLabelText('Existing Client')).not.toBeInTheDocument();
 
     fillRequiredFields();
@@ -847,10 +844,9 @@ describe('CommercialIntakeWorkspace', () => {
     );
     renderWorkspace();
     await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
-    fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-      target: { value: 'Client' },
-    });
+    changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    fireEvent.click(await screen.findByLabelText('Existing Client'));
     expect(
       await screen.findByRole('option', { name: 'Related Client' }),
     ).toBeVisible();
@@ -879,9 +875,7 @@ describe('CommercialIntakeWorkspace', () => {
       );
       renderWorkspace();
       await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
-      fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-        target: { value: 'Client' },
-      });
+      changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
       fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       expect(
         await screen.findByText(
@@ -934,12 +928,11 @@ describe('CommercialIntakeWorkspace', () => {
         onWorkspaceAccessRejected: workspaceRejected,
       });
       await screen.findByText('Private Company request');
-      fireEvent.change(screen.getByLabelText('Original request text'), {
-        target: { value: 'Unsaved Company source' },
-      });
-      fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-        target: { value: 'Client' },
-      });
+      changeValue(
+        screen.getByLabelText('Original request text'),
+        'Unsaved Company source',
+      );
+      changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
       fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'You do not have permission to access Commercial Intake.',
@@ -978,12 +971,11 @@ describe('CommercialIntakeWorkspace', () => {
       onWorkspaceAccessRejected: workspaceRejected,
     });
     await screen.findByText('No Client Requests for PRISMA-PRIM yet.');
-    fireEvent.change(screen.getByLabelText('Original request text'), {
-      target: { value: 'Preserve my request' },
-    });
-    fireEvent.change(screen.getByLabelText('Search Clients by name'), {
-      target: { value: 'Client' },
-    });
+    changeValue(
+      screen.getByLabelText('Original request text'),
+      'Preserve my request',
+    );
+    changeValue(screen.getByLabelText('Search Clients by name'), 'Client');
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
     expect(
       await screen.findByText(
@@ -1141,9 +1133,7 @@ describe('CommercialIntakeWorkspace', () => {
     await openDetailForEditing({ onActivityRecorded: activityRecorded });
     const input = screen.getByLabelText('Next action');
     expect(input).toHaveValue('Arrange a qualification call');
-    fireEvent.change(input, {
-      target: { value: 'Send the qualification summary' },
-    });
+    changeValue(input, 'Send the qualification summary');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1190,9 +1180,10 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Send the qualification summary' },
-    });
+    changeValue(
+      screen.getByLabelText('Next action'),
+      'Send the qualification summary',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
     const back = await screen.findByRole('button', {
       name: 'Back to Requests',
@@ -1247,9 +1238,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: '   ' },
-    });
+    changeValue(screen.getByLabelText('Next action'), '   ');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1272,9 +1261,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Call back on Monday' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'Call back on Monday');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(
@@ -1308,9 +1295,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'My stale edit' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'My stale edit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1354,9 +1339,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'My stale edit' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'My stale edit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
     await screen.findByRole('button', { name: 'Reload Request' });
 
@@ -1394,9 +1377,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Book the site visit' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1410,9 +1391,7 @@ describe('CommercialIntakeWorkspace', () => {
     );
     const uncertainInput = screen.getByLabelText('Next action');
     expect(uncertainInput).toBeDisabled();
-    fireEvent.change(uncertainInput, {
-      target: { value: 'Replace the preserved command' },
-    });
+    changeValue(uncertainInput, 'Replace the preserved command');
     expect(uncertainInput).toHaveValue('Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Retry update' }));
 
@@ -1452,9 +1431,7 @@ describe('CommercialIntakeWorkspace', () => {
       onActorRevalidated: actorRevalidated,
       onCompanyContextRejected: companyRejected,
     });
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Denied edit' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'Denied edit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1479,9 +1456,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { revalidateActor } = await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Obsolete draft' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'Obsolete draft');
     revalidateActor(actor);
 
     expect(
@@ -1514,9 +1489,7 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { revalidateActor } = await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Book the site visit' },
-    });
+    changeValue(screen.getByLabelText('Next action'), 'Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
     await screen.findByRole('button', { name: 'Retry update' });
 
@@ -1543,7 +1516,7 @@ describe('CommercialIntakeWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit next action' }));
     const input = screen.getByLabelText('Next action');
     expect(input).toHaveValue('Arrange a qualification call');
-    fireEvent.change(input, { target: { value: 'Book the site visit' } });
+    changeValue(input, 'Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -1593,9 +1566,10 @@ describe('CommercialIntakeWorkspace', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const { revalidateActor } = await openDetailForEditing();
-      fireEvent.change(screen.getByLabelText('Next action'), {
-        target: { value: 'Obsolete in-flight edit' },
-      });
+      changeValue(
+        screen.getByLabelText('Next action'),
+        'Obsolete in-flight edit',
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
       expect(await screen.findByRole('status')).toHaveTextContent(
         'Saving next action…',
@@ -1644,9 +1618,10 @@ describe('CommercialIntakeWorkspace', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await openDetailForEditing();
-    fireEvent.change(screen.getByLabelText('Next action'), {
-      target: { value: 'Edit of a vanished Opportunity' },
-    });
+    changeValue(
+      screen.getByLabelText('Next action'),
+      'Edit of a vanished Opportunity',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
     expect(
@@ -2058,9 +2033,7 @@ describe('CommercialIntakeWorkspace', () => {
     renderWorkspace();
     expect(await screen.findByText('Annual audit support')).toBeVisible();
     fillRequiredFields();
-    fireEvent.change(screen.getByLabelText('Source label'), {
-      target: { value: 'Phone note' },
-    });
+    changeValue(screen.getByLabelText('Source label'), 'Phone note');
     fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The Client Request could not be loaded or saved. Please try again.',
