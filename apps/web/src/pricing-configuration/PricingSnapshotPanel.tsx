@@ -118,6 +118,7 @@ export function PricingSnapshotPanel({
   const [pending, setPending] = useState(false);
   const [unresolved, setUnresolved] = useState<CalculationAttempt>();
   const [olderPending, setOlderPending] = useState(false);
+  const [olderError, setOlderError] = useState(false);
   const loadRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const olderRequest = useRef<AbortController | undefined>(undefined);
@@ -216,6 +217,7 @@ export function PricingSnapshotPanel({
       olderRequest.current?.abort();
       olderRequest.current = undefined;
       setOlderPending(false);
+      setOlderError(false);
       detailRequest.current?.abort();
       detailRequest.current = undefined;
       loadRequest.current?.abort();
@@ -480,13 +482,18 @@ export function PricingSnapshotPanel({
     const controller = new AbortController();
     olderRequest.current = controller;
     setOlderPending(true);
+    setOlderError(false);
     try {
       const result = await request({
         path: `${snapshotBasePath(opportunityId)}?limit=${pageSize}&cursor=${encodeURIComponent(view.nextCursor)}`,
         signal: controller.signal,
       });
-      if (controller.signal.aborted) return;
-      if (await handleAccess(result, controller.signal)) {
+      if (controller.signal.aborted || olderRequest.current !== controller)
+        return;
+      const accessRejected = await handleAccess(result, controller.signal);
+      if (controller.signal.aborted || olderRequest.current !== controller)
+        return;
+      if (accessRejected) {
         setView({ kind: 'denied' });
       } else if (result.status === 200 && isSnapshotPage(result.body)) {
         const page = result.body;
@@ -501,10 +508,16 @@ export function PricingSnapshotPanel({
               }
             : current,
         );
+      } else {
+        setOlderError(true);
       }
     } catch (error: unknown) {
-      if (!(error instanceof DOMException && error.name === 'AbortError'))
-        throw error;
+      if (
+        !(error instanceof DOMException && error.name === 'AbortError') &&
+        !controller.signal.aborted &&
+        olderRequest.current === controller
+      )
+        setOlderError(true);
     } finally {
       if (olderRequest.current === controller) {
         olderRequest.current = undefined;
@@ -632,6 +645,7 @@ export function PricingSnapshotPanel({
             snapshots={view.snapshots}
             hasOlder={!!view.nextCursor}
             olderPending={olderPending}
+            olderError={olderError}
             onOlder={() => void loadOlder()}
             onOpen={(snapshotId) => void reopen(snapshotId)}
           />
@@ -665,12 +679,14 @@ function SnapshotHistory({
   snapshots,
   hasOlder,
   olderPending,
+  olderError,
   onOlder,
   onOpen,
 }: {
   snapshots: PricingSnapshot[];
   hasOlder: boolean;
   olderPending: boolean;
+  olderError: boolean;
   onOlder: () => void;
   onOpen: (snapshotId: string) => void;
 }) {
@@ -689,6 +705,7 @@ function SnapshotHistory({
           </li>
         ))}
       </ul>
+      {olderError ? <p role="alert">{copy.olderUnavailable}</p> : null}
       {hasOlder ? (
         <button type="button" onClick={onOlder} disabled={olderPending}>
           {copy.older}

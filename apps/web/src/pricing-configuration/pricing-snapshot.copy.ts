@@ -27,6 +27,7 @@ export const pricingSnapshotCopy = {
   snapshots: 'Saved Pricing Snapshots',
   noSnapshots: 'No Pricing Snapshot has been saved for this Opportunity.',
   older: 'Load older snapshots',
+  olderUnavailable: 'Older Pricing Snapshots could not be loaded. Try again.',
   reopen: 'Reopen snapshot',
   subtotal: 'Subtotal',
   tax: 'Tax',

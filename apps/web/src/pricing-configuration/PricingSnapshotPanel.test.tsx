@@ -374,6 +374,118 @@ describe('PricingSnapshotPanel', () => {
     },
   );
 
+  it('uses the session-denial path when loading an older page is unauthorized', async () => {
+    const historical = snapshot();
+    const rejectSession = vi.fn(async () => undefined);
+    stubApi({
+      ...baseRoutes(),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}`]: (_call, _init, url) =>
+        url.searchParams.has('cursor')
+          ? Response.json({ message: 'Unauthorized' }, { status: 401 })
+          : Response.json({ items: [historical], nextCursor: 'page-two' }),
+    });
+    render(
+      <PricingSnapshotPanel
+        actor={actor}
+        identity={{ ...deterministicBrowserIdentity(), rejectSession }}
+        opportunityId={OPPORTUNITY_A}
+        onCompanyContextRejected={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Load older snapshots' }),
+    );
+
+    await waitFor(() => expect(rejectSession).toHaveBeenCalledOnce());
+    expect(
+      await screen.findByText(/Pricing access is not available/u),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Older Pricing Snapshots could not be loaded. Try again.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      scope: 'Opportunity',
+      opportunityId: OPPORTUNITY_B,
+      companyId: 'company-1',
+    },
+    { scope: 'Company', opportunityId: OPPORTUNITY_A, companyId: 'company-2' },
+  ])(
+    'ignores a late older-page failure after the selected $scope changes',
+    async ({ opportunityId, companyId }) => {
+      if (!actor.activeCompany) throw new Error('Expected an active Company.');
+      const initial = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000031',
+        '31.31',
+      );
+      const current = snapshot(
+        opportunityId,
+        '30000000-0000-4000-8000-000000000032',
+        '32.32',
+      );
+      let resolveOlder: ((response: Response) => void) | undefined;
+      const olderPage = new Promise<Response>((resolve) => {
+        resolveOlder = resolve;
+      });
+      stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: (_call, init, url) => {
+          if (url.searchParams.has('cursor')) return olderPage;
+          return new Headers(init?.headers).get('x-company-context-id') ===
+            'company-2'
+            ? Response.json({ items: [current] })
+            : Response.json({ items: [initial], nextCursor: 'obsolete' });
+        },
+        [`GET ${snapshotPath(OPPORTUNITY_B)}`]: () =>
+          Response.json({ items: [current] }),
+      });
+      const rendered = renderPanel();
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Load older snapshots' }),
+      );
+
+      rendered.rerender(
+        <PricingSnapshotPanel
+          actor={{
+            ...actor,
+            activeCompany: { ...actor.activeCompany, id: companyId },
+          }}
+          identity={deterministicBrowserIdentity()}
+          opportunityId={opportunityId}
+          onCompanyContextRejected={vi.fn()}
+        />,
+      );
+      expect(
+        await screen.findByRole('button', { name: /32\.32 EUR/u }),
+      ).toBeInTheDocument();
+
+      resolveOlder?.(
+        Response.json({ message: 'Unavailable' }, { status: 503 }),
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(
+        screen.queryByText(
+          'Older Pricing Snapshots could not be loaded. Try again.',
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /32\.32 EUR/u }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /31\.31 EUR/u }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it.each([
     { mode: 'when the transport honors abort', honorsAbort: true },
     { mode: 'when the transport returns a late reply', honorsAbort: false },
@@ -677,6 +789,87 @@ describe('PricingSnapshotPanel', () => {
   });
 
   it.each([
+    {
+      failure: 'a network failure',
+      response: () => {
+        throw new TypeError('network interrupted');
+      },
+    },
+    {
+      failure: 'a server failure',
+      response: () =>
+        Response.json({ message: 'Unavailable' }, { status: 503 }),
+    },
+    {
+      failure: 'a malformed response',
+      response: () => Response.json({ items: 'not-a-page' }),
+    },
+  ])(
+    'reports $failure for an older page and retries the same cursor without changing the history',
+    async ({ response }) => {
+      const current = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000021',
+        '21.21',
+      );
+      const older = snapshot(
+        OPPORTUNITY_A,
+        '30000000-0000-4000-8000-000000000022',
+        '22.22',
+      );
+      const requestedCursors: string[] = [];
+      const fetchMock = stubApi({
+        ...baseRoutes(),
+        [`GET ${snapshotPath(OPPORTUNITY_A)}`]: (call, _init, url) => {
+          const cursor = url.searchParams.get('cursor');
+          if (!cursor)
+            return Response.json({ items: [current], nextCursor: 'page-two' });
+          requestedCursors.push(cursor);
+          return call === 2 ? response() : Response.json({ items: [older] });
+        },
+      });
+
+      renderPanel();
+      expect(
+        await screen.findByRole('button', { name: /21\.21 EUR/u }),
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Load older snapshots' }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Older Pricing Snapshots could not be loaded. Try again.',
+      );
+      expect(requestedCursors).toEqual(['page-two']);
+      expect(
+        screen.getByRole('button', { name: /21\.21 EUR/u }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /22\.22 EUR/u }),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Load older snapshots' }),
+      );
+      expect(
+        await screen.findByRole('button', { name: /22\.22 EUR/u }),
+      ).toBeInTheDocument();
+      expect(requestedCursors).toEqual(['page-two', 'page-two']);
+      expect(
+        screen.queryByText(
+          'Older Pricing Snapshots could not be loaded. Try again.',
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.filter(
+          ([input, init]) =>
+            key(input, init) === `GET ${snapshotPath(OPPORTUNITY_A)}`,
+        ),
+      ).toHaveLength(3);
+    },
+  );
+
+  it.each([
     { mode: 'when the transport honors abort', honorsAbort: true },
     { mode: 'when the transport returns a late reply', honorsAbort: false },
   ])(
@@ -776,6 +969,11 @@ describe('PricingSnapshotPanel', () => {
       });
       expect(
         screen.queryByRole('button', { name: /33\.33 EUR/u }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Older Pricing Snapshots could not be loaded. Try again.',
+        ),
       ).not.toBeInTheDocument();
 
       fireEvent.click(

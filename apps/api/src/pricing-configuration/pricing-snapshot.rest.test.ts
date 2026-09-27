@@ -108,7 +108,7 @@ withPostgres('Pricing Snapshots REST', () => {
   });
 
   it('calculates the exact worked example and replays, reloads and reopens its immutable trace after configuration moves', async () => {
-    const fixture = await prepared();
+    const fixture = await prepared('expiring');
     const body = calculationBody(fixture);
     const path = snapshotsPath(fixture.opportunityId);
     const created = snapshot(
@@ -194,6 +194,80 @@ withPostgres('Pricing Snapshots REST', () => {
     expect(
       (
         await pool.query(
+          `SELECT count(*)::integer AS line_count,
+                  bool_and(raw_line_tax = line_net * tax_rate_percent / 100)
+                    AS stored_tax_trace_matches,
+                  sum(line_net)::numeric(24, 2)::text AS reproduced_subtotal,
+                  sum(round(line_net * tax_rate_percent / 100, 2))::numeric(24, 2)::text
+                    AS reproduced_tax_total,
+                  (sum(line_net)
+                    + sum(round(line_net * tax_rate_percent / 100, 2)))::numeric(24, 2)::text
+                    AS reproduced_total
+             FROM pricing_snapshot_lines
+            WHERE snapshot_id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        line_count: 2,
+        stored_tax_trace_matches: true,
+        reproduced_subtotal: '308.64',
+        reproduced_tax_total: '38.08',
+        reproduced_total: '346.72',
+      },
+    ]);
+    expect(
+      (
+        await pool.query(
+          `SELECT count(*)::integer AS line_count,
+                  bool_and(l.tariff_version_number = t.version_number
+                    AND l.unit_amount = t.unit_amount
+                    AND l.tax_rate_percent = t.tax_rate_percent) AS tariff_trace_matches,
+                  max(s.pricing_rule_version_number) = max(r.version_number) AS rule_trace_matches,
+                  bool_and(l.raw_line_tax
+                    = round(l.quantity * t.unit_amount, 2) * t.tax_rate_percent / 100)
+                    AS rounded_line_net_tax_matches,
+                  sum(round(l.quantity * t.unit_amount, 2))::numeric(24, 2)::text
+                    AS reproduced_subtotal,
+                  sum(round(round(l.quantity * t.unit_amount, 2)
+                    * t.tax_rate_percent / 100, 2))::numeric(24, 2)::text
+                    AS reproduced_tax_total,
+                  (sum(round(l.quantity * t.unit_amount, 2))
+                    + sum(round(round(l.quantity * t.unit_amount, 2)
+                      * t.tax_rate_percent / 100, 2)))::numeric(24, 2)::text
+                    AS reproduced_total
+             FROM pricing_snapshots s
+             JOIN pricing_rule_versions r
+               ON r.workspace_id = s.workspace_id
+              AND r.company_id = s.company_id
+              AND r.id = s.pricing_rule_version_id
+             JOIN pricing_snapshot_lines l
+               ON l.workspace_id = s.workspace_id
+              AND l.company_id = s.company_id
+              AND l.snapshot_id = s.id
+             JOIN tariff_versions t
+               ON t.workspace_id = l.workspace_id
+              AND t.company_id = l.company_id
+              AND t.id = l.tariff_version_id
+            WHERE s.id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        line_count: 2,
+        tariff_trace_matches: true,
+        rule_trace_matches: true,
+        rounded_line_net_tax_matches: true,
+        reproduced_subtotal: '308.64',
+        reproduced_tax_total: '38.08',
+        reproduced_total: '346.72',
+      },
+    ]);
+    expect(
+      (
+        await pool.query(
           `SELECT command, outcome, result_pricing_snapshot_id
              FROM pricing_configuration_commands
             WHERE command = 'pricing_snapshot.calculate'`,
@@ -228,16 +302,33 @@ withPostgres('Pricing Snapshots REST', () => {
       },
     ]);
 
-    instant = new Date('2026-04-02T00:00:00.000Z');
-    await publishRule(fixture.companyId, 1, 'rule-successor');
-    await publishTariff(
+    const successorStart = '2026-04-01T00:00:01.000Z';
+    await command(
+      '/pricing-configuration/rule-versions',
+      {
+        label: 'Illustrative scheduled successor',
+        effectiveFrom: successorStart,
+        expectedActiveVersionNumber: 1,
+      },
+      'rule-successor',
       fixture.companyId,
-      fixture.offerings[0].id,
-      1,
-      '123.4500',
-      'EUR',
-      'tariff-successor',
     );
+    for (const [index, offering] of fixture.offerings.entries())
+      await command(
+        `/pricing-configuration/offerings/${offering.id}/tariff-versions`,
+        {
+          unit: 'illustrative-unit',
+          unitAmount: index === 0 ? '123.4500' : '0.0050',
+          currency: 'EUR',
+          taxRatePercent: index === 0 ? '12.34' : '0',
+          taxLabel: 'Illustrative scheduled successor',
+          effectiveFrom: successorStart,
+          expectedActiveVersionNumber: 1,
+        },
+        `tariff-successor-${index + 1}`,
+        fixture.companyId,
+      );
+    instant = new Date('2026-04-01T00:00:03.000Z');
     const replay = snapshot(
       await command(path, body, 'worked-example', fixture.companyId),
     );
@@ -270,6 +361,127 @@ withPostgres('Pricing Snapshots REST', () => {
         )
       ).rows,
     ).toEqual([{ snapshots: 1, lines: 2, events: 1, receipts: 1 }]);
+  });
+
+  it('creates, lists and reopens the exact maximum 20-line trace through REST and PostgreSQL', async () => {
+    const fixture = await prepared();
+    instant = new Date(instant.getTime() + 1);
+    for (const offering of fixture.offerings)
+      await publishTariff(
+        fixture.companyId,
+        offering.id,
+        1,
+        '9999999.9999',
+        'EUR',
+        `maximum-successor-${offering.id}`,
+        '100.00',
+      );
+    const additionalOfferings = await Promise.all(
+      Array.from({ length: 18 }, (_, index) =>
+        createOffering(
+          fixture.companyId,
+          `MAX-${String(index + 3).padStart(2, '0')}`,
+          '9999999.9999',
+          'EUR',
+          instant.toISOString(),
+          undefined,
+          '100.00',
+        ),
+      ),
+    );
+    const offerings = [
+      ...fixture.offerings.map((offering) => ({
+        ...offering,
+        versionNumber: 2,
+      })),
+      ...additionalOfferings.map((offering) => ({
+        ...offering,
+        versionNumber: 1,
+      })),
+    ];
+    const body = {
+      pricingRuleVersionNumber: fixture.rule.versionNumber,
+      lines: offerings.map((offering) => ({
+        offeringId: offering.id,
+        tariffVersionNumber: offering.versionNumber,
+        quantity: '999999999.999',
+      })),
+    };
+    const path = snapshotsPath(fixture.opportunityId);
+    const created = snapshot(
+      await command(path, body, 'maximum-20-line-trace', fixture.companyId),
+    );
+
+    expect(created).toMatchObject({
+      subtotal: '199999999997800000.00',
+      taxTotal: '199999999997800000.00',
+      total: '399999999995600000.00',
+    });
+    expect(
+      created.lines.map((value) => {
+        const line = record(value);
+        return {
+          quantity: line.quantity,
+          unitAmount: line.unitAmount,
+          taxRatePercent: line.taxRatePercent,
+          rawLineAmount: line.rawLineAmount,
+          lineNet: line.lineNet,
+          rawLineTax: line.rawLineTax,
+          lineTax: line.lineTax,
+        };
+      }),
+    ).toEqual(
+      Array.from({ length: 20 }, () => ({
+        quantity: '999999999.999',
+        unitAmount: '9999999.9999',
+        taxRatePercent: '100.00',
+        rawLineAmount: '9999999999890000.0000001',
+        lineNet: '9999999999890000.00',
+        rawLineTax: '9999999999890000.0000000',
+        lineTax: '9999999999890000.00',
+      })),
+    );
+    expect(
+      await json(await request(`${path}?limit=25`, fixture.companyId)),
+    ).toEqual({ items: [created] });
+    expect(
+      snapshot(
+        await json(await request(`${path}/${created.id}`, fixture.companyId)),
+      ),
+    ).toEqual(created);
+    expect(
+      (
+        await pool.query(
+          `SELECT s.subtotal, s.tax_total, s.total,
+                  l.line_number, l.quantity, l.quantity_input, l.unit_amount,
+                  l.tax_rate_percent, l.raw_line_amount, l.line_net,
+                  l.raw_line_tax, l.line_tax
+             FROM pricing_snapshots s
+             JOIN pricing_snapshot_lines l
+               ON l.workspace_id = s.workspace_id
+              AND l.company_id = s.company_id
+              AND l.snapshot_id = s.id
+            WHERE s.id = $1
+            ORDER BY l.line_number`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual(
+      Array.from({ length: 20 }, (_, index) => ({
+        subtotal: '199999999997800000.00',
+        tax_total: '199999999997800000.00',
+        total: '399999999995600000.00',
+        line_number: index + 1,
+        quantity: '999999999.999',
+        quantity_input: '999999999.999',
+        unit_amount: '9999999.9999',
+        tax_rate_percent: '100.00',
+        raw_line_amount: '9999999999890000.0000001',
+        line_net: '9999999999890000.00',
+        raw_line_tax: '9999999999890000.0000000',
+        line_tax: '9999999999890000.00',
+      })),
+    );
   });
 
   it('keeps Client context live through union and hides only that projection without Client authority', async () => {
@@ -487,6 +699,18 @@ withPostgres('Pricing Snapshots REST', () => {
       fixture.companyId,
     );
     expect(unknown.status).toBe(404);
+    const unknownTariff = await post(
+      path,
+      {
+        ...calculationBody(fixture),
+        lines: calculationBody(fixture).lines.map((line, index) =>
+          index === 0 ? { ...line, tariffVersionNumber: 999 } : line,
+        ),
+      },
+      'unknown-tariff',
+      fixture.companyId,
+    );
+    expect(unknownTariff.status).toBe(404);
 
     instant = new Date('2026-04-02T00:00:00.000Z');
     await publishRule(fixture.companyId, 1, 'rule-v2');
@@ -575,17 +799,248 @@ withPostgres('Pricing Snapshots REST', () => {
     ).toEqual([{ snapshots: 0, lines: 0, events: 0, receipts: 0 }]);
   });
 
+  it('checks declared rule and Tariff Versions against their fixed-instant v1-v2-v3 state', async () => {
+    instant = new Date('2025-12-31T00:00:00.000Z');
+    const tariffFixture = await prepared('future-tariff');
+    instant = new Date('2025-12-31T00:00:01.000Z');
+    for (const offering of tariffFixture.offerings)
+      for (const [versionNumber, effectiveFrom, effectiveTo] of [
+        [2, '2026-03-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z'],
+        [3, '2026-04-01T00:00:00.000Z', '2026-05-01T00:00:00.000Z'],
+      ] as const)
+        await command(
+          `/pricing-configuration/offerings/${offering.id}/tariff-versions`,
+          {
+            unit: 'illustrative-unit',
+            unitAmount:
+              offering.id === tariffFixture.offerings[0].id
+                ? '123.4500'
+                : '0.0050',
+            currency: 'EUR',
+            taxRatePercent:
+              offering.id === tariffFixture.offerings[0].id ? '12.34' : '0',
+            taxLabel: 'Illustrative tax',
+            effectiveFrom,
+            effectiveTo,
+            expectedActiveVersionNumber: versionNumber - 1,
+          },
+          `state-tariff-${offering.id}-${versionNumber}`,
+          tariffFixture.companyId,
+        );
+
+    const tariffPath = snapshotsPath(tariffFixture.opportunityId);
+    const tariffBody = (tariffVersion: number) => ({
+      pricingRuleVersionNumber: 1,
+      lines: tariffFixture.offerings.map((offering, index) => ({
+        offeringId: offering.id,
+        tariffVersionNumber: tariffVersion,
+        quantity: index === 0 ? '2.5' : '1',
+      })),
+    });
+    for (const [at, declaredVersions] of [
+      [
+        '2025-12-31T23:59:59.000Z',
+        [
+          [1, 409, 'TARIFF_NOT_EFFECTIVE'],
+          [2, 409, 'TARIFF_NOT_EFFECTIVE'],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+      [
+        '2026-01-01T00:00:00.000Z',
+        [
+          [1, 201, undefined],
+          [2, 409, 'TARIFF_NOT_EFFECTIVE'],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+      [
+        '2026-02-15T12:00:00.000Z',
+        [
+          [1, 201, undefined],
+          [2, 409, 'TARIFF_NOT_EFFECTIVE'],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+      [
+        '2026-03-01T00:00:00.000Z',
+        [
+          [1, 409, 'STALE_TARIFF_VERSION'],
+          [2, 201, undefined],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+      [
+        '2026-04-01T00:00:00.000Z',
+        [
+          [1, 409, 'STALE_TARIFF_VERSION'],
+          [2, 409, 'STALE_TARIFF_VERSION'],
+          [3, 201, undefined],
+        ],
+      ],
+      [
+        '2026-04-30T23:59:59.000Z',
+        [
+          [1, 409, 'STALE_TARIFF_VERSION'],
+          [2, 409, 'STALE_TARIFF_VERSION'],
+          [3, 201, undefined],
+        ],
+      ],
+      [
+        '2026-05-01T00:00:00.000Z',
+        [
+          [1, 409, 'STALE_TARIFF_VERSION'],
+          [2, 409, 'STALE_TARIFF_VERSION'],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+      [
+        '2026-07-01T00:00:00.000Z',
+        [
+          [1, 409, 'STALE_TARIFF_VERSION'],
+          [2, 409, 'STALE_TARIFF_VERSION'],
+          [3, 409, 'TARIFF_NOT_EFFECTIVE'],
+        ],
+      ],
+    ] as const) {
+      for (const [tariffVersion, status, code] of declaredVersions) {
+        instant = new Date(at);
+        const before = (await readSnapshotWriteState(tariffFixture)).rows;
+        const response = await post(
+          tariffPath,
+          tariffBody(tariffVersion),
+          `tariff-state-${at}-${tariffVersion}`,
+          tariffFixture.companyId,
+        );
+        expect({ at, tariffVersion, status: response.status }).toEqual({
+          at,
+          tariffVersion,
+          status,
+        });
+        if (code === undefined) {
+          expect(snapshot(await json(response))).toMatchObject({
+            total: '346.72',
+          });
+        } else {
+          expect(record(await json(response)).code).toBe(code);
+          expect((await readSnapshotWriteState(tariffFixture)).rows).toEqual(
+            before,
+          );
+        }
+      }
+    }
+    expect((await readSnapshotWriteState(tariffFixture)).rows).toEqual([
+      { snapshots: 5, lines: 10, events: 5, receipts: 5 },
+    ]);
+
+    instant = new Date('2025-12-31T00:00:00.000Z');
+    const ruleFixture = await prepared('future-rule');
+    instant = new Date('2025-12-31T00:00:01.000Z');
+    for (const [versionNumber, effectiveFrom, effectiveTo] of [
+      [2, '2026-03-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z'],
+      [3, '2026-04-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z'],
+    ] as const)
+      await command(
+        '/pricing-configuration/rule-versions',
+        {
+          label: `Illustrative rule ${versionNumber}`,
+          effectiveFrom,
+          effectiveTo,
+          expectedActiveVersionNumber: versionNumber - 1,
+        },
+        `state-rule-${versionNumber}`,
+        ruleFixture.companyId,
+      );
+
+    const rulePath = snapshotsPath(ruleFixture.opportunityId);
+    for (const [at, ruleVersion, status, code] of [
+      ['2026-01-01T00:00:00.000Z', 1, 201, undefined],
+      ['2026-02-15T12:00:00.000Z', 2, 409, 'PRICING_RULE_NOT_EFFECTIVE'],
+      ['2026-03-01T00:00:00.000Z', 1, 409, 'STALE_PRICING_RULE_VERSION'],
+      ['2026-03-01T00:00:00.000Z', 2, 201, undefined],
+      ['2026-04-01T00:00:00.000Z', 2, 409, 'STALE_PRICING_RULE_VERSION'],
+      ['2026-04-01T00:00:00.000Z', 3, 201, undefined],
+      ['2026-06-01T00:00:00.000Z', 3, 409, 'PRICING_RULE_NOT_EFFECTIVE'],
+    ] as const) {
+      instant = new Date(at);
+      const before = (await readSnapshotWriteState(ruleFixture)).rows;
+      const response = await post(
+        rulePath,
+        {
+          ...calculationBody(ruleFixture),
+          pricingRuleVersionNumber: ruleVersion,
+        },
+        `rule-state-${at}-${ruleVersion}`,
+        ruleFixture.companyId,
+      );
+      expect({ at, ruleVersion, status: response.status }).toEqual({
+        at,
+        ruleVersion,
+        status,
+      });
+      if (code === undefined) {
+        expect(snapshot(await json(response))).toMatchObject({
+          total: '346.72',
+        });
+      } else {
+        expect(record(await json(response)).code).toBe(code);
+        expect((await readSnapshotWriteState(ruleFixture)).rows).toEqual(
+          before,
+        );
+      }
+    }
+    expect((await readSnapshotWriteState(ruleFixture)).rows).toEqual([
+      { snapshots: 3, lines: 6, events: 3, receipts: 3 },
+    ]);
+  });
+
   it('converges concurrent retries and revalidates Pricing User and Opportunity authority before replay', async () => {
     const fixture = await prepared();
     const path = snapshotsPath(fixture.opportunityId);
     const body = calculationBody(fixture);
-    const [left, right] = await Promise.all([
-      post(path, body, 'concurrent-retry', fixture.companyId),
-      post(path, body, 'concurrent-retry', fixture.companyId),
-    ]);
+    const retryLock = await holdAdvisoryLock('pricing-concurrent-retry-insert');
+    let retries: [Response, Response] | undefined;
+    try {
+      await pool.query(`
+        CREATE FUNCTION test_pause_concurrent_retry() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(hashtextextended('pricing-concurrent-retry-insert', 0));
+          RETURN NEW;
+        END $$;
+        CREATE TRIGGER test_pause_concurrent_retry
+          BEFORE INSERT ON pricing_snapshots
+          FOR EACH ROW EXECUTE FUNCTION test_pause_concurrent_retry();
+      `);
+      const firstRetry = post(
+        path,
+        body,
+        'concurrent-retry',
+        fixture.companyId,
+      );
+      const firstPid = await waitForBlockedBy(retryLock.backendPid, true);
+      const secondRetry = post(
+        path,
+        body,
+        'concurrent-retry',
+        fixture.companyId,
+      );
+      await waitForBlockedBy(firstPid);
+      await release(retryLock);
+      retries = await Promise.all([firstRetry, secondRetry]);
+    } finally {
+      await release(retryLock);
+      await pool.query(
+        'DROP TRIGGER IF EXISTS test_pause_concurrent_retry ON pricing_snapshots; DROP FUNCTION IF EXISTS test_pause_concurrent_retry()',
+      );
+    }
+    if (!retries) throw new Error('Concurrent retries did not settle.');
+    const [left, right] = retries;
     expect([left.status, right.status]).toEqual([201, 201]);
     const first = snapshot(await json(left));
     expect(snapshot(await json(right))).toEqual(first);
+    expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+      { snapshots: 1, lines: 2, events: 1, receipts: 1 },
+    ]);
     const changed = await post(
       path,
       {
@@ -655,6 +1110,35 @@ withPostgres('Pricing Snapshots REST', () => {
         targetFixture.companyId,
       ),
     );
+    const foreignWorkspace = await seedForeignWorkspaceSnapshot();
+    const unknownResponse = await request(
+      `${targetPath}/00000000-0000-4000-8000-000000000999`,
+      targetFixture.companyId,
+    );
+    const safeNotFoundBody = await unknownResponse.text();
+    expect(unknownResponse.status).toBe(404);
+    for (const response of [
+      await request(`${path}?limit=25`, targetFixture.companyId),
+      await request(`${path}/${first.id}`, targetFixture.companyId),
+      await post(path, body, 'concurrent-retry', targetFixture.companyId),
+      await request(
+        `${snapshotsPath(foreignWorkspace.opportunityId)}?limit=25`,
+        targetFixture.companyId,
+      ),
+      await request(
+        `${snapshotsPath(foreignWorkspace.opportunityId)}/${foreignWorkspace.snapshotId}`,
+        targetFixture.companyId,
+      ),
+      await post(
+        snapshotsPath(foreignWorkspace.opportunityId),
+        targetBody,
+        'foreign-workspace-retry',
+        targetFixture.companyId,
+      ),
+    ]) {
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe(safeNotFoundBody);
+    }
     const targetRevocation = await holdRevocation(
       targetFixture,
       'company_commercial_intake',
@@ -689,7 +1173,7 @@ withPostgres('Pricing Snapshots REST', () => {
         )
       ).rows,
     ).toEqual(
-      [fixture.companyId, targetFixture.companyId]
+      [fixture.companyId, targetFixture.companyId, foreignWorkspace.companyId]
         .sort()
         .map((company_id) => ({ company_id, snapshots: 1 })),
     );
@@ -998,6 +1482,119 @@ withPostgres('Pricing Snapshots REST', () => {
     );
   }
 
+  async function seedForeignWorkspaceSnapshot(): Promise<{
+    companyId: string;
+    opportunityId: string;
+    snapshotId: string;
+  }> {
+    const workspaceId = '00000000-0000-4000-8000-000000000419';
+    const ruleId = '00000000-0000-4000-8000-000000000420';
+    const requestId = '00000000-0000-4000-8000-000000000421';
+    const opportunityId = '00000000-0000-4000-8000-000000000422';
+    const snapshotId = '00000000-0000-4000-8000-000000000423';
+    const inserted = await pool.query(
+      `WITH foreign_workspace AS (
+         INSERT INTO workspaces (id, name)
+         VALUES ($1, 'Foreign Pricing Snapshot Workspace')
+         RETURNING id
+       ), foreign_user AS (
+         INSERT INTO internal_users (
+           external_provider, external_subject, display_name, email
+         ) VALUES (
+           'deterministic-test', 'foreign-snapshot-owner',
+           'Foreign Snapshot Owner', 'foreign-snapshot@example.test'
+         )
+         RETURNING id
+       ), foreign_membership AS (
+         INSERT INTO workspace_memberships (workspace_id, internal_user_id)
+         SELECT foreign_workspace.id, foreign_user.id
+           FROM foreign_workspace, foreign_user
+         RETURNING id, workspace_id, internal_user_id
+       ), foreign_company AS (
+         INSERT INTO companies (
+           workspace_id, display_name, created_by_internal_user_id,
+           created_by_workspace_membership_id, registration_idempotency_key
+         )
+         SELECT workspace_id, 'Foreign Snapshot Company', internal_user_id,
+                id, 'foreign-snapshot-company'
+           FROM foreign_membership
+         RETURNING id, workspace_id
+       ), foreign_rule AS (
+         INSERT INTO pricing_rule_versions (
+           id, workspace_id, company_id, version_number, label, effective_from,
+           created_by_internal_user_id, created_by_workspace_membership_id,
+           created_at
+         )
+         SELECT $2, foreign_membership.workspace_id, foreign_company.id, 1,
+                'Foreign illustrative rule', TIMESTAMPTZ '2026-01-01 00:00:00+00',
+                foreign_membership.internal_user_id, foreign_membership.id,
+                TIMESTAMPTZ '2026-01-01 00:00:00+00'
+           FROM foreign_membership
+           JOIN foreign_company
+             ON foreign_company.workspace_id = foreign_membership.workspace_id
+         RETURNING id, workspace_id, company_id, version_number
+       ), foreign_request AS (
+         INSERT INTO client_requests (
+           id, workspace_id, company_id, original_text,
+           captured_by_internal_user_id, captured_by_workspace_membership_id,
+           captured_at
+         )
+         SELECT $3, foreign_membership.workspace_id, foreign_company.id,
+                'Synthetic foreign Workspace request.',
+                foreign_membership.internal_user_id, foreign_membership.id,
+                TIMESTAMPTZ '2026-04-01 00:00:00+00'
+           FROM foreign_membership
+           JOIN foreign_company
+             ON foreign_company.workspace_id = foreign_membership.workspace_id
+         RETURNING id, workspace_id, company_id
+       ), foreign_opportunity AS (
+         INSERT INTO opportunities (
+           id, workspace_id, company_id, client_request_id, title, next_action,
+           responsible_internal_user_id, responsible_workspace_membership_id,
+           created_at
+         )
+         SELECT $4, foreign_request.workspace_id, foreign_request.company_id,
+                foreign_request.id, 'Foreign illustrative Opportunity',
+                'Keep this foreign snapshot hidden', foreign_membership.internal_user_id,
+                foreign_membership.id, TIMESTAMPTZ '2026-04-01 00:00:00+00'
+           FROM foreign_request
+           JOIN foreign_membership
+             ON foreign_membership.workspace_id = foreign_request.workspace_id
+         RETURNING id, workspace_id, company_id, client_request_id
+       )
+       INSERT INTO pricing_snapshots (
+         id, workspace_id, company_id, opportunity_id, client_request_id,
+         pricing_rule_version_id, pricing_rule_version_number, rule_shape,
+         rounding_mode, rounding_scale, tax_application, currency, subtotal,
+         tax_total, total, calculated_by_internal_user_id,
+         calculated_by_workspace_membership_id, calculated_at, committed_at
+       )
+       SELECT $5, foreign_opportunity.workspace_id, foreign_opportunity.company_id,
+              foreign_opportunity.id, foreign_opportunity.client_request_id,
+              foreign_rule.id, foreign_rule.version_number,
+              'UNIT_PRICE_TIMES_QUANTITY', 'HALF_UP', 2, 'PER_LINE', 'EUR',
+              1, 0, 1, foreign_membership.internal_user_id,
+              foreign_membership.id, TIMESTAMPTZ '2026-04-01 00:00:00+00',
+              TIMESTAMPTZ '2026-04-01 00:00:00+00'
+         FROM foreign_opportunity
+         JOIN foreign_rule
+           ON foreign_rule.workspace_id = foreign_opportunity.workspace_id
+          AND foreign_rule.company_id = foreign_opportunity.company_id
+         JOIN foreign_membership
+           ON foreign_membership.workspace_id = foreign_opportunity.workspace_id
+       RETURNING id, company_id`,
+      [workspaceId, ruleId, requestId, opportunityId, snapshotId],
+    );
+    if (inserted.rowCount !== 1)
+      throw new Error('Expected one foreign Workspace Pricing Snapshot.');
+    const foreignSnapshot = record(inserted.rows[0]);
+    return {
+      companyId: stringField(foreignSnapshot, 'company_id'),
+      opportunityId,
+      snapshotId,
+    };
+  }
+
   async function prepareConfigurationMember(fixture: Fixture): Promise<void> {
     // A separate actor avoids profile synchronization waiting on the first
     // actor's locked Internal User before reaching the pricing scope lock.
@@ -1125,6 +1722,7 @@ withPostgres('Pricing Snapshots REST', () => {
     currency: 'EUR' | 'USD',
     effectiveFrom: string,
     effectiveTo?: string,
+    taxRatePercent?: string,
   ): Promise<OfferingFixture> {
     const definitionResult = record(
       await command(
@@ -1151,7 +1749,8 @@ withPostgres('Pricing Snapshots REST', () => {
           unit: 'illustrative-unit',
           unitAmount: amount,
           currency,
-          taxRatePercent: code === 'SERVICE-A' ? '12.34' : '0',
+          taxRatePercent:
+            taxRatePercent ?? (code === 'SERVICE-A' ? '12.34' : '0'),
           taxLabel: 'Illustrative tax',
           effectiveFrom,
           ...(effectiveTo ? { effectiveTo } : {}),
@@ -1184,6 +1783,7 @@ withPostgres('Pricing Snapshots REST', () => {
     unitAmount: string,
     currency: 'EUR' | 'USD',
     key: string,
+    taxRatePercent = '12.34',
   ): Promise<void> {
     await command(
       `/pricing-configuration/offerings/${offeringId}/tariff-versions`,
@@ -1191,7 +1791,7 @@ withPostgres('Pricing Snapshots REST', () => {
         unit: 'illustrative-unit',
         unitAmount,
         currency,
-        taxRatePercent: '12.34',
+        taxRatePercent,
         taxLabel: 'Illustrative tax successor',
         effectiveFrom: instant.toISOString(),
         expectedActiveVersionNumber: expected,
