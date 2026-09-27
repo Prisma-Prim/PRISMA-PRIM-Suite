@@ -121,6 +121,8 @@ export function ClientLegalEntities({
   acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
   rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  const publishClientVersion = useRef(onClientVersionChanged);
+  publishClientVersion.current = onClientVersionChanged;
 
   const rejectedAccess = useCallback(
     (
@@ -167,10 +169,12 @@ export function ClientLegalEntities({
             setList({ status: 'error' });
             return;
           }
+          const observed = readClientLegalEntityList(result.value);
           setList({
             status: 'ready',
-            ...readClientLegalEntityList(result.value),
+            ...observed,
           });
+          publishClientVersion.current(observed.clientVersion);
         },
         onError: () => setList({ status: 'error' }),
       });
@@ -302,7 +306,7 @@ export function ClientLegalEntities({
         setEditor({ mode: 'closed' });
         setOutcome({ status: confirmedOutcome });
         heading.current?.focus();
-        onClientVersionChanged(confirmed.clientVersion);
+        publishClientVersion.current(confirmed.clientVersion);
         void onActivityRecorded();
       },
       onError: () => setOutcome({ status: 'uncertain' }),

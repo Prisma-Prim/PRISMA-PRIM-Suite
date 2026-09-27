@@ -446,6 +446,52 @@ describe('Client legal entities and branches', () => {
     expect(await screen.findByText('Version 6')).toBeVisible();
   });
 
+  it('loads coherent current fields and version after the entity list observes a newer dossier', async () => {
+    const list = deferred<Response>();
+    const { server, dossierCorrections, dossierRequests } = renderDossier({
+      route: (request) => (request.method === 'GET' ? list.promise : undefined),
+    });
+    const region = await section();
+    server.address = 'Current shared address';
+    server.version = 4;
+    list.resolve(respond({ clientVersion: 4, legalEntities: [] }));
+    await within(region).findByText(
+      'No additional legal entities or branches recorded. The dossier identity above is the main organization.',
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Correct Client dossier' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Address')).toHaveValue(
+        'Current shared address',
+      ),
+    );
+    const correction = screen.getByRole('form', {
+      name: 'Correct Client dossier',
+    });
+    fireEvent.change(within(correction).getByLabelText('Telephone'), {
+      target: { value: '+373 22 000 393' },
+    });
+    fireEvent.click(
+      within(correction).getByRole('button', { name: 'Save correction' }),
+    );
+
+    await waitFor(() =>
+      expect(dossierCorrections).toEqual([
+        expect.objectContaining({
+          expectedVersion: 4,
+          address: 'Current shared address',
+          telephone: '+373 22 000 393',
+        }),
+      ]),
+    );
+    expect(await screen.findByText('Version 5')).toBeVisible();
+    expect(
+      dossierRequests.filter((request) => request.method === 'GET'),
+    ).toHaveLength(2);
+  });
+
   it.each([403, 404, 503])(
     'does not expose or submit a fresh draft when its required refresh returns %s',
     async (status) => {
