@@ -1,5 +1,6 @@
 import type { TaskEvent } from '../project/task-response';
 import type { ResponsibleMember } from '../project/project-responsible-response';
+import type { ProjectLifecycleActivityMetadata } from '../project/project-lifecycle-response';
 import type { ActorContext } from '../access-types';
 
 export interface VisibleCompany {
@@ -62,6 +63,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_user_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
+    | 'company_project_approver_assignment.granted'
+    | 'company_project_approver_assignment.revoked'
     | 'company.registered'
     | 'company_context_assignment.granted'
     | 'company_context_assignment.revoked'
@@ -240,6 +243,21 @@ export interface ProjectResponsibleChangedActivityLogEvent {
   };
 }
 
+/** A lifecycle transition: its resulting revision and from/to statuses only. */
+export interface ProjectLifecycleChangedActivityLogEvent {
+  id: string;
+  action: 'project.lifecycle.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'project';
+    projectId: string;
+    projectTitle: string;
+    companyId: string;
+  };
+  metadata: ProjectLifecycleActivityMetadata;
+}
+
 /**
  * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
  * The shell lists these entries and presents no metadata except the proved
@@ -248,6 +266,7 @@ export interface ProjectResponsibleChangedActivityLogEvent {
 export type ActivityLogEvent =
   | TaskActivityLogEvent
   | ProjectResponsibleChangedActivityLogEvent
+  | ProjectLifecycleChangedActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent

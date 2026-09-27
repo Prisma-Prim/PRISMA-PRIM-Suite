@@ -1,4 +1,5 @@
 import { readOptionalResponsibleMember } from '../project/project-responsible-response';
+import { readLifecycleActivityMetadata } from '../project/project-lifecycle-response';
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
@@ -37,6 +38,8 @@ const targetTypes = {
     'company_role_assignment',
   'company_commercial_activity_reader_assignment.revoked':
     'company_role_assignment',
+  'company_project_approver_assignment.granted': 'company_role_assignment',
+  'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',
   'company_context_assignment.revoked': 'company_role_assignment',
   'company_director_client_assignment.granted': 'company_role_assignment',
@@ -56,6 +59,7 @@ const targetTypes = {
   'client_company_relationship.established': 'client_company_relationship',
   'project.created': 'project',
   'project.responsible.changed': 'project',
+  'project.lifecycle.changed': 'project',
   'task.created': 'task',
   'task.updated': 'task',
   'task.status.changed': 'task',
@@ -79,21 +83,42 @@ const targetTypes = {
  * Proves one successful `/activity-log` response. Every event must pair a
  * delivered action with that action's target and carry each identifier the
  * shell lists or opens. Anything else rejects the whole page, so a target from
- * an unproved payload is never listed or opened.
+ * an unproved payload is never listed or opened. A lifecycle event whose
+ * metadata is not exactly one transition is omitted, as it has no label.
  */
 export function activityLogPageResponse(value: unknown): {
   events: ActivityLogEvent[];
 } {
   if (!isRecord(value) || !Array.isArray(value.events)) invalid();
-  return { events: value.events.map(activityLogEvent) };
+  return {
+    events: value.events.flatMap((event: unknown) => {
+      const proved = activityLogEvent(event);
+      return proved ? [proved] : [];
+    }),
+  };
 }
 
-function activityLogEvent(value: unknown): ActivityLogEvent {
+function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
   if (!isRecord(value) || !isRecord(value.target)) invalid();
   const { action, target } = value;
   if (!isActivityAction(action) || target.type !== targetTypes[action])
     invalid();
   switch (action) {
+    case 'project.lifecycle.changed': {
+      const metadata = readLifecycleActivityMetadata(value.metadata);
+      if (!metadata) return undefined;
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'project',
+          projectId: identifier(target.projectId),
+          projectTitle: text(target.projectTitle),
+          companyId: identifier(target.companyId),
+        },
+        metadata,
+      };
+    }
     case 'client.union_confirmed':
     case 'client.union_reversed':
       return clientUnionEvent(value, action, target);

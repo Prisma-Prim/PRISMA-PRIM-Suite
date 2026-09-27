@@ -156,6 +156,14 @@ A Company-owned operational record for a Client Account. Project–Contract link
 pre-contract behavior are owned by the Project and Task PRD, not by this glossary.
 _Avoid_: Client Request, Contract, workflow stage
 
+**Start Declaration**:
+The approver's item-by-item statement, recorded when a Project is activated, of which start-dossier items are present or missing; it is declared, not verified.
+_Avoid_: Start checklist, kickoff checklist, verified dossier
+
+**Start Exception**:
+A Start Declaration with at least one missing item, accepted by the approver with a recorded reason, completion responsible and completion deadline.
+_Avoid_: Waiver, override
+
 ## Knowledge and traceability
 
 **Document**:

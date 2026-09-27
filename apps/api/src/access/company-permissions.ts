@@ -250,6 +250,25 @@ export function isProjectPermissionSetVersion(
   return version === 'v1' || version === 'v2';
 }
 
+// The opt-in approver of the Project lifecycle (Project/Task PRD section 23).
+// It confers no Company context, Project read or any other authority.
+export const COMPANY_PROJECT_APPROVER_BUNDLE =
+  'company_project_approver' as const;
+export const COMPANY_PROJECT_APPROVER_BUNDLE_LABEL =
+  'Company Project Approver' as const;
+export const COMPANY_PROJECT_APPROVER_V1_PERMISSIONS = [
+  'project.lifecycle.transition',
+  'project.close',
+] as const;
+export type CompanyProjectApproverPermission =
+  (typeof COMPANY_PROJECT_APPROVER_V1_PERMISSIONS)[number];
+// A null or unknown captured version resolves to no permission at all.
+export function projectApproverPermissionsFor(
+  version: unknown,
+): readonly CompanyProjectApproverPermission[] {
+  return version === 'v1' ? COMPANY_PROJECT_APPROVER_V1_PERMISSIONS : [];
+}
+
 export const COMPANY_TASK_MANAGER_BUNDLE = 'company_task_manager';
 export const COMPANY_TASK_MANAGER_BUNDLE_LABEL = 'Company Task Manager';
 export const COMPANY_TASK_V1_PERMISSIONS = [

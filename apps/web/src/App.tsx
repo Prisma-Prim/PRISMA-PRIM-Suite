@@ -3,6 +3,7 @@ import { MyTasks, canReadTasks } from './project/MyTasks';
 import { projectDocumentsCopy } from './project/project-documents.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
 import { projectCopy } from './project/project.copy';
+import { lifecycleActivityLabel } from './project/project-lifecycle.copy';
 import {
   ApplicationContentSurface,
   ApplicationShell,
@@ -754,7 +755,14 @@ function ActivityLog({
 }
 
 function activityDescription(event: ActivityLogEvent): string {
-  const actionLabels: Record<ActivityLogEvent['action'], string> = {
+  const actorName =
+    'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
+  if (event.action === 'project.lifecycle.changed')
+    return `${actorName} ${lifecycleActivityLabel(event.metadata)}`;
+  const actionLabels: Record<
+    Exclude<ActivityLogEvent['action'], 'project.lifecycle.changed'>,
+    string
+  > = {
     'document.project.linked': projectDocumentsCopy.linked,
     'document.project.unlinked': projectDocumentsCopy.unlinked,
     'document.registered': documentsCopy.activity,
@@ -775,8 +783,6 @@ function activityDescription(event: ActivityLogEvent): string {
     ...commercialIntakeCopy.activityActionLabels,
     ...workspaceInvitationsCopy.activityActionLabels,
   };
-  const actorName =
-    'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
   return `${actorName} ${actionLabels[event.action]}`;
 }
 

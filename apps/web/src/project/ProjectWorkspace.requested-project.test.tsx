@@ -15,6 +15,10 @@ import {
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project-lifecycle.test-fixtures';
 
 const actor: ActorContext = {
   internalUserId: 'owner',
@@ -95,6 +99,8 @@ function projectServer() {
       (row) => route === `GET /api/projects/${row.id}`,
     );
     if (opened) return Response.json(projected(opened));
+    if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
+      return Response.json(preparatoryLifecycle);
     return new Response(null, { status: 404 });
   }
   vi.stubGlobal(

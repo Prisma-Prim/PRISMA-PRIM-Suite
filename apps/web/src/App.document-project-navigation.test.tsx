@@ -9,6 +9,10 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project/project-lifecycle.test-fixtures';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 
@@ -157,6 +161,8 @@ function installServer() {
       (candidate) => route === `GET /api/projects/${candidate.id}`,
     );
     if (opened && !inB) return Response.json(opened);
+    if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
+      return Response.json(preparatoryLifecycle);
     if (/^GET \/api\/projects\/[^/]+\/tasks$/.test(route))
       return Response.json({ mutable: true, tasks: [] });
     if (route.endsWith('/eligible-task-assignees'))

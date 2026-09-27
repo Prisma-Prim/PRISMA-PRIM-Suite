@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375; remaining capability Draft  
-**Version:** 0.7  
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) by #406; remaining capability Draft\
+**Version:** 0.8\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -53,7 +53,7 @@ Authorized users create a Company-owned Project for a shared Client, choose a bo
 
 ## 6. Domain and lifecycle
 
-Project lifecycle initially distinguishes planned/preparatory, active, suspended, completed, cancelled and archived meanings. Exact labels and permitted transitions are finalized from business evidence.
+Project lifecycle initially distinguishes planned/preparatory, active, suspended, completed, cancelled and archived meanings. Exact labels and permitted transitions are finalized from business evidence. Section 23 normalizes the provisional MVP lifecycle; `archived` remains deferred.
 
 Workflow stages are template/category-specific progress markers. Stage labels never replace stable lifecycle semantics.
 
@@ -113,6 +113,8 @@ The current audited evidence supports the following direction strongly enough to
 - later sessions support controlled Project start, kickoff and start-dossier concepts, but they do not define a complete universal gate;
 - one interview statement suggests a precontract requirement before Project start, but this conflicts with approved DEC-026, which also permits preparation, migration, free/internal work and delayed-paperwork cases. That evidence remains subject to PRD arbitration and does not create an exclusive precontract rule.
 
+Section 23 decides the provisional Project lifecycle: statuses and transitions, the start declaration and start exception, the approver, the conservative unfinished-Task default and the pre-Contract arbitration in favour of DEC-026.
+
 Still blocking broader workflow/Task ticket decomposition:
 
 - bounded first-release Project categories and one representative anonymized case per category;
@@ -120,9 +122,8 @@ Still blocking broader workflow/Task ticket decomposition:
 - observable distinction between lifecycle status and category-specific workflow stage;
 - exact meaning/use of Stage 1, Stage 2, S1 and S2 in each relevant workflow;
 - actors, dates, dependencies and required completion evidence;
-- lifecycle exceptions, suspension/cancellation behaviour and unfinished-Task treatment;
-- exact start-dossier evidence sets and permitted exceptions;
-- pre-Contract arbitration consistent with DEC-026;
+- unfinished-Task treatment beyond the section 23 default (S02-Q19);
+- verification of start-dossier evidence, the required-documents list, kickoff and closing a start exception;
 - complete reminder catalogue by Project type.
 
 The P0 initial-Project-categories completion package in the coverage matrix is the current highest-priority business follow-up for this PRD.
@@ -140,7 +141,7 @@ Question source: S02. Provenance owner: `docs/product/iurie-business-answer-cove
 
 Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and DEC-025–026. It is a preparation record only, not permission to execute operational work. This synthesis does not claim that Iurie supplied an exact permission matrix.
 
-- The user supplies a trimmed title (1–200 characters) and an existing active Client related to the selected active Company. Workspace, Company, identifier, creator and timestamp are server-established. Status is always `preparatory`; creator is attribution, not operational responsibility.
+- The user supplies a trimmed title (1–200 characters) and an existing active Client related to the selected active Company. Workspace, Company, identifier, creator and timestamp are server-established. Registration always sets status `preparatory` (section 23 owns later transitions); creator is attribution, not operational responsibility.
 - Explicit Company Project Access v1 grants `project.read` and `project.create` through the existing Company-assignment administrator. Grants capture v1 and attributable grant/revoke history. Existing users and assignments receive no automatic grant, including Workspace Owner, Company Context Access and Company Director Client Access.
 - Project access additionally requires current Client read authority (`client.manage` for the delivered minimal owner flow or Company `client.read`) and the selected Client–Company relationship. Project authority never follows from Client visibility alone. Read/list/create revalidate active access; immutable Company/Client links cannot be edited.
 - An authenticated REST create/list/detail seam and production page let the user create, reload and reopen a Project with its Company, Client and preparation warning. No Task, template, category, Standard, owner, deadline, activation, Contract or external integration is created.
@@ -151,7 +152,7 @@ Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and D
 
 ## 16. Remaining readiness
 
-The preparatory registration slice and manual preparation Tasks in section 18 are independently bounded approvals. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in a preparatory Project without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
+The preparatory registration slice and manual preparation Tasks in section 18 are independently bounded approvals. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in an open Project (section 23) without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
 
 ## 17. Evidence authority boundary
 
@@ -182,7 +183,7 @@ or mark it `done`. A done Task is read-only except for explicit reopening to
 time; reopening preserves that declaration in immutable history. A manager need
 not be the assignee or creator. No deletion or archive is introduced; §20 adds cancellation.
 
-The Project remains `preparatory`. Neither a Task assignment nor completion grants
+Task commands never change the Project lifecycle (section 23). Neither a Task assignment nor completion grants
 access, approves operational execution, closes a nonconformity, satisfies a
 required-evidence gate or changes a Document/Contract state. There are no reminders,
 automatic assignment, urgency rules, automatic priorities, dependencies or background
@@ -312,7 +313,7 @@ States are manual declarations. They grant no access, satisfy no gate, trigger n
 
 My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
 
-Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details, reason vocabularies, dashboard counts and queues (Operational Dashboard PRD §17), and Project lifecycle effects remain separate decisions.
+Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details and reason vocabularies remain separate decisions. Dashboard counts and queues are governed by Operational Dashboard PRD §17. Section 23 decides that no Project lifecycle transition changes a Task.
 
 ## 21. Approved Project responsible member (#367)
 
@@ -322,10 +323,9 @@ A preparatory Project has zero or one responsible Workspace Membership, initiall
 
 Every Project reader sees the responsible member, or none, with the attribution of the last change. The responsibility has its own revision starting at zero. A command carries the observed revision and a stable actor/Workspace idempotency key. Stale revisions conflict, and concurrent commands allow one material outcome. A normalized no-op records an unchanged receipt without revision, event or fence advance. Exact replays recheck live authority and visibility before returning the recorded outcome; changed key reuse conflicts. A material change atomically updates the responsibility and its revision, its receipt, one `project.responsible.changed` event and the original active Client's operational-use fence. A superseded original Client keeps the responsibility readable and refuses changes without exposing union detail.
 
-The Project remains `preparatory`. These remain separate decisions:
+A responsible-member change never changes the Project lifecycle. Section 23 requires a responsible member for activation and forbids clearing it while the Project is active or on hold. These remain separate decisions:
 
 - title correction;
-- lifecycle, activation and start dossier;
 - categories;
 - Contract and commercial links;
 - multiple or role-specific responsibles;
@@ -343,3 +343,114 @@ Priority is a manual declaration. It grants no access, satisfies no gate, change
 The operational home's My attention queue (Operational Dashboard PRD §17.3) reads `critical` as one of its rules; priority still changes no My Tasks order.
 
 Automatic priority rules, priority-based ordering or filtering, and escalation or notification of important or critical Tasks remain separate decisions.
+
+## 23. Approved provisional Project lifecycle (#406)
+
+Dan approved reusable provisional MVP choices for later business validation on 2026-09-24. This section normalizes the Project lifecycle from these sources:
+
+- decision record §9.1 and DEC-037 (stable lifecycle statuses, separate from workflow stages);
+- DEC-026 (a Project may precede its Contract, with the condition visible);
+- S02-Q08: a Project is marked potential or uncontracted, then becomes active;
+- issue #81 session 104, items 521–523 (coverage S02-Q22): the start dossier; activation only when it is complete or when Iurie explicitly approves an exception; the recorded content of that exception;
+- issue #81 session 1: Iurie is the principal approver, including for Project closure.
+
+The status names, transitions, bounds, permission names and the treatment of unfinished Tasks are delegated provisional choices, not newly collected Iurie evidence. Iurie validates them against a demonstration.
+
+This section arbitrates the section 13 pre-Contract evidence in favour of DEC-026. Project existence stays ungated; activation requires a start declaration and, when any item is missing, a start exception.
+
+**Statuses.** A Project has one lifecycle status:
+
+- `preparatory`: decision record DRAFT, meaning potential or uncontracted;
+- `active`;
+- `on_hold`;
+- `completed`;
+- `cancelled`.
+
+`preparatory`, `active` and `on_hold` are open. `completed` and `cancelled` are closed and terminal. Registration (section 15) creates `preparatory`. A lifecycle status is not a workflow stage. `archived` and reopening are deferred.
+
+**Transitions.** No other transition exists.
+
+| Transition | From → to                                          | Condition                                                 |
+| ---------- | -------------------------------------------------- | --------------------------------------------------------- |
+| Activate   | `preparatory` → `active`                           | A responsible member (section 21) and a start declaration |
+| Hold       | `active` → `on_hold`                               | A reason                                                  |
+| Resume     | `on_hold` → `active`                               | —                                                         |
+| Complete   | `active` → `completed`                             | A completion note; no open Task (section 20)              |
+| Cancel     | `preparatory`, `active` or `on_hold` → `cancelled` | A reason; no open Task                                    |
+
+Reasons and notes are trimmed text of 1–500 characters, recorded with the actor and server time.
+
+**Start declaration and start exception.** Activation records the approver's declaration of each start-dossier item of item 521, except the responsible member, which section 21 records. The seven items are:
+
+- approved Offer;
+- Contract or precontract;
+- project plan;
+- initial documents;
+- deadlines;
+- financial conditions;
+- relevant risks.
+
+Each item is declared present or missing. The declaration is shown as declared, not verified, until the Offer, Contract and Document capabilities can prove it (DEC-152).
+
+When any item is missing, the activation is a start exception (item 523). It also records:
+
+- a reason;
+- an eligible completion responsible, under the section 21 eligibility;
+- a completion deadline, as an exact date under the section 18 date rules.
+
+Until a signed Contract can be linked to a Project (decision record §14.10), a Project without a Contract activates only through this visible exception (DEC-026). The declaration and the exception are immutable once recorded.
+
+**Authority.** Every transition requires the captured Company Project Approver v1 (authorization PRD §8), plus current Project read and Client read for the Project in the active Company:
+
+- `project.lifecycle.transition` to activate, hold and resume;
+- `project.close` to complete and cancel.
+
+First-tenant configuration grants the bundle only to Iurie (session 1; item 522). Where Iurie named no authority, his approval is the conservative default. Reading the status, the declaration, the exception and the transition history requires only Project detail read.
+
+**Responsible member.** Activation requires a responsible member. While the Project is active or on hold, the responsible member may be replaced but not cleared.
+
+**Unfinished Tasks.** S02-Q19 was never asked. The conservative default:
+
+- no transition creates, changes, completes or cancels a Task, and none changes a Document association, Request or responsible member;
+- Tasks stay editable while the Project is preparatory, active or on hold;
+- completion and cancellation are refused while the Project has an open Task, so each Task is closed explicitly, with its own reason where section 20 requires one;
+- transfer to another Company remains impossible (DEC-025, section 8).
+
+**Closed Projects.** A completed or cancelled Project refuses:
+
+- new Tasks and every Task command, including reopening;
+- Document link and removal;
+- responsible-member changes.
+
+Its Tasks, Documents, responsible member, declaration, transitions and Activity history stay readable under the delivered read boundaries. Project lists show open Projects by default, with an explicit filter to include closed Projects and a status label (DEC-151).
+
+**Guarantees.**
+
+- The lifecycle has its own revision, starting at zero, separate from the responsibility revision.
+- A transition carries the expected revision and a stable actor/Workspace idempotency key. A stale revision conflicts, and concurrent transitions allow one outcome.
+- Exact replays recheck live authority and visibility before returning the recorded outcome. Changed key reuse conflicts.
+- A committed transition atomically updates the status and revision, and records the transition, its receipt, one `project.lifecycle.changed` event and the original active Client's operational-use fence.
+- Transitions, Task commands, Document association commands and responsible-member changes of one Project serialize on its original Client. No Project therefore closes with an open Task, and no active Project loses its responsible member.
+- A superseded original Client keeps the lifecycle readable and refuses transitions, without exposing union detail.
+
+**Provisional choices for Iurie's validation:**
+
+- only Iurie holds the Approver bundle;
+- the seven declared items, and a present-or-missing choice with no "not applicable";
+- no transition acts on unfinished Tasks (S02-Q19);
+- completion only from active, and no reopening of a closed Project;
+- the responsible member cannot be cleared while active or on hold;
+- a start exception is recorded once and is not later closed in the product.
+
+Excluded, and not presented as business fact:
+
+- workflow stages, categories and templates;
+- Contract or Offer links, and automatic activation after signature;
+- verification of the declared items, the required-documents list (item 520), the kickoff checklist and the official start summary (items 524–525);
+- closing a start exception when its items arrive, and its alerts until closure (item 523);
+- reminders and notifications;
+- `archived`, reopening, deletion and transfer between Companies;
+- lifecycle effects on Tasks, Documents or Requests;
+- approval delegated to anyone other than the Approver bundle holder.
+
+**Delivery.** #406 delivers the statuses, the Approver bundle, activation, hold and resumption. The follow-up slice delivers completion, cancellation, the closed-Project rules and the list default, and records its issue here.

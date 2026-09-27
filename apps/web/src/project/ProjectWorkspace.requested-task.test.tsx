@@ -11,6 +11,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project-lifecycle.test-fixtures';
 import { taskCopy } from './task.copy';
 
 const company = {
@@ -218,6 +222,8 @@ function taskServer() {
         return Response.json(moved);
       }
     }
+    if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
+      return Response.json(preparatoryLifecycle);
     return new Response(null, { status: 404 });
   }
   vi.stubGlobal(

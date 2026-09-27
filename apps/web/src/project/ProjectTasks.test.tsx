@@ -14,6 +14,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import {
+  isLifecycleRead,
+  preparatoryLifecycle,
+} from './project-lifecycle.test-fixtures';
 import type { TaskView } from './task-response';
 
 const actor: ActorContext = {
@@ -153,6 +157,7 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
         ]);
       if (url === '/api/projects') return Response.json([project]);
       if (url === '/api/projects/project') return Response.json(project);
+      if (isLifecycleRead(url)) return Response.json(preparatoryLifecycle);
       if (url.endsWith('/eligible-task-assignees'))
         return Response.json({ members: [] });
       if (url === '/api/projects/project/tasks')
@@ -226,12 +231,17 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
   expect(within(history).getByText('Task edited')).toBeInTheDocument();
   expect(within(history).getByText('Completion declared')).toBeInTheDocument();
   expect(within(history).getByText('Task reopened')).toBeInTheDocument();
+  const detail = screen.getByRole('article', { name: project.title });
   expect(
-    screen.getByText(
+    within(detail).getByText(
       'Preparation only. This record does not authorize work to start.',
     ),
   ).toBeInTheDocument();
-  expect(screen.getByText('Preparatory')).toBeInTheDocument();
+  expect(
+    within(within(detail).getByRole('region', { name: 'Lifecycle' })).getByText(
+      'Preparatory',
+    ),
+  ).toBeInTheDocument();
 });
 
 const savedTask = {
@@ -269,6 +279,7 @@ function fixture(
       return Response.json([{ id: 'client', displayName: 'Synthetic Client' }]);
     if (url === '/api/projects') return Response.json([project]);
     if (url === '/api/projects/project') return Response.json(project);
+    if (isLifecycleRead(url)) return Response.json(preparatoryLifecycle);
     if (url.endsWith('/eligible-task-assignees'))
       return Response.json({ members: [] });
     if (url.endsWith('/tasks'))

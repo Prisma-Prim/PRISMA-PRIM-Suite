@@ -36,7 +36,8 @@ type AssignmentBundle =
   | 'pricing-configuration'
   | 'pricing-user'
   | 'commercial-activity-reader'
-  | 'project';
+  | 'project'
+  | 'project-approver';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
@@ -54,6 +55,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   project: '/company-project-assignments',
+  'project-approver': '/company-project-approver-assignments',
 };
 type AdministrationLoadState =
   | { status: 'loading' }
@@ -485,6 +487,7 @@ export function CompanyContextAccess({
                 label: copy.documentApproverBundle,
               },
               { value: 'project', label: copy.projectBundle },
+              { value: 'project-approver', label: copy.projectApproverBundle },
               { value: 'task-manager', label: copy.taskManagerBundle },
             ]}
             onValueChange={(value) => {
@@ -500,8 +503,9 @@ export function CompanyContextAccess({
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
                 value === 'document-registrar' ||
+                value === 'project' ||
                 value === 'document-approver' ||
-                value === 'project'
+                value === 'project-approver'
               )
                 setBundle(value);
             }}
@@ -513,6 +517,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'pricing-configuration' && (
             <p>{copy.pricingConfigurationPrerequisites}</p>
+          )}
+          {bundle === 'project-approver' && (
+            <p>{copy.projectApproverPrerequisites}</p>
           )}
           {bundle === 'document-approver' && (
             <p>{copy.documentApproverPrerequisites}</p>
@@ -604,6 +611,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'document-registrar': 'Company Document Registrar',
     'document-approver': copy.documentApproverBundle,
     project: copy.projectBundle,
+    'project-approver': copy.projectApproverBundle,
     'director-client': 'Company Director Client Access',
     'company-context': 'Company Context Access',
   };

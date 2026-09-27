@@ -29,6 +29,7 @@ const bundleLabels = {
   pricingUser: 'Company Pricing User',
   reader: 'Company Commercial Activity Reader',
   project: 'Company Project Access',
+  approver: 'Company Project Approver',
 } as const;
 const serverVersions = {
   context: null,
@@ -39,6 +40,7 @@ const serverVersions = {
   pricingUser: 'v1',
   reader: 'v1',
   project: 'v2',
+  approver: 'v1',
 } as const;
 
 const administration = (
@@ -412,6 +414,14 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a V1 Pricing Configuration version',
       assignment: { bundle: 'Company Pricing Configuration', version: 'V1' },
+    },
+    {
+      name: 'a null Project Approver version',
+      assignment: { bundle: 'Company Project Approver', version: null },
+    },
+    {
+      name: 'a v2 Project Approver version',
+      assignment: { bundle: 'Company Project Approver', version: 'v2' },
     },
     {
       name: 'a null Pricing User version',
@@ -1485,6 +1495,80 @@ describe('CompanyContextAccess', () => {
       },
     ]);
     expect(commands[0]?.key).not.toBe(commands[1]?.key);
+  });
+
+  it('grants and revokes Company Project Approver v1 with its lifecycle-only note', async () => {
+    let active = false;
+    const commands: { method: string; path: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(administration(active ? 'approver' : undefined));
+        if (path.startsWith('/api/company-project-approver-assignments')) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'approver-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Project Approver',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    const bundle = screen.getByLabelText('Access bundle');
+    changeValue(bundle, 'project-approver');
+    expect(bundle).toHaveAttribute('data-value', 'project-approver');
+    expect(bundle).toHaveTextContent('Company Project Approver');
+    expect(
+      screen.getByText(
+        'Changes the Project lifecycle only; Project and Client read are authorized separately.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-project-approver-assignments',
+        key: expect.any(String),
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-project-approver-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+      },
+    ]);
   });
 
   it('grants Company Commercial Activity Reader through the existing administration', async () => {

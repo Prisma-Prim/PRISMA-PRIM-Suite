@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { TaskView } from '../src/project/task-response';
 import {
   actorContextFixture,
+  preparatoryLifecycle,
   operationalHomeFixture,
   unassignedResponsibility,
 } from './actor-context.fixture';
@@ -107,6 +108,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: { members: [] } });
       if (path.endsWith('/responsible'))
         return route.fulfill({ json: unassignedResponsibility });
+      if (path.endsWith('/lifecycle'))
+        return route.fulfill({ json: preparatoryLifecycle });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
       if (path === '/api/documents') return route.fulfill({ json: [] });
@@ -405,6 +408,8 @@ for (const frame of ['classic', 'prisme'] as const) {
         return route.fulfill({ json: { members: [] } });
       if (path.endsWith('/responsible'))
         return route.fulfill({ json: unassignedResponsibility });
+      if (path.endsWith('/lifecycle'))
+        return route.fulfill({ json: preparatoryLifecycle });
       if (path.endsWith('/tasks'))
         return route.fulfill({ json: { mutable: true, tasks: [] } });
       if (path === '/api/documents') return route.fulfill({ json: [] });
