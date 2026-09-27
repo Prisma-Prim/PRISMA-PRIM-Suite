@@ -1136,9 +1136,11 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(input, 'Send the qualification summary');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Next action saved.',
-    );
+    expect(
+      await screen.findByText('Next action saved.', {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     expect(
       screen.getByText('Next action: Send the qualification summary'),
     ).toBeVisible();
@@ -1211,9 +1213,11 @@ describe('CommercialIntakeWorkspace', () => {
 
     await openDetailForEditing({ onActivityRecorded: activityRecorded });
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      commercialIntakeCopy.nextActionUnchanged,
-    );
+    expect(
+      await screen.findByText(commercialIntakeCopy.nextActionUnchanged, {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     const back = screen.getByRole('button', { name: 'Back to Requests' });
     await waitFor(() => expect(back).toBeEnabled());
     fireEvent.click(back);
@@ -1237,9 +1241,11 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), '   ');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Enter a next action between 1 and 500 characters.',
-    );
+    expect(
+      screen.getByText('Enter a next action between 1 and 500 characters.', {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     expect(screen.getByLabelText('Next action')).toHaveValue('   ');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -1292,9 +1298,12 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), 'My stale edit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This Opportunity changed since you loaded it. Reload the Request before editing again.',
-    );
+    expect(
+      await screen.findByText(
+        'This Opportunity changed since you loaded it. Reload the Request before editing again.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Edit next action' }),
@@ -1336,9 +1345,12 @@ describe('CommercialIntakeWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload Request' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The Client Request could not be loaded or saved. Please try again.',
-    );
+    expect(
+      await screen.findByText(
+        'The Client Request could not be loaded or saved. Please try again.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Reload Request' }),
     ).toBeVisible();
@@ -1368,9 +1380,12 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), 'Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The next action update did not complete. Retry to confirm the result.',
-    );
+    expect(
+      await screen.findByText(
+        'The next action update did not complete. Retry to confirm the result.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(screen.getByLabelText('Next action')).toHaveValue(
       'Book the site visit',
     );
@@ -1380,9 +1395,11 @@ describe('CommercialIntakeWorkspace', () => {
     expect(uncertainInput).toHaveValue('Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Retry update' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Next action saved.',
-    );
+    expect(
+      await screen.findByText('Next action saved.', {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     expect(screen.getByText('Version: 2')).toBeVisible();
     const firstAttempt = fetchMock.mock.calls[2];
     const retry = fetchMock.mock.calls[3];
@@ -1417,9 +1434,12 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), 'Denied edit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'You no longer have permission to update the next action of this Opportunity.',
-    );
+    expect(
+      await screen.findByText(
+        'You no longer have permission to update the next action of this Opportunity.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     await waitFor(() => expect(actorRevalidated).toHaveBeenCalledWith(actor));
     expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
     expect(screen.getByText(createdRequest.originalText)).toBeVisible();
@@ -1439,9 +1459,12 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), 'Obsolete draft');
     revalidateActor(actor);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'You no longer have permission to update the next action of this Opportunity.',
-    );
+    expect(
+      screen.getByText(
+        'You no longer have permission to update the next action of this Opportunity.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(screen.queryByLabelText('Next action')).not.toBeInTheDocument();
     expect(screen.getByText(createdRequest.originalText)).toBeVisible();
 
@@ -1475,9 +1498,12 @@ describe('CommercialIntakeWorkspace', () => {
 
     revalidateActor(actor);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'You no longer have permission to update the next action of this Opportunity.',
-    );
+    expect(
+      screen.getByText(
+        'You no longer have permission to update the next action of this Opportunity.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'Retry update' }),
     ).not.toBeInTheDocument();
@@ -1493,9 +1519,11 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(input, 'Book the site visit');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Next action saved.',
-    );
+    expect(
+      await screen.findByText('Next action saved.', {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     const uncertainAttempt = fetchMock.mock.calls[2];
     const freshCommand = fetchMock.mock.calls[3];
     expect(freshCommand?.[1]).toMatchObject({
@@ -1558,9 +1586,12 @@ describe('CommercialIntakeWorkspace', () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'You no longer have permission to update the next action of this Opportunity.',
-      );
+      expect(
+        screen.getByText(
+          'You no longer have permission to update the next action of this Opportunity.',
+          { selector: '[role="alert"]' },
+        ),
+      ).toBeVisible();
       expect(
         screen.queryByRole('button', { name: 'Retry update' }),
       ).not.toBeInTheDocument();
@@ -1593,9 +1624,12 @@ describe('CommercialIntakeWorkspace', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This Request is no longer available in the active Company. Reload the list.',
-    );
+    expect(
+      await screen.findByText(
+        'This Request is no longer available in the active Company. Reload the list.',
+        { selector: '[role="alert"]' },
+      ),
+    ).toBeVisible();
     expect(
       await screen.findByText('No Client Requests for PRISMA-PRIM yet.'),
     ).toBeVisible();

@@ -59,6 +59,7 @@ import { CommercialCatalogueController } from './commercial-catalogue/commercial
 import { CompanyServiceCatalogueAssignmentController } from './access/company-service-catalogue-assignment.controller.js';
 import { PricingConfigurationModule } from './pricing-configuration/pricing-configuration.module.js';
 import { PricingConfigurationController } from './pricing-configuration/pricing-configuration.controller.js';
+import { PricingSnapshotController } from './pricing-configuration/pricing-snapshot.controller.js';
 import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyPricingUserAssignmentController } from './access/company-pricing-user-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
@@ -110,6 +111,7 @@ import { OperationalHomeController } from './operational-home/operational-home.c
     CommercialCatalogueController,
     CompanyServiceCatalogueAssignmentController,
     PricingConfigurationController,
+    PricingSnapshotController,
     CompanyPricingConfigurationAssignmentController,
     CompanyPricingUserAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,

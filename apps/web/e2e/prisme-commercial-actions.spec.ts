@@ -120,9 +120,13 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
   });
 
   await capture.click();
-  await expect(intake.getByRole('alert')).toHaveText(
-    'Enter the required request and Opportunity fields.',
-  );
+  await expect(
+    intake.getByRole('alert').and(
+      intake.getByText('Enter the required request and Opportunity fields.', {
+        exact: true,
+      }),
+    ),
+  ).toHaveText('Enter the required request and Opportunity fields.');
   await intake
     .getByLabel('Original request text')
     .fill('An existing commercial Request needs a qualification review.');
@@ -168,7 +172,11 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
     .getByLabel('Next action')
     .fill('Confirm the final review meeting');
   await save.click();
-  await expect(intake.getByRole('alert')).toHaveText('Next action saved.');
+  await expect(
+    intake
+      .getByRole('alert')
+      .and(intake.getByText('Next action saved.', { exact: true })),
+  ).toHaveText('Next action saved.');
   await expect(
     intake.getByText('Next action: Confirm the final review meeting'),
   ).toBeVisible();
