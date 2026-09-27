@@ -204,6 +204,7 @@ it.skipIf(!databaseUrl)(
         await insertAssignment(bundle, version);
       await insertAssignment('company_pricing_configuration', 'v1');
       await insertAssignment('company_pricing_user', 'v1');
+      await insertAssignment('company_commercial_intake', 'v3');
       for (const [bundle, version] of [
         ['company_pricing_user', null],
         ['company_pricing_user', 'v2'],
@@ -211,7 +212,7 @@ it.skipIf(!databaseUrl)(
         ['company_pricing_configuration', 'v2'],
         ['company_service_catalogue', 'v2'],
         ['company_commercial_activity_reader', 'v2'],
-        ['company_commercial_intake', 'v3'],
+        ['company_commercial_intake', 'v4'],
         ['company_project_access', 'v3'],
         ['company_director_client_access', null],
         ['company_document_registrar', 'v4'],

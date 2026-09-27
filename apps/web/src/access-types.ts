@@ -32,9 +32,10 @@ export interface ActorContext {
       | 'commercial.opportunity.read'
       | 'commercial.opportunity.create'
       | 'commercial.opportunity.next_action.update'
+      | 'commercial.request.client.associate'
     >;
     commercialIntakePermissionAssignmentId?: string;
-    commercialIntakePermissionSetVersion?: 'v1' | 'v2';
+    commercialIntakePermissionSetVersion?: 'v1' | 'v2' | 'v3';
     serviceCataloguePermissions?: Array<
       | 'service.definition.read'
       | 'service.definition.create'

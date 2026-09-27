@@ -34,7 +34,7 @@ const bundleLabels = {
 const serverVersions = {
   context: null,
   director: 'v2',
-  commercial: 'v2',
+  commercial: 'v3',
   catalogue: 'v1',
   pricing: 'v1',
   pricingUser: 'v1',

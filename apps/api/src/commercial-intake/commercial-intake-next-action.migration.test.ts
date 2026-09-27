@@ -144,14 +144,16 @@ it.skipIf(!databaseUrl)(
           .rows,
       ).toEqual([]);
 
-      // The captured v1 assignment received no backfill; only a fresh grant
-      // captures v2, and unknown versions stay rejected.
-      await expect(
-        query(
-          `UPDATE company_role_assignments SET permission_set_version = 'v3' WHERE id = $1`,
-          [ASSIGNMENT],
-        ),
-      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      // The captured v1 assignment received no backfill. Later grants may
+      // capture the delivered v2 and v3 contracts; unknown versions fail closed.
+      expect(
+        (
+          await query(
+            'SELECT permission_set_version FROM company_role_assignments WHERE id = $1',
+            [ASSIGNMENT],
+          )
+        ).rows,
+      ).toEqual([{ permission_set_version: 'v1' }]);
       await query(
         `UPDATE company_role_assignments SET revoked_at = now() WHERE id = $1`,
         [ASSIGNMENT],
@@ -161,6 +163,20 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, $3, 'company_commercial_intake', 'v2')`,
         [WORKSPACE, COMPANY, MEMBERSHIP],
       );
+      await query(
+        `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
+           permission_set_version, revoked_at)
+         VALUES ($1, $2, $3, 'company_commercial_intake', 'v3', now())`,
+        [WORKSPACE, COMPANY, MEMBERSHIP],
+      );
+      await expect(
+        query(
+          `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
+             permission_set_version, revoked_at)
+           VALUES ($1, $2, $3, 'company_commercial_intake', 'v4', now())`,
+          [WORKSPACE, COMPANY, MEMBERSHIP],
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
       // Migration 0028 preserves the Activity reader bundle introduced by
       // 0027 while widening only Commercial Intake to captured v2.

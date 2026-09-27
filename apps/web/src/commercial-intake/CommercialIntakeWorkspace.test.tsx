@@ -49,6 +49,7 @@ const createdRequest = {
   capturedByWorkspaceMembershipId: 'membership-1',
   capturedAt: '2026-09-20T10:00:00.000Z',
   version: 1,
+  clientAssociationStatus: 'absent',
   initialOpportunity: {
     id: 'opportunity-1',
     title: 'Prepare quality process review',
@@ -1021,6 +1022,7 @@ describe('CommercialIntakeWorkspace', () => {
         .mockResolvedValueOnce(
           Response.json({
             ...createdRequest,
+            clientAssociationStatus: 'visible',
             clientReference: {
               originalClientId: 'managed-client',
               displayName: 'Managed Client',
@@ -1064,6 +1066,7 @@ describe('CommercialIntakeWorkspace', () => {
         .mockResolvedValueOnce(
           Response.json({
             ...createdRequest,
+            clientAssociationStatus: 'visible',
             clientReference: {
               originalClientId: 'managed-client',
               displayName: 'Managed Client',

@@ -1,6 +1,58 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import { readUpdateOpportunityNextActionCommand } from './commercial-intake.validation.js';
+import {
+  readAssociateClientCommand,
+  readUpdateOpportunityNextActionCommand,
+} from './commercial-intake.validation.js';
+
+describe('Request Client association command validation', () => {
+  it('accepts exactly an observed Request version and one Client Account id', () => {
+    expect(
+      readAssociateClientCommand({
+        expectedVersion: 1,
+        clientAccountId: '00000000-0000-4000-8000-000000000452',
+      }),
+    ).toEqual({
+      expectedVersion: 1,
+      clientAccountId: '00000000-0000-4000-8000-000000000452',
+    });
+  });
+
+  it.each([
+    [
+      { expectedVersion: 0, clientAccountId: crypto.randomUUID() },
+      'expectedVersion',
+    ],
+    [
+      { expectedVersion: 1.5, clientAccountId: crypto.randomUUID() },
+      'expectedVersion',
+    ],
+    [
+      { expectedVersion: 1, clientAccountId: 'not-a-client-id' },
+      'clientAccountId',
+    ],
+    [
+      {
+        expectedVersion: 1,
+        clientAccountId: crypto.randomUUID(),
+        clientLegalEntityId: crypto.randomUUID(),
+      },
+      'association',
+    ],
+  ])('rejects malformed or expanded input %#', (value, field) => {
+    try {
+      readAssociateClientCommand(value);
+      expect.unreachable('Expected validation to reject the association');
+    } catch (error: unknown) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      if (!(error instanceof BadRequestException)) return;
+      expect(error.getResponse()).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field,
+      });
+    }
+  });
+});
 
 describe('Opportunity next-action expected version validation', () => {
   it('accepts the largest PostgreSQL integer version that can still increment', () => {

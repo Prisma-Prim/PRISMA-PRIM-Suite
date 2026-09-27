@@ -211,12 +211,30 @@
   gap: 0.5rem;
 }
 
+.commercial-intake-client-association {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.6rem;
+}
+
+.commercial-intake-client-association h4,
+.commercial-intake-client-association p {
+  margin: 0;
+}
+
+.commercial-intake-client-association form {
+  display: flex;
+}
+
 .prisme-shell
   .commercial-intake-form
   button:not(:where(.shared-select__trigger)),
 .prisme-shell .commercial-intake-detail > button,
 .prisme-shell .commercial-intake-detail dd button,
 .prisme-shell .commercial-intake-detail section > button,
+.prisme-shell .commercial-intake-client-association button,
 .prisme-shell .commercial-intake-next-action-actions button,
 .prisme-shell .commercial-intake-filter button,
 .prisme-shell .commercial-intake-restriction button,
