@@ -166,9 +166,18 @@ test('defaults to Romanian and switches all four languages during entry and acce
     if (locale !== currentLocale)
       await chooseLocale(page, currentLocale.languageLabel, locale.code);
     await expect(page.locator('html')).toHaveAttribute('lang', locale.code);
-    await expect(
-      page.getByRole('heading', { name: locale.publicTitle }),
-    ).toBeVisible();
+    const publicTitle = page.getByRole('heading', { name: locale.publicTitle });
+    await expect(publicTitle).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    await expect
+      .poll(() =>
+        publicTitle.evaluate(
+          (element) => element.scrollWidth - element.clientWidth,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
     await page.screenshot({
       path: testInfo.outputPath(
         `locale-${locale.code}-entry-${testInfo.project.name}.png`,

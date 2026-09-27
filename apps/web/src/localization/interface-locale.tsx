@@ -85,14 +85,25 @@ function persistInterfaceLocale(locale: InterfaceLocale): void {
   }
 }
 
+function synchronizeDocumentLocale(locale: InterfaceLocale): void {
+  document.documentElement.lang = languageTag(locale);
+}
+
+function initializeInterfaceLocale(): InterfaceLocale {
+  const locale = readInterfaceLocale();
+  synchronizeDocumentLocale(locale);
+  return locale;
+}
+
 export function InterfaceLocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState(readInterfaceLocale);
+  const [locale, setLocale] = useState(initializeInterfaceLocale);
 
   useLayoutEffect(() => {
-    document.documentElement.lang = locale;
+    synchronizeDocumentLocale(locale);
   }, [locale]);
 
   function changeLocale(nextLocale: InterfaceLocale): void {
+    synchronizeDocumentLocale(nextLocale);
     setLocale(nextLocale);
     persistInterfaceLocale(nextLocale);
   }
