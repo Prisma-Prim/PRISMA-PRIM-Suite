@@ -16,6 +16,17 @@
 .project-workspace .project-search {
   max-width: 36rem;
 }
+.project-workspace .project-closed-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+}
+.project-workspace .project-closed-filter input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
 .project-list-client {
   display: block;
   margin-top: 0.2rem;
@@ -312,6 +323,13 @@
 .project-detail-overview .project-warning,
 .project-workspace article > .project-warning {
   margin: 0.75rem 0 0;
+}
+.project-closed-notice,
+.project-lifecycle-refusal {
+  padding: 0.75rem;
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background: #f7f8fb;
 }
 
 .project-lifecycle {

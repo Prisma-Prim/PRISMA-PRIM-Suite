@@ -82,6 +82,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     taskId?: string;
     requestId: number;
   }>();
+  const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
       section: 'clients' | 'projects' | 'documents' | 'requests' | 'my-tasks',
@@ -274,6 +275,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
     ? (target: { projectId: string; taskId?: string }) => {
+        setProjectOpenRequestId((value) => value + 1);
         setRequestedProject((current) => ({
           context: projectRequestContext,
           projectId: target.projectId,
@@ -308,6 +310,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onRevalidateAuthority={() => selectCompany(activeCompany.id)}
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
+          setProjectOpenRequestId((value) => value + 1);
           setProjectClientFilter(undefined);
           navigateToSection('projects');
         }}
@@ -435,6 +438,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenProjects={
             canAccessProjects && activeCompanyId
               ? (client) => {
+                  setProjectOpenRequestId((value) => value + 1);
                   setProjectClientFilter({
                     navigationContext,
                     clientDossierId: client.id,
@@ -498,6 +502,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               ? requestedProject
               : undefined
           }
+          projectOpenRequestId={projectOpenRequestId}
         />
       ),
     });

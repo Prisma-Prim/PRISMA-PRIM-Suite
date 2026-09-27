@@ -18,6 +18,8 @@ import {
   projectResponsibilityCommands,
   projects,
 } from '../database/schema/index.js';
+import { ProjectClosedGuard } from './project-closed.guard.js';
+import { isOpenProjectStatus } from './project-status.js';
 import type {
   ProjectResponsibilityCommand,
   ProjectResponsibilityReceipt,
@@ -45,6 +47,7 @@ export class ProjectResponsibilityService {
     private readonly access: ProjectResponsibleAccessService,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
+    private readonly closedProjects: ProjectClosedGuard,
   ) {}
 
   /** Any Project reader. Writes no event, receipt or reversal-fence advance. */
@@ -64,7 +67,7 @@ export class ProjectResponsibilityService {
           responsible: responsibleOf(row),
           revision: row.responsibilityRevision,
           lastChange: lastChangeOf(row),
-          mutable: clientActive,
+          mutable: clientActive && isOpenProjectStatus(row.status),
         };
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -78,12 +81,18 @@ export class ProjectResponsibilityService {
     return this.database.transaction(
       async () => {
         const companyId = await this.authorization.requireProjectUpdate(actor);
-        const { clientActive } = await this.visible(
+        const { row, clientActive } = await this.visible(
           actor,
           companyId,
           projectId,
         );
         if (!clientActive) throw new NotFoundException();
+        await this.closedProjects.requireOpen({
+          actor,
+          companyId,
+          projectId: row.id,
+          closedAs: 'not_found',
+        });
         return { members: await this.access.eligibleMembers(actor) };
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -119,6 +128,7 @@ export class ProjectResponsibilityService {
         actor,
         visible.clientAccountId,
       );
+      await this.closedProjects.requireOpen({ actor, companyId, projectId });
       const current = await this.row(actor, companyId, projectId, true);
       if (current.responsibilityRevision !== command.expectedRevision)
         throw new ConflictException(STALE);

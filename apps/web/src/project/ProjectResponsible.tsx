@@ -14,6 +14,10 @@ import {
   type ProjectResponsibility,
   type ResponsibleMember,
 } from './project-responsible-response';
+import {
+  isClosedProjectStatus,
+  type ProjectStatus,
+} from './project-lifecycle-response';
 import { projectCopy } from './project.copy';
 
 const copy = projectCopy.responsible;
@@ -21,12 +25,15 @@ const refusalCopy = {
   conflict: copy.conflict,
   rejected: copy.rejected,
   'responsible-required': copy.responsibleRequired,
+  closed: copy.closedRefusal,
 } as const;
 
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string;
+  projectStatus: ProjectStatus;
+  onProjectChanged?: () => void | Promise<void>;
   onActivityRecorded?: () => void | Promise<void>;
   /** Each read's responsible member, or undefined once it is unknown. */
   onResponsibleRead?: (
@@ -49,7 +56,7 @@ type Mutation =
   | { kind: 'pending' | 'uncertain'; command: Command }
   | {
       kind: 'reload-required';
-      reason: 'conflict' | 'rejected' | 'responsible-required';
+      reason: 'conflict' | 'rejected' | 'responsible-required' | 'closed';
     };
 
 /**
@@ -75,6 +82,8 @@ function Responsible({
   actor,
   identity,
   projectId,
+  projectStatus,
+  onProjectChanged,
   onActivityRecorded,
   onResponsibleRead,
 }: Props) {
@@ -94,6 +103,7 @@ function Responsible({
       company.clientPermissions?.includes('client.read') === true);
   const canUpdate =
     canRead && company?.projectPermissions?.includes('project.update') === true;
+  const projectClosed = isClosedProjectStatus(projectStatus);
   const path = `/projects/${encodeURIComponent(projectId)}`;
 
   function abortAll() {
@@ -166,7 +176,7 @@ function Responsible({
       current.kind === 'reload-required' ? { kind: 'idle' } : current,
     );
     if (mutation.kind !== 'uncertain') setFeedback('');
-    void load();
+    void Promise.all([load(), onProjectChanged?.()]);
   }
   async function openEditor(current: ProjectResponsibility) {
     membersRequest.current?.abort();
@@ -238,6 +248,13 @@ function Responsible({
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
+        if (
+          result.status === 'conflict' &&
+          conflictCode(result) === 'project_closed'
+        ) {
+          setMutation({ kind: 'reload-required', reason: 'closed' });
+          return;
+        }
         setEditor({ kind: 'closed' });
         setMutation({
           kind: 'reload-required',
@@ -289,8 +306,18 @@ function Responsible({
 
   const busy = mutation.kind === 'pending';
   const current = read.kind === 'ready' ? read.value : null;
+  const closedRefusal =
+    mutation.kind === 'reload-required' && mutation.reason === 'closed';
   const changeable =
-    canUpdate && current?.mutable === true && mutation.kind === 'idle';
+    canUpdate &&
+    current?.mutable === true &&
+    !projectClosed &&
+    mutation.kind === 'idle';
+  const editorVisible =
+    canUpdate &&
+    current?.mutable === true &&
+    !projectClosed &&
+    (mutation.kind === 'idle' || closedRefusal);
   return (
     <section className="project-responsible" aria-label={copy.title}>
       {read.kind === 'loading' && <p role="status">{copy.loading}</p>}
@@ -322,8 +349,10 @@ function Responsible({
               </time>
             </p>
           )}
-          {!current.mutable && <p>{copy.readOnly}</p>}
-          {changeable && editor.kind !== 'closed' && (
+          {!current.mutable && (
+            <p>{projectClosed ? copy.closedReadOnly : copy.readOnly}</p>
+          )}
+          {editorVisible && editor.kind !== 'closed' && (
             <form
               className="project-responsible-editor"
               onSubmit={(event) => save(event, current)}
@@ -356,12 +385,19 @@ function Responsible({
               )}
               <div className="project-responsible-actions">
                 {editor.kind === 'open' && editor.members.length > 0 && (
-                  <button type="submit" disabled={!editor.selection}>
+                  <button
+                    type="submit"
+                    disabled={!editor.selection || closedRefusal}
+                  >
                     {copy.save}
                   </button>
                 )}
                 {current.responsible && (
-                  <button type="button" onClick={() => clear(current)}>
+                  <button
+                    type="button"
+                    disabled={closedRefusal}
+                    onClick={() => clear(current)}
+                  >
                     {copy.clear}
                   </button>
                 )}

@@ -18,6 +18,8 @@ import {
   documentProjectEvents,
   workingDocuments,
 } from '../database/schema/index.js';
+import { ProjectClosedGuard } from '../project/project-closed.guard.js';
+import { isOpenProjectStatus } from '../project/project-status.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentsService } from './documents.service.js';
 
@@ -29,6 +31,7 @@ export class DocumentProjectsService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly documents: DocumentsService,
     private readonly projects: ProjectService,
+    private readonly closedProjects: ProjectClosedGuard,
   ) {}
 
   async list(actor: ActorContext, projectIdValue: unknown, eligible = false) {
@@ -37,12 +40,21 @@ export class DocumentProjectsService {
     // Keep authority, original Client state and association revisions in one read snapshot.
     return this.database.transaction(
       async () => {
-        await this.authorization.requireDocumentAccess(actor);
+        const companyId = await this.authorization.requireDocumentAccess(actor);
         const project = await this.projects.read(actor, projectId);
         const client = await this.clients.readReferenceClient(
           actor,
           project.clientAccountId,
         );
+        if (eligible) {
+          if (client.status !== 'active') throw new NotFoundException();
+          await this.closedProjects.requireOpen({
+            actor,
+            companyId,
+            projectId,
+            closedAs: 'not_found',
+          });
+        }
         const rows = await this.database.connection
           .select({
             id: workingDocuments.id,
@@ -66,7 +78,11 @@ export class DocumentProjectsService {
             document: await this.documents.read(actor, row.id),
             revision: row.revision,
           });
-        return { mutable: client.status === 'active', documents };
+        return {
+          mutable:
+            client.status === 'active' && isOpenProjectStatus(project.status),
+          documents,
+        };
       },
       { isolationLevel: 'repeatable read' },
     );
@@ -130,7 +146,12 @@ export class DocumentProjectsService {
       if (replay) return receipt(replay);
       // Client-owned identity lock precedes the association lock, matching union/reversal.
       // Any refused command rolls back this operational-use fence with all other writes.
-      await this.clients.recordReferenceUse(actor, document.clientId);
+      await this.clients.lockActiveReferenceClient(actor, document.clientId);
+      await this.closedProjects.requireOpen({
+        actor,
+        companyId,
+        projectId: project.id,
+      });
       const [current] = await this.database.connection
         .select()
         .from(workingDocuments)
@@ -154,6 +175,7 @@ export class DocumentProjectsService {
           'The Document association changed. Reload before choosing another action.',
         );
       const revision = current.projectRevision + 1;
+      await this.clients.recordReferenceUse(actor, document.clientId);
       await this.database.connection
         .update(workingDocuments)
         .set({

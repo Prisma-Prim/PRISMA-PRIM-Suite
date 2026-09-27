@@ -1,6 +1,6 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) by #406; remaining capability Draft\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407; remaining capability Draft\
 **Version:** 0.8\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
@@ -453,4 +453,4 @@ Excluded, and not presented as business fact:
 - lifecycle effects on Tasks, Documents or Requests;
 - approval delegated to anyone other than the Approver bundle holder.
 
-**Delivery.** #406 delivers the statuses, the Approver bundle, activation, hold and resumption. The follow-up slice delivers completion, cancellation, the closed-Project rules and the list default, and records its issue here.
+**Delivery.** #406 delivers the statuses, the Approver bundle, activation, hold and resumption. #407 delivers completion, cancellation, the closed-Project rules and the list default.

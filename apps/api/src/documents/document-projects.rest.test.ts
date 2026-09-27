@@ -14,6 +14,7 @@ import {
   createPostgresRestTestHarness,
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
+import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 import { DocumentsService } from './documents.service.js';
@@ -967,6 +968,7 @@ describe.skipIf(!databaseUrl)(
           clients,
           documents,
           projects,
+          new ProjectClosedGuard(context),
         ),
       };
     }

@@ -1,12 +1,19 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
-import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import {
+  conflictCode,
+  createAuthenticatedApiClient,
+} from '../api/authenticated-api-client';
 import {
   readDocument,
   type WorkingDocument,
 } from '../documents/document-response';
 import { projectDocumentsCopy as copy } from './project-documents.copy';
+import {
+  isClosedProjectStatus,
+  type ProjectStatus,
+} from './project-lifecycle-response';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import './project-documents.css';
 
@@ -14,6 +21,8 @@ type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string;
+  projectStatus: ProjectStatus;
+  onProjectChanged?: () => void | Promise<void>;
   onActivityRecorded?: () => void | Promise<void>;
   /** Opens a displayed linked Document by its stable id; this panel never reads it. */
   onOpenDocument?: (documentId: string) => void;
@@ -50,6 +59,8 @@ function ProjectDocumentSession({
   actor,
   identity,
   projectId,
+  projectStatus,
+  onProjectChanged,
   onActivityRecorded,
   onOpenDocument,
 }: Props) {
@@ -74,6 +85,7 @@ function ProjectDocumentSession({
   const canOpen = actor.activeCompany?.documentPermissions?.includes(
     'document.reference.read',
   );
+  const projectClosed = isClosedProjectStatus(projectStatus);
   const busy = mutation.kind === 'pending';
   const enabled = mutation.kind === 'idle';
 
@@ -183,8 +195,15 @@ function ProjectDocumentSession({
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
+        if (
+          result.status === 'conflict' &&
+          conflictCode(result) === 'project_closed'
+        ) {
+          setFeedback(copy.closedRefusal);
+          setMutation({ kind: 'blocked' });
+          return;
+        }
         setFeedback(copy.conflict);
-        setSelector(null);
         setMutation({ kind: 'blocked' });
         return;
       }
@@ -254,7 +273,9 @@ function ProjectDocumentSession({
       : state.listing.documents;
     return (
       <>
-        {!state.listing.mutable && <p>{copy.immutable}</p>}
+        {!state.listing.mutable && (
+          <p>{projectClosed ? copy.closedReadOnly : copy.immutable}</p>
+        )}
         {state.listing.documents.length === 0 && (
           <p>{eligible ? copy.noEligible : copy.empty}</p>
         )}
@@ -287,7 +308,7 @@ function ProjectDocumentSession({
                   {copy.openDocument}
                 </button>
               )}
-              {canManage && state.listing.mutable && (
+              {canManage && !projectClosed && state.listing.mutable && (
                 <button
                   type="button"
                   disabled={!enabled}
@@ -316,15 +337,23 @@ function ProjectDocumentSession({
         onClick={() => {
           setFeedback('');
           setGeneration((value) => value + 1);
+          void onProjectChanged?.();
         }}
       >
         {copy.reload}
       </button>
-      {canManage && load.kind === 'ready' && load.listing.mutable && (
-        <button type="button" disabled={!enabled} onClick={() => void choose()}>
-          {copy.choose}
-        </button>
-      )}
+      {canManage &&
+        !projectClosed &&
+        load.kind === 'ready' &&
+        load.listing.mutable && (
+          <button
+            type="button"
+            disabled={!enabled}
+            onClick={() => void choose()}
+          >
+            {copy.choose}
+          </button>
+        )}
       {selector && (
         <div
           aria-label={copy.choose}

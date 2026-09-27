@@ -218,6 +218,7 @@ reinterpret a Client union, rewrite original references, create a Version or
 change the draft, confidentiality or unverified external-reference status.
 Linking or removal never changes the Project lifecycle (Project/Task PRD section 23). The association is working-material organization,
 not accepted evidence, a complete start dossier or operational approval.
+Once the Project is completed or cancelled, link and removal are refused and existing associations stay readable.
 
 An explicit link changes unlinked to linked; an explicit removal changes linked
 to unlinked. Reassignment requires those two deliberate actions. Removing a link

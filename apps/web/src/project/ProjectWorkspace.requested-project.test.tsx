@@ -55,6 +55,28 @@ const registeredProject = {
   ...project(beta, 'project-registered'),
   title: 'Registered preparation',
 };
+const completedProject = {
+  ...project(atelier, 'project-completed'),
+  title: 'Completed assessment',
+  status: 'completed',
+};
+const completedLifecycle = {
+  status: 'completed',
+  lifecycleRevision: 1,
+  mutable: false,
+  start: null,
+  transitions: [
+    {
+      action: 'complete',
+      lifecycleRevision: 1,
+      from: 'active',
+      to: 'completed',
+      occurredAt: '2026-09-20T08:00:00.000Z',
+      actor: { displayName: 'Owner' },
+      note: 'All agreed outcomes were delivered.',
+    },
+  ],
+};
 const atelierRow = `${sharedTitle} Client: ${atelier.displayName}`;
 const betaRow = `${sharedTitle} Client: ${beta.displayName}`;
 const atelierDetail = `GET /api/projects/${atelierProject.id}`;
@@ -92,13 +114,20 @@ function projectServer() {
   function answer({ route }: ServerRequest): Response {
     if (route === 'GET /api/clients') return Response.json([atelier, beta]);
     if (route === 'GET /api/projects')
-      return Response.json([betaProject, atelierProject].map(projected));
+      return Response.json(
+        [betaProject, atelierProject, completedProject].map(projected),
+      );
     if (route === 'POST /api/projects')
       return Response.json(registeredProject, { status: 201 });
-    const opened = [atelierProject, betaProject, registeredProject].find(
-      (row) => route === `GET /api/projects/${row.id}`,
-    );
+    const opened = [
+      atelierProject,
+      betaProject,
+      registeredProject,
+      completedProject,
+    ].find((row) => route === `GET /api/projects/${row.id}`);
     if (opened) return Response.json(projected(opened));
+    if (route === `GET /api/projects/${completedProject.id}/lifecycle`)
+      return Response.json(completedLifecycle);
     if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
       return Response.json(preparatoryLifecycle);
     return new Response(null, { status: 404 });
@@ -209,6 +238,34 @@ async function startRegistration(server: ReturnType<typeof projectServer>) {
 }
 
 describe('Requested Project opens', () => {
+  it('opens a directly requested closed Project while its row stays hidden by the default filter', async () => {
+    projectServer();
+    const workspace = renderWorkspace();
+    await screen.findByRole('button', { name: betaRow });
+    expect(
+      screen.queryByRole('button', {
+        name: `${completedProject.title} Client: ${atelier.displayName}`,
+      }),
+    ).toBeNull();
+
+    workspace.request(completedProject.id, 1);
+    const detail = await screen.findByRole('article', {
+      name: completedProject.title,
+    });
+    expect(detail).toHaveTextContent(
+      'This Project is completed. Its Tasks, Documents and responsible member are read-only; its history remains available.',
+    );
+    expect(
+      await within(detail).findByText('All agreed outcomes were delivered.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Include closed Projects')).not.toBeChecked();
+    expect(
+      screen.queryByRole('button', {
+        name: `${completedProject.title} Client: ${atelier.displayName}`,
+      }),
+    ).toBeNull();
+  });
+
   it('opens the requested one of two same-titled Projects on its Tasks panel, updating its row and keeping the search', async () => {
     const server = projectServer();
     const workspace = renderWorkspace({ prisme: true });

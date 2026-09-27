@@ -9,6 +9,7 @@ import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import {
   START_DECLARATION_ITEMS,
+  isClosedProjectStatus,
   readLifecycleReceipt,
   readProjectLifecycle,
   readStartExceptionCandidates,
@@ -37,6 +38,7 @@ type Props = {
   responsible: ResponsibleMember | null | undefined;
   /** Re-reads the Project detail and its list row. */
   onProjectChanged?: () => void | Promise<void>;
+  onShowTasks?: () => void;
   onActivityRecorded?: () => void | Promise<void>;
 };
 type Read =
@@ -60,7 +62,12 @@ type Editor =
       members: Members;
       showErrors: boolean;
     }
-  | { kind: 'hold'; reason: string; showErrors: boolean };
+  | { kind: 'hold'; reason: string; showErrors: boolean }
+  | {
+      kind: 'complete' | 'cancel';
+      text: string;
+      showErrors: boolean;
+    };
 type StartException = {
   reason: string;
   completionMembershipId: string;
@@ -74,11 +81,13 @@ type CommandBody =
       startException?: StartException;
     }
   | { action: 'hold'; expectedLifecycleRevision: number; reason: string }
-  | { action: 'resume'; expectedLifecycleRevision: number };
+  | { action: 'resume'; expectedLifecycleRevision: number }
+  | { action: 'complete'; expectedLifecycleRevision: number; note: string }
+  | { action: 'cancel'; expectedLifecycleRevision: number; reason: string };
 type Command = { key: string; body: CommandBody };
 type Refusal = 'conflict' | 'invalid' | 'responsible' | 'rejected';
 type Mutation =
-  | { kind: 'idle' }
+  | { kind: 'idle' | 'open-tasks' }
   | { kind: 'pending' | 'uncertain'; command: Command }
   | { kind: 'reload-required'; reason: Refusal };
 
@@ -136,6 +145,7 @@ function LifecycleSection({
   projectId,
   responsible,
   onProjectChanged,
+  onShowTasks,
   onActivityRecorded,
 }: Props) {
   const headingId = useId();
@@ -159,6 +169,13 @@ function LifecycleSection({
     company?.projectApproverPermissions?.includes(
       'project.lifecycle.transition',
     ) === true;
+  const canClose =
+    canRead &&
+    company?.projectApproverPermissions?.includes('project.close') === true;
+  const canReadTasks =
+    company?.taskPermissionSetVersion === 'v1' &&
+    !!company.taskPermissionAssignmentId &&
+    company.taskPermissions?.includes('task.read') === true;
   const path = `/projects/${encodeURIComponent(projectId)}`;
 
   function stopReads() {
@@ -319,6 +336,13 @@ function LifecycleSection({
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
+        if (
+          result.status === 'conflict' &&
+          conflictCode(result) === 'project_open_tasks'
+        ) {
+          setMutation({ kind: 'open-tasks' });
+          return;
+        }
         setEditor({ kind: 'closed' });
         setMutation({
           kind: 'reload-required',
@@ -413,11 +437,40 @@ function LifecycleSection({
       },
     });
   }
+  function closeProject(
+    event: FormEvent,
+    current: LifecycleValue,
+    action: 'complete' | 'cancel',
+  ) {
+    event.preventDefault();
+    if (editor.kind !== action) return;
+    if (!validTaskReason(editor.text)) {
+      setEditor({ ...editor, showErrors: true });
+      return;
+    }
+    const text = editor.text.trim();
+    void run({
+      key: crypto.randomUUID(),
+      body:
+        action === 'complete'
+          ? {
+              action,
+              expectedLifecycleRevision: current.lifecycleRevision,
+              note: text,
+            }
+          : {
+              action,
+              expectedLifecycleRevision: current.lifecycleRevision,
+              reason: text,
+            },
+    });
+  }
 
   const busy = mutation.kind === 'pending';
   const current = read.kind === 'ready' ? read.value : null;
   const actionable =
-    canTransition && current?.mutable === true && mutation.kind === 'idle';
+    current?.mutable === true &&
+    (mutation.kind === 'idle' || mutation.kind === 'open-tasks');
   return (
     <section className="project-lifecycle" aria-labelledby={headingId}>
       <h4 id={headingId}>{copy.title}</h4>
@@ -425,7 +478,13 @@ function LifecycleSection({
       {read.kind === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
       {read.kind === 'error' && <p role="alert">{copy.error}</p>}
       {current && <LifecycleFacts value={current} />}
-      {current && !current.mutable && <p>{copy.readOnly}</p>}
+      {current && !current.mutable && (
+        <p>
+          {isClosedProjectStatus(current.status)
+            ? copy.closedReadOnly
+            : copy.readOnly}
+        </p>
+      )}
       {current && actionable && editor.kind === 'activate' && (
         <ActivationForm
           editor={editor}
@@ -455,10 +514,30 @@ function LifecycleSection({
           </div>
         </div>
       )}
+      {current &&
+        actionable &&
+        (editor.kind === 'complete' || editor.kind === 'cancel') && (
+          <CloseProjectForm
+            editor={editor}
+            onChange={setEditor}
+            onSubmit={(event) => closeProject(event, current, editor.kind)}
+            onCancel={closeEditor}
+          />
+        )}
       {busy && <p role="status">{copy.saving}</p>}
       {feedback && <p role="status">{feedback}</p>}
       {mutation.kind === 'reload-required' && (
         <p role="alert">{refusalCopy[mutation.reason]}</p>
+      )}
+      {mutation.kind === 'open-tasks' && (
+        <div className="project-lifecycle-refusal" role="alert">
+          <p>{copy.openTasks}</p>
+          {canReadTasks && onShowTasks && (
+            <button type="button" onClick={onShowTasks}>
+              {copy.showTasks}
+            </button>
+          )}
+        </div>
       )}
       {mutation.kind === 'uncertain' && <p role="alert">{copy.uncertain}</p>}
       <div className="project-lifecycle-actions">
@@ -466,11 +545,19 @@ function LifecycleSection({
           <LifecycleActions
             status={current.status}
             responsible={responsible}
+            canTransition={canTransition}
+            canClose={canClose}
             onActivate={() => void openActivation()}
             onHold={() =>
               setEditor({ kind: 'hold', reason: '', showErrors: false })
             }
             onResume={() => setEditor({ kind: 'resume' })}
+            onComplete={() =>
+              setEditor({ kind: 'complete', text: '', showErrors: false })
+            }
+            onCancelProject={() =>
+              setEditor({ kind: 'cancel', text: '', showErrors: false })
+            }
           />
         )}
         {mutation.kind === 'uncertain' && (
@@ -495,47 +582,85 @@ function LifecycleSection({
 function LifecycleActions({
   status,
   responsible,
+  canTransition,
+  canClose,
   onActivate,
   onHold,
   onResume,
+  onComplete,
+  onCancelProject,
 }: {
   status: ProjectStatus;
   responsible: ResponsibleMember | null | undefined;
+  canTransition: boolean;
+  canClose: boolean;
   onActivate: () => void;
   onHold: () => void;
   onResume: () => void;
+  onComplete: () => void;
+  onCancelProject: () => void;
 }) {
   const hintId = useId();
   switch (status) {
     case 'preparatory':
       return (
         <>
-          <button
-            type="button"
-            disabled={!responsible}
-            aria-describedby={responsible === null ? hintId : undefined}
-            onClick={onActivate}
-          >
-            {copy.activate}
-          </button>
-          {responsible === null && (
+          {canTransition && (
+            <button
+              type="button"
+              disabled={!responsible}
+              aria-describedby={responsible === null ? hintId : undefined}
+              onClick={onActivate}
+            >
+              {copy.activate}
+            </button>
+          )}
+          {canTransition && responsible === null && (
             <p className="project-lifecycle-hint" id={hintId}>
               {copy.needsResponsible}
             </p>
+          )}
+          {canClose && (
+            <button type="button" onClick={onCancelProject}>
+              {copy.cancelProject}
+            </button>
           )}
         </>
       );
     case 'active':
       return (
-        <button type="button" onClick={onHold}>
-          {copy.hold}
-        </button>
+        <>
+          {canTransition && (
+            <button type="button" onClick={onHold}>
+              {copy.hold}
+            </button>
+          )}
+          {canClose && (
+            <>
+              <button type="button" onClick={onComplete}>
+                {copy.complete}
+              </button>
+              <button type="button" onClick={onCancelProject}>
+                {copy.cancelProject}
+              </button>
+            </>
+          )}
+        </>
       );
     case 'on_hold':
       return (
-        <button type="button" onClick={onResume}>
-          {copy.resume}
-        </button>
+        <>
+          {canTransition && (
+            <button type="button" onClick={onResume}>
+              {copy.resume}
+            </button>
+          )}
+          {canClose && (
+            <button type="button" onClick={onCancelProject}>
+              {copy.cancelProject}
+            </button>
+          )}
+        </>
       );
     case 'completed':
     case 'cancelled':
@@ -574,6 +699,18 @@ function LifecycleFacts({ value }: { value: LifecycleValue }) {
         {value.status === 'on_hold' && last?.action === 'hold' && (
           <div>
             <dt>{copy.holdReason}</dt>
+            <dd>{last.reason}</dd>
+          </div>
+        )}
+        {value.status === 'completed' && last?.action === 'complete' && (
+          <div>
+            <dt>{copy.note}</dt>
+            <dd>{last.note}</dd>
+          </div>
+        )}
+        {value.status === 'cancelled' && last?.action === 'cancel' && (
+          <div>
+            <dt>{copy.reason}</dt>
             <dd>{last.reason}</dd>
           </div>
         )}
@@ -852,6 +989,56 @@ function HoldForm({
       )}
       <div className="project-lifecycle-actions">
         <button type="submit">{copy.confirmHold}</button>
+        <button type="button" onClick={onCancel}>
+          {copy.cancel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function CloseProjectForm({
+  editor,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  editor: Extract<Editor, { kind: 'complete' | 'cancel' }>;
+  onChange: (editor: Editor) => void;
+  onSubmit: (event: FormEvent) => void;
+  onCancel: () => void;
+}) {
+  const errorId = useId();
+  const invalid = editor.showErrors && !validTaskReason(editor.text);
+  const completing = editor.kind === 'complete';
+  return (
+    <form className="project-lifecycle-form" onSubmit={onSubmit} noValidate>
+      <h5>{completing ? copy.completeTitle : copy.cancelTitle}</h5>
+      <p>
+        {copy.closureConfirmation(completing ? 'Completing' : 'Cancelling')}
+      </p>
+      <label>
+        {completing ? copy.completionNoteLabel : copy.cancellationReasonLabel}
+        <textarea
+          value={editor.text}
+          rows={4}
+          required
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? errorId : undefined}
+          onChange={(event) =>
+            onChange({ ...editor, text: event.target.value })
+          }
+        />
+      </label>
+      {invalid && (
+        <p className="project-lifecycle-error" id={errorId}>
+          {copy.closureTextValidation}
+        </p>
+      )}
+      <div className="project-lifecycle-actions">
+        <button type="submit">
+          {completing ? copy.confirmComplete : copy.confirmCancel}
+        </button>
         <button type="button" onClick={onCancel}>
           {copy.cancel}
         </button>

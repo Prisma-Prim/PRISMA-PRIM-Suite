@@ -5,6 +5,7 @@ import { ClientModule } from '../client/client.module.js';
 import { ServerClockModule } from '../clock/server-clock.js';
 import { DatabaseModule } from '../database/database.module.js';
 import { ProjectModule } from '../project/project.module.js';
+import { ProjectOpenTaskQuery } from './project-open-task.query.js';
 import { TaskService } from './task.service.js';
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { TaskService } from './task.service.js';
     ProjectModule,
     ServerClockModule,
   ],
-  providers: [TaskService],
-  exports: [TaskService],
+  providers: [ProjectOpenTaskQuery, TaskService],
+  exports: [ProjectOpenTaskQuery, TaskService],
 })
 export class TaskModule {}

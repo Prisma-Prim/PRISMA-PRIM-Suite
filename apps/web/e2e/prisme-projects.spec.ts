@@ -3,6 +3,7 @@ import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page } from '@playwright/test';
 import type { ProjectLifecycle } from '../src/project/project-lifecycle-response';
+import type { TaskView } from '../src/project/task-response';
 import {
   actorContextFixture,
   preparatoryLifecycle,
@@ -17,6 +18,8 @@ const exceptionReason =
   'Lucrările încep pe baza acordului preliminar semnat; Oferta aprobată și Contractul sunt în curs de finalizare cu departamentul juridic al clientului.';
 const holdReason =
   'Clientul a cerut o pauză până la confirmarea datei auditului de certificare ISO 9001 de către organismul de certificare.';
+const completionNote =
+  'Certification preparation delivered; final report handed over to the Client.';
 
 async function expectNoHorizontalOverflow(page: Page) {
   expect(
@@ -53,6 +56,27 @@ test('creates and opens a Project, then switches local panels without reloading 
   const reads = { tasks: 0, documents: 0 };
   let lifecycle: ProjectLifecycle = preparatoryLifecycle;
   const transitions: unknown[] = [];
+  let taskCreated = false;
+  let task: TaskView = {
+    id: 'task-project-completion',
+    companyId: company.id,
+    projectId: createdProject.id,
+    clientAccountId: client.id,
+    title: 'Prepare the certification interview',
+    assignee: null,
+    dueDate: null,
+    priority: 'normal',
+    status: 'todo',
+    completion: null,
+    version: 1,
+    createdAt: '2026-09-26T10:00:00.000Z',
+    updatedAt: '2026-09-26T10:00:00.000Z',
+    createdBy: {
+      internalUserId: actorContextFixture.internalUserId,
+      workspaceMembershipId: actorContextFixture.workspaceMembershipId,
+      displayName: actorContextFixture.displayName,
+    },
+  };
 
   /** Applies one section 23 transition to the created Project. */
   function transition(body: unknown): unknown {
@@ -138,6 +162,29 @@ test('creates and opens a Project, then switches local panels without reloading 
           ],
         };
         break;
+      case 'complete':
+        lifecycle = {
+          ...lifecycle,
+          status: 'completed',
+          lifecycleRevision,
+          mutable: false,
+          transitions: [
+            {
+              action: 'complete',
+              lifecycleRevision,
+              from: 'active',
+              to: 'completed',
+              occurredAt,
+              actor,
+              note:
+                'note' in body && typeof body.note === 'string'
+                  ? body.note
+                  : '',
+            },
+            ...lifecycle.transitions,
+          ],
+        };
+        break;
       default:
         throw new Error('Unexpected lifecycle action.');
     }
@@ -213,9 +260,22 @@ test('creates and opens a Project, then switches local panels without reloading 
       return route.fulfill({ json: existingProject });
     if (path === `/api/projects/${createdProject.id}`)
       return route.fulfill({ json: created });
+    if (
+      path === `/api/projects/${createdProject.id}/tasks` &&
+      request.method() === 'POST'
+    ) {
+      expect(request.postDataJSON()).toMatchObject({ title: task.title });
+      taskCreated = true;
+      return route.fulfill({ status: 201, json: task });
+    }
     if (path === `/api/projects/${createdProject.id}/tasks`) {
       reads.tasks += 1;
-      return route.fulfill({ json: { mutable: true, tasks: [] } });
+      return route.fulfill({
+        json: {
+          mutable: lifecycle.mutable,
+          tasks: taskCreated ? [task] : [],
+        },
+      });
     }
     if (path === `/api/projects/${createdProject.id}/eligible-task-assignees`)
       return route.fulfill({ json: { members: [] } });
@@ -228,7 +288,7 @@ test('creates and opens a Project, then switches local panels without reloading 
             actorDisplayName: actorContextFixture.displayName,
             occurredAt: '2026-09-26T09:00:00.000Z',
           },
-          mutable: true,
+          mutable: lifecycle.mutable,
         },
       });
     if (path === `/api/projects/${createdProject.id}/lifecycle`)
@@ -243,12 +303,55 @@ test('creates and opens a Project, then switches local panels without reloading 
       request.method() === 'POST'
     ) {
       expect(request.headers()['idempotency-key']).toBeTruthy();
-      return route.fulfill({ json: transition(request.postDataJSON()) });
+      const command: unknown = request.postDataJSON();
+      if (
+        typeof command === 'object' &&
+        command !== null &&
+        'action' in command &&
+        command.action === 'complete' &&
+        taskCreated &&
+        task.status !== 'done' &&
+        task.status !== 'cancelled'
+      )
+        return route.fulfill({
+          status: 409,
+          json: {
+            statusCode: 409,
+            code: 'project_open_tasks',
+            message:
+              'Complete or cancel every open Task of this Project first.',
+          },
+        });
+      return route.fulfill({ json: transition(command) });
     }
     if (path === `/api/projects/${createdProject.id}/documents`) {
       reads.documents += 1;
-      return route.fulfill({ json: { mutable: true, documents: [] } });
+      return route.fulfill({
+        json: { mutable: lifecycle.mutable, documents: [] },
+      });
     }
+    if (
+      path === `/api/tasks/${task.id}/complete` &&
+      request.method() === 'POST'
+    ) {
+      task = {
+        ...task,
+        status: 'done',
+        version: 2,
+        completion: {
+          actor: task.createdBy,
+          occurredAt: '2026-09-26T10:05:00.000Z',
+        },
+        updatedAt: '2026-09-26T10:05:00.000Z',
+      };
+      return route.fulfill({ status: 201, json: task });
+    }
+    if (path === `/api/tasks/${task.id}`)
+      return route.fulfill({
+        json: { mutable: lifecycle.mutable, task },
+      });
+    if (path === `/api/tasks/${task.id}/history`)
+      return route.fulfill({ json: { events: [] } });
     if (path === '/api/documents') return route.fulfill({ json: [] });
     return route.fulfill({ status: 404 });
   });
@@ -491,6 +594,94 @@ test('creates and opens a Project, then switches local panels without reloading 
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
   expect(reads).toEqual(readsAfterOpen);
+
+  // Complete the Project only after its open Task is done (issue #407).
+  await tasksPanel.getByRole('button', { name: 'Create Task' }).click();
+  await expect(
+    tasksPanel.getByRole('heading', { name: taskDraft, exact: true }),
+  ).toBeVisible();
+  await lifecycleSection
+    .getByRole('button', { name: 'Complete Project' })
+    .click();
+  await lifecycleSection.getByLabel('Completion note').fill(completionNote);
+  await lifecycleSection
+    .getByRole('button', { name: 'Complete Project' })
+    .click();
+  await expect(
+    lifecycleSection.getByText(
+      'Complete or cancel every open Task of this Project first.',
+    ),
+  ).toBeVisible();
+  await lifecycleSection.getByRole('button', { name: 'Show Tasks' }).click();
+  await expect(tasksTab).toHaveAttribute('aria-selected', 'true');
+  await expectValue(
+    lifecycleSection.getByLabel('Completion note'),
+    completionNote,
+  );
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-completion-blocked.png'),
+    fullPage: true,
+  });
+
+  await tasksPanel.getByRole('button', { name: 'Mark done' }).click();
+  await expect(tasksPanel.locator('.task-panel > .task-status')).toHaveText(
+    'Done',
+  );
+  await lifecycleSection
+    .getByRole('button', { name: 'Complete Project' })
+    .click();
+  await expect(
+    article.getByText(
+      'This Project is completed. Its Tasks, Documents and responsible member are read-only; its history remains available.',
+    ),
+  ).toBeVisible();
+  await expect(lifecycleSection).toContainText(`Note${completionNote}`);
+  await expect(tasksPanel.getByLabel('Task title')).toHaveCount(0);
+  await expect(
+    documentsPanel.getByRole('button', { name: 'Attach working Document' }),
+  ).toHaveCount(0);
+  await expect(
+    article.getByRole('button', { name: 'Change', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    projectList.getByRole('listitem').filter({ hasText: createdProject.title }),
+  ).toHaveCount(0);
+  await page.getByLabel('Include closed Projects').check();
+  await expect(
+    projectList
+      .getByRole('listitem')
+      .filter({ hasText: createdProject.title })
+      .getByText('Completed', { exact: true }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-completed.png'),
+    fullPage: true,
+  });
+
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await enterClassicCompatibility(page);
+  await expect(
+    page.getByText(
+      'This Project is completed. Its Tasks, Documents and responsible member are read-only; its history remains available.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Lifecycle' })).toContainText(
+    `Note${completionNote}`,
+  );
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath('prisme-projects-completed-classic.png'),
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Try Prisme' }).click();
+  expect(transitions.at(-1)).toEqual({
+    action: 'complete',
+    expectedLifecycleRevision: 3,
+    note: completionNote,
+  });
 
   const rawIds = [
     company.id,

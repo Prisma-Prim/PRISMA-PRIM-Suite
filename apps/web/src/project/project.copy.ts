@@ -11,6 +11,9 @@ export const projectCopy = {
   searchPlaceholder: 'Search by Project or Client',
   empty: 'No Projects for this Company yet.',
   noMatches: 'No Project matches this search.',
+  includeClosed: 'Include closed Projects',
+  noOpen:
+    'No open Projects. Include closed Projects to see completed and cancelled ones.',
   loading: 'Loading Projects…',
   denied:
     'Project access and Client read access are required for this Company.',
@@ -27,6 +30,9 @@ export const projectCopy = {
     'Create or relate a Client to this Company before registering a Project.',
   activityTarget: 'Project',
   activityAction: 'created a preparatory Project',
+  closedNotice: (status: 'completed' | 'cancelled') =>
+    `This Project is ${status}. Its Tasks, Documents and responsible member are read-only; its history remains available.`,
+  closedRefusal: 'This Project was closed. Reload to see its current state.',
   responsible: {
     title: 'Responsible member',
     none: 'No responsible member',
@@ -51,6 +57,8 @@ export const projectCopy = {
       'No member can currently be named responsible. The Project can stay without a responsible member.',
     readOnly:
       'Read-only: the original Client has been superseded. The responsible member remains visible.',
+    closedReadOnly:
+      'Read-only: this Project is closed. The responsible member remains visible.',
     saving: 'Saving the responsible member…',
     saved: 'Responsible member saved.',
     unchanged: 'The responsible member was already set this way.',
@@ -60,6 +68,7 @@ export const projectCopy = {
       'The selected member can no longer be named responsible. Reload and choose again.',
     responsibleRequired:
       'An active or on-hold Project needs a responsible member. Choose a replacement instead.',
+    closedRefusal: 'This Project was closed. Reload to see its current state.',
     uncertain:
       'The change is not confirmed. Retry the same change to safely recover its recorded result.',
     retry: 'Retry responsible member change',

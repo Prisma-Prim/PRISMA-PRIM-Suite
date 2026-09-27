@@ -394,6 +394,26 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  async requireProjectClose(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const companyId = await this.requireProjectAccess(actor, lock);
+    if (
+      !actor.activeCompany?.projectApproverPermissions?.includes(
+        'project.close',
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      capturedGrant(COMPANY_PROJECT_APPROVER_BUNDLE),
+      lock,
+    );
+    return companyId;
+  }
+
   private async requireProjectAssignment(
     actor: ActorContext,
     capturedVersions: readonly CompanyProjectPermissionSetVersion[],

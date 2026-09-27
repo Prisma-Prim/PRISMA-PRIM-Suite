@@ -9,7 +9,19 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ProjectResponsible } from './ProjectResponsible';
+import { ProjectResponsible as ProjectResponsibleComponent } from './ProjectResponsible';
+import type { ProjectStatus } from './project-lifecycle-response';
+
+function ProjectResponsible({
+  projectStatus = 'preparatory',
+  ...props
+}: Omit<Parameters<typeof ProjectResponsibleComponent>[0], 'projectStatus'> & {
+  projectStatus?: ProjectStatus;
+}) {
+  return (
+    <ProjectResponsibleComponent projectStatus={projectStatus} {...props} />
+  );
+}
 
 const company = {
   id: 'company',
@@ -145,6 +157,27 @@ async function choose(member: typeof ion) {
   fireEvent.click(within(region()).getByRole('button', { name: 'Save' }));
 }
 
+it('keeps the responsible member readable and hides changes for a closed Project', async () => {
+  server({
+    state: {
+      responsible: ion,
+      revision: 1,
+      lastChange: { actorDisplayName: 'Ana', occurredAt: changedAt },
+      mutable: false,
+    },
+  });
+  show({ projectStatus: 'cancelled' });
+  expect(
+    await within(region()).findByText(ion.displayLabel),
+  ).toBeInTheDocument();
+  expect(within(region()).queryByRole('button', { name: 'Change' })).toBeNull();
+  expect(
+    within(region()).getByRole('button', {
+      name: 'Reload responsible member',
+    }),
+  ).toBeInTheDocument();
+});
+
 it('reads, changes, saves, replaces and clears the responsible member with attribution', async () => {
   const { calls, puts } = server();
   const onActivityRecorded = vi.fn();
@@ -274,6 +307,36 @@ it('requires an explicit reload after a conflict or a rejected member', async ()
         call.url === '/api/projects/project/responsible',
     ),
   ).toHaveLength(2);
+});
+
+it('keeps the responsible draft and requires a Project reload when closure wins the command race', async () => {
+  const onProjectChanged = vi.fn();
+  server({
+    change: () =>
+      Response.json(
+        {
+          statusCode: 409,
+          code: 'project_closed',
+          message: 'This Project is closed. Its records are read-only.',
+        },
+        { status: 409 },
+      ),
+  });
+  show({ onProjectChanged });
+  await choose(ion);
+  expect(
+    await within(region()).findByText(
+      'This Project was closed. Reload to see its current state.',
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(region()).getByLabelText('Choose the responsible member'),
+  ).toHaveValue(ion.workspaceMembershipId);
+  expect(within(region()).getByRole('button', { name: 'Save' })).toBeDisabled();
+  fireEvent.click(
+    within(region()).getByRole('button', { name: 'Reload responsible member' }),
+  );
+  expect(onProjectChanged).toHaveBeenCalledTimes(1);
 });
 
 it('explains that an active or on-hold Project keeps a responsible member and reports each read', async () => {

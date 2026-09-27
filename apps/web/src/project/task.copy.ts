@@ -35,6 +35,8 @@ export const taskCopy = {
   noMatch: 'No Tasks match the current filters.',
   immutable:
     'Read-only: the original Client has been superseded. Task history remains available.',
+  closedReadOnly:
+    'Read-only: this Project is closed. Task history remains available.',
   reload: 'Reload Tasks',
   reloadDetail: 'Reload Task',
   create: 'Create Task',
@@ -94,6 +96,7 @@ export const taskCopy = {
     'Enter a title of 1–200 characters and a valid due date, or leave the date empty.',
   conflict:
     'This Task or its permissions changed. Reload the Task before making another change.',
+  closedRefusal: 'This Project was closed. Reload to see its current state.',
   rejected:
     'The change was rejected. Reload the Task and check its fields and responsible member.',
   uncertain:

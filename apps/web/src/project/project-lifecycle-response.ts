@@ -63,7 +63,8 @@ export type ProjectLifecycle = {
   transitions: ProjectLifecycleTransition[];
 };
 
-export type LifecycleCommandAction = 'activate' | 'hold' | 'resume';
+export type LifecycleCommandAction =
+  'activate' | 'hold' | 'resume' | 'complete' | 'cancel';
 export type LifecycleReceipt = {
   projectId: string;
   action: LifecycleCommandAction;
@@ -86,6 +87,10 @@ const TRANSITIONS = {
 
 export function isProjectStatus(value: unknown): value is ProjectStatus {
   return PROJECT_STATUSES.some((status) => status === value);
+}
+
+export function isClosedProjectStatus(status: ProjectStatus): boolean {
+  return status === 'completed' || status === 'cancelled';
 }
 
 /** Exactly one of the five statuses; anything else fails closed. */
