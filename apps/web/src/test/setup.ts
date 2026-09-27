@@ -12,5 +12,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  localStorage.removeItem('prisma-prim.interface-locale');
+  if (typeof localStorage !== 'undefined')
+    localStorage.removeItem('prisma-prim.interface-locale');
 });

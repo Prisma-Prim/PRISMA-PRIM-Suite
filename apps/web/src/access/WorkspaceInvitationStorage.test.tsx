@@ -82,7 +82,7 @@ it('enters the intended server-authorized shell when storage fills after admissi
   fireEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
   expect(
     await screen.findByRole('heading', {
-      name: 'Hello, Recipient.',
+      name: 'Bună, Recipient.',
     }),
   ).toBeVisible();
   expect(requestedWorkspaces.length).toBeGreaterThanOrEqual(3);
@@ -90,10 +90,10 @@ it('enters the intended server-authorized shell when storage fills after admissi
     true,
   );
   expect(
-    screen.getByText('No Company is assigned to you.', { exact: false }),
+    screen.getByText('Nu vă este atribuită nicio Companie.', { exact: false }),
   ).toBeVisible();
   expect(
-    screen.queryByRole('link', { name: 'Clients' }),
+    screen.queryByRole('link', { name: 'Clienți' }),
   ).not.toBeInTheDocument();
 });
 
