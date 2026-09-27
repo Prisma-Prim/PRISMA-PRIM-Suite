@@ -1471,7 +1471,7 @@ function RequestDetail({
         ) : null}
       </section>
       <PricingSnapshotPanel
-        key={`${request.initialOpportunity.id}:${actor.activeCompany?.pricingUserPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.pricingUserPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.pricingUserPermissions?.join(',') ?? ''}`}
+        key={`${request.initialOpportunity.id}:${actor.activeCompany?.pricingUserPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.pricingUserPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.pricingUserPermissions?.join(',') ?? ''}:${actor.activeCompany?.pricingAdjustmentPermissionAssignmentId ?? 'no-adjustment-assignment'}:${actor.activeCompany?.pricingAdjustmentPermissionSetVersion ?? 'no-adjustment-version'}:${actor.activeCompany?.pricingAdjustmentPermissions?.join(',') ?? ''}`}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}

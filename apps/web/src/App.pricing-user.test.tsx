@@ -499,6 +499,14 @@ it('remounts the whole section when Pricing User is granted, granted again or re
 it.each([
   ['company_pricing_user_assignment.granted', 'granted Company Pricing User'],
   ['company_pricing_user_assignment.revoked', 'revoked Company Pricing User'],
+  [
+    'company_pricing_adjustment_assignment.granted',
+    'granted Company Pricing Adjustment',
+  ],
+  [
+    'company_pricing_adjustment_assignment.revoked',
+    'revoked Company Pricing Adjustment',
+  ],
 ] as const)(
   'labels the %s lifecycle event in the Activity view',
   async (action, label) => {

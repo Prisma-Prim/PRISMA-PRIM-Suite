@@ -27,6 +27,7 @@ const bundleLabels = {
   catalogue: 'Company Service Catalogue',
   pricing: 'Company Pricing Configuration',
   pricingUser: 'Company Pricing User',
+  pricingAdjustment: 'Company Pricing Adjustment',
   reader: 'Company Commercial Activity Reader',
   project: 'Company Project Access',
   approver: 'Company Project Approver',
@@ -38,6 +39,7 @@ const serverVersions = {
   catalogue: 'v1',
   pricing: 'v1',
   pricingUser: 'v1',
+  pricingAdjustment: 'v1',
   reader: 'v1',
   project: 'v2',
   approver: 'v1',
@@ -438,6 +440,14 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a V1 Pricing User version',
       assignment: { bundle: 'Company Pricing User', version: 'V1' },
+    },
+    {
+      name: 'a null Pricing Adjustment version',
+      assignment: { bundle: 'Company Pricing Adjustment', version: null },
+    },
+    {
+      name: 'a v2 Pricing Adjustment version',
+      assignment: { bundle: 'Company Pricing Adjustment', version: 'v2' },
     },
     {
       name: 'an unknown bundle label',
@@ -1717,6 +1727,83 @@ describe('CompanyContextAccess', () => {
       },
     ]);
     expect(commands[0]?.key).not.toBe(commands[1]?.key);
+  });
+
+  it('grants and revokes Company Pricing Adjustment v1 with its independent prerequisites', async () => {
+    let active = false;
+    const commands: Array<{
+      method: string;
+      path: string;
+      body: unknown;
+    }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(
+            administration(active ? 'pricingAdjustment' : undefined),
+          );
+        if (path.startsWith('/api/company-pricing-adjustment-assignments')) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            body:
+              typeof options?.body === 'string'
+                ? JSON.parse(options.body)
+                : undefined,
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'pricing-adjustment-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Pricing Adjustment',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('pricing-adjustment');
+    const prerequisites = screen.getByText(
+      /^Company Pricing Adjustment v1 grants/,
+    );
+    expect(prerequisites).toHaveTextContent(/only the application/);
+    expect(prerequisites).toHaveTextContent(
+      /Opportunity visibility and Company Pricing User access/,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-pricing-adjustment-assignments',
+        body: { workspaceMembershipId: memberId, companyId },
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-pricing-adjustment-assignments/${memberId}/${companyId}`,
+        body: undefined,
+      },
+    ]);
   });
 
   it('revokes Company Director Client Access and reloads the canonical server state', async () => {

@@ -364,14 +364,16 @@ export class AccountabilityService {
   }
 
   // Recorded but projected by no Activity read surface. The metadata is a
-  // correlation trace only: identifiers, line count, provenance and currency
-  // are safe; copied labels, quantities, rates and amounts stay out of it.
+  // correlation trace only: identifiers, bounded counts, provenance and
+  // currency are safe; copied reasons, labels, quantities, rates and amounts
+  // stay out of it.
   async recordPricingSnapshotCreated(input: {
     actor: ActorContext;
     companyId: string;
     pricingSnapshotId: string;
     opportunityId: string;
     lineCount: number;
+    adjustmentCount: number;
     currency: TariffCurrency;
     occurredAt: Date;
   }): Promise<void> {
@@ -389,6 +391,7 @@ export class AccountabilityService {
           pricingSnapshotId: input.pricingSnapshotId,
           opportunityId: input.opportunityId,
           lineCount: input.lineCount,
+          adjustmentCount: input.adjustmentCount,
           provenance: PRICING_PROVENANCE,
           currency: input.currency,
         },
@@ -1779,6 +1782,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_configuration_assignment.revoked':
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
+    case 'company_pricing_adjustment_assignment.granted':
+    case 'company_pricing_adjustment_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':
     case 'company_commercial_activity_reader_assignment.revoked':
     case 'company_project_approver_assignment.granted':

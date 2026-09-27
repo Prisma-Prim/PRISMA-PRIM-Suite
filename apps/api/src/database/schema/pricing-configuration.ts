@@ -562,6 +562,16 @@ export const pricingSnapshotLines = pgTable(
       table.snapshotId,
       table.offeringId,
     ),
+    uniqueIndex('pricing_snapshot_lines_adjustment_target_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.snapshotId,
+      table.id,
+      table.lineNet,
+      table.rawLineTax,
+      table.lineTax,
+      table.taxRatePercent,
+    ),
     foreignKey({
       name: 'pricing_snapshot_lines_snapshot_fk',
       columns: [
@@ -629,6 +639,130 @@ export const pricingSnapshotLines = pgTable(
         AND ${table.lineNet} >= 0
         AND ${table.rawLineTax} >= 0
         AND ${table.lineTax} >= 0`,
+    ),
+  ],
+);
+
+// Zero or one immutable adjustment may belong to a stored Snapshot line. Old
+// lines need no row and are projected with zero reductions at read time.
+export const pricingSnapshotAdjustments = pgTable(
+  'pricing_snapshot_adjustments',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    snapshotId: uuid('snapshot_id').notNull(),
+    snapshotLineId: uuid('snapshot_line_id').notNull(),
+    type: text('type', { enum: ['FIXED_NET_DISCOUNT'] }).notNull(),
+    netReduction: numeric('net_reduction', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    reason: text('reason').notNull(),
+    originalLineNet: numeric('original_line_net', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    originalRawLineTax: numeric('original_raw_line_tax', {
+      precision: 28,
+      scale: 7,
+      mode: 'string',
+    }).notNull(),
+    originalLineTax: numeric('original_line_tax', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    taxRatePercent: numeric('tax_rate_percent', {
+      precision: 5,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    adjustedLineNet: numeric('adjusted_line_net', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    adjustedRawLineTax: numeric('adjusted_raw_line_tax', {
+      precision: 28,
+      scale: 7,
+      mode: 'string',
+    }).notNull(),
+    adjustedLineTax: numeric('adjusted_line_tax', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    taxReduction: numeric('tax_reduction', {
+      precision: 24,
+      scale: 2,
+      mode: 'string',
+    }).notNull(),
+    appliedByInternalUserId: uuid('applied_by_internal_user_id').notNull(),
+    appliedByWorkspaceMembershipId: uuid(
+      'applied_by_workspace_membership_id',
+    ).notNull(),
+    appliedAt: timestamp('applied_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('pricing_snapshot_adjustments_line_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.snapshotId,
+      table.snapshotLineId,
+    ),
+    foreignKey({
+      name: 'pricing_snapshot_adjustments_line_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.snapshotId,
+        table.snapshotLineId,
+        table.originalLineNet,
+        table.originalRawLineTax,
+        table.originalLineTax,
+        table.taxRatePercent,
+      ],
+      foreignColumns: [
+        pricingSnapshotLines.workspaceId,
+        pricingSnapshotLines.companyId,
+        pricingSnapshotLines.snapshotId,
+        pricingSnapshotLines.id,
+        pricingSnapshotLines.lineNet,
+        pricingSnapshotLines.rawLineTax,
+        pricingSnapshotLines.lineTax,
+        pricingSnapshotLines.taxRatePercent,
+      ],
+    }),
+    foreignKey({
+      name: 'pricing_snapshot_adjustments_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.appliedByWorkspaceMembershipId,
+        table.appliedByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'pricing_snapshot_adjustments_trace_check',
+      sql`${table.type} = 'FIXED_NET_DISCOUNT'
+        AND ${table.netReduction} > 0
+        AND char_length(${table.reason}) BETWEEN 1 AND 500
+        AND ${table.reason} ~ '[^[:space:]]'
+        AND ${table.netReduction} <= ${table.originalLineNet}
+        AND ${table.originalRawLineTax} = ${table.originalLineNet} * ${table.taxRatePercent} / 100
+        AND ${table.originalLineTax} = round(${table.originalRawLineTax}, 2)
+        AND ${table.adjustedLineNet} = ${table.originalLineNet} - ${table.netReduction}
+        AND ${table.adjustedRawLineTax} = ${table.adjustedLineNet} * ${table.taxRatePercent} / 100
+        AND ${table.adjustedLineTax} = round(${table.adjustedRawLineTax}, 2)
+        AND ${table.taxReduction} = ${table.originalLineTax} - ${table.adjustedLineTax}
+        AND ${table.taxReduction} >= 0`,
     ),
   ],
 );
@@ -854,10 +988,11 @@ export const pricingConfigurationEvents = pgTable(
           AND ${table.tariffVersionId} IS NULL)
       )`,
     ),
-    // Metadata carries identifiers, the version number, provenance and, for a
+    // Metadata carries identifiers, bounded counts, provenance and, for a
     // tariff, its currency only: no amount, rate, unit, label or other text.
-    // Each key is required with its JSON type. A missing key makes a
-    // comparison unknown, which a CHECK alone accepts, so the condition of
+    // Each key is required with its JSON type, except adjustmentCount on old
+    // Snapshot events created before adjustments existed. A missing key makes
+    // a comparison unknown, which a CHECK alone accepts, so the condition of
     // the event's own action must hold outright.
     check(
       'pricing_configuration_events_action_metadata_check',
@@ -886,12 +1021,20 @@ export const pricingConfigurationEvents = pgTable(
       ) IS TRUE
       OR (
         ${table.action} = 'pricing_snapshot.created'
-          AND ${table.metadata} - 'pricingSnapshotId' - 'opportunityId' - 'lineCount' - 'provenance' - 'currency' = '{}'::jsonb
+          AND ${table.metadata} - 'pricingSnapshotId' - 'opportunityId' - 'lineCount' - 'adjustmentCount' - 'provenance' - 'currency' = '{}'::jsonb
           AND jsonb_typeof(${table.metadata} -> 'pricingSnapshotId') = 'string'
           AND ${table.metadata} ->> 'pricingSnapshotId' = ${table.pricingSnapshotId}::text
           AND jsonb_typeof(${table.metadata} -> 'opportunityId') = 'string'
           AND jsonb_typeof(${table.metadata} -> 'lineCount') = 'number'
           AND (${table.metadata} ->> 'lineCount')::integer BETWEEN 1 AND 20
+          AND (
+            NOT (${table.metadata} ? 'adjustmentCount')
+            OR (
+              jsonb_typeof(${table.metadata} -> 'adjustmentCount') = 'number'
+              AND ${table.metadata} ->> 'adjustmentCount' ~ '^(0|[1-9][0-9]*)$'
+              AND (${table.metadata} ->> 'adjustmentCount')::integer BETWEEN 0 AND 20
+            )
+          )
           AND jsonb_typeof(${table.metadata} -> 'provenance') = 'string'
           AND ${table.metadata} ->> 'provenance' = 'ILLUSTRATIVE'
           AND jsonb_typeof(${table.metadata} -> 'currency') = 'string'

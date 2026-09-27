@@ -22,6 +22,7 @@ const ASSIGNMENTS = {
   configuration: '/company-pricing-configuration-assignments',
   intake: '/company-commercial-intake-assignments',
   pricing: '/company-pricing-user-assignments',
+  adjustment: '/company-pricing-adjustment-assignments',
 } as const;
 
 let instant = new Date('2026-04-01T00:00:00.000Z');
@@ -77,6 +78,11 @@ withPostgres('Pricing Snapshots REST', () => {
           {
             provider: 'deterministic-test',
             subject: 'snapshot-pricing-only-member',
+            workspaceId: WORKSPACE_ID,
+          },
+          {
+            provider: 'deterministic-test',
+            subject: 'snapshot-adjustment-only-member',
             workspaceId: WORKSPACE_ID,
           },
         ]),
@@ -146,6 +152,12 @@ withPostgres('Pricing Snapshots REST', () => {
           lineNet: '308.63',
           rawLineTax: '38.0849420',
           lineTax: '38.08',
+          adjustment: null,
+          netReduction: '0.00',
+          taxReduction: '0.00',
+          adjustedLineNet: '308.63',
+          adjustedRawLineTax: '38.0849420',
+          adjustedLineTax: '38.08',
         }),
         expect.objectContaining({
           position: 2,
@@ -157,6 +169,12 @@ withPostgres('Pricing Snapshots REST', () => {
           lineNet: '0.01',
           rawLineTax: '0.0000000',
           lineTax: '0.00',
+          adjustment: null,
+          netReduction: '0.00',
+          taxReduction: '0.00',
+          adjustedLineNet: '0.01',
+          adjustedRawLineTax: '0.0000000',
+          adjustedLineTax: '0.00',
         }),
       ],
     });
@@ -296,6 +314,7 @@ withPostgres('Pricing Snapshots REST', () => {
           pricingSnapshotId: created.id,
           opportunityId: fixture.opportunityId,
           lineCount: 2,
+          adjustmentCount: 0,
           provenance: 'ILLUSTRATIVE',
           currency: 'EUR',
         },
@@ -363,7 +382,642 @@ withPostgres('Pricing Snapshots REST', () => {
     ).toEqual([{ snapshots: 1, lines: 2, events: 1, receipts: 1 }]);
   });
 
-  it('creates, lists and reopens the exact maximum 20-line trace through REST and PostgreSQL', async () => {
+  it('creates and reopens the exact immutable adjusted trace and revalidates adjustment authority before replay', async () => {
+    const fixture = await prepared();
+    const path = snapshotsPath(fixture.opportunityId);
+    const ordinaryBody = calculationBody(fixture);
+    const firstLine = ordinaryBody.lines[0];
+    const secondLine = ordinaryBody.lines[1];
+    if (!firstLine || !secondLine)
+      throw new Error('Expected the two-line calculation fixture.');
+    const body = {
+      ...ordinaryBody,
+      lines: [
+        {
+          ...firstLine,
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '8.63',
+            reason: '  Synthetic fixed reduction  ',
+          },
+        },
+        {
+          ...secondLine,
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '0.01',
+            reason: 'Synthetic full-line reduction',
+          },
+        },
+      ],
+    };
+
+    const created = snapshot(
+      await command(path, body, 'adjusted-trace', fixture.companyId),
+    );
+    expect(created).toMatchObject({
+      subtotal: '300.00',
+      taxTotal: '37.02',
+      total: '337.02',
+      lines: [
+        expect.objectContaining({
+          lineNet: '308.63',
+          lineTax: '38.08',
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '8.63',
+            taxReduction: '1.06',
+            reason: '  Synthetic fixed reduction  ',
+            appliedByWorkspaceMembershipId: fixture.membershipId,
+            appliedAt: '2026-04-01T00:00:00.000Z',
+          },
+          netReduction: '8.63',
+          taxReduction: '1.06',
+          adjustedLineNet: '300.00',
+          adjustedRawLineTax: '37.0200000',
+          adjustedLineTax: '37.02',
+        }),
+        expect.objectContaining({
+          lineNet: '0.01',
+          lineTax: '0.00',
+          netReduction: '0.01',
+          taxReduction: '0.00',
+          adjustedLineNet: '0.00',
+          adjustedRawLineTax: '0.0000000',
+          adjustedLineTax: '0.00',
+        }),
+      ],
+    });
+    expect(
+      snapshot(
+        await json(await request(`${path}/${created.id}`, fixture.companyId)),
+      ),
+    ).toEqual(created);
+    expect(
+      snapshot(await command(path, body, 'adjusted-trace', fixture.companyId)),
+    ).toEqual(created);
+
+    const malformedChangedPayload = structuredClone(body);
+    const malformedChangedLine = malformedChangedPayload.lines[0];
+    if (!malformedChangedLine)
+      throw new Error('Expected an adjusted command for replay validation.');
+    malformedChangedLine.adjustment.reason = '';
+    const malformedConflict = await post(
+      path,
+      malformedChangedPayload,
+      'adjusted-trace',
+      fixture.companyId,
+    );
+    expect(malformedConflict.status).toBe(409);
+    expect(await json(malformedConflict)).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+
+    const changedReason = structuredClone(body);
+    const changedFirstLine = changedReason.lines[0];
+    if (!changedFirstLine) throw new Error('Expected an adjusted command.');
+    changedFirstLine.adjustment.reason = 'Changed reason';
+    const conflict = await post(
+      path,
+      changedReason,
+      'adjusted-trace',
+      fixture.companyId,
+    );
+    expect(conflict.status).toBe(409);
+    expect(await json(conflict)).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    const changedIntent = snapshot(
+      await command(
+        path,
+        changedReason,
+        'adjusted-trace-changed-reason',
+        fixture.companyId,
+      ),
+    );
+    expect(changedIntent.id).not.toBe(created.id);
+    expect(record(record(changedIntent.lines[0]).adjustment).reason).toBe(
+      'Changed reason',
+    );
+    expect(
+      snapshot(
+        await json(await request(`${path}/${created.id}`, fixture.companyId)),
+      ),
+    ).toEqual(created);
+
+    expect(
+      (
+        await pool.query(
+          `SELECT a.type, a.net_reduction, a.reason, a.original_line_net,
+                  a.original_raw_line_tax, a.original_line_tax, a.tax_rate_percent,
+                  a.adjusted_line_net,
+                  a.adjusted_raw_line_tax, a.adjusted_line_tax, a.tax_reduction,
+                  a.applied_by_workspace_membership_id, a.applied_at
+             FROM pricing_snapshot_adjustments a
+             JOIN pricing_snapshot_lines l
+               ON l.workspace_id = a.workspace_id
+              AND l.company_id = a.company_id
+              AND l.snapshot_id = a.snapshot_id
+              AND l.id = a.snapshot_line_id
+            WHERE a.snapshot_id = $1
+            ORDER BY l.line_number`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        net_reduction: '8.63',
+        reason: '  Synthetic fixed reduction  ',
+        original_line_net: '308.63',
+        original_raw_line_tax: '38.0849420',
+        original_line_tax: '38.08',
+        tax_rate_percent: '12.34',
+        adjusted_line_net: '300.00',
+        adjusted_raw_line_tax: '37.0200000',
+        adjusted_line_tax: '37.02',
+        tax_reduction: '1.06',
+        applied_by_workspace_membership_id: fixture.membershipId,
+        applied_at: new Date('2026-04-01T00:00:00.000Z'),
+      },
+      expect.objectContaining({
+        type: 'FIXED_NET_DISCOUNT',
+        net_reduction: '0.01',
+        adjusted_line_net: '0.00',
+        adjusted_line_tax: '0.00',
+      }),
+    ]);
+    expect(
+      (
+        await pool.query(
+          `SELECT metadata FROM pricing_configuration_events
+            WHERE pricing_snapshot_id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        metadata: {
+          pricingSnapshotId: created.id,
+          opportunityId: fixture.opportunityId,
+          lineCount: 2,
+          adjustmentCount: 2,
+          provenance: 'ILLUSTRATIVE',
+          currency: 'EUR',
+        },
+      },
+    ]);
+
+    const adjustmentRevocation = await holdRevocation(
+      fixture,
+      'company_pricing_adjustment',
+    );
+    const revokedReplay = post(path, body, 'adjusted-trace', fixture.companyId);
+    try {
+      await waitForBlockedBy(adjustmentRevocation.backendPid);
+    } finally {
+      await release(adjustmentRevocation);
+    }
+    expect((await revokedReplay).status).toBe(403);
+
+    const malformedAfterRevocation = structuredClone(body);
+    const malformedRevokedLine = malformedAfterRevocation.lines[0];
+    if (!malformedRevokedLine)
+      throw new Error('Expected an adjusted command after revocation.');
+    malformedRevokedLine.adjustment.reason = '';
+    expect(
+      (
+        await post(
+          snapshotsPath('00000000-0000-4000-8000-000000000999'),
+          malformedAfterRevocation,
+          'revoked-adjustment-before-target',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it('derives tax reduction from the two rounded taxes in the REST and PostgreSQL trace', async () => {
+    const fixture = await prepared();
+    const offering = await createOffering(
+      fixture.companyId,
+      'ROUNDING-COUNTEREXAMPLE',
+      '0.0500',
+      'EUR',
+      instant.toISOString(),
+      undefined,
+      '10.00',
+    );
+    const created = snapshot(
+      await command(
+        snapshotsPath(fixture.opportunityId),
+        {
+          pricingRuleVersionNumber: fixture.rule.versionNumber,
+          lines: [
+            {
+              offeringId: offering.id,
+              tariffVersionNumber: offering.tariff.versionNumber,
+              quantity: '1',
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '0.01',
+                reason: 'Synthetic rounding counterexample',
+              },
+            },
+          ],
+        },
+        'rounding-counterexample',
+        fixture.companyId,
+      ),
+    );
+    expect(created).toMatchObject({
+      subtotal: '0.04',
+      taxTotal: '0.00',
+      total: '0.04',
+      lines: [
+        expect.objectContaining({
+          lineNet: '0.05',
+          rawLineTax: '0.0050000',
+          lineTax: '0.01',
+          netReduction: '0.01',
+          adjustedLineNet: '0.04',
+          adjustedRawLineTax: '0.0040000',
+          adjustedLineTax: '0.00',
+          taxReduction: '0.01',
+        }),
+      ],
+    });
+    expect(
+      (
+        await pool.query(
+          `SELECT l.line_net, l.raw_line_tax, l.line_tax, a.net_reduction,
+                  a.adjusted_line_net, a.adjusted_raw_line_tax,
+                  a.adjusted_line_tax, a.tax_reduction
+             FROM pricing_snapshot_lines l
+             JOIN pricing_snapshot_adjustments a
+               ON a.workspace_id = l.workspace_id
+              AND a.company_id = l.company_id
+              AND a.snapshot_id = l.snapshot_id
+              AND a.snapshot_line_id = l.id
+            WHERE l.snapshot_id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        line_net: '0.05',
+        raw_line_tax: '0.0050000',
+        line_tax: '0.01',
+        net_reduction: '0.01',
+        adjusted_line_net: '0.04',
+        adjusted_raw_line_tax: '0.0040000',
+        adjusted_line_tax: '0.00',
+        tax_reduction: '0.01',
+      },
+    ]);
+  });
+
+  it('keeps calculation and adjustment authority independent', async () => {
+    const fixture = await prepared();
+    const path = snapshotsPath(fixture.opportunityId);
+    const ordinaryBody = calculationBody(fixture);
+    const firstLine = ordinaryBody.lines[0];
+    if (!firstLine) throw new Error('Expected a calculation line.');
+    const adjustedBody = {
+      ...ordinaryBody,
+      lines: [
+        {
+          ...firstLine,
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '8.63',
+            reason: 'Synthetic independent authority proof',
+          },
+        },
+      ],
+    };
+
+    const pricingHeaders = memberHeaders('snapshot-pricing-only-member');
+    const pricingActor = record(
+      await json(
+        await request('/access/current-actor', undefined, {
+          headers: pricingHeaders,
+        }),
+      ),
+    );
+    for (const assignmentPath of [
+      '/company-context-assignments',
+      ASSIGNMENTS.intake,
+      ASSIGNMENTS.pricing,
+    ])
+      await command(
+        assignmentPath,
+        {
+          companyId: fixture.companyId,
+          workspaceMembershipId: stringField(
+            pricingActor,
+            'workspaceMembershipId',
+          ),
+        },
+        `pricing-only-${assignmentPath}`,
+      );
+    const ordinary = await post(
+      path,
+      ordinaryBody,
+      'pricing-only-ordinary',
+      fixture.companyId,
+      pricingHeaders,
+    );
+    expect(ordinary.status).toBe(201);
+    const ordinarySnapshot = snapshot(await json(ordinary));
+    expect(
+      (
+        await request(`${path}/${ordinarySnapshot.id}`, fixture.companyId, {
+          headers: pricingHeaders,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await post(
+          path,
+          adjustedBody,
+          'pricing-only-adjusted',
+          fixture.companyId,
+          pricingHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    const malformedAdjustedBody = structuredClone(adjustedBody);
+    const malformedAdjustedLine = malformedAdjustedBody.lines[0];
+    if (!malformedAdjustedLine)
+      throw new Error('Expected the adjusted authority command.');
+    malformedAdjustedLine.adjustment.reason = '';
+    expect(
+      (
+        await post(
+          snapshotsPath('00000000-0000-4000-8000-000000000999'),
+          malformedAdjustedBody,
+          'missing-adjustment-before-target',
+          fixture.companyId,
+          pricingHeaders,
+        )
+      ).status,
+    ).toBe(403);
+
+    const adjustmentHeaders = memberHeaders('snapshot-adjustment-only-member');
+    const adjustmentActor = record(
+      await json(
+        await request('/access/current-actor', undefined, {
+          headers: adjustmentHeaders,
+        }),
+      ),
+    );
+    for (const assignmentPath of [
+      '/company-context-assignments',
+      ASSIGNMENTS.intake,
+      ASSIGNMENTS.adjustment,
+    ])
+      await command(
+        assignmentPath,
+        {
+          companyId: fixture.companyId,
+          workspaceMembershipId: stringField(
+            adjustmentActor,
+            'workspaceMembershipId',
+          ),
+        },
+        `adjustment-only-${assignmentPath}`,
+      );
+    const adjustmentCompany = record(
+      record(
+        await json(
+          await request('/access/current-actor', fixture.companyId, {
+            headers: adjustmentHeaders,
+          }),
+        ),
+      ).activeCompany,
+    );
+    expect(adjustmentCompany).toMatchObject({
+      id: fixture.companyId,
+      pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
+      pricingAdjustmentPermissionAssignmentId: expect.any(String),
+      pricingAdjustmentPermissionSetVersion: 'v1',
+    });
+    expect(adjustmentCompany).not.toHaveProperty('pricingUserPermissions');
+    expect(
+      (
+        await pool.query(
+          `SELECT action::text, metadata
+             FROM activity_log_events
+            WHERE action::text = 'company_pricing_adjustment_assignment.granted'
+              AND target_workspace_membership_id = $1
+              AND target_company_id = $2`,
+          [
+            stringField(adjustmentActor, 'workspaceMembershipId'),
+            fixture.companyId,
+          ],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        action: 'company_pricing_adjustment_assignment.granted',
+        metadata: { bundle: 'Company Pricing Adjustment' },
+      },
+    ]);
+    expect(
+      (
+        await post(
+          path,
+          ordinaryBody,
+          'adjustment-only-ordinary',
+          fixture.companyId,
+          adjustmentHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(`${path}/${ordinarySnapshot.id}`, fixture.companyId, {
+          headers: adjustmentHeaders,
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])(
+    'creates, replays and reopens exact reason at character boundary %#',
+    async (reason) => {
+      const fixture = await prepared();
+      const path = snapshotsPath(fixture.opportunityId);
+      const ordinaryBody = calculationBody(fixture);
+      const firstLine = ordinaryBody.lines[0];
+      if (!firstLine) throw new Error('Expected a calculation line.');
+      const body = {
+        ...ordinaryBody,
+        lines: [
+          {
+            ...firstLine,
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '8.63',
+              reason,
+            },
+          },
+        ],
+      };
+      const created = snapshot(
+        await command(path, body, 'reason-boundary', fixture.companyId),
+      );
+      expect(record(record(created.lines[0]).adjustment).reason).toBe(reason);
+      expect(
+        snapshot(
+          await command(path, body, 'reason-boundary', fixture.companyId),
+        ),
+      ).toEqual(created);
+      expect(
+        snapshot(
+          await json(await request(path + '/' + created.id, fixture.companyId)),
+        ),
+      ).toEqual(created);
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 1, lines: 1, events: 1, receipts: 1 },
+      ]);
+    },
+  );
+
+  it.each([
+    '\u{1F642}'.repeat(501),
+    'before\u0000after',
+    'before\uD800after',
+    'before\uDC00after',
+  ])(
+    'refuses invalid reason %# with a field error and zero writes',
+    async (reason) => {
+      const fixture = await prepared();
+      const ordinaryBody = calculationBody(fixture);
+      const firstLine = ordinaryBody.lines[0];
+      if (!firstLine) throw new Error('Expected a calculation line.');
+      const response = await post(
+        snapshotsPath(fixture.opportunityId),
+        {
+          ...ordinaryBody,
+          lines: [
+            {
+              ...firstLine,
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '8.63',
+                reason,
+              },
+            },
+          ],
+        },
+        'invalid-reason-boundary',
+        fixture.companyId,
+      );
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field: 'lines[0].adjustment.reason',
+      });
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 0, lines: 0, events: 0, receipts: 0 },
+      ]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS adjustments FROM pricing_snapshot_adjustments',
+          )
+        ).rows,
+      ).toEqual([{ adjustments: 0 }]);
+    },
+  );
+
+  it('refuses malformed, zero, excessive and unexplained adjustments without writes', async () => {
+    const fixture = await prepared();
+    const path = snapshotsPath(fixture.opportunityId);
+    const ordinaryBody = calculationBody(fixture);
+    const firstLine = ordinaryBody.lines[0];
+    if (!firstLine) throw new Error('Expected a calculation line.');
+    const invalidAdjustments: unknown[] = [
+      null,
+      { type: 'PERCENT_DISCOUNT', netReduction: '8.63', reason: 'Synthetic' },
+      { type: 'FIXED_NET_DISCOUNT', netReduction: '0.00', reason: 'Synthetic' },
+      { type: 'FIXED_NET_DISCOUNT', netReduction: '8.6', reason: 'Synthetic' },
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '08.63',
+        reason: 'Synthetic',
+      },
+      { type: 'FIXED_NET_DISCOUNT', netReduction: 8.63, reason: 'Synthetic' },
+      { type: 'FIXED_NET_DISCOUNT', netReduction: '8.63', reason: '' },
+      { type: 'FIXED_NET_DISCOUNT', netReduction: '8.63', reason: '   ' },
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '8.63',
+        reason: 'x'.repeat(501),
+      },
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '8.63',
+        reason: 'Synthetic',
+        unexpected: true,
+      },
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '308.64',
+        reason: 'Synthetic excessive reduction',
+      },
+    ];
+    for (const [index, adjustment] of invalidAdjustments.entries()) {
+      const response = await post(
+        path,
+        {
+          ...ordinaryBody,
+          lines: [{ ...firstLine, adjustment }],
+        },
+        `invalid-adjustment-${index}`,
+        fixture.companyId,
+      );
+      expect(response.status).toBe(400);
+    }
+    const duplicateLine = {
+      ...firstLine,
+      adjustment: {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '8.63',
+        reason: 'Synthetic duplicate-line adjustment',
+      },
+    };
+    expect(
+      (
+        await post(
+          path,
+          { ...ordinaryBody, lines: [duplicateLine, duplicateLine] },
+          'invalid-adjustment-duplicate-line',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(400);
+    expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+      { snapshots: 0, lines: 0, events: 0, receipts: 0 },
+    ]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS adjustments FROM pricing_snapshot_adjustments',
+        )
+      ).rows,
+    ).toEqual([{ adjustments: 0 }]);
+  });
+
+  it('creates, lists and reopens the exact maximum 20-line adjusted trace through REST and PostgreSQL', async () => {
     const fixture = await prepared();
     instant = new Date(instant.getTime() + 1);
     for (const offering of fixture.offerings)
@@ -405,6 +1059,11 @@ withPostgres('Pricing Snapshots REST', () => {
         offeringId: offering.id,
         tariffVersionNumber: offering.versionNumber,
         quantity: '999999999.999',
+        adjustment: {
+          type: 'FIXED_NET_DISCOUNT',
+          netReduction: '0.01',
+          reason: 'Synthetic maximum magnitude adjustment',
+        },
       })),
     };
     const path = snapshotsPath(fixture.opportunityId);
@@ -413,9 +1072,9 @@ withPostgres('Pricing Snapshots REST', () => {
     );
 
     expect(created).toMatchObject({
-      subtotal: '199999999997800000.00',
-      taxTotal: '199999999997800000.00',
-      total: '399999999995600000.00',
+      subtotal: '199999999997799999.80',
+      taxTotal: '199999999997799999.80',
+      total: '399999999995599999.60',
     });
     expect(
       created.lines.map((value) => {
@@ -428,6 +1087,11 @@ withPostgres('Pricing Snapshots REST', () => {
           lineNet: line.lineNet,
           rawLineTax: line.rawLineTax,
           lineTax: line.lineTax,
+          netReduction: line.netReduction,
+          taxReduction: line.taxReduction,
+          adjustedLineNet: line.adjustedLineNet,
+          adjustedRawLineTax: line.adjustedRawLineTax,
+          adjustedLineTax: line.adjustedLineTax,
         };
       }),
     ).toEqual(
@@ -439,6 +1103,11 @@ withPostgres('Pricing Snapshots REST', () => {
         lineNet: '9999999999890000.00',
         rawLineTax: '9999999999890000.0000000',
         lineTax: '9999999999890000.00',
+        netReduction: '0.01',
+        taxReduction: '0.01',
+        adjustedLineNet: '9999999999889999.99',
+        adjustedRawLineTax: '9999999999889999.9900000',
+        adjustedLineTax: '9999999999889999.99',
       })),
     );
     expect(
@@ -454,13 +1123,20 @@ withPostgres('Pricing Snapshots REST', () => {
         await pool.query(
           `SELECT s.subtotal, s.tax_total, s.total,
                   l.line_number, l.quantity, l.quantity_input, l.unit_amount,
-                  l.tax_rate_percent, l.raw_line_amount, l.line_net,
-                  l.raw_line_tax, l.line_tax
+                   l.tax_rate_percent, l.raw_line_amount, l.line_net,
+                   l.raw_line_tax, l.line_tax, a.net_reduction,
+                   a.tax_reduction, a.adjusted_line_net,
+                   a.adjusted_raw_line_tax, a.adjusted_line_tax
              FROM pricing_snapshots s
              JOIN pricing_snapshot_lines l
                ON l.workspace_id = s.workspace_id
               AND l.company_id = s.company_id
-              AND l.snapshot_id = s.id
+               AND l.snapshot_id = s.id
+              JOIN pricing_snapshot_adjustments a
+                ON a.workspace_id = l.workspace_id
+               AND a.company_id = l.company_id
+               AND a.snapshot_id = l.snapshot_id
+               AND a.snapshot_line_id = l.id
             WHERE s.id = $1
             ORDER BY l.line_number`,
           [created.id],
@@ -468,9 +1144,9 @@ withPostgres('Pricing Snapshots REST', () => {
       ).rows,
     ).toEqual(
       Array.from({ length: 20 }, (_, index) => ({
-        subtotal: '199999999997800000.00',
-        tax_total: '199999999997800000.00',
-        total: '399999999995600000.00',
+        subtotal: '199999999997799999.80',
+        tax_total: '199999999997799999.80',
+        total: '399999999995599999.60',
         line_number: index + 1,
         quantity: '999999999.999',
         quantity_input: '999999999.999',
@@ -480,6 +1156,11 @@ withPostgres('Pricing Snapshots REST', () => {
         line_net: '9999999999890000.00',
         raw_line_tax: '9999999999890000.0000000',
         line_tax: '9999999999890000.00',
+        net_reduction: '0.01',
+        tax_reduction: '0.01',
+        adjusted_line_net: '9999999999889999.99',
+        adjusted_raw_line_tax: '9999999999889999.9900000',
+        adjusted_line_tax: '9999999999889999.99',
       })),
     );
   });
@@ -1361,21 +2042,24 @@ withPostgres('Pricing Snapshots REST', () => {
   });
 
   it.each([
-    ['pricing_snapshots', 'fail-snapshot', ''],
-    ['pricing_snapshot_lines', 'fail-line', ''],
+    ['pricing_snapshots', 'fail-snapshot', '', false],
+    ['pricing_snapshot_lines', 'fail-line', '', false],
+    ['pricing_snapshot_adjustments', 'fail-adjustment', '', true],
     [
       'pricing_configuration_events',
       'fail-event',
       "WHEN (NEW.action = 'pricing_snapshot.created')",
+      false,
     ],
     [
       'pricing_configuration_commands',
       'fail-receipt',
       "WHEN (NEW.command = 'pricing_snapshot.calculate')",
+      false,
     ],
   ] as const)(
     'rolls back every snapshot write and releases publication after a %s failure',
-    async (table, key, triggerWhen) => {
+    async (table, key, triggerWhen, adjusted) => {
       const fixture = await prepared();
       await prepareConfigurationMember(fixture);
       const path = snapshotsPath(fixture.opportunityId);
@@ -1397,9 +2081,26 @@ withPostgres('Pricing Snapshots REST', () => {
           FOR EACH ROW ${triggerWhen}
           EXECUTE FUNCTION ${functionName}();
       `);
+        const baseBody = calculationBody(fixture);
+        const firstLine = baseBody.lines[0];
+        if (!firstLine) throw new Error('Expected a calculation line.');
         const failedCalculation = post(
           path,
-          calculationBody(fixture),
+          adjusted
+            ? {
+                ...baseBody,
+                lines: [
+                  {
+                    ...firstLine,
+                    adjustment: {
+                      type: 'FIXED_NET_DISCOUNT',
+                      netReduction: '8.63',
+                      reason: 'Synthetic rollback proof',
+                    },
+                  },
+                ],
+              }
+            : baseBody,
           key,
           fixture.companyId,
         );
@@ -1835,7 +2536,10 @@ withPostgres('Pricing Snapshots REST', () => {
 
   async function holdRevocation(
     fixture: Fixture,
-    bundle: 'company_pricing_user' | 'company_commercial_intake',
+    bundle:
+      | 'company_pricing_user'
+      | 'company_pricing_adjustment'
+      | 'company_commercial_intake',
   ): Promise<HeldTransaction> {
     return holdTransaction(async (connection) => {
       const revoked = await connection.query(

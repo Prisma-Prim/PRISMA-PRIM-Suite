@@ -21,6 +21,19 @@ export interface PricingSnapshotLineRecord {
   readonly lineNet: string;
   readonly rawLineTax: string;
   readonly lineTax: string;
+  readonly adjustment: {
+    readonly type: 'FIXED_NET_DISCOUNT';
+    readonly netReduction: string;
+    readonly taxReduction: string;
+    readonly reason: string;
+    readonly appliedByWorkspaceMembershipId: string;
+    readonly appliedAt: string;
+  } | null;
+  readonly netReduction: string;
+  readonly taxReduction: string;
+  readonly adjustedLineNet: string;
+  readonly adjustedRawLineTax: string;
+  readonly adjustedLineTax: string;
 }
 
 export interface PricingSnapshotRecord {

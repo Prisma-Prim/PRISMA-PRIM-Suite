@@ -45,6 +45,9 @@ import {
   COMPANY_PRICING_USER_BUNDLE,
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
+  COMPANY_PRICING_ADJUSTMENT_BUNDLE,
+  pricingAdjustmentPermissionsFor,
+  type CompanyPricingAdjustmentPermission,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -684,6 +687,29 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
+  // Applying an adjustment requires its own captured v1 assignment. It does
+  // not lend calculation, Snapshot read or Company context authority.
+  async requirePricingAdjustmentAccess(
+    actor: ActorContext,
+    required: readonly CompanyPricingAdjustmentPermission[],
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company ||
+      !carriesEvery(company.pricingAdjustmentPermissions, required)
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      capturedGrant(COMPANY_PRICING_ADJUSTMENT_BUNDLE),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
   // Offering read is carried by a live captured Company Service Catalogue v1,
   // Company Pricing Configuration v1 or Company Pricing User v1 assignment
   // (pricing PRD section 10). None confers any other permission of another.
@@ -851,6 +877,7 @@ export class CompanyContextAuthorization {
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
+        COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -1019,6 +1046,18 @@ export class CompanyContextAuthorization {
         company.pricingUserPermissionAssignmentId = row.assignmentId;
         company.pricingUserPermissionSetVersion = 'v1';
       }
+      // Pricing Adjustment contributes only its one apply permission and
+      // never authorizes Company context by itself.
+      if (
+        row.bundle === COMPANY_PRICING_ADJUSTMENT_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.pricingAdjustmentPermissions = [
+          ...pricingAdjustmentPermissionsFor(row.permissionSetVersion),
+        ];
+        company.pricingAdjustmentPermissionAssignmentId = row.assignmentId;
+        company.pricingAdjustmentPermissionSetVersion = 'v1';
+      }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
@@ -1045,7 +1084,8 @@ function capturedGrant(
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE
-    | typeof COMPANY_PRICING_USER_BUNDLE,
+    | typeof COMPANY_PRICING_USER_BUNDLE
+    | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
