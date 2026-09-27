@@ -53,15 +53,21 @@ const PRESERVED_ASSIGNMENTS: ReadonlyArray<
 // existing rows must survive the migration byte-identical. The new nullable
 // tariff references are left out of the comparison and must be empty.
 const PRESERVED_TABLES: ReadonlyArray<
-  readonly [table: string, newColumn: string | null]
+  readonly [table: string, newColumns: readonly string[]]
 > = [
-  ['company_role_assignments', null],
-  ['activity_log_events', null],
-  ['service_definitions', null],
-  ['company_service_offerings', null],
-  ['pricing_rule_versions', null],
-  ['pricing_configuration_commands', 'result_tariff_version_id'],
-  ['pricing_configuration_events', 'tariff_version_id'],
+  ['company_role_assignments', []],
+  ['activity_log_events', []],
+  ['service_definitions', []],
+  ['company_service_offerings', []],
+  ['pricing_rule_versions', []],
+  [
+    'pricing_configuration_commands',
+    ['result_tariff_version_id', 'result_pricing_snapshot_id'],
+  ],
+  [
+    'pricing_configuration_events',
+    ['tariff_version_id', 'pricing_snapshot_id'],
+  ],
 ];
 
 it.skipIf(!databaseUrl)(
@@ -231,12 +237,12 @@ it.skipIf(!databaseUrl)(
       const snapshot = () =>
         Promise.all(
           PRESERVED_TABLES.map(
-            async ([table, newColumn]) =>
+            async ([table, newColumns]) =>
               (
                 await query(
-                  `SELECT (to_jsonb(preserved) - $1::text)::text AS preserved_row
+                  `SELECT (to_jsonb(preserved) - $1::text[])::text AS preserved_row
                      FROM ${table} AS preserved ORDER BY id`,
-                  [newColumn ?? ''],
+                  [newColumns],
                 )
               ).rows,
           ),

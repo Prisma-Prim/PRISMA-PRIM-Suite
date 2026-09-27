@@ -114,3 +114,13 @@ export interface CommercialIntakeListPage {
   readonly items: CommercialIntakeListItem[];
   readonly nextCursor?: string;
 }
+
+export interface ReadablePricingOpportunity {
+  readonly id: string;
+  readonly clientRequestId: string;
+  readonly originalClientAccountId: string | null;
+}
+
+export type CommercialClientProjection = NonNullable<
+  CommercialIntakeDetail['clientReference']
+>;

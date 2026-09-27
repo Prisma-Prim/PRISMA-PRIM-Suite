@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -379,6 +379,37 @@ export class CommercialCatalogueService {
     );
     if (!offering) throw new NotFoundException();
     return offering;
+  }
+
+  // Pricing copies immutable offering and Service Definition identity into
+  // its trace through the catalogue owner, in one Company-scoped read.
+  async readPricingOfferings(
+    actor: ActorContext,
+    offeringIds: readonly string[],
+  ): Promise<ReadonlyMap<string, CompanyServiceOfferingRecord>> {
+    const companyId = await this.authorization.requireOfferingReadAccess(actor);
+    const ids = [...new Set(offeringIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await this.databaseContext.connection
+      .select({
+        offering: companyServiceOfferings,
+        definition: serviceDefinitions,
+      })
+      .from(companyServiceOfferings)
+      .innerJoin(serviceDefinitions, offeringDefinitionJoin())
+      .where(
+        and(
+          eq(companyServiceOfferings.workspaceId, actor.workspaceId),
+          eq(companyServiceOfferings.companyId, companyId),
+          inArray(companyServiceOfferings.id, ids),
+        ),
+      );
+    return new Map(
+      rows.map(({ offering, definition }) => [
+        offering.id,
+        offeringView(offering, definition),
+      ]),
+    );
   }
 
   private async findDefinition(

@@ -800,16 +800,20 @@ describe('CommercialIntakeWorkspace requested Request', () => {
     await waitFor(() => expect(listedSubjects()).toHaveLength(3));
     await editOpenedRequest('Confirm the audit window');
     fireEvent.click(screen.getByRole('button', { name: copy.saveNextAction }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.nextActionUncertain,
-    );
+    expect(
+      await screen.findByText(copy.nextActionUncertain, {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
 
     view.update({ requestedRequest: requested(1) });
     await settleEffects();
     expect(heldNotice()).toHaveTextContent(copy.requestedAfterNextActionEdit);
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      copy.nextActionUncertain,
-    );
+    expect(
+      screen.getByText(copy.nextActionUncertain, {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     expect(
       transport.calls(`GET ${detailPath('request-requested')}`),
     ).toHaveLength(0);

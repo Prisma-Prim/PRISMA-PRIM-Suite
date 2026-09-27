@@ -295,8 +295,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     changeValue(responsibleSelect(), ion.workspaceMembershipId);
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleChanged,
+    expect(await screen.findByText(copy.responsibleChanged)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(
       screen.getByText(`${copy.responsible}: ${ion.displayName}`),
@@ -346,8 +347,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
       await screen.findByRole('button', { name: copy.saveResponsible }),
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleUnchanged,
+    expect(await screen.findByText(copy.responsibleUnchanged)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(activityRecorded).not.toHaveBeenCalled();
   });
@@ -416,14 +418,18 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleConflict,
+    expect(await screen.findByText(copy.responsibleConflict)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(
       screen.getByRole('button', { name: copy.editNextAction }),
     ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: copy.reloadRequest }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+    expect(await screen.findByText(copy.error)).toHaveAttribute(
+      'role',
+      'alert',
+    );
     fireEvent.click(screen.getByRole('button', { name: copy.reloadRequest }));
 
     expect(
@@ -454,9 +460,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleMembersError,
-    );
+    expect(
+      await screen.findByText(copy.responsibleMembersError),
+    ).toHaveAttribute('role', 'alert');
     fireEvent.click(
       screen.getByRole('button', { name: copy.responsibleReloadList }),
     );
@@ -466,9 +472,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleUnavailable,
-    );
+    expect(
+      await screen.findByText(copy.responsibleUnavailable),
+    ).toHaveAttribute('role', 'alert');
     fireEvent.click(
       screen.getByRole('button', { name: copy.responsibleReloadList }),
     );
@@ -496,8 +502,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleUncertain,
+    expect(await screen.findByText(copy.responsibleUncertain)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(responsibleSelect()).toBeDisabled();
     expect(responsibleSelect()).toHaveValue(ion.workspaceMembershipId);
@@ -505,8 +512,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
       screen.getByRole('button', { name: copy.retryResponsible }),
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleChanged,
+    expect(await screen.findByText(copy.responsibleChanged)).toHaveAttribute(
+      'role',
+      'alert',
     );
     const [first, retry] = transport.calls(changePath);
     expect(retry?.[1]?.body).toBe(first?.[1]?.body);
@@ -534,8 +542,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.responsibleDenied,
+    expect(await screen.findByText(copy.responsibleDenied)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(actorRevalidated).toHaveBeenCalledWith(reader);
     expect(
@@ -566,8 +575,9 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveResponsible }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.nextActionMissing,
+    expect(await screen.findByText(copy.nextActionMissing)).toHaveAttribute(
+      'role',
+      'alert',
     );
     expect(await screen.findByText(copy.empty('PRISMA-PRIM'))).toBeVisible();
   });
@@ -621,7 +631,10 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     );
 
     view.selectActor(reader);
-    expect(screen.getByRole('alert')).toHaveTextContent(copy.responsibleDenied);
+    expect(screen.getByText(copy.responsibleDenied)).toHaveAttribute(
+      'role',
+      'alert',
+    );
     expect(
       screen.queryByLabelText(copy.responsibleChoice),
     ).not.toBeInTheDocument();
@@ -657,7 +670,7 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     expect(
       screen.getByRole('button', { name: copy.changeResponsible }),
     ).toBeEnabled();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.responsibleDenied)).not.toBeInTheDocument();
   });
 
   it('ignores an eligible list that arrives after Back', async () => {

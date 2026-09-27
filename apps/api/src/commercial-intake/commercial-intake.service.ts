@@ -34,6 +34,8 @@ import type {
   OpportunityNextActionUpdateResult,
   OpportunityResponsibleCandidatePage,
   OpportunityResponsibleChangeResult,
+  ReadablePricingOpportunity,
+  CommercialClientProjection,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 import {
@@ -49,6 +51,9 @@ type NextActionCommandRow =
   typeof commercialIntakeNextActionCommands.$inferSelect;
 type ResponsibleCommandRow =
   typeof commercialIntakeResponsibleCommands.$inferSelect;
+
+const UUID_GRAMMAR =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 @Injectable()
 export class CommercialIntakeService {
@@ -163,6 +168,73 @@ export class CommercialIntakeService {
       'read',
     );
     return this.loadDetail(actor, companyId, requestId, false);
+  }
+
+  // Pricing reuses this exact Commercial Intake read boundary. The captured
+  // assignment is held under a share lock, while the Opportunity row is only
+  // read, so unrelated next-action updates do not wait on a calculation.
+  async requireReadablePricingOpportunity(
+    actor: ActorContext,
+    opportunityId: string,
+  ): Promise<ReadablePricingOpportunity> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+      true,
+    );
+    if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
+    const [target] = await this.databaseContext.connection
+      .select({
+        id: opportunities.id,
+        clientRequestId: opportunities.clientRequestId,
+        originalClientAccountId: clientRequests.clientAccountId,
+      })
+      .from(opportunities)
+      .innerJoin(
+        clientRequests,
+        and(
+          eq(clientRequests.workspaceId, opportunities.workspaceId),
+          eq(clientRequests.companyId, opportunities.companyId),
+          eq(clientRequests.id, opportunities.clientRequestId),
+        ),
+      )
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          eq(opportunities.id, opportunityId.toLowerCase()),
+        ),
+      );
+    if (!target) throw new NotFoundException();
+    return target;
+  }
+
+  // Client remains the sole owner of union and visibility projection. Losing
+  // Client authority hides this live block without hiding the snapshot.
+  async readPricingClientProjection(
+    actor: ActorContext,
+    originalClientAccountId: string | null,
+  ): Promise<CommercialClientProjection | undefined> {
+    if (!originalClientAccountId || !canReadClients(actor)) return undefined;
+    try {
+      const reference = (
+        await this.clients.readProjectReferences(
+          actor,
+          [originalClientAccountId],
+          true,
+        )
+      ).get(originalClientAccountId);
+      return reference
+        ? clientReferenceView(originalClientAccountId, reference)
+        : undefined;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      )
+        return undefined;
+      throw error;
+    }
   }
 
   async updateNextAction(
