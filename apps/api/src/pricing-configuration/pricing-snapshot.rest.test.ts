@@ -755,15 +755,32 @@ withPostgres('Pricing Snapshots REST', () => {
         });
       else expect(created).not.toHaveProperty('clientReference');
 
-      const reloaded = snapshot(
-        await json(
-          await request(
-            `${snapshotsPath(fixture.opportunityId)}/${created.id}`,
-            fixture.companyId,
-          ),
-        ),
+      const snapshotPath = `${snapshotsPath(fixture.opportunityId)}/${created.id}`;
+      const pricingActorReload = await request(
+        snapshotPath,
+        fixture.companyId,
+        { headers: CONFIGURATION_MEMBER },
       );
-      expect(reloaded).toEqual(created);
+      expect(pricingActorReload.status).toBe(200);
+      expect(snapshot(await json(pricingActorReload))).toEqual(created);
+
+      const ownerReload = await request(snapshotPath, fixture.companyId, {
+        headers: OWNER,
+      });
+      expect(ownerReload.status).toBe(200);
+      const ownerSnapshot = snapshot(await json(ownerReload));
+      if (associationFirst)
+        expect(ownerSnapshot).toEqual({
+          ...created,
+          clientReference: {
+            originalClientId: client.id,
+            displayName: 'Associated before Pricing',
+          },
+        });
+      else {
+        expect(ownerSnapshot).toEqual(created);
+        expect(ownerSnapshot).not.toHaveProperty('clientReference');
+      }
       expect(
         (
           await pool.query(
