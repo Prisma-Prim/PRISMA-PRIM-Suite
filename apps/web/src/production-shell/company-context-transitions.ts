@@ -75,7 +75,9 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_approver_assignment.revoked'
     | 'client.created'
     | 'client_company_relationship.established'
-    | 'client.corrected';
+    | 'client.corrected'
+    | 'client_legal_entity.registered'
+    | 'client_legal_entity.corrected';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:

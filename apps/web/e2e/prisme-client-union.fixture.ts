@@ -192,6 +192,8 @@ export async function installUnionFixture(page: Page) {
           ],
         },
       });
+    if (path.endsWith('/legal-entities'))
+      return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
     return route.fulfill({ status: 404 });
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });

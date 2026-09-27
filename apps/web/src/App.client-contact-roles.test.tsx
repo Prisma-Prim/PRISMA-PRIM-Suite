@@ -92,6 +92,8 @@ function renderDossier({
         return respond(current);
       }
       if (path.endsWith('/clients/client-one')) return respond(current);
+      if (path.endsWith('/legal-entities'))
+        return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
     }),
   );
@@ -358,6 +360,8 @@ describe('Client Contact position and decision roles', () => {
           });
         if (path.endsWith('/correction-history'))
           return respond({ corrections: [], nextCursor: null });
+        if (path.endsWith('/legal-entities'))
+          return respond({ clientVersion: 1, legalEntities: [] });
         throw new Error('Unexpected API request: ' + path);
       }),
     );
