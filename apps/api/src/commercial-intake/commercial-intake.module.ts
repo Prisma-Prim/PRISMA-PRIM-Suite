@@ -9,6 +9,6 @@ import { RequestClientAssociationService } from './request-client-association.se
 @Module({
   imports: [AccessModule, AccountabilityModule, ClientModule, DatabaseModule],
   providers: [CommercialIntakeService, RequestClientAssociationService],
-  exports: [CommercialIntakeService],
+  exports: [CommercialIntakeService, RequestClientAssociationService],
 })
 export class CommercialIntakeModule {}
