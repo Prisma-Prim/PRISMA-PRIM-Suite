@@ -2,14 +2,14 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   invitationPageResponse,
   invitationResponse,
   type InvitationPage,
 } from './workspace-invitation-response';
-import { workspaceInvitationsCopy as copy } from './workspace-invitations.copy';
+import { useWorkspaceInvitationsCopy } from './workspace-invitations.copy';
 import './workspace-invitations.css';
 
 type PageState =
@@ -28,6 +28,8 @@ export function WorkspaceInvitations({
   onActivityRecorded: () => void | Promise<void>;
   onWorkspaceAccessRejected: () => void | Promise<void>;
 }) {
+  const copy = useWorkspaceInvitationsCopy();
+  const { formatDateTime, formatNumber } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [email, setEmail] = useState('');
@@ -218,6 +220,7 @@ export function WorkspaceInvitations({
               required
               disabled={busy}
               value={days}
+              aria-valuetext={formatNumber(days)}
               onChange={(event) => {
                 setDays(event.target.valueAsNumber);
                 retry.current = undefined;
@@ -250,7 +253,7 @@ export function WorkspaceInvitations({
                 <p>
                   {copy.expires}:{' '}
                   <time dateTime={invitation.expiresAt}>
-                    {formatApplicationDateTime(invitation.expiresAt)}
+                    {formatDateTime(invitation.expiresAt)}
                   </time>
                 </p>
                 {invitation.revokedAt &&
@@ -263,8 +266,7 @@ export function WorkspaceInvitations({
                     <p role="status">{copy.usedBeforeRevocation}</p>
                   )}
                 <p>
-                  {copy.checkAfter}:{' '}
-                  {formatApplicationDateTime(invitation.nextCheckAt)}
+                  {copy.checkAfter}: {formatDateTime(invitation.nextCheckAt)}
                 </p>
                 <button
                   className={

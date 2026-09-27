@@ -2,6 +2,7 @@ import { enterClassicCompatibility } from './classic-compatibility';
 import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
+import type { WorkspaceInvitation } from '../src/access/workspace-invitation-response';
 
 const companyA = { id: 'company-a', displayName: 'First authorized Company' };
 const companyB = {
@@ -61,14 +62,52 @@ test('keeps checking, denied, error and signed-out states outside the opt-in fra
 test('exposes invitations independently of administration and refuses unauthorized fragments', async ({
   page,
 }, testInfo) => {
+  const invitation: WorkspaceInvitation = {
+    id: '00000000-0000-4000-8000-000000000467',
+    email: 'recipient@example.test',
+    status: 'pending',
+    deliveryStatus: 'pending',
+    expiresAt: '2026-10-04T12:00:00.000Z',
+    createdAt: '2026-09-27T12:00:00.000Z',
+    revokedAt: null,
+    consumedAt: null,
+    nextCheckAt: '2026-09-27T12:05:00.000Z',
+  };
+  const issueBodies: string[] = [];
+  const issueKeys: string[] = [];
+  let issueAttempts = 0;
+  let listedInvitations: WorkspaceInvitation[] = [];
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({
       json: { ...actorContextFixture, workspacePermissions: ['member.invite'] },
     }),
   );
-  await page.route('**/api/workspace-invitations**', (route) =>
-    route.fulfill({ json: { invitations: [], nextCursor: null } }),
-  );
+  await page.route('**/api/workspace-invitations**', (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === 'GET')
+      return route.fulfill({
+        json: { invitations: listedInvitations, nextCursor: null },
+      });
+    if (path.endsWith('/refresh'))
+      return route.fulfill({ json: listedInvitations[0] ?? invitation });
+    if (path.endsWith('/revoke')) {
+      listedInvitations = [
+        {
+          ...invitation,
+          status: 'revoked',
+          deliveryStatus: 'revoked',
+          revokedAt: '2026-09-27T12:10:00.000Z',
+        },
+      ];
+      return route.fulfill({ json: listedInvitations[0] });
+    }
+    issueBodies.push(request.postData() ?? '');
+    issueKeys.push(request.headers()['idempotency-key'] ?? '');
+    if (++issueAttempts === 1) return route.fulfill({ status: 503 });
+    listedInvitations = [invitation];
+    return route.fulfill({ status: 201, json: invitation });
+  });
   await page.goto('/?frame=prisme#access');
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
@@ -86,13 +125,69 @@ test('exposes invitations independently of administration and refuses unauthoriz
   await navigation
     .getByRole('link', { name: 'Invitations', exact: true })
     .click();
-  await expect(page.getByLabel('Recipient email')).toBeVisible();
+  await page.getByLabel('Recipient email').fill(invitation.email);
+  await page.getByLabel('Expires in days').fill('7');
+  await selectOption(
+    page.getByRole('combobox', { name: 'Interface language' }),
+    'fr',
+  );
+  await expect(page.getByLabel('E-mail du destinataire')).toHaveValue(
+    invitation.email,
+  );
+  await expect(page.getByLabel('Expire dans ce nombre de jours')).toHaveValue(
+    '7',
+  );
+  await page.getByRole('button', { name: 'Envoyer l’invitation' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'n’a pas pu être confirmée',
+  );
+  await selectOption(
+    page.getByRole('combobox', { name: 'Langue de l’interface' }),
+    'ru',
+  );
+  await page.getByRole('button', { name: 'Отправить приглашение' }).click();
+  await expect.poll(() => issueBodies.length).toBe(2);
+  expect(issueBodies[1]).toBe(issueBodies[0]);
+  expect(issueKeys[0]).toBeTruthy();
+  expect(issueKeys[1]).toBe(issueKeys[0]);
+  expect(JSON.parse(issueBodies[0] ?? '')).toEqual({
+    email: invitation.email,
+    expiresInDays: 7,
+  });
+  const refresh = page.getByRole('button', {
+    name: 'Проверить состояние приглашения',
+  });
+  await expect(refresh).toBeVisible();
+  await refresh.press('Tab');
+  const revoke = page.getByRole('button', { name: 'Отозвать приглашение' });
+  await expect(revoke).toBeFocused();
+  const focusIsVisible = await revoke.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return style.outlineStyle !== 'none' || style.boxShadow !== 'none';
+  });
+  expect(focusIsVisible).toBe(true);
+  await refresh.click();
+  await revoke.click();
+  await selectOption(
+    page.getByRole('combobox', { name: 'Язык интерфейса' }),
+    'ro',
+  );
   await expect(
-    page.getByRole('button', { name: 'Send invitation' }),
+    page.getByRole('region', { name: 'Confirmați revocarea' }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Workspace invitations' }),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Confirmați revocarea' }).click();
+  await expect(page.getByText('Revocată')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `workspace-invitations-ro-${testInfo.project.name}.png`,
+    ),
+    fullPage: true,
+  });
 });
 
 test('revalidates a sole Company, drops a stale preference and recovers from revoked access', async ({

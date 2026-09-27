@@ -1,8 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import {
+  useInterfaceLocale,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
 import { WorkspaceInvitations } from './WorkspaceInvitations';
 
 const actor: ActorContext = {
@@ -173,12 +182,15 @@ describe('Workspace invitation controls', () => {
     });
     vi.stubGlobal('fetch', transport);
     render(
-      <WorkspaceInvitations
-        actor={actor}
-        identity={identity}
-        onActivityRecorded={() => {}}
-        onWorkspaceAccessRejected={() => {}}
-      />,
+      <>
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />
+        <LocaleChange locale="fr" />
+      </>,
     );
     await screen.findByLabelText('Recipient email');
     fireEvent.change(screen.getByLabelText('Recipient email'), {
@@ -186,7 +198,16 @@ describe('Workspace invitation controls', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
     await screen.findByRole('alert');
-    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+    expect(screen.getByLabelText('E-mail du destinataire')).toHaveValue(
+      invitation.email,
+    );
+    expect(screen.getByLabelText('Expire dans ce nombre de jours')).toHaveValue(
+      7,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Envoyer l’invitation' }),
+    );
     await waitFor(() => expect(sends).toHaveLength(2));
     expect(sends[0]?.body).toEqual(sends[1]?.body);
     expect(sends[0]?.headers).toEqual(sends[1]?.headers);
@@ -221,3 +242,12 @@ describe('Workspace invitation controls', () => {
     );
   });
 });
+
+function LocaleChange({ locale }: { locale: InterfaceLocale }) {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <button type="button" onClick={() => changeLocale(locale)}>
+      Passer en français
+    </button>
+  );
+}

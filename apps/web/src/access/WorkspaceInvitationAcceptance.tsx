@@ -6,7 +6,7 @@ import {
   saveAcceptanceIntent,
   type AcceptanceIntent,
 } from './invitation-acceptance-intent';
-import { invitationAcceptanceCopy as copy } from './invitation-acceptance.copy';
+import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { isUuid, selectWorkspace } from './workspace-selection';
 
 export function WorkspaceInvitationAcceptance({
@@ -16,6 +16,7 @@ export function WorkspaceInvitationAcceptance({
   identity: BrowserIdentity;
   intent: AcceptanceIntent;
 }) {
+  const copy = useInvitationAcceptanceCopy();
   const [state, setState] = useState<
     'ready' | 'loading' | 'error' | 'denied' | 'unauthorized' | 'accepted'
   >(intent.attempted ? 'error' : 'ready');

@@ -1,6 +1,13 @@
-import { workspaceInvitationsCopy } from './workspace-invitations.copy';
+const invitationStatuses = [
+  'uncertain',
+  'pending',
+  'accepted',
+  'revoked',
+  'expired',
+  'rejected',
+] as const;
 
-export type InvitationStatus = keyof typeof workspaceInvitationsCopy.statuses;
+export type InvitationStatus = (typeof invitationStatuses)[number];
 export interface WorkspaceInvitation {
   id: string;
   email: string;
@@ -65,7 +72,7 @@ function record(value: unknown): value is Record<string, unknown> {
 function status(value: unknown): value is InvitationStatus {
   return (
     typeof value === 'string' &&
-    Object.hasOwn(workspaceInvitationsCopy.statuses, value)
+    invitationStatuses.some((invitationStatus) => invitationStatus === value)
   );
 }
 function date(value: unknown): value is string {

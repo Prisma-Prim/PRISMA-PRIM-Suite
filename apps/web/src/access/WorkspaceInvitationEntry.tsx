@@ -9,7 +9,7 @@ import {
   acceptanceContinuationUrl,
   type AcceptanceIntent,
 } from './invitation-acceptance-intent';
-import { invitationAcceptanceCopy as copy } from './invitation-acceptance.copy';
+import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { WorkspaceInvitationAcceptance } from './WorkspaceInvitationAcceptance';
 import '../production-shell/application-shell.css';
 
@@ -18,6 +18,7 @@ export function WorkspaceInvitationEntry({
 }: {
   identity?: BrowserIdentity;
 }) {
+  const copy = useInvitationAcceptanceCopy();
   // Capture before mounting Clerk, including on a fresh invitation redirect.
   const [intent] = useState(captureAcceptanceIntent);
   if (!intent)
@@ -45,6 +46,7 @@ export function WorkspaceInvitationEntry({
 }
 
 function InvitationAuthentication({ intent }: { intent: AcceptanceIntent }) {
+  const copy = useInvitationAcceptanceCopy();
   const returnUrl = acceptanceContinuationUrl(intent);
   const signInUrl = acceptanceContinuationUrl(intent, 'signin');
   const signUpUrl = intent.ticket
