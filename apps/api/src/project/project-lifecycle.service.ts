@@ -175,16 +175,16 @@ export class ProjectLifecycleService {
         visible.clientAccountId,
       );
       const current = await this.row(actor, companyId, projectId, true);
+      if (current.lifecycleRevision !== command.expectedLifecycleRevision)
+        throw lifecycleConflict(
+          'project_lifecycle_conflict',
+          'The Project lifecycle changed. Reload before choosing another action.',
+        );
       const transition = transitionFor(command, current.status);
       if (!transition)
         throw lifecycleConflict(
           'project_lifecycle_transition_invalid',
           'This Project lifecycle transition is not available. Reload before choosing another action.',
-        );
-      if (current.lifecycleRevision !== command.expectedLifecycleRevision)
-        throw lifecycleConflict(
-          'project_lifecycle_conflict',
-          'The Project lifecycle changed. Reload before choosing another action.',
         );
       if (
         transition.action === 'activate' &&

@@ -675,8 +675,32 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         transitions: [
           {
             action: 'cancel',
+            lifecycleRevision: expectedLifecycleRevision + 1,
+            from,
+            to: 'cancelled',
             reason: 'Client withdrew the request.',
           },
+          ...(from === 'on_hold'
+            ? [
+                {
+                  action: 'hold',
+                  lifecycleRevision: 2,
+                  from: 'active',
+                  to: 'on_hold',
+                  reason: HOLD_REASON,
+                },
+              ]
+            : []),
+          ...(from === 'active' || from === 'on_hold'
+            ? [
+                {
+                  action: 'activate',
+                  lifecycleRevision: 1,
+                  from: 'preparatory',
+                  to: 'active',
+                },
+              ]
+            : []),
         ],
       });
       for (const refused of [
@@ -800,7 +824,12 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         await read(`/projects/${projectId}/documents`, { subject: 'ana' }),
       ).toMatchObject({
         mutable: false,
-        documents: [expect.objectContaining({ id: documentId })],
+        documents: [
+          {
+            document: { id: documentId },
+            revision: 1,
+          },
+        ],
       });
 
       for (const response of [
