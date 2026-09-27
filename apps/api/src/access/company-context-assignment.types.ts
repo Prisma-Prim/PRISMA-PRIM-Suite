@@ -10,6 +10,7 @@ import type {
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PRICING_USER_BUNDLE_LABEL,
+  COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
 } from './company-permissions.js';
@@ -33,6 +34,7 @@ export type CompanyAssignmentBundleLabel =
   | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
   | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
   | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
+  | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
   | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
 
 interface CompanyContextAssignmentRecordBase {
@@ -85,6 +87,10 @@ export type CompanyContextAssignmentRecord =
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_PRICING_USER_BUNDLE_LABEL;
+      permissionSetVersion: 'v1';
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     });
 

@@ -7,6 +7,7 @@ import {
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
+  pricingAdjustmentPermissionsFor,
   pricingConfigurationPermissionsFor,
   projectApproverPermissionsFor,
   pricingUserPermissionsFor,
@@ -18,6 +19,40 @@ import {
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Pricing Adjustment permission sets', () => {
+  it('resolves only the captured v1 adjustment permission', () => {
+    expect(pricingAdjustmentPermissionsFor('v1')).toEqual([
+      'commercial.pricing.adjustment.apply',
+    ]);
+  });
+
+  it('does not confer calculation, snapshot read or configuration access', () => {
+    const permissions: readonly string[] =
+      pricingAdjustmentPermissionsFor('v1');
+    expect(permissions).not.toContain('commercial.pricing.calculate');
+    expect(permissions).not.toContain('commercial.pricing.snapshot.read');
+    expect(permissions).not.toContain('commercial.pricing.configuration.read');
+  });
+
+  it('is added to no existing captured permission set', () => {
+    for (const permissions of [
+      pricingUserPermissionsFor('v1'),
+      pricingConfigurationPermissionsFor('v1'),
+      serviceCataloguePermissionsFor('v1'),
+      commercialIntakePermissionsFor('v1'),
+      commercialIntakePermissionsFor('v2'),
+    ])
+      expect(permissions).not.toContain('commercial.pricing.adjustment.apply');
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(pricingAdjustmentPermissionsFor(version)).toEqual([]);
+    },
+  );
+});
 
 describe('Company Pricing User permission sets', () => {
   it('resolves exactly the four captured v1 Pricing User permissions', () => {

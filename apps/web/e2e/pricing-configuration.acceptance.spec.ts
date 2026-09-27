@@ -688,7 +688,7 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
   }
 });
 
-test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opportunity', async ({
+test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on an Opportunity', async ({
   page,
 }, testInfo) => {
   test.setTimeout(240_000);
@@ -707,6 +707,7 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     'company-pricing-configuration',
     'company-commercial-intake',
     'company-pricing-user',
+    'company-pricing-adjustment',
   ] as const;
   const granted = new Set<(typeof bundles)[number]>();
   try {
@@ -795,14 +796,87 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
       .filter({ has: page.getByLabel(offeringBLabel, { exact: true }) })
       .getByLabel('Quantity', { exact: true })
       .fill('1');
+    const adjustedOffering = panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringALabel, { exact: true }) });
+    await adjustedOffering
+      .getByLabel('Apply a fixed net discount', { exact: true })
+      .check();
+    await adjustedOffering
+      .getByLabel('Net reduction', { exact: true })
+      .fill('0.00');
+    await adjustedOffering
+      .getByLabel('Adjustment reason', { exact: true })
+      .fill('   ');
+    await panel.getByRole('button', { name: 'Calculate and save' }).click();
+    await expect(panel.getByRole('alert')).toHaveText(
+      'Correct the highlighted values and try again.',
+    );
+    await expect(
+      adjustedOffering.getByLabel('Net reduction', { exact: true }),
+    ).toHaveValue('0.00');
+    await expect(
+      adjustedOffering.getByLabel('Adjustment reason', { exact: true }),
+    ).toHaveValue('   ');
+    await adjustedOffering
+      .getByLabel('Net reduction', { exact: true })
+      .fill('8.63');
+    await adjustedOffering
+      .getByLabel('Adjustment reason', { exact: true })
+      .fill('Synthetic browser adjustment proof');
+    const attempts: Array<{ body: string | null; key: string | null }> = [];
+    let loseFirstResponse = true;
+    const snapshotCommand = `**/api/pricing/opportunities/${request.opportunityId}/snapshots`;
+    await page.route(snapshotCommand, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      attempts.push({
+        body: route.request().postData(),
+        key: await route.request().headerValue('idempotency-key'),
+      });
+      if (!loseFirstResponse) return route.continue();
+      loseFirstResponse = false;
+      const response = await route.fetch();
+      expect(response.status()).toBe(201);
+      await route.abort('connectionfailed');
+    });
     await panel.getByRole('button', { name: 'Calculate and save' }).focus();
     await expect(
       panel.getByRole('button', { name: 'Calculate and save' }),
     ).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(panel.getByText('308.64 EUR', { exact: true })).toBeVisible();
-    await expect(panel.getByText('38.08 EUR', { exact: true })).toBeVisible();
-    await expect(panel.getByText('346.72 EUR', { exact: true })).toBeVisible();
+    await expect(panel.getByRole('alert')).toContainText(
+      'The outcome is uncertain',
+    );
+    await expect(
+      adjustedOffering.getByLabel('Net reduction', { exact: true }),
+    ).toBeDisabled();
+    await expect(
+      adjustedOffering.getByLabel('Adjustment reason', { exact: true }),
+    ).toHaveValue('Synthetic browser adjustment proof');
+    await panel
+      .getByRole('button', { name: 'Retry the same calculation' })
+      .click();
+    await expect(panel.getByText('300.01 EUR', { exact: true })).toBeVisible();
+    await expect(panel.getByText('37.02 EUR', { exact: true })).toBeVisible();
+    await expect(panel.getByText('337.03 EUR', { exact: true })).toBeVisible();
+    await expect(
+      panel.getByText('Original net and tax: 308.63 + 38.08 EUR', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText('Net reduction: 8.63 EUR', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText('Adjustment reason: Synthetic browser adjustment proof', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText('Adjusted net and tax: 300.00 + 37.02 EUR', {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(
       panel.getByText(
         `Calculated by Workspace Membership: ${target.workspaceMembershipId}`,
@@ -812,9 +886,12 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     await expect(
       panel.locator('header').getByText('Illustrative and provisional'),
     ).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    await page.unroute(snapshotCommand);
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
-      path: testInfo.outputPath(`pricing-snapshot-created-${suffix}.png`),
+      path: testInfo.outputPath(`pricing-adjustment-created-${suffix}.png`),
       fullPage: true,
     });
 
@@ -827,16 +904,16 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
       .click();
     const reloadedPanel = page.locator('.pricing-snapshot-panel');
     await reloadedPanel
-      .getByRole('button', { name: /Reopen snapshot: 346\.72 EUR/u })
+      .getByRole('button', { name: /Reopen snapshot: 337\.03 EUR/u })
       .click();
     await expect(
-      reloadedPanel.getByText('308.64 EUR', { exact: true }),
+      reloadedPanel.getByText('300.01 EUR', { exact: true }),
     ).toBeVisible();
     await expect(
-      reloadedPanel.getByText('38.08 EUR', { exact: true }),
+      reloadedPanel.getByText('37.02 EUR', { exact: true }),
     ).toBeVisible();
     await expect(
-      reloadedPanel.getByText('346.72 EUR', { exact: true }),
+      reloadedPanel.getByText('337.03 EUR', { exact: true }),
     ).toBeVisible();
     await expect(
       reloadedPanel.getByText(
@@ -850,9 +927,15 @@ test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opport
     await expect(
       reloadedPanel.getByText('1 × 0.0050 EUR/illustrative-unit'),
     ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText(
+        'Adjustment reason: Synthetic browser adjustment proof',
+        { exact: true },
+      ),
+    ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
-      path: testInfo.outputPath(`pricing-snapshot-reopened-${suffix}.png`),
+      path: testInfo.outputPath(`pricing-adjustment-reopened-${suffix}.png`),
       fullPage: true,
     });
   } finally {
@@ -996,6 +1079,7 @@ async function changeAssignment(
       | 'company-commercial-intake'
       | 'company-pricing-configuration'
       | 'company-pricing-user'
+      | 'company-pricing-adjustment'
       | 'company-service-catalogue';
     workspaceMembershipId: string;
     companyId: string;
