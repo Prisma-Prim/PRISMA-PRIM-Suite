@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '../test/render-with-interface-locale';
 import { expect, it } from 'vitest';
 import { PublicWelcome } from './PublicWelcome';
 

@@ -15,7 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { ApplicationSection, FrameContext } from '../ApplicationShell';
-import { prismeCopy as copy } from './prisme.copy';
+import { usePrismeCopy } from './prisme.copy';
 
 export function PrismeMark() {
   return (
@@ -63,6 +63,7 @@ export function PrismeOverview({
   summary?: ReactNode;
   onNavigate: MouseEventHandler<HTMLAnchorElement>;
 }) {
+  const copy = usePrismeCopy();
   return (
     <div className="prisme-overview">
       <section className="prisme-hero" aria-labelledby="prisme-hero-title">

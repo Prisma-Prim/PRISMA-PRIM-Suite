@@ -1,10 +1,10 @@
 import { useId } from 'react';
-import { taskCopy } from '../project/task.copy';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import type {
   AttentionRule,
   MyAttention as AttentionView,
 } from './operational-home-response';
-import { operationalHomeCopy as copy } from './operational-home.copy';
+import { useOperationalHomeCopy } from './operational-home-localized.copy';
 
 type Props = {
   attention: AttentionView;
@@ -22,6 +22,30 @@ export function MyAttention({
   onOpenTask,
   onOpenMyTasks,
 }: Props) {
+  const copy = useOperationalHomeCopy();
+  const { formatDate, formatNumber } = useInterfaceLocale();
+  function ruleLabel(rule: AttentionRule, dueInDays: number | null): string {
+    switch (rule) {
+      case 'overdue':
+        if (dueInDays === null || dueInDays >= 0)
+          throw new Error('Invalid overdue attention label.');
+        return copy.attention.overdueBy(-dueInDays);
+      case 'critical':
+        return copy.attention.critical;
+      case 'blocked':
+        return copy.attention.blocked;
+      case 'due_soon':
+        if (dueInDays === null || dueInDays < 0 || dueInDays > 7)
+          throw new Error('Invalid due-soon attention label.');
+        return dueInDays === 0
+          ? copy.attention.dueToday
+          : copy.attention.dueIn(dueInDays);
+      default: {
+        const exhaustive: never = rule;
+        return exhaustive;
+      }
+    }
+  }
   const titleId = useId();
   return (
     <section className="operational-home-attention" aria-labelledby={titleId}>
@@ -33,14 +57,17 @@ export function MyAttention({
       </header>
       {attention.tasks.length === 0 ? (
         <p className="operational-home-attention-note">
-          {copy.attention.empty({ company: company.displayName, today })}
+          {copy.attention.empty({
+            company: company.displayName,
+            today: formatDate(today),
+          })}
         </p>
       ) : (
         <>
           <p className="operational-home-attention-note">
             {copy.attention.truncated({
-              shown: attention.tasks.length,
-              total: attention.matchingCount,
+              shown: formatNumber(attention.tasks.length),
+              total: formatNumber(attention.matchingCount),
             })}
           </p>
           <ul
@@ -60,13 +87,15 @@ export function MyAttention({
                 <dl>
                   <div>
                     <dt>{copy.attention.state}</dt>
-                    <dd>{taskCopy.states[task.status]}</dd>
+                    <dd>{copy.states[task.status]}</dd>
                   </div>
                   <div>
                     <dt>{copy.attention.dueDate}</dt>
                     <dd>
                       {task.dueDate ? (
-                        <time dateTime={task.dueDate}>{task.dueDate}</time>
+                        <time dateTime={task.dueDate}>
+                          {formatDate(task.dueDate)}
+                        </time>
                       ) : (
                         copy.attention.noDate
                       )}
@@ -106,27 +135,4 @@ export function MyAttention({
       )}
     </section>
   );
-}
-
-function ruleLabel(rule: AttentionRule, dueInDays: number | null): string {
-  switch (rule) {
-    case 'overdue':
-      if (dueInDays === null || dueInDays >= 0)
-        throw new Error('Invalid overdue attention label.');
-      return copy.attention.overdueBy(-dueInDays);
-    case 'critical':
-      return copy.attention.critical;
-    case 'blocked':
-      return copy.attention.blocked;
-    case 'due_soon':
-      if (dueInDays === null || dueInDays < 0 || dueInDays > 7)
-        throw new Error('Invalid due-soon attention label.');
-      return dueInDays === 0
-        ? copy.attention.dueToday
-        : copy.attention.dueIn(dueInDays);
-    default: {
-      const exhaustive: never = rule;
-      return exhaustive;
-    }
-  }
 }

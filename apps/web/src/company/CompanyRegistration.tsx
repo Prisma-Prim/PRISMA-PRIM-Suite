@@ -1,7 +1,7 @@
 import { type FormEvent, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import type { ApiResult } from '../api/authenticated-api-client';
 import {
   resolveIdempotentDisplayNameCommand,
@@ -12,7 +12,7 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { companyRegistrationCopy as copy } from './company-registration.copy';
+import { useCompanyRegistrationCopy } from './company-registration.copy';
 import './company-registration.css';
 
 interface CompanyRecord {
@@ -47,6 +47,8 @@ export function CompanyRegistration({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
+  const copy = useCompanyRegistrationCopy();
+  const { formatDateTime } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
@@ -153,7 +155,7 @@ export function CompanyRegistration({
             request.result.status === 'validation'
               ? {
                   status: 'validation',
-                  message: request.result.message ?? copy.displayNameRequired,
+                  message: copy.displayNameRequired,
                 }
               : { status: 'error' },
           );
@@ -235,7 +237,7 @@ export function CompanyRegistration({
             </div>
             <div>
               <dt>{copy.created}</dt>
-              <dd>{formatApplicationDateTime(state.company.createdAt)}</dd>
+              <dd>{formatDateTime(state.company.createdAt)}</dd>
             </div>
           </dl>
           <p>

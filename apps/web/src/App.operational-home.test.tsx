@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -334,7 +334,7 @@ describe('Operational home through App', () => {
       cardName('overdue_tasks', 1),
     ]);
     expect(summary()).toHaveTextContent(
-      'Counted on 2026-09-27 from the records you can open in PRISMA-PRIM.',
+      'Counted on Sep 27, 2026 from the records you can open in PRISMA-PRIM.',
     );
     expect(server.count(homeRoute)).toBe(1);
     expect(server.count('GET /api/overdue-tasks')).toBe(0);
@@ -391,7 +391,7 @@ describe('Operational home through App', () => {
     expect(summary()).toHaveTextContent('records you can open in BIC.');
     expect(summary()).not.toHaveTextContent('PRISMA-PRIM');
     expect(summary()).toHaveTextContent(
-      'Nothing needs your attention in BIC on 2026-09-27.',
+      'Nothing needs your attention in BIC on Sep 27, 2026.',
     );
     expect(summary()).not.toHaveTextContent(overdueTask.title);
 

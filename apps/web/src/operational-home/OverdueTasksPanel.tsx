@@ -1,15 +1,12 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
-import { formatApplicationCount } from '../presentation/number';
-import { taskCopy } from '../project/task.copy';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   readCompanyOverdueTasks,
   type CompanyOverdueTasks,
 } from './operational-home-response';
-import { operationalHomeCopy } from './operational-home.copy';
-
-const copy = operationalHomeCopy.overdue;
+import { useOperationalHomeCopy } from './operational-home-localized.copy';
 
 type Load =
   | { kind: 'loading' }
@@ -34,6 +31,7 @@ export function OverdueTasksPanel({
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
   onClose: () => void;
 }) {
+  const copy = useOperationalHomeCopy().overdue;
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const pending = useRef<AbortController | undefined>(undefined);
@@ -99,6 +97,9 @@ function OverdueTasks({
   onRetry: () => void;
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
 }) {
+  const localizedCopy = useOperationalHomeCopy();
+  const copy = localizedCopy.overdue;
+  const { formatDate, formatNumber } = useInterfaceLocale();
   switch (load.kind) {
     case 'loading':
       return (
@@ -128,8 +129,8 @@ function OverdueTasks({
           {total > tasks.length && (
             <p className="operational-home-overdue-note">
               {copy.truncated({
-                shown: formatApplicationCount(tasks.length),
-                total: formatApplicationCount(total),
+                shown: formatNumber(tasks.length),
+                total: formatNumber(total),
               })}
             </p>
           )}
@@ -142,11 +143,11 @@ function OverdueTasks({
                 <div>
                   <h4>{task.title}</h4>
                   <p className="operational-home-overdue-state">
-                    <span>{taskCopy.states[task.status]}</span>
+                    <span>{localizedCopy.states[task.status]}</span>
                     <span>
                       {copy.overdueBy({
                         days: task.daysOverdue,
-                        count: formatApplicationCount(task.daysOverdue),
+                        count: formatNumber(task.daysOverdue),
                       })}
                     </span>
                   </p>
@@ -155,7 +156,9 @@ function OverdueTasks({
                   <div>
                     <dt>{copy.dueDate}</dt>
                     <dd>
-                      <time dateTime={task.dueDate}>{task.dueDate}</time>
+                      <time dateTime={task.dueDate}>
+                        {formatDate(task.dueDate)}
+                      </time>
                     </dd>
                   </div>
                   <div>

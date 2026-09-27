@@ -1,4 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+} from '../test/render-with-interface-locale';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { CompanyContextSelector } from './CompanyContextSelector';

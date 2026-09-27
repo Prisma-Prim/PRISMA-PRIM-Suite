@@ -1,7 +1,8 @@
-import { publicWelcomeCopy as copy } from './public-welcome.copy';
+import { usePublicWelcomeCopy } from './public-welcome.copy';
 import './public-welcome.css';
 
 export function PublicWelcome() {
+  const copy = usePublicWelcomeCopy();
   return (
     <main className="public-welcome">
       <header className="public-welcome-brand">
