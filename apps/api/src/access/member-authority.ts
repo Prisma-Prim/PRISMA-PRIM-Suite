@@ -17,6 +17,7 @@ import {
   COMPANY_TASK_MANAGER_BUNDLE,
   commercialIntakePermissionsFor,
   companyDirectorClientPermissionsFor,
+  isDocumentPermissionSetVersion,
   projectPermissionsFor,
   taskPermissionsFor,
 } from './company-permissions.js';
@@ -128,7 +129,7 @@ export async function readMemberAuthority(
         }
         break;
       case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
-        if (assignment.version === 'v1') context = true;
+        if (isDocumentPermissionSetVersion(assignment.version)) context = true;
         break;
       // Captured v1 and v2 both read Projects; null or unknown fail closed.
       case COMPANY_PROJECT_ACCESS_BUNDLE:

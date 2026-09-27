@@ -891,6 +891,124 @@ describe.skipIf(!databaseUrl)(
       expect(await receipts(opportunityId)).toEqual([]);
     });
 
+    it.each(['v1', 'v2', 'v3'] as const)(
+      'accepts Registrar %s as effective Company context when separate Intake read remains live',
+      async (version) => {
+        await grant('ada', MANAGER);
+        const ion = await grant('ion', ['document', 'intake']);
+        await harness.pool.query(
+          `UPDATE company_role_assignments SET permission_set_version = $1
+            WHERE workspace_membership_id = $2
+              AND bundle = 'company_document_registrar' AND revoked_at IS NULL`,
+          [version, ion],
+        );
+        const opportunityId = opportunityOf(await capture('ada'));
+
+        expect(
+          (await candidates(opportunityId)).map(
+            (entry) => entry.workspaceMembershipId,
+          ),
+        ).toContain(ion);
+        await reassigned(opportunityId, {
+          expectedVersion: 1,
+          workspaceMembershipId: ion,
+        });
+
+        await expectUnchanged(opportunityId, ion, 2);
+        expect(await responsibleEvents(opportunityId)).toHaveLength(1);
+        expect(await receipts(opportunityId)).toHaveLength(1);
+      },
+    );
+
+    it('fails closed for null, unknown or revoked Registrar context and never treats Registrar as Intake read', async () => {
+      const ada = await grant('ada', MANAGER);
+      const ion = await grant('ion', ['document', 'intake']);
+      const maria = await grant('maria', ['document']);
+      const opportunityId = opportunityOf(await capture('ada'));
+
+      const initiallyEligible = (await candidates(opportunityId)).map(
+        (entry) => entry.workspaceMembershipId,
+      );
+      expect(initiallyEligible).toContain(ion);
+      expect(initiallyEligible).not.toContain(maria);
+      expect(
+        (
+          await reassign(opportunityId, {
+            expectedVersion: 1,
+            workspaceMembershipId: maria,
+          })
+        ).status,
+      ).toBe(400);
+
+      const [assignment] = (
+        await harness.pool.query<{ id: string }>(
+          `SELECT id FROM company_role_assignments
+            WHERE workspace_membership_id = $1
+              AND bundle = 'company_document_registrar' AND revoked_at IS NULL`,
+          [ion],
+        )
+      ).rows;
+      if (!assignment) throw new Error('Expected a live Registrar assignment.');
+      const [constraint] = (
+        await harness.pool.query<{ definition: string }>(
+          `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+            WHERE conname = 'company_role_assignments_permission_set_version_check'`,
+        )
+      ).rows;
+      if (!constraint) throw new Error('Expected the captured-version check.');
+      await harness.pool.query(
+        'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+      );
+      try {
+        for (const version of [null, 'v4']) {
+          await harness.pool.query(
+            'UPDATE company_role_assignments SET permission_set_version = $1 WHERE id = $2',
+            [version, assignment.id],
+          );
+          expect(
+            (await candidates(opportunityId)).map(
+              (entry) => entry.workspaceMembershipId,
+            ),
+          ).not.toContain(ion);
+          expect(
+            (
+              await reassign(opportunityId, {
+                expectedVersion: 1,
+                workspaceMembershipId: ion,
+              })
+            ).status,
+          ).toBe(400);
+        }
+      } finally {
+        await harness.pool.query(
+          "UPDATE company_role_assignments SET permission_set_version = 'v3' WHERE id = $1",
+          [assignment.id],
+        );
+        await harness.pool.query(
+          `ALTER TABLE company_role_assignments
+             ADD CONSTRAINT company_role_assignments_permission_set_version_check ${constraint.definition}`,
+        );
+      }
+
+      await revoke('document', ion);
+      expect(
+        (await candidates(opportunityId)).map(
+          (entry) => entry.workspaceMembershipId,
+        ),
+      ).not.toContain(ion);
+      expect(
+        (
+          await reassign(opportunityId, {
+            expectedVersion: 1,
+            workspaceMembershipId: ion,
+          })
+        ).status,
+      ).toBe(400);
+      await expectUnchanged(opportunityId, ada);
+      expect(await responsibleEvents(opportunityId)).toEqual([]);
+      expect(await receipts(opportunityId)).toEqual([]);
+    });
+
     it.each(['revocation', 'suspension'] as const)(
       'keeps a responsible actor who loses eligibility by %s on record without access, and lets a manager replace them',
       async (loss) => {
