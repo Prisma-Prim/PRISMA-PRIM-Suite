@@ -1431,6 +1431,192 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/projects/{projectId}/tasks:
+    post:
+      operationId: createProjectTask
+      summary: Create a Task in an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The created Task, or an exact replay of that creation.
+        '409':
+          description: The Project is closed, or the existing Task command conflicts.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProjectClosedConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
+  /api/tasks/{taskId}:
+    patch:
+      operationId: editTask
+      summary: Edit an open Task of an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: The edited Task, an unchanged result, or an exact replay.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
+  /api/tasks/{taskId}/status:
+    post:
+      operationId: changeTaskStatus
+      summary: Change an open Task state in an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The changed Task or an exact replay.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
+  /api/tasks/{taskId}/complete:
+    post:
+      operationId: completeTask
+      summary: Complete an open Task in an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The completed Task or an exact replay.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
+  /api/tasks/{taskId}/cancel:
+    post:
+      operationId: cancelTask
+      summary: Cancel an open Task in an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The cancelled Task or an exact replay.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
+  /api/tasks/{taskId}/reopen:
+    post:
+      operationId: reopenTask
+      summary: Reopen a closed Task in an open Project
+      tags:
+        - Task
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The reopened Task or an exact replay.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
+  /api/documents/{documentId}/project-association:
+    post:
+      operationId: changeDocumentProjectAssociation
+      summary: Link or remove a working Document in an open Project
+      tags:
+        - Document
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: The association receipt or an exact replay.
+        '409':
+          description: The Project is closed, or the association command conflicts.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProjectClosedConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
+  /api/projects/{projectId}/responsible:
+    put:
+      operationId: changeProjectResponsible
+      summary: Set, replace or clear the responsible member of an open Project
+      tags:
+        - Project
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: The responsibility receipt or an exact replay.
+        '409':
+          description: The Project is closed, needs a responsible member, or the command conflicts.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProjectClosedConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
   /api/projects/{projectId}/lifecycle:
     get:
       operationId: readProjectLifecycle
@@ -1470,7 +1656,8 @@ paths:
         Company Project Approver `project.lifecycle.transition` holder with
         Project read and Client read. It reveals no email, count of excluded
         members or exclusion reason. A superseded original Client returns the
-        detail's safe not-found.
+        detail's safe not-found. A completed or cancelled Project also returns
+        the same safe not-found because it has no mutable eligibility.
       tags:
         - Project
       parameters:
@@ -1502,10 +1689,12 @@ paths:
   /api/projects/{projectId}/lifecycle-transitions:
     post:
       operationId: transitionProjectLifecycle
-      summary: Activate, hold or resume a Project at its observed lifecycle revision
+      summary: Transition or close a Project at its observed lifecycle revision
       description: >-
-        Requires a live Company Project Approver v1 `project.lifecycle.transition`
-        plus the Project detail read and Client read. One transaction takes the
+        Activation, hold and resume require a live Company Project Approver v1
+        `project.lifecycle.transition`; completion and cancellation require the
+        same live assignment with `project.close`. Every action also requires
+        Project detail read and Client read. One transaction takes the
         per-actor key lock, checks live authority and visibility, resolves an
         exact replay, locks the original Client identity then relationship and
         the Project row, and checks the revision and state. A commit writes the
@@ -1515,8 +1704,8 @@ paths:
         operational-use fence advance. An exact replay first revalidates live
         authority and visibility and then returns the recorded body without any
         new write. No transition changes a Task, Document association, Request
-        or responsible member. `complete` and `cancel` are not accepted in this
-        slice.
+        or responsible member. Completion and cancellation are refused while
+        any Task is still open.
       tags:
         - Project
       parameters:
@@ -1538,11 +1727,10 @@ paths:
                 $ref: '#/components/schemas/ProjectLifecycleReceipt'
         '400':
           description: >-
-            The key is missing; the action is unknown (including `complete` and
-            `cancel`); a body key is missing or unknown; an identifier, reason,
-            date or declaration value is malformed; a start exception is
-            present with no missing item or absent with one; or the completion
-            member is unavailable.
+            The key is missing; the action is unknown; a body key is missing or
+            unknown; an identifier, reason, note, date or declaration value is
+            malformed; a start exception is present with no missing item or
+            absent with one; or the completion member is unavailable.
         '401':
           description: No verified External Principal is available.
         '403':
@@ -1554,9 +1742,10 @@ paths:
             `project_lifecycle_conflict` for a stale or exhausted revision,
             `project_lifecycle_transition_invalid` for a source status the
             action does not leave, `project_responsible_required` for an
-            activation without a responsible member, or a plain conflict when
-            the Idempotency-Key was already used for another Project, action or
-            body. Nothing is written.
+            activation without a responsible member, `project_open_tasks` when
+            completion or cancellation still has an open Task, or a plain
+            conflict when the Idempotency-Key was already used for another
+            Project, action or body. Nothing is written.
           content:
             application/json:
               schema:
@@ -1668,6 +1857,22 @@ components:
       schema:
         type: string
         format: uuid
+    TaskId:
+      in: path
+      name: taskId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    TaskProjectConflict:
+      description: The Project is closed, or the Task command conflicts.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ProjectClosedConflict'
+              - $ref: '#/components/schemas/GenericConflict'
   schemas:
     OperationalHome:
       type: object
@@ -2715,7 +2920,7 @@ components:
           description: The lifecycle version token; 0 until the first transition.
         mutable:
           type: boolean
-          description: True only while the original Client is active and actively related to the Company.
+          description: True only while the Project is open and its original Client is active and actively related to the Company.
         start:
           description: Null before activation.
           oneOf:
@@ -2779,6 +2984,34 @@ components:
           required:
             - action
             - expectedLifecycleRevision
+            - note
+          properties:
+            action:
+              type: string
+              const: complete
+            expectedLifecycleRevision:
+              $ref: '#/components/schemas/ProjectLifecycleRevision'
+            note:
+              $ref: '#/components/schemas/ProjectReason'
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expectedLifecycleRevision
+            - reason
+          properties:
+            action:
+              type: string
+              const: cancel
+            expectedLifecycleRevision:
+              $ref: '#/components/schemas/ProjectLifecycleRevision'
+            reason:
+              $ref: '#/components/schemas/ProjectReason'
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expectedLifecycleRevision
           properties:
             action:
               type: string
@@ -2808,6 +3041,8 @@ components:
             - activate
             - hold
             - resume
+            - complete
+            - cancel
         from:
           $ref: '#/components/schemas/ProjectStatus'
         to:
@@ -2833,8 +3068,27 @@ components:
             - project_lifecycle_conflict
             - project_lifecycle_transition_invalid
             - project_responsible_required
+            - project_open_tasks
         message:
           type: string
+    ProjectClosedConflict:
+      type: object
+      additionalProperties: false
+      description: The mutation target belongs to a completed or cancelled Project.
+      required:
+        - statusCode
+        - code
+        - message
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        code:
+          type: string
+          const: project_closed
+        message:
+          type: string
+          const: This Project is closed. Its records are read-only.
     ProjectLifecycleChangedActivityEvent:
       type: object
       additionalProperties: false

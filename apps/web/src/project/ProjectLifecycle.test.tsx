@@ -206,6 +206,44 @@ function apply(state: LifecycleValue, body: unknown): LifecycleValue {
           ...state.transitions,
         ],
       };
+    case 'complete':
+      return {
+        ...state,
+        status: 'completed',
+        lifecycleRevision,
+        mutable: false,
+        transitions: [
+          {
+            ...base,
+            action: 'complete',
+            from: 'active',
+            to: 'completed',
+            note:
+              'note' in body && typeof body.note === 'string' ? body.note : '',
+          },
+          ...state.transitions,
+        ],
+      };
+    case 'cancel':
+      return {
+        ...state,
+        status: 'cancelled',
+        lifecycleRevision,
+        mutable: false,
+        transitions: [
+          {
+            ...base,
+            action: 'cancel',
+            from: state.status,
+            to: 'cancelled',
+            reason:
+              'reason' in body && typeof body.reason === 'string'
+                ? body.reason
+                : '',
+          },
+          ...state.transitions,
+        ],
+      };
     default:
       throw new Error('Unexpected action');
   }
@@ -454,6 +492,91 @@ it('keeps an uncertain command for an unchanged retry and never aborts the submi
   expect(boundary.signals).toEqual([undefined, undefined]);
 });
 
+it('completes an active Project with a note and presents the terminal history without actions', async () => {
+  const boundary = server({ state: activeLifecycle });
+  show();
+  fireEvent.click(
+    await within(section()).findByRole('button', { name: 'Complete Project' }),
+  );
+  expect(section()).toHaveTextContent(
+    "Completing makes this Project's Tasks, Documents and responsible member read-only. It cannot be undone in this version.",
+  );
+  fireEvent.change(within(section()).getByLabelText('Completion note'), {
+    target: { value: '  All agreed outcomes were delivered.  ' },
+  });
+  fireEvent.click(
+    within(section()).getByRole('button', { name: 'Complete Project' }),
+  );
+  await waitFor(() =>
+    expect(within(section()).getAllByText('Completed')).not.toHaveLength(0),
+  );
+  expect(boundary.commands().map((call) => call.body)).toEqual([
+    {
+      action: 'complete',
+      expectedLifecycleRevision: 1,
+      note: 'All agreed outcomes were delivered.',
+    },
+  ]);
+  expect(section()).toHaveTextContent(
+    'NoteAll agreed outcomes were delivered.',
+  );
+  expect(
+    within(section()).queryByRole('button', { name: 'Complete Project' }),
+  ).toBeNull();
+  expect(
+    within(section()).queryByRole('button', { name: 'Cancel Project' }),
+  ).toBeNull();
+});
+
+it('keeps the completion note and offers Tasks when the API reports open Tasks', async () => {
+  const onShowTasks = vi.fn();
+  server({
+    state: activeLifecycle,
+    command: () =>
+      Response.json(
+        {
+          statusCode: 409,
+          code: 'project_open_tasks',
+          message: 'Complete or cancel every open Task of this Project first.',
+        },
+        { status: 409 },
+      ),
+  });
+  show({
+    actor: {
+      ...approver,
+      activeCompany: {
+        ...approverCompany,
+        taskPermissionSetVersion: 'v1',
+        taskPermissionAssignmentId: 'task-assignment',
+        taskPermissions: ['task.read'],
+      },
+    },
+    onShowTasks,
+  });
+  fireEvent.click(
+    await within(section()).findByRole('button', { name: 'Complete Project' }),
+  );
+  fireEvent.change(within(section()).getByLabelText('Completion note'), {
+    target: { value: 'Delivery accepted.' },
+  });
+  fireEvent.click(
+    within(section()).getByRole('button', { name: 'Complete Project' }),
+  );
+  expect(
+    await within(section()).findByText(
+      'Complete or cancel every open Task of this Project first.',
+    ),
+  ).toBeInTheDocument();
+  expect(within(section()).getByLabelText('Completion note')).toHaveValue(
+    'Delivery accepted.',
+  );
+  fireEvent.click(
+    within(section()).getByRole('button', { name: 'Show Tasks' }),
+  );
+  expect(onShowTasks).toHaveBeenCalledTimes(1);
+});
+
 it.each([
   [
     'project_lifecycle_conflict',
@@ -520,6 +643,28 @@ it('explains read-only lifecycle under a superseded original Client and offers n
   ).toBeInTheDocument();
   expect(
     within(section()).queryByRole('button', { name: 'Put on hold' }),
+  ).toBeNull();
+});
+
+it('keeps ordinary lifecycle actions separate from Project closure authority', async () => {
+  server({ state: activeLifecycle });
+  show({
+    actor: {
+      ...approver,
+      activeCompany: {
+        ...approverCompany,
+        projectApproverPermissions: ['project.lifecycle.transition'],
+      },
+    },
+  });
+  expect(
+    await within(section()).findByRole('button', { name: 'Put on hold' }),
+  ).toBeInTheDocument();
+  expect(
+    within(section()).queryByRole('button', { name: 'Complete Project' }),
+  ).toBeNull();
+  expect(
+    within(section()).queryByRole('button', { name: 'Cancel Project' }),
   ).toBeNull();
 });
 

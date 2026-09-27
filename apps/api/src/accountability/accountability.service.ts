@@ -234,8 +234,11 @@ export class AccountabilityService {
         action: transition.action,
         fromStatus: transition.from,
         toStatus: transition.to,
-        reason: transition.action === 'hold' ? transition.reason : null,
-        note: null,
+        reason:
+          transition.action === 'hold' || transition.action === 'cancel'
+            ? transition.reason
+            : null,
+        note: transition.action === 'complete' ? transition.note : null,
         actorInternalUserId: input.actor.internalUserId,
         actorMembershipId: input.actor.workspaceMembershipId,
         actorDisplayName: input.actor.displayName,

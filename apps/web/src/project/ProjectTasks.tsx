@@ -9,9 +9,14 @@ import {
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
+  conflictCode,
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import {
+  isClosedProjectStatus,
+  type ProjectStatus,
+} from './project-lifecycle-response';
 import {
   isOpenTaskState,
   readAssignees,
@@ -50,6 +55,8 @@ type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   projectId: string | null;
+  projectStatus: ProjectStatus | null;
+  onProjectChanged?: () => void | Promise<void>;
   onActivityRecorded?: () => void | Promise<void>;
   /** Opens this Task of the selected Project as choosing its row would; each new request id once. */
   requestedTask?: RequestedTask;
@@ -247,6 +254,7 @@ export function ProjectTasks(props: Props) {
 }
 function TaskProjects(props: Props) {
   const [projects, setProjects] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState(new Map<string, ProjectStatus>());
   /** A request present when these Tasks mount was made under an earlier authority and never replays. */
   const retiredTaskRequest = useRef(props.requestedTask?.requestId);
   const requestedTask =
@@ -255,6 +263,7 @@ function TaskProjects(props: Props) {
       : props.requestedTask;
   useEffect(() => {
     setProjects(props.projectId ? [props.projectId] : []);
+    setStatuses(new Map());
   }, [props.identity]);
   useEffect(() => {
     if (props.projectId) {
@@ -264,11 +273,22 @@ function TaskProjects(props: Props) {
       );
     }
   }, [props.projectId]);
+  useEffect(() => {
+    const projectId = props.projectId;
+    const projectStatus = props.projectStatus;
+    if (!projectId || !projectStatus) return;
+    setStatuses((current) => {
+      const next = new Map(current);
+      next.set(projectId, projectStatus);
+      return next;
+    });
+  }, [props.projectId, props.projectStatus]);
   return projects.map((projectId) => (
     <div key={projectId} hidden={props.projectId !== projectId}>
       <TaskProject
         {...props}
         projectId={projectId}
+        projectStatus={statuses.get(projectId) ?? null}
         requestedTask={
           props.projectId === projectId ? requestedTask : undefined
         }
@@ -285,6 +305,8 @@ function TaskProject({
   actor,
   identity,
   projectId,
+  projectStatus,
+  onProjectChanged,
   onActivityRecorded,
   requestedTask,
 }: Props & { projectId: string }) {
@@ -322,10 +344,13 @@ function TaskProject({
       actor.activeCompany.clientPermissions?.includes('client.read'));
   const canManage =
     canRead && actor.activeCompany?.taskPermissions?.includes('task.manage');
+  const projectClosed =
+    projectStatus !== null && isClosedProjectStatus(projectStatus);
   const busy = mutation.kind === 'pending';
   const current = detail?.kind === 'ready' ? detail : null;
   const mutable =
-    current?.mutable ?? (load.kind === 'ready' && load.listing.mutable);
+    !projectClosed &&
+    (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
   const normalizedTaskSearch = taskSearch.trim().toLowerCase();
@@ -458,6 +483,7 @@ function TaskProject({
     setMembers(null);
     if (
       canManage &&
+      !projectClosed &&
       listing.mutable &&
       (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
     ) {
@@ -572,6 +598,14 @@ function TaskProject({
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
+        if (
+          result.status === 'conflict' &&
+          conflictCode(result) === 'project_closed'
+        ) {
+          setFeedback(copy.closedRefusal);
+          setMutation({ kind: 'blocked' });
+          return;
+        }
         setFeedback(
           result.status === 'conflict' ? copy.conflict : copy.rejected,
         );
@@ -754,7 +788,12 @@ function TaskProject({
         <button
           type="button"
           disabled={busy}
-          onClick={() => void open(selected, { reload: true })}
+          onClick={() =>
+            void Promise.all([
+              open(selected, { reload: true }),
+              onProjectChanged?.(),
+            ])
+          }
         >
           {selected ? copy.reloadDetail : copy.reload}
         </button>
@@ -770,7 +809,11 @@ function TaskProject({
       )}
       {load.kind === 'ready' && (
         <>
-          {!mutable && <p className="task-notice">{copy.immutable}</p>}
+          {!mutable && (
+            <p className="task-notice">
+              {projectClosed ? copy.closedReadOnly : copy.immutable}
+            </p>
+          )}
           <div className="task-layout">
             <nav aria-label={copy.title}>
               {load.listing.tasks.length === 0 && <p>{copy.empty}</p>}

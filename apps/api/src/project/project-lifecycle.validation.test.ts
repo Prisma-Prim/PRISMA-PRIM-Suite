@@ -73,6 +73,28 @@ describe('Project lifecycle command', () => {
     expect(
       lifecycleCommand({ action: 'resume', expectedLifecycleRevision: 2 }),
     ).toEqual({ action: 'resume', expectedLifecycleRevision: 2 });
+    expect(
+      lifecycleCommand({
+        action: 'complete',
+        expectedLifecycleRevision: 3,
+        note: '  Final report delivered.  ',
+      }),
+    ).toEqual({
+      action: 'complete',
+      expectedLifecycleRevision: 3,
+      note: 'Final report delivered.',
+    });
+    expect(
+      lifecycleCommand({
+        action: 'cancel',
+        expectedLifecycleRevision: 3,
+        reason: '  Client withdrew the request.  ',
+      }),
+    ).toEqual({
+      action: 'cancel',
+      expectedLifecycleRevision: 3,
+      reason: 'Client withdrew the request.',
+    });
   });
 
   it.each([
@@ -83,9 +105,13 @@ describe('Project lifecycle command', () => {
     {},
     { action: 'resume' },
     { expectedLifecycleRevision: 0 },
-    // Completion and cancellation are not commanded in this slice.
-    { action: 'complete', expectedLifecycleRevision: 1, note: 'Done' },
-    { action: 'cancel', expectedLifecycleRevision: 1, reason: 'Stopped' },
+    { action: 'complete', expectedLifecycleRevision: 1 },
+    { action: 'complete', expectedLifecycleRevision: 1, note: '   ' },
+    { action: 'complete', expectedLifecycleRevision: 1, note: 'x'.repeat(501) },
+    { action: 'complete', expectedLifecycleRevision: 1, reason: 'Done' },
+    { action: 'cancel', expectedLifecycleRevision: 1 },
+    { action: 'cancel', expectedLifecycleRevision: 1, reason: '   ' },
+    { action: 'cancel', expectedLifecycleRevision: 1, note: 'Stopped' },
     { action: 'archive', expectedLifecycleRevision: 1 },
     { action: 'resume', expectedLifecycleRevision: -1 },
     { action: 'resume', expectedLifecycleRevision: 1.5 },

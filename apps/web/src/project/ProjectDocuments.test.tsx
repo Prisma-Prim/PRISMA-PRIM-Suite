@@ -10,7 +10,17 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { ProjectDocuments } from './ProjectDocuments';
+import { ProjectDocuments as ProjectDocumentsComponent } from './ProjectDocuments';
+import type { ProjectStatus } from './project-lifecycle-response';
+
+function ProjectDocuments({
+  projectStatus = 'preparatory',
+  ...props
+}: Omit<Parameters<typeof ProjectDocumentsComponent>[0], 'projectStatus'> & {
+  projectStatus?: ProjectStatus;
+}) {
+  return <ProjectDocumentsComponent projectStatus={projectStatus} {...props} />;
+}
 const actor: ActorContext = {
   internalUserId: 'owner',
   workspaceMembershipId: 'member',
@@ -136,6 +146,78 @@ function headings() {
     .map((heading) => heading.textContent);
 }
 afterEach(() => vi.unstubAllGlobals());
+
+it('keeps linked Documents readable and hides association controls for a closed Project', async () => {
+  const { fetcher } = selectorFixture(eligibleRows);
+  render(
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      projectStatus="completed"
+    />,
+  );
+  expect(
+    await screen.findByRole('heading', { name: linkedDocument.title }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Open external reference' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Attach working Document' }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole('button', {
+      name: `Remove ${linkedDocument.title}`,
+    }),
+  ).toBeNull();
+  expect(
+    fetcher.mock.calls.some(([url]) =>
+      String(url).endsWith('/eligible-documents'),
+    ),
+  ).toBe(false);
+});
+
+it('keeps the Document search draft and requires a Project reload when closure wins the command race', async () => {
+  const onProjectChanged = vi.fn();
+  selectorFixture(eligibleRows, () =>
+    Response.json(
+      {
+        statusCode: 409,
+        code: 'project_closed',
+        message: 'This Project is closed. Its records are read-only.',
+      },
+      { status: 409 },
+    ),
+  );
+  render(
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      onProjectChanged={onProjectChanged}
+    />,
+  );
+  await openSelector();
+  search('site visit');
+  fireEvent.click(
+    screen.getByRole('button', { name: `Attach ${siteVisit.title}` }),
+  );
+  expect(
+    await screen.findByText(
+      'This Project was closed. Reload to see its current state.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText(searchLabel)).toHaveValue('site visit');
+  expect(
+    screen.getByRole('button', { name: `Attach ${siteVisit.title}` }),
+  ).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reload working Documents' }),
+  );
+  expect(onProjectChanged).toHaveBeenCalledTimes(1);
+});
+
 it('presents real Project Documents in Prisme while preserving the Classic public markup', async () => {
   vi.stubGlobal(
     'fetch',

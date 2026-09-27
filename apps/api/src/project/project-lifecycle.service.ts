@@ -15,11 +15,15 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  clientAccounts,
   projectLifecycleCommands,
   projectLifecycleTransitions,
   projectStartDeclarations,
   projects,
 } from '../database/schema/index.js';
+import { ProjectOpenTaskQuery } from '../task/project-open-task.query.js';
+import { ProjectClosedGuard } from './project-closed.guard.js';
+import { isOpenProjectStatus } from './project-status.js';
 import {
   COMMANDED_PROJECT_LIFECYCLE_ACTIONS,
   PROJECT_LIFECYCLE_TRANSITIONS,
@@ -43,6 +47,7 @@ const TRANSITION_PAGE_SIZE = 50;
 type LifecycleConflictCode =
   | 'project_lifecycle_conflict'
   | 'project_lifecycle_transition_invalid'
+  | 'project_open_tasks'
   | 'project_responsible_required';
 
 /**
@@ -59,6 +64,8 @@ export class ProjectLifecycleService {
     private readonly access: ProjectResponsibleAccessService,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
+    private readonly closedProjects: ProjectClosedGuard,
+    private readonly openTasks: ProjectOpenTaskQuery,
   ) {}
 
   /** Any Project detail reader. Writes nothing. */
@@ -99,7 +106,7 @@ export class ProjectLifecycleService {
         return {
           status: row.status,
           lifecycleRevision: row.lifecycleRevision,
-          mutable: clientActive,
+          mutable: clientActive && isOpenProjectStatus(row.status),
           start: start ? startView(start) : null,
           transitions: transitions.map((transition) =>
             transitionView(transition, start),
@@ -119,12 +126,18 @@ export class ProjectLifecycleService {
       async () => {
         const companyId =
           await this.authorization.requireProjectLifecycleTransition(actor);
-        const { clientActive } = await this.visible(
+        const { row, clientActive } = await this.visible(
           actor,
           companyId,
           projectId,
         );
         if (!clientActive) throw new NotFoundException();
+        await this.closedProjects.requireOpen({
+          actor,
+          companyId,
+          projectId: row.id,
+          closedAs: 'not_found',
+        });
         return { members: await this.access.eligibleMembers(actor) };
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -142,8 +155,14 @@ export class ProjectLifecycleService {
     return this.database.transaction(async () => {
       await this.lockCommand(actor, idempotencyKey);
       const companyId =
-        await this.authorization.requireProjectLifecycleTransition(actor, true);
-      const { row: visible } = await this.visible(actor, companyId, projectId);
+        command.action === 'complete' || command.action === 'cancel'
+          ? await this.authorization.requireProjectClose(actor, true)
+          : await this.authorization.requireProjectLifecycleTransition(
+              actor,
+              true,
+            );
+      const { row: visible, clientVersion: observedClientVersion } =
+        await this.visible(actor, companyId, projectId);
       const fingerprint = JSON.stringify({ companyId, projectId, ...command });
       // An exact replay is resolved after live authority and visibility, and
       // before its old expected revision could be rejected as stale.
@@ -151,7 +170,7 @@ export class ProjectLifecycleService {
       if (replay) return replay;
       // Client identity before its relationship, then the Project row: the
       // order responsibility, Task and Document commands already use.
-      await this.clients.lockActiveReferenceClient(
+      const lockedClient = await this.clients.lockActiveReferenceClient(
         actor,
         visible.clientAccountId,
       );
@@ -174,6 +193,26 @@ export class ProjectLifecycleService {
         throw lifecycleConflict(
           'project_responsible_required',
           'Name a responsible member before activating this Project.',
+        );
+      if (
+        (transition.action === 'complete' || transition.action === 'cancel') &&
+        (await this.openTasks.exists({
+          workspaceId: actor.workspaceId,
+          companyId,
+          projectId,
+        }))
+      )
+        throw lifecycleConflict(
+          'project_open_tasks',
+          'Complete or cancel every open Task of this Project first.',
+        );
+      if (
+        (transition.action === 'complete' || transition.action === 'cancel') &&
+        lockedClient.version !== observedClientVersion
+      )
+        throw lifecycleConflict(
+          'project_lifecycle_conflict',
+          'The Project lifecycle changed. Reload before choosing another action.',
         );
       if (current.lifecycleRevision >= MAX_REVISION)
         throw lifecycleConflict(
@@ -254,13 +293,31 @@ export class ProjectLifecycleService {
     actor: ActorContext,
     companyId: string,
     projectId: string,
-  ): Promise<{ row: ProjectRow; clientActive: boolean }> {
+  ): Promise<{
+    row: ProjectRow;
+    clientActive: boolean;
+    clientVersion: number;
+  }> {
     const row = await this.row(actor, companyId, projectId, false);
     const client = await this.clients.readReferenceClient(
       actor,
       row.clientAccountId,
     );
-    return { row, clientActive: client.status === 'active' };
+    const [clientRevision] = await this.database.connection
+      .select({ version: clientAccounts.version })
+      .from(clientAccounts)
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          eq(clientAccounts.id, row.clientAccountId),
+        ),
+      );
+    if (!clientRevision) throw new NotFoundException();
+    return {
+      row,
+      clientActive: client.status === 'active',
+      clientVersion: clientRevision.version,
+    };
   }
 
   private async row(
@@ -368,6 +425,18 @@ function transitionFor(
       const { from: sources, to } = PROJECT_LIFECYCLE_TRANSITIONS.resume;
       return isSource(sources, from)
         ? { action: command.action, from, to }
+        : undefined;
+    }
+    case 'complete': {
+      const { from: sources, to } = PROJECT_LIFECYCLE_TRANSITIONS.complete;
+      return isSource(sources, from)
+        ? { action: command.action, from, to, note: command.note }
+        : undefined;
+    }
+    case 'cancel': {
+      const { from: sources, to } = PROJECT_LIFECYCLE_TRANSITIONS.cancel;
+      return isSource(sources, from)
+        ? { action: command.action, from, to, reason: command.reason }
         : undefined;
     }
     default: {

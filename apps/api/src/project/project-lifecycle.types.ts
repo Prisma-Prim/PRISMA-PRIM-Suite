@@ -43,11 +43,13 @@ export const PROJECT_LIFECYCLE_TRANSITIONS = {
   }
 >;
 
-/** The actions this slice commands; completion and cancellation follow in #407. */
+/** Every Project lifecycle action commanded by the delivered API. */
 export const COMMANDED_PROJECT_LIFECYCLE_ACTIONS = [
   'activate',
   'hold',
   'resume',
+  'complete',
+  'cancel',
 ] as const satisfies readonly ProjectLifecycleAction[];
 export type CommandedProjectLifecycleAction =
   (typeof COMMANDED_PROJECT_LIFECYCLE_ACTIONS)[number];
@@ -126,13 +128,22 @@ export type ProjectLifecycleCommand =
       startException: StartExceptionCommand | null;
     }
   | { action: 'hold'; expectedLifecycleRevision: number; reason: string }
-  | { action: 'resume'; expectedLifecycleRevision: number };
+  | { action: 'resume'; expectedLifecycleRevision: number }
+  | { action: 'complete'; expectedLifecycleRevision: number; note: string }
+  | { action: 'cancel'; expectedLifecycleRevision: number; reason: string };
 
-/** One committed transition of this slice, as the Activity record stores it. */
+/** One committed transition, as the Activity record stores it. */
 export type ProjectLifecycleTransitionRecord =
   | { action: 'activate'; from: 'preparatory'; to: 'active' }
   | { action: 'hold'; from: 'active'; to: 'on_hold'; reason: string }
-  | { action: 'resume'; from: 'on_hold'; to: 'active' };
+  | { action: 'resume'; from: 'on_hold'; to: 'active' }
+  | { action: 'complete'; from: 'active'; to: 'completed'; note: string }
+  | {
+      action: 'cancel';
+      from: 'preparatory' | 'active' | 'on_hold';
+      to: 'cancelled';
+      reason: string;
+    };
 
 export interface ProjectLifecycleReceipt {
   projectId: string;

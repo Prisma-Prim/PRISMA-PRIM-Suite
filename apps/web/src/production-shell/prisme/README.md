@@ -109,6 +109,10 @@ The Project cards and the detail header show the lifecycle status as the `/ui-ba
 Status pill, and detail mounts the `ProjectLifecycle` section above the responsible
 member in both frames (#406).
 
+Issue #407 adds explicit completion and cancellation, shows open Projects by default
+with an **Include closed Projects** filter, and keeps a selected closed Project's
+history visible while its Task, Document and responsible-member controls are read-only.
+
 `ProjectTasks` and `TaskPresentation` continue to own the existing manual Task list,
 detail, draft, mutation, reload and history contracts. Prisme adds only local cards,
 fine borders, action hierarchy and visible focus treatment. It does not reinterpret

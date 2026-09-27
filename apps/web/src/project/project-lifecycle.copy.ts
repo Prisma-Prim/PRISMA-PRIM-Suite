@@ -89,6 +89,8 @@ export const projectLifecycleCopy = {
   note: 'Note',
   readOnly:
     'Read-only: the original Client has been superseded. The lifecycle remains visible.',
+  closedReadOnly:
+    'Read-only: this Project is closed. Its lifecycle history remains visible.',
   activate: 'Activate Project',
   activateTitle: 'Start declaration',
   activateHint:
@@ -117,6 +119,19 @@ export const projectLifecycleCopy = {
   resumeConfirmation:
     'Resume this Project? Its Tasks, Documents and responsible member stay unchanged.',
   confirmResume: 'Confirm resumption',
+  complete: 'Complete Project',
+  completeTitle: 'Complete Project',
+  completionNoteLabel: 'Completion note',
+  confirmComplete: 'Complete Project',
+  cancelProject: 'Cancel Project',
+  cancelTitle: 'Cancel Project',
+  cancellationReasonLabel: 'Cancellation reason',
+  confirmCancel: 'Cancel Project',
+  closureConfirmation: (action: 'Completing' | 'Cancelling') =>
+    `${action} makes this Project's Tasks, Documents and responsible member read-only. It cannot be undone in this version.`,
+  openTasks: 'Complete or cancel every open Task of this Project first.',
+  showTasks: 'Show Tasks',
+  closureTextValidation: 'Enter 1–500 characters.',
   cancel: 'Cancel',
   saving: 'Saving the lifecycle change…',
   saved: 'Project lifecycle updated.',

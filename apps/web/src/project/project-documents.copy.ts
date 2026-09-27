@@ -13,11 +13,13 @@ export const projectDocumentsCopy = {
     'Project, Document and Client read access are required to view these Documents.',
   immutable:
     'The original Client is no longer active. Existing attachments are read-only.',
+  closedReadOnly: 'This Project is closed. Existing attachments are read-only.',
   error: 'Working Documents could not be loaded. Reload to try again.',
   uncertain:
     'The result is uncertain. Retry this same command or reload before choosing another action.',
   conflict:
     'The association changed or this command is no longer valid. Reload before choosing another action.',
+  closedRefusal: 'This Project was closed. Reload to see its current state.',
   confirmed: 'Command confirmed. The list below is refreshed separately.',
   reload: 'Reload working Documents',
   choose: 'Attach working Document',

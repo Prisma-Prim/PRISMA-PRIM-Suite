@@ -64,6 +64,85 @@ const validProject = {
   createdAt: '2026-09-19T08:00:00.000Z',
 };
 
+it('shows open Projects by default, includes closed Projects on request and resets that filter after external navigation', async () => {
+  const completedProject = {
+    ...validProject,
+    id: 'completed-project',
+    title: 'Completed assessment',
+    status: 'completed',
+  };
+  stubFetch(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [validProject, completedProject],
+      ),
+    ),
+  );
+  const identity = deterministicBrowserIdentity();
+  const view = render(<ProjectWorkspace actor={actor} identity={identity} />);
+
+  expect(
+    await screen.findByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', {
+      name: 'Completed assessment Client: Synthetic Client',
+    }),
+  ).toBeNull();
+
+  fireEvent.click(screen.getByLabelText('Include closed Projects'));
+  expect(
+    screen.getByRole('button', {
+      name: 'Completed assessment Client: Synthetic Client',
+    }),
+  ).toBeInTheDocument();
+
+  view.rerender(
+    <ProjectWorkspace
+      actor={actor}
+      identity={identity}
+      projectOpenRequestId={1}
+    />,
+  );
+  await waitFor(() =>
+    expect(screen.getByLabelText('Include closed Projects')).not.toBeChecked(),
+  );
+  expect(
+    screen.queryByRole('button', {
+      name: 'Completed assessment Client: Synthetic Client',
+    }),
+  ).toBeNull();
+});
+
+it('explains when only closed Projects exist', async () => {
+  stubFetch(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: 'Synthetic Client' }]
+          : [{ ...validProject, status: 'cancelled' }],
+      ),
+    ),
+  );
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  expect(
+    await screen.findByText(
+      'No open Projects. Include closed Projects to see completed and cancelled ones.',
+    ),
+  ).toBeInTheDocument();
+});
+
 it('reports the existing load error when a listed Project carries a non-instant registration time', async () => {
   document.documentElement.lang = 'en';
   stubFetch(

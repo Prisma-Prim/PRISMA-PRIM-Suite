@@ -23,6 +23,7 @@ import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { taskCopy } from './task.copy';
 import {
+  isClosedProjectStatus,
   isProjectStatus,
   type ProjectStatus,
 } from './project-lifecycle-response';
@@ -87,6 +88,7 @@ export function ProjectWorkspace({
   onOpenClientDossier,
   onOpenDocument,
   requestedProject,
+  projectOpenRequestId = 0,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -102,12 +104,15 @@ export function ProjectWorkspace({
    * choosing that Task's row would; each new request id once.
    */
   requestedProject?: { projectId: string; taskId?: string; requestId: number };
+  /** Increases whenever another section asks to open Projects. */
+  projectOpenRequestId?: number;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<SelectedProject | null>(null);
+  const [includeClosed, setIncludeClosed] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>({
     kind: 'text',
     query: '',
@@ -161,6 +166,9 @@ export function ProjectWorkspace({
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany.clientPermissions?.includes('client.read'));
+  useEffect(() => {
+    setIncludeClosed(false);
+  }, [projectOpenRequestId]);
   /**
    * Access denial retires the loaded rows and the opened Project, whose
    * current detail read stops with it. A list read, detail read or
@@ -601,9 +609,15 @@ export function ProjectWorkspace({
   const restrictionAwaitsRead = rowsAwaitRead && filter.kind === 'client';
   const normalizedQuery =
     filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
+  const projectsInStatusView =
+    load.kind === 'ready'
+      ? load.projects.filter(
+          (project) => includeClosed || !isClosedProjectStatus(project.status),
+        )
+      : [];
   const filteredProjects =
     load.kind === 'ready' && !restrictionAwaitsRead
-      ? load.projects.filter((project) =>
+      ? projectsInStatusView.filter((project) =>
           filter.kind === 'client'
             ? project.clientDossierId === filter.clientDossierId
             : normalizedQuery.length === 0 ||
@@ -652,27 +666,41 @@ export function ProjectWorkspace({
         <>
           {load.projects.length === 0 && <p>{copy.empty}</p>}
           {load.projects.length > 0 && (
-            <label className="project-search">
-              {copy.searchLabel}
-              <input
-                type="search"
-                value={
-                  filter.kind === 'client' ? filter.displayName : filter.query
-                }
-                placeholder={copy.searchPlaceholder}
-                onChange={(event) =>
-                  setFilter({ kind: 'text', query: event.target.value })
-                }
-                disabled={pending}
-              />
-            </label>
+            <>
+              <label className="project-closed-filter">
+                <input
+                  type="checkbox"
+                  checked={includeClosed}
+                  disabled={pending}
+                  onChange={(event) => setIncludeClosed(event.target.checked)}
+                />
+                {copy.includeClosed}
+              </label>
+              <label className="project-search">
+                {copy.searchLabel}
+                <input
+                  type="search"
+                  value={
+                    filter.kind === 'client' ? filter.displayName : filter.query
+                  }
+                  placeholder={copy.searchPlaceholder}
+                  onChange={(event) =>
+                    setFilter({ kind: 'text', query: event.target.value })
+                  }
+                  disabled={pending}
+                />
+              </label>
+            </>
           )}
+          {!includeClosed &&
+            load.projects.length > 0 &&
+            projectsInStatusView.length === 0 && <p>{copy.noOpen}</p>}
           {refreshFailed ? (
             <p role="alert">{copy.error}</p>
           ) : restrictionAwaitsRead ? (
             <p role="status">{copy.loading}</p>
           ) : (
-            load.projects.length > 0 &&
+            projectsInStatusView.length > 0 &&
             filteredProjects.length === 0 && (
               <p className="project-no-matches">{copy.noMatches}</p>
             )
@@ -782,6 +810,11 @@ export function ProjectWorkspace({
               {selected.project.status === 'preparatory' && (
                 <p className="project-warning">{copy.warning}</p>
               )}
+              {isClosedProjectStatus(selected.project.status) && (
+                <p className="project-closed-notice" role="status">
+                  {copy.closedNotice(selected.project.status)}
+                </p>
+              )}
               {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={dossierTarget}
@@ -804,6 +837,11 @@ export function ProjectWorkspace({
               {selected.project.status === 'preparatory' && (
                 <p className="project-warning">{copy.warning}</p>
               )}
+              {isClosedProjectStatus(selected.project.status) && (
+                <p className="project-closed-notice" role="status">
+                  {copy.closedNotice(selected.project.status)}
+                </p>
+              )}
               {dossierTarget && onOpenClientDossier && (
                 <ClientDossierButton
                   clientDossierId={dossierTarget}
@@ -822,12 +860,20 @@ export function ProjectWorkspace({
                 : undefined
             }
             onProjectChanged={() => reloadDetail(selected.project.id)}
+            onShowTasks={() => {
+              setDetailPanel('tasks');
+              window.requestAnimationFrame(() =>
+                document.getElementById('project-tasks-panel')?.focus(),
+              );
+            }}
             onActivityRecorded={onActivityRecorded}
           />
           <ProjectResponsible
             actor={actor}
             identity={identity}
             projectId={selected.project.id}
+            projectStatus={selected.project.status}
+            onProjectChanged={() => reloadDetail(selected.project.id)}
             onActivityRecorded={onActivityRecorded}
             onResponsibleRead={(projectId, responsible) =>
               setResponsibleRead(
@@ -874,6 +920,8 @@ export function ProjectWorkspace({
               actor={actor}
               identity={identity}
               projectId={selected.project.id}
+              projectStatus={selected.project.status}
+              onProjectChanged={() => reloadDetail(selected.project.id)}
               onActivityRecorded={onActivityRecorded}
               onOpenDocument={onOpenDocument}
             />
@@ -886,11 +934,16 @@ export function ProjectWorkspace({
         role={isPrisme ? 'tabpanel' : undefined}
         aria-labelledby={isPrisme ? 'project-tasks-tab' : undefined}
         hidden={isPrisme && (!selected || detailPanel !== 'tasks')}
+        tabIndex={-1}
       >
         <ProjectTasks
           actor={actor}
           identity={identity}
           projectId={selected?.project.id ?? null}
+          projectStatus={selected?.project.status ?? null}
+          onProjectChanged={
+            selected ? () => reloadDetail(selected.project.id) : undefined
+          }
           onActivityRecorded={onActivityRecorded}
           requestedTask={selected?.requestedTask}
         />

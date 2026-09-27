@@ -31,6 +31,8 @@ import {
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { taskCommands, tasks } from '../database/schema/index.js';
+import { ProjectClosedGuard } from '../project/project-closed.guard.js';
+import { isOpenProjectStatus } from '../project/project-status.js';
 import { ProjectService } from '../project/project.service.js';
 import {
   assignedTasksQuery,
@@ -70,6 +72,7 @@ export class TaskService {
     private readonly database: DatabaseContext,
     private readonly access: TaskAccessService,
     private readonly projects: ProjectService,
+    private readonly closedProjects: ProjectClosedGuard,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
@@ -95,7 +98,11 @@ export class TaskService {
             ),
           )
           .orderBy(asc(tasks.createdAt), asc(tasks.id));
-        return { mutable: client.status === 'active', tasks: rows.map(view) };
+        return {
+          mutable:
+            client.status === 'active' && isOpenProjectStatus(project.status),
+          tasks: rows.map(view),
+        };
       },
       { isolationLevel: 'repeatable read' },
     );
@@ -313,13 +320,19 @@ export class TaskService {
     const projectId = requireUuid(projectIdValue);
     return this.database.transaction(
       async () => {
-        await this.access.requireActor(actor, true);
+        const companyId = await this.access.requireActor(actor, true);
         const project = await this.projects.read(actor, projectId);
         const client = await this.clients.readReferenceClient(
           actor,
           project.clientAccountId,
         );
         if (client.status !== 'active') throw new NotFoundException();
+        await this.closedProjects.requireOpen({
+          actor,
+          companyId,
+          projectId,
+          closedAs: 'not_found',
+        });
         return { members: await this.access.eligibleMembers(actor) };
       },
       { isolationLevel: 'repeatable read' },
@@ -331,11 +344,16 @@ export class TaskService {
       async () => {
         await this.access.requireActor(actor);
         const task = await this.visibleRow(actor, taskId);
+        const project = await this.projects.read(actor, task.projectId);
         const client = await this.clients.readReferenceClient(
           actor,
           task.clientAccountId,
         );
-        return { mutable: client.status === 'active', task: view(task) };
+        return {
+          mutable:
+            client.status === 'active' && isOpenProjectStatus(project.status),
+          task: view(task),
+        };
       },
       { isolationLevel: 'repeatable read' },
     );
@@ -377,6 +395,11 @@ export class TaskService {
         await this.visibleRow(actor, replay.id);
         return replay;
       }
+      await this.clients.lockActiveReferenceClient(
+        actor,
+        project.clientAccountId,
+      );
+      await this.closedProjects.requireOpen({ actor, companyId, projectId });
       const assignee = input.assigneeMembershipId
         ? await this.access.requireEligibleMember(
             actor,
@@ -504,6 +527,11 @@ export class TaskService {
         actor,
         visible.clientAccountId,
       );
+      await this.closedProjects.requireOpen({
+        actor,
+        companyId,
+        projectId: visible.projectId,
+      });
       const current = await this.row(actor, taskId, true);
       const occurredAt = new Date();
       const change =

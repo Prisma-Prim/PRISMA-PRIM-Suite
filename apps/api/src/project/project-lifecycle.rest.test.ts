@@ -18,6 +18,8 @@ const assignments = {
   project: '/company-project-assignments',
   task: '/company-task-manager-assignments',
   approver: '/company-project-approver-assignments',
+  document: '/company-document-registrar-assignments',
+  organizer: '/company-document-project-organizer-assignments',
 };
 type Kind = keyof typeof assignments;
 // The Client row lock every original-Client command takes first.
@@ -25,6 +27,8 @@ const CLIENT_LOCK_QUERY = '%from "client_accounts"%for update%';
 const EXCEPTION_REASON =
   'Work starts on the preliminary agreement; the Offer and Contract are being finalized.';
 const HOLD_REASON = 'Client asked to pause until the audit date is confirmed.';
+const COMPLETION_NOTE =
+  'Certification preparation delivered; final report handed over to the Client.';
 const allPresent = {
   approvedOffer: 'present',
   contractOrPrecontract: 'present',
@@ -229,6 +233,18 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
           { subject: 'ana' },
         )
       ).id,
+    );
+  }
+  async function registerDocument(title: string) {
+    return command(
+      '/documents',
+      {
+        clientId,
+        title,
+        purpose: 'Prepare Project closure evidence.',
+        url: 'https://example.test/project-closure-evidence',
+      },
+      { subject: 'ana' },
     );
   }
   async function setResponsible(
@@ -530,6 +546,378 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
     expect(object((await lifecycle()).start)).toEqual(start);
   });
 
+  it('refuses completion while a Task is open, then completes the Project with an attributable note after the Task closes', async () => {
+    const task = await command(
+      `/projects/${projectId}/tasks`,
+      { title: 'Collect procedures', assigneeMembershipId: ana },
+      { subject: 'ana' },
+    );
+    await committed(activation());
+
+    const refused = await transition({
+      action: 'complete',
+      expectedLifecycleRevision: 1,
+      note: COMPLETION_NOTE,
+    });
+    expect(refused.status).toBe(409);
+    expect(await body(refused)).toEqual({
+      statusCode: 409,
+      code: 'project_open_tasks',
+      message: 'Complete or cancel every open Task of this Project first.',
+    });
+    expect(await projectState()).toMatchObject({
+      status: 'active',
+      lifecycle_revision: 1,
+    });
+
+    const completedTask = await request(`/tasks/${string(task.id)}/complete`, {
+      subject: 'ana',
+      method: 'POST',
+      value: { expectedVersion: 1 },
+    });
+    expect([200, 201]).toContain(completedTask.status);
+    expect(await body(completedTask)).toMatchObject({
+      status: 'done',
+      version: 2,
+    });
+
+    expect(
+      await committed({
+        action: 'complete',
+        expectedLifecycleRevision: 1,
+        note: `  ${COMPLETION_NOTE}  `,
+      }),
+    ).toEqual({
+      projectId,
+      action: 'complete',
+      from: 'active',
+      to: 'completed',
+      lifecycleRevision: 2,
+    });
+    expect(await lifecycle()).toMatchObject({
+      status: 'completed',
+      lifecycleRevision: 2,
+      mutable: false,
+      transitions: [
+        {
+          action: 'complete',
+          lifecycleRevision: 2,
+          from: 'active',
+          to: 'completed',
+          note: COMPLETION_NOTE,
+        },
+        {
+          action: 'activate',
+          lifecycleRevision: 1,
+          from: 'preparatory',
+          to: 'active',
+        },
+      ],
+    });
+    expect(await lifecycleEvents()).toEqual([
+      expect.objectContaining({
+        action: 'project.lifecycle.changed',
+        metadata: {
+          lifecycleRevision: 2,
+          from: 'active',
+          to: 'completed',
+        },
+      }),
+      expect.objectContaining({
+        action: 'project.lifecycle.changed',
+        metadata: {
+          lifecycleRevision: 1,
+          from: 'preparatory',
+          to: 'active',
+          withStartException: false,
+        },
+      }),
+    ]);
+  });
+
+  it('cancels from every open status and keeps completed and cancelled Projects terminal', async () => {
+    const active = await registerProject('Active cancellation');
+    await setResponsible(active, 0, ana);
+    await committed(activation(), {}, active);
+    const onHold = await registerProject('On-hold cancellation');
+    await setResponsible(onHold, 0, ana);
+    await committed(activation(), {}, onHold);
+    await committed(
+      { action: 'hold', expectedLifecycleRevision: 1, reason: HOLD_REASON },
+      {},
+      onHold,
+    );
+
+    for (const [target, expectedLifecycleRevision, from] of [
+      [projectId, 0, 'preparatory'],
+      [active, 1, 'active'],
+      [onHold, 2, 'on_hold'],
+    ] satisfies [string, number, 'preparatory' | 'active' | 'on_hold'][]) {
+      expect(
+        await committed(
+          {
+            action: 'cancel',
+            expectedLifecycleRevision,
+            reason: '  Client withdrew the request.  ',
+          },
+          {},
+          target,
+        ),
+      ).toEqual({
+        projectId: target,
+        action: 'cancel',
+        from,
+        to: 'cancelled',
+        lifecycleRevision: expectedLifecycleRevision + 1,
+      });
+      expect(await lifecycle({}, target)).toMatchObject({
+        status: 'cancelled',
+        transitions: [
+          {
+            action: 'cancel',
+            lifecycleRevision: expectedLifecycleRevision + 1,
+            from,
+            to: 'cancelled',
+            reason: 'Client withdrew the request.',
+          },
+          ...(from === 'on_hold'
+            ? [
+                {
+                  action: 'hold',
+                  lifecycleRevision: 2,
+                  from: 'active',
+                  to: 'on_hold',
+                  reason: HOLD_REASON,
+                },
+              ]
+            : []),
+          ...(from === 'active' || from === 'on_hold'
+            ? [
+                {
+                  action: 'activate',
+                  lifecycleRevision: 1,
+                  from: 'preparatory',
+                  to: 'active',
+                },
+              ]
+            : []),
+        ],
+      });
+      for (const refused of [
+        {
+          action: 'resume',
+          expectedLifecycleRevision: expectedLifecycleRevision + 1,
+        },
+        {
+          action: 'cancel',
+          expectedLifecycleRevision: expectedLifecycleRevision + 1,
+          reason: 'Again',
+        },
+      ]) {
+        const response = await transition(refused, {}, target);
+        expect(response.status).toBe(409);
+        expect(await body(response)).toMatchObject({
+          code: 'project_lifecycle_transition_invalid',
+        });
+      }
+    }
+
+    const completed = await registerProject('Completed terminal');
+    await setResponsible(completed, 0, ana);
+    await committed(activation(), {}, completed);
+    await committed(
+      {
+        action: 'complete',
+        expectedLifecycleRevision: 1,
+        note: COMPLETION_NOTE,
+      },
+      {},
+      completed,
+    );
+    const refused = await transition(
+      { action: 'hold', expectedLifecycleRevision: 2, reason: HOLD_REASON },
+      {},
+      completed,
+    );
+    expect(refused.status).toBe(409);
+    expect(await body(refused)).toMatchObject({
+      code: 'project_lifecycle_transition_invalid',
+    });
+  });
+
+  it.each(['completed', 'cancelled'] as const)(
+    'keeps %s Project records readable, refuses every guarded mutation, hides eligibility and preserves exact replays',
+    async (closedStatus) => {
+      await grant('document', ana);
+      await grant('organizer', ana);
+      const document = await registerDocument('Final closure evidence');
+      const documentId = string(document.id);
+      const unlinkedDocument = await registerDocument(
+        'Unlinked closure evidence',
+      );
+      const unlinkedDocumentId = string(unlinkedDocument.id);
+      const linkDocumentKey = randomUUID();
+      const linkedDocument = await request(
+        `/documents/${documentId}/project-association`,
+        {
+          subject: 'ana',
+          method: 'POST',
+          key: linkDocumentKey,
+          value: { action: 'link', projectId, expectedRevision: 0 },
+        },
+      );
+      expect(linkedDocument.status).toBe(201);
+      const linkedDocumentBody = await body(linkedDocument);
+      const task = await command(
+        `/projects/${projectId}/tasks`,
+        { title: 'Close every remaining action' },
+        { subject: 'ana' },
+      );
+      const taskId = string(task.id);
+      const completeTaskKey = randomUUID();
+      const completedTask = await request(`/tasks/${taskId}/complete`, {
+        subject: 'ana',
+        method: 'POST',
+        key: completeTaskKey,
+        value: { expectedVersion: 1 },
+      });
+      expect([200, 201]).toContain(completedTask.status);
+      const completedTaskBody = await body(completedTask);
+      if (closedStatus === 'completed') {
+        await committed(activation());
+        await committed({
+          action: 'complete',
+          expectedLifecycleRevision: 1,
+          note: COMPLETION_NOTE,
+        });
+      } else
+        await committed({
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Client withdrew the request.',
+        });
+
+      expect(await read(`/projects/${projectId}`)).toMatchObject({
+        status: closedStatus,
+      });
+      expect(await lifecycle()).toMatchObject({ status: closedStatus });
+      expect(
+        await read(`/projects/${projectId}/tasks`, { subject: 'ana' }),
+      ).toEqual({
+        mutable: false,
+        tasks: [expect.objectContaining({ id: taskId, status: 'done' })],
+      });
+      expect(await read(`/tasks/${taskId}`, { subject: 'ana' })).toMatchObject({
+        mutable: false,
+        task: { id: taskId, status: 'done' },
+      });
+      expect(
+        await read(`/tasks/${taskId}/history`, { subject: 'ana' }),
+      ).toEqual({
+        events: expect.any(Array),
+      });
+      expect(await read(`/projects/${projectId}/responsible`)).toMatchObject({
+        mutable: false,
+        responsible: { workspaceMembershipId: ana },
+      });
+      expect(
+        await read(`/projects/${projectId}/documents`, { subject: 'ana' }),
+      ).toMatchObject({
+        mutable: false,
+        documents: [
+          {
+            document: { id: documentId },
+            revision: 1,
+          },
+        ],
+      });
+
+      for (const response of [
+        await request(`/projects/${projectId}/tasks`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { title: 'Forbidden after closure' },
+        }),
+        await request(`/tasks/${taskId}`, {
+          subject: 'ana',
+          method: 'PATCH',
+          value: { expectedVersion: 2, title: 'Forbidden edit' },
+        }),
+        await request(`/tasks/${taskId}/status`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { expectedVersion: 2, status: 'in_progress' },
+        }),
+        await request(`/tasks/${taskId}/complete`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { expectedVersion: 2 },
+        }),
+        await request(`/tasks/${taskId}/cancel`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { expectedVersion: 2, reason: 'Forbidden cancellation' },
+        }),
+        await request(`/tasks/${taskId}/reopen`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { expectedVersion: 2 },
+        }),
+        await request(`/documents/${unlinkedDocumentId}/project-association`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { action: 'link', projectId, expectedRevision: 0 },
+        }),
+        await request(`/documents/${documentId}/project-association`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { action: 'unlink', projectId, expectedRevision: 1 },
+        }),
+        await responsibleChange(projectId, 1, ion),
+        await responsibleChange(projectId, 1, null),
+      ]) {
+        expect(response.status).toBe(409);
+        expect(await body(response)).toEqual({
+          statusCode: 409,
+          code: 'project_closed',
+          message: 'This Project is closed. Its records are read-only.',
+        });
+      }
+      for (const [path, subject] of [
+        [`/projects/${projectId}/eligible-task-assignees`, 'ana'],
+        [`/projects/${projectId}/eligible-documents`, 'ana'],
+        [`/projects/${projectId}/eligible-responsible-members`, 'ana'],
+        [
+          `/projects/${projectId}/eligible-start-exception-members`,
+          'aprobator',
+        ],
+      ] as const) {
+        const response = await request(path, { subject });
+        expect(response.status).toBe(404);
+      }
+
+      const replay = await request(`/tasks/${taskId}/complete`, {
+        subject: 'ana',
+        method: 'POST',
+        key: completeTaskKey,
+        value: { expectedVersion: 1 },
+      });
+      expect([200, 201]).toContain(replay.status);
+      expect(await body(replay)).toEqual(completedTaskBody);
+      const documentReplay = await request(
+        `/documents/${documentId}/project-association`,
+        {
+          subject: 'ana',
+          method: 'POST',
+          key: linkDocumentKey,
+          value: { action: 'link', projectId, expectedRevision: 0 },
+        },
+      );
+      expect(documentReplay.status).toBe(201);
+      expect(await body(documentReplay)).toEqual(linkedDocumentBody);
+    },
+  );
+
   it('holds with a reason and resumes, refuses every other source status and increments the revision once per commit', async () => {
     const other = await registerProject('Second preparation');
     for (const refused of [
@@ -659,7 +1047,7 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
     });
   });
 
-  it('rejects malformed commands, a missing key, completion and cancellation, and an ineligible completion member without writing', async () => {
+  it('rejects malformed commands, a missing key and an ineligible completion member without writing', async () => {
     const outsider = await member('outsider', ['client']);
     const exception = {
       reason: EXCEPTION_REASON,
@@ -691,8 +1079,10 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
       { action: 'hold', expectedLifecycleRevision: 0 },
       { action: 'hold', expectedLifecycleRevision: 0, reason: '' },
       { action: 'resume', expectedLifecycleRevision: 0, reason: 'Back' },
-      { action: 'complete', expectedLifecycleRevision: 0, note: 'Done' },
-      { action: 'cancel', expectedLifecycleRevision: 0, reason: 'Stopped' },
+      { action: 'complete', expectedLifecycleRevision: 0 },
+      { action: 'complete', expectedLifecycleRevision: 0, note: ' ' },
+      { action: 'cancel', expectedLifecycleRevision: 0 },
+      { action: 'cancel', expectedLifecycleRevision: 0, reason: ' ' },
       { action: 'archive', expectedLifecycleRevision: 0 },
       { action: 'resume', expectedLifecycleRevision: -1 },
     ])
@@ -897,6 +1287,15 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
         expect((await transition(activation())).status).toBe(403);
         expect(
           (
+            await transition({
+              action: 'cancel',
+              expectedLifecycleRevision: 0,
+              reason: 'Client withdrew the request.',
+            })
+          ).status,
+        ).toBe(403);
+        expect(
+          (
             await request(
               `/projects/${projectId}/eligible-start-exception-members`,
               { subject: 'aprobator' },
@@ -1018,6 +1417,15 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
     expect(await counts()).toEqual({ transitions: 2, starts: 1, receipts: 2 });
     expect((await revoke('approver', approver)).status).toBe(200);
     expect((await transition(activation(), { key })).status).toBe(403);
+    expect(
+      (
+        await transition({
+          action: 'cancel',
+          expectedLifecycleRevision: 2,
+          reason: 'Client withdrew the request.',
+        })
+      ).status,
+    ).toBe(403);
     await grant('approver', approver);
     expect(await committed(activation(), { key })).toEqual(first);
   });
@@ -1165,6 +1573,165 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
       transitions: state.status === 'active' ? 1 : 0,
       receipts: state.status === 'active' ? 1 : 0,
     });
+  });
+
+  it('serializes completion with Task creation so a completed Project never gains an open Task', async () => {
+    await committed(activation());
+    const responses = await contend(() =>
+      Promise.all([
+        transition({
+          action: 'complete',
+          expectedLifecycleRevision: 1,
+          note: COMPLETION_NOTE,
+        }),
+        request(`/projects/${projectId}/tasks`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { title: 'Concurrent Task' },
+        }),
+      ]),
+    );
+    expect(
+      responses.filter((response) => response.status === 409),
+    ).toHaveLength(1);
+    expect(
+      responses.filter((response) => [200, 201].includes(response.status)),
+    ).toHaveLength(1);
+    expect(responses.some((response) => response.status >= 500)).toBe(false);
+    const state = await projectState();
+    const rows = (
+      await harness.pool.query<{ status: string }>(
+        'SELECT status::text AS status FROM tasks WHERE project_id = $1',
+        [projectId],
+      )
+    ).rows;
+    if (state.status === 'completed') expect(rows).toEqual([]);
+    else {
+      expect(state.status).toBe('active');
+      expect(rows).toEqual([{ status: 'todo' }]);
+    }
+  });
+
+  it('serializes cancellation with a Document link so only the first material command commits', async () => {
+    await grant('document', ana);
+    await grant('organizer', ana);
+    const document = await registerDocument('Closure questionnaire');
+    const documentId = string(document.id);
+    const responses = await contend(() =>
+      Promise.all([
+        transition({
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Client withdrew the request.',
+        }),
+        request(`/documents/${documentId}/project-association`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { action: 'link', projectId, expectedRevision: 0 },
+        }),
+      ]),
+    );
+    expect(
+      responses.filter((response) => response.status === 409),
+    ).toHaveLength(1);
+    expect(
+      responses.filter((response) => [200, 201].includes(response.status)),
+    ).toHaveLength(1);
+    expect(responses.some((response) => response.status >= 500)).toBe(false);
+    const state = await projectState();
+    const [association] = (
+      await harness.pool.query<{ project_id: string | null }>(
+        'SELECT project_id FROM working_documents WHERE id = $1',
+        [documentId],
+      )
+    ).rows;
+    if (state.status === 'cancelled')
+      expect(association?.project_id).toBeNull();
+    else {
+      expect(state.status).toBe('preparatory');
+      expect(association?.project_id).toBe(projectId);
+    }
+  });
+
+  it('serializes completion with Task reopening so a completed Project never regains an open Task', async () => {
+    const task = await command(
+      `/projects/${projectId}/tasks`,
+      { title: 'Closed action ready for possible reopening' },
+      { subject: 'ana' },
+    );
+    const taskId = string(task.id);
+    const completed = await request(`/tasks/${taskId}/complete`, {
+      subject: 'ana',
+      method: 'POST',
+      value: { expectedVersion: 1 },
+    });
+    expect(completed.status).toBe(201);
+    await committed(activation());
+    const responses = await contend(() =>
+      Promise.all([
+        transition({
+          action: 'complete',
+          expectedLifecycleRevision: 1,
+          note: COMPLETION_NOTE,
+        }),
+        request(`/tasks/${taskId}/reopen`, {
+          subject: 'ana',
+          method: 'POST',
+          value: { expectedVersion: 2 },
+        }),
+      ]),
+    );
+    expect(
+      responses.filter((response) => response.status === 409),
+    ).toHaveLength(1);
+    expect(
+      responses.filter((response) => [200, 201].includes(response.status)),
+    ).toHaveLength(1);
+    expect(responses.some((response) => response.status >= 500)).toBe(false);
+    const state = await projectState();
+    const [taskState] = (
+      await harness.pool.query<{ status: string }>(
+        'SELECT status::text AS status FROM tasks WHERE id = $1',
+        [taskId],
+      )
+    ).rows;
+    if (state.status === 'completed') expect(taskState?.status).toBe('done');
+    else {
+      expect(state.status).toBe('active');
+      expect(taskState?.status).toBe('todo');
+    }
+  });
+
+  it('lets exactly one of concurrent completion and cancellation by two Approvers close the Project', async () => {
+    await member('aprobator-2', ['approver', 'project', 'client']);
+    await committed(activation());
+    const responses = await contend(() =>
+      Promise.all([
+        transition({
+          action: 'complete',
+          expectedLifecycleRevision: 1,
+          note: COMPLETION_NOTE,
+        }),
+        transition(
+          {
+            action: 'cancel',
+            expectedLifecycleRevision: 1,
+            reason: 'Client withdrew the request.',
+          },
+          { subject: 'aprobator-2' },
+        ),
+      ]),
+    );
+    expect(responses.map((response) => response.status).toSorted()).toEqual([
+      200, 409,
+    ]);
+    expect(responses.some((response) => response.status >= 500)).toBe(false);
+    expect(await projectState()).toMatchObject({
+      status: expect.stringMatching(/^(completed|cancelled)$/),
+      lifecycle_revision: 2,
+    });
+    expect(await counts()).toEqual({ transitions: 2, starts: 1, receipts: 2 });
+    expect(await lifecycleEvents()).toHaveLength(2);
   });
 
   it('commits both a hold and a concurrent Task edit without a false conflict or a Task version change from the hold', async () => {

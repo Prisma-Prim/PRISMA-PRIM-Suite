@@ -1276,6 +1276,54 @@ it('requires an explicit reload after a conflict, including after selecting a di
   ).toBeEnabled();
 });
 
+it('keeps the Task draft and reloads the Project when closure wins the command race', async () => {
+  const fetcher = fixture({
+    mutate: () =>
+      Response.json(
+        {
+          statusCode: 409,
+          code: 'project_closed',
+          message: 'This Project is closed. Its records are read-only.',
+        },
+        { status: 409 },
+      ),
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  changeValue(within(tasks).getByLabelText('Task title'), 'Final draft title');
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  expect(
+    await within(tasks).findByText(
+      'This Project was closed. Reload to see its current state.',
+    ),
+  ).toBeInTheDocument();
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+    'Final draft title',
+  );
+  expect(
+    within(tasks).getByRole('button', { name: 'Save Task' }),
+  ).toBeDisabled();
+  const projectReadsBefore = fetcher.mock.calls.filter(
+    ([url, request]) =>
+      url === '/api/projects/project' && (request?.method ?? 'GET') === 'GET',
+  ).length;
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Reload Task' }));
+  await waitFor(() =>
+    expect(
+      fetcher.mock.calls.filter(
+        ([url, request]) =>
+          url === '/api/projects/project' &&
+          (request?.method ?? 'GET') === 'GET',
+      ),
+    ).toHaveLength(projectReadsBefore + 1),
+  );
+});
+
 it('preserves useful drafts when changing Tasks and returning', async () => {
   fixture();
   render(

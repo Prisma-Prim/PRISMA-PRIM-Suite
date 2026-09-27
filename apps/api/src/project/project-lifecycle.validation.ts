@@ -48,6 +48,16 @@ export function lifecycleCommand(value: unknown): ProjectLifecycleCommand {
     case 'resume':
       keys(body, ['action', 'expectedLifecycleRevision']);
       return { action, expectedLifecycleRevision };
+    case 'complete':
+      keys(body, ['action', 'expectedLifecycleRevision', 'note']);
+      return {
+        action,
+        expectedLifecycleRevision,
+        note: lifecycleText(body.note, 'completion note'),
+      };
+    case 'cancel':
+      keys(body, ['action', 'expectedLifecycleRevision', 'reason']);
+      return { action, expectedLifecycleRevision, reason: reason(body.reason) };
     default: {
       const exhaustive: never = action;
       return exhaustive;
@@ -56,11 +66,11 @@ export function lifecycleCommand(value: unknown): ProjectLifecycleCommand {
 }
 
 /** Trimmed text of 1–500 Unicode code points, as PostgreSQL length() counts. */
-export function lifecycleText(value: unknown): string {
+export function lifecycleText(value: unknown, label = 'reason'): string {
   const result = typeof value === 'string' ? value.trim() : '';
   const characters = Array.from(result).length;
   if (characters < 1 || characters > 500)
-    throw new BadRequestException('A reason must contain 1–500 characters.');
+    throw new BadRequestException(`A ${label} must contain 1–500 characters.`);
   return result;
 }
 

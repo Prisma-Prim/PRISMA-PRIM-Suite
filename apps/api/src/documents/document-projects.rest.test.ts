@@ -14,6 +14,7 @@ import {
   createPostgresRestTestHarness,
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
+import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 import { DocumentsService } from './documents.service.js';
@@ -967,6 +968,7 @@ describe.skipIf(!databaseUrl)(
           clients,
           documents,
           projects,
+          new ProjectClosedGuard(context),
         ),
       };
     }
@@ -1189,15 +1191,11 @@ describe.skipIf(!databaseUrl)(
         mutable: false,
         documents: [{ document: { ...document, ...superseded }, revision: 1 }],
       });
-      expect(await list(true)).toEqual({
-        mutable: false,
-        documents: [
-          {
-            document: { ...unlinked, ...superseded },
-            revision: 0,
-          },
-        ],
-      });
+      // Eligibility is mutation-only, so the superseded original Client is
+      // hidden even though the historical association remains readable.
+      expect(
+        (await request(`/projects/${projectId}/eligible-documents`)).status,
+      ).toBe(404);
       // The historical link stays displayed while correction is read-only.
       expect(await detail()).toEqual({
         ...document,
