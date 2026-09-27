@@ -85,13 +85,14 @@ const locales = [
 
 type LocaleProof = (typeof locales)[number];
 
-test('completes the Romanian-first entry-to-Company journey in all four interface languages', async ({
-  page,
-}, testInfo) => {
+async function installJourneyRoutes(
+  page: Page,
+  initial: { holdActor: boolean; created: boolean },
+) {
   const commands: Array<{ body: string | null; idempotencyKey: string }> = [];
   let pendingActor: Route | undefined;
-  let holdActor = true;
-  let created = false;
+  let holdActor = initial.holdActor;
+  let created = initial.created;
 
   await page.route('**/api/access/current-actor', (route) => {
     if (holdActor) {
@@ -132,6 +133,28 @@ test('completes the Romanian-first entry-to-Company journey in all four interfac
     route.fulfill({ json: company }),
   );
 
+  return {
+    commands,
+    async releaseActor() {
+      await expect.poll(() => Boolean(pendingActor)).toBe(true);
+      holdActor = false;
+      if (!pendingActor) throw new Error('Expected pending access check');
+      await pendingActor.fulfill({ json: actorContextFixture });
+    },
+    async expectActorPending() {
+      await expect.poll(() => Boolean(pendingActor)).toBe(true);
+    },
+  };
+}
+
+test('defaults to Romanian and switches all four languages during entry and access', async ({
+  page,
+}, testInfo) => {
+  const journey = await installJourneyRoutes(page, {
+    holdActor: true,
+    created: false,
+  });
+
   await page.goto('/');
   await page.evaluate((key) => {
     localStorage.removeItem(key);
@@ -161,7 +184,7 @@ test('completes the Romanian-first entry-to-Company journey in all four interfac
     sessionStorage.setItem('deterministic-auth-state', 'signed-in'),
   );
   await page.reload();
-  await expect.poll(() => Boolean(pendingActor)).toBe(true);
+  await journey.expectActorPending();
   for (const locale of locales) {
     if (locale !== currentLocale)
       await chooseLocale(page, currentLocale.languageLabel, locale.code);
@@ -175,13 +198,25 @@ test('completes the Romanian-first entry-to-Company journey in all four interfac
     currentLocale = locale;
   }
   await chooseLocale(page, currentLocale.languageLabel, 'ro');
-  currentLocale = locales[0];
-  holdActor = false;
-  if (!pendingActor) throw new Error('Expected pending access check');
-  await pendingActor.fulfill({ json: actorContextFixture });
+  await journey.releaseActor();
   await expect(
     page.getByRole('heading', { name: 'Bună, Ada Ionescu.' }),
   ).toBeVisible();
+  expect(journey.commands).toHaveLength(0);
+});
+
+test('preserves Company drafts across all four languages and retries the identical command', async ({
+  page,
+}, testInfo) => {
+  const { commands } = await installJourneyRoutes(page, {
+    holdActor: false,
+    created: false,
+  });
+  await page.goto('/app');
+  await expect(
+    page.getByRole('heading', { name: 'Bună, Ada Ionescu.' }),
+  ).toBeVisible();
+  let currentLocale: LocaleProof = locales[0];
 
   await openCompanies(page, testInfo.project.name, 'Companii');
   const draft = page.locator('#company-display-name');
@@ -234,20 +269,31 @@ test('completes the Romanian-first entry-to-Company journey in all four interfac
     ),
     fullPage: true,
   });
+});
 
-  await openNavigation(page, testInfo.project.name);
-  await selectOption(
-    page.getByRole('combobox', { name: 'Companie activă', exact: true }),
-    company.id,
-  );
-  await expect(
-    page.getByRole('combobox', { name: 'Companie activă', exact: true }),
-  ).toHaveAttribute('data-value', company.id);
-  await closeNavigation(page, testInfo.project.name);
-  currentLocale = locales[0];
-
-  for (const locale of locales) {
-    await chooseLocale(page, currentLocale.languageLabel, locale.code);
+for (const locale of locales) {
+  test(`retains ${locale.code} and the selected Company after reload without issuing a command`, async ({
+    page,
+  }, testInfo) => {
+    const { commands } = await installJourneyRoutes(page, {
+      holdActor: false,
+      created: true,
+    });
+    await page.goto('/app');
+    await expect(
+      page.getByRole('heading', { name: 'Bună, Ada Ionescu.' }),
+    ).toBeVisible();
+    await openCompanies(page, testInfo.project.name, 'Companii');
+    await openNavigation(page, testInfo.project.name);
+    await selectOption(
+      page.getByRole('combobox', { name: 'Companie activă', exact: true }),
+      company.id,
+    );
+    await expect(
+      page.getByRole('combobox', { name: 'Companie activă', exact: true }),
+    ).toHaveAttribute('data-value', company.id);
+    await closeNavigation(page, testInfo.project.name);
+    await chooseLocale(page, locales[0].languageLabel, locale.code);
     await page.reload();
     // Reload preserves the Companies route; Home requires its own navigation.
     await expect(page).toHaveURL(/#companies$/u);
@@ -283,10 +329,9 @@ test('completes the Romanian-first entry-to-Company journey in all four interfac
       fullPage: true,
     });
     await openCompanies(page, testInfo.project.name, locale.companies);
-    currentLocale = locale;
-  }
-  expect(commands).toHaveLength(2);
-});
+    expect(commands).toHaveLength(0);
+  });
+}
 
 async function chooseLocale(page: Page, label: string, locale: string) {
   await selectOption(page.getByRole('combobox', { name: label }), locale);
