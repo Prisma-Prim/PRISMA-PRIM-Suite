@@ -1,7 +1,7 @@
 import { type FormEvent, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import type { ApiResult } from '../api/authenticated-api-client';
 import {
   resolveIdempotentDisplayNameCommand,
@@ -12,7 +12,7 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { companyRegistrationCopy as copy } from './company-registration.copy';
+import { useCompanyRegistrationCopy } from './company-registration.copy';
 import './company-registration.css';
 
 interface CompanyRecord {
@@ -28,7 +28,7 @@ type RegistrationState =
   | { status: 'idle' }
   | { status: 'submitting' }
   | { status: 'ready'; company: CompanyRecord }
-  | { status: 'validation'; message: string }
+  | { status: 'validation' }
   | { status: 'forbidden' }
   | { status: 'error' };
 
@@ -47,6 +47,8 @@ export function CompanyRegistration({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onCompanyRegistered: (company: CompanyRecord) => void;
 }) {
+  const copy = useCompanyRegistrationCopy();
+  const { formatDateTime } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [displayName, setDisplayName] = useState('');
   const [state, setState] = useState<RegistrationState>({ status: 'idle' });
@@ -103,10 +105,7 @@ export function CompanyRegistration({
       retryCommand.current,
     );
     if (!command) {
-      setState({
-        status: 'validation',
-        message: copy.displayNameRequired,
-      });
+      setState({ status: 'validation' });
       return;
     }
 
@@ -151,10 +150,7 @@ export function CompanyRegistration({
         if (request.phase === 'create') {
           setState(
             request.result.status === 'validation'
-              ? {
-                  status: 'validation',
-                  message: request.result.message ?? copy.displayNameRequired,
-                }
+              ? { status: 'validation' }
               : { status: 'error' },
           );
           return;
@@ -212,7 +208,7 @@ export function CompanyRegistration({
       </form>
       {state.status === 'validation' && (
         <p id="company-registration-message" role="alert">
-          {state.message}
+          {copy.displayNameRequired}
         </p>
       )}
       {state.status === 'forbidden' && (
@@ -235,7 +231,7 @@ export function CompanyRegistration({
             </div>
             <div>
               <dt>{copy.created}</dt>
-              <dd>{formatApplicationDateTime(state.company.createdAt)}</dd>
+              <dd>{formatDateTime(state.company.createdAt)}</dd>
             </div>
           </dl>
           <p>

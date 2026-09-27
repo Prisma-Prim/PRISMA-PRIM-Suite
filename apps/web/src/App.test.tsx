@@ -4,13 +4,15 @@ import {
   render,
   screen,
   waitFor,
-} from '@testing-library/react';
+} from './test/render-with-interface-locale';
+import { render as renderWithoutLocale } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
 import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
 import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
+import { InterfaceLocaleProvider } from './localization/interface-locale';
 
 describe('App', () => {
   beforeEach(() => {
@@ -137,11 +139,15 @@ describe('App', () => {
       throw new DOMException('blocked', 'SecurityError');
     });
 
-    render(<App identity={identity} />);
+    renderWithoutLocale(
+      <InterfaceLocaleProvider>
+        <App identity={identity} />
+      </InterfaceLocaleProvider>,
+    );
 
     expect(await screen.findByRole('banner')).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Company context' }),
+      screen.getByRole('heading', { name: 'Contextul Companiei' }),
     ).toBeInTheDocument();
   });
 

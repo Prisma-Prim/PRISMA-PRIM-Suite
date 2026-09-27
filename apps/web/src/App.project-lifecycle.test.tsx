@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from './test/render-with-interface-locale';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';

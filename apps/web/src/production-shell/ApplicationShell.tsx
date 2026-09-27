@@ -12,7 +12,7 @@ import {
   PrismeOverview,
   SectionIcon,
 } from './prisme/PrismeOverview';
-import { prismeCopy as copy } from './prisme/prisme.copy';
+import { usePrismeCopy } from './prisme/prisme.copy';
 import {
   ApplicationPresentation,
   getApplicationPresentation,
@@ -78,6 +78,7 @@ export function ApplicationShell({
   overviewSummary,
   children,
 }: ApplicationShellProps) {
+  const copy = usePrismeCopy();
   const [location, setLocation] = useState(() => window.location.href);
   const [isNavigationOpen, setIsNavigationOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -282,7 +283,9 @@ export function ApplicationShell({
                 {isPrisme && <SectionIcon id="overview" />}
                 {isPrisme ? copy.overview : copy.home}
                 {!isPrisme && (
-                  <span className="production-active-label">Current</span>
+                  <span className="production-active-label">
+                    {copy.current}
+                  </span>
                 )}
               </a>
             </li>
