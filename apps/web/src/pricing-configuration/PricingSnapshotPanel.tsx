@@ -736,7 +736,6 @@ export function PricingSnapshotPanel({
                                 <textarea
                                   value={draft.adjustmentReason}
                                   required
-                                  maxLength={500}
                                   aria-invalid={
                                     !validAdjustmentReason(
                                       draft.adjustmentReason,
@@ -1043,7 +1042,13 @@ function validNetReduction(value: string): boolean {
 }
 
 function validAdjustmentReason(value: string): boolean {
-  return value.length >= 1 && value.length <= 500 && /\S/u.test(value);
+  return (
+    value.length >= 1 &&
+    Array.from(value).length <= 500 &&
+    /\S/u.test(value) &&
+    !value.includes('\u0000') &&
+    !/[\uD800-\uDFFF]/u.test(value)
+  );
 }
 
 function snapshotBasePath(opportunityId: string): string {

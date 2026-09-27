@@ -845,6 +845,100 @@ withPostgres('Pricing Snapshots REST', () => {
     ).toBe(403);
   });
 
+  it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])(
+    'creates, replays and reopens exact reason at character boundary %#',
+    async (reason) => {
+      const fixture = await prepared();
+      const path = snapshotsPath(fixture.opportunityId);
+      const ordinaryBody = calculationBody(fixture);
+      const firstLine = ordinaryBody.lines[0];
+      if (!firstLine) throw new Error('Expected a calculation line.');
+      const body = {
+        ...ordinaryBody,
+        lines: [
+          {
+            ...firstLine,
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '8.63',
+              reason,
+            },
+          },
+        ],
+      };
+      const created = snapshot(
+        await command(path, body, 'reason-boundary', fixture.companyId),
+      );
+      expect(record(record(created.lines[0]).adjustment).reason).toBe(reason);
+      expect(
+        snapshot(
+          await command(path, body, 'reason-boundary', fixture.companyId),
+        ),
+      ).toEqual(created);
+      expect(
+        snapshot(
+          await json(await request(path + '/' + created.id, fixture.companyId)),
+        ),
+      ).toEqual(created);
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 1, lines: 1, events: 1, receipts: 1 },
+      ]);
+    },
+  );
+
+  it.each([
+    '\u{1F642}'.repeat(501),
+    'before\u0000after',
+    'before\uD800after',
+    'before\uDC00after',
+  ])(
+    'refuses invalid reason %# with a field error and zero writes',
+    async (reason) => {
+      const fixture = await prepared();
+      const ordinaryBody = calculationBody(fixture);
+      const firstLine = ordinaryBody.lines[0];
+      if (!firstLine) throw new Error('Expected a calculation line.');
+      const response = await post(
+        snapshotsPath(fixture.opportunityId),
+        {
+          ...ordinaryBody,
+          lines: [
+            {
+              ...firstLine,
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '8.63',
+                reason,
+              },
+            },
+          ],
+        },
+        'invalid-reason-boundary',
+        fixture.companyId,
+      );
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        field: 'lines[0].adjustment.reason',
+      });
+      expect((await readSnapshotWriteState(fixture)).rows).toEqual([
+        { snapshots: 0, lines: 0, events: 0, receipts: 0 },
+      ]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS adjustments FROM pricing_snapshot_adjustments',
+          )
+        ).rows,
+      ).toEqual([{ adjustments: 0 }]);
+    },
+  );
+
   it('refuses malformed, zero, excessive and unexplained adjustments without writes', async () => {
     const fixture = await prepared();
     const path = snapshotsPath(fixture.opportunityId);

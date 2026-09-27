@@ -473,6 +473,95 @@ describe('PricingSnapshotPanel', () => {
     expect(postCalls(fetchMock)).toHaveLength(0);
   });
 
+  it.each([
+    '',
+    ' '.repeat(500),
+    'x'.repeat(501),
+    '\u{1F642}'.repeat(501),
+    'before\u0000after',
+    'before\uD800after',
+    'before\uDC00after',
+  ])('keeps invalid reason %# exact and blocks submission', async (value) => {
+    const fetchMock = stubApi(baseRoutes());
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reason = screen.getByLabelText('Adjustment reason');
+    fireEvent.change(reason, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Correct the highlighted values and try again.',
+    );
+    expect(reason).toHaveValue(value);
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])(
+    'preserves valid reason %# through uncertain retry, creation and reopening',
+    async (value) => {
+      const saved = adjustedSnapshot();
+      const firstLine = saved.lines[0];
+      if (!firstLine?.adjustment) throw new Error('Expected an adjusted line.');
+      firstLine.adjustment.reason = value;
+      const fetchMock = stubApi({
+        ...baseRoutes(),
+        ['POST ' + snapshotPath(OPPORTUNITY_A)]: (call) => {
+          if (call === 1) throw new TypeError('network interrupted');
+          return Response.json(saved, { status: 201 });
+        },
+        ['GET ' + snapshotPath(OPPORTUNITY_A) + '/' + saved.id]: () =>
+          Response.json(saved),
+      });
+      renderPanel();
+      await selectWorkedExample();
+      await enterFirstAdjustment();
+      const reason = screen.getByLabelText('Adjustment reason');
+      expect(reason).not.toHaveAttribute('maxlength');
+      fireEvent.change(reason, { target: { value } });
+      expect(reason).toHaveAttribute('aria-invalid', 'false');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Calculate and save' }),
+      );
+      await screen.findByText(/outcome is uncertain/u);
+      expect(reason).toHaveValue(value);
+      expect(reason).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry the same calculation' }),
+      );
+      await screen.findByText('337.02 EUR');
+      const calls = postCalls(fetchMock);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).toEqual(calls[0]);
+      expect(calls[0]).toMatchObject({
+        body: {
+          lines: [
+            { adjustment: { reason: value } },
+            { offeringId: OFFERING_B },
+          ],
+        },
+      });
+      const exactReasonText = 'Adjustment reason: ' + value;
+      expect(
+        screen.getByText(
+          (_, element) => element?.textContent === exactReasonText,
+        ),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Close snapshot' }));
+      fireEvent.click(screen.getByRole('button', { name: /Reopen snapshot/u }));
+      expect(
+        await screen.findByText(
+          (_, element) => element?.textContent === exactReasonText,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+
   it('keeps an excessive reduction and associates the server field error with it', async () => {
     const fetchMock = stubApi({
       ...baseRoutes(),

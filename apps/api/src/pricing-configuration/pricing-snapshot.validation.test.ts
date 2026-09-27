@@ -54,6 +54,28 @@ describe('Pricing Snapshot calculation payload', () => {
   });
 
   it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])('preserves an accepted reason at the character boundary %#', (reason) => {
+    const command = {
+      ...valid,
+      lines: [
+        {
+          ...valid.lines[0],
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '1.00',
+            reason,
+          },
+        },
+      ],
+    };
+    expect(readPricingSnapshotCommand(command)).toEqual(command);
+  });
+
+  it.each([
     ['0.00', 'lines[0].adjustment.netReduction'],
     ['0', 'lines[0].adjustment.netReduction'],
     ['00.50', 'lines[0].adjustment.netReduction'],
@@ -85,6 +107,10 @@ describe('Pricing Snapshot calculation payload', () => {
     ['', 'lines[0].adjustment.reason'],
     ['   ', 'lines[0].adjustment.reason'],
     ['x'.repeat(501), 'lines[0].adjustment.reason'],
+    ['\u{1F642}'.repeat(501), 'lines[0].adjustment.reason'],
+    ['before\u0000after', 'lines[0].adjustment.reason'],
+    ['before\uD800after', 'lines[0].adjustment.reason'],
+    ['before\uDC00after', 'lines[0].adjustment.reason'],
   ])('refuses bounded reason %j', (reason, field) => {
     expect(
       rejectedField({

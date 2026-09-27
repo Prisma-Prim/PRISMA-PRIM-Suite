@@ -120,10 +120,19 @@ function readAdjustment(
   if (
     typeof adjustment.reason !== 'string' ||
     adjustment.reason.length < 1 ||
-    adjustment.reason.length > 500 ||
+    Array.from(adjustment.reason).length > 500 ||
     !/\S/u.test(adjustment.reason)
   )
     invalid(`${field}.reason`, 'Enter a reason between 1 and 500 characters.');
+  // Unicode mode matches only unpaired surrogates; valid astral pairs stay intact.
+  if (
+    adjustment.reason.includes('\u0000') ||
+    /[\uD800-\uDFFF]/u.test(adjustment.reason)
+  )
+    invalid(
+      `${field}.reason`,
+      'Enter valid Unicode text without null characters.',
+    );
   return {
     type: adjustment.type,
     netReduction: adjustment.netReduction,

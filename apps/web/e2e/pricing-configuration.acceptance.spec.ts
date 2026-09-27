@@ -822,7 +822,15 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     await adjustedOffering
       .getByLabel('Net reduction', { exact: true })
       .fill('8.63');
-    await adjustmentReason.fill('Synthetic browser adjustment proof');
+    const exactReason = '\u{1F642}'.repeat(500);
+    await adjustmentReason.fill(exactReason + '\u{1F642}');
+    await panel.getByRole('button', { name: 'Calculate and save' }).click();
+    await expect(panel.getByRole('alert')).toHaveText(
+      'Correct the highlighted values and try again.',
+    );
+    await expect(adjustmentReason).toHaveValue(exactReason + '\u{1F642}');
+    await adjustmentReason.fill(exactReason);
+    await expect(adjustmentReason).toHaveValue(exactReason);
     const attempts: Array<{ body: string | null; key: string | null }> = [];
     let loseFirstResponse = true;
     const snapshotCommand = `**/api/pricing/opportunities/${request.opportunityId}/snapshots`;
@@ -854,9 +862,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     ).toHaveValue('8.63');
     await expect(adjustmentReason).toBeVisible();
     await expect(adjustmentReason).toBeDisabled();
-    await expect(adjustmentReason).toHaveValue(
-      'Synthetic browser adjustment proof',
-    );
+    await expect(adjustmentReason).toHaveValue(exactReason);
     await panel
       .getByRole('button', { name: 'Retry the same calculation' })
       .click();
@@ -872,7 +878,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       panel.getByText('Net reduction: 8.63 EUR', { exact: true }),
     ).toBeVisible();
     await expect(
-      panel.getByText('Adjustment reason: Synthetic browser adjustment proof', {
+      panel.getByText('Adjustment reason: ' + exactReason, {
         exact: true,
       }),
     ).toBeVisible();
@@ -932,10 +938,9 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       reloadedPanel.getByText('1 × 0.0050 EUR/illustrative-unit'),
     ).toBeVisible();
     await expect(
-      reloadedPanel.getByText(
-        'Adjustment reason: Synthetic browser adjustment proof',
-        { exact: true },
-      ),
+      reloadedPanel.getByText('Adjustment reason: ' + exactReason, {
+        exact: true,
+      }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
