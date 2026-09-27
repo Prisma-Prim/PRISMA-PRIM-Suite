@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   fireEvent,
   render,
@@ -137,9 +138,9 @@ async function choose(member: typeof ion) {
   fireEvent.click(
     await within(region()).findByRole('button', { name: 'Change' }),
   );
-  fireEvent.change(
+  changeValue(
     await within(region()).findByLabelText('Choose the responsible member'),
-    { target: { value: member.workspaceMembershipId } },
+    member.workspaceMembershipId,
   );
   fireEvent.click(within(region()).getByRole('button', { name: 'Save' }));
 }

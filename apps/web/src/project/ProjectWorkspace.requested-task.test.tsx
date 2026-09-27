@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -342,12 +343,8 @@ async function chooseTask(row: string, task: TaskRow) {
 }
 async function startRegistration(server: ReturnType<typeof taskServer>) {
   await screen.findByRole('button', { name: betaRow });
-  fireEvent.change(screen.getByLabelText('Project title'), {
-    target: { value: registeredProject.title },
-  });
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: beta.id },
-  });
+  changeValue(screen.getByLabelText('Project title'), registeredProject.title);
+  changeValue(screen.getByLabelText('Client'), beta.id);
   server.hold('POST /api/projects');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   return server.requested('POST /api/projects');
@@ -485,9 +482,10 @@ describe('Requested Task opens', () => {
     const server = taskServer();
     const workspace = renderWorkspace();
     const tasks = await chooseTask(betaRow, taskOne);
-    fireEvent.change(within(tasks).getByLabelText('Task title'), {
-      target: { value: 'Corrected preparation notes' },
-    });
+    changeValue(
+      within(tasks).getByLabelText('Task title'),
+      'Corrected preparation notes',
+    );
     server.hold(taskEdit(taskOne));
     fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
     const command = await server.requested(taskEdit(taskOne));
@@ -523,9 +521,10 @@ describe('Requested Task opens', () => {
     const server = taskServer();
     const workspace = renderWorkspace();
     const tasks = await chooseTask(betaRow, taskOne);
-    fireEvent.change(within(tasks).getByLabelText('Task title'), {
-      target: { value: 'Corrected preparation notes' },
-    });
+    changeValue(
+      within(tasks).getByLabelText('Task title'),
+      'Corrected preparation notes',
+    );
     server.hold(taskEdit(taskOne));
     fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
     await server.requested(taskEdit(taskOne));
@@ -549,9 +548,10 @@ describe('Requested Task opens', () => {
     const server = taskServer();
     const workspace = renderWorkspace();
     const tasks = await chooseTask(betaRow, taskOne);
-    fireEvent.change(within(tasks).getByLabelText('Task title'), {
-      target: { value: 'Corrected preparation notes' },
-    });
+    changeValue(
+      within(tasks).getByLabelText('Task title'),
+      'Corrected preparation notes',
+    );
     server.replyOnce(
       taskEdit(taskOne),
       () => new Response(null, { status: 500 }),
@@ -599,9 +599,10 @@ describe('Requested Task opens', () => {
       const server = taskServer();
       const workspace = renderWorkspace();
       const tasks = await chooseTask(betaRow, taskOne);
-      fireEvent.change(within(tasks).getByLabelText('Task title'), {
-        target: { value: 'Corrected preparation notes' },
-      });
+      changeValue(
+        within(tasks).getByLabelText('Task title'),
+        'Corrected preparation notes',
+      );
       if (uncertain)
         server.replyOnce(
           taskMove(taskOne),
@@ -692,18 +693,20 @@ describe('Requested Task opens', () => {
       const server = taskServer();
       const workspace = renderWorkspace();
       const tasks = await chooseTask(betaRow, taskTwo);
-      fireEvent.change(within(tasks).getByLabelText('Task title'), {
-        target: { value: 'Draft for the questionnaire' },
-      });
+      changeValue(
+        within(tasks).getByLabelText('Task title'),
+        'Draft for the questionnaire',
+      );
       fireEvent.click(within(tasks).getByRole('button', { name: 'New Task' }));
       const creation = await waitFor(() => {
         const panel = tasksPanel();
         within(panel).getByRole('button', { name: 'Create Task' });
         return panel;
       });
-      fireEvent.change(within(creation).getByLabelText('Task title'), {
-        target: { value: 'Create draft' },
-      });
+      changeValue(
+        within(creation).getByLabelText('Task title'),
+        'Create draft',
+      );
       fireEvent.click(
         within(creation).getByRole('button', { name: taskOne.title }),
       );
@@ -737,7 +740,7 @@ describe('Requested Task opens', () => {
     const search = await waitFor(() =>
       within(tasksPanel()).getByRole('searchbox', { name: 'Search Tasks' }),
     );
-    fireEvent.change(search, { target: { value: 'notes' } });
+    changeValue(search, 'notes');
 
     workspace.request(betaProject, taskTwo, 1);
     const opened = await openedTask(taskTwo);

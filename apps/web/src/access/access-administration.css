@@ -67,7 +67,9 @@
   background: #fff;
 }
 
-.prisme-shell .company-access--prisme button {
+.prisme-shell
+  .company-access--prisme
+  button:not(:where(.shared-select__trigger)) {
   width: fit-content;
   max-width: 100%;
   min-height: 36px;
@@ -81,12 +83,16 @@
   white-space: normal;
 }
 
-.prisme-shell .company-access--prisme button:disabled {
+.prisme-shell
+  .company-access--prisme
+  button:not(:where(.shared-select__trigger)):disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.prisme-shell .company-access--prisme button:focus-visible,
+.prisme-shell
+  .company-access--prisme
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .prisme-shell .company-access--prisme select:focus-visible {
   outline: 3px solid var(--shell-focus);
   outline-offset: 2px;

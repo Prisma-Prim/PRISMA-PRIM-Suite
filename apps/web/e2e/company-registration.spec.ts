@@ -1,3 +1,4 @@
+import { expectValue, openSelect, selectOption } from './select-option';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
@@ -120,11 +121,16 @@ test('registers, reads and server-activates the first Company after an exact unc
   });
 
   await openNavigationAtNarrowViewport(page, testInfo.project.name);
-  const selector = page.getByLabel('Active Company', { exact: true });
+  const selector = page.getByRole('combobox', {
+    name: 'Active Company',
+    exact: true,
+  });
+  const companyChoices = await openSelect(selector);
   await expect(
-    selector.getByRole('option', { name: company.displayName }),
+    companyChoices.getByRole('option', { name: company.displayName }),
   ).toHaveCount(1);
-  await selector.selectOption(company.id);
+  await selector.press('Escape');
+  await selectOption(selector, company.id);
   await expect.poll(() => Boolean(pendingSelection)).toBe(true);
   await expect(page.locator('.prisme-breadcrumb')).not.toContainText(
     company.displayName,
@@ -139,7 +145,7 @@ test('registers, reads and server-activates the first Company after an exact unc
       },
     },
   });
-  await expect(selector).toHaveValue(company.id);
+  await expectValue(selector, company.id);
   await expect(page.locator('.prisme-breadcrumb')).toContainText(
     company.displayName,
   );

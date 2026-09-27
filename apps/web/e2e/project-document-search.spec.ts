@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import type { WorkingDocument } from '../src/documents/document-response';
 import {
@@ -181,9 +182,10 @@ async function selectCompany(page: Page, testInfo: TestInfo) {
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
 }
@@ -310,7 +312,7 @@ test('finds one eligible working Document among similar rows and attaches it', a
   await documents
     .getByRole('button', { name: 'Attach working Document', exact: true })
     .click();
-  await expect(documents.getByLabel(searchLabel)).toHaveValue('');
+  await expectValue(documents.getByLabel(searchLabel), '');
   await expect(documents.getByRole('heading', { level: 5 })).toHaveText([
     siteVisit.title,
     remoteReview.title,

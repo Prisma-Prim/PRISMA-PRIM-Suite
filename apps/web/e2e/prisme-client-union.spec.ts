@@ -1,4 +1,6 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   captureUnion,
@@ -37,7 +39,7 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   });
   await expect(heading).toBeFocused();
   for (const select of await unionForm(page).getByRole('combobox').all())
-    await expect(select).toHaveValue('');
+    await expectValue(select, '');
   await heading.evaluate((element) =>
     element.scrollIntoView({ block: 'start' }),
   );
@@ -55,6 +57,12 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   expect(state.commands).toHaveLength(0);
   await captureUnion(page, testInfo, 'union-incomplete');
   await chooseUnion(page);
+  await expectSelectAppearance(
+    unionForm(page).getByRole('combobox', {
+      name: 'Canonical Client dossier',
+      exact: true,
+    }),
+  );
   const address = unionForm(page).getByRole('combobox', {
     name: 'Address',
     exact: true,
@@ -62,16 +70,16 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   await expect(address).toHaveAccessibleDescription(
     'Value to retain from Source 2 ' + second.address,
   );
-  await address.selectOption(firstId);
+  await selectOption(address, firstId);
   await expect(address).toHaveAccessibleDescription(
     'Value to retain from Source 1 Not provided',
   );
-  await address.selectOption(secondId);
+  await selectOption(address, secondId);
   const email = unionForm(page).getByRole('combobox', {
     name: 'General email',
     exact: true,
   });
-  await email.selectOption(firstId);
+  await selectOption(email, firstId);
   await expect(email).toHaveAccessibleDescription(
     'Value to retain from Source 1 Not provided',
   );
@@ -79,7 +87,7 @@ test('keeps the second canonical intention through uncertain retry, navigation a
     element.scrollIntoView({ block: 'start' }),
   );
   await captureUnion(page, testInfo, 'union-retained-values');
-  await email.selectOption(secondId);
+  await selectOption(email, secondId);
   const activityBefore = state.activityReads;
   const clientsBefore = state.clientReads;
   await unionForm(page)
@@ -94,17 +102,20 @@ test('keeps the second canonical intention through uncertain retry, navigation a
   const menu = page.getByRole('button', { name: 'Open navigation' });
   if (await menu.isVisible()) await menu.click();
   await enterClassicCompatibility(page);
-  await expect(
+  await expectValue(
     unionForm(page).getByRole('combobox', {
       name: 'Canonical Client dossier',
       exact: true,
     }),
-  ).toHaveValue(secondId);
+    secondId,
+  );
   await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(
+  await expectValue(
     unionForm(page).getByRole('combobox', { name: 'Telephone', exact: true }),
-  ).toHaveValue(firstId);
-  await expect(unionForm(page).getByLabel('Reason for this union')).toHaveValue(
+    firstId,
+  );
+  await expectValue(
+    unionForm(page).getByLabel('Reason for this union'),
     'Reviewed both saved dossiers and all affected Companies.',
   );
   expect(state.commands).toHaveLength(1);
@@ -246,16 +257,19 @@ test('separates a failed history read from any union confirmation', async ({
       exact: false,
     }),
   ).toHaveCount(0);
-  await expect(
+  await expectValue(
     unionForm(page).getByRole('combobox', {
       name: 'Canonical Client dossier',
       exact: true,
     }),
-  ).toHaveValue(secondId);
-  await expect(
+    secondId,
+  );
+  await expectValue(
     unionForm(page).getByRole('combobox', { name: 'Telephone', exact: true }),
-  ).toHaveValue(firstId);
-  await expect(unionForm(page).getByLabel('Reason for this union')).toHaveValue(
+    firstId,
+  );
+  await expectValue(
+    unionForm(page).getByLabel('Reason for this union'),
     'Reviewed both saved dossiers and all affected Companies.',
   );
   expect(state.commands).toHaveLength(0);

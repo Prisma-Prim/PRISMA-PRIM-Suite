@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page } from '@playwright/test';
 import type { TaskView } from '../src/project/task-response';
 import {
@@ -121,9 +122,10 @@ for (const frame of ['classic', 'prisme'] as const) {
     await page.goto(`/?frame=${frame}#clients`);
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#clients`);
@@ -157,9 +159,10 @@ for (const frame of ['classic', 'prisme'] as const) {
         return bounds.top < window.innerHeight && bounds.bottom > 0;
       }),
     ).toBe(true);
-    await expect(
+    await expectValue(
       page.getByRole('searchbox', { name: 'Find Projects' }),
-    ).toHaveValue(client.displayName);
+      client.displayName,
+    );
     await page
       .getByRole('list', { name: 'Projects' })
       .getByRole('button', {
@@ -214,7 +217,7 @@ for (const frame of ['classic', 'prisme'] as const) {
     await dossierRegion
       .getByRole('button', { name: 'Open Client Projects' })
       .click();
-    await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+    await expectValue(page.getByLabel('Task title'), taskDraft);
     await page.getByRole('searchbox', { name: 'Find Projects' }).fill('');
     await expect(
       page.getByRole('list', { name: 'Projects' }).getByRole('button'),
@@ -439,9 +442,10 @@ for (const frame of ['classic', 'prisme'] as const) {
     await page.goto(`/?frame=${frame}#clients`);
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (frame === 'prisme' && testInfo.project.name === 'narrow')
       await page.getByRole('button', { name: 'Close navigation' }).click();
 
@@ -458,7 +462,7 @@ for (const frame of ['classic', 'prisme'] as const) {
     const confirm = union.getByRole('form', { name: 'Confirm union' });
     await expect(confirm).toBeVisible();
     for (const select of await confirm.getByRole('combobox').all())
-      await select.selectOption(second.id);
+      await selectOption(select, second.id);
     await confirm
       .getByLabel('Reason for this union')
       .fill('Same verified legal identity.');
@@ -478,12 +482,12 @@ for (const frame of ['classic', 'prisme'] as const) {
       .getByRole('button', { name: 'Open Client Projects' })
       .click();
     await expect(projectsTarget).toBeFocused();
-    await expect(search).toHaveValue(second.displayName);
+    await expectValue(search, second.displayName);
     await expect(projectList.getByRole('button')).toHaveCount(1);
     await expect(
       projectList.getByRole('button', { name: projectRow }),
     ).toBeVisible();
-    await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+    await expectValue(page.getByLabel('Task title'), taskDraft);
     await page.getByRole('button', { name: 'Open Client dossier' }).click();
     await expect(page.locator('#clients')).toBeFocused();
     await expect(
@@ -520,12 +524,12 @@ for (const frame of ['classic', 'prisme'] as const) {
       .getByRole('button', { name: 'Open Client Projects' })
       .click();
     await expect(projectsTarget).toBeFocused();
-    await expect(search).toHaveValue(first.displayName);
+    await expectValue(search, first.displayName);
     await expect(projectList.getByRole('button')).toHaveCount(1);
     await expect(
       projectList.getByRole('button', { name: projectRow }),
     ).toBeVisible();
-    await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+    await expectValue(page.getByLabel('Task title'), taskDraft);
     expect(projectReads).toBe(readsBeforeUnion + 2);
     expect(
       await page.evaluate(
@@ -830,9 +834,10 @@ for (const frame of ['classic', 'prisme'] as const) {
     await page.goto('/');
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (frame === 'classic') await enterClassicCompatibility(page);
     else if (narrow)
       await page.getByRole('button', { name: 'Close navigation' }).click();
@@ -938,11 +943,11 @@ for (const frame of ['classic', 'prisme'] as const) {
       .getByRole('button', { name: 'Open Client Projects' })
       .click();
     await expect(projectsTarget).toBeFocused();
-    await expect(search).toHaveValue(client.displayName);
+    await expectValue(search, client.displayName);
     await openHome();
     await projectsCard.click();
     await expect(projectsTarget).toBeFocused();
-    await expect(search).toHaveValue('');
+    await expectValue(search, '');
     await expect(
       page
         .getByRole('list', { name: 'Projects', exact: true })

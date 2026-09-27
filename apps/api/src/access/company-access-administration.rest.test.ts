@@ -101,13 +101,36 @@ describeWithPostgres('Company access administration REST API', () => {
       `INSERT INTO internal_users (
          external_provider, external_subject, display_name, email
        ) VALUES ('deterministic-test', 'foreign-user', 'Foreign User',
-         'foreign-user@example.test') RETURNING id`,
+        'foreign-user@example.test') RETURNING id`,
     );
-    await pool.query(
+    const foreignWorkspaceId = foreignWorkspace.rows[0]?.id;
+    const foreignUserId = foreignUser.rows[0]?.id;
+    if (!foreignWorkspaceId || !foreignUserId)
+      throw new Error('Foreign tenant setup failed.');
+    const foreignMembership = await pool.query<{ id: string }>(
       `INSERT INTO workspace_memberships (workspace_id, internal_user_id)
-       VALUES ($1, $2)
-       ON CONFLICT (workspace_id, internal_user_id) DO NOTHING`,
-      [foreignWorkspace.rows[0]!.id, foreignUser.rows[0]!.id],
+       VALUES ($1, $2) RETURNING id`,
+      [foreignWorkspaceId, foreignUserId],
+    );
+    const foreignMembershipId = foreignMembership.rows[0]?.id;
+    if (!foreignMembershipId)
+      throw new Error('Foreign membership setup failed.');
+    const foreignCompany = await pool.query<{ id: string }>(
+      `INSERT INTO companies (
+         workspace_id, display_name, created_by_internal_user_id,
+         created_by_workspace_membership_id, registration_idempotency_key
+       ) VALUES ($1, 'Foreign Company', $2, $3, 'foreign-company')
+       RETURNING id`,
+      [foreignWorkspaceId, foreignUserId, foreignMembershipId],
+    );
+    const foreignCompanyId = foreignCompany.rows[0]?.id;
+    if (!foreignCompanyId) throw new Error('Foreign Company setup failed.');
+    await pool.query(
+      `INSERT INTO company_role_assignments (
+         workspace_id, company_id, workspace_membership_id, bundle,
+         permission_set_version
+       ) VALUES ($1, $2, $3, 'company_context_access', NULL)`,
+      [foreignWorkspaceId, foreignCompanyId, foreignMembershipId],
     );
 
     const response = await fetch(
@@ -195,6 +218,17 @@ describeWithPostgres('Company access administration REST API', () => {
       },
     );
     expect(revoke.status).toBe(200);
+    expect(
+      (
+        await pool.query<{ active: boolean }>(
+          `SELECT revoked_at IS NULL AS active
+             FROM company_role_assignments
+            WHERE workspace_membership_id = $1 AND company_id = $2
+              AND bundle::text = 'company_context_access'`,
+          [member.workspaceMembershipId, company.id],
+        )
+      ).rows,
+    ).toEqual([{ active: false }]);
     const revoked = await administrationState();
     expect(revoked.assignments).toEqual([]);
   });

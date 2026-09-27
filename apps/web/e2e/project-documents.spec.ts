@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import {
   expect,
   test,
@@ -210,9 +211,10 @@ async function openProject(page: Page, testInfo: TestInfo) {
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -554,9 +556,10 @@ for (const frame of ['classic', 'prisme'] as const)
     await page.goto(`/?frame=${frame}#projects`);
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (narrow)
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#projects`);
@@ -634,11 +637,9 @@ for (const frame of ['classic', 'prisme'] as const)
     if (narrow)
       await page.getByRole('button', { name: 'Open navigation' }).click();
     const activeCompany = page.getByLabel('Active Company', { exact: true });
-    await activeCompany.selectOption(company.id);
+    await selectOption(activeCompany, company.id);
     await expect(activeCompany).toBeEnabled();
-    await expect(activeCompany.locator('option:checked')).toHaveText(
-      company.displayName,
-    );
+    await expect(activeCompany).toHaveText(company.displayName);
     if (narrow)
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#documents`);

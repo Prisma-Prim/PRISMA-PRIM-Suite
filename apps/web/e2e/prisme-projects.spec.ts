@@ -1,4 +1,6 @@
+import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page } from '@playwright/test';
 import type { ProjectLifecycle } from '../src/project/project-lifecycle-response';
 import {
@@ -255,9 +257,10 @@ test('creates and opens a Project, then switches local panels without reloading 
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -271,7 +274,8 @@ test('creates and opens a Project, then switches local panels without reloading 
       .getByText('Preparatory', { exact: true }),
   ).toBeVisible();
   await page.getByLabel('Project title').fill(createdProject.title);
-  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  await expectSelectAppearance(page.getByLabel('Client', { exact: true }));
+  await selectOption(page.getByLabel('Client', { exact: true }), client.id);
   // The preparation notice stays beside the registration form.
   await expect(
     page
@@ -334,6 +338,9 @@ test('creates and opens a Project, then switches local panels without reloading 
   ).toBeVisible();
   const taskDraft = 'Prepare the certification interview';
   await tasksPanel.getByLabel('Task title').fill(taskDraft);
+  await expectSelectAppearance(
+    tasksPanel.getByRole('combobox', { name: 'Priority', exact: true }),
+  );
   const readsAfterOpen = { ...reads };
 
   await documentsTab.click();
@@ -344,7 +351,7 @@ test('creates and opens a Project, then switches local panels without reloading 
     documentsPanel.getByText('No working Documents attached.'),
   ).toBeVisible();
   await tasksTab.click();
-  await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
 
   // Activate with a start exception, then hold and resume (issue #406).
   const lifecycleSection = article.getByRole('region', { name: 'Lifecycle' });
@@ -377,7 +384,8 @@ test('creates and opens a Project, then switches local panels without reloading 
       .getByRole('radio', { name: 'Present' })
       .press('Space');
   await declaration.getByLabel('Start exception reason').fill(exceptionReason);
-  await expect(declaration.getByLabel('To be completed by')).toHaveValue(
+  await expectValue(
+    declaration.getByLabel('To be completed by'),
     ana.workspaceMembershipId,
   );
   await declaration.getByLabel('Completion deadline').fill('2026-10-15');
@@ -461,7 +469,7 @@ test('creates and opens a Project, then switches local panels without reloading 
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
-  await expect(page.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(page.getByLabel('Task title'), taskDraft);
   await expect(
     page
       .locator('#project-documents-panel')
@@ -481,7 +489,7 @@ test('creates and opens a Project, then switches local panels without reloading 
     fullPage: true,
   });
   await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(tasksPanel.getByLabel('Task title')).toHaveValue(taskDraft);
+  await expectValue(tasksPanel.getByLabel('Task title'), taskDraft);
   expect(reads).toEqual(readsAfterOpen);
 
   const rawIds = [

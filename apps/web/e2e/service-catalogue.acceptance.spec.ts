@@ -1,4 +1,9 @@
+import {
+  expectSelectAppearance,
+  expectSelectOptionsDoNotOverlap,
+} from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type Response } from '@playwright/test';
 
 test('defines a shared Service and records a Company offering through the real API and PostgreSQL', async ({
@@ -8,7 +13,7 @@ test('defines a shared Service and records a Company offering through the real A
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'NARROW' : 'DESKTOP';
   const code = `ACCEPTANCE-${suffix}`;
-  const name = `Acceptance service ${suffix.toLowerCase()}`;
+  const name = `Acceptance service ${suffix.toLowerCase()} with a deliberately long description for preparing and reviewing an illustrative consulting engagement`;
   const label = `Illustrative offering ${suffix.toLowerCase()}`;
   const disclaimer =
     'This illustrative offering is non-operational: it is not evidence that the Company may perform, certify, sell or contract the service. A real offering requires a separately reviewed governed transition.';
@@ -19,7 +24,25 @@ test('defines a shared Service and records a Company offering through the real A
   const navigation = page.getByRole('navigation', {
     name: 'Primary navigation',
   });
-  await selectCompany(page, company, narrow);
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expectSelectAppearance(company);
+  await company.click();
+  await expect(
+    page.getByRole('listbox', { name: 'Active Company' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `active-company-select-open-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+  await page
+    .getByRole('listbox', { name: 'Active Company' })
+    .getByRole('option', { name: 'PRISMA-PRIM', exact: true })
+    .click();
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
   await navigate(page, navigation, 'Service Catalogue', narrow);
 
   const catalogue = page.locator('.service-catalogue');
@@ -41,7 +64,7 @@ test('defines a shared Service and records a Company offering through the real A
     'Enter a service code of 1 to 40 characters',
   );
   await catalogue.getByLabel('Service code').fill(code);
-  await expect(catalogue.getByLabel('Service code')).toHaveValue(code);
+  await expectValue(catalogue.getByLabel('Service code'), code);
   await catalogue.getByLabel('Service name').fill(name);
   const definitionResponse = page.waitForResponse(
     mutationResponse('POST', '/api/commercial-catalogue/service-definitions'),
@@ -58,9 +81,51 @@ test('defines a shared Service and records a Company offering through the real A
   });
   await expect(definitions.getByText(code, { exact: true })).toBeVisible();
 
-  await catalogue
-    .getByLabel('Service Definition', { exact: true })
-    .selectOption({ label: `${code} — ${name}` });
+  // Four long definitions plus the placeholder force a scrollable narrow menu
+  // even when this journey runs alone against a fresh database.
+  for (const variant of ['A', 'B', 'C']) {
+    const neighbourCode = `${code}-WRAPPED-${variant}`;
+    const neighbourName = `Additional illustrative service ${suffix.toLowerCase()} ${variant} with a long description for the preparation and review of a consulting engagement`;
+    await catalogue.getByLabel('Service code').fill(neighbourCode);
+    await catalogue.getByLabel('Service name').fill(neighbourName);
+    const neighbourResponse = page.waitForResponse(
+      mutationResponse('POST', '/api/commercial-catalogue/service-definitions'),
+    );
+    await catalogue.getByRole('button', { name: 'Define Service' }).click();
+    expect((await neighbourResponse).status()).toBe(201);
+    await expect(
+      definitions.getByText(neighbourCode, { exact: true }),
+    ).toBeVisible();
+  }
+  const serviceDefinition = catalogue.getByLabel('Service Definition', {
+    exact: true,
+  });
+  await expectSelectAppearance(serviceDefinition);
+  await serviceDefinition.click();
+  const serviceChoices = page.getByRole('listbox', {
+    name: 'Service Definition',
+  });
+  await expect(serviceChoices).toBeVisible();
+  if (narrow) {
+    const menu = await serviceChoices.evaluate((element) => ({
+      contentHeight: element.scrollHeight,
+      visibleHeight: element.clientHeight,
+    }));
+    expect(menu.contentHeight).toBeGreaterThan(menu.visibleHeight);
+  }
+  await expectSelectOptionsDoNotOverlap(serviceChoices, {
+    requireWrappedOption: narrow,
+  });
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `service-catalogue-select-open-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+  await page
+    .getByRole('listbox', { name: 'Service Definition' })
+    .getByRole('option', { name: `${code} — ${name}`, exact: true })
+    .click();
   await catalogue.getByLabel('Commercial label').fill(label);
   const offeringResponse = page.waitForResponse(
     mutationResponse('POST', '/api/commercial-catalogue/offerings'),
@@ -86,9 +151,10 @@ test('defines a shared Service and records a Company offering through the real A
     recordedOffering.getByText('Illustrative', { exact: true }),
   ).toBeVisible();
 
-  await catalogue
-    .getByLabel('Service Definition', { exact: true })
-    .selectOption({ label: `${code} — ${name}` });
+  await selectOption(
+    catalogue.getByLabel('Service Definition', { exact: true }),
+    { label: `${code} — ${name}` },
+  );
   await catalogue.getByLabel('Commercial label').fill(`${label} changed`);
   const duplicateResponse = page.waitForResponse(
     mutationResponse('POST', '/api/commercial-catalogue/offerings'),
@@ -101,7 +167,8 @@ test('defines a shared Service and records a Company offering through the real A
       { exact: true },
     ),
   ).toBeVisible();
-  await expect(catalogue.getByLabel('Commercial label')).toHaveValue(
+  await expectValue(
+    catalogue.getByLabel('Commercial label'),
     `${label} changed`,
   );
 
@@ -195,18 +262,6 @@ function requiredEnvironment(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required.`);
   return value;
-}
-
-async function selectCompany(
-  page: Page,
-  company: ReturnType<Page['getByLabel']>,
-  narrow: boolean,
-): Promise<void> {
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await company.selectOption({ label: 'PRISMA-PRIM' });
-  if (narrow)
-    await page.getByRole('button', { name: 'Close navigation' }).click();
 }
 
 async function navigate(

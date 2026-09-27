@@ -1,3 +1,4 @@
+import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
@@ -324,7 +325,7 @@ async function chooseProjectRow(row: string) {
 async function selectCompany(companyId: string) {
   const selector = () =>
     screen.getByLabelText('Active Company', { exact: true });
-  fireEvent.change(selector(), { target: { value: companyId } });
+  changeValue(selector(), companyId);
   await waitFor(() => {
     expect(selector()).toHaveValue(companyId);
     expect(selector()).toBeEnabled();
@@ -367,7 +368,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
       ),
     );
     await openedTask(atelierTask);
-    fireEvent.change(taskTitleField(), { target: { value: taskDraft } });
+    changeValue(taskTitleField(), taskDraft);
 
     navigateTo(taskCopy.myTasks.title);
     const open = await openAction(betaTask);

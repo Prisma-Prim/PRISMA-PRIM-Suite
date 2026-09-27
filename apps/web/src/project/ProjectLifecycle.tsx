@@ -6,6 +6,7 @@ import {
   createAuthenticatedApiClient,
 } from '../api/authenticated-api-client';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import {
   START_DECLARATION_ITEMS,
   readLifecycleReceipt,
@@ -752,32 +753,28 @@ function ActivationForm({
             editor.members.members.length === 0 && <p>{copy.noMembers}</p>}
           {editor.members.kind === 'ready' &&
             editor.members.members.length > 0 && (
-              <label>
+              <label htmlFor={`${formId}-member`}>
                 {copy.completionResponsible}
-                <select
+                <Select
+                  id={`${formId}-member`}
                   value={editor.completionMembershipId}
+                  placeholder={copy.selectMember}
+                  options={editor.members.members.map((member) => ({
+                    value: member.workspaceMembershipId,
+                    label: member.displayLabel,
+                  }))}
                   required
-                  aria-invalid={memberInvalid || undefined}
-                  aria-describedby={
+                  invalid={memberInvalid}
+                  describedBy={
                     memberInvalid ? `${formId}-member-error` : undefined
                   }
-                  onChange={(event) =>
+                  onValueChange={(value) =>
                     onChange({
                       ...editor,
-                      completionMembershipId: event.target.value,
+                      completionMembershipId: value,
                     })
                   }
-                >
-                  <option value="">{copy.selectMember}</option>
-                  {editor.members.members.map((member) => (
-                    <option
-                      key={member.workspaceMembershipId}
-                      value={member.workspaceMembershipId}
-                    >
-                      {member.displayLabel}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
             )}
           {memberInvalid && (

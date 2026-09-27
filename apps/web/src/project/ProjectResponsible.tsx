@@ -6,6 +6,7 @@ import {
   createAuthenticatedApiClient,
 } from '../api/authenticated-api-client';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import {
   readResponsibility,
   readResponsibilityReceipt,
@@ -337,24 +338,20 @@ function Responsible({
                 <p>{copy.noMembers}</p>
               )}
               {editor.kind === 'open' && editor.members.length > 0 && (
-                <label>
+                <label htmlFor={`project-responsible-${projectId}`}>
                   {copy.choose}
-                  <select
+                  <Select
+                    id={`project-responsible-${projectId}`}
                     value={editor.selection}
-                    onChange={(event) =>
-                      setEditor({ ...editor, selection: event.target.value })
+                    placeholder={copy.selectMember}
+                    options={editor.members.map((member) => ({
+                      value: member.workspaceMembershipId,
+                      label: member.displayLabel,
+                    }))}
+                    onValueChange={(value) =>
+                      setEditor({ ...editor, selection: value })
                     }
-                  >
-                    <option value="">{copy.selectMember}</option>
-                    {editor.members.map((member) => (
-                      <option
-                        key={member.workspaceMembershipId}
-                        value={member.workspaceMembershipId}
-                      >
-                        {member.displayLabel}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               )}
               <div className="project-responsible-actions">

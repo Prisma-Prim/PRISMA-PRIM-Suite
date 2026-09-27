@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import {
   expect,
   test,
@@ -29,7 +30,21 @@ test('keeps a Client registration across an equivalent Company refresh through t
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  const initialActor = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/access/current-actor' &&
+      response.request().method() === 'GET' &&
+      response.request().headers()['x-company-context-id'] !== undefined,
+  );
   await page.goto('/');
+  const initialActorResponse = await initialActor;
+  expect(initialActorResponse.status()).toBe(200);
+  const expectedActor: unknown = await initialActorResponse.json();
+  const companyId = initialActorResponse.request().headers()[
+    'x-company-context-id'
+  ];
+  if (!companyId)
+    throw new Error('Expected the initial active Company context.');
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
@@ -38,7 +53,7 @@ test('keeps a Client registration across an equivalent Company refresh through t
     name: 'Primary navigation',
   });
   const clients = page.locator('.client-workspace');
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
   await navigate(page, navigation, 'Clients', narrow);
   await clients
     .getByRole('button', { name: 'New Client', exact: true })
@@ -51,10 +66,20 @@ test('keeps a Client registration across an equivalent Company refresh through t
     .click();
   const settledReceipt = await settled.committed;
   expect(settledReceipt.status).toBe(201);
-  await refreshActiveCompany(page, company, narrow);
+  await refreshActiveCompany({
+    page,
+    company,
+    clients,
+    narrow,
+    companyId,
+    expectedActor,
+  });
   await expect(
     clients.getByRole('button', { name: 'Creating…' }),
   ).toBeDisabled();
+  await expect(clients.getByLabel('Client display name')).toHaveValue(
+    settledName,
+  );
   settled.release();
   await expect(clients.getByText(created)).toBeVisible();
   await expect(
@@ -69,10 +94,20 @@ test('keeps a Client registration across an equivalent Company refresh through t
     .click();
   const committedReceipt = await lost.committed;
   expect(committedReceipt.status).toBe(201);
-  await refreshActiveCompany(page, company, narrow);
+  await refreshActiveCompany({
+    page,
+    company,
+    clients,
+    narrow,
+    companyId,
+    expectedActor,
+  });
   await expect(
     clients.getByRole('button', { name: 'Creating…' }),
   ).toBeDisabled();
+  await expect(clients.getByLabel('Client display name')).toHaveValue(
+    retriedName,
+  );
   lost.release();
   await expect(
     clients.getByText(
@@ -170,25 +205,80 @@ async function holdNextClientRegistration(
   return { committed, release: () => release() };
 }
 
-async function refreshActiveCompany(
-  page: Page,
-  company: Locator,
-  narrow: boolean,
-): Promise<void> {
+async function refreshActiveCompany({
+  page,
+  company,
+  clients,
+  narrow,
+  companyId,
+  expectedActor,
+}: {
+  page: Page;
+  company: Locator;
+  clients: Locator;
+  narrow: boolean;
+  companyId: string;
+  expectedActor: unknown;
+}): Promise<void> {
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
+  await expect(company).toHaveText('PRISMA-PRIM');
+  // Re-selecting the committed value is a no-op; it must not refresh Access.
+  await selectOption(company, { label: 'PRISMA-PRIM' });
+  await expect(company).toBeEnabled();
+  await expect(company).toHaveText('PRISMA-PRIM');
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+
+  // Inject only the search refusal. The existing public recovery path performs
+  // the actor and Activity Log reads against the real API, with unchanged rights.
+  // This fault injection is not evidence of a server authorization denial.
+  await page.route(
+    (url) => url.pathname === '/api/clients/search',
+    (route) => route.fulfill({ status: 403, json: { message: 'Forbidden' } }),
+    { times: 1 },
+  );
+  const search = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/clients/search' &&
+      response.request().method() === 'GET',
+  );
   const confirmation = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/access/current-actor' &&
       response.request().method() === 'GET',
   );
-  await company.selectOption({ label: 'PRISMA-PRIM' });
-  expect((await confirmation).status()).toBe(200);
-  await expect(company).toBeEnabled();
-  await expect(company.locator('option:checked')).toHaveText('PRISMA-PRIM');
-  if (narrow)
-    await page.getByRole('button', { name: 'Close navigation' }).click();
+  const activity = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/activity-log' &&
+      response.request().method() === 'GET',
+  );
+  await clients.getByLabel('Find a shared Client').fill('Refresh');
+  await clients
+    .getByRole('button', { name: 'Search Clients', exact: true })
+    .click();
+  expect((await search).status()).toBe(403);
+  const refreshedActor = await confirmation;
+  expect(refreshedActor.status()).toBe(200);
+  expect(refreshedActor.request().headers()['x-company-context-id']).toBe(
+    companyId,
+  );
+  const actualActor: unknown = await refreshedActor.json();
+  expect(actualActor).toEqual(expectedActor);
+  expect((await activity).status()).toBe(200);
+  // The enabled Search action proves the recovery callback has finished before
+  // the held registration is released; observing the HTTP reply alone does not.
+  await expect(
+    clients.getByRole('button', { name: 'Search Clients', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    clients.getByText('You do not have permission to manage Clients.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await clients
+    .getByRole('button', { name: 'Back to Company Clients', exact: true })
+    .click();
 }
 
 async function receipt(

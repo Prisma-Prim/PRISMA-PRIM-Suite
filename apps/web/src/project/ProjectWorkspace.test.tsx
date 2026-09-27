@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -182,12 +183,11 @@ it('keeps the create draft and the request key when the created Project carries 
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.change(await screen.findByLabelText('Project title'), {
-    target: { value: validProject.title },
-  });
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
+  changeValue(
+    await screen.findByLabelText('Project title'),
+    validProject.title,
+  );
+  changeValue(screen.getByLabelText('Client'), 'client');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
 
   expect(await screen.findByText(loadOrSaveError)).toBeInTheDocument();
@@ -336,9 +336,7 @@ it('filters loaded Projects by visible title or Client without requesting again 
   ).toBeInTheDocument();
   const readsAfterLoad = fetch.mock.calls.length;
 
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-    target: { value: 'bEtA' },
-  });
+  changeValue(screen.getByRole('searchbox', { name: 'Find Projects' }), 'bEtA');
   expect(
     within(projectList).getByRole('button', {
       name: 'ISO preparation Client: Beta Certification',
@@ -347,9 +345,10 @@ it('filters loaded Projects by visible title or Client without requesting again 
   expect(within(projectList).getAllByRole('button')).toHaveLength(1);
   expect(fetch).toHaveBeenCalledTimes(readsAfterLoad);
 
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-    target: { value: 'missing' },
-  });
+  changeValue(
+    screen.getByRole('searchbox', { name: 'Find Projects' }),
+    'missing',
+  );
   expect(
     screen.getByText('No Project matches this search.'),
   ).toBeInTheDocument();
@@ -509,9 +508,9 @@ it('keeps an opened detail while filtering and reflects its authoritative reopen
       identity={deterministicBrowserIdentity()}
     />,
   );
-  fireEvent.change(
+  changeValue(
     await screen.findByRole('searchbox', { name: 'Find Projects' }),
-    { target: { value: 'ISO' } },
+    'ISO',
   );
   fireEvent.click(
     screen.getByRole('button', {
@@ -525,15 +524,14 @@ it('keeps an opened detail while filtering and reflects its authoritative reopen
   expect(
     screen.getByText('No Project matches this search.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-    target: { value: 'nothing' },
-  });
+  changeValue(
+    screen.getByRole('searchbox', { name: 'Find Projects' }),
+    'nothing',
+  );
   expect(
     screen.getByRole('heading', { name: reopenedProject.title }),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-    target: { value: 'beta' },
-  });
+  changeValue(screen.getByRole('searchbox', { name: 'Find Projects' }), 'beta');
   expect(
     screen.getByRole('button', {
       name: `${reopenedProject.title} Client: ${reopenedProject.clientDisplayName}`,
@@ -578,7 +576,7 @@ it('resets the local Project filter when the active Company changes', async () =
   const search = await screen.findByRole('searchbox', {
     name: 'Find Projects',
   });
-  fireEvent.change(search, { target: { value: 'first' } });
+  changeValue(search, 'first');
   expect(search).toHaveValue('first');
 
   activeCompanyId = 'company-two';
@@ -637,12 +635,8 @@ it('creates, reloads and reopens a preparatory Project in the selected Company',
   expect(
     await screen.findByText('No Projects for this Company yet.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Project title'), {
-    target: { value: 'ISO preparation' },
-  });
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
+  changeValue(screen.getByLabelText('Project title'), 'ISO preparation');
+  changeValue(screen.getByLabelText('Client'), 'client');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   expect(
     await screen.findByRole('heading', { name: 'ISO preparation' }),
@@ -772,15 +766,11 @@ it('reuses a stable request key after an uncertain create result', async () => {
   const search = await screen.findByRole('searchbox', {
     name: 'Find Projects',
   });
-  fireEvent.change(screen.getByLabelText('Project title'), {
-    target: { value: project.title },
-  });
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
+  changeValue(screen.getByLabelText('Project title'), project.title);
+  changeValue(screen.getByLabelText('Client'), 'client');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   await screen.findByRole('alert');
-  fireEvent.change(search, { target: { value: 'retry' } });
+  changeValue(search, 'retry');
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   await screen.findByRole('heading', { name: project.title });
   expect(keys).toHaveLength(2);
@@ -1298,9 +1288,7 @@ describe('Client identity changes', () => {
     expect(listedRows()).toEqual([]);
     expect(detail).toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Find Projects' }), {
-      target: { value: '' },
-    });
+    changeValue(screen.getByRole('searchbox', { name: 'Find Projects' }), '');
     expect(listedRows()).toEqual([historicalRow]);
     expect(server.count('GET /api/projects')).toBe(2);
   });
@@ -1376,12 +1364,11 @@ describe('Client identity changes', () => {
       title: registeredProject.title,
       taskRoute: `GET /api/projects/${registeredProject.id}/tasks`,
       start: () => {
-        fireEvent.change(screen.getByLabelText('Project title'), {
-          target: { value: registeredProject.title },
-        });
-        fireEvent.change(screen.getByLabelText('Client'), {
-          target: { value: supersededClient.id },
-        });
+        changeValue(
+          screen.getByLabelText('Project title'),
+          registeredProject.title,
+        );
+        changeValue(screen.getByLabelText('Client'), supersededClient.id);
         fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
       },
     },
@@ -1487,12 +1474,11 @@ describe('Client identity changes', () => {
     const server = identityServer();
     const workspace = renderWorkspace();
     await screen.findByRole('button', { name: historicalRow });
-    fireEvent.change(screen.getByLabelText('Project title'), {
-      target: { value: registeredProject.title },
-    });
-    fireEvent.change(screen.getByLabelText('Client'), {
-      target: { value: supersededClient.id },
-    });
+    changeValue(
+      screen.getByLabelText('Project title'),
+      registeredProject.title,
+    );
+    changeValue(screen.getByLabelText('Client'), supersededClient.id);
     server.hold('POST /api/projects');
     server.hold('GET /api/projects');
     server.hold(`GET /api/projects/${registeredProject.id}`);
@@ -1543,12 +1529,11 @@ describe('Client identity changes', () => {
     const server = identityServer();
     const workspace = renderWorkspace();
     await screen.findByRole('button', { name: historicalRow });
-    fireEvent.change(screen.getByLabelText('Project title'), {
-      target: { value: registeredProject.title },
-    });
-    fireEvent.change(screen.getByLabelText('Client'), {
-      target: { value: supersededClient.id },
-    });
+    changeValue(
+      screen.getByLabelText('Project title'),
+      registeredProject.title,
+    );
+    changeValue(screen.getByLabelText('Client'), supersededClient.id);
     server.hold('POST /api/projects');
     server.hold(`GET /api/projects/${registeredProject.id}`);
     fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
@@ -1592,9 +1577,10 @@ describe('Client identity changes', () => {
     const workspace = renderWorkspace({ actor: taskActor });
     const detail = await openHistoricalDetail();
     const tasks = await screen.findByRole('region', { name: 'Tasks' });
-    fireEvent.change(await within(tasks).findByLabelText('Task title'), {
-      target: { value: createdTask.title },
-    });
+    changeValue(
+      await within(tasks).findByLabelText('Task title'),
+      createdTask.title,
+    );
     server.hold(`POST ${taskPath}`);
     fireEvent.click(within(tasks).getByRole('button', { name: 'Create Task' }));
     const pendingCommand = await server.requested(`POST ${taskPath}`);

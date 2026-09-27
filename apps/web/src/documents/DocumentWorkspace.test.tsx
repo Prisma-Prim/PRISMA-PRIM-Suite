@@ -1,3 +1,4 @@
+import { changeValue } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -191,7 +192,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
   ]);
   const initialRequestCount = fetcher.mock.calls.length;
 
-  fireEvent.change(filter, { target: { value: 'ALPHA advisory' } });
+  changeValue(filter, 'ALPHA advisory');
   expect(
     within(list).getByRole('button', { name: 'Supplier evidence checklist' }),
   ).toBeInTheDocument();
@@ -201,7 +202,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
     }),
   ).not.toBeInTheDocument();
 
-  fireEvent.change(filter, { target: { value: 'opaque-match' } });
+  changeValue(filter, 'opaque-match');
   expect(within(list).queryByRole('button')).not.toBeInTheDocument();
   expect(screen.getByRole('status')).toHaveTextContent(
     'No loaded working Documents match this filter.',
@@ -210,7 +211,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
     screen.queryByText('No working references registered yet.'),
   ).not.toBeInTheDocument();
 
-  fireEvent.change(filter, { target: { value: '' } });
+  changeValue(filter, '');
   expect(
     within(list)
       .getAllByRole('button')
@@ -228,7 +229,7 @@ it('filters only loaded visible fields in server order and resets for a new Comp
     }),
   );
   expect(await screen.findByText(document.purpose)).toBeInTheDocument();
-  fireEvent.change(filter, { target: { value: 'does not match' } });
+  changeValue(filter, 'does not match');
   expect(screen.getByText(document.purpose)).toBeInTheDocument();
 
   view.rerender(
@@ -346,7 +347,7 @@ it('restricts loaded working Documents to one dossier identity and returns to th
       .map((button) => button.textContent),
   ).toEqual(['Historical questionnaire']);
 
-  fireEvent.change(filter, { target: { value: 'Shared display' } });
+  changeValue(filter, 'Shared display');
   expect(
     within(screen.getByRole('list'))
       .getAllByRole('button')
@@ -356,7 +357,7 @@ it('restricts loaded working Documents to one dossier identity and returns to th
     'Homonym questionnaire',
     'Unprojected questionnaire',
   ]);
-  fireEvent.change(filter, { target: { value: '' } });
+  changeValue(filter, '');
   expect(
     within(screen.getByRole('list'))
       .getAllByRole('button')
@@ -404,9 +405,7 @@ it('keeps an open correction draft when a dossier restriction arrives', async ()
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Unsaved correction draft' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Unsaved correction draft');
 
   view.rerender(
     <DocumentWorkspace
@@ -478,9 +477,7 @@ it.each([
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: 'Protected correction draft' },
-    });
+    changeValue(screen.getByLabelText('Title'), 'Protected correction draft');
 
     if (failFirstAttempt) {
       fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
@@ -552,9 +549,7 @@ it.each([
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: 'Protected correction draft' },
-    });
+    changeValue(screen.getByLabelText('Title'), 'Protected correction draft');
 
     fireEvent.click(screen.getByRole('button', { name: action }));
     if (completion === 'save')
@@ -647,9 +642,7 @@ it('keeps the derived-refresh debt when a union completes during a correction re
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Corrected title' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Corrected title');
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   // The correction is accepted; its detail reload is still pending when the
   // union completes, so that reload carries the pre-union dossier target.
@@ -715,18 +708,13 @@ it.each([
     expect(
       await screen.findByRole('button', { name: 'Historical questionnaire' }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Client'), {
-      target: { value: 'client' },
-    });
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: registeredDocument.title },
-    });
-    fireEvent.change(screen.getByLabelText('Purpose'), {
-      target: { value: registeredDocument.purpose },
-    });
-    fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-      target: { value: registeredDocument.version.representation.url },
-    });
+    changeValue(screen.getByLabelText('Client'), 'client');
+    changeValue(screen.getByLabelText('Title'), registeredDocument.title);
+    changeValue(screen.getByLabelText('Purpose'), registeredDocument.purpose);
+    changeValue(
+      screen.getByLabelText('External HTTPS link'),
+      registeredDocument.version.representation.url,
+    );
     fireEvent.click(
       screen.getByRole('button', { name: 'Register working reference' }),
     );
@@ -824,18 +812,13 @@ const lateRegistrationWorkspace = ({
   />
 );
 function submitLateRegistration() {
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: lateRegistration.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: lateRegistration.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: lateRegistration.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), 'client');
+  changeValue(screen.getByLabelText('Title'), lateRegistration.title);
+  changeValue(screen.getByLabelText('Purpose'), lateRegistration.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    lateRegistration.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -1177,18 +1160,13 @@ function scopedRegistrationFetcher() {
   return { fetcher, posts };
 }
 function registerFor(clientId: string, title: string) {
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: clientId },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), clientId);
+  changeValue(screen.getByLabelText('Title'), title);
+  changeValue(screen.getByLabelText('Purpose'), document.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    document.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -1363,9 +1341,9 @@ function renderScopedRegistration(startFilter?: typeof dossierA) {
   };
 }
 const typeDocumentFilter = (query: string) =>
-  fireEvent.change(
+  changeValue(
     screen.getByRole('searchbox', { name: 'Filter working Documents' }),
-    { target: { value: query } },
+    query,
   );
 it.each([
   ['types a text filter', undefined, 'text', ['Registered A questionnaire']],
@@ -1420,9 +1398,7 @@ it('keeps a registration draft changed while pending as a new registration', asy
   registerFor('client-a', registeredInA.title);
   await waitFor(() => expect(posts).toHaveLength(1));
   typeDocumentFilter('Registered');
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Follow-up questionnaire' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Follow-up questionnaire');
   posts[0]?.response.resolve(Response.json(registeredInA, { status: 201 }));
   await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledTimes(1));
 
@@ -1544,9 +1520,7 @@ it('refreshes the dossier target of a preserved correction once that correction 
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Unsaved correction draft' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Unsaved correction draft');
 
   // The Client union happens while the correction is open.
   united = true;
@@ -1592,9 +1566,7 @@ it.each([
     ).toBeInTheDocument();
     if (correctionOpen) {
       fireEvent.click(screen.getByRole('button', { name: 'Edit reference' }));
-      fireEvent.change(screen.getByLabelText('Title'), {
-        target: { value: 'Unsaved correction draft' },
-      });
+      changeValue(screen.getByLabelText('Title'), 'Unsaved correction draft');
     }
 
     united = true;
@@ -1743,9 +1715,7 @@ async function saveCorrection() {
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Corrected title' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Corrected title');
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   expect(await screen.findByText('Correction saved.')).toBeInTheDocument();
 }
@@ -1920,9 +1890,7 @@ it.each([
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: corrected.title },
-    });
+    changeValue(screen.getByLabelText('Title'), corrected.title);
     fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
     await waitFor(() => expect(requests.commands).toHaveLength(1));
     requests.commands[0]?.resolve(
@@ -2002,9 +1970,7 @@ it.each([
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: corrected.title },
-    });
+    changeValue(screen.getByLabelText('Title'), corrected.title);
     // The union's identity refresh is held while the correction is saved, so
     // the accepted correction's reload is the newer read of the same rows.
     view.rerender(dossierWorkspace(1, openClientDossier));
@@ -2199,18 +2165,13 @@ it('registers and reopens an unverified Company-confidential questionnaire refer
   expect(
     await screen.findByText('No working references registered yet.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: document.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), 'client');
+  changeValue(screen.getByLabelText('Title'), document.title);
+  changeValue(screen.getByLabelText('Purpose'), document.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    document.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -2265,15 +2226,12 @@ it('corrects an existing working reference and reloads its authoritative values'
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Corrected questionnaire' },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: 'Corrected purpose' },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: 'https://example.test/corrected' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Corrected questionnaire');
+  changeValue(screen.getByLabelText('Purpose'), 'Corrected purpose');
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    'https://example.test/corrected',
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   expect(
     await screen.findByText('Corrected questionnaire'),
@@ -2320,24 +2278,19 @@ it('retries an uncertain correction with the exact same command', async () => {
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Retried correction' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Retried correction');
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'result is uncertain',
   );
-  fireEvent.change(screen.getByLabelText('Filter working Documents'), {
-    target: { value: 'unrelated filter' },
-  });
-  fireEvent.change(screen.getByLabelText('Filter working Documents'), {
-    target: { value: '' },
-  });
+  changeValue(
+    screen.getByLabelText('Filter working Documents'),
+    'unrelated filter',
+  );
+  changeValue(screen.getByLabelText('Filter working Documents'), '');
   const lockedTitle = screen.getByLabelText('Title');
   expect(lockedTitle).toBeDisabled();
-  fireEvent.change(lockedTitle, {
-    target: { value: 'Changed after uncertainty' },
-  });
+  changeValue(lockedTitle, 'Changed after uncertainty');
   fireEvent.click(
     screen.getByRole('button', { name: 'Retry same correction' }),
   );
@@ -2388,9 +2341,7 @@ it('requires reload after a correction revision conflict', async () => {
   fireEvent.click(
     await screen.findByRole('button', { name: 'Edit reference' }),
   );
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Competing correction' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Competing correction');
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'changed. Reload it',
@@ -2554,9 +2505,7 @@ it('keeps the registration time of the opened reference through correction editi
   expectOneRegistrationTime();
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit reference' }));
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: 'Corrected questionnaire' },
-  });
+  changeValue(screen.getByLabelText('Title'), 'Corrected questionnaire');
   fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
   expect(await screen.findByText('Saving correction…')).toBeInTheDocument();
   expect(screen.getByLabelText('Title')).toBeDisabled();
@@ -2695,18 +2644,13 @@ it('reports a failure instead of presenting a registered reference with a non-in
   expect(
     await screen.findByText('No working references registered yet.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: document.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), 'client');
+  changeValue(screen.getByLabelText('Title'), document.title);
+  changeValue(screen.getByLabelText('Purpose'), document.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    document.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -2881,18 +2825,13 @@ it('reports a registration whose Project association is malformed instead of ope
   expect(
     await screen.findByText('No working references registered yet.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: document.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), 'client');
+  changeValue(screen.getByLabelText('Title'), document.title);
+  changeValue(screen.getByLabelText('Purpose'), document.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    document.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -2916,18 +2855,13 @@ it('opens a confirmed registration with the association it was answered with', a
   expect(
     await screen.findByText('No working references registered yet.'),
   ).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Client'), {
-    target: { value: 'client' },
-  });
-  fireEvent.change(screen.getByLabelText('Title'), {
-    target: { value: document.title },
-  });
-  fireEvent.change(screen.getByLabelText('Purpose'), {
-    target: { value: document.purpose },
-  });
-  fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-    target: { value: document.version.representation.url },
-  });
+  changeValue(screen.getByLabelText('Client'), 'client');
+  changeValue(screen.getByLabelText('Title'), document.title);
+  changeValue(screen.getByLabelText('Purpose'), document.purpose);
+  changeValue(
+    screen.getByLabelText('External HTTPS link'),
+    document.version.representation.url,
+  );
   fireEvent.click(
     screen.getByRole('button', { name: 'Register working reference' }),
   );
@@ -2973,9 +2907,7 @@ it.each(['corrected', 'unchanged'] satisfies Array<'corrected' | 'unchanged'>)(
     );
     expect(projectRow()).toBe('ProjectISO 9001 preparation');
     if (outcome === 'corrected')
-      fireEvent.change(screen.getByLabelText('Title'), {
-        target: { value: 'Corrected questionnaire' },
-      });
+      changeValue(screen.getByLabelText('Title'), 'Corrected questionnaire');
     fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
     expect(
       await screen.findByText(
@@ -3154,23 +3086,16 @@ describe('a requested Document', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: protectedDraft },
-    });
+    changeValue(screen.getByLabelText('Title'), protectedDraft);
   }
   function fillRegistration() {
-    fireEvent.change(screen.getByLabelText('Client'), {
-      target: { value: 'client' },
-    });
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: lateRegistration.title },
-    });
-    fireEvent.change(screen.getByLabelText('Purpose'), {
-      target: { value: lateRegistration.purpose },
-    });
-    fireEvent.change(screen.getByLabelText('External HTTPS link'), {
-      target: { value: lateRegistration.version.representation.url },
-    });
+    changeValue(screen.getByLabelText('Client'), 'client');
+    changeValue(screen.getByLabelText('Title'), lateRegistration.title);
+    changeValue(screen.getByLabelText('Purpose'), lateRegistration.purpose);
+    changeValue(
+      screen.getByLabelText('External HTTPS link'),
+      lateRegistration.version.representation.url,
+    );
   }
   function expectFilledRegistration() {
     expect(screen.getByLabelText('Client')).toHaveValue('client');
@@ -3346,9 +3271,7 @@ describe('a requested Document', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Edit reference' }),
     );
-    fireEvent.change(screen.getByLabelText('Title'), {
-      target: { value: protectedDraft },
-    });
+    changeValue(screen.getByLabelText('Title'), protectedDraft);
     fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
     await waitFor(() => expect(requests.commands()).toHaveLength(1));
 
@@ -3587,7 +3510,7 @@ describe('a requested Document', () => {
     const filter = await screen.findByRole('searchbox', {
       name: 'Filter working Documents',
     });
-    fireEvent.change(filter, { target: { value: 'Initial' } });
+    changeValue(filter, 'Initial');
     view.rerender(
       workspace({
         requestedDocument: { documentId: requested.id, requestId: 1 },

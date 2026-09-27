@@ -1,3 +1,4 @@
+import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -99,9 +100,10 @@ test('registers and reopens a Company preparatory Project after reload', async (
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -131,7 +133,7 @@ test('registers and reopens a Company preparatory Project after reload', async (
     'Enter a title of 1–200 characters and select a Client.',
   );
   await page.getByLabel('Project title').fill(project.title);
-  await page.getByLabel('Client', { exact: true }).selectOption(client.id);
+  await selectOption(page.getByLabel('Client', { exact: true }), client.id);
   await page
     .getByRole('button', { name: 'Create Project', exact: true })
     .click();

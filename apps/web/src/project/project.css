@@ -63,7 +63,7 @@
   min-width: 0;
   box-sizing: border-box;
 }
-.project-workspace button {
+.project-workspace button:not(:where(.shared-select__trigger)) {
   width: fit-content;
   max-width: 100%;
   white-space: normal;
@@ -118,7 +118,9 @@
   background: #faf9ff;
 }
 .prisme-shell .project-workspace--prisme > button,
-.prisme-shell .project-workspace--prisme button {
+.prisme-shell
+  .project-workspace--prisme
+  button:not(:where(.shared-select__trigger)) {
   min-height: 36px;
   border: 1px solid var(--shell-line);
   border-radius: 6px;
@@ -127,7 +129,9 @@
   background: #fff;
   cursor: pointer;
 }
-.prisme-shell .project-workspace--prisme button:focus-visible,
+.prisme-shell
+  .project-workspace--prisme
+  button:not(:where(.shared-select__trigger)):focus-visible,
 .prisme-shell .project-workspace--prisme input:focus-visible,
 .prisme-shell .project-workspace--prisme select:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--shell-focus) 42%, transparent);

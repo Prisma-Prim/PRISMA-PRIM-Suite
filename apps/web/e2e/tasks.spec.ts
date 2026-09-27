@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -258,9 +259,10 @@ test('manages manual Tasks through the production shell with retained retry and 
   await page.goto('/?frame=prisme#projects');
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -275,8 +277,8 @@ test('manages manual Tasks through the production shell with retained retry and 
   ).toBeVisible();
   await tasks.getByLabel('Task title').fill('Collect preparation notes');
   const priority = tasks.locator('form').getByLabel('Priority');
-  await expect(priority).toHaveValue('normal');
-  await priority.selectOption({ label: 'Critical' });
+  await expectValue(priority, 'normal');
+  await selectOption(priority, { label: 'Critical' });
   await tasks.getByRole('button', { name: 'Create Task', exact: true }).click();
   await expect(
     tasks.getByRole('heading', {
@@ -304,12 +306,12 @@ test('manages manual Tasks through the production shell with retained retry and 
   await expect(
     tasks.locator('dd').getByText('Critical', { exact: true }),
   ).toBeVisible();
-  await tasks
-    .locator('form')
-    .getByLabel('Responsible member')
-    .selectOption(member.workspaceMembershipId);
+  await selectOption(
+    tasks.locator('form').getByLabel('Responsible member'),
+    member.workspaceMembershipId,
+  );
   await tasks.getByLabel('Due date').fill('2026-10-15');
-  await priority.selectOption({ label: 'Important' });
+  await selectOption(priority, { label: 'Important' });
   await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
   await expect(
     tasks.locator('dd').getByText(member.displayLabel, { exact: true }),
@@ -668,9 +670,10 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   await page.goto('/?frame=prisme#projects');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption(company.id);
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
   if (narrow)
     await page.getByRole('button', { name: 'Close navigation' }).click();
   await page.goto('/?frame=prisme#projects');
@@ -702,7 +705,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     .locator('.task-panel dd')
     .getByText('Critical', { exact: true });
   await expect(priorityFact).toBeVisible();
-  await expect(tasks.getByLabel('Priority')).toHaveValue('critical');
+  await expectValue(tasks.getByLabel('Priority'), 'critical');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath('tasks-blocked.png'),

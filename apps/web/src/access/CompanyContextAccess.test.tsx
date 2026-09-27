@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { changeValue, selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 
@@ -151,14 +152,20 @@ describe('CompanyContextAccess', () => {
     expect(
       await screen.findByLabelText('Workspace member'),
     ).toBeInTheDocument();
+    const memberSelect = screen.getByRole('combobox', {
+      name: 'Workspace member',
+    });
+    fireEvent.click(memberSelect);
     expect(
-      within(screen.getByLabelText('Workspace member')).getByRole('option', {
+      screen.getByRole('option', {
         name: 'Ada Member — ada@example.test',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('option', { name: 'PRISMA-PRIM' }),
-    ).toBeInTheDocument();
+    fireEvent.click(memberSelect);
+    const companySelect = screen.getByRole('combobox', { name: 'Company' });
+    fireEvent.click(companySelect);
+    expect(screen.getByRole('option', { name: 'PRISMA-PRIM' })).toBeVisible();
+    fireEvent.click(companySelect);
     expect(
       screen.queryByLabelText('Workspace membership ID'),
     ).not.toBeInTheDocument();
@@ -677,9 +684,7 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Workspace member');
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
 
     expect(fetch).toHaveBeenCalledOnce();
@@ -718,6 +723,7 @@ describe('CompanyContextAccess', () => {
     expect(
       await screen.findByText('Member suspended. Server state refreshed.'),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Member to suspend'));
     expect(
       screen.queryByRole('option', { name: 'Ada Member — ada@example.test' }),
     ).not.toBeInTheDocument();
@@ -741,9 +747,7 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Member to suspend');
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -781,9 +785,7 @@ describe('CompanyContextAccess', () => {
     );
 
     expect(onPendingChange).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     expect(
       screen.getByRole('region', {
@@ -852,9 +854,7 @@ describe('CompanyContextAccess', () => {
     );
 
     expect(onPendingChange).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     expect(
       screen.getByRole('region', {
@@ -922,9 +922,7 @@ describe('CompanyContextAccess', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
@@ -997,9 +995,7 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Member to suspend');
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: ownerMembershipId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), ownerMembershipId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
 
@@ -1042,9 +1038,7 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Member to suspend');
-    fireEvent.change(screen.getByLabelText('Member to suspend'), {
-      target: { value: memberId },
-    });
+    changeValue(screen.getByLabelText('Member to suspend'), memberId);
     fireEvent.click(screen.getByRole('button', { name: 'Review suspension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Suspend access' }));
 
@@ -1054,10 +1048,9 @@ describe('CompanyContextAccess', () => {
     expect(
       screen.queryByText('Member suspended. Server state refreshed.'),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Member to suspend'));
     expect(
-      within(screen.getByLabelText('Member to suspend')).queryByRole('option', {
-        name: 'Ada Member — ada@example.test',
-      }),
+      screen.queryByRole('option', { name: 'Ada Member — ada@example.test' }),
     ).not.toBeInTheDocument();
     expect(refreshActivity).not.toHaveBeenCalled();
   });
@@ -1146,22 +1139,28 @@ describe('CompanyContextAccess', () => {
     );
 
     await screen.findByLabelText('Workspace member');
-    const memberOptions = within(screen.getByLabelText('Workspace member'));
+    const memberSelect = screen.getByRole('combobox', {
+      name: 'Workspace member',
+    });
+    fireEvent.click(memberSelect);
     expect(
-      memberOptions.getByRole('option', {
+      screen.getByRole('option', {
         name: 'Ada Member — ada@example.test — Reference A3QMM1BZFR1YUM8AM42DIJIJU',
       }),
     ).toBeInTheDocument();
     expect(
-      memberOptions.getByRole('option', {
+      screen.getByRole('option', {
         name: 'Ada Member — ada@example.test — Reference 10DGNSXLJLXOXC3RMYV4E8SNL',
       }),
     ).toBeInTheDocument();
     expect(
-      memberOptions.getByRole('option', {
+      screen.getByRole('option', {
         name: 'Workspace Owner — owner@example.test',
       }),
     ).toBeInTheDocument();
+    fireEvent.click(memberSelect);
+    const companySelect = screen.getByRole('combobox', { name: 'Company' });
+    fireEvent.click(companySelect);
     expect(
       screen.getByRole('option', {
         name: 'PRISMA-PRIM — Reference C4HJXN76IW6X20HATX7ZJHWB0',
@@ -1173,6 +1172,7 @@ describe('CompanyContextAccess', () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'BIC' })).toBeInTheDocument();
+    fireEvent.click(companySelect);
   });
 
   it('grants and revokes Task Manager v1 with explicit Project and Client prerequisites', async () => {
@@ -1227,9 +1227,7 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'task-manager' },
-    });
+    changeValue(screen.getByLabelText('Access bundle'), 'task-manager');
     expect(
       screen.getByText(
         /Company Task Manager v1 grants Task read and management only/,
@@ -1362,9 +1360,7 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'commercial-intake' },
-    });
+    changeValue(screen.getByLabelText('Access bundle'), 'commercial-intake');
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
@@ -1408,9 +1404,7 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'service-catalogue' },
-    });
+    changeValue(screen.getByLabelText('Access bundle'), 'service-catalogue');
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
@@ -1462,12 +1456,13 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'pricing-configuration' },
-    });
-    expect(
-      screen.getByRole('option', { name: 'Company Pricing Configuration' }),
-    ).toBeInTheDocument();
+    changeValue(
+      screen.getByLabelText('Access bundle'),
+      'pricing-configuration',
+    );
+    expect(screen.getByLabelText('Access bundle')).toHaveTextContent(
+      'Company Pricing Configuration',
+    );
     expect(
       screen.getByText(
         /Company Pricing Configuration v1 grants offering read and pricing configuration only: reading and publishing illustrative Pricing Rule Versions and Tariff Versions/,
@@ -1540,12 +1535,10 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'project-approver' },
-    });
-    expect(
-      screen.getByRole('option', { name: 'Company Project Approver' }),
-    ).toBeInTheDocument();
+    const bundle = screen.getByLabelText('Access bundle');
+    changeValue(bundle, 'project-approver');
+    expect(bundle).toHaveAttribute('data-value', 'project-approver');
+    expect(bundle).toHaveTextContent('Company Project Approver');
     expect(
       screen.getByText(
         'Changes the Project lifecycle only; Project and Client read are authorized separately.',
@@ -1608,9 +1601,10 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'commercial-activity-reader' },
-    });
+    changeValue(
+      screen.getByLabelText('Access bundle'),
+      'commercial-activity-reader',
+    );
     expect(
       screen.getByText(/grants commercial Activity Log read only/),
     ).toBeInTheDocument();
@@ -1677,9 +1671,14 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
+    const bundleSelect = screen.getByRole('combobox', {
+      name: 'Access bundle',
+    });
+    fireEvent.click(bundleSelect);
     expect(
       screen.getByRole('option', { name: 'Company Pricing User' }),
-    ).toBeInTheDocument();
+    ).toBeVisible();
+    fireEvent.click(bundleSelect);
     chooseBundle('pricing-user');
     expect(screen.getByLabelText('Access bundle')).toHaveValue('pricing-user');
     const prerequisites = screen.getByText(/^Company Pricing User v1 grants/);
@@ -1759,9 +1758,7 @@ describe('CompanyContextAccess', () => {
     );
     await screen.findByLabelText('Workspace member');
     chooseTargets();
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
       'Current server state: Granted',
     );
@@ -1996,15 +1993,9 @@ describe('CompanyContextAccess', () => {
       />,
     );
     await screen.findByLabelText('Workspace member');
-    fireEvent.change(screen.getByLabelText('Workspace member'), {
-      target: { value: ownerMembershipId },
-    });
-    fireEvent.change(screen.getByLabelText('Company'), {
-      target: { value: companyId },
-    });
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
+    changeValue(screen.getByLabelText('Company'), companyId);
+    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
@@ -2087,15 +2078,9 @@ describe('CompanyContextAccess', () => {
       />,
     );
     await screen.findByLabelText('Workspace member');
-    fireEvent.change(screen.getByLabelText('Workspace member'), {
-      target: { value: ownerMembershipId },
-    });
-    fireEvent.change(screen.getByLabelText('Company'), {
-      target: { value: otherCompanyId },
-    });
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
+    changeValue(screen.getByLabelText('Company'), otherCompanyId);
+    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
@@ -2170,15 +2155,9 @@ describe('CompanyContextAccess', () => {
       />,
     );
     await screen.findByLabelText('Workspace member');
-    fireEvent.change(screen.getByLabelText('Workspace member'), {
-      target: { value: ownerMembershipId },
-    });
-    fireEvent.change(screen.getByLabelText('Company'), {
-      target: { value: companyId },
-    });
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
+    changeValue(screen.getByLabelText('Company'), companyId);
+    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
 
     await screen.findByText('Access revoked. Server state refreshed.');
@@ -2270,15 +2249,9 @@ describe('CompanyContextAccess', () => {
       />,
     );
     await screen.findByLabelText('Workspace member');
-    fireEvent.change(screen.getByLabelText('Workspace member'), {
-      target: { value: ownerMembershipId },
-    });
-    fireEvent.change(screen.getByLabelText('Company'), {
-      target: { value: companyId },
-    });
-    fireEvent.change(screen.getByLabelText('Access bundle'), {
-      target: { value: 'director-client' },
-    });
+    changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
+    changeValue(screen.getByLabelText('Company'), companyId);
+    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -2400,12 +2373,14 @@ describe('CompanyContextAccess', () => {
       <CompanyContextAccess actor={ownerActor} identity={secondIdentity} />,
     );
     await waitFor(() =>
-      expect(
-        within(screen.getByLabelText('Workspace member')).getByRole('option', {
-          name: 'New Session Member — new@example.test',
-        }),
-      ).toBeInTheDocument(),
+      expect(screen.getByLabelText('Workspace member')).toBeEnabled(),
     );
+    fireEvent.click(screen.getByLabelText('Workspace member'));
+    expect(
+      screen.getByRole('option', {
+        name: 'New Session Member — new@example.test',
+      }),
+    ).toBeInTheDocument();
 
     await act(async () => {
       firstResponse.resolve(
@@ -2434,18 +2409,12 @@ describe('CompanyContextAccess', () => {
 });
 
 function chooseTargets() {
-  fireEvent.change(screen.getByLabelText('Workspace member'), {
-    target: { value: memberId },
-  });
-  fireEvent.change(screen.getByLabelText('Company'), {
-    target: { value: companyId },
-  });
+  selectOption(screen.getByLabelText('Workspace member'), memberId);
+  selectOption(screen.getByLabelText('Company'), companyId);
 }
 
 function chooseBundle(value: string) {
-  fireEvent.change(screen.getByLabelText('Access bundle'), {
-    target: { value },
-  });
+  selectOption(screen.getByLabelText('Access bundle'), value);
 }
 
 const ownerActor: ActorContext = {

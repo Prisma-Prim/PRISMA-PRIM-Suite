@@ -290,7 +290,11 @@ it('activates with a start exception through an inline form with field-level val
   const responsibleSelect =
     await within(section()).findByLabelText('To be completed by');
   // The Project's responsible member is preselected when eligible.
-  expect(responsibleSelect).toHaveValue(ana.workspaceMembershipId);
+  expect(responsibleSelect).toHaveAttribute(
+    'data-value',
+    ana.workspaceMembershipId,
+  );
+  expect(responsibleSelect).toHaveTextContent(ana.displayLabel);
   fireEvent.click(within(section()).getByRole('button', { name: 'Activate' }));
   expect(
     within(section()).getByText('Enter a reason of 1–500 characters.'),

@@ -1,4 +1,5 @@
 import { enterClassicCompatibility } from './classic-compatibility';
+import { expectValue, selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import {
   actorContextFixture,
@@ -267,10 +268,12 @@ test('opens authenticated members in Prisme, switches authorized Company and ope
   });
   if (testInfo.project.name === 'narrow')
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByLabel('Active Company', { exact: true })
-    .selectOption('00000000-0000-4000-8000-000000000227');
-  await expect(page.getByLabel('Active Company', { exact: true })).toHaveValue(
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    '00000000-0000-4000-8000-000000000227',
+  );
+  await expectValue(
+    page.getByLabel('Active Company', { exact: true }),
     '00000000-0000-4000-8000-000000000227',
   );
   await navigation.getByRole('link', { name: 'Clients', exact: true }).click();
@@ -320,10 +323,10 @@ test('keeps registration retries, section selection and focus across presentatio
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await enterClassicCompatibility(page);
   await expect(page).toHaveURL(/\?source=preserved&frame=classic#companies$/);
-  await expect(name).toHaveValue('Company draft');
+  await expectValue(name, 'Company draft');
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(page).toHaveURL(/\?source=preserved#companies$/);
-  await expect(name).toHaveValue('Company draft');
+  await expectValue(name, 'Company draft');
   expect(await page.evaluate(() => history.state)).toEqual({
     workspaceRecovery: 'opaque',
   });
@@ -363,7 +366,7 @@ test('keeps registration retries, section selection and focus across presentatio
     .getByRole('link', { name: 'Companies', exact: true })
     .click();
   await expect(title).toBeFocused();
-  await expect(name).toHaveValue('Company draft');
+  await expectValue(name, 'Company draft');
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

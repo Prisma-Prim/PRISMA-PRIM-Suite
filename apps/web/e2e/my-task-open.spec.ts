@@ -1,3 +1,4 @@
+import { expectValue, selectOption } from './select-option';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import {
   actorContextFixture,
@@ -248,9 +249,10 @@ for (const frame of ['classic', 'prisme'] as const)
     await page.goto(`/?frame=${frame}#projects`);
     if (narrowPrisme)
       await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page
-      .getByLabel('Active Company', { exact: true })
-      .selectOption(company.id);
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      company.id,
+    );
     if (narrowPrisme)
       await page.getByRole('button', { name: 'Close navigation' }).click();
     await page.goto(`/?frame=${frame}#projects`);
@@ -304,7 +306,7 @@ for (const frame of ['classic', 'prisme'] as const)
     await expect(
       projectTasks.locator('dd').getByText(betaTask.dueDate, { exact: true }),
     ).toBeVisible();
-    await expect(projectTasks.getByLabel('Task title')).toHaveValue(taskTitle);
+    await expectValue(projectTasks.getByLabel('Task title'), taskTitle);
     await expect(
       projectTasks.getByRole('region', { name: 'Task history' }),
     ).toBeVisible();
@@ -352,7 +354,7 @@ for (const frame of ['classic', 'prisme'] as const)
 
     // Returning to Atelier's Project by hand finds its Task draft intact.
     await projectRow(atelier).click();
-    await expect(projectTasks.getByLabel('Task title')).toHaveValue(draft);
+    await expectValue(projectTasks.getByLabel('Task title'), draft);
     expect(server.taskReads).toEqual([
       atelierTask.id,
       betaTask.id,
