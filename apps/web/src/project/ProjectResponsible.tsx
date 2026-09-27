@@ -5,7 +5,7 @@ import {
   conflictCode,
   createAuthenticatedApiClient,
 } from '../api/authenticated-api-client';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import {
   readResponsibility,
@@ -18,15 +18,7 @@ import {
   isClosedProjectStatus,
   type ProjectStatus,
 } from './project-lifecycle-response';
-import { projectCopy } from './project.copy';
-
-const copy = projectCopy.responsible;
-const refusalCopy = {
-  conflict: copy.conflict,
-  rejected: copy.rejected,
-  'responsible-required': copy.responsibleRequired,
-  closed: copy.closedRefusal,
-} as const;
+import { useProjectResponsibleCopy } from './project-responsible-localized.copy';
 
 type Props = {
   actor: ActorContext;
@@ -51,6 +43,7 @@ type Command = {
   key: string;
   body: { expectedRevision: number; workspaceMembershipId: string | null };
 };
+type Feedback = 'saved' | 'unchanged' | null;
 type Mutation =
   | { kind: 'idle' }
   | { kind: 'pending' | 'uncertain'; command: Command }
@@ -87,10 +80,18 @@ function Responsible({
   onActivityRecorded,
   onResponsibleRead,
 }: Props) {
+  const copy = useProjectResponsibleCopy();
+  const { formatDateTime } = useInterfaceLocale();
+  const refusalCopy = {
+    conflict: copy.conflict,
+    rejected: copy.rejected,
+    'responsible-required': copy.responsibleRequired,
+    closed: copy.closedRefusal,
+  } as const;
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<Feedback>(null);
   const readRequest = useRef<AbortController | null>(null);
   const membersRequest = useRef<AbortController | null>(null);
   const commandRequest = useRef<AbortController | null>(null);
@@ -118,7 +119,7 @@ function Responsible({
     setRead({ kind });
     setEditor({ kind: 'closed' });
     setMutation({ kind: 'idle' });
-    setFeedback('');
+    setFeedback(null);
   }
   async function load() {
     readRequest.current?.abort();
@@ -164,7 +165,7 @@ function Responsible({
   useEffect(() => {
     setEditor({ kind: 'closed' });
     setMutation({ kind: 'idle' });
-    setFeedback('');
+    setFeedback(null);
     void load();
     return abortAll;
   }, [identity]);
@@ -175,14 +176,14 @@ function Responsible({
     setMutation((current) =>
       current.kind === 'reload-required' ? { kind: 'idle' } : current,
     );
-    if (mutation.kind !== 'uncertain') setFeedback('');
+    if (mutation.kind !== 'uncertain') setFeedback(null);
     void Promise.all([load(), onProjectChanged?.()]);
   }
   async function openEditor(current: ProjectResponsibility) {
     membersRequest.current?.abort();
     const controller = new AbortController();
     membersRequest.current = controller;
-    setFeedback('');
+    setFeedback(null);
     setEditor({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -223,7 +224,7 @@ function Responsible({
     const controller = new AbortController();
     commandRequest.current = controller;
     setMutation({ kind: 'pending', command });
-    setFeedback('');
+    setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
@@ -271,7 +272,7 @@ function Responsible({
       const receipt = readResponsibilityReceipt(result.value, projectId);
       setEditor({ kind: 'closed' });
       setMutation({ kind: 'idle' });
-      setFeedback(receipt.outcome === 'changed' ? copy.saved : copy.unchanged);
+      setFeedback(receipt.outcome === 'changed' ? 'saved' : 'unchanged');
       // A receipt is historical; only a fresh read authorizes the next change.
       await load();
       if (receipt.outcome === 'changed' && !controller.signal.aborted) {
@@ -345,7 +346,7 @@ function Responsible({
               {copy.lastChangedBy} {current.lastChange.actorDisplayName}{' '}
               {copy.on}{' '}
               <time dateTime={current.lastChange.occurredAt}>
-                {formatApplicationDateTime(current.lastChange.occurredAt)}
+                {formatDateTime(current.lastChange.occurredAt)}
               </time>
             </p>
           )}
@@ -416,7 +417,7 @@ function Responsible({
         </>
       )}
       {busy && <p role="status">{copy.saving}</p>}
-      {feedback && <p role="status">{feedback}</p>}
+      {feedback && <p role="status">{copy[feedback]}</p>}
       {mutation.kind === 'reload-required' && (
         <p role="alert">{refusalCopy[mutation.reason]}</p>
       )}

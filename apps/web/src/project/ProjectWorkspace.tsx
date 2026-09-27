@@ -16,10 +16,10 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { projectCopy as copy } from './project.copy';
+import { useProjectCopy } from './project-localized.copy';
 import { projectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { taskCopy } from './task.copy';
 import {
@@ -72,6 +72,7 @@ type SelectedProject = {
   requestedTask?: RequestedTask;
 };
 type Registration = { title: string; clientAccountId: string; key: string };
+type Feedback = 'error' | 'validation' | 'conflict' | null;
 /** A detail read, optionally requested with a Task target, or a registration. */
 type ProjectRequest =
   | {
@@ -107,6 +108,7 @@ export function ProjectWorkspace({
   /** Increases whenever another section asks to open Projects. */
   projectOpenRequestId?: number;
 }) {
+  const copy = useProjectCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
@@ -119,7 +121,7 @@ export function ProjectWorkspace({
   });
   const [title, setTitle] = useState('');
   const [clientAccountId, setClientAccountId] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<Feedback>(null);
   const [pending, setPending] = useState(false);
   /** The opened Project's responsible member as its own section last read it. */
   const [responsibleRead, setResponsibleRead] = useState<{
@@ -298,7 +300,7 @@ export function ProjectWorkspace({
     setSelected(null);
     setResponsibleRead(null);
     setFilter({ kind: 'text', query: '' });
-    setFeedback('');
+    setFeedback(null);
     setPending(false);
     setTitle('');
     setClientAccountId('');
@@ -373,7 +375,7 @@ export function ProjectWorkspace({
         );
         refreshRow(project, startedUnder);
       } catch {
-        if (!controller.signal.aborted) setFeedback(copy.error);
+        if (!controller.signal.aborted) setFeedback('error');
       }
     })();
     return () => controller.abort();
@@ -459,7 +461,7 @@ export function ProjectWorkspace({
         );
       refreshRow(project, startedUnder);
     } catch {
-      if (!controller.signal.aborted) setFeedback(copy.error);
+      if (!controller.signal.aborted) setFeedback('error');
     }
   }
   async function run(
@@ -475,7 +477,7 @@ export function ProjectWorkspace({
     const startedUnder = identityRevision.current;
     setPending(true);
     setSelected(null);
-    setFeedback('');
+    setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
       const result = await api.request<unknown>(path, {
@@ -552,7 +554,7 @@ export function ProjectWorkspace({
       setClientAccountId('');
       await onActivityRecorded();
     } catch {
-      if (!controller.signal.aborted) setFeedback(copy.error);
+      if (!controller.signal.aborted) setFeedback('error');
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -561,7 +563,7 @@ export function ProjectWorkspace({
     event.preventDefault();
     const normalized = title.trim();
     if (!normalized || normalized.length > 200 || !clientAccountId) {
-      setFeedback(copy.validation);
+      setFeedback('validation');
       return;
     }
     const command =
@@ -789,7 +791,7 @@ export function ProjectWorkspace({
           )}
         </>
       )}
-      {feedback && <p role="alert">{feedback}</p>}
+      {feedback && <p role="alert">{copy[feedback]}</p>}
       {selected && (
         <article
           className={isPrisme ? 'project-detail-card' : undefined}
@@ -952,12 +954,12 @@ export function ProjectWorkspace({
   );
 }
 function ProjectRegistrationTime({ registeredAt }: { registeredAt: string }) {
+  const copy = useProjectCopy();
+  const { formatDateTime } = useInterfaceLocale();
   return (
     <p className="project-registered">
       {copy.registeredPrefix}{' '}
-      <time dateTime={registeredAt}>
-        {formatApplicationDateTime(registeredAt)}
-      </time>
+      <time dateTime={registeredAt}>{formatDateTime(registeredAt)}</time>
     </p>
   );
 }
@@ -968,6 +970,7 @@ function ClientDossierButton({
   clientDossierId: string;
   onOpen: (clientDossierId: string) => void;
 }) {
+  const copy = useProjectCopy();
   return (
     <button type="button" onClick={() => onOpen(clientDossierId)}>
       {copy.openDossier}
@@ -1003,10 +1006,10 @@ function isProject(value: unknown): value is ProjectView {
       typeof value.clientDossierId === 'string')
   );
 }
-function messageFor(result: ApiResult<unknown>) {
+function messageFor(result: ApiResult<unknown>): Exclude<Feedback, null> {
   return result.status === 'validation'
-    ? copy.validation
+    ? 'validation'
     : result.status === 'conflict'
-      ? copy.conflict
-      : copy.error;
+      ? 'conflict'
+      : 'error';
 }

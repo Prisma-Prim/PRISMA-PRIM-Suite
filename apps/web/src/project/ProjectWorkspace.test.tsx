@@ -6,11 +6,12 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProjectWorkspace } from './ProjectWorkspace';
 import {
   isLifecycleRead,
@@ -804,6 +805,7 @@ it('clears a previously opened Project when the server revokes access', async ()
 
 it('reuses a stable request key after an uncertain create result', async () => {
   const keys: string[] = [];
+  const bodies: string[] = [];
   const project = {
     id: 'project',
     title: 'Retry preparation',
@@ -819,6 +821,7 @@ it('reuses a stable request key after an uncertain create result', async () => {
       if (options?.method === 'POST') {
         const key = new Headers(options.headers).get('idempotency-key');
         if (key) keys.push(key);
+        if (typeof options.body === 'string') bodies.push(options.body);
         return keys.length === 1
           ? new Response(null, { status: 500 })
           : Response.json(project, { status: 201 });
@@ -837,10 +840,13 @@ it('reuses a stable request key after an uncertain create result', async () => {
     }),
   );
   render(
-    <ProjectWorkspace
-      actor={actor}
-      identity={deterministicBrowserIdentity()}
-    />,
+    <>
+      <LocaleSwitch />
+      <ProjectWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+      />
+    </>,
   );
   const search = await screen.findByRole('searchbox', {
     name: 'Find Projects',
@@ -850,11 +856,33 @@ it('reuses a stable request key after an uncertain create result', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
   await screen.findByRole('alert');
   changeValue(search, 'retry');
-  fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Le Projet n’a pas pu être chargé ou enregistré. Veuillez réessayer.',
+  );
+  expect(
+    screen.getByRole('searchbox', { name: 'Rechercher des Projets' }),
+  ).toHaveValue('retry');
+  expect(screen.getByLabelText('Titre du Projet')).toHaveValue(project.title);
+  expect(screen.getByLabelText('Client')).toHaveTextContent('Synthetic Client');
+  fireEvent.click(screen.getByRole('button', { name: 'Créer le Projet' }));
   await screen.findByRole('heading', { name: project.title });
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
+  expect(bodies).toEqual([
+    JSON.stringify({ title: project.title, clientAccountId: 'client' }),
+    JSON.stringify({ title: project.title, clientAccountId: 'client' }),
+  ]);
 });
+
+function LocaleSwitch() {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <button type="button" onClick={() => changeLocale('fr')}>
+      Passer en français
+    </button>
+  );
+}
 
 it('presents the existing preparatory Project detail in Prisme without changing its public controls', async () => {
   document.documentElement.lang = 'en';

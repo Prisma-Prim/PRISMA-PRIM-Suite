@@ -5,7 +5,7 @@ import {
   conflictCode,
   createAuthenticatedApiClient,
 } from '../api/authenticated-api-client';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import {
   START_DECLARATION_ITEMS,
@@ -19,14 +19,8 @@ import {
   type StartDeclarationItem,
   type StartDeclarationValue,
 } from './project-lifecycle-response';
-import {
-  projectLifecycleCopy as copy,
-  projectStatusLabels,
-  projectStatusTones,
-  startDeclarationItemLabels,
-  startDeclarationValueLabels,
-  transitionLabel,
-} from './project-lifecycle.copy';
+import { projectStatusTones } from './project-lifecycle.copy';
+import { useProjectLifecycleCopy } from './project-lifecycle-localized.copy';
 import type { ResponsibleMember } from './project-responsible-response';
 import { validTaskDate, validTaskReason } from './task-response';
 
@@ -85,6 +79,7 @@ type CommandBody =
   | { action: 'complete'; expectedLifecycleRevision: number; note: string }
   | { action: 'cancel'; expectedLifecycleRevision: number; reason: string };
 type Command = { key: string; body: CommandBody };
+type Feedback = 'saved' | null;
 type Refusal = 'conflict' | 'invalid' | 'responsible' | 'rejected';
 type Mutation =
   | { kind: 'idle' | 'open-tasks' }
@@ -100,21 +95,15 @@ const emptyDeclaration: DeclarationDraft = {
   financialConditions: undefined,
   risks: undefined,
 };
-const refusalCopy = {
-  conflict: copy.conflict,
-  invalid: copy.invalid,
-  responsible: copy.responsibleRequired,
-  rejected: copy.rejected,
-} as const satisfies Record<Refusal, string>;
-
 /** A Project status as the `/ui-baseline` Projects Status pill shows it. */
 export function ProjectStatusLabel({ status }: { status: ProjectStatus }) {
+  const copy = useProjectLifecycleCopy();
   return (
     <span
       className={`project-status project-status--${projectStatusTones[status]}`}
     >
       <i aria-hidden="true" />
-      {projectStatusLabels[status]}
+      {copy.statusLabels[status]}
     </span>
   );
 }
@@ -148,11 +137,18 @@ function LifecycleSection({
   onShowTasks,
   onActivityRecorded,
 }: Props) {
+  const copy = useProjectLifecycleCopy();
+  const refusalCopy = {
+    conflict: copy.conflict,
+    invalid: copy.invalid,
+    responsible: copy.responsibleRequired,
+    rejected: copy.rejected,
+  } as const satisfies Record<Refusal, string>;
   const headingId = useId();
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<Feedback>(null);
   const readRequest = useRef<AbortController | null>(null);
   const membersRequest = useRef<AbortController | null>(null);
   /** Marks a command's reply as stale; the write itself is never cancelled. */
@@ -189,7 +185,7 @@ function LifecycleSection({
     setRead({ kind: 'unavailable' });
     setEditor({ kind: 'closed' });
     setMutation({ kind: 'idle' });
-    setFeedback('');
+    setFeedback(null);
   }
   async function load() {
     readRequest.current?.abort();
@@ -237,14 +233,14 @@ function LifecycleSection({
     setMutation((current) =>
       current.kind === 'reload-required' ? { kind: 'idle' } : current,
     );
-    setFeedback('');
+    setFeedback(null);
     await Promise.all([load(), onProjectChanged?.()]);
   }
   async function openActivation() {
     membersRequest.current?.abort();
     const controller = new AbortController();
     membersRequest.current = controller;
-    setFeedback('');
+    setFeedback(null);
     setEditor({
       kind: 'activate',
       declaration: emptyDeclaration,
@@ -307,7 +303,7 @@ function LifecycleSection({
     const controller = new AbortController();
     commandRequest.current = controller;
     setMutation({ kind: 'pending', command });
-    setFeedback('');
+    setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
@@ -361,7 +357,7 @@ function LifecycleSection({
       readLifecycleReceipt(result.value, projectId, command.body.action);
       setEditor({ kind: 'closed' });
       setMutation({ kind: 'idle' });
-      setFeedback(copy.saved);
+      setFeedback('saved');
       // A receipt is historical: the section, the detail status and the list
       // row are re-read together before another change is offered.
       await Promise.all([load(), onProjectChanged?.()]);
@@ -525,7 +521,7 @@ function LifecycleSection({
           />
         )}
       {busy && <p role="status">{copy.saving}</p>}
-      {feedback && <p role="status">{feedback}</p>}
+      {feedback && <p role="status">{copy[feedback]}</p>}
       {mutation.kind === 'reload-required' && (
         <p role="alert">{refusalCopy[mutation.reason]}</p>
       )}
@@ -600,6 +596,7 @@ function LifecycleActions({
   onComplete: () => void;
   onCancelProject: () => void;
 }) {
+  const copy = useProjectLifecycleCopy();
   const hintId = useId();
   switch (status) {
     case 'preparatory':
@@ -673,6 +670,8 @@ function LifecycleActions({
 }
 
 function LifecycleFacts({ value }: { value: LifecycleValue }) {
+  const copy = useProjectLifecycleCopy();
+  const { formatDate, formatDateTime } = useInterfaceLocale();
   const [last] = value.transitions;
   const { start } = value;
   return (
@@ -688,10 +687,10 @@ function LifecycleFacts({ value }: { value: LifecycleValue }) {
           <div>
             <dt>{copy.lastChange}</dt>
             <dd>
-              {transitionLabel(last)} {copy.by} {last.actor.displayName}{' '}
+              {copy.transitionLabel(last)} {copy.by} {last.actor.displayName}{' '}
               {copy.on}{' '}
               <time dateTime={last.occurredAt}>
-                {formatApplicationDateTime(last.occurredAt)}
+                {formatDateTime(last.occurredAt)}
               </time>
             </dd>
           </div>
@@ -721,15 +720,15 @@ function LifecycleFacts({ value }: { value: LifecycleValue }) {
           <dl className="project-lifecycle-declaration">
             {START_DECLARATION_ITEMS.map((item) => (
               <div key={item}>
-                <dt>{startDeclarationItemLabels[item]}</dt>
-                <dd>{startDeclarationValueLabels[start.declaration[item]]}</dd>
+                <dt>{copy.declarationItemLabels[item]}</dt>
+                <dd>{copy.declarationValueLabels[start.declaration[item]]}</dd>
               </div>
             ))}
           </dl>
           <p className="project-lifecycle-meta">
             {copy.declaredBy} {start.declaredBy.displayName} {copy.on}{' '}
             <time dateTime={start.declaredAt}>
-              {formatApplicationDateTime(start.declaredAt)}
+              {formatDateTime(start.declaredAt)}
             </time>
           </p>
           {start.exception && (
@@ -743,7 +742,7 @@ function LifecycleFacts({ value }: { value: LifecycleValue }) {
                   start.exception.completionResponsible.displayLabel,
                 )}{' '}
                 <time dateTime={start.exception.completionDueDate}>
-                  {start.exception.completionDueDate}
+                  {formatDate(start.exception.completionDueDate)}
                 </time>
               </p>
             </div>
@@ -759,10 +758,10 @@ function LifecycleFacts({ value }: { value: LifecycleValue }) {
             {value.transitions.map((transition) => (
               <li key={transition.lifecycleRevision}>
                 <p>
-                  <strong>{transitionLabel(transition)}</strong> {copy.by}{' '}
+                  <strong>{copy.transitionLabel(transition)}</strong> {copy.by}{' '}
                   {transition.actor.displayName} {copy.on}{' '}
                   <time dateTime={transition.occurredAt}>
-                    {formatApplicationDateTime(transition.occurredAt)}
+                    {formatDateTime(transition.occurredAt)}
                   </time>
                 </p>
                 {(transition.action === 'hold' ||
@@ -796,6 +795,7 @@ function ActivationForm({
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
 }) {
+  const copy = useProjectLifecycleCopy();
   const formId = useId();
   const exceptionNeeded = START_DECLARATION_ITEMS.some(
     (item) => editor.declaration[item] === 'missing',
@@ -823,7 +823,7 @@ function ActivationForm({
               key={item}
               aria-describedby={unchosen ? errorId : undefined}
             >
-              <legend>{startDeclarationItemLabels[item]}</legend>
+              <legend>{copy.declarationItemLabels[item]}</legend>
               <div className="project-lifecycle-choice">
                 {(['present', 'missing'] as const).map((value) => (
                   <label key={value}>
@@ -840,7 +840,7 @@ function ActivationForm({
                         })
                       }
                     />
-                    {startDeclarationValueLabels[value]}
+                    {copy.declarationValueLabels[value]}
                   </label>
                 ))}
               </div>
@@ -965,6 +965,7 @@ function HoldForm({
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
 }) {
+  const copy = useProjectLifecycleCopy();
   const errorId = useId();
   const invalid = editor.showErrors && !validTaskReason(editor.reason);
   return (
@@ -1008,15 +1009,14 @@ function CloseProjectForm({
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
 }) {
+  const copy = useProjectLifecycleCopy();
   const errorId = useId();
   const invalid = editor.showErrors && !validTaskReason(editor.text);
   const completing = editor.kind === 'complete';
   return (
     <form className="project-lifecycle-form" onSubmit={onSubmit} noValidate>
       <h5>{completing ? copy.completeTitle : copy.cancelTitle}</h5>
-      <p>
-        {copy.closureConfirmation(completing ? 'Completing' : 'Cancelling')}
-      </p>
+      <p>{copy.closureConfirmation(completing ? 'complete' : 'cancel')}</p>
       <label>
         {completing ? copy.completionNoteLabel : copy.cancellationReasonLabel}
         <textarea

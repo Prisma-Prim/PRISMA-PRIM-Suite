@@ -9,6 +9,7 @@ import {
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProjectLifecycle } from './ProjectLifecycle';
 import type {
   ProjectLifecycle as LifecycleValue,
@@ -257,15 +258,18 @@ function show(props: Partial<Parameters<typeof ProjectLifecycle>[0]> = {}) {
   const onProjectChanged = vi.fn(async () => undefined);
   const onActivityRecorded = vi.fn(async () => undefined);
   const view = render(
-    <ProjectLifecycle
-      actor={approver}
-      identity={identity}
-      projectId="project"
-      responsible={ana}
-      onProjectChanged={onProjectChanged}
-      onActivityRecorded={onActivityRecorded}
-      {...props}
-    />,
+    <>
+      <LocaleSwitch />
+      <ProjectLifecycle
+        actor={approver}
+        identity={identity}
+        projectId="project"
+        responsible={ana}
+        onProjectChanged={onProjectChanged}
+        onActivityRecorded={onActivityRecorded}
+        {...props}
+      />
+    </>,
   );
   return { ...view, identity, onProjectChanged, onActivityRecorded };
 }
@@ -386,7 +390,7 @@ it('activates with a start exception through an inline form with field-level val
   ).toHaveTextContent('Project planPresent');
   expect(ready).toHaveTextContent(`Reason: ${exceptionReason}`);
   expect(ready).toHaveTextContent(
-    `To be completed by ${ana.displayLabel} by 2026-10-15`,
+    `To be completed by ${ana.displayLabel} by Oct 15, 2026`,
   );
   expect(
     within(within(ready).getByRole('list')).getByText(
@@ -483,14 +487,67 @@ it('keeps an uncertain command for an unchanged retry and never aborts the submi
       'The change is not confirmed. Retry the same change to safely recover its recorded result.',
     ),
   ).toBeInTheDocument();
+  const lifecycleRegion = section();
+  fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
   fireEvent.click(
-    within(section()).getByRole('button', { name: 'Retry lifecycle change' }),
+    within(lifecycleRegion).getByRole('button', {
+      name: 'Réessayer la modification du cycle de vie',
+    }),
   );
-  await within(section()).findByRole('button', { name: 'Resume Project' });
+  await within(lifecycleRegion).findByRole('button', {
+    name: 'Reprendre le Projet',
+  });
   const [first, retried] = boundary.commands();
   expect(retried).toEqual(first);
   expect(boundary.signals).toEqual([undefined, undefined]);
 });
+
+it('preserves the activation draft and loaded history while the interface locale changes', async () => {
+  const boundary = server();
+  show();
+  fireEvent.click(
+    await within(section()).findByRole('button', { name: 'Activate Project' }),
+  );
+  for (const label of itemLabels) choose(label, 'Present');
+  choose('Approved Offer', 'Missing');
+  fireEvent.change(within(section()).getByLabelText('Start exception reason'), {
+    target: { value: 'Awaiting {signed} Offer' },
+  });
+  fireEvent.change(within(section()).getByLabelText('Completion deadline'), {
+    target: { value: '2026-10-15' },
+  });
+  await within(section()).findByLabelText('To be completed by');
+  const lifecycleRegion = section();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+
+  const offer = within(lifecycleRegion).getByRole('group', {
+    name: 'Offre approuvée',
+  });
+  expect(within(offer).getByRole('radio', { name: 'Manquant' })).toBeChecked();
+  expect(
+    within(lifecycleRegion).getByLabelText('Motif de l’exception de démarrage'),
+  ).toHaveValue('Awaiting {signed} Offer');
+  expect(
+    within(lifecycleRegion).getByLabelText('Échéance de réalisation'),
+  ).toHaveValue('2026-10-15');
+  expect(
+    within(lifecycleRegion).getByLabelText('À terminer par'),
+  ).toHaveTextContent(ana.displayLabel);
+  expect(lifecycleRegion).toHaveTextContent(
+    'Aucune modification du cycle de vie n’a été enregistrée.',
+  );
+  expect(boundary.commands()).toEqual([]);
+});
+
+function LocaleSwitch() {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <button type="button" onClick={() => changeLocale('fr')}>
+      Passer en français
+    </button>
+  );
+}
 
 it('completes an active Project with a note and presents the terminal history without actions', async () => {
   const boundary = server({ state: activeLifecycle });
