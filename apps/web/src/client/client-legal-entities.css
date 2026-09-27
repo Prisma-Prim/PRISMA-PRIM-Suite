@@ -1,0 +1,203 @@
+.client-legal-entities {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.client-legal-entities-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.client-legal-entities-heading > div {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.client-legal-entities-heading p {
+  color: var(--shell-muted);
+  font-size: 0.8125rem;
+}
+
+.client-legal-entities-heading > button,
+.client-legal-entities-error > button,
+.client-legal-entity-stale > button {
+  justify-self: start;
+}
+
+.client-legal-entities-error,
+.client-legal-entity-stale {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.client-legal-entities .client-legal-entities-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.client-legal-entities .client-legal-entities-list > li {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.client-legal-entity-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  min-width: 0;
+}
+
+.client-legal-entity-name strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.client-legal-entities .client-legal-entities-list dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.client-legal-entity-form h5 {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.client-legal-entity-form > p[role],
+.client-legal-entity-form > .client-legal-entity-stale {
+  grid-column: 1 / -1;
+}
+
+.client-legal-entity-field-error {
+  grid-column: 2;
+  margin: 0;
+  color: #b42318;
+  font-size: 0.8125rem;
+}
+
+.client-legal-entity-form > .client-legal-entity-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.prisme-shell .client-legal-entities {
+  gap: 18px;
+  padding: 24px 28px;
+  border-top: 1px solid var(--shell-line);
+}
+
+.prisme-shell .client-legal-entities-heading h4 {
+  font-size: 0.9375rem;
+}
+
+.prisme-shell .client-legal-entities-heading p {
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
+.prisme-shell .client-legal-entities .client-legal-entities-list {
+  gap: 0;
+}
+
+.prisme-shell .client-legal-entities .client-legal-entities-list > li {
+  gap: 12px;
+  padding: 18px 0;
+  border: 0;
+  border-top: 1px solid var(--shell-line);
+  border-radius: 0;
+}
+
+.prisme-shell
+  .client-legal-entities
+  .client-legal-entities-list
+  > li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.prisme-shell .client-legal-entity-name strong {
+  font-size: 0.875rem;
+}
+
+.prisme-shell .client-legal-entities .client-legal-entities-list dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+
+.prisme-shell .client-legal-entities .client-legal-entities-list dd {
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  margin-top: 4px;
+}
+
+.prisme-shell .client-legal-entity-form {
+  padding: 22px;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  background: #fafbfe;
+  gap: 14px 24px;
+}
+
+.prisme-shell .client-legal-entity-form input,
+.prisme-shell .client-legal-entity-form textarea {
+  width: 100%;
+  border-color: #b6c0cf;
+}
+
+.prisme-shell .client-legal-entity-form textarea {
+  min-height: 4.5rem;
+}
+
+.prisme-shell .client-legal-entity-form [aria-invalid='true'] {
+  border-color: #b42318;
+}
+
+.prisme-shell .client-legal-entities :focus-visible,
+.prisme-shell .client-legal-entities-heading h4:focus {
+  outline: 2px solid var(--shell-focus);
+  outline-offset: 4px;
+}
+
+/* The shared dossier form becomes one column at this width. */
+@media (max-width: 820px) {
+  .client-legal-entity-field-error,
+  .client-legal-entity-form > .client-legal-entity-actions {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 680px) {
+  .client-legal-entity-form > .client-legal-entity-actions {
+    display: grid;
+  }
+
+  .prisme-shell .client-legal-entities {
+    padding: 22px 18px;
+  }
+
+  .prisme-shell .client-legal-entities .client-legal-entities-list dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prisme-shell .client-legal-entity-form {
+    padding: 16px 12px;
+  }
+}

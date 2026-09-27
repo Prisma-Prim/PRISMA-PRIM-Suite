@@ -163,6 +163,8 @@ text, source label, subject, next-action text, Opportunity scope or
 Client-confidential content, and it adds no commercial filter, export or
 event-mutation route.
 
+For the approved additional Client Legal Entities ([Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393)), one committed registration creates `client_legal_entity.registered` and one committed material correction creates `client_legal_entity.corrected`. Each event targets the owning Client Account in the acting Company, in the same transaction as the record change, the Client version increment and the receipt. Metadata carries the entity identifier and the recorded or previous-and-new shared identity values only. Projection follows the delivered `client.corrected` rule: only in the recording Company, and only to actors who can currently read that Client there. Failed commands, no-ops and exact replays create no event.
+
 For the [provisional one-time Client association after Request capture](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450),
 one successful association creates exactly one
 `client_request.client_associated` event in the same transaction as the stored

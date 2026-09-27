@@ -321,8 +321,7 @@ describe('ClientWorkspace', () => {
       telephone: '+373 69 111 222',
       version: 2,
     };
-    vi.stubGlobal(
-      'fetch',
+    const sequence = withLegalEntities(
       vi
         .fn()
         .mockResolvedValueOnce(
@@ -385,7 +384,7 @@ describe('ClientWorkspace', () => {
     expect(
       screen.getByText('Client correction saved with attributable history.'),
     ).toBeInTheDocument();
-    expect(fetch).toHaveBeenNthCalledWith(
+    expect(sequence).toHaveBeenNthCalledWith(
       3,
       '/api/clients/client-1',
       expect.objectContaining({
@@ -398,7 +397,7 @@ describe('ClientWorkspace', () => {
       }),
     );
     const correctionBody = JSON.parse(
-      String(vi.mocked(fetch).mock.calls[2]?.[1]?.body),
+      String(sequence.mock.calls[2]?.[1]?.body),
     ) as { contacts: Array<{ name: string; email?: string }> };
     expect(correctionBody.contacts).toEqual(initialDossier.contacts);
     expect(refreshActivity).toHaveBeenCalledOnce();
@@ -614,8 +613,7 @@ describe('ClientWorkspace', () => {
       version: 1,
       involvedCompanyDisplayNames: ['PRISMA-PRIM'],
     };
-    vi.stubGlobal(
-      'fetch',
+    withLegalEntities(
       vi
         .fn()
         .mockResolvedValueOnce(
@@ -2227,6 +2225,26 @@ function clientRegistrationApi() {
     }),
   );
   return { clients, registrations };
+}
+
+/** Serves the dossier's legal-entity read apart from an ordered API script. */
+function withLegalEntities<
+  Sequence extends (url: string, init?: RequestInit) => Promise<Response>,
+>(sequence: Sequence): Sequence {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) =>
+      url.endsWith('/legal-entities')
+        ? new Response(
+            JSON.stringify({ clientVersion: 1, legalEntities: [] }),
+            {
+              status: 200,
+            },
+          )
+        : sequence(url, init),
+    ),
+  );
+  return sequence;
 }
 
 function deferred<T>() {

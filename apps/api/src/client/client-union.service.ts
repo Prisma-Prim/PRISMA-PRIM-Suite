@@ -21,6 +21,7 @@ import {
   workspaceMemberships,
 } from '../database/schema/index.js';
 import { ClientIdentifierIndex } from './client-identifier-index.js';
+import { ClientLegalEntityService } from './client-legal-entity.service.js';
 import { sameJsonValue as jsonStructurallyEqual } from './json-structural-equality.js';
 import {
   comparisonClient,
@@ -43,6 +44,9 @@ import {
 type UnionOperation = typeof clientUnionOperations.$inferSelect;
 type UnionReview = typeof clientUnionReviews.$inferSelect;
 
+export const CLIENT_UNION_LEGAL_ENTITIES_UNSUPPORTED =
+  'client_union_legal_entities_unsupported' as const;
+
 @Injectable()
 export class ClientUnionService {
   constructor(
@@ -50,6 +54,7 @@ export class ClientUnionService {
     private readonly authorization: CompanyContextAuthorization,
     private readonly accountability: AccountabilityService,
     private readonly identifiers: ClientIdentifierIndex,
+    private readonly legalEntities: ClientLegalEntityService,
   ) {}
 
   async beginReview(actor: ActorContext, clientId: string) {
@@ -175,6 +180,19 @@ export class ClientUnionService {
         reference,
         true,
       );
+      // Only after complete authority and freshness pass under the row locks:
+      // union does not yet carry additional Client Legal Entities.
+      if (
+        await this.legalEntities.anyRecorded(
+          actor.workspaceId,
+          snapshot.clients.map((client) => client.id),
+        )
+      )
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          code: CLIENT_UNION_LEGAL_ENTITIES_UNSUPPORTED,
+        });
       this.assertCompanyConfirmation(confirmation.companyIds, snapshot);
       const canonical = snapshot.clients.find(
         (client) => client.id === confirmation.canonicalClientId,

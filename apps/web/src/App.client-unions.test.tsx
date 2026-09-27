@@ -152,6 +152,8 @@ function installTransport() {
           relatedToActiveCompany: true,
           involvedCompanyDisplayNames: ['Company A', 'Company B'],
         });
+      if (path.endsWith('/legal-entities'))
+        return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
     }),
   );

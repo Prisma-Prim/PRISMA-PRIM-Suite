@@ -73,7 +73,7 @@ The delivered #146 / PR #147 enriched slice approved and implemented these share
 - business activity;
 - the fact that the Client also works with another involved Company.
 
-These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require. Section 18 refines the shared Contact with two optional descriptive fields, and section 19 adds optional descriptive communication preferences; neither changes its visibility.
+These fields may be seen by directors of the Companies involved with that Client. Issue #146 / PR #147 owns their delivered storage shapes, validation and Contact cardinality. Later changes must not broaden visibility or invent mandatory values that Iurie did not require. Section 18 refines the shared Contact with two optional descriptive fields, and section 19 adds optional descriptive communication preferences; neither changes its visibility. Section 20 records additional Client Legal Entities beside these fields, while this dossier identity remains the main organization.
 
 ## 8. Permissions
 
@@ -208,7 +208,7 @@ The current audited evidence and Iurie's direct 2026-08-23 response approve the 
 
 Still blocking separate later slices:
 
-- exact branch and Client Legal Entity modelling for the representative complex case;
+- the Client Legal Entity capabilities excluded by section 20: party kind, natural persons, contracting-party selection and signatory authority, primary-entity materialization, archive, and duplicate signals that consider legal entities;
 - general fuzzy matching, transliteration and evaluation against real examples;
 - asynchronous multi-person approval when no one resolver holds every affected Company scope;
 - remediation of legacy normalized identifiers shared by three or more active Clients;
@@ -230,7 +230,7 @@ Question sources: S00, S02 and the direct 2026-08-23 answer in #81. Provenance o
 
 Issue #141 delivered the initial minimal Client implementation child. Issue #146 / PR #147 then delivered the enriched Company Director dossier and is the runtime baseline for the newly approved duplicate-resolution slice.
 
-Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential boundary and attributable correction history. After #148 normalization, one next vertical child may implement the conservative governed duplicate-resolution contract in section 11. Client Legal Entities, general fuzzy entity resolution, legacy multi-candidate data remediation, asynchronous multi-person approval, broader archive/restore and broader Client-overview behaviour remain separate slices.
+Issue #146 / PR #147 delivered the Company Director dossier, shared/confidential boundary and attributable correction history. After #148 normalization, one next vertical child may implement the conservative governed duplicate-resolution contract in section 11. The Client Legal Entity capabilities excluded by section 20 (party kind, natural persons, contracting-party selection and signatory authority, primary-entity materialization, archive, and duplicate signals that consider legal entities), general fuzzy entity resolution, legacy multi-candidate data remediation, asynchronous multi-person approval, broader archive/restore and broader Client-overview behaviour remain separate slices.
 
 ## 17. Evidence authority boundary
 
@@ -257,3 +257,24 @@ The field belongs to the shared Contact defined in section 7. It is shared gener
 Enriched registration and correction accept the field under the existing `client.create` and `client.update` authority; minimal registration still rejects Contacts. A correction submits the complete Contact list, so every other Contact field is resubmitted unchanged, and a blank value clears that Contact's preferences explicitly. A change is an ordinary material dossier correction. It records one `client.corrected` event with previous and new Contact values and keeps the delivered expected-version, no-op, idempotency, correction-history, duplicate-review and union/reversal rules. Like every other Contact field, preferences appear in the union comparison before confirmation and in the preserved originals, so the resolver reviews them as a material difference under section 11.3. It adds no permission, route, event family, migration or storage scope.
 
 Excluded, and not presented as business fact: sending, scheduling or integrating communications; capturing or inferring consent; and any decision or approval authority. Contact position and decision roles are owned by section 18. Relationships among Contacts, a departed Contact and related alerts remain outside this slice.
+
+## 20. Approved provisional additional Client Legal Entities (#393)
+
+Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this slice models Iurie's representative Client C (section 14) without classifying party kinds. The record shape, bounds and union guard are delegated provisional choices, not newly collected Iurie evidence. Iurie validates or corrects them against a demonstration.
+
+The shared dossier identity (section 7) remains the main organization. A Company Director with dossier-correction authority may record up to 50 additional Client Legal Entities, meaning branches or legal entities linked to that organization. Each has a required exact legal name, an optional IDNO/tax code and an optional legal address. The same directors may correct those values. The records are shared general identity (decision record §8.2; DEC-032). They are visible exactly where the dossier is visible and reveal no Company activity.
+
+Each committed registration or correction serializes on the Client row exactly like a dossier correction, and increments the Client version. It records `client_legal_entity.registered` or `client_legal_entity.corrected` with the recorded or previous-and-new values, the actor, the Company and the server time. Failures, no-ops and replays record nothing. Because the dossier version advances, the delivered duplicate-review staleness and union-reversal fences apply unchanged.
+
+This slice does not create the primary Client Legal Entity of DEC-023. The first capability that must reference a contracting, invoiced or certified party decides that materialization. An entity identifier stays outside section 11: it is not normalized, reserved, unique, searched or matched, because branches may share a parent identifier. While either input Client has an entity, union returns the safe conflict `client_union_legal_entities_unsupported` after complete authority passes.
+
+Excluded, and not presented as business fact:
+
+- party kind and natural persons;
+- who signs or represents the Client, and under what mandate;
+- selecting an entity on any commercial, operational, Document, invoice or certificate record;
+- archive, removal and restore;
+- duplicate signals and union that consider entities;
+- registry validation;
+- Company-specific entity data;
+- the stronger correction behaviour required once a governed Document references an entity (section 8).

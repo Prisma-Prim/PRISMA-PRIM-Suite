@@ -667,3 +667,207 @@ test('does not steal focus when a dossier arrives after navigation or presentati
     correctionForm(page).getByLabel('Client display name'),
   ).not.toBeFocused();
 });
+
+test('records and corrects additional legal entities while an open dossier draft keeps its version', async ({
+  page,
+}, testInfo) => {
+  const state = await installDossierFixture(page);
+  const branchName = 'GRUP Demo SA — Sucursala Bălți';
+  const logisticName =
+    'Demo Logistic SRL — Centrul Logistic Regional Nord pentru Distribuție, Depozitare și Servicii Vamale';
+  const logisticAddress =
+    'Str. Industrială 1, Parcul Industrial „Demo Logistic”, Hala B, Rampa 4, Chișinău, Republica Moldova; '.repeat(
+      5,
+    );
+  await openDossier(page);
+  const section = page.getByRole('region', {
+    name: 'Legal entities and branches',
+    exact: true,
+  });
+  await expect(
+    section.getByText(
+      'No additional legal entities or branches recorded. The dossier identity above is the main organization.',
+    ),
+  ).toBeVisible();
+  await captureDossier(page, testInfo, 'legal-entities-empty.png');
+
+  // An open dossier correction draft keeps the version it observed.
+  await correctionTrigger(page).click();
+  await correctionForm(page)
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 60 999 000');
+
+  const add = section.getByRole('button', {
+    name: 'Add legal entity or branch',
+  });
+  await add.click();
+  let form = section.getByRole('form', {
+    name: 'Add a legal entity or branch',
+  });
+  await expect(form.getByLabel('Exact legal name')).toBeFocused();
+  await form.getByRole('button', { name: 'Save legal entity' }).click();
+  await expect(form.getByLabel('Exact legal name')).toHaveAccessibleDescription(
+    'Enter the exact legal name.',
+  );
+  expect(state.legalEntityCommands).toHaveLength(0);
+  await form.getByLabel('Exact legal name').fill(branchName);
+  await form.getByLabel('IDNO / tax code').fill('TAX-233');
+  await page.keyboard.press('Enter');
+  await expect(
+    section.getByText('Legal entity or branch recorded.'),
+  ).toBeVisible();
+  await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
+
+  await add.click();
+  form = section.getByRole('form', { name: 'Add a legal entity or branch' });
+  await form.getByLabel('Exact legal name').fill(logisticName);
+  await form.getByLabel('Legal address').fill(logisticAddress);
+  await form.getByRole('button', { name: 'Save legal entity' }).click();
+  await expect(page.getByText('Version 3', { exact: true })).toBeVisible();
+
+  await section
+    .getByRole('button', { name: `Correct ${logisticName}`, exact: true })
+    .click();
+  form = section.getByRole('form', { name: `Correct ${logisticName}` });
+  await expect(form.getByLabel('Legal address')).toHaveValue(
+    logisticAddress.trim(),
+  );
+  await form.getByLabel('Legal address').fill('Str. Industrială 5, Chișinău');
+  await form.getByRole('button', { name: 'Save legal entity' }).click();
+  await expect(
+    section.getByText('Legal entity or branch corrected.'),
+  ).toBeVisible();
+  await expect(page.getByText('Version 4', { exact: true })).toBeVisible();
+  const list = section.getByRole('list', {
+    name: 'Recorded legal entities and branches',
+  });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await expect(list.getByText('Str. Industrială 5, Chișinău')).toBeVisible();
+  await expect(list.getByText('Not recorded')).toHaveCount(2);
+  expect(
+    state.legalEntityCommands.map(({ method, body, key }) => ({
+      method,
+      body,
+      key: typeof key === 'string' && key.length > 0,
+    })),
+  ).toEqual([
+    {
+      method: 'POST',
+      body: {
+        expectedClientVersion: 1,
+        legalName: branchName,
+        taxId: 'TAX-233',
+        legalAddress: null,
+      },
+      key: true,
+    },
+    {
+      method: 'POST',
+      body: {
+        expectedClientVersion: 2,
+        legalName: logisticName,
+        taxId: null,
+        legalAddress: logisticAddress.trim(),
+      },
+      key: true,
+    },
+    {
+      method: 'PATCH',
+      body: {
+        expectedClientVersion: 3,
+        changes: { legalAddress: 'Str. Industrială 5, Chișinău' },
+      },
+      key: true,
+    },
+  ]);
+  await section.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath('legal-entities-list-viewport.png'),
+  });
+  await captureDossier(page, testInfo, 'legal-entities-list.png');
+
+  state.patch = (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      expectedVersion: 1,
+      telephone: '+373 60 999 000',
+    });
+    return route.fulfill({
+      status: 409,
+      json: {
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'The Client dossier has changed.',
+      },
+    });
+  };
+  await correctionForm(page)
+    .getByRole('button', { name: 'Save correction' })
+    .click();
+  await expect(
+    page.getByText(/changed before your correction was saved/u),
+  ).toBeVisible();
+
+  await changeFrame(page, 'Use classic frame');
+  await expect(
+    page.getByRole('region', {
+      name: 'Legal entities and branches',
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await captureDossier(page, testInfo, 'legal-entities-classic.png');
+});
+
+test('opens a fresh dossier correction with current fields after an entity mutation', async ({
+  page,
+}, testInfo) => {
+  const state = await installDossierFixture(page);
+  await openDossier(page);
+  const section = page.getByRole('region', {
+    name: 'Legal entities and branches',
+    exact: true,
+  });
+  await section
+    .getByRole('button', { name: 'Add legal entity or branch' })
+    .click();
+  const form = section.getByRole('form', {
+    name: 'Add a legal entity or branch',
+  });
+  await form.getByLabel('Exact legal name').fill('Demo Logistic SRL');
+  await form.getByRole('button', { name: 'Save legal entity' }).click();
+  await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
+  state.dossier = {
+    ...state.dossier,
+    address: 'Current shared address',
+    version: 3,
+  };
+  await correctionTrigger(page).click();
+  await expect(
+    correctionForm(page).getByLabel('Address', { exact: true }),
+  ).toHaveValue('Current shared address');
+  await expect(
+    correctionForm(page).getByLabel('Client display name'),
+  ).toBeFocused();
+  await correctionForm(page)
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 60 999 000');
+  state.patch = (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      expectedVersion: 3,
+      address: 'Current shared address',
+      telephone: '+373 60 999 000',
+    });
+    state.dossier = {
+      ...state.dossier,
+      telephone: '+373 60 999 000',
+      version: 4,
+    };
+    return route.fulfill({ json: state.dossier });
+  };
+  await correctionForm(page)
+    .getByRole('button', { name: 'Save correction' })
+    .click();
+  await expect(page.getByText('Version 4', { exact: true })).toBeVisible();
+  expect(state.dossierReads).toBe(2);
+  await captureDossier(page, testInfo, 'legal-entities-fresh-correction.png');
+});

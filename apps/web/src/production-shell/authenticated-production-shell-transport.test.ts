@@ -148,6 +148,14 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     { ...clientTarget, companyId, companyDisplayName: 'Company A' },
   ],
   [
+    'client_legal_entity.registered',
+    { ...clientTarget, companyId, companyDisplayName: 'Company A' },
+  ],
+  [
+    'client_legal_entity.corrected',
+    { ...clientTarget, companyId, companyDisplayName: 'Company A' },
+  ],
+  [
     'client_company_relationship.established',
     {
       type: 'client_company_relationship',

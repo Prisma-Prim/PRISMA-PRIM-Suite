@@ -3,6 +3,10 @@ import type { ProjectResponsibleChangedActivityEvent } from '../project/project-
 import type { ActorContext } from '../access/access.types.js';
 import type { ClientContact } from '../client/client.types.js';
 import type {
+  ClientLegalEntityFieldChanges,
+  ClientLegalEntityValues,
+} from '../client/client-legal-entity.types.js';
+import type {
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
@@ -36,6 +40,20 @@ export const CLIENT_CREATED_ACTION = 'client.created' as const;
 export const CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION =
   'client_company_relationship.established' as const;
 export const CLIENT_CORRECTED_ACTION = 'client.corrected' as const;
+export const CLIENT_LEGAL_ENTITY_REGISTERED_ACTION =
+  'client_legal_entity.registered' as const;
+export const CLIENT_LEGAL_ENTITY_CORRECTED_ACTION =
+  'client_legal_entity.corrected' as const;
+
+/**
+ * Client events recorded in, and projected only to, the acting Company that
+ * changed the shared dossier.
+ */
+export const COMPANY_SCOPED_CLIENT_ACTIONS = [
+  CLIENT_CORRECTED_ACTION,
+  CLIENT_LEGAL_ENTITY_REGISTERED_ACTION,
+  CLIENT_LEGAL_ENTITY_CORRECTED_ACTION,
+] as const;
 
 export type ClientCorrectionChanges = Record<
   string,
@@ -183,6 +201,31 @@ export type CanonicalActivityEvent =
     }
   | {
       actor: ActorContext;
+      action: typeof CLIENT_LEGAL_ENTITY_REGISTERED_ACTION;
+      target: {
+        type: 'client_account';
+        clientAccountId: string;
+        companyId: string;
+      };
+      metadata: { legalEntityId: string; values: ClientLegalEntityValues };
+      transitionId: string;
+    }
+  | {
+      actor: ActorContext;
+      action: typeof CLIENT_LEGAL_ENTITY_CORRECTED_ACTION;
+      target: {
+        type: 'client_account';
+        clientAccountId: string;
+        companyId: string;
+      };
+      metadata: {
+        legalEntityId: string;
+        changes: ClientLegalEntityFieldChanges;
+      };
+      transitionId: string;
+    }
+  | {
+      actor: ActorContext;
       action: typeof CLIENT_CREATED_ACTION;
       target: {
         type: 'client_account';
@@ -241,7 +284,9 @@ export interface OrdinaryActivityLogEvent {
     | 'company_opportunity_manager_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
     | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
-    | typeof CLIENT_CORRECTED_ACTION;
+    | typeof CLIENT_CORRECTED_ACTION
+    | typeof CLIENT_LEGAL_ENTITY_REGISTERED_ACTION
+    | typeof CLIENT_LEGAL_ENTITY_CORRECTED_ACTION;
   occurredAt: string;
   actor: {
     internalUserId: string;
@@ -308,6 +353,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
+    | { legalEntityId: string; values: ClientLegalEntityValues }
+    | { legalEntityId: string; changes: ClientLegalEntityFieldChanges }
     | Record<string, never>;
 }
 
