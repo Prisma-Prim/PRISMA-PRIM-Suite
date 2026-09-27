@@ -47,7 +47,7 @@ Release 3 must:
 | Actor                             | Capability consequence                                                                                                                  |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Authorized commercial intake user | Creates and reads Company-owned Requests and their initial Opportunities.                                                               |
-| Opportunity responsible actor     | Owns the next action; R3A1 sets it to the creating membership and section 20 lets an authorized manager reassign it within the Company. |
+| Opportunity responsible actor     | Owns the next action; R3A1 sets it to the creating membership and section 21 lets an authorized manager reassign it within the Company. |
 | Pricing user                      | Runs deterministic calculation with separately authorized Company configuration.                                                        |
 | Commercial approver               | Decides against an exact immutable Offer or Contract version under a later approved threshold matrix.                                   |
 | Configuration owner               | Versions Company offerings, Tariffs, Pricing Rules, Templates and clauses; illustrative provenance does not grant approval authority.   |
@@ -76,12 +76,13 @@ A shared Client Account may be associated when the actor can already read it thr
 - **R3C — Offers:** complete versions, generated artifacts, deterministic checks, approval, transmission, response evidence and negotiation history.
 - **R3D — Contracts:** controlled origins, versions, legal content, signature evidence, post-signature instruments and Project creation or linking.
 
-This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R3D retain the inherited boundaries above. Before a later vertical issue is marked ready, its observable fields, permissions, transitions and acceptance cases are normalized into this PRD; the issue then links to that authority instead of becoming a second specification. [Section 18](#18-r3c-provisional-offer-execution-contract-394) normalizes the provisional R3C Offer contract and its ordered slices. [Section 19](#19-r3d-provisional-contract-execution-contract-403) normalizes the provisional R3D Contract contract and its ordered slices.
+This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R3D retain the inherited boundaries above. Before a later vertical issue is marked ready, its observable fields, permissions, transitions and acceptance cases are normalized into this PRD; the issue then links to that authority instead of becoming a second specification. [Section 18](#18-r3c-provisional-offer-execution-contract-394) normalizes the provisional R3C Offer contract and its ordered slices. [Section 19](#19-r3d-provisional-contract-execution-contract-403) normalizes the provisional R3D Contract contract and its ordered slices. [Section 20](#20-approved-provisional-one-time-client-association-after-request-capture-450) normalizes the one-time association of an existing authorized Client Account after Request capture.
 
 ## 7. Core lifecycle and invariants
 
 - Client Request and Opportunity are distinct. One Request may yield no Opportunity or several Opportunities; every Opportunity has one responsible Company.
 - R3A1 creates exactly one Company-owned Request and one same-Company initial Opportunity atomically.
+- A captured Request starts at version 1 whether it has an original Client reference or not. Only a version 1 Request whose stored original Client reference is absent may make the one-time transition in section 20 to version 2 with a Client reference.
 - Opportunity durable status and configurable sales stage remain separate. R3A1 creates status `OPEN` and no sales stage.
 - Original Request text and source metadata are immutable. Interpretation, assessment and correction are later attributed facts.
 - Pricing is deterministic and produces an immutable Pricing Snapshot.
@@ -89,7 +90,7 @@ This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R
 - Internal approval, transmission and Client outcome remain separate.
 - Contract drafts are versions; an executed agreement is immutable and later legal changes are separate instruments.
 - Approved or signed commercial records are never hard-deleted.
-- NestJS owns commands, validation, authorization and transitions. Clients never set ownership, actor, approval or arbitrary status fields. The only change of responsible actor is the section 20 command, whose requested member NestJS revalidates against Company eligibility and current authority.
+- NestJS owns commands, validation, authorization and transitions. Clients never set ownership, actor, approval or arbitrary status fields. The only change of responsible actor is the section 21 command, whose requested member NestJS revalidates against Company eligibility and current authority.
 
 ## 8. R3A1 — manual Request with initial Opportunity
 
@@ -126,7 +127,7 @@ The bundle grants no Client read, Company context, assignment administration, pr
 | Opportunity scope         | Optional, at most 2,000 characters.                                                                       |
 | Next action               | Required, 1–500 non-whitespace characters.                                                                |
 
-The server assigns Request id, Opportunity id, Workspace, Company, capture time, creating actor membership, responsible actor membership, Opportunity status `OPEN` and version fields. The initial responsible actor is the creator; choosing another responsible actor at capture remains deferred, and section 20 decides reassignment within the Company.
+The server assigns Request id, Opportunity id, Workspace, Company, capture time, creating actor membership, responsible actor membership, Opportunity status `OPEN` and version fields. The initial responsible actor is the creator; choosing another responsible actor at capture remains deferred, and section 21 decides reassignment within the Company.
 
 ### 8.4 Create, read, reload and concurrency
 
@@ -134,7 +135,7 @@ The create command commits the Request, initial Opportunity, idempotency result 
 
 The command requires an idempotency key. An exact retry by the same actor and Company revalidates the current membership, Company context, captured bundle and target visibility before returning the original successful result. Revoked authority returns the normal safe denial and no new event. The fingerprint includes the original request text exactly as submitted plus every other command field; no trimming or normalization silently changes it. Reusing the key with any different input returns a conflict. Concurrent exact retries converge on the same result.
 
-The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
+The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Request detail exposes Request version `1 | 2`. Version 1 is the capture contract and may have a stored original Client reference or none; a null permission-filtered Client projection never proves that the stored reference is absent. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
 
 Client association is resolved and locked through the Client module's existing public authorization and operational-reference fence. The commercial contract adds no Client version field, lookup path, duplicate rule or union logic. Unknown, inaccessible, inactive, cross-Company, superseded or concurrently invalidated Client references all return the same safe unavailable response, create nothing and ask the user to refresh Client search before retrying. A harmless concurrent correction that leaves the authorized association valid need not block. A successful commit records the original/current Client reference through the Client owner so a later union or reversal cannot silently strand commercial use.
 
@@ -180,6 +181,8 @@ AI is optional. Human entry completes the entire commercial journey. Any later a
 
 R3A1 is additive. It does not rewrite existing Clients, Projects, Documents, assignments or Activity. Existing assignments do not inherit Company Commercial Intake v1. No Company, Client or responsible actor is inferred from names, email domains or historical free text.
 
+Existing Requests remain version 1 whether they were captured with a Client or without one. Section 20 adds no backfill: a version 1 Request that already stores a Client reference stays version 1 and is never eligible for reassociation, while only a successful first association of a stored-unassociated version 1 Request creates version 2.
+
 Future Request ingestion and triage must preserve the R3A1 original source and attribution contract. Future Client union or correction keeps the commercial record's original reference and uses the Client owner's authorized current projection; it does not rewrite historical source evidence.
 
 ## 12. Security, reliability and observability
@@ -211,13 +214,13 @@ The first vertical issue proves:
 9. Client union, reversal or relationship races that invalidate the association are rejected by the Client owner's operational-reference fence rather than commercial duplicate logic, while harmless current-state corrections may proceed;
 10. usable empty list, validation, success, unavailable-reference and permission states at desktop and narrow width.
 
-R3B–R3D later add deterministic pricing, provenance propagation, version immutability, approval and Project-linking tests at their public seams. Section 18.14 owns the R3C acceptance cases. Section 19.16 owns the R3D acceptance cases.
+R3B–R3D later add deterministic pricing, provenance propagation, version immutability, approval and Project-linking tests at their public seams. Section 18.14 owns the R3C acceptance cases. Section 19.16 owns the R3D acceptance cases. Section 20.9 owns the post-capture Client-association acceptance cases.
 
 ## 14. Exclusions
 
 R3A1 excludes file uploads, provider ingestion, AI Analysis, Client creation or relationship attachment, Workspace triage, editing, status transitions, configurable stages, reassignment, advanced search, bulk actions, pricing, Offers, Contracts, Project creation, dashboards and external messages.
 
-Sections 16, 17 and 20 decide separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself.
+Sections 16, 17, 20 and 21 decide separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself. Section 20 permits only the first association of an existing Client Account; replacement, correction and removal remain excluded.
 
 Release 3 excludes mass marketing automation, a universal CRM or CPQ engine, AI-determined prices or approvals, an internal qualified-signature service and a Client portal.
 
@@ -233,7 +236,7 @@ No statement here claims that Dan approved the exact provisional rules, or that 
 
 ## 16. Approved provisional Opportunity next-action update (#306)
 
-This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides the next-action mutation after R3A1; section 20 decides reassignment, and every other edit and transition stays excluded.
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides the next-action mutation after R3A1; section 21 decides reassignment, and every other edit and transition stays excluded.
 
 ### 16.1 Observable outcome
 
@@ -243,7 +246,7 @@ An authorized user working in a server-validated active Company opens a Company-
 
 The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Intake v2**, whose permission set is v1 plus `commercial.opportunity.next_action.update`. Existing v1 assignments never expand in place; only an explicit revocation followed by a fresh grant captures v2, and null or unknown captured versions fail closed.
 
-Authority to update is not ownership. Any holder of the captured v2 bundle in the responsible Company may update the next action whether or not they are the responsible actor, and the command never transfers responsibility, changes the durable status, assigns a sales stage, reassigns the Opportunity or grants Client, pricing, Offer, Contract, administration or Activity Log authority. The R3A1 rule that the creator is the initial responsible actor is preserved; only section 20 changes the responsible actor.
+Authority to update is not ownership. Any holder of the captured v2 bundle in the responsible Company may update the next action whether or not they are the responsible actor, and the command never transfers responsibility, changes the durable status, assigns a sales stage, reassigns the Opportunity or grants Client, pricing, Offer, Contract, administration or Activity Log authority. The R3A1 rule that the creator is the initial responsible actor is preserved; only section 21 changes the responsible actor.
 
 ### 16.3 Input, immutability and server-owned fields
 
@@ -285,7 +288,7 @@ The highest stable seam is the public REST interface against PostgreSQL, followe
 
 ### 16.8 Exclusions and unresolved ambiguity
 
-This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect. Reassignment is owned by section 20.
+This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect. Reassignment is owned by section 21.
 
 Unresolved and deliberately not presented as business fact: whether a commercial next action should remain free text or later become a structured, dated commitment owned by the Task capability; whether a future business rule should restrict updates to the responsible actor or a commercial manager; and whether the Opportunity should later expose its own next-action history outside the Activity Log. Iurie's validation under section 15 may correct any of these.
 
@@ -299,7 +302,7 @@ A user who holds the separate opt-in commercial Activity bundle in a server-vali
 
 ### 17.2 Explicit permission
 
-The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Activity Reader v1**, containing exactly `commercial.activity.read`. It is an independent opt-in bundle: it is neither added to Company Commercial Intake v1 or v2 nor granted by any existing bundle, assignment or migration backfill, and unknown captured versions fail closed. Holding it grants no Request, Opportunity, Client, pricing, Offer, Contract, administration or mutation authority, and no Workspace-wide or cross-Company history.
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Activity Reader v1**, containing exactly `commercial.activity.read`. It is an independent opt-in bundle: it is neither added to Company Commercial Intake v1, v2 or v3 nor granted by any existing bundle, assignment or migration backfill, and unknown captured versions fail closed. Holding it grants no Request, Opportunity, Client, pricing, Offer, Contract, administration or mutation authority, and no Workspace-wide or cross-Company history.
 
 Its grant and revocation are attributable through the assignment-lifecycle events the [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) names and constrains, under the existing Company assignment administration visibility. This section adds no commercial event, target or metadata for that administration, and those assignment events are never projected as commercial history.
 
@@ -307,7 +310,7 @@ Its grant and revocation are attributable through the assignment-lifecycle event
 
 A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
 
-Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated` and `opportunity.responsible.changed` are eligible. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice can ship before the update event exists; it adds no producer or lifecycle for that event.
+Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated` and `opportunity.responsible.changed` are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
 
 A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target. For `opportunity.responsible.changed` the projection additionally returns the previous and new responsible actor as membership identifier and captured display label, not the version; any other metadata shape fails closed.
 
@@ -943,26 +946,115 @@ C6 may follow C1 in parallel with C2–C5, and C7 and C8 may proceed in parallel
 
 Excluded from R3D here: imported and renewal origins, multi-party agreements (DEC-024), real Templates, clauses, variants and legal review, clause selection or editing, official numbering, Contract transmission, real or partial signature evidence, e-signature and MSign, legal or operational lifecycle states, instruments other than Addenda, consolidated terms, obligations and due dates (Sarcina M04-R104), invoices and tranches, Contract Documents, stored files and signed scans, unlinking, automatic Project creation or activation, Project Tasks, Drive and Calendar automation (MASTER §23), a Project's own legal-entity field, Opportunity status changes, Company-wide Contract lists and dashboards, Activity projection, export, deletion and AI assistance.
 
-## 20. Approved provisional Opportunity reassignment (#399)
+## 20. Approved provisional one-time Client association after Request capture (#450)
+
+This section normalizes one bounded, reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not new Iurie evidence or approved first-tenant business policy. It removes the dead end for a Request captured before its Client is known without changing capture-time evidence, Opportunity meaning, Pricing history, Offer policy or Client ownership.
+
+### 20.1 Observable outcome and boundary
+
+An authorized user in a server-validated active Company opens a Company-owned Request whose stored original Client reference is absent, selects one existing active Client Account from the authorized Client search and confirms the association. The Request detail and list then expose the existing Client-owned current projection and dossier navigation when the reader retains Client visibility. Reload and process restart preserve the association.
+
+The association names a Client Account, not a Client Legal Entity. It does not create or change a Client, a Client–Company Relationship, a Client Legal Entity, the responsible Company, original Request evidence, capture fields, subject, Opportunity, next action, responsible actor, status or stage.
+
+### 20.2 Request versions and one-time lifecycle
+
+Version 1 remains the complete capture contract and has two valid historical forms: a Request may already store an original Client reference, or it may store none. Only the second form may transition once to version 2. Version 2 requires a stored original Client reference and has no transition back to version 1.
+
+The eligibility decision uses the stored original reference. A null or omitted current permission-filtered Client projection does not mean that the reference is absent and never makes an already-associated version 1 Request eligible. A Request with any existing stored association, visible or hidden, cannot be re-pointed.
+
+### 20.3 Explicit permission and prerequisites
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Intake v3**, whose permissions are v2 plus `commercial.request.client.associate`. Existing v1 and v2 assignments never expand in place. An administrator must revoke the old assignment and issue a fresh grant that captures v3; null or unknown versions fail closed.
+
+Execution and exact replay require all of the following at that time:
+
+- a verified identity, active Workspace Membership and server-validated active Company;
+- a live captured Company Commercial Intake v3 assignment in that Company;
+- current Request read authority for the target;
+- current Client read authority for the selected Client Account and an active Client–Company Relationship in that Company.
+
+The new permission grants none of those independent prerequisites and adds no Client, pricing, Offer, Contract, Activity read, administration or cross-Company authority.
+
+### 20.4 Public command and atomic result
+
+`POST /commercial-intake/requests/{requestId}/client-association` requires `Idempotency-Key` and accepts exactly `{ expectedVersion, clientAccountId }`. A valid material success returns `200 { receipt: { requestId, version: 2, outcome: "associated" }, request }`, where `request` is the current permission-filtered Request detail and the receipt is the immutable command result.
+
+One successful transaction commits all of the following or none:
+
+1. the Request's original Client Account reference through the Client owner's public operational-reference boundary and its existing Client, relationship, union and reversal fence;
+2. the Request transition from version 1 to version 2;
+3. one durable command receipt;
+4. exactly one `client_request.client_associated` event with metadata `{ "requestVersion": 2 }`.
+
+The Commercial Intake module does not copy Client lookup, relationship, union, reversal or legal-entity rules. The server establishes the actor, Company, resulting version and event time.
+
+### 20.5 Validation, replay and safe refusals
+
+Unknown fields, malformed identifiers and an invalid version are field-specific `400` responses. Missing verified identity returns `401`. Missing, revoked, inactive, null, unknown, v1 or v2 association authority returns the existing safe `403`.
+
+An unknown, cross-Workspace, cross-Company or unreadable Request uses the existing Request-detail not-found response. A stale Request version returns `409 STALE_VERSION`. Any stored association, visible or hidden, returns `409 CLIENT_ALREADY_ASSOCIATED` without a Client identifier or label. An unknown, inaccessible, inactive, unrelated, superseded or concurrently invalidated Client returns `CLIENT_REFERENCE_UNAVAILABLE`, matching capture. Reusing a key with changed input returns `409 IDEMPOTENCY_CONFLICT`. Every refusal writes no Request change, receipt or event.
+
+The key is scoped to Workspace, Company and acting Membership. Its fingerprint covers the Request id, observed Request version and Client Account id. Current authority, Request visibility and selected-Client availability are revalidated before replay. An exact replay is resolved before rejecting its now-stale observed Request version and returns the original receipt without another write or event. Concurrent exact retries converge on that receipt. An uncertain response preserves the exact payload, observed version and key for an explicit unchanged retry.
+
+### 20.6 Concurrency and Client ownership
+
+The Request row owns association ordering. Two associations submitted against version 1 commit at most one. A next-action update remains independent because it changes the Opportunity row and Opportunity version rather than the Request row.
+
+Client union, reversal, relationship archive and Client mutation retain the Client owner's existing lock order, authorization and outcomes through its public operational-reference fence. A race cannot strand a Client reference, bypass a relationship, copy a Client rule into Commercial Intake or change any Client Legal Entity. A harmless Client correction that preserves the authorized relationship may proceed under that existing owner contract.
+
+### 20.7 Pricing ordering and immutable history
+
+Pricing calculation and association use a compatible lock on the Request row when reading or changing its nullable stored Client reference. When calculation races with the first association of a previously unassociated Request, obtaining the lock first means its immutable Snapshot stores no Client reference and association may commit afterwards. If association commits first, the new Snapshot stores the original Client reference. A race never produces a partly associated Snapshot or a stranded Client reference.
+
+No existing Pricing Snapshot is rewritten, backfilled or re-pointed. After association, a fresh calculation creates a new Snapshot that stores the reference and later reads return the Client owner's current visible projection. Losing Client read authority hides only that projection; it does not erase the stored association or make the Request eligible again.
+
+### 20.8 Activity, reads and interface states
+
+The association event targets the Request in its responsible Company, attributes the acting Membership at server time and contains only `requestVersion`. Failed, denied and replayed commands create no event. Its projection is allowed only through section 17's existing Company Commercial Activity Reader plus current `commercial.request.read`; it never reveals a Client identifier, label or relationship.
+
+Prisme and Classic Request detail show “No Client associated” only when the stored association is absent. “Associate a Client” appears only with effective v3 association permission and current Client read authority, and reuses the capture form's authorized Client search. Empty selection, unavailable Client, stale or already-associated state, denial, uncertain outcome and success are explicit. Authority, identity or Company changes clear the draft and late responses never render. Success refreshes detail and any loaded list row and exposes the existing dossier action when the current projection is visible. The flow is usable by keyboard at 1440 px and 390 px.
+
+### 20.9 Migration and acceptance
+
+The implementation is additive. Existing Requests and assignments are unchanged: associated version 1, unassociated version 1 and newly associated version 2 are all valid, while version 2 without a stored Client reference is invalid. Migration proof covers both existing version 1 forms and proves that neither is rewritten.
+
+The highest stable seam is the public REST interface against PostgreSQL, followed by the real browser journey. Acceptance proves:
+
+1. success, restart persistence, version 2, one receipt and one minimal event;
+2. permission, Company, Workspace, Request and Client isolation, including revocation and hidden-projection cases without metadata leakage;
+3. exact replay, changed-payload conflict, two-association convergence and atomic rollback;
+4. deterministic races with Pricing calculation and the Client owner's union, reversal, relationship and correction fences;
+5. unchanged Request evidence, Company, Opportunity, responsible actor, Client identity, Client relationship and every Client Legal Entity;
+6. detail and list projection, then capture without a Client → associate → calculate a fresh Snapshot → reload → reopen → Client dossier at desktop and narrow width.
+
+Every existing Request-create and read prerequisite accepts v3 because it contains the v1 permissions, and next-action update accepts v2 or v3 because both contain its permission. No contained-permission check treats the bundle's newest version as the only valid version.
+
+### 20.10 Exclusions and unresolved question
+
+Excluded: replacing, correcting or removing an association; creating a Client or Client–Company Relationship from the Request; selecting or changing a Client Legal Entity; rewriting or backfilling any Pricing Snapshot; Opportunity reassignment, status, stage or additional Opportunities; pricing formulas; Offer or Contract behaviour; external messages; CSS redesign; and any permission beyond Intake v3's one association permission.
+
+The approved sources do not decide whether an Offer may reuse a Pricing Snapshot created while the Request still had no Client after a later association. This section neither permits nor forbids that reuse. Its complete demonstration calculates a fresh Snapshot after association, preserving a usable Request → Pricing → Offer path without inventing Offer policy or rewriting history.
+
+## 21. Approved provisional Opportunity reassignment (#399)
 
 This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides how an Opportunity's responsible actor changes inside its responsible Company; transfer between Companies stays excluded (S04-Q06 is not mapped).
 
-### 20.1 Outcome and permission
+### 21.1 Outcome and permission
 
 A holder of captured **Company Opportunity Manager v1** ([authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families)) working in the server-validated active Company replaces the responsible actor of a Company-owned Opportunity with an eligible member of the same Company. Detail and list show the new responsible actor after reload and restart. `commercial.opportunity.assign` is effective only while the same actor also holds live captured Commercial Intake read (`commercial.request.read`, `commercial.opportunity.read`) and Company context in that Company; partial authority returns the safe denial. Authority is not ownership: holding the bundle does not make its holder responsible, and being responsible grants no permission.
 
-### 20.2 Eligibility
+### 21.2 Eligibility
 
 An eligible member is an active Internal User with an active same-Workspace membership, effective Company context and live captured Commercial Intake read in the Opportunity's Company. Access owns this rule and a narrow query returning only membership identifiers and display labels, never email, unrelated members, counts or exclusion reasons; an empty result is valid. A new responsible actor is revalidated inside the command, including a directly submitted identifier, serialized with suspension and revocation of the actor and the target. Every rejected target returns one uniform unavailable response. A responsible actor who later loses eligibility stays recorded and displayed, gains nothing and may be replaced.
 
-### 20.3 Command, version and receipt
+### 21.3 Command, version and receipt
 
 The command carries the Opportunity identifier, the observed Opportunity version, an idempotency key and exactly one business field, the new responsible membership. An Opportunity always has exactly one responsible actor; the command cannot clear it. It shares the Opportunity version with section 16 and applies the section 16.4 expected-version, durable receipt, replay-before-staleness, revocation, changed-payload and concurrency rules in its own key space. Submitting the current responsible actor is a no-op that still passes authority, visibility and expected-version checks and stores an unchanged receipt. A material change commits the new responsible actor, the incremented version, the last-mutation attribution, the receipt and one event atomically. Next action, status, title, scope, Request, Client association and Company never change through it.
 
-### 20.4 Activity
+### 21.4 Activity
 
 One material change records one `opportunity.responsible.changed` event attributed to the acting membership, scoped to the responsible Company and targeting the Opportunity. Its metadata is exactly the resulting Opportunity version and the previous and new responsible actor, each as a membership identifier and the display label captured at the change; it contains no email, next-action or request content. Rejected commands, safe denials, no-ops and exact replays record none. Section 17.3 owns its projection.
 
-### 20.5 Interface, exclusions and unresolved ambiguity
+### 21.5 Interface, exclusions and unresolved ambiguity
 
 The Request detail offers the change only with the permission and its prerequisites, lists eligible members and applies the section 16.6 editor states, with at most one Opportunity editor open at a time. Excluded: transfer between Companies, choosing a responsible actor other than the creator at capture, multiple or role-specific responsible actors, acceptance by the new responsible actor, notifications, reminders, bulk reassignment and any effect on Tasks, pricing, Offers or Contracts. Unresolved and not presented as business fact: who should decide a reassignment (S04-Q06; default: whoever the administrator grants the bundle, provisionally Iurie's memberships), and whether a handover should force the next action to be revisited (default: no).

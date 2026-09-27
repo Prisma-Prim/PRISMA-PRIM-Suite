@@ -161,13 +161,30 @@ Company context, assignment administration, pricing, Offer, Contract, approval,
 Activity Log or cross-Company authority, and holding it neither makes the actor
 the responsible actor nor permits any other Opportunity mutation.
 
+The [provisional one-time Client association after Request capture](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450)
+adds `commercial.request.client.associate` only through captured **Company
+Commercial Intake v3**. Intake v3 is v2 plus that one permission. Intake v1 and
+v2 assignments never expand in place and receive no migration backfill grant;
+an administrator with `company.assignment.manage` must revoke the old assignment
+and issue a fresh grant that captures v3 through the existing attributable
+Company assignment lifecycle. Null or unknown versions fail closed.
+
+Every Intake check evaluates contained permissions: delivered Request and
+Opportunity read/create checks accept v1, v2 or v3, and next-action update accepts
+v2 or v3. Only v3 permits the association command. The permission grants no
+Client read, relationship, Company context, administration, pricing, Offer,
+Contract, Activity read or cross-Company authority. Association execution and
+exact replay independently require current Request read, current Client read and
+an active Client–Company Relationship in the server-validated Company. No other
+bundle, assignment, Workspace ownership or migration substitutes for v3.
+
 The [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
 adds **Company Commercial Activity Reader v1**, containing exactly
 `commercial.activity.read`. An administrator with `company.assignment.manage`
 explicitly grants or revokes the captured v1 bundle for an active same-Workspace
 membership and active Company through the existing Company assignment
 administration. It is an independent opt-in bundle: no existing bundle,
-assignment or backfill confers it, Commercial Intake v1 and v2 do not include it,
+assignment or backfill confers it, Commercial Intake v1, v2 and v3 do not include it,
 and unknown captured versions fail closed. It authorizes no mutation and no
 Request, Opportunity, Client or cross-Company read; its holder sees a commercial
 event only when they independently retain current read authority for that event's
@@ -191,7 +208,7 @@ failed attempt record none. These events attribute the transition only; neither
 recording nor reading them confers `commercial.activity.read` or any commercial
 read, and the bundle's permission semantics above are unchanged.
 
-The [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#20-approved-provisional-opportunity-reassignment-399) adds **Company Opportunity Manager v1**, containing exactly `commercial.opportunity.assign`. An administrator with `company.assignment.manage` explicitly grants or revokes the captured v1 bundle for an active same-Workspace membership and active Company through the existing Company assignment administration. It is an independent opt-in bundle: no existing bundle, assignment or backfill confers it, Commercial Intake is unchanged, and null or unknown captured versions fail closed. It authorizes reassignment only while its holder independently retains live captured Commercial Intake read and Company context in the same server-validated active Company. It grants none of those prerequisites and no create, next-action, Client, pricing, Offer, Contract, Activity Log, administration or cross-Company authority, and holding it does not make its holder the responsible actor. Access owns the Opportunity responsible-actor eligibility rule and its narrow membership-and-label query. The bundle's assignment lifecycle is exactly `company_opportunity_manager_assignment.granted` and `company_opportunity_manager_assignment.revoked`, recorded under the same convention, bundle-label-only metadata, one-event-per-actual-state-change rule and administration visibility as the Commercial Activity Reader lifecycle above.
+The [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#21-approved-provisional-opportunity-reassignment-399) adds **Company Opportunity Manager v1**, containing exactly `commercial.opportunity.assign`. An administrator with `company.assignment.manage` explicitly grants or revokes the captured v1 bundle for an active same-Workspace membership and active Company through the existing Company assignment administration. It is an independent opt-in bundle: no existing bundle, assignment or backfill confers it, Commercial Intake is unchanged, and null or unknown captured versions fail closed. It authorizes reassignment only while its holder independently retains live captured Commercial Intake read and Company context in the same server-validated active Company. It grants none of those prerequisites and no create, next-action, Client, pricing, Offer, Contract, Activity Log, administration or cross-Company authority, and holding it does not make its holder the responsible actor. Access owns the Opportunity responsible-actor eligibility rule and its narrow membership-and-label query. The bundle's assignment lifecycle is exactly `company_opportunity_manager_assignment.granted` and `company_opportunity_manager_assignment.revoked`, recorded under the same convention, bundle-label-only metadata, one-event-per-actual-state-change rule and administration visibility as the Commercial Activity Reader lifecycle above.
 
 Access owns a narrow eligible-assignee query for the manager's authorized Project
 scope. It filters active Internal Users and active same-Workspace memberships by

@@ -288,6 +288,8 @@ A Pricing Snapshot preserves the Client context that its Client Request already 
 
 The snapshot stores the original Client reference of its Client Request, if any. Every read returns the same optional projection the commercial read already returns — the original reference plus the current visible projection — and omits it entirely when the reader may not currently see that Client. An omitted projection is never replaced by a placeholder, an identifier or a count. A Client Request with no association prices normally.
 
+Calculation reads the Request's nullable stored original Client reference while holding a compatible lock on the Request row shared with the [one-time post-capture association contract](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450). When calculation races with the first association of a previously unassociated Request, obtaining that lock first means the immutable Snapshot stores no Client reference and association may commit afterwards. If association commits first, the new Snapshot stores the original Client reference. Neither ordering produces a partial association, strands a Client reference or rewrites an earlier Snapshot. A fresh calculation after association is the defined path to a Snapshot that carries the new association.
+
 ## 10. Permissions
 
 Three captured Company bundles are introduced. All use the existing captured-bundle mechanism: an active administrator with `company.assignment.manage` explicitly grants or revokes a named bundle and permission-set version for an active same-Workspace membership and active Company. Null or unknown captured versions fail closed. No existing bundle, assignment or role receives any new permission, and no bundle implies another.
@@ -506,7 +508,7 @@ Across the three slices, delivery proves:
 14. a replay and a stored-snapshot read by an actor who kept the pricing bundle but lost read access to the target Opportunity return the safe denial, not the recorded snapshot;
 15. authority and target-visibility revalidation precede replay, and replay precedes stale evaluation, proven by a revoked-authority retry, a revoked-target-visibility retry and a stale-configuration retry;
 16. a calculation cannot commit against a version taken over by a concurrent publication, and vice versa, through the scope protection of section 11.6;
-17. the snapshot's Client projection matches the existing commercial projection, is omitted for a reader who may not see the Client, is absent when no association exists, and the original association is never modified;
+17. the snapshot's Client projection matches the existing commercial projection, is omitted for a reader who may not see the Client, is absent when no association exists, and the original association is never modified; a deterministic race with post-capture association follows section 9's Request-row ordering and leaves every older Snapshot unchanged;
 18. exactly one attributed event per committed command, with no amount, rate, quantity or label in metadata, and no pricing event visible through any Activity read surface;
 19. every authority pair is enforced independently in both directions, and no existing bundle or assignment grants any new bundle implicitly;
 20. direct-identifier denial and no list, count, amount or event leakage across Company and Workspace boundaries;
