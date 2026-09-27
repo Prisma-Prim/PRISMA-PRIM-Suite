@@ -44,6 +44,7 @@ import {
   type CompanyPricingConfigurationPermission,
   COMPANY_PRICING_USER_BUNDLE,
   pricingUserPermissionsFor,
+  type CompanyPricingUserPermission,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -635,6 +636,28 @@ export class CompanyContextAuthorization {
       actor,
       company.id,
       anyCapturedGrant(grants),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  // Calculation and snapshot reads belong only to Company Pricing User v1.
+  // Configuration, Intake, Catalogue and Workspace ownership cannot lend
+  // these permissions. A locked read serializes the operation against a
+  // concurrent revocation of the captured assignment.
+  async requirePricingUserAccess(
+    actor: ActorContext,
+    required: readonly CompanyPricingUserPermission[],
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (!company || !carriesEvery(company.pricingUserPermissions, required))
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      capturedGrant(COMPANY_PRICING_USER_BUNDLE),
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);

@@ -18,6 +18,8 @@ const membershipId = 'membership-1';
 const requestId = 'request-358';
 const opportunityId = 'opportunity-358';
 const subject = 'Pregătire audit demo';
+const requestedAfterNextActionEdit =
+  'The requested Client Request opens after the next-action edit is saved or cancelled.';
 
 type Transport = {
   intakeAssignment: string | undefined;
@@ -469,9 +471,11 @@ describe('opening the Request from its commercial Activity event', () => {
     navigateTo('Activity Log');
     openRequestIn(await activityRow('updated an Opportunity next action'));
     expect(window.location.hash).toBe('#requests');
-    expect(within(requestsRegion()).getByRole('status')).toHaveTextContent(
-      'The requested Client Request opens after the next-action edit is saved or cancelled.',
-    );
+    expect(
+      within(requestsRegion()).getByText(requestedAfterNextActionEdit, {
+        selector: '[role="status"]',
+      }),
+    ).toBeVisible();
     expect(within(requestsRegion()).getByLabelText('Next action')).toHaveValue(
       'Book the audit window',
     );
@@ -487,7 +491,9 @@ describe('opening the Request from its commercial Activity event', () => {
       }),
     ).toBeVisible();
     expect(
-      within(requestsRegion()).queryByRole('status'),
+      within(requestsRegion()).queryByText(requestedAfterNextActionEdit, {
+        selector: '[role="status"]',
+      }),
     ).not.toBeInTheDocument();
     expect(transport.mutations).toEqual([]);
   });

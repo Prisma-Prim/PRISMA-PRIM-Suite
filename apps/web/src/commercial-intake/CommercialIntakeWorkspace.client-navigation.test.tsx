@@ -559,9 +559,11 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       'Book the audit call',
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveNextAction }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.nextActionSaved,
-    );
+    expect(
+      await screen.findByText(copy.nextActionSaved, {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
     expect(transport.calls(`POST ${nextActionPath('request-first')}`)).toEqual([
       [
         expect.any(String),
@@ -605,9 +607,11 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       'Confirm the audit window',
     );
     fireEvent.click(screen.getByRole('button', { name: copy.saveNextAction }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy.nextActionUncertain,
-    );
+    expect(
+      await screen.findByText(copy.nextActionUncertain, {
+        selector: '[role="alert"]',
+      }),
+    ).toBeVisible();
 
     view.update({ clientRestriction: firstDossier });
     view.update({ clientRestriction: { ...secondDossier } });
@@ -1057,7 +1061,11 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
           },
         },
       });
-      expect(screen.getByRole('alert')).toHaveTextContent(copy.nextActionSaved);
+      expect(
+        screen.getByText(copy.nextActionSaved, {
+          selector: '[role="alert"]',
+        }),
+      ).toBeVisible();
       expect(returnAction()).not.toBeInTheDocument();
       await catchUp.settle(firstDetail('client-second'));
       clickReturnAction();
@@ -1103,9 +1111,11 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       fireEvent.click(
         screen.getByRole('button', { name: copy.saveNextAction }),
       );
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        copy.nextActionConflict,
-      );
+      expect(
+        await screen.findByText(copy.nextActionConflict, {
+          selector: '[role="alert"]',
+        }),
+      ).toBeVisible();
       expect(
         transport.calls(`POST ${nextActionPath('request-first')}`)[0]?.[1]
           ?.body,
