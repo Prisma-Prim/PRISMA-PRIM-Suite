@@ -495,10 +495,11 @@ async function changeLocale(page: Page, projectName: string, locale: string) {
 
 async function openNavigation(page: Page, projectName: string) {
   if (projectName !== 'narrow') return;
-  const open = page.getByRole('button', {
-    name: /Deschideți navigarea|Открыть навигацию|Ouvrir la navigation|Open navigation/u,
-  });
-  if (await open.isVisible()) await open.click();
+  await page
+    .getByRole('button', {
+      name: /Deschideți navigarea|Открыть навигацию|Ouvrir la navigation|Open navigation/u,
+    })
+    .click();
 }
 
 async function closeNavigation(page: Page, projectName: string) {
