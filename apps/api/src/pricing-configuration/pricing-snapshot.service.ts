@@ -17,11 +17,14 @@ import { CommercialIntakeService } from '../commercial-intake/commercial-intake.
 import { DatabaseContext } from '../database/database-context.js';
 import {
   pricingRuleVersions,
+  pricingSnapshotAdjustments,
   pricingSnapshotLines,
   pricingSnapshots,
   tariffVersions,
 } from '../database/schema/index.js';
 import { calculatePricingLines } from './pricing-calculation.js';
+import { applyPricingAdjustments } from './pricing-adjustment.js';
+import { scaledDecimal } from './pricing-decimal.js';
 import { invalid } from './effective-dated-version.validation.js';
 import {
   pricingSnapshotCursor,
@@ -42,12 +45,16 @@ import {
   recordPricingSnapshotReceipt,
 } from './pricing-configuration-publication.js';
 import type { CreatePricingSnapshotCommand } from './pricing-configuration.types.js';
-import { readPricingSnapshotCommand } from './pricing-snapshot.validation.js';
+import {
+  readPricingSnapshotCommand,
+  requestsPricingAdjustment,
+} from './pricing-snapshot.validation.js';
 
 type RuleVersionRow = typeof pricingRuleVersions.$inferSelect;
 type TariffVersionRow = typeof tariffVersions.$inferSelect;
 type SnapshotRow = typeof pricingSnapshots.$inferSelect;
 type SnapshotLineRow = typeof pricingSnapshotLines.$inferSelect;
+type SnapshotAdjustmentRow = typeof pricingSnapshotAdjustments.$inferSelect;
 
 const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -81,6 +88,12 @@ export class PricingSnapshotService {
         ['commercial.pricing.calculate'],
         true,
       );
+      if (requestsPricingAdjustment(value))
+        await this.authorization.requirePricingAdjustmentAccess(
+          actor,
+          ['commercial.pricing.adjustment.apply'],
+          true,
+        );
       const opportunity = await this.intake.requireReadablePricingOpportunity(
         actor,
         opportunityIdInput,
@@ -115,6 +128,9 @@ export class PricingSnapshotService {
       }
 
       const command = readPricingSnapshotCommand(value);
+      const adjustmentCount = command.lines.filter(
+        (line) => line.adjustment !== undefined,
+      ).length;
       const offerings = await this.catalogue.readPricingOfferings(
         actor,
         command.lines.map(({ offeringId }) => offeringId),
@@ -183,6 +199,38 @@ export class PricingSnapshotService {
           taxRatePercent: tariff.taxRatePercent,
         })),
       );
+      for (const [index, line] of command.lines.entries()) {
+        const calculated = calculation.lines[index];
+        if (!calculated)
+          throw new Error('The Pricing Snapshot line was not calculated.');
+        if (
+          line.adjustment &&
+          scaledDecimal(line.adjustment.netReduction, 2) >
+            scaledDecimal(calculated.lineNet, 2)
+        )
+          invalid(
+            `lines[${index}].adjustment.netReduction`,
+            'Enter a net reduction no greater than the original line net.',
+          );
+      }
+      const adjustedCalculation = applyPricingAdjustments(
+        selectedLines.map(({ command: line, tariff }, index) => {
+          const calculated = calculation.lines[index];
+          if (!calculated)
+            throw new Error('The Pricing Snapshot line was not calculated.');
+          return {
+            lineNet: calculated.lineNet,
+            lineTax: calculated.lineTax,
+            taxRatePercent: tariff.taxRatePercent,
+            adjustment: line.adjustment
+              ? {
+                  netReduction: line.adjustment.netReduction,
+                  reason: line.adjustment.reason,
+                }
+              : null,
+          };
+        }),
+      );
       const committedAt = this.clock.now();
       const snapshotId = randomUUID();
       await this.databaseContext.connection.insert(pricingSnapshots).values({
@@ -199,16 +247,16 @@ export class PricingSnapshotService {
         roundingScale: rule.roundingScale,
         taxApplication: rule.taxApplication,
         currency,
-        subtotal: calculation.subtotal,
-        taxTotal: calculation.taxTotal,
-        total: calculation.total,
+        subtotal: adjustedCalculation.subtotal,
+        taxTotal: adjustedCalculation.taxTotal,
+        total: adjustedCalculation.total,
         calculatedByInternalUserId: actor.internalUserId,
         calculatedByWorkspaceMembershipId: actor.workspaceMembershipId,
         calculatedAt,
         committedAt,
       });
-      await this.databaseContext.connection.insert(pricingSnapshotLines).values(
-        selectedLines.map(({ command: line, offering, tariff }, index) => {
+      const storedLines = selectedLines.map(
+        ({ command: line, offering, tariff }, index) => {
           const calculated = calculation.lines[index];
           if (!calculated)
             throw new Error('The Pricing Snapshot line was not calculated.');
@@ -238,14 +286,55 @@ export class PricingSnapshotService {
             rawLineTax: calculated.rawLineTax,
             lineTax: calculated.lineTax,
           };
-        }),
+        },
       );
+      await this.databaseContext.connection
+        .insert(pricingSnapshotLines)
+        .values(storedLines);
+      const storedAdjustments: Array<
+        typeof pricingSnapshotAdjustments.$inferInsert
+      > = [];
+      for (const [index, selected] of selectedLines.entries()) {
+        if (!selected.command.adjustment) continue;
+        const storedLine = storedLines[index];
+        const adjusted = adjustedCalculation.lines[index];
+        if (!storedLine || !adjusted || !adjusted.adjustment)
+          throw new Error(
+            'The Pricing Snapshot adjustment was not calculated.',
+          );
+        storedAdjustments.push({
+          id: randomUUID(),
+          workspaceId: actor.workspaceId,
+          companyId,
+          snapshotId,
+          snapshotLineId: storedLine.id,
+          type: adjusted.adjustment.type,
+          netReduction: adjusted.netReduction,
+          reason: adjusted.adjustment.reason,
+          originalLineNet: storedLine.lineNet,
+          originalRawLineTax: storedLine.rawLineTax,
+          originalLineTax: storedLine.lineTax,
+          taxRatePercent: storedLine.taxRatePercent,
+          adjustedLineNet: adjusted.adjustedLineNet,
+          adjustedRawLineTax: adjusted.adjustedRawLineTax,
+          adjustedLineTax: adjusted.adjustedLineTax,
+          taxReduction: adjusted.taxReduction,
+          appliedByInternalUserId: actor.internalUserId,
+          appliedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          appliedAt: calculatedAt,
+        });
+      }
+      if (storedAdjustments.length > 0)
+        await this.databaseContext.connection
+          .insert(pricingSnapshotAdjustments)
+          .values(storedAdjustments);
       await this.accountability.recordPricingSnapshotCreated({
         actor,
         companyId,
         pricingSnapshotId: snapshotId,
         opportunityId: opportunity.id,
         lineCount: selectedLines.length,
+        adjustmentCount,
         currency,
         occurredAt: committedAt,
       });
@@ -478,8 +567,32 @@ export class PricingSnapshotService {
     snapshot: SnapshotRow,
   ): Promise<PricingSnapshotRecord> {
     const lines = await this.databaseContext.connection
-      .select()
+      .select({
+        line: pricingSnapshotLines,
+        adjustment: pricingSnapshotAdjustments,
+      })
       .from(pricingSnapshotLines)
+      .leftJoin(
+        pricingSnapshotAdjustments,
+        and(
+          eq(
+            pricingSnapshotAdjustments.workspaceId,
+            pricingSnapshotLines.workspaceId,
+          ),
+          eq(
+            pricingSnapshotAdjustments.companyId,
+            pricingSnapshotLines.companyId,
+          ),
+          eq(
+            pricingSnapshotAdjustments.snapshotId,
+            pricingSnapshotLines.snapshotId,
+          ),
+          eq(
+            pricingSnapshotAdjustments.snapshotLineId,
+            pricingSnapshotLines.id,
+          ),
+        ),
+      )
       .where(
         and(
           eq(pricingSnapshotLines.workspaceId, snapshot.workspaceId),
@@ -508,7 +621,9 @@ export class PricingSnapshotService {
         taxApplication: snapshot.taxApplication,
       },
       currency: snapshot.currency,
-      lines: lines.map(snapshotLineView),
+      lines: lines.map(({ line, adjustment }) =>
+        snapshotLineView(line, adjustment),
+      ),
       subtotal: snapshot.subtotal,
       taxTotal: snapshot.taxTotal,
       total: snapshot.total,
@@ -523,7 +638,10 @@ export class PricingSnapshotService {
   }
 }
 
-function snapshotLineView(row: SnapshotLineRow): PricingSnapshotLineRecord {
+function snapshotLineView(
+  row: SnapshotLineRow,
+  adjustment: SnapshotAdjustmentRow | null,
+): PricingSnapshotLineRecord {
   return {
     position: row.lineNumber,
     serviceDefinitionId: row.serviceDefinitionId,
@@ -544,6 +662,22 @@ function snapshotLineView(row: SnapshotLineRow): PricingSnapshotLineRecord {
     lineNet: row.lineNet,
     rawLineTax: row.rawLineTax,
     lineTax: row.lineTax,
+    adjustment: adjustment
+      ? {
+          type: adjustment.type,
+          netReduction: adjustment.netReduction,
+          taxReduction: adjustment.taxReduction,
+          reason: adjustment.reason,
+          appliedByWorkspaceMembershipId:
+            adjustment.appliedByWorkspaceMembershipId,
+          appliedAt: adjustment.appliedAt.toISOString(),
+        }
+      : null,
+    netReduction: adjustment?.netReduction ?? '0.00',
+    taxReduction: adjustment?.taxReduction ?? '0.00',
+    adjustedLineNet: adjustment?.adjustedLineNet ?? row.lineNet,
+    adjustedRawLineTax: adjustment?.adjustedRawLineTax ?? row.rawLineTax,
+    adjustedLineTax: adjustment?.adjustedLineTax ?? row.lineTax,
   };
 }
 

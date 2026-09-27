@@ -145,6 +145,22 @@ export function pricingUserPermissionsFor(
 ): readonly CompanyPricingUserPermission[] {
   return version === 'v1' ? COMPANY_PRICING_USER_V1_PERMISSIONS : [];
 }
+export const COMPANY_PRICING_ADJUSTMENT_BUNDLE =
+  'company_pricing_adjustment' as const;
+export const COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL =
+  'Company Pricing Adjustment' as const;
+export const COMPANY_PRICING_ADJUSTMENT_V1_PERMISSIONS = [
+  'commercial.pricing.adjustment.apply',
+] as const;
+export type CompanyPricingAdjustmentPermission =
+  (typeof COMPANY_PRICING_ADJUSTMENT_V1_PERMISSIONS)[number];
+// The adjustment bundle is independent from calculation and Snapshot read.
+// Null and unknown captured versions fail closed.
+export function pricingAdjustmentPermissionsFor(
+  version: unknown,
+): readonly CompanyPricingAdjustmentPermission[] {
+  return version === 'v1' ? COMPANY_PRICING_ADJUSTMENT_V1_PERMISSIONS : [];
+}
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE =
   'company_commercial_activity_reader' as const;
 export const COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL =

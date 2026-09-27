@@ -35,6 +35,7 @@ const actor: ActorContext = {
       'commercial.pricing.calculate',
       'commercial.pricing.snapshot.read',
     ],
+    pricingAdjustmentPermissions: ['commercial.pricing.adjustment.apply'],
   },
 };
 
@@ -95,6 +96,12 @@ function snapshot(
         lineNet: '308.63',
         rawLineTax: '38.0849420',
         lineTax: '38.08',
+        adjustment: null,
+        netReduction: '0.00',
+        taxReduction: '0.00',
+        adjustedLineNet: '308.63',
+        adjustedRawLineTax: '38.0849420',
+        adjustedLineTax: '38.08',
       },
       {
         position: 2,
@@ -113,6 +120,12 @@ function snapshot(
         lineNet: '0.01',
         rawLineTax: '0.0000000',
         lineTax: '0.00',
+        adjustment: null,
+        netReduction: '0.00',
+        taxReduction: '0.00',
+        adjustedLineNet: '0.01',
+        adjustedRawLineTax: '0.0000000',
+        adjustedLineTax: '0.00',
       },
     ],
     subtotal: '308.64',
@@ -122,6 +135,50 @@ function snapshot(
     committedAt: '2026-09-26T10:00:01.000Z',
     provenance: 'ILLUSTRATIVE',
     provisional: true,
+  };
+}
+
+function adjustedSnapshot() {
+  const value = snapshot();
+  return {
+    ...value,
+    lines: [
+      {
+        ...value.lines[0],
+        adjustment: {
+          type: 'FIXED_NET_DISCOUNT',
+          netReduction: '8.63',
+          taxReduction: '1.06',
+          reason: 'Exact synthetic adjustment reason',
+          appliedByWorkspaceMembershipId: 'membership-adjuster',
+          appliedAt: '2026-09-26T10:00:00.000Z',
+        },
+        netReduction: '8.63',
+        taxReduction: '1.06',
+        adjustedLineNet: '300.00',
+        adjustedRawLineTax: '37.0200000',
+        adjustedLineTax: '37.02',
+      },
+      {
+        ...value.lines[1],
+        adjustment: {
+          type: 'FIXED_NET_DISCOUNT',
+          netReduction: '0.01',
+          taxReduction: '0.00',
+          reason: 'Full synthetic line adjustment',
+          appliedByWorkspaceMembershipId: 'membership-adjuster',
+          appliedAt: '2026-09-26T10:00:00.000Z',
+        },
+        netReduction: '0.01',
+        taxReduction: '0.00',
+        adjustedLineNet: '0.00',
+        adjustedRawLineTax: '0.0000000',
+        adjustedLineTax: '0.00',
+      },
+    ],
+    subtotal: '300.00',
+    taxTotal: '37.02',
+    total: '337.02',
   };
 }
 
@@ -211,6 +268,22 @@ async function selectWorkedExample(): Promise<void> {
   }
 }
 
+async function enterFirstAdjustment(): Promise<void> {
+  const firstOffering = (
+    await screen.findByLabelText('Illustrative service A')
+  ).closest('fieldset');
+  if (!firstOffering) throw new Error('Expected the first offering group.');
+  fireEvent.click(
+    within(firstOffering).getByLabelText('Apply a fixed net discount'),
+  );
+  fireEvent.change(within(firstOffering).getByLabelText('Net reduction'), {
+    target: { value: '8.63' },
+  });
+  fireEvent.change(within(firstOffering).getByLabelText('Adjustment reason'), {
+    target: { value: 'Exact synthetic adjustment reason' },
+  });
+}
+
 function postCalls(
   fetchMock: ReturnType<typeof stubApi>,
   opportunityId = OPPORTUNITY_A,
@@ -284,6 +357,253 @@ describe('PricingSnapshotPanel', () => {
       expect.stringContaining(`${snapshotPath(OPPORTUNITY_A)}/${saved.id}`),
       expect.anything(),
     );
+  });
+
+  it('submits and reopens the exact adjustment trace for an authorized actor', async () => {
+    const saved = adjustedSnapshot();
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(saved, { status: 201 }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}/${saved.id}`]: () =>
+        Response.json(saved),
+    });
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(await screen.findByText('337.02 EUR')).toBeInTheDocument();
+    expect(postCalls(fetchMock)).toEqual([
+      {
+        body: {
+          pricingRuleVersionNumber: 3,
+          lines: [
+            {
+              offeringId: OFFERING_A,
+              tariffVersionNumber: 4,
+              quantity: '2.5',
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '8.63',
+                reason: 'Exact synthetic adjustment reason',
+              },
+            },
+            { offeringId: OFFERING_B, tariffVersionNumber: 2, quantity: '1' },
+          ],
+        },
+        idempotencyKey: expect.any(String),
+      },
+    ]);
+    expect(
+      screen.getByText('Original net and tax: 308.63 + 38.08 EUR'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Net reduction: 8.63 EUR')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Adjustment type: Fixed net discount'),
+    ).toHaveLength(2);
+    expect(screen.getByText('Tax reduction: 1.06 EUR')).toBeInTheDocument();
+    expect(
+      screen.getByText('Adjustment reason: Exact synthetic adjustment reason'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Adjusted net and tax: 300.00 + 37.02 EUR'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'Adjustment applied by Workspace Membership: membership-adjuster',
+      ),
+    ).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close snapshot' }));
+    fireEvent.click(screen.getByRole('button', { name: /Reopen snapshot/u }));
+    expect(
+      await screen.findByText(
+        'Adjustment reason: Exact synthetic adjustment reason',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Adjustment type: Fixed net discount'),
+    ).toHaveLength(2);
+  });
+
+  it('does not expose adjustment entry without the captured adjustment permission', async () => {
+    if (!actor.activeCompany) throw new Error('Expected an active Company.');
+    const pricingOnlyActor: ActorContext = {
+      ...actor,
+      activeCompany: {
+        ...actor.activeCompany,
+        pricingAdjustmentPermissions: [],
+      },
+    };
+    stubApi(baseRoutes());
+    renderPanel(OPPORTUNITY_A, pricingOnlyActor);
+
+    fireEvent.click(await screen.findByLabelText('Illustrative service A'));
+
+    expect(
+      screen.queryByLabelText('Apply a fixed net discount'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Net reduction')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Adjustment reason'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps invalid adjustment values for correction and does not submit them', async () => {
+    const fetchMock = stubApi(baseRoutes());
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reduction = screen.getByLabelText('Net reduction');
+    const reason = screen.getByLabelText('Adjustment reason');
+    fireEvent.change(reduction, { target: { value: '0.00' } });
+    fireEvent.change(reason, { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Correct the highlighted values and try again.',
+    );
+    expect(reduction).toHaveValue('0.00');
+    expect(reason).toHaveValue('   ');
+    expect(reduction).toHaveAttribute('aria-invalid', 'true');
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it.each([
+    '',
+    ' '.repeat(500),
+    'x'.repeat(501),
+    '\u{1F642}'.repeat(501),
+    'before\u0000after',
+    'before\uD800after',
+    'before\uDC00after',
+  ])('keeps invalid reason %# exact and blocks submission', async (value) => {
+    const fetchMock = stubApi(baseRoutes());
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reason = screen.getByLabelText('Adjustment reason');
+    fireEvent.change(reason, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Correct the highlighted values and try again.',
+    );
+    expect(reason).toHaveValue(value);
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])(
+    'preserves valid reason %# through uncertain retry, creation and reopening',
+    async (value) => {
+      const saved = adjustedSnapshot();
+      const firstLine = saved.lines[0];
+      if (!firstLine?.adjustment) throw new Error('Expected an adjusted line.');
+      firstLine.adjustment.reason = value;
+      const fetchMock = stubApi({
+        ...baseRoutes(),
+        ['POST ' + snapshotPath(OPPORTUNITY_A)]: (call) => {
+          if (call === 1) throw new TypeError('network interrupted');
+          return Response.json(saved, { status: 201 });
+        },
+        ['GET ' + snapshotPath(OPPORTUNITY_A) + '/' + saved.id]: () =>
+          Response.json(saved),
+      });
+      renderPanel();
+      await selectWorkedExample();
+      await enterFirstAdjustment();
+      const reason = screen.getByLabelText('Adjustment reason');
+      expect(reason).not.toHaveAttribute('maxlength');
+      fireEvent.change(reason, { target: { value } });
+      expect(reason).toHaveAttribute('aria-invalid', 'false');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Calculate and save' }),
+      );
+      await screen.findByText(/outcome is uncertain/u);
+      expect(reason).toHaveValue(value);
+      expect(reason).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry the same calculation' }),
+      );
+      await screen.findByText('337.02 EUR');
+      const calls = postCalls(fetchMock);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).toEqual(calls[0]);
+      expect(calls[0]).toMatchObject({
+        body: {
+          lines: [
+            { adjustment: { reason: value } },
+            { offeringId: OFFERING_B },
+          ],
+        },
+      });
+      const exactReasonText = 'Adjustment reason: ' + value;
+      expect(
+        screen.getByText(
+          (_, element) => element?.textContent === exactReasonText,
+        ),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Close snapshot' }));
+      fireEvent.click(screen.getByRole('button', { name: /Reopen snapshot/u }));
+      expect(
+        await screen.findByText(
+          (_, element) => element?.textContent === exactReasonText,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it('keeps an excessive reduction and associates the server field error with it', async () => {
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(
+          {
+            code: 'VALIDATION_ERROR',
+            field: 'lines[0].adjustment.netReduction',
+            message:
+              'Enter a net reduction no greater than the original line net.',
+          },
+          { status: 400 },
+        ),
+    });
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reduction = screen.getByLabelText('Net reduction');
+    fireEvent.change(reduction, { target: { value: '999.00' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(
+      await screen.findByText(
+        'Enter a net reduction no greater than the original line net.',
+      ),
+    ).toBeInTheDocument();
+    expect(reduction).toHaveValue('999.00');
+    expect(reduction).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toEqual([
+      expect.objectContaining({
+        body: expect.objectContaining({
+          lines: expect.arrayContaining([
+            expect.objectContaining({
+              adjustment: expect.objectContaining({
+                netReduction: '999.00',
+              }),
+            }),
+          ]),
+        }),
+      }),
+    ]);
   });
 
   it('limits a calculation to 20 selected offerings and lets the user replace one', async () => {
@@ -731,12 +1051,22 @@ describe('PricingSnapshotPanel', () => {
     });
     renderPanel();
     await selectWorkedExample();
+    await enterFirstAdjustment();
     fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
     expect(
       await screen.findByText(/outcome is uncertain/u),
     ).toBeInTheDocument();
     expect(screen.getAllByLabelText('Quantity')[0]).toHaveValue('2.5');
     expect(screen.getAllByLabelText('Quantity')[0]).toBeDisabled();
+    expect(screen.getByLabelText('Net reduction')).toHaveValue('8.63');
+    expect(screen.getByLabelText('Net reduction')).toBeDisabled();
+
+    const reason = screen.getByRole('textbox', {
+      name: 'Adjustment reason',
+    });
+    expect(reason).toHaveValue('Exact synthetic adjustment reason');
+    expect(reason).toBeVisible();
+    expect(reason).toBeDisabled();
     fireEvent.click(
       screen.getByRole('button', { name: 'Retry the same calculation' }),
     );
@@ -756,6 +1086,7 @@ describe('PricingSnapshotPanel', () => {
     });
     renderPanel();
     await selectWorkedExample();
+    await enterFirstAdjustment();
     fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
     expect(
       await screen.findByText(/outcome is uncertain/u),
@@ -768,6 +1099,13 @@ describe('PricingSnapshotPanel', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByLabelText('Quantity')[0]).toHaveValue('2.5');
     expect(screen.getAllByLabelText('Quantity')[0]).toBeEnabled();
+    expect(screen.getByLabelText('Net reduction')).toHaveValue('8.63');
+    expect(screen.getByLabelText('Net reduction')).toBeEnabled();
+    const reason = screen.getByRole('textbox', {
+      name: 'Adjustment reason',
+    });
+    expect(reason).toHaveValue('Exact synthetic adjustment reason');
+    expect(reason).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Calculate and save' }),
     ).toBeEnabled();

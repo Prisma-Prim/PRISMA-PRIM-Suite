@@ -12,6 +12,7 @@ const CAPTURED_VERSIONS = {
   'Company Service Catalogue': ['v1'],
   'Company Pricing Configuration': ['v1'],
   'Company Pricing User': ['v1'],
+  'Company Pricing Adjustment': ['v1'],
   'Company Commercial Activity Reader': ['v1'],
   'Company Project Approver': ['v1'],
 } as const satisfies Record<string, readonly ('v1' | 'v2' | 'v3' | null)[]>;

@@ -23,6 +23,141 @@ function rejectedField(value: unknown): unknown {
 }
 
 describe('Pricing Snapshot calculation payload', () => {
+  it('accepts one fixed net discount and preserves its amount and reason exactly', () => {
+    expect(
+      readPricingSnapshotCommand({
+        ...valid,
+        lines: [
+          {
+            ...valid.lines[0],
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '10.00',
+              reason: '  Illustrative negotiated discount  ',
+            },
+          },
+        ],
+      }),
+    ).toEqual({
+      ...valid,
+      lines: [
+        {
+          ...valid.lines[0],
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '10.00',
+            reason: '  Illustrative negotiated discount  ',
+          },
+        },
+      ],
+    });
+  });
+
+  it.each([
+    'x',
+    'x'.repeat(500),
+    '\u{1F642}'.repeat(500),
+    ' \u{1F642}e\u0301 ',
+  ])('preserves an accepted reason at the character boundary %#', (reason) => {
+    const command = {
+      ...valid,
+      lines: [
+        {
+          ...valid.lines[0],
+          adjustment: {
+            type: 'FIXED_NET_DISCOUNT',
+            netReduction: '1.00',
+            reason,
+          },
+        },
+      ],
+    };
+    expect(readPricingSnapshotCommand(command)).toEqual(command);
+  });
+
+  it.each([
+    ['0.00', 'lines[0].adjustment.netReduction'],
+    ['0', 'lines[0].adjustment.netReduction'],
+    ['00.50', 'lines[0].adjustment.netReduction'],
+    ['01.00', 'lines[0].adjustment.netReduction'],
+    ['1.0', 'lines[0].adjustment.netReduction'],
+    ['1.000', 'lines[0].adjustment.netReduction'],
+    ['+1.00', 'lines[0].adjustment.netReduction'],
+    [' 1.00', 'lines[0].adjustment.netReduction'],
+    ['1.00 ', 'lines[0].adjustment.netReduction'],
+  ])('refuses fixed net discount amount %j', (netReduction, field) => {
+    expect(
+      rejectedField({
+        ...valid,
+        lines: [
+          {
+            ...valid.lines[0],
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction,
+              reason: 'Illustrative reason',
+            },
+          },
+        ],
+      }),
+    ).toMatchObject({ code: 'VALIDATION_ERROR', field });
+  });
+
+  it.each([
+    ['', 'lines[0].adjustment.reason'],
+    ['   ', 'lines[0].adjustment.reason'],
+    ['x'.repeat(501), 'lines[0].adjustment.reason'],
+    ['\u{1F642}'.repeat(501), 'lines[0].adjustment.reason'],
+    ['before\u0000after', 'lines[0].adjustment.reason'],
+    ['before\uD800after', 'lines[0].adjustment.reason'],
+    ['before\uDC00after', 'lines[0].adjustment.reason'],
+  ])('refuses bounded reason %j', (reason, field) => {
+    expect(
+      rejectedField({
+        ...valid,
+        lines: [
+          {
+            ...valid.lines[0],
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '1.00',
+              reason,
+            },
+          },
+        ],
+      }),
+    ).toMatchObject({ code: 'VALIDATION_ERROR', field });
+  });
+
+  it.each([
+    [null, 'lines[0].adjustment'],
+    [[], 'lines[0].adjustment'],
+    [
+      {
+        type: 'PERCENT_DISCOUNT',
+        netReduction: '1.00',
+        reason: 'Unsupported',
+      },
+      'lines[0].adjustment.type',
+    ],
+    [
+      {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '1.00',
+        reason: 'Unknown field',
+        actor: 'client-owned',
+      },
+      'lines[0].adjustment',
+    ],
+  ])('refuses malformed adjustment %#', (adjustment, field) => {
+    expect(
+      rejectedField({
+        ...valid,
+        lines: [{ ...valid.lines[0], adjustment }],
+      }),
+    ).toMatchObject({ code: 'VALIDATION_ERROR', field });
+  });
+
   it('keeps line order and quantity spelling exactly as submitted', () => {
     expect(
       readPricingSnapshotCommand({

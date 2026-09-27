@@ -8,6 +8,7 @@ import { pricingSnapshotCopy as copy } from './pricing-snapshot.copy';
 import './pricing-snapshots.css';
 
 const quantityGrammar = /^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$/u;
+const netReductionGrammar = /^(0|[1-9][0-9]{0,21})\.[0-9]{2}$/u;
 const pageSize = 25;
 const maximumCalculationLines = 20;
 const calculationTimeoutMs = 15_000;
@@ -53,6 +54,19 @@ type SnapshotLine = {
   lineNet: string;
   rawLineTax: string;
   lineTax: string;
+  adjustment: {
+    type: 'FIXED_NET_DISCOUNT';
+    netReduction: string;
+    taxReduction: string;
+    reason: string;
+    appliedByWorkspaceMembershipId: string;
+    appliedAt: string;
+  } | null;
+  netReduction: string;
+  taxReduction: string;
+  adjustedLineNet: string;
+  adjustedRawLineTax: string;
+  adjustedLineTax: string;
 };
 type PricingSnapshot = {
   id: string;
@@ -84,10 +98,22 @@ type ViewState =
   | { kind: 'denied' }
   | { kind: 'error' }
   | ({ kind: 'ready' } & ReadyState);
-type DraftLine = { selected: boolean; quantity: string };
+type DraftLine = {
+  selected: boolean;
+  quantity: string;
+  adjustmentEnabled: boolean;
+  netReduction: string;
+  adjustmentReason: string;
+};
 type CalculationAttempt = {
   payload: string;
   idempotencyKey: string;
+  offeringIds: readonly string[];
+};
+type FieldFeedback = {
+  kind: 'net-reduction';
+  offeringId: string;
+  message: string;
 };
 type Feedback =
   | 'invalid'
@@ -121,6 +147,7 @@ export function PricingSnapshotPanel({
   const [drafts, setDrafts] = useState<Record<string, DraftLine>>({});
   const [detail, setDetail] = useState<DetailState>({ kind: 'closed' });
   const [feedback, setFeedback] = useState<Feedback>();
+  const [fieldFeedback, setFieldFeedback] = useState<FieldFeedback>();
   const [pending, setPending] = useState(false);
   const [unresolved, setUnresolved] = useState<CalculationAttempt>();
   const [olderPending, setOlderPending] = useState(false);
@@ -134,6 +161,10 @@ export function PricingSnapshotPanel({
   const permissions = actor.activeCompany?.pricingUserPermissions ?? [];
   const mayRead = permissions.includes('commercial.pricing.snapshot.read');
   const mayCalculate = permissions.includes('commercial.pricing.calculate');
+  const mayAdjust =
+    actor.activeCompany?.pricingAdjustmentPermissions?.includes(
+      'commercial.pricing.adjustment.apply',
+    ) ?? false;
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
@@ -232,6 +263,7 @@ export function PricingSnapshotPanel({
       setView({ kind: 'loading' });
       setDetail({ kind: 'closed' });
       setFeedback(undefined);
+      setFieldFeedback(undefined);
       setUnresolved(undefined);
       try {
         if (!companyId || !mayRead || !mayCalculate) {
@@ -313,11 +345,8 @@ export function PricingSnapshotPanel({
             priceable.map((offering) => [
               offering.id,
               preserveDrafts
-                ? (current[offering.id] ?? {
-                    selected: false,
-                    quantity: '',
-                  })
-                : { selected: false, quantity: '' },
+                ? (current[offering.id] ?? emptyDraftLine())
+                : emptyDraftLine(),
             ]),
           ),
         );
@@ -369,6 +398,7 @@ export function PricingSnapshotPanel({
     commandRequest.current = controller;
     setPending(true);
     setFeedback(undefined);
+    setFieldFeedback(undefined);
     let timeoutId: number | undefined;
     try {
       const response = request({
@@ -438,15 +468,14 @@ export function PricingSnapshotPanel({
         );
         setDrafts((current) =>
           Object.fromEntries(
-            Object.entries(current).map(([id]) => [
-              id,
-              { selected: false, quantity: '' },
-            ]),
+            Object.entries(current).map(([id]) => [id, emptyDraftLine()]),
           ),
         );
         return;
       }
-      setFeedback(feedbackFor(result));
+      const nextFieldFeedback = fieldFeedbackFor(result, nextAttempt);
+      if (nextFieldFeedback) setFieldFeedback(nextFieldFeedback);
+      else setFeedback(feedbackFor(result));
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       if (commandRequest.current === controller) {
@@ -588,10 +617,12 @@ export function PricingSnapshotPanel({
               </p>
               <div className="pricing-snapshot-lines">
                 {view.offerings.map((offering) => {
-                  const draft = drafts[offering.id] ?? {
-                    selected: false,
-                    quantity: '',
-                  };
+                  const draft = drafts[offering.id] ?? emptyDraftLine();
+                  const netReductionFeedback =
+                    fieldFeedback?.kind === 'net-reduction' &&
+                    fieldFeedback.offeringId === offering.id
+                      ? fieldFeedback
+                      : undefined;
                   return (
                     <fieldset
                       key={offering.id}
@@ -644,6 +675,87 @@ export function PricingSnapshotPanel({
                           }
                         />
                       </label>
+                      {mayAdjust && draft.selected ? (
+                        <div className="pricing-snapshot-adjustment">
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={draft.adjustmentEnabled}
+                              onChange={(event) =>
+                                setDrafts((current) => ({
+                                  ...current,
+                                  [offering.id]: {
+                                    ...draft,
+                                    adjustmentEnabled: event.target.checked,
+                                  },
+                                }))
+                              }
+                            />
+                            {copy.applyAdjustment}
+                          </label>
+                          {draft.adjustmentEnabled ? (
+                            <>
+                              <label>
+                                {copy.netReduction}
+                                <input
+                                  inputMode="decimal"
+                                  value={draft.netReduction}
+                                  required
+                                  aria-invalid={
+                                    !validNetReduction(draft.netReduction) ||
+                                    netReductionFeedback !== undefined
+                                  }
+                                  aria-describedby={
+                                    netReductionFeedback
+                                      ? `${fieldId}-${offering.id}-net-reduction-error`
+                                      : undefined
+                                  }
+                                  onChange={(event) => {
+                                    if (netReductionFeedback)
+                                      setFieldFeedback(undefined);
+                                    setDrafts((current) => ({
+                                      ...current,
+                                      [offering.id]: {
+                                        ...draft,
+                                        netReduction: event.target.value,
+                                      },
+                                    }));
+                                  }}
+                                />
+                              </label>
+                              {netReductionFeedback ? (
+                                <small
+                                  id={`${fieldId}-${offering.id}-net-reduction-error`}
+                                  role="alert"
+                                >
+                                  {netReductionFeedback.message}
+                                </small>
+                              ) : null}
+                              <label>
+                                {copy.adjustmentReason}
+                                <textarea
+                                  value={draft.adjustmentReason}
+                                  required
+                                  aria-invalid={
+                                    !validAdjustmentReason(
+                                      draft.adjustmentReason,
+                                    )
+                                  }
+                                  onChange={(event) =>
+                                    setDrafts((current) => ({
+                                      ...current,
+                                      [offering.id]: {
+                                        ...draft,
+                                        adjustmentReason: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                              </label>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </fieldset>
                   );
                 })}
@@ -782,8 +894,39 @@ function SnapshotDetail({
               {line.quantity} × {line.unitAmount} {line.currency}/{line.unit}
             </span>
             <span>
-              {line.lineNet} + {line.lineTax} {line.currency}
+              {copy.originalAmounts}: {line.lineNet} + {line.lineTax}{' '}
+              {line.currency}
             </span>
+            {line.adjustment ? (
+              <div className="pricing-snapshot-adjustment-trace">
+                <span>
+                  {copy.adjustmentType}: {copy.fixedNetDiscount}
+                </span>
+                <span>
+                  {copy.netReduction}: {line.adjustment.netReduction}{' '}
+                  {line.currency}
+                </span>
+                <span>
+                  {copy.taxReduction}: {line.adjustment.taxReduction}{' '}
+                  {line.currency}
+                </span>
+                <span>
+                  {copy.adjustmentReason}: {line.adjustment.reason}
+                </span>
+                <span>
+                  {copy.adjustedAmounts}: {line.adjustedLineNet} +{' '}
+                  {line.adjustedLineTax} {line.currency}
+                </span>
+                <span>
+                  {copy.adjustmentAppliedBy}:{' '}
+                  {line.adjustment.appliedByWorkspaceMembershipId}
+                </span>
+                <span>
+                  {copy.adjustmentAppliedAt}:{' '}
+                  {formatApplicationDateTime(line.adjustment.appliedAt)}
+                </span>
+              </div>
+            ) : null}
           </li>
         ))}
       </ol>
@@ -821,12 +964,23 @@ function calculationAttempt(
   if (!view.rule) return undefined;
   const lines = view.offerings.flatMap((offering) => {
     const draft = drafts[offering.id];
-    return draft?.selected && validQuantity(draft.quantity)
+    return draft?.selected &&
+      validQuantity(draft.quantity) &&
+      validAdjustmentDraft(draft)
       ? [
           {
             offeringId: offering.id,
             tariffVersionNumber: offering.tariff.versionNumber,
             quantity: draft.quantity,
+            ...(draft.adjustmentEnabled
+              ? {
+                  adjustment: {
+                    type: 'FIXED_NET_DISCOUNT',
+                    netReduction: draft.netReduction,
+                    reason: draft.adjustmentReason,
+                  },
+                }
+              : {}),
           },
         ]
       : [];
@@ -846,6 +1000,7 @@ function calculationAttempt(
       lines,
     }),
     idempotencyKey: crypto.randomUUID(),
+    offeringIds: lines.map((line) => line.offeringId),
   };
 }
 
@@ -861,6 +1016,39 @@ function validQuantity(value: string): boolean {
   if (!quantityGrammar.test(value)) return false;
   const [whole = '0', fraction = ''] = value.split('.');
   return BigInt(`${whole}${fraction.padEnd(3, '0')}`) > 0n;
+}
+
+function emptyDraftLine(): DraftLine {
+  return {
+    selected: false,
+    quantity: '',
+    adjustmentEnabled: false,
+    netReduction: '',
+    adjustmentReason: '',
+  };
+}
+
+function validAdjustmentDraft(draft: DraftLine): boolean {
+  return (
+    !draft.adjustmentEnabled ||
+    (validNetReduction(draft.netReduction) &&
+      validAdjustmentReason(draft.adjustmentReason))
+  );
+}
+
+function validNetReduction(value: string): boolean {
+  if (!netReductionGrammar.test(value)) return false;
+  return BigInt(value.replace('.', '')) > 0n;
+}
+
+function validAdjustmentReason(value: string): boolean {
+  return (
+    value.length >= 1 &&
+    Array.from(value).length <= 500 &&
+    /\S/u.test(value) &&
+    !value.includes('\u0000') &&
+    !/[\uD800-\uDFFF]/u.test(value)
+  );
 }
 
 function snapshotBasePath(opportunityId: string): string {
@@ -917,6 +1105,32 @@ function feedbackFor(
     default:
       return 'invalid';
   }
+}
+
+function fieldFeedbackFor(
+  result: Exclude<HttpResult, { status: 'network' }>,
+  attempt: CalculationAttempt,
+): FieldFeedback | undefined {
+  if (
+    result.status !== 400 ||
+    !isRecord(result.body) ||
+    result.body.code !== 'VALIDATION_ERROR' ||
+    typeof result.body.field !== 'string' ||
+    typeof result.body.message !== 'string'
+  )
+    return undefined;
+  const match = /^lines\[(0|[1-9][0-9]*)\]\.adjustment\.netReduction$/u.exec(
+    result.body.field,
+  );
+  const index = match?.[1];
+  if (index === undefined) return undefined;
+  const offeringId = attempt.offeringIds[Number.parseInt(index, 10)];
+  if (!offeringId) return undefined;
+  return {
+    kind: 'net-reduction',
+    offeringId,
+    message: result.body.message,
+  };
 }
 
 function feedbackCopy(feedback: Feedback): string {
@@ -1040,7 +1254,26 @@ function isSnapshotLine(value: unknown): value is SnapshotLine {
     typeof value.rawLineAmount === 'string' &&
     typeof value.lineNet === 'string' &&
     typeof value.rawLineTax === 'string' &&
-    typeof value.lineTax === 'string'
+    typeof value.lineTax === 'string' &&
+    (value.adjustment === null || isSnapshotAdjustment(value.adjustment)) &&
+    typeof value.netReduction === 'string' &&
+    typeof value.taxReduction === 'string' &&
+    typeof value.adjustedLineNet === 'string' &&
+    typeof value.adjustedRawLineTax === 'string' &&
+    typeof value.adjustedLineTax === 'string'
+  );
+}
+function isSnapshotAdjustment(
+  value: unknown,
+): value is NonNullable<SnapshotLine['adjustment']> {
+  return (
+    isRecord(value) &&
+    value.type === 'FIXED_NET_DISCOUNT' &&
+    typeof value.netReduction === 'string' &&
+    typeof value.taxReduction === 'string' &&
+    typeof value.reason === 'string' &&
+    typeof value.appliedByWorkspaceMembershipId === 'string' &&
+    isDisplayableInstant(value.appliedAt)
   );
 }
 function isCurrency(value: unknown): value is Currency {

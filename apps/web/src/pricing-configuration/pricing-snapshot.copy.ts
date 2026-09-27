@@ -11,6 +11,16 @@ export const pricingSnapshotCopy = {
   offering: 'Offering',
   tariff: 'Tariff Version',
   quantity: 'Quantity',
+  applyAdjustment: 'Apply a fixed net discount',
+  adjustmentType: 'Adjustment type',
+  fixedNetDiscount: 'Fixed net discount',
+  netReduction: 'Net reduction',
+  taxReduction: 'Tax reduction',
+  adjustmentReason: 'Adjustment reason',
+  originalAmounts: 'Original net and tax',
+  adjustedAmounts: 'Adjusted net and tax',
+  adjustmentAppliedBy: 'Adjustment applied by Workspace Membership',
+  adjustmentAppliedAt: 'Adjustment applied',
   selectionLimit: 'Select up to 20 offerings.',
   selectionLimitReached:
     '20 offerings selected. Deselect one before choosing another.',
@@ -22,7 +32,8 @@ export const pricingSnapshotCopy = {
   reload: 'Reload pricing',
   uncertain:
     'The outcome is uncertain. Retry sends the exact same values and key.',
-  chooseLine: 'Choose at least one offering and enter a valid quantity.',
+  chooseLine:
+    'Choose at least one offering and enter valid quantities and adjustments.',
   corrected: 'Correct the highlighted values and try again.',
   stale: 'Configuration changed. Reload pricing before calculating again.',
   notEffective:

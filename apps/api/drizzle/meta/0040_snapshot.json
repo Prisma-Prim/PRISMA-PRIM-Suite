@@ -1,5 +1,5 @@
 {
-  "id": "4305a191-c931-4728-a5f2-8ebed196d9ee",
+  "id": "ea03af7b-29c4-445a-9ae6-adc4720e0188",
   "prevId": "a44be5b4-98f3-4297-a21b-0abc75682beb",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_commercial_intake' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_access' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader', 'company_project_approver') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_commercial_activity_reader', 'company_project_approver')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_project_approver') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_project_approver')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -7800,202 +7800,7 @@
         },
         "client_requests_version_check": {
           "name": "client_requests_version_check",
-          "value": "(\n        \"client_requests\".\"version\" = 1\n        OR (\"client_requests\".\"version\" = 2 AND \"client_requests\".\"client_account_id\" IS NOT NULL)\n      )"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.commercial_intake_client_association_commands": {
-      "name": "commercial_intake_client_association_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_request_id": {
-          "name": "client_request_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_account_id": {
-          "name": "client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_version": {
-          "name": "expected_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_version": {
-          "name": "result_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "commercial_intake_client_association_commands_actor_key_unique": {
-          "name": "commercial_intake_client_association_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_workspace_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "commercial_intake_client_association_commands_request_unique": {
-          "name": "commercial_intake_client_association_commands_request_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "client_request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "commercial_intake_client_association_commands_actor_fk": {
-          "name": "commercial_intake_client_association_commands_actor_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_client_association_commands_request_fk": {
-          "name": "commercial_intake_client_association_commands_request_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "client_requests",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "client_request_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_client_association_commands_client_fk": {
-          "name": "commercial_intake_client_association_commands_client_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "client_accounts",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "commercial_intake_client_association_commands_version_check": {
-          "name": "commercial_intake_client_association_commands_version_check",
-          "value": "\"commercial_intake_client_association_commands\".\"expected_version\" = 1 AND \"commercial_intake_client_association_commands\".\"result_version\" = 2"
+          "value": "\"client_requests\".\"version\" = 1"
         }
       },
       "isRLSEnabled": false
@@ -8242,28 +8047,6 @@
           "method": "btree",
           "with": {}
         },
-        "commercial_intake_events_client_associated_unique": {
-          "name": "commercial_intake_events_client_associated_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "client_request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"commercial_intake_events\".\"action\" = 'client_request.client_associated'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "commercial_intake_events_next_action_version_unique": {
           "name": "commercial_intake_events_next_action_version_unique",
           "columns": [
@@ -8354,7 +8137,7 @@
       "checkConstraints": {
         "commercial_intake_events_action_metadata_check": {
           "name": "commercial_intake_events_action_metadata_check",
-          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'client_request.client_associated'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 2}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n      )"
+          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -10224,7 +10007,7 @@
         },
         "pricing_configuration_events_action_metadata_check": {
           "name": "pricing_configuration_events_action_metadata_check",
-          "value": "(\n        \"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingRuleVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingRuleVersionId' = \"pricing_configuration_events\".\"pricing_rule_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND \"pricing_configuration_events\".\"pricing_snapshot_id\" IS NULL\n      ) IS TRUE\n      OR (\n        \"pricing_configuration_events\".\"action\" = 'tariff_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'tariffVersionId' - 'offeringId' - 'versionNumber' - 'provenance' - 'currency' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'tariffVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'tariffVersionId' = \"pricing_configuration_events\".\"tariff_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'offeringId') = 'string'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'currency') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')\n          AND \"pricing_configuration_events\".\"pricing_snapshot_id\" IS NULL\n      ) IS TRUE\n      OR (\n        \"pricing_configuration_events\".\"action\" = 'pricing_snapshot.created'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingSnapshotId' - 'opportunityId' - 'lineCount' - 'provenance' - 'currency' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingSnapshotId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingSnapshotId' = \"pricing_configuration_events\".\"pricing_snapshot_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'opportunityId') = 'string'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'lineCount') = 'number'\n          AND (\"pricing_configuration_events\".\"metadata\" ->> 'lineCount')::integer BETWEEN 1 AND 20\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'currency') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')\n      ) IS TRUE"
+          "value": "(\n        \"pricing_configuration_events\".\"action\" = 'pricing_rule_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingRuleVersionId' - 'versionNumber' - 'provenance' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingRuleVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingRuleVersionId' = \"pricing_configuration_events\".\"pricing_rule_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND \"pricing_configuration_events\".\"pricing_snapshot_id\" IS NULL\n      ) IS TRUE\n      OR (\n        \"pricing_configuration_events\".\"action\" = 'tariff_version.published'\n          AND \"pricing_configuration_events\".\"metadata\" - 'tariffVersionId' - 'offeringId' - 'versionNumber' - 'provenance' - 'currency' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'tariffVersionId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'tariffVersionId' = \"pricing_configuration_events\".\"tariff_version_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'offeringId') = 'string'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'versionNumber') = 'number'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'currency') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')\n          AND \"pricing_configuration_events\".\"pricing_snapshot_id\" IS NULL\n      ) IS TRUE\n      OR (\n        \"pricing_configuration_events\".\"action\" = 'pricing_snapshot.created'\n          AND \"pricing_configuration_events\".\"metadata\" - 'pricingSnapshotId' - 'opportunityId' - 'lineCount' - 'adjustmentCount' - 'provenance' - 'currency' = '{}'::jsonb\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'pricingSnapshotId') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'pricingSnapshotId' = \"pricing_configuration_events\".\"pricing_snapshot_id\"::text\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'opportunityId') = 'string'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'lineCount') = 'number'\n          AND (\"pricing_configuration_events\".\"metadata\" ->> 'lineCount')::integer BETWEEN 1 AND 20\n          AND (\n            NOT (\"pricing_configuration_events\".\"metadata\" ? 'adjustmentCount')\n            OR (\n              jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'adjustmentCount') = 'number'\n              AND \"pricing_configuration_events\".\"metadata\" ->> 'adjustmentCount' ~ '^(0|[1-9][0-9]*)$'\n              AND (\"pricing_configuration_events\".\"metadata\" ->> 'adjustmentCount')::integer BETWEEN 0 AND 20\n            )\n          )\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'provenance') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'provenance' = 'ILLUSTRATIVE'\n          AND jsonb_typeof(\"pricing_configuration_events\".\"metadata\" -> 'currency') = 'string'\n          AND \"pricing_configuration_events\".\"metadata\" ->> 'currency' IN ('MDL', 'EUR', 'RON', 'USD')\n      ) IS TRUE"
         }
       },
       "isRLSEnabled": false
@@ -10568,6 +10351,217 @@
       },
       "isRLSEnabled": false
     },
+    "public.pricing_snapshot_adjustments": {
+      "name": "pricing_snapshot_adjustments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_line_id": {
+          "name": "snapshot_line_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_reduction": {
+          "name": "net_reduction",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_line_net": {
+          "name": "original_line_net",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_raw_line_tax": {
+          "name": "original_raw_line_tax",
+          "type": "numeric(28, 7)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_line_tax": {
+          "name": "original_line_tax",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax_rate_percent": {
+          "name": "tax_rate_percent",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adjusted_line_net": {
+          "name": "adjusted_line_net",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adjusted_raw_line_tax": {
+          "name": "adjusted_raw_line_tax",
+          "type": "numeric(28, 7)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adjusted_line_tax": {
+          "name": "adjusted_line_tax",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax_reduction": {
+          "name": "tax_reduction",
+          "type": "numeric(24, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applied_by_internal_user_id": {
+          "name": "applied_by_internal_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applied_by_workspace_membership_id": {
+          "name": "applied_by_workspace_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "applied_at": {
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "pricing_snapshot_adjustments_line_unique": {
+          "name": "pricing_snapshot_adjustments_line_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "snapshot_line_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "pricing_snapshot_adjustments_line_fk": {
+          "name": "pricing_snapshot_adjustments_line_fk",
+          "tableFrom": "pricing_snapshot_adjustments",
+          "tableTo": "pricing_snapshot_lines",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "snapshot_id",
+            "snapshot_line_id",
+            "original_line_net",
+            "original_raw_line_tax",
+            "original_line_tax",
+            "tax_rate_percent"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "snapshot_id",
+            "id",
+            "line_net",
+            "raw_line_tax",
+            "line_tax",
+            "tax_rate_percent"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pricing_snapshot_adjustments_actor_fk": {
+          "name": "pricing_snapshot_adjustments_actor_fk",
+          "tableFrom": "pricing_snapshot_adjustments",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "applied_by_workspace_membership_id",
+            "applied_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id",
+            "internal_user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "pricing_snapshot_adjustments_trace_check": {
+          "name": "pricing_snapshot_adjustments_trace_check",
+          "value": "\"pricing_snapshot_adjustments\".\"type\" = 'FIXED_NET_DISCOUNT'\n        AND \"pricing_snapshot_adjustments\".\"net_reduction\" > 0\n        AND char_length(\"pricing_snapshot_adjustments\".\"reason\") BETWEEN 1 AND 500\n        AND \"pricing_snapshot_adjustments\".\"reason\" ~ '[^[:space:]]'\n        AND \"pricing_snapshot_adjustments\".\"net_reduction\" <= \"pricing_snapshot_adjustments\".\"original_line_net\"\n        AND \"pricing_snapshot_adjustments\".\"original_raw_line_tax\" = \"pricing_snapshot_adjustments\".\"original_line_net\" * \"pricing_snapshot_adjustments\".\"tax_rate_percent\" / 100\n        AND \"pricing_snapshot_adjustments\".\"original_line_tax\" = round(\"pricing_snapshot_adjustments\".\"original_raw_line_tax\", 2)\n        AND \"pricing_snapshot_adjustments\".\"adjusted_line_net\" = \"pricing_snapshot_adjustments\".\"original_line_net\" - \"pricing_snapshot_adjustments\".\"net_reduction\"\n        AND \"pricing_snapshot_adjustments\".\"adjusted_raw_line_tax\" = \"pricing_snapshot_adjustments\".\"adjusted_line_net\" * \"pricing_snapshot_adjustments\".\"tax_rate_percent\" / 100\n        AND \"pricing_snapshot_adjustments\".\"adjusted_line_tax\" = round(\"pricing_snapshot_adjustments\".\"adjusted_raw_line_tax\", 2)\n        AND \"pricing_snapshot_adjustments\".\"tax_reduction\" = \"pricing_snapshot_adjustments\".\"original_line_tax\" - \"pricing_snapshot_adjustments\".\"adjusted_line_tax\"\n        AND \"pricing_snapshot_adjustments\".\"tax_reduction\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.pricing_snapshot_lines": {
       "name": "pricing_snapshot_lines",
       "schema": "",
@@ -10774,6 +10768,63 @@
             },
             {
               "expression": "offering_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pricing_snapshot_lines_adjustment_target_unique": {
+          "name": "pricing_snapshot_lines_adjustment_target_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "line_net",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "raw_line_tax",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "line_tax",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tax_rate_percent",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -11685,6 +11736,8 @@
         "company_pricing_configuration_assignment.revoked",
         "company_pricing_user_assignment.granted",
         "company_pricing_user_assignment.revoked",
+        "company_pricing_adjustment_assignment.granted",
+        "company_pricing_adjustment_assignment.revoked",
         "company_commercial_activity_reader_assignment.granted",
         "company_commercial_activity_reader_assignment.revoked",
         "company_project_approver_assignment.granted",
@@ -11749,6 +11802,7 @@
         "company_service_catalogue",
         "company_pricing_configuration",
         "company_pricing_user",
+        "company_pricing_adjustment",
         "company_commercial_activity_reader",
         "company_project_approver"
       ]
