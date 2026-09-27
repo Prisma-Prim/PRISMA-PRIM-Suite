@@ -663,6 +663,32 @@ withPostgres('Pricing Snapshots REST', () => {
   it('orders Client association with Pricing on the Request lock and never changes an existing snapshot', async () => {
     for (const associationFirst of [true, false]) {
       const fixture = await prepared();
+      // A second identity reaches the Request independently: the first command
+      // holds its own identity FOR SHARE, which blocks same-identity admission.
+      const pricingActor = record(
+        await json(
+          await request('/access/current-actor', undefined, {
+            headers: CONFIGURATION_MEMBER,
+          }),
+        ),
+      );
+      for (const path of [
+        '/company-context-assignments',
+        ASSIGNMENTS.intake,
+        ASSIGNMENTS.pricing,
+        '/company-director-client-assignments',
+      ])
+        await command(
+          path,
+          {
+            companyId: fixture.companyId,
+            workspaceMembershipId: stringField(
+              pricingActor,
+              'workspaceMembershipId',
+            ),
+          },
+          `association-order-grant-${path}-${associationFirst}`,
+        );
       const client = entity(
         await command(
           '/clients',
@@ -697,6 +723,7 @@ withPostgres('Pricing Snapshots REST', () => {
             calculationBody(fixture),
             `pricing-association-snapshot-${associationFirst}`,
             fixture.companyId,
+            CONFIGURATION_MEMBER,
           );
         if (associationFirst) {
           association = startAssociation();
@@ -1980,6 +2007,8 @@ withPostgres('Pricing Snapshots REST', () => {
     );
   }
 
+  // PostgreSQL queues later tuple lockers behind the first waiter. Follow
+  // that chain, but count only commands already waiting on the Request row.
   async function waitForBlockedCount(
     backendPid: number,
     expected: number,
@@ -1987,16 +2016,33 @@ withPostgres('Pricing Snapshots REST', () => {
     const deadline = Date.now() + 2_000;
     do {
       const result = await pool.query<{ count: string }>(
-        `SELECT count(*) AS count FROM pg_stat_activity
-          WHERE datname = current_database()
-            AND $1::integer = ANY(pg_blocking_pids(pid))`,
+        `WITH RECURSIVE request_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND query ILIKE '%"client_requests"%'
+              AND (query ILIKE '%for update%' OR query ILIKE '%for share%')
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM request_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
         [backendPid],
       );
       if (Number(result.rows[0]?.count) >= expected) return;
       await new Promise((resolve) => setTimeout(resolve, 25));
     } while (Date.now() < deadline);
+    const activity = await pool.query(
+      `SELECT pid, wait_event, pg_blocking_pids(pid) AS blockers, query
+         FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
     throw new Error(
-      `Fewer than ${expected} Request waiters behind backend ${backendPid}.`,
+      `Fewer than ${expected} Request waiters behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
     );
   }
 

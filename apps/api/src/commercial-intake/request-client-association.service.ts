@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -167,7 +168,11 @@ export class RequestClientAssociationService {
     try {
       await this.clients.lockActiveReferenceClient(actor, clientAccountId);
     } catch (error) {
-      if (error instanceof NotFoundException) throw clientUnavailable();
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      )
+        throw clientUnavailable();
       throw error;
     }
   }
@@ -179,7 +184,11 @@ export class RequestClientAssociationService {
     try {
       await this.clients.recordReferenceUse(actor, clientAccountId);
     } catch (error) {
-      if (error instanceof NotFoundException) throw clientUnavailable();
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      )
+        throw clientUnavailable();
       throw error;
     }
   }

@@ -2446,7 +2446,7 @@ withPostgres('Company commercial intake REST', () => {
   });
 
   it('keeps historical v1 and v2 grants stable, hides unavailable Client identity and revalidates every replay', async () => {
-    const setup = await prepared(true);
+    const setup = await preparedRestrictedMember(true);
     const client = entity(
       await command(
         '/clients',
@@ -2479,6 +2479,7 @@ withPostgres('Company commercial intake REST', () => {
       ),
     );
     for (const path of [
+      '/company-context-assignments',
       '/company-commercial-intake-assignments',
       '/company-director-client-assignments',
     ])
@@ -2486,21 +2487,23 @@ withPostgres('Company commercial intake REST', () => {
         path,
         {
           companyId: otherCompany.id,
-          workspaceMembershipId: setup.actor.workspaceMembershipId,
+          workspaceMembershipId: setup.member.workspaceMembershipId,
         },
         `association-isolation-${path}`,
       );
-    const crossCompany = await associateClient(
+    const crossCompany = await associateClientAs(
       otherCompany.id,
       unlinked.id,
       { expectedVersion: 1, clientAccountId: client.id },
       'association-cross-company',
+      setup.memberHeaders,
     );
-    const unknown = await associateClient(
+    const unknown = await associateClientAs(
       otherCompany.id,
       '00000000-0000-4000-8000-000000000994',
       { expectedVersion: 1, clientAccountId: client.id },
       'association-unknown',
+      setup.memberHeaders,
     );
     expect(crossCompany.status).toBe(404);
     expect(unknown.status).toBe(404);
@@ -2515,6 +2518,7 @@ withPostgres('Company commercial intake REST', () => {
             headers: {
               'content-type': 'application/json',
               'idempotency-key': 'association-foreign-workspace',
+              ...setup.memberHeaders,
               'x-workspace-context-id': '00000000-0000-4000-8000-000000000996',
             },
             body: JSON.stringify({
@@ -2549,21 +2553,27 @@ withPostgres('Company commercial intake REST', () => {
         WHERE workspace_id = $1 AND company_id = $2
           AND workspace_membership_id = $3
           AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
-      [WORKSPACE_ID, setup.company.id, setup.actor.workspaceMembershipId],
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
     );
     const v2Actor = record(
-      await (await request('/access/current-actor', setup.company.id)).json(),
+      await (
+        await request('/access/current-actor', setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).json(),
     );
+    expect(v2Actor.workspacePermissions).not.toContain('client.manage');
     expect(
       record(v2Actor.activeCompany).commercialIntakePermissions,
     ).not.toContain('commercial.request.client.associate');
     expect(
       (
-        await associateClient(
+        await associateClientAs(
           setup.company.id,
           unlinked.id,
           { expectedVersion: 1, clientAccountId: client.id },
           'v2-denied',
+          setup.memberHeaders,
         )
       ).status,
     ).toBe(403);
@@ -2573,7 +2583,7 @@ withPostgres('Company commercial intake REST', () => {
         WHERE workspace_id = $1 AND company_id = $2
           AND workspace_membership_id = $3
           AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
-      [WORKSPACE_ID, setup.company.id, setup.actor.workspaceMembershipId],
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
     );
     expect(
       detail(
@@ -2581,6 +2591,7 @@ withPostgres('Company commercial intake REST', () => {
           await request(
             `/commercial-intake/requests/${linked.id}`,
             setup.company.id,
+            { headers: setup.memberHeaders },
           )
         ).json(),
       ),
@@ -2596,30 +2607,40 @@ withPostgres('Company commercial intake REST', () => {
         WHERE workspace_id = $1 AND company_id = $2
           AND workspace_membership_id = $3
           AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
-      [WORKSPACE_ID, setup.company.id, setup.actor.workspaceMembershipId],
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
     );
     expect(
       (
-        await associateClient(
+        await associateClientAs(
           setup.company.id,
           unlinked.id,
           { expectedVersion: 1, clientAccountId: client.id },
           'authority-associated',
+          setup.memberHeaders,
         )
       ).status,
     ).toBe(200);
+    const deniedRequest = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'client-authority-denied-request',
+        setup.company.id,
+      ),
+    );
     await pool.query(
       `UPDATE company_role_assignments SET revoked_at = clock_timestamp()
         WHERE workspace_id = $1 AND company_id = $2
           AND workspace_membership_id = $3
-          AND bundle = 'company_director_client' AND revoked_at IS NULL`,
-      [WORKSPACE_ID, setup.company.id, setup.actor.workspaceMembershipId],
+          AND bundle = 'company_director_client_access' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
     );
     const hidden = detail(
       await (
         await request(
           `/commercial-intake/requests/${unlinked.id}`,
           setup.company.id,
+          { headers: setup.memberHeaders },
         )
       ).json(),
     );
@@ -2628,14 +2649,26 @@ withPostgres('Company commercial intake REST', () => {
       clientAssociationStatus: 'hidden',
     });
     expect(hidden).not.toHaveProperty('clientReference');
-    const unavailableReplay = await associateClient(
+    const unavailableReplay = await associateClientAs(
       setup.company.id,
       unlinked.id,
       { expectedVersion: 1, clientAccountId: client.id },
       'authority-associated',
+      setup.memberHeaders,
     );
     expect(unavailableReplay.status).toBe(404);
     expect(await unavailableReplay.json()).toMatchObject({
+      code: 'CLIENT_REFERENCE_UNAVAILABLE',
+    });
+    const unavailableAssociation = await associateClientAs(
+      setup.company.id,
+      deniedRequest.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'client-authority-denied-association',
+      setup.memberHeaders,
+    );
+    expect(unavailableAssociation.status).toBe(404);
+    expect(await unavailableAssociation.json()).toMatchObject({
       code: 'CLIENT_REFERENCE_UNAVAILABLE',
     });
     await pool.query(
@@ -2643,18 +2676,45 @@ withPostgres('Company commercial intake REST', () => {
         WHERE workspace_id = $1 AND company_id = $2
           AND workspace_membership_id = $3
           AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
-      [WORKSPACE_ID, setup.company.id, setup.actor.workspaceMembershipId],
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
     );
     expect(
       (
-        await associateClient(
+        await associateClientAs(
           setup.company.id,
           unlinked.id,
           { expectedVersion: 1, clientAccountId: client.id },
           'authority-associated',
+          setup.memberHeaders,
         )
       ).status,
     ).toBe(403);
+    expect(
+      (
+        await pool.query(
+          `SELECT id, version, client_account_id,
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = request.id) AS receipts,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = request.id AND action = 'client_request.client_associated') AS events
+           FROM client_requests request WHERE id = ANY($1::uuid[]) ORDER BY version`,
+          [[deniedRequest.id, unlinked.id]],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        id: deniedRequest.id,
+        version: 1,
+        client_account_id: null,
+        receipts: 0,
+        events: 0,
+      },
+      {
+        id: unlinked.id,
+        version: 2,
+        client_account_id: client.id,
+        receipts: 1,
+        events: 1,
+      },
+    ]);
   });
 
   it('serializes competing associations and rolls every partial write back on receipt failure', async () => {
@@ -3179,21 +3239,42 @@ withPostgres('Company commercial intake REST', () => {
     throw new Error('The intake transaction did not reach the lock barrier.');
   }
 
+  // PostgreSQL queues later tuple lockers behind the first waiter. Follow
+  // that chain, but count only commands already waiting on the Request row.
   async function waitForBlockedCount(
     backendPid: number,
     expected: number,
   ): Promise<void> {
     for (let attempt = 0; attempt < 100; attempt += 1) {
       const blocked = await pool.query<{ count: string }>(
-        `SELECT count(*) AS count FROM pg_stat_activity
-          WHERE datname = current_database()
-            AND $1::integer = ANY(pg_blocking_pids(pid))`,
+        `WITH RECURSIVE request_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND query ILIKE '%"client_requests"%'
+              AND (query ILIKE '%for update%' OR query ILIKE '%for share%')
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM request_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
         [backendPid],
       );
       if (Number(blocked.rows[0]?.count) >= expected) return;
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
-    throw new Error('The association commands did not reach the lock barrier.');
+    const activity = await pool.query(
+      `SELECT pid, wait_event, pg_blocking_pids(pid) AS blockers, query
+         FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    throw new Error(
+      `The association commands did not reach the Request lock barrier behind ${backendPid}: ${JSON.stringify(activity.rows)}`,
+    );
   }
 
   async function expectCommercialIntakeCount(expected: number): Promise<void> {
