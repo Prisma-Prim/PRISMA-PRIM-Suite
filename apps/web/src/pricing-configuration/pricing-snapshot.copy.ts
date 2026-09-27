@@ -12,6 +12,8 @@ export const pricingSnapshotCopy = {
   tariff: 'Tariff Version',
   quantity: 'Quantity',
   applyAdjustment: 'Apply a fixed net discount',
+  adjustmentType: 'Adjustment type',
+  fixedNetDiscount: 'Fixed net discount',
   netReduction: 'Net reduction',
   taxReduction: 'Tax reduction',
   adjustmentReason: 'Adjustment reason',

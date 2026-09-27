@@ -400,6 +400,9 @@ describe('PricingSnapshotPanel', () => {
       screen.getByText('Original net and tax: 308.63 + 38.08 EUR'),
     ).toBeInTheDocument();
     expect(screen.getByText('Net reduction: 8.63 EUR')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Adjustment type: Fixed net discount'),
+    ).toHaveLength(2);
     expect(screen.getByText('Tax reduction: 1.06 EUR')).toBeInTheDocument();
     expect(
       screen.getByText('Adjustment reason: Exact synthetic adjustment reason'),
@@ -420,6 +423,9 @@ describe('PricingSnapshotPanel', () => {
         'Adjustment reason: Exact synthetic adjustment reason',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Adjustment type: Fixed net discount'),
+    ).toHaveLength(2);
   });
 
   it('does not expose adjustment entry without the captured adjustment permission', async () => {
@@ -465,6 +471,50 @@ describe('PricingSnapshotPanel', () => {
     expect(reduction).toHaveAttribute('aria-invalid', 'true');
     expect(reason).toHaveAttribute('aria-invalid', 'true');
     expect(postCalls(fetchMock)).toHaveLength(0);
+  });
+
+  it('keeps an excessive reduction and associates the server field error with it', async () => {
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(
+          {
+            code: 'VALIDATION_ERROR',
+            field: 'lines[0].adjustment.netReduction',
+            message:
+              'Enter a net reduction no greater than the original line net.',
+          },
+          { status: 400 },
+        ),
+    });
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const reduction = screen.getByLabelText('Net reduction');
+    fireEvent.change(reduction, { target: { value: '999.00' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+
+    expect(
+      await screen.findByText(
+        'Enter a net reduction no greater than the original line net.',
+      ),
+    ).toBeInTheDocument();
+    expect(reduction).toHaveValue('999.00');
+    expect(reduction).toHaveAttribute('aria-invalid', 'true');
+    expect(postCalls(fetchMock)).toEqual([
+      expect.objectContaining({
+        body: expect.objectContaining({
+          lines: expect.arrayContaining([
+            expect.objectContaining({
+              adjustment: expect.objectContaining({
+                netReduction: '999.00',
+              }),
+            }),
+          ]),
+        }),
+      }),
+    ]);
   });
 
   it('limits a calculation to 20 selected offerings and lets the user replace one', async () => {

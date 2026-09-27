@@ -108,6 +108,12 @@ type DraftLine = {
 type CalculationAttempt = {
   payload: string;
   idempotencyKey: string;
+  offeringIds: readonly string[];
+};
+type FieldFeedback = {
+  kind: 'net-reduction';
+  offeringId: string;
+  message: string;
 };
 type Feedback =
   | 'invalid'
@@ -141,6 +147,7 @@ export function PricingSnapshotPanel({
   const [drafts, setDrafts] = useState<Record<string, DraftLine>>({});
   const [detail, setDetail] = useState<DetailState>({ kind: 'closed' });
   const [feedback, setFeedback] = useState<Feedback>();
+  const [fieldFeedback, setFieldFeedback] = useState<FieldFeedback>();
   const [pending, setPending] = useState(false);
   const [unresolved, setUnresolved] = useState<CalculationAttempt>();
   const [olderPending, setOlderPending] = useState(false);
@@ -256,6 +263,7 @@ export function PricingSnapshotPanel({
       setView({ kind: 'loading' });
       setDetail({ kind: 'closed' });
       setFeedback(undefined);
+      setFieldFeedback(undefined);
       setUnresolved(undefined);
       try {
         if (!companyId || !mayRead || !mayCalculate) {
@@ -390,6 +398,7 @@ export function PricingSnapshotPanel({
     commandRequest.current = controller;
     setPending(true);
     setFeedback(undefined);
+    setFieldFeedback(undefined);
     let timeoutId: number | undefined;
     try {
       const response = request({
@@ -464,7 +473,9 @@ export function PricingSnapshotPanel({
         );
         return;
       }
-      setFeedback(feedbackFor(result));
+      const nextFieldFeedback = fieldFeedbackFor(result, nextAttempt);
+      if (nextFieldFeedback) setFieldFeedback(nextFieldFeedback);
+      else setFeedback(feedbackFor(result));
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       if (commandRequest.current === controller) {
@@ -607,6 +618,11 @@ export function PricingSnapshotPanel({
               <div className="pricing-snapshot-lines">
                 {view.offerings.map((offering) => {
                   const draft = drafts[offering.id] ?? emptyDraftLine();
+                  const netReductionFeedback =
+                    fieldFeedback?.kind === 'net-reduction' &&
+                    fieldFeedback.offeringId === offering.id
+                      ? fieldFeedback
+                      : undefined;
                   return (
                     <fieldset
                       key={offering.id}
@@ -686,19 +702,35 @@ export function PricingSnapshotPanel({
                                   value={draft.netReduction}
                                   required
                                   aria-invalid={
-                                    !validNetReduction(draft.netReduction)
+                                    !validNetReduction(draft.netReduction) ||
+                                    netReductionFeedback !== undefined
                                   }
-                                  onChange={(event) =>
+                                  aria-describedby={
+                                    netReductionFeedback
+                                      ? `${fieldId}-${offering.id}-net-reduction-error`
+                                      : undefined
+                                  }
+                                  onChange={(event) => {
+                                    if (netReductionFeedback)
+                                      setFieldFeedback(undefined);
                                     setDrafts((current) => ({
                                       ...current,
                                       [offering.id]: {
                                         ...draft,
                                         netReduction: event.target.value,
                                       },
-                                    }))
-                                  }
+                                    }));
+                                  }}
                                 />
                               </label>
+                              {netReductionFeedback ? (
+                                <small
+                                  id={`${fieldId}-${offering.id}-net-reduction-error`}
+                                  role="alert"
+                                >
+                                  {netReductionFeedback.message}
+                                </small>
+                              ) : null}
                               <label>
                                 {copy.adjustmentReason}
                                 <textarea
@@ -869,6 +901,9 @@ function SnapshotDetail({
             {line.adjustment ? (
               <div className="pricing-snapshot-adjustment-trace">
                 <span>
+                  {copy.adjustmentType}: {copy.fixedNetDiscount}
+                </span>
+                <span>
                   {copy.netReduction}: {line.adjustment.netReduction}{' '}
                   {line.currency}
                 </span>
@@ -966,6 +1001,7 @@ function calculationAttempt(
       lines,
     }),
     idempotencyKey: crypto.randomUUID(),
+    offeringIds: lines.map((line) => line.offeringId),
   };
 }
 
@@ -1064,6 +1100,32 @@ function feedbackFor(
     default:
       return 'invalid';
   }
+}
+
+function fieldFeedbackFor(
+  result: Exclude<HttpResult, { status: 'network' }>,
+  attempt: CalculationAttempt,
+): FieldFeedback | undefined {
+  if (
+    result.status !== 400 ||
+    !isRecord(result.body) ||
+    result.body.code !== 'VALIDATION_ERROR' ||
+    typeof result.body.field !== 'string' ||
+    typeof result.body.message !== 'string'
+  )
+    return undefined;
+  const match = /^lines\[(0|[1-9][0-9]*)\]\.adjustment\.netReduction$/u.exec(
+    result.body.field,
+  );
+  const index = match?.[1];
+  if (index === undefined) return undefined;
+  const offeringId = attempt.offeringIds[Number.parseInt(index, 10)];
+  if (!offeringId) return undefined;
+  return {
+    kind: 'net-reduction',
+    offeringId,
+    message: result.body.message,
+  };
 }
 
 function feedbackCopy(feedback: Feedback): string {

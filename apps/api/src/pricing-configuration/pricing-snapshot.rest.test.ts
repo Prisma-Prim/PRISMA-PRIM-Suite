@@ -457,6 +457,22 @@ withPostgres('Pricing Snapshots REST', () => {
       snapshot(await command(path, body, 'adjusted-trace', fixture.companyId)),
     ).toEqual(created);
 
+    const malformedChangedPayload = structuredClone(body);
+    const malformedChangedLine = malformedChangedPayload.lines[0];
+    if (!malformedChangedLine)
+      throw new Error('Expected an adjusted command for replay validation.');
+    malformedChangedLine.adjustment.reason = '';
+    const malformedConflict = await post(
+      path,
+      malformedChangedPayload,
+      'adjusted-trace',
+      fixture.companyId,
+    );
+    expect(malformedConflict.status).toBe(409);
+    expect(await json(malformedConflict)).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+
     const changedReason = structuredClone(body);
     const changedFirstLine = changedReason.lines[0];
     if (!changedFirstLine) throw new Error('Expected an adjusted command.');
@@ -563,6 +579,22 @@ withPostgres('Pricing Snapshots REST', () => {
       await release(adjustmentRevocation);
     }
     expect((await revokedReplay).status).toBe(403);
+
+    const malformedAfterRevocation = structuredClone(body);
+    const malformedRevokedLine = malformedAfterRevocation.lines[0];
+    if (!malformedRevokedLine)
+      throw new Error('Expected an adjusted command after revocation.');
+    malformedRevokedLine.adjustment.reason = '';
+    expect(
+      (
+        await post(
+          snapshotsPath('00000000-0000-4000-8000-000000000999'),
+          malformedAfterRevocation,
+          'revoked-adjustment-before-target',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
   });
 
   it('derives tax reduction from the two rounded taxes in the REST and PostgreSQL trace', async () => {
@@ -711,6 +743,22 @@ withPostgres('Pricing Snapshots REST', () => {
           path,
           adjustedBody,
           'pricing-only-adjusted',
+          fixture.companyId,
+          pricingHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    const malformedAdjustedBody = structuredClone(adjustedBody);
+    const malformedAdjustedLine = malformedAdjustedBody.lines[0];
+    if (!malformedAdjustedLine)
+      throw new Error('Expected the adjusted authority command.');
+    malformedAdjustedLine.adjustment.reason = '';
+    expect(
+      (
+        await post(
+          snapshotsPath('00000000-0000-4000-8000-000000000999'),
+          malformedAdjustedBody,
+          'missing-adjustment-before-target',
           fixture.companyId,
           pricingHeaders,
         )

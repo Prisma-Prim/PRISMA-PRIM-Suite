@@ -45,7 +45,10 @@ import {
   recordPricingSnapshotReceipt,
 } from './pricing-configuration-publication.js';
 import type { CreatePricingSnapshotCommand } from './pricing-configuration.types.js';
-import { readPricingSnapshotCommand } from './pricing-snapshot.validation.js';
+import {
+  readPricingSnapshotCommand,
+  requestsPricingAdjustment,
+} from './pricing-snapshot.validation.js';
 
 type RuleVersionRow = typeof pricingRuleVersions.$inferSelect;
 type TariffVersionRow = typeof tariffVersions.$inferSelect;
@@ -85,20 +88,16 @@ export class PricingSnapshotService {
         ['commercial.pricing.calculate'],
         true,
       );
-      const opportunity = await this.intake.requireReadablePricingOpportunity(
-        actor,
-        opportunityIdInput,
-      );
-      const command = readPricingSnapshotCommand(value);
-      const adjustmentCount = command.lines.filter(
-        (line) => line.adjustment !== undefined,
-      ).length;
-      if (adjustmentCount > 0)
+      if (requestsPricingAdjustment(value))
         await this.authorization.requirePricingAdjustmentAccess(
           actor,
           ['commercial.pricing.adjustment.apply'],
           true,
         );
+      const opportunity = await this.intake.requireReadablePricingOpportunity(
+        actor,
+        opportunityIdInput,
+      );
       const idempotencyKey = requireIdempotencyKey(key);
       const fingerprint = commandFingerprint({
         companyId,
@@ -128,6 +127,10 @@ export class PricingSnapshotService {
         });
       }
 
+      const command = readPricingSnapshotCommand(value);
+      const adjustmentCount = command.lines.filter(
+        (line) => line.adjustment !== undefined,
+      ).length;
       const offerings = await this.catalogue.readPricingOfferings(
         actor,
         command.lines.map(({ offeringId }) => offeringId),

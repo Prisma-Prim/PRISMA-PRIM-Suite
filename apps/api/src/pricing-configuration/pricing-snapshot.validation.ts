@@ -23,6 +23,25 @@ const FIXED_NET_DISCOUNT_GRAMMAR = /^(0|[1-9][0-9]{0,21})\.[0-9]{2}$/u;
 const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
+// This check deliberately does not validate the command. It only identifies
+// whether the independent adjustment authority is required before target
+// access and receipt replay.
+export function requestsPricingAdjustment(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return false;
+  const lines = Object.fromEntries(Object.entries(value)).lines;
+  return (
+    Array.isArray(lines) &&
+    lines.some(
+      (line) =>
+        typeof line === 'object' &&
+        line !== null &&
+        !Array.isArray(line) &&
+        Object.prototype.hasOwnProperty.call(line, 'adjustment'),
+    )
+  );
+}
+
 export function readPricingSnapshotCommand(
   value: unknown,
 ): CreatePricingSnapshotCommand {
