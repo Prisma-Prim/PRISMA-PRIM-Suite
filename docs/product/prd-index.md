@@ -68,7 +68,9 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 
-The Illustrative Deterministic Pricing PRD owns the first R3B slices only: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, and the immutable Pricing Snapshot that references them by exact version. It proves the catalogue, versioning, provenance and decimal mechanics with illustrative values, and authorizes no real price, ability to perform, approval or external effect.
+The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the future governed illustrative fixed net discount created atomically with a new Snapshot. It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
+
+R3B4 is an additive future slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; after R3B4 delivery, a separately approved Offer compatibility slice reads and renders the immutable adjustment trace without repricing it.
 
 ## 7. Other later releases
 

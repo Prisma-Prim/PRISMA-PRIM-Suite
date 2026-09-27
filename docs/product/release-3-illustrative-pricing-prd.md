@@ -1,18 +1,19 @@
 # PRD — Release 3B Illustrative Deterministic Pricing
 
 **Status:** Provisional MVP execution scope — business validation pending  
-**Version:** 0.4  
+**Version:** 0.5  
 **Owner:** Dan Popescu  
 **Release:** 3, slice R3B  
 **Parent authority:** [Release 3 Commercial Workflow PRD](release-3-commercial-workflow-prd.md)  
 **Decision sources:** consolidated record sections 12.4–12.6, 14.5–14.6, 14.15–14.16  
 **Owner direction:** [Dan, 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981)  
 **Publication-instant amendment:** [Dan, 2026-09-25, #387](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/387)  
+**Illustrative fixed-discount amendment:** [Agent normalization under Dan's standing MVP direction, 2026-09-27, #454](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/454)\
 **Deferred business validation:** [Iurie, after a demonstrable MVP](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/288#issuecomment-5749968989)
 
 ## 1. Authority, purpose and boundary
 
-This PRD is the canonical observable-behaviour authority for the first R3B slices: the shared **Service Definition**, the **Company Service Offering**, the effective-dated **Tariff Version** and **Pricing Rule Version**, and the immutable **Pricing Snapshot** that records the exact versions it used.
+This PRD is the canonical observable-behaviour authority for the R3B slices: the shared **Service Definition**, the **Company Service Offering**, the effective-dated **Tariff Version** and **Pricing Rule Version**, and the immutable **Pricing Snapshot** that records the exact versions and optional illustrative fixed adjustments it used.
 
 It inherits the [Release 3 Commercial Workflow PRD](release-3-commercial-workflow-prd.md) and, through it, [Tenant/Company/Client Authorization](tenant-company-client-authorization-prd.md), [Activity Log](activity-log-accountability-prd.md), [UX/Configuration](ux-localization-configuration-prd.md), [Platform Operations](platform-security-reliability-operations-prd.md) and [AI Governance](ai-knowledge-governance-prd.md). It states only the pricing consequences and does not restate inherited rules.
 
@@ -36,7 +37,8 @@ These slices must:
 3. let an authorized pricing user calculate from exactly the versions they declared, over typed values a human confirmed;
 4. store an immutable Pricing Snapshot that names every source identity and version it used and reproduces its own total;
 5. keep illustrative provenance visible on every record and rendering;
-6. make it impossible for these slices to approve, transmit, generate, authorize performance or produce any real external effect.
+6. let a separately authorized user apply at most one explicit illustrative fixed net discount to a selected service line while creating a new Snapshot, without changing a Tariff or an earlier Snapshot;
+7. make it impossible for these slices to approve, transmit, generate, authorize performance or produce any real external effect.
 
 ## 3. Product principles
 
@@ -44,6 +46,7 @@ These slices must:
 - Shared definition and Company offering stay separate (decision record 14.5). A Company offering never becomes the definition, and a definition never implies that any Company may sell or perform the service.
 - Tariffs and Pricing Rules are Company-scoped, versioned and effective-dated (decision record 14.6). Their versions are referenced, never copied in place of a reference.
 - A Pricing Snapshot retains the exact versions and values it used (decision record 14.6), reproduces its own total, and is never recomputed, corrected in place or re-pointed.
+- An illustrative discount is an explicit immutable Snapshot adjustment with its reason and actor. It never replaces a Tariff amount, hides inside a total or gains real-use authority.
 - Immutable source content is distinct from operational selection metadata. Content and declared validity never change after commit; only the takeover metadata is written, once, when a successor is published.
 - Money is decimal and never floating-point; unlike currencies are never combined (decision record 12.4).
 - Smallest coherent mechanism. One rule shape is implemented and one declared version is used per input; no resolution engine searches for a substitute version, and no pricing language is introduced.
@@ -56,6 +59,7 @@ These slices must:
 | Catalogue user                | Defines shared Service Definitions and records Company Service Offerings. Holds no tariff, pricing or approval authority. |
 | Configuration owner           | Publishes and reads Tariff Versions and Pricing Rule Versions for the active Company. Cannot calculate.                   |
 | Pricing user                  | Reads configuration and calculates snapshots on Opportunities they can already read. Cannot publish configuration.        |
+| Pricing adjustment user       | May add the bounded illustrative fixed net discount to a calculation only while independently authorized to calculate.    |
 | Company administrator         | Grants or revokes the captured bundles through existing Company assignment administration.                                |
 | Opportunity responsible actor | Gains no implicit catalogue, configuration or pricing authority from responsibility alone.                                |
 | AI capability                 | None. No analysis, proposal or suggestion participates in these slices.                                                   |
@@ -77,6 +81,9 @@ Workspace is the hard isolation boundary. A Service Definition is Workspace-shar
 11. As any reader, I want a stored snapshot to reopen unchanged with its service, offering, tariff and rule versions, actor, time and, when I may already see it, its Client context.
 12. As any reader, I want illustrative provenance visible on every record and every rendered amount.
 13. As a reviewer, I want catalogue, configuration and pricing authority separated, so that no one of them implies another.
+14. As an authorized pricing adjustment user, I want to record one fixed net discount and its reason on a selected service line, so that the resulting total is explicit and reproducible.
+15. As a Snapshot reader, I want to see the original line, its immutable adjustment and its adjusted line totals, so that no hidden manual total can be mistaken for a deterministic calculation.
+16. As a reviewer, I want ordinary calculation, adjustment application and Snapshot reading to remain separate permissions, so that an existing grant never expands silently.
 
 ## 6. Domain records
 
@@ -182,6 +189,7 @@ Operational selection metadata as in section 6.1. At most one head Pricing Rule 
 | Pricing Rule Version           | Referenced id **and** version number, plus copied shape, rounding mode, rounding scale and tax application.                     |
 | Currency                       | The single currency shared by every referenced Tariff Version.                                                                  |
 | Lines                          | One per input line; see section 8.2. Each line references its Service Definition, offering and Tariff Version by id and number. |
+| Adjustments                    | Zero or one `FIXED_NET_DISCOUNT` per line, created atomically with the Snapshot; see section 8.2.                               |
 | Subtotal, tax total, total     | Decimals at rounding scale in the snapshot currency.                                                                            |
 | Calculated by, at              | Server-assigned membership and the single calculation instant of section 7, which every validity check used; immutable.         |
 | Committed at                   | Server-recorded logical instant of the snapshot write, sampled from the server clock after every validity check; see below.     |
@@ -189,7 +197,7 @@ Operational selection metadata as in section 6.1. At most one head Pricing Rule 
 
 `committedAt` keeps its name but is audit information only: the server never uses it for validation, never substitutes it for the calculation instant, and does not claim it is the physical instant at which the transaction became durable (section 6).
 
-A snapshot has no status, no approval field, no Offer link and no transmission state in these slices. Publishing, superseding or expiring configuration never changes a stored snapshot, and so never reaches a later artifact built from one; a later calculation creates a new snapshot instead (section 11.4).
+A snapshot has no status, no approval field, no Offer link and no transmission state in these slices. Publishing, superseding or expiring configuration never changes a stored snapshot, and so never reaches a later artifact built from one; a later calculation creates a new snapshot instead (section 11.4). Adding, changing or removing a discount likewise requires a new calculation and new Snapshot. No endpoint mutates an adjustment or any historical Snapshot.
 
 ## 7. Selection, effective dates and expected versions
 
@@ -240,9 +248,12 @@ Every monetary, quantity and rate value crosses the API as a string in a closed 
 unit amount       ^(0|[1-9][0-9]{0,6})(\.[0-9]{1,4})?$          0.0001 .. 9999999.9999, greater than zero
 quantity          ^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$          0.001 .. 999999999.999, greater than zero
 tax rate percent  ^(100(\.0{1,2})?|(0|[1-9][0-9]?)(\.[0-9]{1,2})?)$  0 .. 100
+fixed net discount ^(0|[1-9][0-9]{0,21})\.[0-9]{2}$             positive, exact scale 2
 ```
 
 The leading-zero rule holds in all three grammars: `00`, `01` and `00.50` are rejected as a tax rate exactly as they are as an amount or a quantity. `0`, `0.50` and `100.00` remain valid.
+
+The fixed net discount grammar follows the same leading-zero rule, but a submitted discount must be greater than zero and must carry exactly two fractional digits. Zero discount is represented only by the absence of an adjustment. Its amount is in the Snapshot currency, must be no greater than the line's pre-adjustment `lineNet`, and is stored exactly as submitted at scale 2. A discount equal to `lineNet` is valid and leaves adjusted net and tax at zero. The reason is required after validation, contains 1–500 characters with at least one non-whitespace character and is stored exactly as submitted. These limits are provisional choices in section 13, not real commercial policy.
 
 Arithmetic uses scaled integer values held as JavaScript `BigInt`: amounts scaled by 10^4, quantities by 10^3, rates by 10^2, raw line results by 10^7. No decimal, math or currency dependency is added; `Number` never touches a monetary or quantity path, including serialization and test assertions.
 
@@ -270,7 +281,18 @@ For each input line, in submitted order, the snapshot records:
 8. `rawLineTax` = `lineNet × taxRatePercent ÷ 100`, exact before rounding;
 9. `lineTax` = `rawLineTax` rounded `HALF_UP` to the rule's rounding scale.
 
-Then `subtotal` = sum of `lineNet`, `taxTotal` = sum of `lineTax`, `total` = `subtotal + taxTotal`, each exact at the rounding scale.
+`lineNet`, `rawLineTax` and `lineTax` above are the original pre-adjustment amounts and remain in the trace. A line may additionally record exactly one immutable adjustment:
+
+1. `type` fixed to `FIXED_NET_DISCOUNT`;
+2. `netReduction`, the submitted positive fixed amount at scale 2 in the Snapshot currency;
+3. `reason`, stored exactly as submitted after the bounded validation above;
+4. the Snapshot's server-resolved `calculatedBy` membership and `calculatedAt`, which are also the adjustment actor and application instant; no separate actor or time is accepted from the client;
+5. `adjustedLineNet` = `lineNet − netReduction`;
+6. `adjustedRawLineTax` = `adjustedLineNet × taxRatePercent ÷ 100`, exact before rounding;
+7. `adjustedLineTax` = `adjustedRawLineTax` rounded `HALF_UP` to the rule's rounding scale;
+8. `taxReduction` = `lineTax − adjustedLineTax`, exact at the rounding scale.
+
+Without an adjustment, `adjustedLineNet` equals `lineNet`, `adjustedLineTax` equals `lineTax`, and both reductions are zero in the public projection. Then `subtotal` = sum of `adjustedLineNet`, `taxTotal` = sum of `adjustedLineTax`, and `total` = `subtotal + taxTotal`, each exact at the rounding scale. The stored original amounts, adjustment and adjusted amounts reproduce every total without reading a Tariff or recalculating policy.
 
 The stored trace reproduces `total` without reading any configuration record; recomputing from the referenced versions must give the same result, and both are tested.
 
@@ -278,7 +300,7 @@ The stored trace reproduces `total` without reading any configuration record; re
 
 Inputs are typed by a human and confirmed by the act of submitting the calculation, attributed to the submitting membership. A structured `RequestAssessment` and AI-proposed values are deferred and will feed this same input contract.
 
-A calculation carries 1–20 input lines, each naming a distinct offering of the active Company, its expected Tariff Version number, and a quantity. Duplicate offerings in one calculation are rejected. Quantity strings are stored exactly as submitted; no trimming, padding or normalization silently changes a stored input or an idempotency fingerprint.
+A calculation carries 1–20 input lines, each naming a distinct offering of the active Company, its expected Tariff Version number, a quantity and, optionally, one fixed net discount with its reason. Duplicate offerings or more than one adjustment for a line are rejected. Quantity, discount and reason strings are stored exactly as submitted after validation; no trimming, padding or normalization silently changes a stored input or an idempotency fingerprint.
 
 Every referenced Tariff Version must share one currency. A mixed-currency selection is rejected with a named error; unlike currencies are never added, converted or aggregated, and no exchange rate, conversion record or consolidated total exists in these slices (decision record 12.4).
 
@@ -292,20 +314,26 @@ Calculation reads the Request's nullable stored original Client reference while 
 
 ## 10. Permissions
 
-Three captured Company bundles are introduced. All use the existing captured-bundle mechanism: an active administrator with `company.assignment.manage` explicitly grants or revokes a named bundle and permission-set version for an active same-Workspace membership and active Company. Null or unknown captured versions fail closed. No existing bundle, assignment or role receives any new permission, and no bundle implies another.
+Four captured Company bundles are introduced. All use the existing captured-bundle mechanism: an active administrator with `company.assignment.manage` explicitly grants or revokes a named bundle and permission-set version for an active same-Workspace membership and active Company. Null or unknown captured versions fail closed. No existing bundle, assignment or role receives any new permission, and no bundle implies another.
 
 | Bundle                            | Version | Permissions                                                                                                                             |
 | --------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | **Company Service Catalogue**     | v1      | `service.definition.read`, `service.definition.create`, `commercial.offering.read`, `commercial.offering.manage`                        |
 | **Company Pricing Configuration** | v1      | `commercial.offering.read`, `commercial.pricing.configuration.read`, `commercial.pricing.configuration.manage`                          |
 | **Company Pricing User**          | v1      | `commercial.offering.read`, `commercial.pricing.configuration.read`, `commercial.pricing.calculate`, `commercial.pricing.snapshot.read` |
+| **Company Pricing Adjustment**    | v1      | `commercial.pricing.adjustment.apply`                                                                                                   |
 
 Additional rules:
 
 - publishing a Tariff Version requires `commercial.pricing.configuration.manage` **and** readability of the target offering;
 - calculating requires `commercial.pricing.calculate` **and** current readability of the target Opportunity through its existing commercial read boundary. Pricing authority never substitutes for Opportunity visibility, and Opportunity visibility never implies pricing authority;
+- submitting any adjustment additionally requires a live Company Pricing Adjustment v1 assignment. That bundle alone cannot calculate, read configuration, read a Snapshot or read an Opportunity; Company Pricing User v1 never implies it;
 - reading a snapshot requires `commercial.pricing.snapshot.read` and the same current Opportunity readability;
 - no bundle grants intake, next-action update, Client read, Activity Log read, assignment administration, approval, Offer, Contract or cross-Company authority.
+
+The adjustment bundle follows the existing Company assignment administration convention. A grant or revocation records exactly one attributed `company_pricing_adjustment_assignment.granted` or `.revoked` event per actual state change. Its metadata is limited to the bundle label and the existing assignment target and scope; it contains no permission name, captured version, discount amount, reason, price or Client data. Repeated state, failed attempts and exact replays record no event. These administration events remain visible only through the existing administration boundary.
+
+Company Pricing Adjustment v1 is a reversible captured permission bundle, not a job role, a hard-coded identity or evidence that any real first-tenant actor holds discount authority.
 
 A Service Definition is Workspace-shared but is created through a Company-scoped captured bundle, because commercial permissions are Company-scoped unless a clearly approved Workspace-level responsibility exists (decision record 14.15) and no Workspace-permission delegation surface exists today; the Workspace permission grant path is bootstrap-only. Creating shared vocabulary confers nothing on the creating Company. Section 13 records this as provisional, with a Workspace catalogue steward role as its replacement.
 
@@ -318,7 +346,7 @@ The public seam is the REST interface. NestJS validates authority, allocates ver
 Every command follows this order, and tests assert the order itself:
 
 1. **Authenticate**, then resolve the actor and active Company.
-2. **Revalidate current authority**, reading the membership, Company context and captured bundle assignment with a row lock that serializes against concurrent revocation, so a command can never commit on authority revoked in a concurrent transaction.
+2. **Revalidate current authority**, reading the membership, Company context and every captured bundle assignment required by that exact command with a row lock that serializes against concurrent revocation, so a command can never commit on authority revoked in a concurrent transaction. An adjusted calculation and its replay require both current calculation and adjustment authority; an ordinary calculation and its replay require calculation authority only.
 3. **Revalidate current readability of the command's target** through the boundary that owns it — the Opportunity through the commercial read boundary for a calculation or snapshot read, the offering for a tariff publication, the Service Definition for an offering. A target the actor may no longer read returns the same safe not-found or `403` response as a first attempt.
 4. **Take the idempotency lock** for the (actor, Company, key) and read any existing receipt. A fingerprint mismatch returns a conflict. A match returns the recorded result.
 5. **Validate** the payload shape and grammars.
@@ -374,6 +402,8 @@ Neither conflict discloses anything beyond the fact that the identity is taken i
 
 Calculating is never a no-op: a deliberate recalculation with a new idempotency key creates a second independent snapshot, because a calculation is a historical fact rather than a current value. Both remain readable.
 
+An adjustment is accepted only as part of this calculation command and commits atomically with the Snapshot, receipt and `pricing_snapshot.created` event. A failure at any write leaves none of those records. There is no separate adjustment command and no update, approval, removal or deletion path for a committed adjustment.
+
 A replayed calculation returns the original snapshot unchanged **even when the Tariff or Pricing Rule Versions it used have since been superseded or have left their effective window**. Replay reproduces a recorded fact; it does not re-select or re-validate configuration.
 
 Replay does, however, re-check who is asking and what they may see: current authority and current readability of the target Opportunity are revalidated first, per section 11.1. An actor whose pricing bundle remains but whose Opportunity read access was revoked receives the safe denial, not the recorded snapshot. The same rule governs reading a stored snapshot.
@@ -400,7 +430,7 @@ Bounded lists — Workspace Service Definitions, the active Company's offerings,
 
 ### 12.1 Activity
 
-One committed publication, definition, offering or calculation records exactly one attributed event scoped to the responsible Company: `service_definition.created`, `company_service_offering.created`, `tariff_version.published`, `pricing_rule_version.published`, `pricing_snapshot.created`. Metadata contains identifiers, version numbers, provenance, currency and counts only — no amount, quantity, rate or label text. No event is recorded for a no-op, a failed validation, a safe denial, a stale-version conflict or a replay.
+One committed publication, definition, offering or calculation records exactly one attributed event scoped to the responsible Company: `service_definition.created`, `company_service_offering.created`, `tariff_version.published`, `pricing_rule_version.published`, `pricing_snapshot.created`. Metadata contains identifiers, version numbers, provenance, currency and counts only. For a Snapshot it may include `adjustmentCount`; it never includes an amount, quantity, rate, label, reason or adjustment actor. No event is recorded for a no-op, a failed validation, a safe denial, a stale-version conflict or a replay. Adjustment-bundle grant and revocation events follow section 10 and remain owned by the existing Company assignment administration boundary.
 
 **These events are recorded but not projected.** No Activity read surface returns them in these slices. The commercial Activity projection allowlist owned by [#313](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/313) contains exactly `client_request.created`, `opportunity.created` and `opportunity.next_action.updated`; it is an explicit allowlist, not a pattern that admits future event types. Projecting any pricing event is a separate decision in the owning Activity slice and must not be assumed by these tickets.
 
@@ -409,13 +439,13 @@ One committed publication, definition, offering or calculation records exactly o
 - missing verified identity returns `401`;
 - inactive membership, missing bundle, unknown captured version, revoked authority or invalid active Company returns a safe `403` with no hidden metadata;
 - an unknown or inaccessible Service Definition, offering, version, Opportunity or snapshot returns the same safe not-found response, whether the identifier is unknown, cross-Company, cross-Workspace or merely unreadable;
-- field-specific validation without persistence for: grammar and range violations, empty or oversized lists, duplicate or malformed codes, duplicate offering in one calculation, unknown offering, effective window inverted, oversized label;
+- field-specific validation without persistence for: grammar and range violations, empty or oversized lists, duplicate or malformed codes, duplicate offering or duplicate adjustment in one calculation, zero discount, discount greater than the original line net, missing or oversized discount reason, unknown offering, effective window inverted, oversized label;
 - named conflicts that return a safe `409` and commit nothing: `IDEMPOTENCY_CONFLICT`, `STALE_ACTIVE_VERSION`, `STALE_TARIFF_VERSION`, `STALE_PRICING_RULE_VERSION`, `TARIFF_NOT_EFFECTIVE`, `PRICING_RULE_NOT_EFFECTIVE`, `MIXED_CURRENCY`, `SERVICE_CODE_CONFLICT`, `OFFERING_CONFLICT`, `EFFECTIVE_WINDOW_GAP`. A stale conflict names the current head version number and nothing else about the other actor;
 - no Company can infer another Company's offering, configuration, snapshot, count, label, amount or event by direct identifier.
 
 ### 12.3 Interface states
 
-The catalogue screen lists Workspace Service Definitions and the active Company's offerings with a permanent illustrative label, and states plainly that this illustrative offering is not evidence of ability to perform. The configuration screen shows the `CURRENT` Tariff Version per offering and the `CURRENT` Pricing Rule Version with their validity windows, or an explicit "no current version" state when none is effective, lists every scheduled successor in order with the instant each takes over, identifies the head, and offers publication only to a configuration owner. The pricing panel on an Opportunity shows the declared versions, accepts a quantity per selected offering, renders the resulting snapshot line by line with subtotal, tax and total, and lists earlier snapshots newest first.
+The catalogue screen lists Workspace Service Definitions and the active Company's offerings with a permanent illustrative label, and states plainly that this illustrative offering is not evidence of ability to perform. The configuration screen shows the `CURRENT` Tariff Version per offering and the `CURRENT` Pricing Rule Version with their validity windows, or an explicit "no current version" state when none is effective, lists every scheduled successor in order with the instant each takes over, identifies the head, and offers publication only to a configuration owner. The pricing panel on an Opportunity shows the declared versions, accepts a quantity per selected offering and, only for a holder of the independent adjustment bundle, an optional fixed net discount and required reason. It renders the resulting Snapshot line by line with the original net and tax, the adjustment's type, reason, actor, net and tax reductions, the adjusted net and tax, then the Snapshot subtotal, tax and total. Earlier Snapshots remain listed newest first.
 
 Empty, denied, stale, not-effective, validation, uncertain and success states are reachable and legible. An uncertain publication outcome keeps its payload, expected head and idempotency key for an explicit retry, and never shows success or that nothing was saved. Every rendered amount or total carries a visible provisional marker in the same view; a total never appears without one. Entered values survive a correctable validation error. Desktop, keyboard and narrow-screen behaviour inherit the UX PRD.
 
@@ -423,56 +453,60 @@ Empty, denied, stale, not-effective, validation, uncertain and success states ar
 
 Every item is a reversible MVP choice taken by this PRD, not approved business policy, and none of them weakens a durable identity from decision record 14.5–14.6.
 
-| #   | Provisional decision                                                                                                              | Replaced by                                                      |
-| --- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 1   | Service Definition content is immutable with no edit path in this slice                                                           | A governed definition-correction slice                           |
-| 2   | Service Definitions are created through a Company-scoped captured bundle, since no Workspace-permission delegation surface exists | A Workspace catalogue steward role in the authorization PRD      |
-| 3   | Offerings are `AVAILABLE` at creation; withdrawal and re-offering are deferred                                                    | Real catalogue lifecycle evidence                                |
-| 4   | Exactly one rule shape, `UNIT_PRICE_TIMES_QUANTITY`, with server-fixed `HALF_UP` scale 2 and per-line tax                         | Real recurring rule shapes and rounding practice per service     |
-| 5   | At most one `CURRENT` Tariff Version per offering and Pricing Rule Version per Company at any instant, possibly none              | Real parallel price lists, segments or contract-specific tariffs |
-| 6   | Declared expected versions with no fallback resolution                                                                            | A reviewed selection policy if real practice needs one           |
-| 7   | Value grammars, ranges and storage precision in section 8.1                                                                       | Real tariff precision, quantities and invoicing practice         |
-| 8   | Currency allowlist `MDL`, `EUR`, `RON`, `USD`, one per calculation                                                                | Confirmed trading currencies                                     |
-| 9   | One tax rate and label per Tariff Version, with no fiscal authority claim (decision record 12.5)                                  | The approved tax capability                                      |
-| 10  | Limits: 20 input lines per calculation, list default 25 and maximum 50                                                            | Observed real list sizes                                         |
-| 11  | Three captured bundles and the permission names in section 10                                                                     | The approved commercial role matrix                              |
-| 12  | Identical content republication is an `UNCHANGED` no-op with a durable receipt                                                    | Owner preference once configuration is edited routinely          |
-| 13  | Recalculation with a new key creates a new snapshot rather than replacing one                                                     | Offer-driven snapshot selection rules in R3C                     |
-| 14  | Snapshots attach to an Opportunity and carry its existing Client projection                                                       | Confirmed practice if pricing must precede qualification         |
-| 15  | Human confirmation is the submitting act; no structured assessment record                                                         | The RequestAssessment slice                                      |
-| 16  | Service Definition field policy: code 1–40 characters in the `A-Z`/`0-9`/`_`/`-` grammar, name 1–160, description at most 2,000   | Real catalogue naming and coding practice                        |
-| 17  | Company Service Offering commercial label at most 160 characters and optional                                                     | Real Company commercial text practice                            |
-| 18  | Tariff Version unit 1–24 characters as free text, tax label 1–60 characters                                                       | The real unit vocabulary and tax naming                          |
-| 19  | Pricing Rule Version label 1–120 characters                                                                                       | Real configuration naming practice                               |
-| 20  | Supersession takes effect from the successor's `effectiveFrom`, with back-dating and declared gaps rejected                       | Real advance-scheduling and correction practice                  |
-| 21  | Uniqueness of an offering is scoped by provenance, so a governed real offering may later coexist with the illustrative one        | The approved governed activation or migration transition         |
-| 22  | One server publication instant decides back-dating, gaps and resumption; reads and calculations serialize with it (section 11.6)  | Real configuration-change practice or another owner decision     |
+| #   | Provisional decision                                                                                                               | Replaced by                                                      |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | Service Definition content is immutable with no edit path in this slice                                                            | A governed definition-correction slice                           |
+| 2   | Service Definitions are created through a Company-scoped captured bundle, since no Workspace-permission delegation surface exists  | A Workspace catalogue steward role in the authorization PRD      |
+| 3   | Offerings are `AVAILABLE` at creation; withdrawal and re-offering are deferred                                                     | Real catalogue lifecycle evidence                                |
+| 4   | Exactly one rule shape, `UNIT_PRICE_TIMES_QUANTITY`, with server-fixed `HALF_UP` scale 2 and per-line tax                          | Real recurring rule shapes and rounding practice per service     |
+| 5   | At most one `CURRENT` Tariff Version per offering and Pricing Rule Version per Company at any instant, possibly none               | Real parallel price lists, segments or contract-specific tariffs |
+| 6   | Declared expected versions with no fallback resolution                                                                             | A reviewed selection policy if real practice needs one           |
+| 7   | Value grammars, ranges and storage precision in section 8.1                                                                        | Real tariff precision, quantities and invoicing practice         |
+| 8   | Currency allowlist `MDL`, `EUR`, `RON`, `USD`, one per calculation                                                                 | Confirmed trading currencies                                     |
+| 9   | One tax rate and label per Tariff Version, with no fiscal authority claim (decision record 12.5)                                   | The approved tax capability                                      |
+| 10  | Limits: 20 input lines per calculation, list default 25 and maximum 50                                                             | Observed real list sizes                                         |
+| 11  | The three R3B1–R3B3 captured bundles and their section 10 permissions                                                              | The approved commercial role matrix                              |
+| 12  | Identical content republication is an `UNCHANGED` no-op with a durable receipt                                                     | Owner preference once configuration is edited routinely          |
+| 13  | Recalculation with a new key creates a new snapshot rather than replacing one                                                      | Offer-driven snapshot selection rules in R3C                     |
+| 14  | Snapshots attach to an Opportunity and carry its existing Client projection                                                        | Confirmed practice if pricing must precede qualification         |
+| 15  | Human confirmation is the submitting act; no structured assessment record                                                          | The RequestAssessment slice                                      |
+| 16  | Service Definition field policy: code 1–40 characters in the `A-Z`/`0-9`/`_`/`-` grammar, name 1–160, description at most 2,000    | Real catalogue naming and coding practice                        |
+| 17  | Company Service Offering commercial label at most 160 characters and optional                                                      | Real Company commercial text practice                            |
+| 18  | Tariff Version unit 1–24 characters as free text, tax label 1–60 characters                                                        | The real unit vocabulary and tax naming                          |
+| 19  | Pricing Rule Version label 1–120 characters                                                                                        | Real configuration naming practice                               |
+| 20  | Supersession takes effect from the successor's `effectiveFrom`, with back-dating and declared gaps rejected                        | Real advance-scheduling and correction practice                  |
+| 21  | Uniqueness of an offering is scoped by provenance, so a governed real offering may later coexist with the illustrative one         | The approved governed activation or migration transition         |
+| 22  | One server publication instant decides back-dating, gaps and resumption; reads and calculations serialize with it (section 11.6)   | Real configuration-change practice or another owner decision     |
+| 23  | Zero or one `FIXED_NET_DISCOUNT` per service line, positive exact scale 2, applied before tax and bounded by the original line net | Real adjustment types, calculation order and fiscal practice     |
+| 24  | A mandatory adjustment reason of 1–500 characters                                                                                  | The approved commercial reason vocabulary and limits             |
+| 25  | Company Pricing Adjustment v1 with only `commercial.pricing.adjustment.apply`                                                      | The approved commercial role and authority matrix                |
 
-None of rows 16–19 is a business-approved limit. They are drafting choices that make the slices testable; every one of them is an observable policy an implementation would otherwise invent, and Iurie has approved none of them. No length, code grammar or optionality here is evidence of first-tenant policy.
+None of rows 16–19 or 23–25 is a business-approved limit or role rule. They are drafting choices that make the slices testable; every one of them is an observable policy an implementation would otherwise invent, and Iurie has approved none of them. No length, code grammar, optionality, discount type or assignment here is evidence of first-tenant policy.
 
 Row 22 is the one row the owner approved as an MVP rule ([#387](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/387)). It replaces the earlier requirement to validate against the physical commit time, which is not known when a publication must be decided; a later durable commit neither invalidates nor re-dates a valid publication (section 11.3). It is not Iurie-validated business policy and is replaced like any other row.
 
 ## 14. Exclusions
 
-Excluded here: discounts, overrides, adjustments, margins, minimum fees, tiered or volume rules, package pricing, per-line currency conversion, definition or offering editing, offering withdrawal, catalogue import, version deletion, snapshot editing or approval, Offers, quality checks, approval thresholds, transmission, numbering, document generation, Contracts, Projects, dashboards, exports, AI proposals and structured assessments.
+Excluded here: percentage discounts, surcharges, overrides, margin calculation, minimum fees, tiered or volume rules, package pricing, configured discount thresholds, adjustment approval workflow, per-line currency conversion, definition or offering editing, offering withdrawal, catalogue import, version deletion, snapshot or adjustment editing or approval, Offers, quality checks, transmission, numbering, document generation, Contracts, Projects, dashboards, exports, AI proposals and structured assessments.
 
 Owned elsewhere and untouched: Request and Opportunity intake, next-action updates, commercial Activity projection and its allowlist, Client authority and union behaviour, and every existing permission bundle.
 
 ## 15. Delivery boundary
 
-Three vertical slices, in order. Each is independently testable; the later two are honestly blocked rather than flattened into one aggregate.
+Four vertical slices, in order. Each is independently testable; later slices are honestly blocked rather than flattened into one aggregate.
 
 1. **R3B1 — shared Service catalogue and Company offering.** The first complete usable slice: define a shared service, record that the active Company offers it, read both. Delivers the Company Service Catalogue bundle.
 2. **R3B2 — effective-dated Tariff and Pricing Rule Versions.** Publication, supersession, validity windows and the immutable-content boundary. Blocked by R3B1 because a tariff has no subject without an offering.
 3. **R3B3 — immutable Pricing Snapshot.** Declared-version selection, the decimal trace, Client context and reopening. Blocked by R3B2 because there is nothing exact to reference before versions exist.
+4. **R3B4 — governed illustrative fixed net discount.** Add one independently authorized fixed net discount per selected line at Snapshot creation, preserve the original and adjusted trace, and reopen it unchanged. Blocked by delivered R3B3. It is a future implementation slice that requires its own approved issue and normal readiness gates after this documentation contract is merged.
 
-R3B2 and R3B3 are blocked by their predecessor's records and grants, not by real business evidence. Nothing in any of the three may be used for a real price.
+R3B2–R3B4 are blocked by their predecessor's records and grants, not by real business evidence. Nothing in any of the four may be used for a real price. R3B4 does not block Offer O1: O1 continues to consume delivered R3B3 Snapshots, and a later additive Offer-compatibility slice consumes adjusted Snapshots only after R3B4 is delivered.
 
 ## 16. Migration and compatibility
 
-Additive. No existing Client Request, Opportunity, Client, Project, Document, assignment, permission bundle or Activity behaviour changes. Every schema change ships as a reviewed Drizzle migration.
+Additive. No existing Client Request, Opportunity, Client, Project, Document, assignment, permission bundle or Activity behaviour changes. A Snapshot created before R3B4 has no adjustment and reopens with its original lines and totals unchanged; no backfill or reinterpretation occurs. A compatible read projection treats the absent adjustment as zero reduction and exposes adjusted amounts equal to the stored original amounts. Every future schema change ships as a reviewed Drizzle migration.
 
-Later real configuration replaces illustrative configuration by publishing new versions under a then-approved provenance value. It never rewrites, relabels or revalidates an existing illustrative record, and it never converts an illustrative offering into evidence of ability to perform. Adding a rule shape, adjustments or a selection policy extends the recorded version content rather than reinterpreting stored snapshots.
+Later real configuration replaces illustrative configuration by publishing new versions under a then-approved provenance value. It never rewrites, relabels or revalidates an existing illustrative record, and it never converts an illustrative offering into evidence of ability to perform. Adding a rule shape, another adjustment type or a selection policy extends future recorded content rather than reinterpreting stored Snapshots.
 
 ## 17. Security, reliability and observability
 
@@ -480,7 +514,7 @@ Later real configuration replaces illustrative configuration by publishing new v
 - Serialize authority and target-visibility revalidation against revocation, and reads, replays and version selection against publication (section 11.6), with database locks rather than application ordering alone.
 - Report success only after the database acknowledges the commit. How durable an acknowledged commit is, and how closely host clocks agree, are properties of the deployed database and hosts that these slices neither change nor verify.
 - Validate every direct identifier server-side and return non-leaking denials.
-- Keep labels, amounts, rates and quantities out of event metadata and diagnostic logs; record safe correlation identifiers instead.
+- Keep labels, amounts, rates, quantities and adjustment reasons out of event metadata and diagnostic logs; record safe correlation identifiers instead.
 - Make version allocation, supersession, snapshot creation, receipt writing and event recording atomic, with head uniqueness per scope enforced in the database and the `CURRENT` state derived from stored timestamps rather than a mutable flag.
 - Keep every slice usable with no AI and no external provider available.
 
@@ -490,7 +524,7 @@ No retention period, legal effect, fiscal validity, real price, ability to perfo
 
 The highest stable seam is the public REST interface against PostgreSQL, followed by one browser journey per slice. Tests never depend on private calculation internals.
 
-Across the three slices, delivery proves:
+Across the four slices, delivery proves:
 
 1. a shared Service Definition is created once, is visible to another Company of the same Workspace, and grants that Company nothing;
 2. an offering exists per (Company, Service Definition, provenance), is never readable by another Company, and its illustrative instance is marked non-operational while the record keeps its durable meaning;
@@ -516,8 +550,17 @@ Across the three slices, delivery proves:
 22. no endpoint converts an illustrative record into a real one, and no provenance value is editable;
 23. usable empty, validation, stale, not-effective, denial and success states at desktop and narrow width, with the provisional marker present wherever an amount is rendered;
 24. every case of the publication-guarantee matrix below holds in the slice it names.
+25. no-adjustment, positive and full-line discount boundaries; rejection of zero, malformed, duplicate and above-line discounts; multiple independently adjusted lines; and a maximum-size calculation, all hand-computed without `Number` coercion;
+26. pre-tax application and per-line `HALF_UP` prove the original net and tax, net and tax reductions, adjusted net and tax, and final totals, including a case where rounding the reduction directly would give a different result;
+27. the stored trace alone reproduces the adjusted totals, and an older R3B3 Snapshot reopens byte-for-byte unchanged with zero reduction in the compatible projection;
+28. an adjusted Snapshot is immutable; changing its amount, reason or target line needs a new idempotency key and creates a new Snapshot, while an exact retry returns the original and a changed payload conflicts;
+29. failures injected at the adjustment, Snapshot, receipt and event writes each leave no Snapshot, adjustment, receipt or event;
+30. Pricing User alone still creates an ordinary Snapshot but cannot submit an adjustment; Adjustment alone cannot calculate or read; both together can create an adjusted Snapshot; revocation before execution or replay fails closed; existing bundles never expand;
+31. direct identifiers, adjustment submission and reads preserve Company and Workspace isolation; `pricing_snapshot.created` stays attributed through the canonical event envelope, while its metadata exposes only a safe adjustment count and never amount, reason or duplicated actor data;
+32. the existing publication locks, Request-association ordering and concurrent retry proofs also hold for adjusted calculations, with one committed result and no historical rewrite;
+33. if an Offer consumer is delivered before O8 compatibility, R3B4 delivery proves that it rejects adjusted Snapshots with `PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED` without writes, while its unadjusted Snapshot journeys remain unchanged.
 
-**Publication-guarantee matrix.** These cases are required proofs, not a record of existing tests; a case counts as proven only when its test exists at the named seam and passes in CI. The Pricing Rule half of R3B2 ([#360](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/360)) must prove cases 1–10 for the Company rule scope, and the Tariff half must prove them once more for an offering scope. Cases 11–12 and the snapshot variants need Pricing Snapshots and are proven in R3B3. Fixed clocks set every instant. A barrier holds a database lock that the paused operation's next step needs and is released only after the test has observed the operation waiting on it; observers are counted as answered or waiting, never timed. No case uses sleeps, and further permutations of a proven case add no proof.
+**Publication-guarantee matrix.** These cases are required proofs, not a record of existing tests; a case counts as proven only when its test exists at the named seam and passes in CI. The Pricing Rule half of R3B2 ([#360](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/360)) must prove cases 1–10 for the Company rule scope, and the Tariff half must prove them once more for an offering scope. Cases 11–12 and the original snapshot variants need Pricing Snapshots and are proven in R3B3; R3B4 reruns their affected calculation, rollback, replay, revocation, association and history variants with an adjustment. Fixed clocks set every instant. A barrier holds a database lock that the paused operation's next step needs and is released only after the test has observed the operation waiting on it; observers are counted as answered or waiting, never timed. No case uses sleeps, and further permutations of a proven case add no proof.
 
 | #   | Case                                       | Deterministic setup                                                                                                                                                                                                                                                                                                             | Expected outcome                                                                                                                                                                                                                                                                                                                                                                                   | Seam and proving slice                                                       |
 | --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -540,6 +583,6 @@ These slices are authorized provisional MVP execution scope under Commercial Wor
 
 No new ADR is required. The slices stay inside the durable technical decisions in `AGENTS.md` and ADR [0002](../adr/0002-postgresql-with-drizzle.md), [0003](../adr/0003-nestjs-owns-business-decisions.md) and [0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md). Exact arithmetic uses scaled `BigInt` values and adds no dependency; that choice is recorded in the implementing pull request.
 
-Real business evidence remains required before any of this becomes operational: the real service catalogue and units, real rates, currencies and tax treatment per service and Company, real validity and rounding practice, discount and approval rules, the ability-to-perform evidence a real offering must carry, and the real split between catalogue, configuration and pricing roles. Iurie validates these against the demonstration; that review may confirm or correct any decision in section 13 through new versions or focused follow-up issues, without rewriting recorded history.
+Real business evidence remains required before any of this becomes operational: the real service catalogue and units, real rates, currencies and tax treatment per service and Company, real validity and rounding practice, permitted adjustment types, who may propose or apply them, threshold values per Company or service, margin inputs and formula, minimum margin, second-approval conditions, the ability-to-perform evidence a real offering must carry, and the real split between catalogue, configuration, pricing and adjustment roles. The [coverage matrix](iurie-business-answer-coverage.md) records S04-Q11–Q14, S04-Q20 and S04-Q40 as Partial: Iurie confirms threshold-controlled discounts, justification and an approval boundary in session 99, but the complete values and authority matrix remain absent. Those gaps block real use, not this visibly illustrative mechanism. Iurie validates these choices against the demonstration; that review may confirm or correct any decision in section 13 through new versions or focused follow-up issues, without rewriting recorded history.
 
-Apart from row 22 of section 13, which Dan approved as an MVP rule on 2026-09-25 (#387), no statement in this document claims that Dan approved the exact provisional rules, or that Iurie supplied or approved any example value. Live GitHub trackers own current ticket readiness and delivery status.
+Row 22 is Dan's explicitly approved MVP rule from 2026-09-25 (#387). Rows 23–25 are reversible agent-defined choices under Dan's standing delegation, normalized in #454; they are not claims that Dan personally specified those exact values or that Iurie approved real commercial policy. No statement claims that Iurie supplied or approved an example value, threshold or role. Live GitHub trackers own current ticket readiness and delivery status.
