@@ -3,6 +3,7 @@ import { assertFirstJourneyTranslationCoverage } from './first-journey-coverage'
 import {
   assertMessageCoverage,
   defineMessages,
+  formatMessage,
   resolveMessage,
 } from './messages';
 
@@ -68,5 +69,21 @@ describe('localized message boundary', () => {
 
   it('covers every message owned by the first localized journey', () => {
     expect(() => assertFirstJourneyTranslationCoverage()).not.toThrow();
+  });
+
+  it('preserves literal braces in interpolated business content', () => {
+    expect(
+      formatMessage('{actor} registered {company} on {today}.', {
+        actor: '{admin}',
+        company: '{today}',
+        today: '27 September 2026',
+      }),
+    ).toBe('{admin} registered {today} on 27 September 2026.');
+  });
+
+  it('reports a placeholder missing from the original template', () => {
+    expect(() =>
+      formatMessage('{actor} registered {company}.', { actor: 'Ada' }),
+    ).toThrow('Missing value for translation placeholder: {company}');
   });
 });

@@ -52,11 +52,13 @@ export function formatMessage(
   template: string,
   values: Readonly<Record<string, string | number>>,
 ): string {
-  let result = template;
-  for (const [name, value] of Object.entries(values))
-    result = result.replaceAll(`{${name}}`, String(value));
-  const unresolved = result.match(/\{[a-zA-Z][a-zA-Z0-9]*\}/u)?.[0];
-  if (unresolved)
-    throw new Error(`Missing value for translation placeholder: ${unresolved}`);
-  return result;
+  return template.replace(/\{[a-zA-Z][a-zA-Z0-9]*\}/gu, (placeholder) => {
+    const name = placeholder.slice(1, -1);
+    const value = values[name];
+    if (value === undefined)
+      throw new Error(
+        `Missing value for translation placeholder: ${placeholder}`,
+      );
+    return String(value);
+  });
 }

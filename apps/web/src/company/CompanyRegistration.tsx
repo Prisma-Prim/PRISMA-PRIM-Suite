@@ -28,7 +28,7 @@ type RegistrationState =
   | { status: 'idle' }
   | { status: 'submitting' }
   | { status: 'ready'; company: CompanyRecord }
-  | { status: 'validation'; message: string }
+  | { status: 'validation' }
   | { status: 'forbidden' }
   | { status: 'error' };
 
@@ -105,10 +105,7 @@ export function CompanyRegistration({
       retryCommand.current,
     );
     if (!command) {
-      setState({
-        status: 'validation',
-        message: copy.displayNameRequired,
-      });
+      setState({ status: 'validation' });
       return;
     }
 
@@ -153,10 +150,7 @@ export function CompanyRegistration({
         if (request.phase === 'create') {
           setState(
             request.result.status === 'validation'
-              ? {
-                  status: 'validation',
-                  message: copy.displayNameRequired,
-                }
+              ? { status: 'validation' }
               : { status: 'error' },
           );
           return;
@@ -214,7 +208,7 @@ export function CompanyRegistration({
       </form>
       {state.status === 'validation' && (
         <p id="company-registration-message" role="alert">
-          {state.message}
+          {copy.displayNameRequired}
         </p>
       )}
       {state.status === 'forbidden' && (
