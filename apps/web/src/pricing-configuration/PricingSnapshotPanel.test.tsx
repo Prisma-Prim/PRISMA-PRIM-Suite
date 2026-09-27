@@ -921,10 +921,13 @@ describe('PricingSnapshotPanel', () => {
     expect(screen.getAllByLabelText('Quantity')[0]).toBeDisabled();
     expect(screen.getByLabelText('Net reduction')).toHaveValue('8.63');
     expect(screen.getByLabelText('Net reduction')).toBeDisabled();
-    expect(screen.getByLabelText('Adjustment reason')).toHaveValue(
-      'Exact synthetic adjustment reason',
-    );
-    expect(screen.getByLabelText('Adjustment reason')).toBeDisabled();
+
+    const reason = screen.getByRole('textbox', {
+      name: 'Adjustment reason',
+    });
+    expect(reason).toHaveValue('Exact synthetic adjustment reason');
+    expect(reason).toBeVisible();
+    expect(reason).toBeDisabled();
     fireEvent.click(
       screen.getByRole('button', { name: 'Retry the same calculation' }),
     );
@@ -944,6 +947,7 @@ describe('PricingSnapshotPanel', () => {
     });
     renderPanel();
     await selectWorkedExample();
+    await enterFirstAdjustment();
     fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
     expect(
       await screen.findByText(/outcome is uncertain/u),
@@ -956,6 +960,13 @@ describe('PricingSnapshotPanel', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByLabelText('Quantity')[0]).toHaveValue('2.5');
     expect(screen.getAllByLabelText('Quantity')[0]).toBeEnabled();
+    expect(screen.getByLabelText('Net reduction')).toHaveValue('8.63');
+    expect(screen.getByLabelText('Net reduction')).toBeEnabled();
+    const reason = screen.getByRole('textbox', {
+      name: 'Adjustment reason',
+    });
+    expect(reason).toHaveValue('Exact synthetic adjustment reason');
+    expect(reason).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Calculate and save' }),
     ).toBeEnabled();

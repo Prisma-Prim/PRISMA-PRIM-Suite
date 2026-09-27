@@ -799,15 +799,18 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     const adjustedOffering = panel
       .getByRole('group')
       .filter({ has: page.getByLabel(offeringALabel, { exact: true }) });
+    // The enclosing label also contains textarea text; match the accessible name.
+    const adjustmentReason = adjustedOffering.getByRole('textbox', {
+      name: 'Adjustment reason',
+      exact: true,
+    });
     await adjustedOffering
       .getByLabel('Apply a fixed net discount', { exact: true })
       .check();
     await adjustedOffering
       .getByLabel('Net reduction', { exact: true })
       .fill('0.00');
-    await adjustedOffering
-      .getByLabel('Adjustment reason', { exact: true })
-      .fill('   ');
+    await adjustmentReason.fill('   ');
     await panel.getByRole('button', { name: 'Calculate and save' }).click();
     await expect(panel.getByRole('alert')).toHaveText(
       'Correct the highlighted values and try again.',
@@ -815,15 +818,11 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     await expect(
       adjustedOffering.getByLabel('Net reduction', { exact: true }),
     ).toHaveValue('0.00');
-    await expect(
-      adjustedOffering.getByLabel('Adjustment reason', { exact: true }),
-    ).toHaveValue('   ');
+    await expect(adjustmentReason).toHaveValue('   ');
     await adjustedOffering
       .getByLabel('Net reduction', { exact: true })
       .fill('8.63');
-    await adjustedOffering
-      .getByLabel('Adjustment reason', { exact: true })
-      .fill('Synthetic browser adjustment proof');
+    await adjustmentReason.fill('Synthetic browser adjustment proof');
     const attempts: Array<{ body: string | null; key: string | null }> = [];
     let loseFirstResponse = true;
     const snapshotCommand = `**/api/pricing/opportunities/${request.opportunityId}/snapshots`;
@@ -851,8 +850,13 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       adjustedOffering.getByLabel('Net reduction', { exact: true }),
     ).toBeDisabled();
     await expect(
-      adjustedOffering.getByLabel('Adjustment reason', { exact: true }),
-    ).toHaveValue('Synthetic browser adjustment proof');
+      adjustedOffering.getByLabel('Net reduction', { exact: true }),
+    ).toHaveValue('8.63');
+    await expect(adjustmentReason).toBeVisible();
+    await expect(adjustmentReason).toBeDisabled();
+    await expect(adjustmentReason).toHaveValue(
+      'Synthetic browser adjustment proof',
+    );
     await panel
       .getByRole('button', { name: 'Retry the same calculation' })
       .click();
