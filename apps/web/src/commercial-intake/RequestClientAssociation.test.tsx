@@ -38,20 +38,29 @@ describe('RequestClientAssociation', () => {
                 version: 2,
                 outcome: 'associated',
               },
-              request: { id: 'request-1', version: 2 },
+              request: { id: 'request-1', companyId: 'company-1', version: 2 },
             },
           }
         : { status: 200, body: [client] },
     );
     const onAssociated = vi.fn(async () => true);
 
-    renderAssociation({ request, onAssociated });
+    renderAssociation({
+      request,
+      onAssociated,
+      clientIdentityRevision: 7,
+    });
     await searchAndChooseClient();
     fireEvent.click(
       screen.getByRole('button', { name: copy.confirmClientAssociation }),
     );
 
-    await waitFor(() => expect(onAssociated).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(onAssociated).toHaveBeenCalledWith(
+        { id: 'request-1', companyId: 'company-1', version: 2 },
+        7,
+      ),
+    );
     expect(request).toHaveBeenLastCalledWith(
       expect.objectContaining({
         method: 'POST',
@@ -63,6 +72,89 @@ describe('RequestClientAssociation', () => {
       }),
     );
     expect(screen.getByText(copy.clientAssociationSuccess)).toBeVisible();
+  });
+
+  it.each([
+    ['receipt Request', { receiptRequestId: 'request-2' }],
+    ['returned Request', { requestId: 'request-2' }],
+    ['active Company', { companyId: 'company-2' }],
+  ])('rejects a 200 response for the wrong %s', async (_case, mismatch) => {
+    const onAssociated = vi.fn(async () => true);
+    const request = vi.fn<CommercialIntakeRequest>(async ({ method }) =>
+      method === 'POST'
+        ? {
+            status: 200,
+            body: {
+              receipt: {
+                requestId:
+                  'receiptRequestId' in mismatch
+                    ? mismatch.receiptRequestId
+                    : 'request-1',
+                version: 2,
+                outcome: 'associated',
+              },
+              request: {
+                id: 'requestId' in mismatch ? mismatch.requestId : 'request-1',
+                companyId:
+                  'companyId' in mismatch ? mismatch.companyId : 'company-1',
+                version: 2,
+              },
+            },
+          }
+        : { status: 200, body: [client] },
+    );
+    renderAssociation({ request, onAssociated });
+    await searchAndChooseClient();
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.confirmClientAssociation }),
+    );
+
+    expect(await screen.findByText(copy.clientAssociationError)).toBeVisible();
+    expect(onAssociated).not.toHaveBeenCalled();
+  });
+
+  it('keeps the identity revision captured before a deferred response', async () => {
+    let resolveAssociation:
+      | ((value: Awaited<ReturnType<CommercialIntakeRequest>>) => void)
+      | undefined;
+    const request = vi.fn<CommercialIntakeRequest>(({ method }) =>
+      method === 'POST'
+        ? new Promise((resolve) => {
+            resolveAssociation = resolve;
+          })
+        : Promise.resolve({ status: 200, body: [client] }),
+    );
+    const onAssociated = vi.fn(async () => true);
+    const identity = deterministicBrowserIdentity();
+    const view = renderAssociation({
+      request,
+      onAssociated,
+      clientIdentityRevision: 4,
+      identity,
+    });
+    await searchAndChooseClient();
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.confirmClientAssociation }),
+    );
+    view.rerender(
+      associationElement({
+        request,
+        onAssociated,
+        clientIdentityRevision: 5,
+        identity,
+      }),
+    );
+    resolveAssociation?.({
+      status: 200,
+      body: {
+        receipt: { requestId: 'request-1', version: 2, outcome: 'associated' },
+        request: { id: 'request-1', companyId: 'company-1', version: 2 },
+      },
+    });
+
+    await waitFor(() =>
+      expect(onAssociated).toHaveBeenCalledWith(expect.anything(), 4),
+    );
   });
 
   it('retries an uncertain result with the exact same payload and key', async () => {
@@ -83,7 +175,7 @@ describe('RequestClientAssociation', () => {
                 version: 2,
                 outcome: 'associated',
               },
-              request: { id: 'request-1', version: 2 },
+              request: { id: 'request-1', companyId: 'company-1', version: 2 },
             },
           };
     });
@@ -183,20 +275,28 @@ describe('RequestClientAssociation', () => {
 function associationElement({
   request,
   requestId = 'request-1',
+  clientIdentityRevision,
+  identity = deterministicBrowserIdentity(),
   handleAccess = okAccess,
   onAssociated = async () => true,
 }: {
   request: CommercialIntakeRequest;
   requestId?: string;
+  clientIdentityRevision?: number;
+  identity?: ReturnType<typeof deterministicBrowserIdentity>;
   handleAccess?: CommercialIntakeAccessHandler;
-  onAssociated?: (value: unknown) => Promise<boolean> | boolean;
+  onAssociated?: (
+    value: unknown,
+    identityRevision: number,
+  ) => Promise<boolean> | boolean;
 }) {
   return (
     <RequestClientAssociation
-      identity={deterministicBrowserIdentity()}
+      identity={identity}
       companyId="company-1"
       requestId={requestId}
       expectedVersion={1}
+      clientIdentityRevision={clientIdentityRevision}
       request={request}
       handleAccess={handleAccess}
       onAssociated={onAssociated}

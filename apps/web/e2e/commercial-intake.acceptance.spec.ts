@@ -419,7 +419,7 @@ test('captures and reopens manual Client Requests through the real API and Postg
   });
   await intake.getByRole('button', { name: 'Show older Requests' }).click();
   await expect(listItems).toHaveCount(1);
-  await listItems.first().getByRole('button').click();
+  await requestButton.click();
   await expect(
     intake.getByText('Client Request detail', { exact: true }),
   ).toBeVisible();
@@ -560,7 +560,9 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
   // With the same-named other dossier open, returning must switch dossiers.
   await openDossier(secondClientId);
   await navigate(page, navigation, 'Client Requests', narrow);
-  await rowFor(firstSubject).getByRole('button').click();
+  await rowFor(firstSubject)
+    .getByRole('button', { name: new RegExp(`^${firstSubject}`, 'u') })
+    .click();
   await expect(
     intake.getByText(`Exact source of ${firstSubject}`, { exact: true }),
   ).toBeVisible();

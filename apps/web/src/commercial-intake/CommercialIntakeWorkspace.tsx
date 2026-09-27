@@ -25,6 +25,7 @@ type RequestListItem = {
   capturedAt: string;
   /** Derived current dossier; a row without one never matches a restriction. */
   clientDossierId?: string;
+  clientDisplayName?: string;
   initialOpportunity: {
     title: string;
     nextAction: string;
@@ -977,17 +978,37 @@ export function CommercialIntakeWorkspace({
                 companyId={companyId}
                 requestId={selected.request.id}
                 expectedVersion={selected.request.version}
+                clientIdentityRevision={clientIdentityRevision}
                 request={request}
                 handleAccess={handleAccess}
-                onAssociated={async (value) => {
+                onAssociated={async (value, startedUnderRevision) => {
                   if (!isClientRequest(value)) return false;
                   setSelected({
                     request: value,
-                    identityRevision: identityRevision.current,
+                    identityRevision: startedUnderRevision,
                   });
+                  if (startedUnderRevision === identityRevision.current)
+                    setLoad((current) =>
+                      current.kind !== 'ready' || !value.clientReference
+                        ? current
+                        : {
+                            ...current,
+                            items: current.items.map((item) =>
+                              item.id === value.id
+                                ? {
+                                    ...item,
+                                    clientDossierId:
+                                      value.clientReference?.currentClientId ??
+                                      value.clientReference?.originalClientId,
+                                    clientDisplayName:
+                                      value.clientReference?.displayName,
+                                  }
+                                : item,
+                            ),
+                          },
+                    );
                   setFeedback(copy.clientAssociationSuccess);
                   await onActivityRecorded();
-                  await loadRequests(companyId);
                   return true;
                 }}
               />
@@ -1152,6 +1173,7 @@ export function CommercialIntakeWorkspace({
               companyId && void loadRequests(companyId, cursor)
             }
             companyName={companyName}
+            onOpenClientDossier={onOpenClientDossier}
           />
         </>
       )}
@@ -1239,6 +1261,7 @@ function RequestList({
   onReload,
   onLoadOlder,
   companyName,
+  onOpenClientDossier,
 }: {
   load: LoadState;
   pending: boolean;
@@ -1250,6 +1273,7 @@ function RequestList({
   onReload: () => void;
   onLoadOlder: (cursor: string) => void;
   companyName: string;
+  onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const filterField = useRef<HTMLInputElement>(null);
   if (load.kind === 'loading') return <p>{copy.loading}</p>;
@@ -1353,6 +1377,24 @@ function RequestList({
                 </time>
               </small>
             </button>
+            {item.clientDossierId ? (
+              <p>
+                {item.clientDisplayName
+                  ? `${copy.client}: ${item.clientDisplayName} `
+                  : null}
+                {onOpenClientDossier ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.clientDossierId)
+                        onOpenClientDossier(item.clientDossierId);
+                    }}
+                  >
+                    {copy.openClientDossier}
+                  </button>
+                ) : null}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -1625,6 +1667,8 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     isDisplayableTimestamp(value.capturedAt) &&
     (value.clientDossierId === undefined ||
       typeof value.clientDossierId === 'string') &&
+    (value.clientDisplayName === undefined ||
+      typeof value.clientDisplayName === 'string') &&
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&

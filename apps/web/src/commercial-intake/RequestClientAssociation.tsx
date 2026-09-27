@@ -43,13 +43,14 @@ type AssociationState =
   | 'uncertain'
   | 'error';
 
-type Retry = { payload: string; key: string };
+type Retry = { payload: string; key: string; identityRevision: number };
 
 export function RequestClientAssociation({
   identity,
   companyId,
   requestId,
   expectedVersion,
+  clientIdentityRevision = 0,
   request,
   handleAccess,
   onAssociated,
@@ -58,9 +59,13 @@ export function RequestClientAssociation({
   companyId: string;
   requestId: string;
   expectedVersion: number;
+  clientIdentityRevision?: number;
   request: CommercialIntakeRequest;
   handleAccess: CommercialIntakeAccessHandler;
-  onAssociated: (value: unknown) => Promise<boolean> | boolean;
+  onAssociated: (
+    value: unknown,
+    identityRevision: number,
+  ) => Promise<boolean> | boolean;
 }) {
   const [query, setQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -141,6 +146,7 @@ export function RequestClientAssociation({
           clientAccountId: selectedClientId,
         }),
         key: crypto.randomUUID(),
+        identityRevision: clientIdentityRevision,
       } satisfies Retry);
     retry.current = command;
     associationRequest.current?.abort();
@@ -169,8 +175,18 @@ export function RequestClientAssociation({
         setAssociation('denied');
         return;
       }
-      if (result.status === 200 && isAssociationResult(result.body)) {
-        const accepted = await onAssociated(result.body.request);
+      if (
+        result.status === 200 &&
+        isAssociationResult(result.body, {
+          companyId,
+          requestId,
+          version: expectedVersion + 1,
+        })
+      ) {
+        const accepted = await onAssociated(
+          result.body.request,
+          command.identityRevision,
+        );
         if (controller.signal.aborted) return;
         if (!accepted) {
           retry.current = undefined;
@@ -329,14 +345,18 @@ function isClientChoices(value: unknown): value is ClientChoice[] {
 
 function isAssociationResult(
   value: unknown,
+  expected: { companyId: string; requestId: string; version: number },
 ): value is { receipt: Record<string, unknown>; request: unknown } {
   return (
     isRecord(value) &&
     isRecord(value.receipt) &&
-    typeof value.receipt.requestId === 'string' &&
-    value.receipt.version === 2 &&
+    value.receipt.requestId === expected.requestId &&
+    value.receipt.version === expected.version &&
     value.receipt.outcome === 'associated' &&
-    Object.hasOwn(value, 'request')
+    isRecord(value.request) &&
+    value.request.id === expected.requestId &&
+    value.request.companyId === expected.companyId &&
+    value.request.version === expected.version
   );
 }
 
