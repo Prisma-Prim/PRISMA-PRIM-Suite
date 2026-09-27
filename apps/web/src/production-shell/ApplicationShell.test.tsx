@@ -4,7 +4,7 @@ import {
   render,
   screen,
   waitFor,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ApplicationShell, type ApplicationSection } from './ApplicationShell';
 import { Select } from '../presentation/Select';

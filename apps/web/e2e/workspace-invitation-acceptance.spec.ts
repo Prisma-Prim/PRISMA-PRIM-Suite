@@ -288,27 +288,29 @@ for (const failureAt of ['after capture', 'after commit', 'before replay']) {
       await expect.poll(() => keys.length).toBe(2);
       expect(keys[1]).toBe(keys[0]);
     }
+    const firstGreeting =
+      failureAt === 'before replay' ? 'Bună, Recipient.' : 'Hello, Recipient.';
     await expect(
-      page.getByRole('heading', { name: 'Hello, Recipient.' }),
+      page.getByRole('heading', { name: firstGreeting }),
     ).toBeVisible();
     expect(actorReads).toBeGreaterThanOrEqual(2);
     await page.reload();
     await expect(
-      page.getByRole('heading', { name: 'Hello, Recipient.' }),
+      page.getByRole('heading', { name: 'Bună, Recipient.' }),
     ).toBeVisible();
     if (testInfo.project.name === 'narrow')
-      await page.getByRole('button', { name: 'Open navigation' }).click();
+      await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
     await expect(page.locator('.prisme-breadcrumb')).toContainText(
       'Invited Workspace',
     );
     await expect(
-      page.getByText('No Company is assigned to you.', { exact: false }),
+      page.getByText('Nu vă este atribuită nicio Companie.', { exact: false }),
     ).toBeVisible();
     await expect(
-      page.getByRole('link', { name: 'Clients', exact: true }),
+      page.getByRole('link', { name: 'Clienți', exact: true }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: 'Register Company' }),
+      page.getByRole('button', { name: 'Înregistrați Compania' }),
     ).toHaveCount(0);
     expect(keys[0]).toBeTruthy();
     expect(page.url()).not.toContain('opaque_ticket');

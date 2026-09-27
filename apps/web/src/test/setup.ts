@@ -10,4 +10,8 @@ beforeEach(() => {
   vi.stubEnv('VITE_API_URL', undefined);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  if (typeof localStorage !== 'undefined')
+    localStorage.removeItem('prisma-prim.interface-locale');
+});

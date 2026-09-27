@@ -2,13 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from './access-composition';
 import { ApplicationRoot } from './ApplicationRoot';
+import { interfaceLocaleStorageKey } from './localization/interface-locale';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  localStorage.removeItem(interfaceLocaleStorageKey);
   sessionStorage.clear();
 });
 
 it('clears the prior Workspace selection when the server rejects the session', async () => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   sessionStorage.setItem(
     'prisma-workspace-context',
     'aaaaaaaa-0000-4000-8000-000000000163',

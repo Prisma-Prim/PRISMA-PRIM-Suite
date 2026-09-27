@@ -1,7 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
 /** Exercise legacy URL compatibility without a removed product control or remount. */
-export async function enterClassicCompatibility(page: Page) {
+export async function enterClassicCompatibility(
+  page: Page,
+  presentationControlName = 'Try Prisme',
+) {
   // The removed control used to wait for the initial Prisme render before
   // navigation. Keep that precondition when exercising a history transition.
   await expect(page.locator('.prisme-shell')).toBeVisible();
@@ -11,5 +14,7 @@ export async function enterClassicCompatibility(page: Page) {
     window.history.pushState(window.history.state, '', url);
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
-  await expect(page.getByRole('button', { name: 'Try Prisme' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: presentationControlName }),
+  ).toBeVisible();
 }
