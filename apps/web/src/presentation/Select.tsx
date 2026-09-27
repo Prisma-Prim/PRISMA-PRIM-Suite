@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { selectCopy as copy } from './select.copy';
+import { useSelectCopy } from './select.copy';
 import './select.css';
 
 export type SelectOption = Readonly<{
@@ -73,8 +73,8 @@ export function Select({
   options,
   onValueChange,
   placeholder,
-  emptyMessage = copy.empty,
-  unavailableMessage = copy.unavailable,
+  emptyMessage,
+  unavailableMessage,
   disabled = false,
   required = false,
   invalid = false,
@@ -85,6 +85,9 @@ export function Select({
   title,
   className,
 }: SelectProps) {
+  const copy = useSelectCopy();
+  const resolvedEmptyMessage = emptyMessage ?? copy.empty;
+  const resolvedUnavailableMessage = unavailableMessage ?? copy.unavailable;
   const generatedId = useId();
   const listboxId = `${id}-${generatedId}-listbox`;
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -116,7 +119,7 @@ export function Select({
     value !== '' &&
     (selectedOption === undefined || selectedOption.disabled === true);
   const displayValue = selectedIsUnavailable
-    ? `${unavailableMessage}${selectedOption ? `: ${selectedOption.label}` : ''}`
+    ? `${resolvedUnavailableMessage}${selectedOption ? `: ${selectedOption.label}` : ''}`
     : (selectedOption?.label ?? placeholder ?? copy.fallback);
   const submittedValue = selectedIsUnavailable ? '' : value;
   const enabledIndexes = useMemo(
@@ -478,7 +481,7 @@ export function Select({
               className="shared-select__listbox"
             >
               {menuOptions.length === 0 ? (
-                <p className="shared-select__empty">{emptyMessage}</p>
+                <p className="shared-select__empty">{resolvedEmptyMessage}</p>
               ) : (
                 menuOptions.map((option, index) => {
                   const isSelected = option.value === value;

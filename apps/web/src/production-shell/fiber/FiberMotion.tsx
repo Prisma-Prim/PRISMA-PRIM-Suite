@@ -5,10 +5,11 @@ import type {
   FiberState,
   FiberVariant,
 } from './fiber-renderer';
-import { fiberCopy as copy } from './fiber.copy';
+import { useFiberCopy } from './fiber.copy';
 import './fiber-motion.css';
 
 export function FiberMotion({ variant = 'light' }: { variant?: FiberVariant }) {
+  const copy = useFiberCopy();
   const hostRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<FiberController | null>(null);
   const [media] = useState(() =>

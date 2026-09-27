@@ -298,59 +298,69 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
   await page.goto('/accept-invitation?invitation=' + invitationId);
   await page.getByRole('button', { name: 'Accept invitation' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+    page.getByRole('heading', { name: 'Bună, Ada Ionescu.' }),
   ).toBeVisible();
   await page
     .locator('.prisme-capabilities')
-    .getByRole('link', { name: /Activity Log/ })
+    .getByRole('link', { name: /Jurnal de activitate/ })
     .click();
-  await expect(page.locator('#prisme-page-title')).toHaveText('Activity Log');
+  await expect(page.locator('#prisme-page-title')).toHaveText(
+    'Jurnal de activitate',
+  );
   await page.reload();
-  await expect(page.locator('#prisme-page-title')).toHaveText('Activity Log');
+  await expect(page.locator('#prisme-page-title')).toHaveText(
+    'Jurnal de activitate',
+  );
   await expect(page.locator('.prisme-breadcrumb')).toContainText(
     actor.workspaceName,
   );
   const navigation = page.getByRole('navigation', {
-    name: 'Primary navigation',
+    name: 'Navigare principală',
   });
   if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await navigation.getByRole('link', { name: 'Overview', exact: true }).click();
+    await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
+  await navigation
+    .getByRole('link', { name: 'Prezentare generală', exact: true })
+    .click();
   await expect(page.locator('#prisme-page-title')).toHaveText(
-    'Hello, Ada Ionescu.',
+    'Bună, Ada Ionescu.',
   );
   await page.goBack();
-  await expect(page.locator('#prisme-page-title')).toHaveText('Activity Log');
+  await expect(page.locator('#prisme-page-title')).toHaveText(
+    'Jurnal de activitate',
+  );
   await page.goForward();
   await expect(page.locator('#prisme-page-title')).toHaveText(
-    'Hello, Ada Ionescu.',
+    'Bună, Ada Ionescu.',
   );
   await page.reload();
   await expect(page.locator('#prisme-page-title')).toHaveText(
-    'Hello, Ada Ionescu.',
+    'Bună, Ada Ionescu.',
   );
   if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
   await navigation
-    .getByRole('link', { name: 'PRISMA-PRIM Suite home' })
+    .getByRole('link', { name: 'Pagina principală PRISMA-PRIM Suite' })
     .click();
   if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
   await navigation
-    .getByRole('link', { name: 'Activity Log', exact: true })
+    .getByRole('link', { name: 'Jurnal de activitate', exact: true })
     .click();
   if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await enterClassicCompatibility(page);
+    await page.getByRole('button', { name: 'Deschideți navigarea' }).click();
+  await enterClassicCompatibility(page, 'Încercați Prisme');
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Welcome to PRISMA-PRIM Suite' }),
+    page.getByRole('heading', { name: 'Bine ați venit în PRISMA-PRIM Suite' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Company context' }),
+    page.getByRole('region', { name: 'Contextul Companiei' }),
   ).toContainText(actor.workspaceName);
-  await page.getByRole('button', { name: 'Try Prisme' }).click();
-  await expect(page.locator('#prisme-page-title')).toHaveText('Activity Log');
+  await page.getByRole('button', { name: 'Încercați Prisme' }).click();
+  await expect(page.locator('#prisme-page-title')).toHaveText(
+    'Jurnal de activitate',
+  );
   await page.screenshot({
     path: testInfo.outputPath(
       `prisme-invitation-recovery-${testInfo.project.name}.png`,

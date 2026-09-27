@@ -6,6 +6,7 @@ import {
 } from '@clerk/react';
 import { useMemo, type ReactNode } from 'react';
 import { clearWorkspaceSelection } from './access/workspace-selection';
+import { useAppCopy } from './app.copy';
 
 export interface BrowserIdentity {
   loaded: boolean;
@@ -84,11 +85,16 @@ export function deterministicBrowserIdentity(
       sessionStorage.setItem('deterministic-auth-state', 'signed-out');
       window.location.reload();
     },
-    signedOutView: (
-      <main className="production-access-state">
-        <p role="alert">Sign in is required to access this workspace.</p>
-      </main>
-    ),
+    signedOutView: <DeterministicSignedOutView />,
     requestHeaders,
   };
+}
+
+function DeterministicSignedOutView() {
+  const copy = useAppCopy();
+  return (
+    <main className="production-access-state">
+      <p role="alert">{copy.signInRequired}</p>
+    </main>
+  );
 }

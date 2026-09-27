@@ -97,6 +97,7 @@
 
 .public-welcome h1 {
   max-width: 620px;
+  overflow-wrap: anywhere;
   margin: 0;
   font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(3.1rem, 5.7vw, 5.7rem);

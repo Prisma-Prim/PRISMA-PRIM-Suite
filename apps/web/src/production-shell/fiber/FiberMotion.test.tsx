@@ -1,5 +1,10 @@
 import { StrictMode } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+} from '../../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FiberMotion } from './FiberMotion';
 

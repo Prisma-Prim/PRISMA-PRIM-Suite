@@ -2,14 +2,14 @@ import { CalendarClock, FolderKanban, Users } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
-import { formatApplicationCount } from '../presentation/number';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   readOperationalHome,
   type CompanySummary,
   type CompanySummaryKind,
   type OperationalHomeView,
 } from './operational-home-response';
-import { operationalHomeCopy as copy } from './operational-home.copy';
+import { useOperationalHomeCopy } from './operational-home-localized.copy';
 import { MyAttention } from './MyAttention';
 import { OverdueTasksPanel } from './OverdueTasksPanel';
 import './operational-home.css';
@@ -60,6 +60,8 @@ export function OperationalHome({
   onOpenMyTasks,
   onOpenTask,
 }: Props) {
+  const copy = useOperationalHomeCopy();
+  const { formatDate } = useInterfaceLocale();
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [panelOpen, setPanelOpen] = useState(false);
@@ -173,7 +175,7 @@ export function OperationalHome({
             <p>
               {copy.note({
                 company: company.displayName,
-                today: load.view.today,
+                today: formatDate(load.view.today),
               })}
             </p>
           )}
@@ -218,6 +220,8 @@ function Body({
   onOpen: (kind: CompanySummaryKind) => void;
   overdueCard: RefObject<HTMLButtonElement | null>;
 }) {
+  const copy = useOperationalHomeCopy();
+  const { formatDate } = useInterfaceLocale();
   switch (load.kind) {
     case 'loading':
       return (
@@ -245,7 +249,7 @@ function Body({
                 summary={summary}
                 context={{
                   company: company.displayName,
-                  today: load.view.today,
+                  today: formatDate(load.view.today),
                 }}
                 onOpen={onOpen}
                 cardRef={
@@ -274,10 +278,12 @@ function SummaryCard({
   onOpen: (kind: CompanySummaryKind) => void;
   cardRef: RefObject<HTMLButtonElement | null> | undefined;
 }) {
+  const copy = useOperationalHomeCopy();
+  const { formatNumber } = useInterfaceLocale();
   const definitionId = useId();
   const entry = copy.summaries[summary.kind];
   const Icon = icons[summary.kind];
-  const count = formatApplicationCount(summary.count);
+  const count = formatNumber(summary.count);
   return (
     <button
       ref={cardRef}

@@ -9,6 +9,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import {
+  InterfaceLocaleProvider,
+  interfaceLocaleStorageKey,
+} from '../localization/interface-locale';
+import {
   browserIdentity,
   deferred,
 } from '../production-shell/production-shell-context.test-fixtures';
@@ -134,19 +138,21 @@ function renderHome(
     onOpenTask: vi.fn(),
   };
   const view = render(
-    <OperationalHome
-      workspaceMembershipId={attribution.workspaceMembershipId}
-      company={company}
-      identity={deterministicBrowserIdentity()}
-      availableSummaries={{
-        active_clients: true,
-        open_projects: true,
-        overdue_tasks: true,
-      }}
-      onRevalidateAuthority={async () => undefined}
-      {...callbacks}
-      {...props}
-    />,
+    <InterfaceLocaleProvider>
+      <OperationalHome
+        workspaceMembershipId={attribution.workspaceMembershipId}
+        company={company}
+        identity={deterministicBrowserIdentity()}
+        availableSummaries={{
+          active_clients: true,
+          open_projects: true,
+          overdue_tasks: true,
+        }}
+        onRevalidateAuthority={async () => undefined}
+        {...callbacks}
+        {...props}
+      />
+    </InterfaceLocaleProvider>,
   );
   return { ...callbacks, ...view };
 }
@@ -166,11 +172,13 @@ const panel = () =>
 
 let language: string;
 beforeEach(() => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   language = document.documentElement.lang;
   document.documentElement.lang = 'en-US';
 });
 afterEach(() => {
   document.documentElement.lang = language;
+  localStorage.removeItem(interfaceLocaleStorageKey);
   vi.unstubAllGlobals();
   sessionStorage.clear();
 });
@@ -218,17 +226,17 @@ describe('Company summary', () => {
       'Projects you can open that are not closed',
     );
     expect(card(overdueCard())).toHaveAccessibleDescription(
-      'Open Tasks due before 2026-09-27 in Projects you can open',
+      'Open Tasks due before Sep 27, 2026 in Projects you can open',
     );
     expect(overdueCard()).toBe('Overdue Tasks: 12,345. Show the overdue Tasks');
     const cards = within(region()).getAllByRole('listitem');
     expect(cards.map((item) => item.textContent)).toEqual([
       'Active Clients3Clients with an active relationship with PRISMA-PRIM',
       'Open Projects2Projects you can open that are not closed',
-      'Overdue Tasks12,345Open Tasks due before 2026-09-27 in Projects you can open',
+      'Overdue Tasks12,345Open Tasks due before Sep 27, 2026 in Projects you can open',
     ]);
     expect(region()).toHaveTextContent(
-      'Counted on 2026-09-27 from the records you can open in PRISMA-PRIM.',
+      'Counted on Sep 27, 2026 from the records you can open in PRISMA-PRIM.',
     );
     expect(server.calls).toHaveLength(1);
     expect(server.calls[0]?.init?.method ?? 'GET').toBe('GET');
@@ -408,14 +416,14 @@ describe('Overdue Tasks panel', () => {
     ).toEqual([
       [
         'Collect procedures',
-        '2026-09-20',
+        'Sep 20, 2026',
         'Ana · 1',
         'ISO 9001 — GRUP Demo SA',
         'GRUP Demo SA',
       ],
       [
         'Draft quality manual',
-        '2026-09-26',
+        'Sep 26, 2026',
         'Unassigned',
         'ISO 9001 — GRUP Demo SA',
         'GRUP Demo SA',
@@ -425,7 +433,7 @@ describe('Overdue Tasks panel', () => {
     expect(first).toHaveTextContent('Overdue by 7 days');
     expect(second).toHaveTextContent('Blocked');
     expect(second).toHaveTextContent('Overdue by 1 day');
-    expect(within(first).getByText('2026-09-20')).toHaveAttribute(
+    expect(within(first).getByText('Sep 20, 2026')).toHaveAttribute(
       'datetime',
       '2026-09-20',
     );
