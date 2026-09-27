@@ -1,17 +1,6 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
-type Key =
-  | 'product'
-  | 'eyebrow'
-  | 'title'
-  | 'description'
-  | 'invitationOnly'
-  | 'signIn'
-  | 'workflowLabel'
-  | 'workflowRequests'
-  | 'workflowDocuments'
-  | 'workflowDecisions';
-const keys: readonly Key[] = [
+const keys = [
   'product',
   'eyebrow',
   'title',
@@ -22,7 +11,7 @@ const keys: readonly Key[] = [
   'workflowRequests',
   'workflowDocuments',
   'workflowDecisions',
-];
+] as const;
 
 export const publicWelcomeMessages = defineMessages(keys, {
   ro: {

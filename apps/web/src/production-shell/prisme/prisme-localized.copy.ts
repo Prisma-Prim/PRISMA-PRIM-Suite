@@ -4,54 +4,7 @@ import {
   useMessages,
 } from '../../localization/messages';
 
-type Key =
-  | 'optIn'
-  | 'presentation'
-  | 'home'
-  | 'overview'
-  | 'current'
-  | 'navigation'
-  | 'openNavigation'
-  | 'closeNavigation'
-  | 'skipToContent'
-  | 'workspace'
-  | 'company'
-  | 'noCompany'
-  | 'brandHome'
-  | 'brandTagline'
-  | 'greeting'
-  | 'introduction'
-  | 'heroEyebrow'
-  | 'heroTitle'
-  | 'heroDescription'
-  | 'capabilities'
-  | 'capabilitiesDescription'
-  | 'contextTitle'
-  | 'contextDescription'
-  | 'clientsLabel'
-  | 'clientsDescription'
-  | 'documentsLabel'
-  | 'documentsDescription'
-  | 'projectsLabel'
-  | 'projectsDescription'
-  | 'myTasksLabel'
-  | 'myTasksDescription'
-  | 'requestsLabel'
-  | 'requestsDescription'
-  | 'catalogueLabel'
-  | 'catalogueDescription'
-  | 'pricingLabel'
-  | 'pricingDescription'
-  | 'accessLabel'
-  | 'accessDescription'
-  | 'companiesLabel'
-  | 'companiesDescription'
-  | 'activityLabel'
-  | 'activityDescription'
-  | 'invitationsLabel'
-  | 'invitationsDescription';
-
-const keys: readonly Key[] = [
+const keys = [
   'optIn',
   'presentation',
   'home',
@@ -97,7 +50,8 @@ const keys: readonly Key[] = [
   'activityDescription',
   'invitationsLabel',
   'invitationsDescription',
-];
+] as const;
+type Key = (typeof keys)[number];
 
 export const prismeMessages = defineMessages(keys, {
   ro: {
@@ -329,7 +283,13 @@ export const prismeMessages = defineMessages(keys, {
 
 export function usePrismeCopy() {
   const message = useMessages(prismeMessages);
-  const section = (label: Key, description: Key) => ({
+  const section = ({
+    label,
+    description,
+  }: {
+    label: Key;
+    description: Key;
+  }) => ({
     label: message(label),
     description: message(description),
   });
@@ -358,17 +318,50 @@ export function usePrismeCopy() {
     contextTitle: message('contextTitle'),
     contextDescription: message('contextDescription'),
     sections: {
-      clients: section('clientsLabel', 'clientsDescription'),
-      documents: section('documentsLabel', 'documentsDescription'),
-      projects: section('projectsLabel', 'projectsDescription'),
-      myTasks: section('myTasksLabel', 'myTasksDescription'),
-      requests: section('requestsLabel', 'requestsDescription'),
-      catalogue: section('catalogueLabel', 'catalogueDescription'),
-      pricing: section('pricingLabel', 'pricingDescription'),
-      access: section('accessLabel', 'accessDescription'),
-      companies: section('companiesLabel', 'companiesDescription'),
-      activity: section('activityLabel', 'activityDescription'),
-      invitations: section('invitationsLabel', 'invitationsDescription'),
+      clients: section({
+        label: 'clientsLabel',
+        description: 'clientsDescription',
+      }),
+      documents: section({
+        label: 'documentsLabel',
+        description: 'documentsDescription',
+      }),
+      projects: section({
+        label: 'projectsLabel',
+        description: 'projectsDescription',
+      }),
+      myTasks: section({
+        label: 'myTasksLabel',
+        description: 'myTasksDescription',
+      }),
+      requests: section({
+        label: 'requestsLabel',
+        description: 'requestsDescription',
+      }),
+      catalogue: section({
+        label: 'catalogueLabel',
+        description: 'catalogueDescription',
+      }),
+      pricing: section({
+        label: 'pricingLabel',
+        description: 'pricingDescription',
+      }),
+      access: section({
+        label: 'accessLabel',
+        description: 'accessDescription',
+      }),
+      companies: section({
+        label: 'companiesLabel',
+        description: 'companiesDescription',
+      }),
+      activity: section({
+        label: 'activityLabel',
+        description: 'activityDescription',
+      }),
+      invitations: section({
+        label: 'invitationsLabel',
+        description: 'invitationsDescription',
+      }),
     },
   };
 }

@@ -1,15 +1,6 @@
 import { defineMessages, useMessages } from './localization/messages';
 
-type AppMessageKey =
-  | 'checkingAccess'
-  | 'inactiveAccess'
-  | 'accessError'
-  | 'signInRequired'
-  | 'signOut'
-  | 'homeTitle'
-  | 'homeIntroduction';
-
-const keys: readonly AppMessageKey[] = [
+const keys = [
   'checkingAccess',
   'inactiveAccess',
   'accessError',
@@ -17,7 +8,7 @@ const keys: readonly AppMessageKey[] = [
   'signOut',
   'homeTitle',
   'homeIntroduction',
-];
+] as const;
 
 export const appMessages = defineMessages(keys, {
   ro: {

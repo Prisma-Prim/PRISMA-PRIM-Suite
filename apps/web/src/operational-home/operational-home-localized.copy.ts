@@ -6,60 +6,7 @@ import {
 } from '../localization/messages';
 import type { CompanySummaryKind } from './operational-home-response';
 
-type Key =
-  | 'title'
-  | 'note'
-  | 'refresh'
-  | 'retry'
-  | 'loading'
-  | 'error'
-  | 'denied'
-  | 'activeClientsLabel'
-  | 'activeClientsDefinition'
-  | 'activeClientsDestination'
-  | 'openProjectsLabel'
-  | 'openProjectsDefinition'
-  | 'openProjectsDestination'
-  | 'overdueTasksLabel'
-  | 'overdueTasksDefinition'
-  | 'overdueTasksDestination'
-  | 'cardName'
-  | 'overdueTitle'
-  | 'overdueLoading'
-  | 'overdueError'
-  | 'overdueDenied'
-  | 'overdueEmpty'
-  | 'overdueTruncated'
-  | 'overdueListLabel'
-  | 'overdueByOne'
-  | 'overdueByMany'
-  | 'state'
-  | 'dueDate'
-  | 'responsible'
-  | 'unassigned'
-  | 'project'
-  | 'client'
-  | 'open'
-  | 'openTask'
-  | 'close'
-  | 'closeOverdue'
-  | 'attentionTitle'
-  | 'attentionListLabel'
-  | 'attentionEmpty'
-  | 'attentionTruncated'
-  | 'critical'
-  | 'blocked'
-  | 'dueToday'
-  | 'dueInOne'
-  | 'dueInMany'
-  | 'noDate'
-  | 'seeAll'
-  | 'todo'
-  | 'inProgress'
-  | 'done'
-  | 'cancelled';
-
-const keys: readonly Key[] = [
+const keys = [
   'title',
   'note',
   'refresh',
@@ -111,7 +58,8 @@ const keys: readonly Key[] = [
   'inProgress',
   'done',
   'cancelled',
-];
+] as const;
+type Key = (typeof keys)[number];
 
 export const operationalHomeMessages = defineMessages(keys, {
   ro: {

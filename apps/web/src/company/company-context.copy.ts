@@ -1,20 +1,6 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
-type Key =
-  | 'eyebrow'
-  | 'title'
-  | 'workspace'
-  | 'activeCompany'
-  | 'selectCompany'
-  | 'chooseCompany'
-  | 'loading'
-  | 'noCompanies'
-  | 'noAssignment'
-  | 'unavailable'
-  | 'forbidden'
-  | 'stale'
-  | 'selectionFailed';
-const keys: readonly Key[] = [
+const keys = [
   'eyebrow',
   'title',
   'workspace',
@@ -28,7 +14,7 @@ const keys: readonly Key[] = [
   'forbidden',
   'stale',
   'selectionFailed',
-];
+] as const;
 
 export const companyContextMessages = defineMessages(keys, {
   ro: {

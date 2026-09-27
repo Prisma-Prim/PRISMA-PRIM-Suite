@@ -1,7 +1,6 @@
 import { defineMessages, useMessages } from './messages';
 
-type InterfaceLocaleMessageKey = 'label';
-const keys: readonly InterfaceLocaleMessageKey[] = ['label'];
+const keys = ['label'] as const;
 
 export const interfaceLocaleMessages = defineMessages(keys, {
   ro: { label: 'Limba interfeței' },

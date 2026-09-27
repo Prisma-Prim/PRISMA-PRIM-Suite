@@ -1,7 +1,6 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
-type SelectMessageKey = 'empty' | 'unavailable' | 'fallback';
-const keys: readonly SelectMessageKey[] = ['empty', 'unavailable', 'fallback'];
+const keys = ['empty', 'unavailable', 'fallback'] as const;
 
 export const selectMessages = defineMessages(keys, {
   ro: {

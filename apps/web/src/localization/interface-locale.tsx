@@ -6,16 +6,10 @@ import {
   type ReactNode,
 } from 'react';
 
-export type InterfaceLocale = 'ro' | 'ru' | 'fr' | 'en';
-
 export const defaultInterfaceLocale: InterfaceLocale = 'ro';
 export const interfaceLocaleStorageKey = 'prisma-prim.interface-locale';
-export const interfaceLocales: readonly InterfaceLocale[] = [
-  'ro',
-  'ru',
-  'fr',
-  'en',
-];
+export const interfaceLocales = ['ro', 'ru', 'fr', 'en'] as const;
+export type InterfaceLocale = (typeof interfaceLocales)[number];
 
 type InterfaceLocaleContextValue = Readonly<{
   locale: InterfaceLocale;
@@ -69,7 +63,7 @@ const InterfaceLocaleContext = createContext<InterfaceLocaleContextValue>({
 });
 
 export function isInterfaceLocale(value: unknown): value is InterfaceLocale {
-  return value === 'ro' || value === 'ru' || value === 'fr' || value === 'en';
+  return interfaceLocales.some((locale) => locale === value);
 }
 
 function readInterfaceLocale(): InterfaceLocale {

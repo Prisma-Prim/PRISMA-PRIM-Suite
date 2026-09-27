@@ -4,22 +4,7 @@ import {
   useMessages,
 } from '../localization/messages';
 
-type Key =
-  | 'permissionDenied'
-  | 'displayNameRequired'
-  | 'retryableError'
-  | 'eyebrow'
-  | 'title'
-  | 'description'
-  | 'displayNameLabel'
-  | 'submit'
-  | 'submitting'
-  | 'active'
-  | 'workspace'
-  | 'created'
-  | 'authorizedUser'
-  | 'registeredBy';
-const keys: readonly Key[] = [
+const keys = [
   'permissionDenied',
   'displayNameRequired',
   'retryableError',
@@ -34,7 +19,7 @@ const keys: readonly Key[] = [
   'created',
   'authorizedUser',
   'registeredBy',
-];
+] as const;
 
 export const companyRegistrationMessages = defineMessages(keys, {
   ro: {

@@ -1,13 +1,6 @@
 import { defineMessages, useMessages } from '../../localization/messages';
 
-type Key = 'pause' | 'resume' | 'reduced' | 'loading' | 'unavailable';
-const keys: readonly Key[] = [
-  'pause',
-  'resume',
-  'reduced',
-  'loading',
-  'unavailable',
-];
+const keys = ['pause', 'resume', 'reduced', 'loading', 'unavailable'] as const;
 
 export const fiberMessages = defineMessages(keys, {
   ro: {
