@@ -750,6 +750,7 @@ withPostgres('Pricing Snapshots REST', () => {
       if (associationFirst)
         expect(created.clientReference).toEqual({
           originalClientId: client.id,
+          currentClientId: client.id,
           displayName: 'Associated before Pricing',
         });
       else expect(created).not.toHaveProperty('clientReference');
