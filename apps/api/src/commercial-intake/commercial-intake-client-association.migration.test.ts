@@ -22,7 +22,7 @@ const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'adds one-time Request Client association after 0039 without rewriting Requests, grants or events',
+  'adds one-time Request Client association after 0040 without rewriting Requests, grants or events',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -57,7 +57,7 @@ it.skipIf(!databaseUrl)(
       );
       expect(associationIndex).toBeGreaterThan(0);
       const previousTags = tags.slice(0, associationIndex);
-      expect(previousTags.at(-1)).toBe('0039_project_lifecycle');
+      expect(previousTags.at(-1)).toBe('0040_pricing_adjustments');
       previous = await mkdtemp(join(tmpdir(), 'prisma-452-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(
