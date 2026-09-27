@@ -688,6 +688,179 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
   }
 });
 
+test('calculates, reloads and reopens an immutable Pricing Snapshot on an Opportunity', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(240_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const companyName = `Pricing snapshot ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
+  const target = {
+    workspaceMembershipId: requiredEnvironment(
+      'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+    ),
+    companyId: await createCompany(page, companyName),
+  };
+  const bundles = [
+    'company-context',
+    'company-service-catalogue',
+    'company-pricing-configuration',
+    'company-commercial-intake',
+    'company-pricing-user',
+  ] as const;
+  const granted = new Set<(typeof bundles)[number]>();
+  try {
+    for (const bundle of bundles) {
+      await changeAssignment(page, { operation: 'grant', bundle, ...target });
+      granted.add(bundle);
+    }
+    const offeringA = await createOffering(
+      page,
+      target.companyId,
+      `SNAP-A-${suffix}`,
+    );
+    const offeringB = await createOffering(
+      page,
+      target.companyId,
+      `SNAP-B-${suffix}`,
+    );
+    const effectiveFrom = new Date(
+      Math.ceil((Date.now() + 5_000) / 1_000) * 1_000,
+    ).toISOString();
+    expect(
+      await publishThroughApi(page, target.companyId, {
+        label: 'Illustrative snapshot rule',
+        effectiveFrom,
+        expectedActiveVersionNumber: null,
+      }),
+    ).toBe(201);
+    await publishTariffThroughApi(page, target.companyId, offeringA.id, {
+      unitAmount: '123.4500',
+      taxRatePercent: '12.34',
+      effectiveFrom,
+    });
+    await publishTariffThroughApi(page, target.companyId, offeringB.id, {
+      unitAmount: '0.0050',
+      taxRatePercent: '0',
+      effectiveFrom,
+    });
+    const request = await createCommercialRequest(
+      page,
+      target.companyId,
+      suffix,
+    );
+    // The Pricing User bundle is sufficient for configuration reads. The
+    // separate Intake bundle remains the sole owner of Opportunity visibility.
+    for (const bundle of [
+      'company-pricing-configuration',
+      'company-service-catalogue',
+    ] as const) {
+      await changeAssignment(page, { operation: 'revoke', bundle, ...target });
+      granted.delete(bundle);
+    }
+    await page.waitForTimeout(
+      Math.max(0, new Date(effectiveFrom).getTime() - Date.now() + 1_500),
+    );
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const companySelect = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    await selectCompany(page, companySelect, companyName, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    const requests = page.locator('.commercial-intake-workspace');
+    await requests
+      .getByRole('button', { name: new RegExp(request.subject, 'u') })
+      .click();
+    const panel = requests.locator('.pricing-snapshot-panel');
+    await expect(
+      panel.getByText('Illustrative pricing', { exact: true }),
+    ).toBeVisible();
+    await expect(panel.getByText('Pricing Rule Version: 1')).toBeVisible();
+    const offeringALabel = offeringA.label.split(' (').at(0);
+    const offeringBLabel = offeringB.label.split(' (').at(0);
+    if (!offeringALabel || !offeringBLabel)
+      throw new Error('Expected non-empty offering labels.');
+    await panel.getByLabel(offeringALabel, { exact: true }).check();
+    await panel.getByLabel(offeringBLabel, { exact: true }).check();
+    // Catalogue order is newest first; quantities belong to offering identity.
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringALabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('2.5');
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringBLabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('1');
+    await panel.getByRole('button', { name: 'Calculate and save' }).focus();
+    await expect(
+      panel.getByRole('button', { name: 'Calculate and save' }),
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(panel.getByText('308.64 EUR', { exact: true })).toBeVisible();
+    await expect(panel.getByText('38.08 EUR', { exact: true })).toBeVisible();
+    await expect(panel.getByText('346.72 EUR', { exact: true })).toBeVisible();
+    await expect(
+      panel.getByText(
+        `Calculated by Workspace Membership: ${target.workspaceMembershipId}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      panel.locator('header').getByText('Illustrative and provisional'),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`pricing-snapshot-created-${suffix}.png`),
+      fullPage: true,
+    });
+
+    await page.reload();
+    await selectCompany(page, companySelect, companyName, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    await page
+      .locator('.commercial-intake-workspace')
+      .getByRole('button', { name: new RegExp(request.subject, 'u') })
+      .click();
+    const reloadedPanel = page.locator('.pricing-snapshot-panel');
+    await reloadedPanel
+      .getByRole('button', { name: /Reopen snapshot: 346\.72 EUR/u })
+      .click();
+    await expect(
+      reloadedPanel.getByText('308.64 EUR', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText('38.08 EUR', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText('346.72 EUR', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText(
+        `Calculated by Workspace Membership: ${target.workspaceMembershipId}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText('2.5 × 123.4500 EUR/illustrative-unit'),
+    ).toBeVisible();
+    await expect(
+      reloadedPanel.getByText('1 × 0.0050 EUR/illustrative-unit'),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`pricing-snapshot-reopened-${suffix}.png`),
+      fullPage: true,
+    });
+  } finally {
+    for (const bundle of [...granted].reverse())
+      await changeAssignment(page, { operation: 'revoke', bundle, ...target });
+  }
+});
+
 async function publishThroughApi(
   page: Page,
   companyId: string,
@@ -710,6 +883,82 @@ async function publishThroughApi(
     },
   );
   return response.status();
+}
+
+async function publishTariffThroughApi(
+  page: Page,
+  companyId: string,
+  offeringId: string,
+  values: {
+    unitAmount: string;
+    taxRatePercent: string;
+    effectiveFrom: string;
+  },
+): Promise<void> {
+  const response = await page.request.post(
+    `${apiOrigin}/api/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+    {
+      headers: {
+        ...primaryMemberHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-tariff-${crypto.randomUUID()}`,
+        'x-company-context-id': companyId,
+      },
+      data: {
+        unit: 'illustrative-unit',
+        unitAmount: values.unitAmount,
+        currency: 'EUR',
+        taxRatePercent: values.taxRatePercent,
+        taxLabel: 'Illustrative tax',
+        effectiveFrom: values.effectiveFrom,
+        expectedActiveVersionNumber: null,
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function createCommercialRequest(
+  page: Page,
+  companyId: string,
+  suffix: string,
+): Promise<{ subject: string; opportunityId: string }> {
+  const subject = `Illustrative snapshot request ${suffix}`;
+  const response = await page.request.post(
+    `${apiOrigin}/api/commercial-intake/requests`,
+    {
+      headers: {
+        ...primaryMemberHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-request-${crypto.randomUUID()}`,
+        'x-company-context-id': companyId,
+      },
+      data: {
+        originalText:
+          'Synthetic request for the Pricing Snapshot acceptance proof.',
+        sourceLabel: 'Synthetic browser proof',
+        subject,
+        opportunity: {
+          title: `Illustrative Opportunity ${suffix}`,
+          scope: 'Synthetic scope',
+          nextAction: 'Review the illustrative calculation',
+        },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  const body: unknown = await response.json();
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('initialOpportunity' in body) ||
+    typeof body.initialOpportunity !== 'object' ||
+    body.initialOpportunity === null ||
+    !('id' in body.initialOpportunity) ||
+    typeof body.initialOpportunity.id !== 'string'
+  )
+    throw new Error('Expected the created Opportunity id.');
+  return { subject, opportunityId: body.initialOpportunity.id };
 }
 
 async function createCompany(page: Page, displayName: string): Promise<string> {
@@ -744,6 +993,7 @@ async function changeAssignment(
     operation: 'grant' | 'revoke';
     bundle:
       | 'company-context'
+      | 'company-commercial-intake'
       | 'company-pricing-configuration'
       | 'company-pricing-user'
       | 'company-service-catalogue';
