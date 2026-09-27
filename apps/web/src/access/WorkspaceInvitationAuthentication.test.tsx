@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
+import { interfaceLocaleStorageKey } from '../localization/interface-locale';
 
 const auth = vi.hoisted(() => ({ signedIn: false }));
 vi.mock('@clerk/react', () => ({
@@ -65,6 +66,7 @@ afterEach(() => {
 for (const entry of ['Sign in', 'Create your invited account']) {
   it(`retains the captured intent through ${entry} and the provider return without session storage`, async () => {
     vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+    localStorage.setItem(interfaceLocaleStorageKey, 'en');
     vi.spyOn(crypto, 'randomUUID')
       .mockReturnValueOnce(key)
       .mockReturnValue('cccccccc-0000-4000-8000-000000000163');
@@ -94,11 +96,24 @@ for (const entry of ['Sign in', 'Create your invited account']) {
     });
     vi.stubGlobal('fetch', fetch);
     let view = render(<ApplicationRoot pathname="/accept-invitation" />);
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new DOMException('Unavailable', 'SecurityError');
+    const originalGetItem = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+      this: Storage,
+      itemKey,
+    ) {
+      if (this === window.sessionStorage)
+        throw new DOMException('Unavailable', 'SecurityError');
+      return originalGetItem.call(this, itemKey);
     });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('Full', 'QuotaExceededError');
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+      this: Storage,
+      itemKey,
+      value,
+    ) {
+      if (this === window.sessionStorage)
+        throw new DOMException('Full', 'QuotaExceededError');
+      originalSetItem.call(this, itemKey, value);
     });
     function navigate(linkName: string) {
       const destination = screen

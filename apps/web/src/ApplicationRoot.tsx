@@ -6,6 +6,8 @@ import {
   deterministicBrowserIdentity,
   type BrowserIdentity,
 } from './access-composition';
+import { InterfaceLocaleProvider } from './localization/interface-locale';
+import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import { PublicWelcome } from './welcome/PublicWelcome';
 
 const PrismaCertUiBaseline = lazy(async () => {
@@ -40,6 +42,18 @@ export function ApplicationRoot({ pathname, identity }: ApplicationRootProps) {
         <PrismaCertUiBaseline />
       </Suspense>
     );
+  return (
+    <InterfaceLocaleProvider>
+      <InterfaceLocaleSelect />
+      <ProductionApplicationRoot pathname={pathname} identity={identity} />
+    </InterfaceLocaleProvider>
+  );
+}
+
+function ProductionApplicationRoot({
+  pathname,
+  identity,
+}: ApplicationRootProps) {
   if (identity)
     return pathname === '/accept-invitation' ? (
       <WorkspaceInvitationEntry identity={identity} />
