@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -237,7 +244,9 @@ it('keeps Project navigation withdrawn when an initial Versions read resumes aft
   const detail = await screen.findByRole('article');
   expect(openProjectAction()).toBeInTheDocument();
   expect(within(detail).getByText('Loading Versions…')).toBeInTheDocument();
-  expect(delayedIdentity.getToken).toHaveBeenCalledTimes(3);
+  await waitFor(() =>
+    expect(delayedIdentity.getToken).toHaveBeenCalledTimes(3),
+  );
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
     '/api/documents',
     '/api/clients',
