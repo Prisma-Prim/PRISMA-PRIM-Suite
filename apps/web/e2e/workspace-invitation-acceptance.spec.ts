@@ -305,7 +305,9 @@ for (const failureAt of ['after capture', 'after commit', 'before replay']) {
       );
       await page.addInitScript(failStorage);
       await page.reload();
-      await page.getByRole('button', { name: 'Retry acceptance' }).click();
+      await page
+        .getByRole('button', { name: 'Reîncercați acceptarea' })
+        .click();
       await expect.poll(() => keys.length).toBe(2);
       expect(keys[1]).toBe(keys[0]);
     }

@@ -391,7 +391,7 @@ test('retains the accepted Workspace after Prisme navigation and refresh when st
     return route.fulfill({ json: actor });
   });
   await page.goto('/accept-invitation?invitation=' + invitationId);
-  await page.getByRole('button', { name: 'Accept invitation' }).click();
+  await page.getByRole('button', { name: 'Acceptați invitația' }).click();
   await expect(
     page.getByRole('heading', { name: 'Bună, Ada Ionescu.' }),
   ).toBeVisible();
