@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
+import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
 import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
 
 describe('App', () => {
@@ -394,6 +395,65 @@ describe('App', () => {
       screen.getByText('Target: Exemplu Client SRL — BIC'),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    ['client_legal_entity.registered', 'recorded a Client legal entity'],
+    ['client_legal_entity.corrected', 'corrected a Client legal entity'],
+  ] as const)(
+    'shows the recording Company on a %s event with centralized copy',
+    async (action, label) => {
+      vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.toString().endsWith('/companies')
+                ? []
+                : input.toString().endsWith('/activity-log')
+                  ? {
+                      events: [
+                        {
+                          id: `event-${action}`,
+                          action,
+                          occurredAt: '2026-09-26T08:00:00.000Z',
+                          actor: {
+                            internalUserId: 'director-1',
+                            displayName: 'Company Director',
+                          },
+                          target: {
+                            type: 'client_account',
+                            clientAccountId: 'client-1',
+                            displayName: 'GRUP Demo SA',
+                            companyId: 'company-1',
+                            companyDisplayName: 'PRISMA-PRIM',
+                          },
+                          metadata: { legalEntityId: 'legal-entity-1' },
+                        },
+                      ],
+                    }
+                  : {
+                      internalUserId: 'owner-1',
+                      displayName: 'Workspace Owner',
+                      email: 'owner@example.test',
+                      workspaceName: 'PRISMA Workspace',
+                      workspacePermissions: ['company.manage'],
+                    },
+            ),
+            { status: 200 },
+          ),
+        ),
+      );
+
+      render(<App identity={deterministicBrowserIdentity()} />);
+
+      expect(
+        await screen.findByText(`Company Director ${label}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Target: GRUP Demo SA — PRISMA-PRIM'),
+      ).toBeInTheDocument();
+      expect(clientLegalEntitiesCopy.activityActionLabels[action]).toBe(label);
+    },
+  );
 
   it('keeps access-administration Activity Log labels in copy resources', () => {
     expect(companyContextAccessCopy.activityActionLabels).toEqual({

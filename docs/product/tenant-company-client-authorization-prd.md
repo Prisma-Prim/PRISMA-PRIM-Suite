@@ -171,13 +171,30 @@ Company context, assignment administration, pricing, Offer, Contract, approval,
 Activity Log or cross-Company authority, and holding it neither makes the actor
 the responsible actor nor permits any other Opportunity mutation.
 
+The [provisional one-time Client association after Request capture](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450)
+adds `commercial.request.client.associate` only through captured **Company
+Commercial Intake v3**. Intake v3 is v2 plus that one permission. Intake v1 and
+v2 assignments never expand in place and receive no migration backfill grant;
+an administrator with `company.assignment.manage` must revoke the old assignment
+and issue a fresh grant that captures v3 through the existing attributable
+Company assignment lifecycle. Null or unknown versions fail closed.
+
+Every Intake check evaluates contained permissions: delivered Request and
+Opportunity read/create checks accept v1, v2 or v3, and next-action update accepts
+v2 or v3. Only v3 permits the association command. The permission grants no
+Client read, relationship, Company context, administration, pricing, Offer,
+Contract, Activity read or cross-Company authority. Association execution and
+exact replay independently require current Request read, current Client read and
+an active Client–Company Relationship in the server-validated Company. No other
+bundle, assignment, Workspace ownership or migration substitutes for v3.
+
 The [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
 adds **Company Commercial Activity Reader v1**, containing exactly
 `commercial.activity.read`. An administrator with `company.assignment.manage`
 explicitly grants or revokes the captured v1 bundle for an active same-Workspace
 membership and active Company through the existing Company assignment
 administration. It is an independent opt-in bundle: no existing bundle,
-assignment or backfill confers it, Commercial Intake v1 and v2 do not include it,
+assignment or backfill confers it, Commercial Intake v1, v2 and v3 do not include it,
 and unknown captured versions fail closed. It authorizes no mutation and no
 Request, Opportunity, Client or cross-Company read; its holder sees a commercial
 event only when they independently retain current read authority for that event's
@@ -267,7 +284,7 @@ Material blockers that remain:
 
 - first-tenant role/permission bundles beyond the approved Company Director Client slice and wider approval delegation;
 - legitimate exceptional support-access cases, authorization boundary and restricted periods;
-- exact Client Legal Entity and branch modelling for the representative complex case;
+- the Client Legal Entity capabilities excluded by [Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393);
 - asynchronous multi-person duplicate approval and general fuzzy-matching evaluation against real examples;
 - broader deactivation expectations and final `All Companies` product behaviour.
 

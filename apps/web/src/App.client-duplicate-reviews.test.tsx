@@ -140,6 +140,8 @@ function installTransport() {
           state.attached ? [{ ...saved, relatedToActiveCompany: true }] : [],
         );
       }
+      if (path.endsWith('/legal-entities'))
+        return respond({ clientVersion: 1, legalEntities: [] });
       throw new Error('Unexpected API request: ' + path);
     }),
   );

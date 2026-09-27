@@ -638,6 +638,147 @@ paths:
           description: No active Client related to the active Company is visible.
         '500':
           description: Stored correction history does not match the typed change shape; no partial history is returned.
+  /api/clients/{clientAccountId}/legal-entities:
+    get:
+      operationId: listActiveCompanyClientLegalEntities
+      summary: Read the additional Client Legal Entities of a visible shared dossier
+      description: >-
+        Authorization and every refusal are identical to the dossier read. The
+        visibility check and the list share one consistent read. At most 50
+        entities are returned in creation order, then id. The read changes
+        nothing and records no Activity event.
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The current Client version and its additional legal entities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientLegalEntityList'
+        '400':
+          description: The Client id is malformed.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client read authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible.
+    post:
+      operationId: registerClientLegalEntity
+      summary: Record one additional Client Legal Entity or branch under the dossier version token
+      description: >-
+        Requires exactly the dossier correction authority. The Client row is
+        locked as a correction locks it; the expected version must be current
+        and advances by one together with the entity, a durable receipt and one
+        `client_legal_entity.registered` event. An exact replay of the key
+        returns the stored result after revalidating current authority. The
+        entity identifier takes part in no duplicate detection, reservation,
+        uniqueness rule or search.
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterClientLegalEntityInput'
+      responses:
+        '201':
+          description: The recorded entity and the incremented Client version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientLegalEntityMutationResult'
+        '400':
+          description: The request, expected version or key is invalid, or the key was used for another Client command.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client update authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible.
+        '409':
+          description: >-
+            The expected Client version is stale (`The Client dossier has
+            changed.`), or the Client already records 50 additional entities.
+            Nothing is written.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ClientLegalEntityCapacityConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
+  /api/clients/{clientAccountId}/legal-entities/{legalEntityId}:
+    patch:
+      operationId: correctClientLegalEntity
+      summary: Correct one additional Client Legal Entity under the dossier version token
+      description: >-
+        Requires exactly the dossier correction authority and follows the
+        registration's lock, version, receipt and replay rules. A material
+        correction records one `client_legal_entity.corrected` event with the
+        previous and new values; a correction that changes nothing is refused.
+      tags:
+        - Client
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: clientAccountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: legalEntityId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectClientLegalEntityInput'
+      responses:
+        '200':
+          description: The corrected entity and the incremented Client version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientLegalEntityMutationResult'
+        '400':
+          description: The request, expected version or key is invalid, the key was used for another Client command, or the correction changes no field.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks Client update authority or a valid active Company context.
+        '404':
+          description: No active Client related to the active Company is visible, or the entity does not belong to that Client.
+        '409':
+          description: The expected Client version is stale (`The Client dossier has changed.`). Nothing is written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericConflict'
   /api/client-duplicate-reviews:
     get:
       operationId: listAuthorizedClientDuplicateReviews
@@ -862,7 +1003,15 @@ paths:
         '409':
           description:
             Conflict with current state, capacity, a preserved relationship,
-            or command intent. No partial mutation or success event.
+            or command intent, or `client_union_legal_entities_unsupported`
+            when either input records an additional Client Legal Entity. No
+            partial mutation or success event.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ClientUnionLegalEntitiesUnsupportedConflict'
+                  - $ref: '#/components/schemas/GenericConflict'
   /api/client-union-sources:
     get:
       operationId: listSupersededClientSources
@@ -1760,6 +1909,8 @@ components:
             - client.created
             - client_company_relationship.established
             - client.corrected
+            - client_legal_entity.registered
+            - client_legal_entity.corrected
         occurredAt:
           type: string
           format: date-time
@@ -1779,6 +1930,8 @@ components:
             - $ref: '#/components/schemas/CompanyRegisteredMetadata'
             - $ref: '#/components/schemas/CompanyContextAssignmentMetadata'
             - $ref: '#/components/schemas/ClientCorrectedMetadata'
+            - $ref: '#/components/schemas/ClientLegalEntityRegisteredMetadata'
+            - $ref: '#/components/schemas/ClientLegalEntityCorrectedMetadata'
     ActivityLogInternalUserReference:
       type: object
       additionalProperties: false
@@ -1891,6 +2044,191 @@ components:
               $ref: '#/components/schemas/ClientCorrectionChange'
             businessActivity:
               $ref: '#/components/schemas/ClientCorrectionChange'
+    ClientLegalEntityRegisteredMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - legalEntityId
+        - values
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+        values:
+          $ref: '#/components/schemas/ClientLegalEntityValues'
+    ClientLegalEntityCorrectedMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - legalEntityId
+        - changes
+      properties:
+        legalEntityId:
+          type: string
+          format: uuid
+        changes:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          properties:
+            legalName:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            taxId:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+            legalAddress:
+              $ref: '#/components/schemas/ClientCorrectionChange'
+    ClientLegalEntityValues:
+      type: object
+      required:
+        - legalName
+        - taxId
+        - legalAddress
+      properties:
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        taxId:
+          type:
+            - string
+            - 'null'
+          maxLength: 500
+          description: IDNO/tax code, trimmed; outside every duplicate predicate and search.
+        legalAddress:
+          type:
+            - string
+            - 'null'
+          maxLength: 2000
+    ClientLegalEntity:
+      allOf:
+        - $ref: '#/components/schemas/ClientLegalEntityValues'
+        - type: object
+          required:
+            - id
+            - createdAt
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+    ClientLegalEntityList:
+      type: object
+      additionalProperties: false
+      required:
+        - clientVersion
+        - legalEntities
+      properties:
+        clientVersion:
+          type: integer
+          minimum: 1
+        legalEntities:
+          type: array
+          maxItems: 50
+          description: Creation order, then id.
+          items:
+            $ref: '#/components/schemas/ClientLegalEntity'
+    ClientLegalEntityMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - clientVersion
+        - legalEntity
+      properties:
+        clientVersion:
+          type: integer
+          minimum: 2
+        legalEntity:
+          $ref: '#/components/schemas/ClientLegalEntity'
+    RegisterClientLegalEntityInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedClientVersion
+        - legalName
+      properties:
+        expectedClientVersion:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+        legalName:
+          type: string
+          description: Trimmed; 1 to 200 characters after trimming.
+        taxId:
+          type:
+            - string
+            - 'null'
+          description: Trimmed; at most 500 characters; empty becomes null.
+        legalAddress:
+          type:
+            - string
+            - 'null'
+          description: Trimmed; at most 2000 characters; empty becomes null.
+    CorrectClientLegalEntityInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedClientVersion
+        - changes
+      properties:
+        expectedClientVersion:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+        changes:
+          type: object
+          additionalProperties: false
+          minProperties: 1
+          description: A non-empty subset of the fields, validated as in registration.
+          properties:
+            legalName:
+              type: string
+            taxId:
+              type:
+                - string
+                - 'null'
+            legalAddress:
+              type:
+                - string
+                - 'null'
+    ClientLegalEntityCapacityConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - statusCode
+        - error
+        - code
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        error:
+          type: string
+          const: Conflict
+        code:
+          type: string
+          const: client_legal_entity_capacity_exceeded
+    ClientUnionLegalEntitiesUnsupportedConflict:
+      type: object
+      additionalProperties: false
+      description: >-
+        Returned only after complete union authority and freshness pass, while
+        either input Client records an additional legal entity.
+      required:
+        - statusCode
+        - error
+        - code
+      properties:
+        statusCode:
+          type: integer
+          const: 409
+        error:
+          type: string
+          const: Conflict
+        code:
+          type: string
+          const: client_union_legal_entities_unsupported
     ClientCorrectionChange:
       type: object
       additionalProperties: false

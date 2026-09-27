@@ -1,11 +1,12 @@
 # PRD — Release 3 Commercial Workflow
 
 **Status:** Provisional MVP execution scope — business validation pending  
-**Version:** 0.1  
+**Version:** 0.2  
 **Owner:** Dan Popescu  
 **Release:** 3  
 **Decisions:** DEC-023–DEC-026, DEC-100–DEC-123, DEC-125, DEC-128–DEC-129, DEC-132–DEC-134 and DEC-140\
 **Owner direction:** [Dan, 2026-09-20](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-5749633981)  
+**Illustrative fixed-discount amendment:** [Agent normalization under Dan's standing MVP direction, 2026-09-27, #454](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/454)\
 **Deferred business validation:** [Iurie, after a demonstrable MVP](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/288#issuecomment-5749968989)
 
 ## 1. Authority and purpose
@@ -76,12 +77,13 @@ A shared Client Account may be associated when the actor can already read it thr
 - **R3C — Offers:** complete versions, generated artifacts, deterministic checks, approval, transmission, response evidence and negotiation history.
 - **R3D — Contracts:** controlled origins, versions, legal content, signature evidence, post-signature instruments and Project creation or linking.
 
-This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R3D retain the inherited boundaries above. Before a later vertical issue is marked ready, its observable fields, permissions, transitions and acceptance cases are normalized into this PRD; the issue then links to that authority instead of becoming a second specification. [Section 18](#18-r3c-provisional-offer-execution-contract-394) normalizes the provisional R3C Offer contract and its ordered slices. [Section 19](#19-r3d-provisional-contract-execution-contract-403) normalizes the provisional R3D Contract contract and its ordered slices.
+This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R3D retain the inherited boundaries above. Before a later vertical issue is marked ready, its observable fields, permissions, transitions and acceptance cases are normalized into this PRD; the issue then links to that authority instead of becoming a second specification. [Section 18](#18-r3c-provisional-offer-execution-contract-394) normalizes the provisional R3C Offer contract and its ordered slices. [Section 19](#19-r3d-provisional-contract-execution-contract-403) normalizes the provisional R3D Contract contract and its ordered slices. [Section 20](#20-approved-provisional-one-time-client-association-after-request-capture-450) normalizes the one-time association of an existing authorized Client Account after Request capture.
 
 ## 7. Core lifecycle and invariants
 
 - Client Request and Opportunity are distinct. One Request may yield no Opportunity or several Opportunities; every Opportunity has one responsible Company.
 - R3A1 creates exactly one Company-owned Request and one same-Company initial Opportunity atomically.
+- A captured Request starts at version 1 whether it has an original Client reference or not. Only a version 1 Request whose stored original Client reference is absent may make the one-time transition in section 20 to version 2 with a Client reference.
 - Opportunity durable status and configurable sales stage remain separate. R3A1 creates status `OPEN` and no sales stage.
 - Original Request text and source metadata are immutable. Interpretation, assessment and correction are later attributed facts.
 - Pricing is deterministic and produces an immutable Pricing Snapshot.
@@ -134,7 +136,7 @@ The create command commits the Request, initial Opportunity, idempotency result 
 
 The command requires an idempotency key. An exact retry by the same actor and Company revalidates the current membership, Company context, captured bundle and target visibility before returning the original successful result. Revoked authority returns the normal safe denial and no new event. The fingerprint includes the original request text exactly as submitted plus every other command field; no trimming or normalization silently changes it. Reusing the key with any different input returns a conflict. Concurrent exact retries converge on the same result.
 
-The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
+The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Request detail exposes Request version `1 | 2`. Version 1 is the capture contract and may have a stored original Client reference or none; a null permission-filtered Client projection never proves that the stored reference is absent. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
 
 Client association is resolved and locked through the Client module's existing public authorization and operational-reference fence. The commercial contract adds no Client version field, lookup path, duplicate rule or union logic. Unknown, inaccessible, inactive, cross-Company, superseded or concurrently invalidated Client references all return the same safe unavailable response, create nothing and ask the user to refresh Client search before retrying. A harmless concurrent correction that leaves the authorized association valid need not block. A successful commit records the original/current Client reference through the Client owner so a later union or reversal cannot silently strand commercial use.
 
@@ -180,6 +182,8 @@ AI is optional. Human entry completes the entire commercial journey. Any later a
 
 R3A1 is additive. It does not rewrite existing Clients, Projects, Documents, assignments or Activity. Existing assignments do not inherit Company Commercial Intake v1. No Company, Client or responsible actor is inferred from names, email domains or historical free text.
 
+Existing Requests remain version 1 whether they were captured with a Client or without one. Section 20 adds no backfill: a version 1 Request that already stores a Client reference stays version 1 and is never eligible for reassociation, while only a successful first association of a stored-unassociated version 1 Request creates version 2.
+
 Future Request ingestion and triage must preserve the R3A1 original source and attribution contract. Future Client union or correction keeps the commercial record's original reference and uses the Client owner's authorized current projection; it does not rewrite historical source evidence.
 
 ## 12. Security, reliability and observability
@@ -211,13 +215,13 @@ The first vertical issue proves:
 9. Client union, reversal or relationship races that invalidate the association are rejected by the Client owner's operational-reference fence rather than commercial duplicate logic, while harmless current-state corrections may proceed;
 10. usable empty list, validation, success, unavailable-reference and permission states at desktop and narrow width.
 
-R3B–R3D later add deterministic pricing, provenance propagation, version immutability, approval and Project-linking tests at their public seams. Section 18.14 owns the R3C acceptance cases. Section 19.16 owns the R3D acceptance cases.
+R3B–R3D later add deterministic pricing, provenance propagation, version immutability, approval and Project-linking tests at their public seams. Section 18.14 owns the R3C acceptance cases. Section 19.16 owns the R3D acceptance cases. Section 20.9 owns the post-capture Client-association acceptance cases.
 
 ## 14. Exclusions
 
 R3A1 excludes file uploads, provider ingestion, AI Analysis, Client creation or relationship attachment, Workspace triage, editing, status transitions, configurable stages, reassignment, advanced search, bulk actions, pricing, Offers, Contracts, Project creation, dashboards and external messages.
 
-Sections 16 and 17 decide two separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself.
+Sections 16, 17 and 20 decide separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself. Section 20 permits only the first association of an existing Client Account; replacement, correction and removal remain excluded.
 
 Release 3 excludes mass marketing automation, a universal CRM or CPQ engine, AI-determined prices or approvals, an internal qualified-signature service and a Client portal.
 
@@ -299,7 +303,7 @@ A user who holds the separate opt-in commercial Activity bundle in a server-vali
 
 ### 17.2 Explicit permission
 
-The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Activity Reader v1**, containing exactly `commercial.activity.read`. It is an independent opt-in bundle: it is neither added to Company Commercial Intake v1 or v2 nor granted by any existing bundle, assignment or migration backfill, and unknown captured versions fail closed. Holding it grants no Request, Opportunity, Client, pricing, Offer, Contract, administration or mutation authority, and no Workspace-wide or cross-Company history.
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Activity Reader v1**, containing exactly `commercial.activity.read`. It is an independent opt-in bundle: it is neither added to Company Commercial Intake v1, v2 or v3 nor granted by any existing bundle, assignment or migration backfill, and unknown captured versions fail closed. Holding it grants no Request, Opportunity, Client, pricing, Offer, Contract, administration or mutation authority, and no Workspace-wide or cross-Company history.
 
 Its grant and revocation are attributable through the assignment-lifecycle events the [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) names and constrains, under the existing Company assignment administration visibility. This section adds no commercial event, target or metadata for that administration, and those assignment events are never projected as commercial history.
 
@@ -307,7 +311,7 @@ Its grant and revocation are attributable through the assignment-lifecycle event
 
 A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
 
-Only the known actions client_request.created, opportunity.created and, when implemented, opportunity.next_action.updated are eligible. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice can ship before the update event exists; it adds no producer or lifecycle for that event.
+Only the known actions `client_request.created`, `opportunity.created` and, when their owning slices are implemented, `opportunity.next_action.updated` and `client_request.client_associated` are eligible. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice can ship before either later event exists; it adds no producer or lifecycle for them.
 
 A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target.
 
@@ -366,21 +370,23 @@ The **Offer** is the durable identity (Decided, DR §14.7).
 
 Each **Offer Version** is one complete revision whose content is immutable from creation (Decided, DR §14.7, DEC-112; P4).
 
-| Field                     | Rule                                                                                                                                                                                                     |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Version number            | Server-allocated, monotone per Offer, starting at 1.                                                                                                                                                     |
-| Pricing Snapshot          | Exactly one Snapshot of the same Opportunity and Company, referenced by id (Decided, section 9). Its lines, currency and totals are the version's price; they are referenced, never copied or re-priced. |
-| Named Client Legal Entity | The primary entity or one additional entity of the Offer's Client Account (section 18.3), plus a copy of its legal name, IDNO/tax code and legal address at creation (Decided, DR §14.7).                |
-| Issuing Company label     | Copy of the responsible Company's display name at creation, so the representation stays reproducible.                                                                                                    |
-| Validity                  | `validityDays`, 1–365, default 30. The server stores `validUntil` = creation instant + `validityDays` × 24 hours (P5).                                                                                   |
-| Scope note                | Optional, at most 2,000 characters, stored exactly as submitted (P6).                                                                                                                                    |
-| Commercial conditions     | Optional, at most 4,000 characters, stored exactly as submitted; no clause library (P6).                                                                                                                 |
-| Template Version          | Server-fixed illustrative Offer Template Version (section 18.7).                                                                                                                                         |
-| Provenance                | Server-fixed `ILLUSTRATIVE`; every read returns `provisional: true` (Decided, section 3).                                                                                                                |
-| Created by, at            | Server-assigned membership and instant; the predecessor version from version 2 onward.                                                                                                                   |
-| Lineage metadata          | `supersededByVersionId` and `supersededAt`, written once when a successor is created. They are never content (Decided, DEC-115).                                                                         |
+| Field                     | Rule                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Version number            | Server-allocated, monotone per Offer, starting at 1.                                                                                                                                                                           |
+| Pricing Snapshot          | Exactly one Snapshot of the same Opportunity and Company, referenced by id (Decided, section 9). Its lines, optional adjustments, currency and totals are the version's price; they are referenced, never copied or re-priced. |
+| Named Client Legal Entity | The primary entity or one additional entity of the Offer's Client Account (section 18.3), plus a copy of its legal name, IDNO/tax code and legal address at creation (Decided, DR §14.7).                                      |
+| Issuing Company label     | Copy of the responsible Company's display name at creation, so the representation stays reproducible.                                                                                                                          |
+| Validity                  | `validityDays`, 1–365, default 30. The server stores `validUntil` = creation instant + `validityDays` × 24 hours (P5).                                                                                                         |
+| Scope note                | Optional, at most 2,000 characters, stored exactly as submitted (P6).                                                                                                                                                          |
+| Commercial conditions     | Optional, at most 4,000 characters, stored exactly as submitted; no clause library (P6).                                                                                                                                       |
+| Template Version          | Server-fixed illustrative Offer Template Version (section 18.7).                                                                                                                                                               |
+| Provenance                | Server-fixed `ILLUSTRATIVE`; every read returns `provisional: true` (Decided, section 3).                                                                                                                                      |
+| Created by, at            | Server-assigned membership and instant; the predecessor version from version 2 onward.                                                                                                                                         |
+| Lineage metadata          | `supersededByVersionId` and `supersededAt`, written once when a successor is created. They are never content (Decided, DEC-115).                                                                                               |
 
 Referenced Documents (DR §14.7) are excluded until the Document capability delivers formal Versions.
+
+**Adjustment compatibility gate.** O1 and its existing consumers continue to accept the unadjusted R3B3 Snapshot shape. R3B4 must preserve that boundary when it first exposes adjusted Snapshots: until O8 is delivered, Create Offer and Create Offer Version return `PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED` for an adjusted Snapshot and commit nothing. After O8 is delivered, new Offer Versions may reference that immutable adjusted Snapshot and use the version-2 checks and representation below. Delivery of this compatibility change neither migrates nor automatically rechecks or rerenders existing Snapshots or Offer Versions; their existing explicit workflows remain available.
 
 Each version records three dimensions separately (Decided, DR §14.7, DEC-114). No field combines them, and the Offer read derives its summary from the head version only.
 
@@ -402,15 +408,15 @@ An Offer Version names either `PRIMARY` or one additional entity of the same Cli
 
 Each command runs in the server-validated active Company, acts on the Offer's head version and follows section 18.11. Every command except Run Quality Checks carries `expectedOfferRevision`. A command on a superseded version returns `OFFER_VERSION_SUPERSEDED`.
 
-| Command                | Permission (18.6)                        | Preconditions                                                                                                                                                                | Result                                         | Named refusals                                                                                                                       |
-| ---------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Create Offer           | `commercial.offer.prepare`               | Opportunity readable and `OPEN`; a Client association the actor can read; a readable Snapshot of that Opportunity; an available entity                                       | Offer and version 1, `PENDING`                 | `OFFER_ALREADY_EXISTS`, `OPPORTUNITY_NOT_OPEN`, `OFFER_CLIENT_REQUIRED`, `PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY`, uniform unavailable |
-| Create Offer Version   | `commercial.offer.prepare`               | No version is `ACCEPTED`; Snapshot and entity rules as above                                                                                                                 | New head `PENDING`; lineage on the predecessor | `OFFER_ACCEPTED`, `STALE_OFFER_REVISION`, uniform unavailable                                                                        |
-| Run Quality Checks     | `commercial.offer.prepare` or `.approve` | Head version                                                                                                                                                                 | One stored immutable run                       | `OFFER_VERSION_SUPERSEDED`                                                                                                           |
-| Approve                | `commercial.offer.approve`               | `PENDING`; checks at the decision instant have no ERROR; acknowledged codes equal the current WARNING set                                                                    | `APPROVED`                                     | `QUALITY_CHECK_ERRORS`, `QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED`, `OFFER_VERSION_ALREADY_DECIDED`                                     |
-| Reject                 | `commercial.offer.approve`               | `PENDING`; reason of 1–500 characters                                                                                                                                        | `REJECTED`, terminal for that version          | `OFFER_VERSION_ALREADY_DECIDED`                                                                                                      |
-| Record transmission    | `commercial.offer.transmission.record`   | `APPROVED` and `NOT_TRANSMITTED`; no ERROR; acknowledged codes equal the current WARNING codes not acknowledged at approval; representation checksum equals the approved one | `TRANSMITTED`; response becomes `PENDING`      | `OFFER_VERSION_NOT_APPROVED`, `OFFER_VERSION_ALREADY_TRANSMITTED`, both Quality Check refusals, `REPRESENTATION_MISMATCH`            |
-| Record Client response | `commercial.offer.response.record`       | `TRANSMITTED` with response `PENDING`; outcome rules in section 18.8                                                                                                         | `ACCEPTED`, `REJECTED` or `EXPIRED`            | `OFFER_VERSION_NOT_TRANSMITTED`, `CLIENT_RESPONSE_ALREADY_RECORDED`, `OFFER_VALIDITY_ELAPSED`, `OFFER_VALIDITY_NOT_ELAPSED`          |
+| Command                | Permission (18.6)                        | Preconditions                                                                                                                                                                | Result                                         | Named refusals                                                                                                                                                                  |
+| ---------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create Offer           | `commercial.offer.prepare`               | Opportunity readable and `OPEN`; a Client association the actor can read; a readable Snapshot of that Opportunity; an available entity                                       | Offer and version 1, `PENDING`                 | `OFFER_ALREADY_EXISTS`, `OPPORTUNITY_NOT_OPEN`, `OFFER_CLIENT_REQUIRED`, `PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY`, `PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED`, uniform unavailable |
+| Create Offer Version   | `commercial.offer.prepare`               | No version is `ACCEPTED`; Snapshot and entity rules as above                                                                                                                 | New head `PENDING`; lineage on the predecessor | `OFFER_ACCEPTED`, `STALE_OFFER_REVISION`, `PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED`, uniform unavailable                                                                        |
+| Run Quality Checks     | `commercial.offer.prepare` or `.approve` | Head version                                                                                                                                                                 | One stored immutable run                       | `OFFER_VERSION_SUPERSEDED`                                                                                                                                                      |
+| Approve                | `commercial.offer.approve`               | `PENDING`; checks at the decision instant have no ERROR; acknowledged codes equal the current WARNING set                                                                    | `APPROVED`                                     | `QUALITY_CHECK_ERRORS`, `QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED`, `OFFER_VERSION_ALREADY_DECIDED`                                                                                |
+| Reject                 | `commercial.offer.approve`               | `PENDING`; reason of 1–500 characters                                                                                                                                        | `REJECTED`, terminal for that version          | `OFFER_VERSION_ALREADY_DECIDED`                                                                                                                                                 |
+| Record transmission    | `commercial.offer.transmission.record`   | `APPROVED` and `NOT_TRANSMITTED`; no ERROR; acknowledged codes equal the current WARNING codes not acknowledged at approval; representation checksum equals the approved one | `TRANSMITTED`; response becomes `PENDING`      | `OFFER_VERSION_NOT_APPROVED`, `OFFER_VERSION_ALREADY_TRANSMITTED`, both Quality Check refusals, `REPRESENTATION_MISMATCH`                                                       |
+| Record Client response | `commercial.offer.response.record`       | `TRANSMITTED` with response `PENDING`; outcome rules in section 18.8                                                                                                         | `ACCEPTED`, `REJECTED` or `EXPIRED`            | `OFFER_VERSION_NOT_TRANSMITTED`, `CLIENT_RESPONSE_ALREADY_RECORDED`, `OFFER_VALIDITY_ELAPSED`, `OFFER_VALIDITY_NOT_ELAPSED`                                                     |
 
 `OPPORTUNITY_NOT_OPEN` is forward-compatible: every Opportunity is `OPEN` until an outcome slice exists. After an internal rejection, the preparer continues by creating a new version.
 
@@ -431,7 +437,9 @@ The first rule set is `OFFER_QUALITY_ILLUSTRATIVE` version 1 (P8):
 | `PRICING_CLIENT_CONTEXT_COHERENT` | WARNING          | The Snapshot's recorded Client reference resolves to the Offer's Client Account.                                                                              |
 | `PROVISIONAL_MARKER_PRESENT`      | ERROR            | Because an input is illustrative, the version's provenance is `ILLUSTRATIVE` and every read flags it provisional.                                             |
 
-A run evaluates every rule at one server instant and records, per rule, `PASS` or its failing severity, together with the rule set version, actor and instant. A run is immutable and never recomputed; changing a rule creates rule set version 2, and earlier runs keep their version. The explicit run command stores a run for review. Approve and Record transmission each evaluate the rule set at their own decision instant and store that run with the decision only if the decision commits. The deciding actor acknowledges warnings by submitting exactly the current WARNING codes, and the acknowledgement is recorded with the decision; at transmission, only codes not already acknowledged at approval need acknowledgement. Approved exceptions and overrides are excluded.
+Rule set version 1 continues to evaluate the unadjusted R3B3 Snapshot shape used by O1. After R3B4 is delivered, a future additive compatibility slice introduces rule set version 2 for new Offer Versions that reference an adjusted Snapshot. Version 2 checks the bounded adjustment trace defined by the Pricing PRD, including original and adjusted amounts and final totals, but never applies, changes or re-prices the adjustment. Existing Offer Versions and stored version-1 runs remain unchanged.
+
+A run evaluates every rule at one server instant and records, per rule, `PASS` or its failing severity, together with the rule set version, actor and instant. A run is immutable and never recomputed; changing a rule creates a new rule set version, and earlier runs keep their version. The explicit run command stores a run for review. Approve and Record transmission each evaluate the rule set at their own decision instant and store that run with the decision only if the decision commits. The deciding actor acknowledges warnings by submitting exactly the current WARNING codes, and the acknowledgement is recorded with the decision; at transmission, only codes not already acknowledged at approval need acknowledgement. Approved exceptions and overrides are excluded.
 
 ### 18.6 Permissions and approval
 
@@ -456,6 +464,8 @@ Additional rules:
 - the recorded recipient copy is Offer content; the live Client projection follows Pricing PRD §9 and appears only to current Client readers;
 - neither bundle grants intake, calculation, Client, Activity Log, administration, Contract or cross-Company authority.
 
+Company Offer Preparer v1 already has only `commercial.pricing.snapshot.read` for the exact referenced price. It gains no `commercial.pricing.calculate` or `commercial.pricing.adjustment.apply` permission from #454. Preparing an Offer from an adjusted Snapshot reads its immutable trace; it does not authorize creating or changing that trace.
+
 **Approver (P10).** First-tenant configuration grants Company Offer Approver v1 to Iurie's membership in each Company (S04-Q11). This is an assignment, not a product role, name check or hard-coded identity. One approval per version suffices. The MVP has no value or discount threshold and no second approval (OQ1). A member holding both bundles may approve a version they prepared, and both acts stay attributed. An internal rejection requires a reason of 1–500 characters.
 
 ### 18.7 Illustrative representation
@@ -469,6 +479,8 @@ The MVP representation (P11) works as follows:
 - **Deterministic rendering.** HTML is rendered from immutable inputs only: amounts as their stored decimal strings with the currency code, instants in UTC ISO 8601, and English labels fixed by the Template Version. One version always renders byte-identical output; its SHA-256 checksum is shown and is recorded at approval and at transmission.
 - **Viewer state.** The viewer shows the decision, transmission and response states outside the rendered bytes, including "Draft — not approved" until approval.
 - **No stored file.** No file, Document Registry entry, Location or provider is created. Those arrive with governed formal Versions and Release 2 generation.
+
+Template Version v1 and every Offer Version that uses it remain byte-identical and continue to render unadjusted R3B3 lines. After R3B4 is delivered, the future compatibility slice creates `OFFER_ILLUSTRATIVE` v2 for new Offer Versions that reference adjusted Snapshots. For each adjusted service line, v2 renders the original net and tax, then an adjacent fixed-discount row with the stored reason, net reduction and tax reduction, followed by the adjusted net and tax. It uses only the immutable Snapshot strings and final totals; it never calculates a discount, derives a new tax value or changes an existing Offer Version. The internal Offer view may also show the applying actor from the Snapshot trace, while event metadata and diagnostic logs remain free of amount and reason.
 
 ### 18.8 Simulated transmission and Client response
 
@@ -590,10 +602,11 @@ Negotiation variant: after step 5, the preparer creates version 2 with changed c
 14. exactly the events of section 18.10 with minimal metadata, none for runs, failures or replays, and none projected;
 15. the provisional marker on every read and rendering, and rejection of any other provenance, channel or evidence value by the API and the database;
 16. empty, validation, denied, stale, uncertain, check-error, warning and success states at desktop and narrow width.
+17. after R3B4 and the future compatibility slice are delivered, an Offer Version can reference an adjusted Snapshot, version-2 Quality Checks reproduce its final totals from the immutable trace, and Template Version v2 renders the same ordered adjustment rows and totals without repricing; an older unadjusted Snapshot, Offer Version, rule-set run and v1 rendering remain unchanged.
 
 ### 18.15 Delivery sequence and exclusions
 
-Ordered vertical slices O1–O7, tracked under [#290](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/290). Their implementation issues are created separately once their blockers close.
+Ordered vertical slices O1–O8, tracked under [#290](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/290). Their implementation issues are created separately once their blockers close.
 
 | Slice | Observable outcome                                                                                                   | Introduces                                                                                                                                  | Blocked by                                                                                                                            | Proofs (18.14)              |
 | ----- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -604,10 +617,13 @@ Ordered vertical slices O1–O7, tracked under [#290](https://github.com/Prisma-
 | O5    | Record a simulated transmission                                                                                      | `offer_version.transmission_recorded`                                                                                                       | O4                                                                                                                                    | 7, 8                        |
 | O6    | Record a simulated Client response                                                                                   | `offer_version.client_response_recorded`                                                                                                    | O5                                                                                                                                    | 1, 8                        |
 | O7    | Negotiate through a new version with visible differences                                                             | Create Offer Version and the differences view                                                                                               | O1; its after-approval and after-transmission cases need O4 and O5                                                                    | 9                           |
+| O8    | Consume, check and render an adjusted Snapshot without repricing it                                                  | Rule set version 2 and illustrative Template Version v2                                                                                     | Delivered R3B4; O1 for preparation, O2 for rendering and O3 for checks                                                                | 17                          |
 
 O7 may follow O1 in parallel with O2–O6; whichever lands later inherits the other's rules, as in section 17.6. Requests captured with a Client already satisfy O1; associating a Client after capture is an optional R3A path, not a blocker.
 
-Excluded from R3C here: Contracts (R3D), real Templates, clauses and variants, real prices, discounts and adjustments ([Pricing PRD §14](release-3-illustrative-pricing-prd.md#14-exclusions)), approval thresholds, approved exceptions and overrides, official numbering, real transmission channels, delivery receipts, recipient Contacts, e-signature, real acceptance evidence, withdrawal, validity extension, Offer-level next steps, deadlines and reminders (S04-Q08 and S04-Q09 Partial; the Opportunity next action remains the follow-up record), Opportunity outcome changes, referenced Documents, stored files and Document Registry entries, Company-wide Offer lists and dashboards, Activity projection of Offer events, export, deletion and AI assistance.
+O1 remains the priority Offer slice and depends on delivered R3B3 plus its existing Client Legal Entity dependency only. Neither #454 nor future R3B4/O8 blocks O1. O8 is an additive future slice, published only through its own approved issue after R3B4 is delivered; this documentation amendment does not make it implementation-ready by itself.
+
+Excluded from R3C here: creating, changing, approving or deleting pricing adjustments; percentage discounts, real Templates, clauses and variants, real prices, margin and discount thresholds, approved exceptions and overrides, Contracts (R3D), official numbering, real transmission channels, delivery receipts, recipient Contacts, e-signature, real acceptance evidence, withdrawal, validity extension, Offer-level next steps, deadlines and reminders (S04-Q08 and S04-Q09 Partial; the Opportunity next action remains the follow-up record), Opportunity outcome changes, referenced Documents, stored files and Document Registry entries, Company-wide Offer lists and dashboards, Activity projection of Offer events, export, deletion and AI assistance. R3C only reads the exact immutable R3B4 adjustment trace after O8 is delivered.
 
 ## 19. R3D provisional Contract execution contract (#403)
 
@@ -942,3 +958,92 @@ Ordered vertical slices, tracked under [#290](https://github.com/Prisma-Prim/PRI
 C6 may follow C1 in parallel with C2–C5, and C7 and C8 may proceed in parallel once their blockers close; whichever lands later inherits the other's rules, as in section 17.6. [#400](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/400) blocks no slice: C5 may reuse its frozen-row guard precedent after it merges, and registering executed agreements as official Documents with a signed scan is a follow-up after #400 and its future signed-scan slice.
 
 Excluded from R3D here: imported and renewal origins, multi-party agreements (DEC-024), real Templates, clauses, variants and legal review, clause selection or editing, official numbering, Contract transmission, real or partial signature evidence, e-signature and MSign, legal or operational lifecycle states, instruments other than Addenda, consolidated terms, obligations and due dates (Sarcina M04-R104), invoices and tranches, Contract Documents, stored files and signed scans, unlinking, automatic Project creation or activation, Project Tasks, Drive and Calendar automation (MASTER §23), a Project's own legal-entity field, Opportunity status changes, Company-wide Contract lists and dashboards, Activity projection, export, deletion and AI assistance.
+
+## 20. Approved provisional one-time Client association after Request capture (#450)
+
+This section normalizes one bounded, reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not new Iurie evidence or approved first-tenant business policy. It removes the dead end for a Request captured before its Client is known without changing capture-time evidence, Opportunity meaning, Pricing history, Offer policy or Client ownership.
+
+### 20.1 Observable outcome and boundary
+
+An authorized user in a server-validated active Company opens a Company-owned Request whose stored original Client reference is absent, selects one existing active Client Account from the authorized Client search and confirms the association. The Request detail and list then expose the existing Client-owned current projection and dossier navigation when the reader retains Client visibility. Reload and process restart preserve the association.
+
+The association names a Client Account, not a Client Legal Entity. It does not create or change a Client, a Client–Company Relationship, a Client Legal Entity, the responsible Company, original Request evidence, capture fields, subject, Opportunity, next action, responsible actor, status or stage.
+
+### 20.2 Request versions and one-time lifecycle
+
+Version 1 remains the complete capture contract and has two valid historical forms: a Request may already store an original Client reference, or it may store none. Only the second form may transition once to version 2. Version 2 requires a stored original Client reference and has no transition back to version 1.
+
+The eligibility decision uses the stored original reference. A null or omitted current permission-filtered Client projection does not mean that the reference is absent and never makes an already-associated version 1 Request eligible. A Request with any existing stored association, visible or hidden, cannot be re-pointed.
+
+### 20.3 Explicit permission and prerequisites
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Intake v3**, whose permissions are v2 plus `commercial.request.client.associate`. Existing v1 and v2 assignments never expand in place. An administrator must revoke the old assignment and issue a fresh grant that captures v3; null or unknown versions fail closed.
+
+Execution and exact replay require all of the following at that time:
+
+- a verified identity, active Workspace Membership and server-validated active Company;
+- a live captured Company Commercial Intake v3 assignment in that Company;
+- current Request read authority for the target;
+- current Client read authority for the selected Client Account and an active Client–Company Relationship in that Company.
+
+The new permission grants none of those independent prerequisites and adds no Client, pricing, Offer, Contract, Activity read, administration or cross-Company authority.
+
+### 20.4 Public command and atomic result
+
+`POST /commercial-intake/requests/{requestId}/client-association` requires `Idempotency-Key` and accepts exactly `{ expectedVersion, clientAccountId }`. A valid material success returns `200 { receipt: { requestId, version: 2, outcome: "associated" }, request }`, where `request` is the current permission-filtered Request detail and the receipt is the immutable command result.
+
+One successful transaction commits all of the following or none:
+
+1. the Request's original Client Account reference through the Client owner's public operational-reference boundary and its existing Client, relationship, union and reversal fence;
+2. the Request transition from version 1 to version 2;
+3. one durable command receipt;
+4. exactly one `client_request.client_associated` event with metadata `{ "requestVersion": 2 }`.
+
+The Commercial Intake module does not copy Client lookup, relationship, union, reversal or legal-entity rules. The server establishes the actor, Company, resulting version and event time.
+
+### 20.5 Validation, replay and safe refusals
+
+Unknown fields, malformed identifiers and an invalid version are field-specific `400` responses. Missing verified identity returns `401`. Missing, revoked, inactive, null, unknown, v1 or v2 association authority returns the existing safe `403`.
+
+An unknown, cross-Workspace, cross-Company or unreadable Request uses the existing Request-detail not-found response. A stale Request version returns `409 STALE_VERSION`. Any stored association, visible or hidden, returns `409 CLIENT_ALREADY_ASSOCIATED` without a Client identifier or label. An unknown, inaccessible, inactive, unrelated, superseded or concurrently invalidated Client returns `CLIENT_REFERENCE_UNAVAILABLE`, matching capture. Reusing a key with changed input returns `409 IDEMPOTENCY_CONFLICT`. Every refusal writes no Request change, receipt or event.
+
+The key is scoped to Workspace, Company and acting Membership. Its fingerprint covers the Request id, observed Request version and Client Account id. Current authority, Request visibility and selected-Client availability are revalidated before replay. An exact replay is resolved before rejecting its now-stale observed Request version and returns the original receipt without another write or event. Concurrent exact retries converge on that receipt. An uncertain response preserves the exact payload, observed version and key for an explicit unchanged retry.
+
+### 20.6 Concurrency and Client ownership
+
+The Request row owns association ordering. Two associations submitted against version 1 commit at most one. A next-action update remains independent because it changes the Opportunity row and Opportunity version rather than the Request row.
+
+Client union, reversal, relationship archive and Client mutation retain the Client owner's existing lock order, authorization and outcomes through its public operational-reference fence. A race cannot strand a Client reference, bypass a relationship, copy a Client rule into Commercial Intake or change any Client Legal Entity. A harmless Client correction that preserves the authorized relationship may proceed under that existing owner contract.
+
+### 20.7 Pricing ordering and immutable history
+
+Pricing calculation and association use a compatible lock on the Request row when reading or changing its nullable stored Client reference. When calculation races with the first association of a previously unassociated Request, obtaining the lock first means its immutable Snapshot stores no Client reference and association may commit afterwards. If association commits first, the new Snapshot stores the original Client reference. A race never produces a partly associated Snapshot or a stranded Client reference.
+
+No existing Pricing Snapshot is rewritten, backfilled or re-pointed. After association, a fresh calculation creates a new Snapshot that stores the reference and later reads return the Client owner's current visible projection. Losing Client read authority hides only that projection; it does not erase the stored association or make the Request eligible again.
+
+### 20.8 Activity, reads and interface states
+
+The association event targets the Request in its responsible Company, attributes the acting Membership at server time and contains only `requestVersion`. Failed, denied and replayed commands create no event. Its projection is allowed only through section 17's existing Company Commercial Activity Reader plus current `commercial.request.read`; it never reveals a Client identifier, label or relationship.
+
+Prisme and Classic Request detail show “No Client associated” only when the stored association is absent. “Associate a Client” appears only with effective v3 association permission and current Client read authority, and reuses the capture form's authorized Client search. Empty selection, unavailable Client, stale or already-associated state, denial, uncertain outcome and success are explicit. Authority, identity or Company changes clear the draft and late responses never render. Success refreshes detail and any loaded list row and exposes the existing dossier action when the current projection is visible. The flow is usable by keyboard at 1440 px and 390 px.
+
+### 20.9 Migration and acceptance
+
+The implementation is additive. Existing Requests and assignments are unchanged: associated version 1, unassociated version 1 and newly associated version 2 are all valid, while version 2 without a stored Client reference is invalid. Migration proof covers both existing version 1 forms and proves that neither is rewritten.
+
+The highest stable seam is the public REST interface against PostgreSQL, followed by the real browser journey. Acceptance proves:
+
+1. success, restart persistence, version 2, one receipt and one minimal event;
+2. permission, Company, Workspace, Request and Client isolation, including revocation and hidden-projection cases without metadata leakage;
+3. exact replay, changed-payload conflict, two-association convergence and atomic rollback;
+4. deterministic races with Pricing calculation and the Client owner's union, reversal, relationship and correction fences;
+5. unchanged Request evidence, Company, Opportunity, responsible actor, Client identity, Client relationship and every Client Legal Entity;
+6. detail and list projection, then capture without a Client → associate → calculate a fresh Snapshot → reload → reopen → Client dossier at desktop and narrow width.
+
+Every existing Request-create and read prerequisite accepts v3 because it contains the v1 permissions, and next-action update accepts v2 or v3 because both contain its permission. No contained-permission check treats the bundle's newest version as the only valid version.
+
+### 20.10 Exclusions and unresolved question
+
+Excluded: replacing, correcting or removing an association; creating a Client or Client–Company Relationship from the Request; selecting or changing a Client Legal Entity; rewriting or backfilling any Pricing Snapshot; Opportunity reassignment, status, stage or additional Opportunities; pricing formulas; Offer or Contract behaviour; external messages; CSS redesign; and any permission beyond Intake v3's one association permission.
+
+The approved sources do not decide whether an Offer may reuse a Pricing Snapshot created while the Request still had no Client after a later association. This section neither permits nor forbids that reuse. Its complete demonstration calculates a fresh Snapshot after association, preserving a usable Request → Pricing → Offer path without inventing Offer policy or rewriting history.

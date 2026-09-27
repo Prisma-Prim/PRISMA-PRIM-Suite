@@ -1,5 +1,9 @@
 import { sql } from 'drizzle-orm';
 import type { ClientContact } from '../../client/client.types.js';
+import type {
+  ClientLegalEntityFieldChanges,
+  ClientLegalEntityValues,
+} from '../../client/client-legal-entity.types.js';
 import { workspaceInvitations } from './workspace-invitation.js';
 import {
   check,
@@ -688,6 +692,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
+  'client_legal_entity.registered',
+  'client_legal_entity.corrected',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -743,6 +749,8 @@ export const activityLogEvents = pgTable(
               | 'Company Project Approver';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
+        | { legalEntityId: string; values: ClientLegalEntityValues }
+        | { legalEntityId: string; changes: ClientLegalEntityFieldChanges }
         | Record<string, never>
       >()
       .notNull(),

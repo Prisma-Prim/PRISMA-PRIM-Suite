@@ -10,17 +10,7 @@ import type {
 } from '../project/project-lifecycle.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  exists,
-  ne,
-  notInArray,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -69,7 +59,10 @@ import type {
   ClientUnionActivityEvent,
   ProjectCreatedActivityEvent,
 } from './accountability.types.js';
-import { CLIENT_CORRECTED_ACTION } from './accountability.types.js';
+import {
+  CLIENT_CORRECTED_ACTION,
+  COMPANY_SCOPED_CLIENT_ACTIONS,
+} from './accountability.types.js';
 
 const INITIAL_PAGE_SIZE = 50;
 const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
@@ -1576,17 +1569,19 @@ export class AccountabilityService {
               : sql<boolean>`false`,
           ),
         );
-    // A shared Client does not broaden correction history: whatever grants
-    // admit the Client, a correction appears only in the Company that made it.
+    // A shared Client does not broaden its change history: whatever grants
+    // admit the Client, a dossier correction or a legal-entity registration or
+    // correction appears only in the Company that made it.
+    const companyScopedClientActions = [...COMPANY_SCOPED_CLIENT_ACTIONS];
     const correctionInActiveCompany = actor.activeCompany
       ? or(
-          ne(activityLogEvents.action, CLIENT_CORRECTED_ACTION),
+          notInArray(activityLogEvents.action, companyScopedClientActions),
           and(
             eq(activityLogEvents.workspaceId, actor.workspaceId),
             eq(activityLogEvents.targetCompanyId, actor.activeCompany.id),
           ),
         )
-      : ne(activityLogEvents.action, CLIENT_CORRECTED_ACTION);
+      : notInArray(activityLogEvents.action, companyScopedClientActions);
     const rows = await this.databaseContext.connection
       .select({
         id: activityLogEvents.id,
@@ -1807,6 +1802,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
         idempotencyKey: `${event.action}:${event.target.clientAccountId}`,
       };
     case 'client.corrected':
+    case 'client_legal_entity.registered':
+    case 'client_legal_entity.corrected':
       return {
         targetType: event.target.type,
         targetInternalUserId: null,

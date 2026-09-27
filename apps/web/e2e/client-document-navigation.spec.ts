@@ -145,6 +145,8 @@ function routeApi(page: Page, documentPermissions: string[]) {
       if (DOCUMENT_VERSIONS_PATH.exec(path)?.[1] === document.id)
         return route.fulfill({ json: draftVersionsOf(document) });
     }
+    if (path.endsWith('/legal-entities'))
+      return route.fulfill({ json: { clientVersion: 1, legalEntities: [] } });
     return route.fulfill({ status: 404 });
   };
   return {

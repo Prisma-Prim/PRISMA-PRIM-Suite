@@ -167,6 +167,20 @@ text, source label, subject, next-action text, Opportunity scope or
 Client-confidential content, and it adds no commercial filter, export or
 event-mutation route.
 
+For the approved additional Client Legal Entities ([Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393)), one committed registration creates `client_legal_entity.registered` and one committed material correction creates `client_legal_entity.corrected`. Each event targets the owning Client Account in the acting Company, in the same transaction as the record change, the Client version increment and the receipt. Metadata carries the entity identifier and the recorded or previous-and-new shared identity values only. Projection follows the delivered `client.corrected` rule: only in the recording Company, and only to actors who can currently read that Client there. Failed commands, no-ops and exact replays create no event.
+
+For the [provisional one-time Client association after Request capture](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450),
+one successful association creates exactly one
+`client_request.client_associated` event in the same transaction as the stored
+original Client reference, Request version 2 and durable command receipt. It
+targets the Request in its responsible Company and retains the acting Membership
+and server-authoritative time. Metadata contains only `requestVersion: 2`; it
+contains no Client identifier, label, relationship, Request content or
+Opportunity data. Failed, denied and replayed commands create none. The event is
+eligible for the existing commercial projection only under Company Commercial
+Activity Reader plus current Request read, and its projection reveals no Client
+identity. Recording or reading it grants no association or Client authority.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
@@ -195,11 +209,11 @@ Retention and authorized export require a later policy based on business and leg
 - The delivered event actions are `internal_user.provisioned`, `company.registered`, `company_context_assignment.granted`, `company_context_assignment.revoked`, `company_director_client_assignment.granted`, `company_director_client_assignment.revoked`, `client.created`, `client_company_relationship.established`, and `client.corrected`.
 - The approved but not yet delivered duplicate-resolution actions are `client.union_confirmed` and `client.union_reversed`; one logical cross-Company action has one internal operation identifier plus one Company-scoped projection per affected Company, each with a different unpredictable public projection reference and no public cross-Company correlation key.
 - Client target labels require an applicable Client read permission in addition to the existing Activity Log visibility boundary. A duplicate-resolution projection uses its own redacted Company-scoped `client_union_operation` target representation; restricted detail additionally requires an active assignment whose captured version or immutable hash resolves to resolver-enabled `v2` in every affected Company; the shared bundle label and legacy `v1` are insufficient. Client–Company Relationship, correction and duplicate-resolution projections are returned only within the server-validated active Company scope; without an active Company, Company-scoped Client events are omitted.
-- The delivered commercial intake actions `client_request.created` and
-  `opportunity.created` are recorded but not yet projected; the approved
-  provisional next-action slice adds `opportunity.next_action.updated`, and the
-  approved provisional commercial Activity read adds their authorized Company
-  projection under a separate opt-in permission.
+- Commercial intake actions `client_request.created`, `opportunity.created`
+  and `opportunity.next_action.updated` use the authorized Company projection
+  under its separate opt-in permission and current target read. The approved
+  one-time Client-association contract adds `client_request.client_associated`
+  to that projection only when its owning implementation is delivered.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
@@ -219,6 +233,10 @@ Retention and authorized export require a later policy based on business and leg
   opt-in bundle plus current target read are both required, that partial
   authority and another Company or Workspace disclose no event, count or label,
   and that projection adds no mutation route.
+- The one-time Client-association slice proves exactly one
+  `client_request.client_associated` event with Request-version-only metadata in
+  the atomic association transaction, none for refusals or replays, and no Client
+  identity disclosure through the commercial projection.
 - The next duplicate-resolution slice must prove exactly one union or reversal projection per affected Company linked server-side to one internal operation, distinct unpredictable public projection references across Companies, no internal operation identifier, actor identity, exact/coarse action time or cross-scope ordering key in redacted reads, independently generated Company-local ordering, complete affected-Company authorization before shared correlation/actor/time is returned, and no success projection for blocked identifiers, disagreement, stale state, cancellation or replay.
 
 ## 12. Acceptance journey

@@ -942,6 +942,10 @@ test('creates and reuses one shared Client identity across two Company contexts'
     const url = new URL(request.url());
     const companyId = request.headers()['x-company-context-id'];
     expect(companyId).toBeTruthy();
+    if (url.pathname.endsWith('/legal-entities'))
+      return route.fulfill({
+        json: { clientVersion: dossier.version, legalEntities: [] },
+      });
 
     if (url.pathname.endsWith('/clients/search')) {
       expect(url.searchParams.get('query')).toBe('Exemplu');
@@ -1355,6 +1359,10 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       return route.fulfill({ status: 403, json: { message: 'Forbidden' } });
     }
     expect(companyId).toBeTruthy();
+    if (url.pathname.endsWith('/legal-entities'))
+      return route.fulfill({
+        json: { clientVersion: dossier.version, legalEntities: [] },
+      });
     if (url.pathname.endsWith('/clients/search')) {
       return route.fulfill({
         json: clientCreated
