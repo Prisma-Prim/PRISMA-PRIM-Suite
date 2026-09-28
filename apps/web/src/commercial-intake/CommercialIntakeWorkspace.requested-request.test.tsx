@@ -60,7 +60,9 @@ function row(id: string, subject: string, clientDossierId?: string) {
     id,
     subject,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    ...(clientDossierId === undefined ? {} : { clientDossierId }),
+    ...(clientDossierId === undefined
+      ? {}
+      : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
