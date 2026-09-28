@@ -142,12 +142,12 @@ const PROJECT_BUNDLE: BundleDefinition = {
   label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
-// A fresh grant captures v2; existing v1 assignments keep their captured
-// version until explicitly revoked and granted again.
+// A fresh grant captures v3; existing v1 and v2 assignments keep their
+// captured version until explicitly revoked and granted again.
 const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-  permissionSetVersion: 'v2',
+  permissionSetVersion: 'v3',
 };
 const SERVICE_CATALOGUE_BUNDLE: BundleDefinition = {
   value: COMPANY_SERVICE_CATALOGUE_BUNDLE,

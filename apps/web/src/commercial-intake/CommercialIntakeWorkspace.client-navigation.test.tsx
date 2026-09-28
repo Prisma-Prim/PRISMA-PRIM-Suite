@@ -49,6 +49,19 @@ function actorFor(
 const companyA = { id: 'company-1', displayName: 'PRISMA-PRIM' };
 const reader = actorFor(companyA);
 const editor = actorFor(companyA, true);
+const associationEditor: ActorContext = {
+  ...editor,
+  activeCompany: {
+    ...companyA,
+    clientPermissions: ['client.read'],
+    commercialIntakePermissions: [
+      ...intakePermissions,
+      'commercial.opportunity.next_action.update',
+      'commercial.request.client.associate',
+    ],
+    commercialIntakePermissionSetVersion: 'v3',
+  },
+};
 
 const sharedName = 'Shared display name';
 const firstDossier = {
@@ -108,6 +121,8 @@ function detail(
     capturedByWorkspaceMembershipId: 'membership-1',
     capturedAt: '2026-09-20T10:00:00.000Z',
     version: 1,
+    clientAssociationStatus:
+      clientReference === undefined ? 'absent' : 'visible',
     ...(clientReference === undefined ? {} : { clientReference }),
     initialOpportunity: {
       id: `opportunity-${id}`,
@@ -734,7 +749,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       [`GET ${listPath}`]: [
         reply({ items: dossierRows() }),
         reply({
-          items: [row('request-b', 'Company B Request', 'client-first')],
+          items: [row('request-b', 'Company B Request', 'client-b')],
         }),
       ],
       [`GET ${detailPath('request-first')}`]: [lateDetail.responder],
@@ -756,11 +771,206 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     expect(
       screen.queryByText('Original source of First Client Request'),
     ).not.toBeInTheDocument();
-    expect(returnAction()).not.toBeInTheDocument();
     expect(listedSubjects()).toEqual(['Company B Request']);
+    const companyBRow = within(requestList()).getByRole('listitem');
+    const companyBDossierAction = within(companyBRow).getByRole('button', {
+      name: copy.openClientDossier,
+    });
+    expect(
+      screen.getAllByRole('button', { name: copy.openClientDossier }),
+    ).toEqual([companyBDossierAction]);
+    fireEvent.click(companyBDossierAction);
+    expect(openDossier).toHaveBeenCalledExactlyOnceWith('client-b');
   });
 
   describe('after a Client identity change', () => {
+    it('keeps the uncertain Opportunity payload, observed version and key while catching up a new association', async () => {
+      const catchUp = deferred();
+      const original = detail('request-unlinked', 'Unlinked follow-up');
+      const transport = stubRoutes({
+        [`GET ${listPath}`]: [
+          reply({ items: dossierRows() }),
+          reply({ items: dossierRows() }),
+        ],
+        [`GET ${detailPath('request-unlinked')}`]: [
+          reply(original),
+          catchUp.responder,
+        ],
+        [`POST ${nextActionPath('request-unlinked')}`]: [
+          networkFailure(),
+          networkFailure(),
+        ],
+      });
+      const view = renderNavigation({}, associationEditor);
+      await waitFor(() => expect(listedSubjects()).toHaveLength(4));
+      openRow('Unlinked follow-up');
+      fireEvent.click(
+        await screen.findByRole('button', { name: copy.editNextAction }),
+      );
+      changeValue(
+        screen.getByLabelText(copy.nextAction),
+        'Confirm the audit window',
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.saveNextAction }),
+      );
+      await screen.findByText(copy.nextActionUncertain, {
+        selector: '[role="alert"]',
+      });
+
+      view.update({ clientIdentityRevision: 1 });
+      await catchUp.settle({
+        ...original,
+        version: 2,
+        clientAssociationStatus: 'visible',
+        clientReference: {
+          originalClientId: 'client-first',
+          currentClientId: 'client-second',
+          displayName: 'Current associated Client',
+        },
+        initialOpportunity: {
+          ...original.initialOpportunity,
+          nextAction: 'Changed elsewhere',
+          version: 3,
+          responsibleWorkspaceMembershipId: 'membership-other',
+          responsibleActor: {
+            workspaceMembershipId: 'membership-other',
+            displayName: 'Other actor',
+          },
+        },
+      });
+
+      expect(screen.getByText('Current associated Client')).toBeVisible();
+      expect(
+        screen.queryByRole('heading', { name: copy.associateClient }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(copy.noClientAssociated),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(original.originalText)).toBeVisible();
+      expect(screen.getByText(`${copy.opportunityVersion}: 1`)).toBeVisible();
+      expect(screen.getByText(`${copy.responsible}: Iurie`)).toBeVisible();
+      expect(screen.queryByText('Other actor')).not.toBeInTheDocument();
+      expect(screen.getByText(copy.nextActionUncertain)).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.retryNextAction }),
+      );
+      await screen.findByText(copy.nextActionUncertain, {
+        selector: '[role="alert"]',
+      });
+
+      const commands = transport.calls(
+        `POST ${nextActionPath('request-unlinked')}`,
+      );
+      expect(commands).toHaveLength(2);
+      const [first, retry] = commands;
+      expect(first?.[1]?.body).toBe(
+        JSON.stringify({
+          expectedVersion: 1,
+          nextAction: 'Confirm the audit window',
+        }),
+      );
+      expect(retry?.[1]?.body).toBe(first?.[1]?.body);
+      expect(keyOf(retry?.[1])).toBeDefined();
+      expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
+      expect(transport.unexpected).toEqual([]);
+    });
+
+    it.each(['visible', 'hidden'])(
+      'catches up a newly %s association without replacing the Opportunity draft',
+      async (projection) => {
+        const catchUp = deferred();
+        const original = detail('request-unlinked', 'Unlinked follow-up');
+        const refreshed = {
+          ...original,
+          version: 2,
+          clientAssociationStatus: projection,
+          ...(projection === 'visible'
+            ? {
+                clientReference: {
+                  originalClientId: 'client-first',
+                  currentClientId: 'client-second',
+                  displayName: 'Current associated Client',
+                },
+              }
+            : {}),
+          initialOpportunity: {
+            ...original.initialOpportunity,
+            nextAction: 'Changed elsewhere',
+            version: 3,
+            responsibleWorkspaceMembershipId: 'membership-other',
+            responsibleActor: {
+              workspaceMembershipId: 'membership-other',
+              displayName: 'Other actor',
+            },
+          },
+        };
+        const transport = stubRoutes({
+          [`GET ${listPath}`]: [
+            reply({ items: dossierRows() }),
+            reply({ items: dossierRows() }),
+          ],
+          [`GET ${detailPath('request-unlinked')}`]: [
+            reply(original),
+            catchUp.responder,
+          ],
+          [`POST ${nextActionPath('request-unlinked')}`]: [failure(409)],
+        });
+        const openDossier = vi.fn();
+        const view = renderNavigation(
+          { onOpenClientDossier: openDossier },
+          associationEditor,
+        );
+        await waitFor(() => expect(listedSubjects()).toHaveLength(4));
+        openRow('Unlinked follow-up');
+        await screen.findByRole('heading', { name: copy.associateClient });
+        fireEvent.click(
+          screen.getByRole('button', { name: copy.editNextAction }),
+        );
+        changeValue(screen.getByLabelText(copy.nextAction), 'Keep my draft');
+
+        view.update({ clientIdentityRevision: 1 });
+        await catchUp.settle(refreshed);
+
+        expect(
+          screen.queryByRole('heading', { name: copy.associateClient }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(copy.noClientAssociated),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText(original.originalText)).toBeVisible();
+        expect(screen.getByText(`${copy.opportunityVersion}: 1`)).toBeVisible();
+        expect(
+          screen.getByText(`${copy.nextAction}: Follow up Unlinked follow-up`),
+        ).toBeVisible();
+        expect(screen.getByText(`${copy.responsible}: Iurie`)).toBeVisible();
+        expect(screen.queryByText('Other actor')).not.toBeInTheDocument();
+        expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
+          'Keep my draft',
+        );
+        if (projection === 'visible') {
+          expect(screen.getByText('Current associated Client')).toBeVisible();
+          clickReturnAction();
+          expect(openDossier).toHaveBeenCalledExactlyOnceWith('client-second');
+        } else {
+          expect(screen.getByText(copy.clientAssociationHidden)).toBeVisible();
+          expect(returnAction()).not.toBeInTheDocument();
+        }
+        fireEvent.click(
+          screen.getByRole('button', { name: copy.saveNextAction }),
+        );
+        await screen.findByText(copy.nextActionConflict, {
+          selector: '[role="alert"]',
+        });
+        expect(
+          transport.calls(`POST ${nextActionPath('request-unlinked')}`)[0]?.[1]
+            ?.body,
+        ).toBe(
+          JSON.stringify({ expectedVersion: 1, nextAction: 'Keep my draft' }),
+        );
+      },
+    );
+
     it('rereads the loaded rows and compares only rows read under the current identity', async () => {
       const refreshed = deferred();
       const transport = stubRoutes({

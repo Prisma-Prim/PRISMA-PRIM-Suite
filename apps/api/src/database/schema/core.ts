@@ -325,7 +325,9 @@ export const companyRoleAssignments = pgTable(
         OR
         (${table.bundle}::text = 'company_document_registrar' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2', 'v3'))
         OR
-        (${table.bundle}::text IN ('company_commercial_intake', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
+        (${table.bundle}::text = 'company_commercial_intake' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2', 'v3'))
+        OR
+        (${table.bundle}::text = 'company_project_access' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
         (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_project_approver') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
         OR

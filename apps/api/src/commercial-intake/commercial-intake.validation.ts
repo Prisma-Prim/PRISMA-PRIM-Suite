@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import type {
+  AssociateClientCommand,
   CreateCommercialIntakeCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
@@ -15,10 +16,38 @@ const ROOT_FIELDS = new Set([
 ]);
 const OPPORTUNITY_FIELDS = new Set(['title', 'scope', 'nextAction']);
 const NEXT_ACTION_UPDATE_FIELDS = new Set(['expectedVersion', 'nextAction']);
+const CLIENT_ASSOCIATION_FIELDS = new Set([
+  'expectedVersion',
+  'clientAccountId',
+]);
 // Opportunity versions are PostgreSQL integers. The maximum stays a valid
 // observation so an unchanged or replayed command can confirm it; the command
 // refuses only a material update from it.
 export const MAXIMUM_OPPORTUNITY_VERSION = 2_147_483_647;
+
+export function readAssociateClientCommand(
+  value: unknown,
+): AssociateClientCommand {
+  const body = record(value, 'association');
+  rejectExtraFields(body, CLIENT_ASSOCIATION_FIELDS, 'association');
+  const expectedVersion = body.expectedVersion;
+  if (
+    typeof expectedVersion !== 'number' ||
+    !Number.isInteger(expectedVersion) ||
+    expectedVersion < 1 ||
+    expectedVersion > MAXIMUM_OPPORTUNITY_VERSION
+  )
+    invalid('expectedVersion', 'Reload the Request before associating.');
+  const clientAccountId = body.clientAccountId;
+  if (
+    typeof clientAccountId !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      clientAccountId,
+    )
+  )
+    invalid('clientAccountId', 'Choose a valid Client Account.');
+  return { expectedVersion, clientAccountId: clientAccountId.toLowerCase() };
+}
 
 export function readUpdateOpportunityNextActionCommand(
   value: unknown,

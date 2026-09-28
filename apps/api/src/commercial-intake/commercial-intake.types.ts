@@ -17,6 +17,11 @@ export interface UpdateOpportunityNextActionCommand {
   readonly nextAction: string;
 }
 
+export interface AssociateClientCommand {
+  readonly expectedVersion: number;
+  readonly clientAccountId: string;
+}
+
 /**
  * The responsible actor label shown by the Request list and detail. It carries
  * only the membership already scoped to this Company intake read boundary and
@@ -37,7 +42,8 @@ export interface CommercialIntakeDetail {
   readonly originalText: string;
   readonly capturedByWorkspaceMembershipId: string;
   readonly capturedAt: string;
-  readonly version: 1;
+  readonly version: 1 | 2;
+  readonly clientAssociationStatus: 'absent' | 'hidden' | 'visible';
   readonly clientReference?: {
     readonly originalClientId: string;
     readonly currentClientId?: string;
@@ -54,6 +60,15 @@ export interface CommercialIntakeDetail {
     readonly createdAt: string;
     readonly version: number;
   };
+}
+
+export interface ClientAssociationResult {
+  readonly receipt: {
+    readonly requestId: string;
+    readonly version: 2;
+    readonly outcome: 'associated';
+  };
+  readonly request: CommercialIntakeDetail;
 }
 
 // The receipt confirms what one command did; `request` is the current

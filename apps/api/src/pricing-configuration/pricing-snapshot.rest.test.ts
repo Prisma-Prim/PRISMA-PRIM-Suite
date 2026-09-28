@@ -1341,6 +1341,140 @@ withPostgres('Pricing Snapshots REST', () => {
     expect(restrictedSnapshot.total).toBe('346.72');
   });
 
+  it('orders Client association with Pricing on the Request lock and never changes an existing snapshot', async () => {
+    for (const associationFirst of [true, false]) {
+      const fixture = await prepared();
+      // A second identity reaches the Request independently: the first command
+      // holds its own identity FOR SHARE, which blocks same-identity admission.
+      const pricingActor = record(
+        await json(
+          await request('/access/current-actor', undefined, {
+            headers: CONFIGURATION_MEMBER,
+          }),
+        ),
+      );
+      for (const path of [
+        '/company-context-assignments',
+        ASSIGNMENTS.intake,
+        ASSIGNMENTS.pricing,
+        '/company-director-client-assignments',
+      ])
+        await command(
+          path,
+          {
+            companyId: fixture.companyId,
+            workspaceMembershipId: stringField(
+              pricingActor,
+              'workspaceMembershipId',
+            ),
+          },
+          `association-order-grant-${path}-${associationFirst}`,
+        );
+      const client = entity(
+        await command(
+          '/clients',
+          {
+            displayName: associationFirst
+              ? 'Associated before Pricing'
+              : 'Associated after Pricing',
+          },
+          `pricing-association-client-${associationFirst}`,
+          fixture.companyId,
+        ),
+      );
+      const barrier = await holdTransaction(async (connection) => {
+        await connection.query(
+          'SELECT id FROM client_requests WHERE id = $1 FOR UPDATE',
+          [fixture.requestId],
+        );
+      });
+      let association: Promise<Response> | undefined;
+      let calculation: Promise<Response> | undefined;
+      try {
+        const startAssociation = () =>
+          post(
+            `/commercial-intake/requests/${fixture.requestId}/client-association`,
+            { expectedVersion: 1, clientAccountId: client.id },
+            `pricing-association-${associationFirst}`,
+            fixture.companyId,
+          );
+        const startCalculation = () =>
+          post(
+            snapshotsPath(fixture.opportunityId),
+            calculationBody(fixture),
+            `pricing-association-snapshot-${associationFirst}`,
+            fixture.companyId,
+            CONFIGURATION_MEMBER,
+          );
+        if (associationFirst) {
+          association = startAssociation();
+          await waitForBlockedBy(barrier.backendPid);
+          calculation = startCalculation();
+        } else {
+          calculation = startCalculation();
+          await waitForBlockedBy(barrier.backendPid);
+          association = startAssociation();
+        }
+        await waitForBlockedCount(barrier.backendPid, 2);
+      } finally {
+        await release(barrier);
+      }
+      if (!association || !calculation)
+        throw new Error('Expected both Request writers to start.');
+      const [associationResponse, calculationResponse] = await Promise.all([
+        association,
+        calculation,
+      ]);
+      expect(associationResponse.status).toBe(200);
+      expect(calculationResponse.status).toBe(201);
+      const created = snapshot(await json(calculationResponse));
+      if (associationFirst)
+        expect(created.clientReference).toEqual({
+          originalClientId: client.id,
+          currentClientId: client.id,
+          displayName: 'Associated before Pricing',
+        });
+      else expect(created).not.toHaveProperty('clientReference');
+
+      const snapshotPath = `${snapshotsPath(fixture.opportunityId)}/${created.id}`;
+      const pricingActorReload = await request(
+        snapshotPath,
+        fixture.companyId,
+        { headers: CONFIGURATION_MEMBER },
+      );
+      expect(pricingActorReload.status).toBe(200);
+      expect(snapshot(await json(pricingActorReload))).toEqual(created);
+
+      const ownerReload = await request(snapshotPath, fixture.companyId, {
+        headers: OWNER,
+      });
+      expect(ownerReload.status).toBe(200);
+      const ownerSnapshot = snapshot(await json(ownerReload));
+      if (associationFirst)
+        expect(ownerSnapshot).toEqual({
+          ...created,
+          clientReference: {
+            originalClientId: client.id,
+            displayName: 'Associated before Pricing',
+          },
+        });
+      else {
+        expect(ownerSnapshot).toEqual(created);
+        expect(ownerSnapshot).not.toHaveProperty('clientReference');
+      }
+      expect(
+        (
+          await pool.query(
+            `SELECT
+               (SELECT count(*)::integer FROM pricing_snapshots WHERE client_request_id = $1) AS snapshots,
+               (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS associations`,
+            [fixture.requestId],
+          )
+        ).rows,
+      ).toEqual([{ snapshots: 1, associations: 1 }]);
+    }
+  });
+
   it('refuses invalid, unknown, stale, not-effective and mixed-currency declarations without partial writes', async () => {
     const fixture = await prepared();
     const path = snapshotsPath(fixture.opportunityId);
@@ -2592,6 +2726,45 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     throw new Error(
       `No ${advisory ? 'advisory ' : ''}waiter behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
+    );
+  }
+
+  // PostgreSQL queues later tuple lockers behind the first waiter. Follow
+  // that chain, but count only commands already waiting on the Request row.
+  async function waitForBlockedCount(
+    backendPid: number,
+    expected: number,
+  ): Promise<void> {
+    const deadline = Date.now() + 2_000;
+    do {
+      const result = await pool.query<{ count: string }>(
+        `WITH RECURSIVE request_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND query ILIKE '%"client_requests"%'
+              AND (query ILIKE '%for update%' OR query ILIKE '%for share%')
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM request_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
+        [backendPid],
+      );
+      if (Number(result.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    } while (Date.now() < deadline);
+    const activity = await pool.query(
+      `SELECT pid, wait_event, pg_blocking_pids(pid) AS blockers, query
+         FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    throw new Error(
+      `Fewer than ${expected} Request waiters behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
     );
   }
 

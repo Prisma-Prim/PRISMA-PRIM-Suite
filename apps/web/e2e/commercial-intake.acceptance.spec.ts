@@ -216,6 +216,49 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await clients.getByRole('button', { name: 'Close registration' }).click();
 
   await navigate(page, navigation, 'Client Requests', narrow);
+  await expect(
+    intake.getByText('No Client associated', { exact: true }),
+  ).toBeVisible();
+  await searchAndSelectClient(intake, clientName);
+  const associationResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/api\/commercial-intake\/requests\/[^/]+\/client-association$/u.test(
+        new URL(response.url()).pathname,
+      ),
+  );
+  await intake
+    .getByRole('button', { name: 'Confirm Client association' })
+    .click();
+  expect((await associationResponse).status()).toBe(200);
+  await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
+    'Client associated.',
+  );
+  await expect(
+    intake.getByRole('heading', { name: 'Associate a Client' }),
+  ).toHaveCount(0);
+  await expect(
+    intake
+      .locator('.commercial-intake-detail dl > div')
+      .filter({ has: page.getByRole('term').filter({ hasText: /^Client$/u }) })
+      .getByRole('definition'),
+  ).toContainText(clientName);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-client-association-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+
+  await page.reload();
+  await requestButton.click();
+  await expect(
+    intake
+      .locator('.commercial-intake-detail dl > div')
+      .filter({ has: page.getByRole('term').filter({ hasText: /^Client$/u }) })
+      .getByRole('definition'),
+  ).toContainText(clientName);
   await intake.getByRole('button', { name: 'Back to Requests' }).click();
   await captureRequest(page, intake, {
     originalText: linkedOriginalText,
@@ -286,48 +329,6 @@ test('captures and reopens manual Client Requests through the real API and Postg
   await page.getByRole('button', { name: 'Try Prisme' }).click();
   await expect(intake.getByLabel('Existing Client')).toHaveText(clientName);
 
-  await seedRequestsPastListBound(page, suffix);
-  await page.reload();
-  await expect(listItems).toHaveCount(25);
-  // Each loaded row carries its own capture time next to the responsible actor.
-  await expect(listItems.first().locator('time')).toHaveAttribute(
-    'datetime',
-    /^\d{4}-\d{2}-\d{2}T/u,
-  );
-  await expect(listItems.first().locator('time')).not.toBeEmpty();
-  await filter.fill(`Bounded list Request ${suffix} 7`);
-  await expect(listItems).toHaveCount(1);
-
-  // The oldest Request is only reachable through the unchanged older page.
-  await filter.fill(`Qualify ${suffix} commercial request`);
-  await expect(listItems).toHaveCount(0);
-  await expect(
-    intake.getByText('No loaded Client Requests match this filter.', {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-  await page.screenshot({
-    path: testInfo.outputPath(
-      `commercial-intake-filter-${suffix.toLowerCase()}.png`,
-    ),
-    fullPage: true,
-  });
-  await intake.getByRole('button', { name: 'Show older Requests' }).click();
-  await expect(listItems).toHaveCount(1);
-  await listItems.first().getByRole('button').click();
-  await expect(
-    intake.getByText('Client Request detail', { exact: true }),
-  ).toBeVisible();
-  await intake.getByRole('button', { name: 'Back to Requests' }).click();
-  await expectValue(filter, `Qualify ${suffix} commercial request`);
-  await expect(listItems).toHaveCount(1);
-  await clearFilter.click();
-  await expect(
-    intake.getByText(`Bounded list Request ${suffix} 7`, { exact: true }),
-  ).toBeVisible();
-  await expectValue(filter, '');
-
   await navigate(page, navigation, 'Activity Log', narrow);
   const activity = page.locator('.activity-log');
   await expect(
@@ -357,6 +358,13 @@ test('captures and reopens manual Client Requests through the real API and Postg
         })
         .first(),
     ).toBeVisible();
+    await expect(
+      activity
+        .getByText('Ada Ionescu associated a Client with a Request', {
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
     await expect(activity.getByText(originalText, { exact: true })).toHaveCount(
       0,
     );
@@ -380,6 +388,49 @@ test('captures and reopens manual Client Requests through the real API and Postg
       exact: true,
     }),
   ).toHaveCount(0);
+  await navigate(page, navigation, 'Client Requests', narrow);
+
+  await seedRequestsPastListBound(page, suffix);
+  await page.reload();
+  await expect(listItems).toHaveCount(25);
+  // Each loaded row carries its own capture time next to the responsible actor.
+  await expect(listItems.first().locator('time')).toHaveAttribute(
+    'datetime',
+    /^\d{4}-\d{2}-\d{2}T/u,
+  );
+  await expect(listItems.first().locator('time')).not.toBeEmpty();
+  await filter.fill(`Bounded list Request ${suffix} 7`);
+  await expect(listItems).toHaveCount(1);
+
+  // The oldest Request is only reachable through the unchanged older page.
+  await filter.fill(`Qualify ${suffix} commercial request`);
+  await expect(listItems).toHaveCount(0);
+  await expect(
+    intake.getByText('No loaded Client Requests match this filter.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `commercial-intake-filter-${suffix.toLowerCase()}.png`,
+    ),
+    fullPage: true,
+  });
+  await intake.getByRole('button', { name: 'Show older Requests' }).click();
+  await expect(listItems).toHaveCount(1);
+  await requestButton.click();
+  await expect(
+    intake.getByText('Client Request detail', { exact: true }),
+  ).toBeVisible();
+  await intake.getByRole('button', { name: 'Back to Requests' }).click();
+  await expectValue(filter, `Qualify ${suffix} commercial request`);
+  await expect(listItems).toHaveCount(1);
+  await clearFilter.click();
+  await expect(
+    intake.getByText(`Bounded list Request ${suffix} 7`, { exact: true }),
+  ).toBeVisible();
+  await expectValue(filter, '');
 
   await expectNoHorizontalOverflow(page);
   await page.screenshot({
@@ -509,7 +560,9 @@ test('navigates between same-named Client dossiers and their loaded Requests thr
   // With the same-named other dossier open, returning must switch dossiers.
   await openDossier(secondClientId);
   await navigate(page, navigation, 'Client Requests', narrow);
-  await rowFor(firstSubject).getByRole('button').click();
+  await rowFor(firstSubject)
+    .getByRole('button', { name: new RegExp(`^${firstSubject}`, 'u') })
+    .click();
   await expect(
     intake.getByText(`Exact source of ${firstSubject}`, { exact: true }),
   ).toBeVisible();
