@@ -1115,9 +1115,15 @@ withPostgres('Company commercial intake REST', () => {
       second.id,
       first.id,
     ]);
+    expect(page.items.map((item) => item.clientDisplayName)).toEqual([
+      undefined,
+      'Shared display name',
+      'Shared display name',
+    ]);
     expect(page.items[0]).not.toHaveProperty('clientDossierId');
-    // The derived identity is the only Client datum a row gains: no display
-    // name, original reference or count.
+    expect(page.items[0]).not.toHaveProperty('clientDisplayName');
+    // Both derived fields come from the Client-owned projection. The list
+    // never returns the original reference or a count.
     for (const item of page.items)
       expect(Object.keys(item).sort()).toEqual(
         [
@@ -1125,10 +1131,11 @@ withPostgres('Company commercial intake REST', () => {
           'id',
           'initialOpportunity',
           'subject',
-          ...(item.clientDossierId === undefined ? [] : ['clientDossierId']),
+          ...(item.clientDossierId === undefined
+            ? []
+            : ['clientDossierId', 'clientDisplayName']),
         ].sort(),
       );
-    expect(JSON.stringify(page)).not.toContain('Shared display name');
     expect(page).not.toHaveProperty('total');
 
     // Page size, cursor and order are unchanged by the derived field.
@@ -1152,7 +1159,13 @@ withPostgres('Company commercial intake REST', () => {
       ).json(),
     );
     expect(olderPage).toEqual({
-      items: [{ ...page.items[2], clientDossierId: first.id }],
+      items: [
+        {
+          ...page.items[2],
+          clientDossierId: first.id,
+          clientDisplayName: 'Shared display name',
+        },
+      ],
     });
 
     // One batched Client projection per page: more linked rows, each with its
@@ -1216,6 +1229,23 @@ withPostgres('Company commercial intake REST', () => {
     // Workspace client.manage alone and a commercial-only member get none.
     expect(await derived()).toEqual([undefined]);
     expect(await derived(setup.memberHeaders)).toEqual([undefined]);
+
+    const hiddenPage = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    );
+    expect(hiddenPage.items[0]?.clientDisplayName).toBe(
+      'Workspace-managed shared name',
+    );
+    const commercialOnlyPage = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).json(),
+    );
+    expect(commercialOnlyPage.items[0]).not.toHaveProperty('clientDisplayName');
 
     await command(
       '/company-director-client-assignments',
@@ -2443,6 +2473,15 @@ withPostgres('Company commercial intake REST', () => {
       ).json(),
     );
     expect(reloaded).toEqual(record(associated.request));
+    const reloadedItem = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    ).items.find((item) => item.id === created.id);
+    expect(reloadedItem).toMatchObject({
+      clientDossierId: client.id,
+      clientDisplayName: 'Existing association Client',
+    });
   });
 
   it('keeps historical v1 and v2 grants stable, hides unavailable Client identity and revalidates every replay', async () => {
@@ -3437,7 +3476,11 @@ function listedResponsibleActor(value: unknown, requestId: string): unknown {
 
 function listPage(value: unknown): {
   items: Array<
-    Record<string, unknown> & { id: string; clientDossierId?: string }
+    Record<string, unknown> & {
+      id: string;
+      clientDossierId?: string;
+      clientDisplayName?: string;
+    }
   >;
   nextCursor?: string;
 } {
@@ -3451,10 +3494,15 @@ function listPage(value: unknown): {
         row.clientDossierId === undefined
           ? undefined
           : stringField(row, 'clientDossierId');
+      const clientDisplayName =
+        row.clientDisplayName === undefined
+          ? undefined
+          : stringField(row, 'clientDisplayName');
       return {
         ...row,
         id: stringField(row, 'id'),
         ...(clientDossierId === undefined ? {} : { clientDossierId }),
+        ...(clientDisplayName === undefined ? {} : { clientDisplayName }),
       };
     }),
     ...(page.nextCursor === undefined

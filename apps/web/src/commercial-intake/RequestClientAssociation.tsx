@@ -54,6 +54,7 @@ export function RequestClientAssociation({
   request,
   handleAccess,
   onAssociated,
+  onProtectionChange = () => undefined,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -66,6 +67,7 @@ export function RequestClientAssociation({
     value: unknown,
     identityRevision: number,
   ) => Promise<boolean> | boolean;
+  onProtectionChange?: (state: 'idle' | 'loading' | 'uncertain') => void;
 }) {
   const [query, setQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -74,6 +76,23 @@ export function RequestClientAssociation({
   const searchRequest = useRef<AbortController | undefined>(undefined);
   const associationRequest = useRef<AbortController | undefined>(undefined);
   const retry = useRef<Retry | undefined>(undefined);
+
+  useEffect(() => {
+    onProtectionChange(
+      association === 'loading'
+        ? 'loading'
+        : association === 'uncertain'
+          ? 'uncertain'
+          : 'idle',
+    );
+  }, [association, onProtectionChange]);
+
+  useEffect(
+    () => () => {
+      onProtectionChange('idle');
+    },
+    [onProtectionChange],
+  );
 
   useEffect(() => {
     setQuery('');

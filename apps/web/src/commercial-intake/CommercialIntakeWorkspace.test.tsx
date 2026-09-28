@@ -1814,19 +1814,48 @@ describe('CommercialIntakeWorkspace', () => {
       'fetch',
       vi.fn().mockResolvedValue(
         Response.json({
-          items: [{ ...listItem(0), clientDossierId: 'client-1' }],
+          items: [
+            {
+              ...listItem(0),
+              clientDossierId: 'client-1',
+              clientDisplayName: 'Associated Client',
+            },
+          ],
         }),
       ),
     );
 
     renderWorkspace({ onOpenClientDossier });
+    expect(await screen.findByText('Client: Associated Client')).toBeVisible();
     fireEvent.click(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: commercialIntakeCopy.openClientDossier,
       }),
     );
 
     expect(onOpenClientDossier).toHaveBeenCalledWith('client-1');
+  });
+
+  it('rejects a list dossier identifier without its Client-owned display name', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          items: [{ ...listItem(0), clientDossierId: 'client-1' }],
+        }),
+      ),
+    );
+
+    renderWorkspace({ onOpenClientDossier: vi.fn() });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: commercialIntakeCopy.openClientDossier,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the first page visible when an older page cannot be loaded', async () => {

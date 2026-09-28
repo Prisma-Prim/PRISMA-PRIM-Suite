@@ -19,19 +19,20 @@ import './commercial-intake.css';
 
 type ResponsibleActor = { workspaceMembershipId: string; displayName: string };
 
+type RequestListClientProjection =
+  | { clientDisplayName: string; clientDossierId?: string }
+  | { clientDisplayName?: undefined; clientDossierId?: undefined };
+
 type RequestListItem = {
   id: string;
   subject: string | null;
   capturedAt: string;
-  /** Derived current dossier; a row without one never matches a restriction. */
-  clientDossierId?: string;
-  clientDisplayName?: string;
   initialOpportunity: {
     title: string;
     nextAction: string;
     responsibleActor: ResponsibleActor;
   };
-};
+} & RequestListClientProjection;
 
 type ClientRequest = {
   id: string;
@@ -79,6 +80,7 @@ type RequestedRequest = { clientRequestId: string; requestId: number };
 // What the one shared in-flight controller serves: an ordinary detail read, or
 // a capture or next-action command until the reads that follow its outcome end.
 type InFlight = 'none' | 'read' | 'capture' | 'next-action';
+type AssociationProtection = 'idle' | 'loading' | 'uncertain';
 
 type NextActionUpdateResult = {
   receipt: {
@@ -197,7 +199,9 @@ export function CommercialIntakeWorkspace({
   });
   const [feedback, setFeedback] = useState('');
   const [inFlight, setInFlight] = useState<InFlight>('none');
-  const pending = inFlight !== 'none';
+  const [associationProtection, setAssociationProtection] =
+    useState<AssociationProtection>('idle');
+  const pending = inFlight !== 'none' || associationProtection !== 'idle';
   // A capture that ended without a confirmed result keeps its payload and key
   // for an exact retry until a later attempt settles it.
   const [captureUncertain, setCaptureUncertain] = useState(false);
@@ -226,13 +230,17 @@ export function CommercialIntakeWorkspace({
     nextActionEdit.kind === 'uncertain';
   const nextActionInProgress = useRef(false);
   nextActionInProgress.current = nextActionEditOpen;
+  const associationInProgress = useRef(false);
+  associationInProgress.current = associationProtection !== 'idle';
   // Work a requested Request never interrupts; it opens once that work ends.
   const protectedWork =
-    nextActionEditOpen || inFlight === 'next-action'
-      ? 'next-action-edit'
-      : inFlight === 'capture' || captureUncertain
-        ? 'capture'
-        : undefined;
+    associationProtection !== 'idle'
+      ? 'client-association'
+      : nextActionEditOpen || inFlight === 'next-action'
+        ? 'next-action-edit'
+        : inFlight === 'capture' || captureUncertain
+          ? 'capture'
+          : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -363,6 +371,7 @@ export function CommercialIntakeWorkspace({
           setFilter('');
           setRestriction(undefined);
           setNextActionEdit({ kind: 'idle' });
+          setAssociationProtection('idle');
           setInFlight('none');
           setCaptureUncertain(false);
           setRequestToOpen(undefined);
@@ -436,6 +445,7 @@ export function CommercialIntakeWorkspace({
     nextActionRetry.current = undefined;
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
+    setAssociationProtection('idle');
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
@@ -460,7 +470,12 @@ export function CommercialIntakeWorkspace({
   // its loaded rows instead of a plain detail; a retired one only clears it.
   useEffect(() => {
     setRestriction(clientRestriction);
-    if (!clientRestriction || nextActionInProgress.current) return;
+    if (
+      !clientRestriction ||
+      nextActionInProgress.current ||
+      associationInProgress.current
+    )
+      return;
     // A next-action draft, save or uncertain retry stays open until Back.
     const read = detailRead.current;
     if (read && !read.signal.aborted) {
@@ -673,6 +688,7 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
+    setAssociationProtection('idle');
     nextActionRetry.current = undefined;
     setInFlight('none');
   }
@@ -933,7 +949,9 @@ export function CommercialIntakeWorkspace({
         <p role="status" className="commercial-intake-held-request">
           {protectedWork === 'capture'
             ? copy.requestedAfterCapture
-            : copy.requestedAfterNextActionEdit}
+            : protectedWork === 'client-association'
+              ? copy.requestedAfterClientAssociation
+              : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
       {selected ? (
@@ -987,8 +1005,10 @@ export function CommercialIntakeWorkspace({
                 clientIdentityRevision={clientIdentityRevision}
                 request={request}
                 handleAccess={handleAccess}
+                onProtectionChange={setAssociationProtection}
                 onAssociated={async (value, startedUnderRevision) => {
                   if (!isClientRequest(value)) return false;
+                  setAssociationProtection('idle');
                   setSelected({
                     request: value,
                     identityRevision: startedUnderRevision,
@@ -1000,15 +1020,11 @@ export function CommercialIntakeWorkspace({
                         : {
                             ...current,
                             items: current.items.map((item) =>
-                              item.id === value.id
-                                ? {
-                                    ...item,
-                                    clientDossierId:
-                                      value.clientReference?.currentClientId ??
-                                      value.clientReference?.originalClientId,
-                                    clientDisplayName:
-                                      value.clientReference?.displayName,
-                                  }
+                              item.id === value.id && value.clientReference
+                                ? listItemWithClientProjection(
+                                    item,
+                                    value.clientReference,
+                                  )
                                 : item,
                             ),
                           },
@@ -1383,12 +1399,10 @@ function RequestList({
                 </time>
               </small>
             </button>
-            {item.clientDossierId ? (
+            {item.clientDisplayName ? (
               <p>
-                {item.clientDisplayName
-                  ? `${copy.client}: ${item.clientDisplayName} `
-                  : null}
-                {onOpenClientDossier ? (
+                {`${copy.client}: ${item.clientDisplayName} `}
+                {item.clientDossierId && onOpenClientDossier ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1666,20 +1680,39 @@ function isRequestList(value: unknown): value is RequestPage {
 }
 
 function isRequestListItem(value: unknown): value is RequestListItem {
+  if (!isRecord(value)) return false;
+  const hasValidClientProjection =
+    (value.clientDisplayName === undefined &&
+      value.clientDossierId === undefined) ||
+    (typeof value.clientDisplayName === 'string' &&
+      (value.clientDossierId === undefined ||
+        typeof value.clientDossierId === 'string'));
   return (
-    isRecord(value) &&
     typeof value.id === 'string' &&
     isNullableString(value.subject) &&
     isDisplayableTimestamp(value.capturedAt) &&
-    (value.clientDossierId === undefined ||
-      typeof value.clientDossierId === 'string') &&
-    (value.clientDisplayName === undefined ||
-      typeof value.clientDisplayName === 'string') &&
+    hasValidClientProjection &&
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&
     isResponsibleActor(value.initialOpportunity.responsibleActor)
   );
+}
+
+function listItemWithClientProjection(
+  item: RequestListItem,
+  reference: NonNullable<ClientRequest['clientReference']>,
+): RequestListItem {
+  return {
+    id: item.id,
+    subject: item.subject,
+    capturedAt: item.capturedAt,
+    initialOpportunity: item.initialOpportunity,
+    clientDisplayName: reference.displayName,
+    ...(reference.currentClientId
+      ? { clientDossierId: reference.currentClientId }
+      : {}),
+  };
 }
 
 // The list and the detail carry the same actor projection, so an unrecognized

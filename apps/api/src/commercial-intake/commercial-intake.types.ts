@@ -83,21 +83,31 @@ export interface OpportunityNextActionUpdateResult {
   readonly request: CommercialIntakeDetail;
 }
 
-export interface CommercialIntakeListItem {
+export type CommercialIntakeListClientProjection =
+  | {
+      readonly clientDisplayName: string;
+      readonly clientDossierId?: string;
+    }
+  | {
+      readonly clientDisplayName?: undefined;
+      readonly clientDossierId?: undefined;
+    };
+
+export type CommercialIntakeListItem = {
   readonly id: string;
   readonly subject: string | null;
   readonly capturedAt: string;
   /**
-   * Derived navigation target owned by Client, present only for a current
-   * Company Client reader; never persisted, accepted as input or used for access.
+   * Derived projection owned by Client. Its name may remain readable without
+   * a current dossier; navigation is offered only when `clientDossierId` is
+   * present. Neither field is persisted, accepted as input or used for access.
    */
-  readonly clientDossierId?: string;
   readonly initialOpportunity: {
     readonly title: string;
     readonly nextAction: string;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
   };
-}
+} & CommercialIntakeListClientProjection;
 
 export interface CommercialIntakeListPage {
   readonly items: CommercialIntakeListItem[];

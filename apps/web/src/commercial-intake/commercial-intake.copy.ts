@@ -116,4 +116,6 @@ export const commercialIntakeCopy = {
     'The requested Client Request opens after the next-action edit is saved or cancelled.',
   requestedAfterCapture:
     'The requested Client Request opens after this capture is confirmed.',
+  requestedAfterClientAssociation:
+    'The requested Client Request opens after this Client association is confirmed.',
 };

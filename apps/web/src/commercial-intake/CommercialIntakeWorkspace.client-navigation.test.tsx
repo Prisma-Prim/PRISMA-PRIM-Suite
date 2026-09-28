@@ -72,13 +72,19 @@ const secondDossier = {
   clientDossierId: 'client-second',
   displayName: sharedName,
 };
+const associationClient = {
+  id: '11111111-1111-4111-8111-111111111111',
+  displayName: 'Accessible Client',
+};
 
 function row(id: string, subject: string, clientDossierId?: string) {
   return {
     id,
     subject,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    ...(clientDossierId === undefined ? {} : { clientDossierId }),
+    ...(clientDossierId === undefined
+      ? {}
+      : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
@@ -214,6 +220,7 @@ type NavigationProps = {
   clientRestriction?: { clientDossierId: string; displayName: string };
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
+  requestedRequest?: { clientRequestId: string; requestId: number };
 };
 
 function renderNavigation(initial: NavigationProps, initialActor = reader) {
@@ -650,6 +657,174 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
   });
 
+  it('holds Back and a requested Request through an in-flight and uncertain Client association retry', async () => {
+    const pendingAssociation = deferred();
+    const original = detail('request-unlinked', 'Unlinked follow-up');
+    const associated = {
+      ...original,
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: associationClient.id,
+        currentClientId: associationClient.id,
+        displayName: associationClient.displayName,
+      },
+    };
+    const associationPath =
+      'POST /api/commercial-intake/requests/request-unlinked/client-association';
+    const transport = stubRoutes({
+      [`GET ${listPath}`]: [reply({ items: dossierRows() })],
+      [`GET ${detailPath('request-unlinked')}`]: [reply(original)],
+      [`GET ${detailPath('request-second')}`]: [
+        reply(detail('request-second', 'Second Client follow-up')),
+      ],
+      'GET /api/clients/search?query=Accessible': [
+        reply([
+          {
+            id: associationClient.id,
+            displayName: associationClient.displayName,
+            relatedToActiveCompany: true,
+          },
+        ]),
+      ],
+      [associationPath]: [
+        pendingAssociation.responder,
+        reply({
+          receipt: {
+            requestId: original.id,
+            version: 2,
+            outcome: 'associated',
+          },
+          request: associated,
+        }),
+      ],
+    });
+    const view = renderNavigation({}, associationEditor);
+    await waitFor(() => expect(listedSubjects()).toHaveLength(4));
+    openRow('Unlinked follow-up');
+    await screen.findByRole('heading', { name: copy.associateClient });
+    changeValue(screen.getByLabelText(copy.clientSearch), 'Accessible');
+    fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+    changeValue(
+      await screen.findByLabelText(copy.existingClient),
+      associationClient.id,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.confirmClientAssociation }),
+    );
+
+    const back = screen.getByRole('button', { name: copy.back });
+    expect(
+      await screen.findByText(copy.clientAssociationLoading),
+    ).toBeVisible();
+    expect(back).toBeDisabled();
+    view.update({
+      requestedRequest: {
+        clientRequestId: 'request-second',
+        requestId: 1,
+      },
+    });
+    expect(
+      screen.getByText(copy.requestedAfterClientAssociation),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Original source of Unlinked follow-up'),
+    ).toBeVisible();
+
+    await pendingAssociation.settle({}, 500);
+    expect(
+      await screen.findByText(copy.clientAssociationUncertain),
+    ).toBeVisible();
+    expect(back).toBeDisabled();
+    expect(
+      screen.getByText('Original source of Unlinked follow-up'),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.retryClientAssociation }),
+    );
+
+    expect(
+      await screen.findByText('Original source of Second Client follow-up'),
+    ).toBeVisible();
+    const [first, retry] = transport.calls(associationPath);
+    expect(transport.calls(associationPath)).toHaveLength(2);
+    expect(retry?.[1]?.body).toBe(first?.[1]?.body);
+    expect(keyOf(retry?.[1])).toBeDefined();
+    expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
+    expect(transport.unexpected).toEqual([]);
+  });
+
+  it('adds no list dossier when association returns only the original Client reference', async () => {
+    const original = detail('request-unlinked', 'Unlinked follow-up');
+    const transport = stubRoutes({
+      [`GET ${listPath}`]: [reply({ items: dossierRows() })],
+      [`GET ${detailPath('request-unlinked')}`]: [reply(original)],
+      'GET /api/clients/search?query=Accessible': [
+        reply([
+          {
+            id: associationClient.id,
+            displayName: associationClient.displayName,
+            relatedToActiveCompany: true,
+          },
+        ]),
+      ],
+      'POST /api/commercial-intake/requests/request-unlinked/client-association':
+        [
+          reply({
+            receipt: {
+              requestId: original.id,
+              version: 2,
+              outcome: 'associated',
+            },
+            request: {
+              ...original,
+              version: 2,
+              clientAssociationStatus: 'visible',
+              clientReference: {
+                originalClientId: associationClient.id,
+                displayName: associationClient.displayName,
+              },
+            },
+          }),
+        ],
+    });
+    renderNavigation({ onOpenClientDossier: vi.fn() }, associationEditor);
+    await waitFor(() => expect(listedSubjects()).toHaveLength(4));
+    openRow('Unlinked follow-up');
+    await screen.findByRole('heading', { name: copy.associateClient });
+    changeValue(screen.getByLabelText(copy.clientSearch), 'Accessible');
+    fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+    changeValue(
+      await screen.findByLabelText(copy.existingClient),
+      associationClient.id,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.confirmClientAssociation }),
+    );
+    await screen.findByText(copy.clientAssociationSuccess, {
+      selector: '[role="alert"]',
+    });
+    const back = screen.getByRole('button', { name: copy.back });
+    await waitFor(() => expect(back).toBeEnabled());
+    fireEvent.click(back);
+
+    const rowItem = within(requestList())
+      .getByRole('button', { name: /^Unlinked follow-up/u })
+      .closest('li');
+    expect(rowItem).not.toBeNull();
+    expect(
+      within(requiredElement(rowItem)).queryByRole('button', {
+        name: copy.openClientDossier,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(requiredElement(rowItem)).getByText(
+        `${copy.client}: ${associationClient.displayName}`,
+      ),
+    ).toBeVisible();
+    expect(transport.unexpected).toEqual([]);
+  });
+
   it('keeps post-create behaviour and restricts the new Request only by its settled list identity', async () => {
     stubRoutes({
       [`GET ${listPath}`]: [
@@ -994,6 +1169,35 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
         'First Client follow-up',
       ]);
       expect(transport.calls(`GET ${listPath}`)).toHaveLength(2);
+    });
+
+    it('removes a list dossier when the current identity projection is no longer returned', async () => {
+      const refreshed = deferred();
+      const openDossier = vi.fn();
+      stubRoutes({
+        [`GET ${listPath}`]: [
+          reply({
+            items: [
+              row('request-first', 'First Client Request', 'client-first'),
+            ],
+          }),
+          refreshed.responder,
+        ],
+      });
+      const current = renderNavigation({ onOpenClientDossier: openDossier });
+      await screen.findByText(`${copy.client}: ${sharedName}`);
+      expect(returnAction()).toBeVisible();
+
+      current.update({ clientIdentityRevision: 1 });
+      expect(returnAction()).not.toBeInTheDocument();
+      await refreshed.settle({
+        items: [row('request-first', 'First Client Request')],
+      });
+      expect(listedSubjects()).toEqual(['First Client Request']);
+      expect(returnAction()).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(`${copy.client}: ${sharedName}`),
+      ).not.toBeInTheDocument();
     });
 
     for (const order of ['stale first', 'current first'] as const)
