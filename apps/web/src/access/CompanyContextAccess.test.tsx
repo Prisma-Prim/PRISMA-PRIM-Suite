@@ -27,6 +27,7 @@ const bundleLabels = {
   catalogue: 'Company Service Catalogue',
   pricing: 'Company Pricing Configuration',
   pricingUser: 'Company Pricing User',
+  offerPreparer: 'Company Offer Preparer',
   pricingAdjustment: 'Company Pricing Adjustment',
   reader: 'Company Commercial Activity Reader',
   project: 'Company Project Access',
@@ -39,6 +40,7 @@ const serverVersions = {
   catalogue: 'v1',
   pricing: 'v1',
   pricingUser: 'v1',
+  offerPreparer: 'v1',
   pricingAdjustment: 'v1',
   reader: 'v1',
   project: 'v2',
@@ -172,6 +174,14 @@ describe('CompanyContextAccess', () => {
       screen.queryByLabelText('Workspace membership ID'),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Company ID')).not.toBeInTheDocument();
+    const bundleSelect = screen.getByRole('combobox', {
+      name: 'Access bundle',
+    });
+    fireEvent.click(bundleSelect);
+    expect(
+      screen.getByRole('option', { name: 'Company Offer Preparer' }),
+    ).toBeVisible();
+    fireEvent.click(bundleSelect);
 
     chooseTargets();
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(

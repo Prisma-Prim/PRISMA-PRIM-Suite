@@ -19,6 +19,7 @@ import type {
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PRICING_USER_BUNDLE_LABEL,
+  COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
@@ -161,6 +162,8 @@ export type CanonicalActivityEvent =
         | 'company_pricing_configuration_assignment.revoked'
         | 'company_pricing_user_assignment.granted'
         | 'company_pricing_user_assignment.revoked'
+        | 'company_offer_preparer_assignment.granted'
+        | 'company_offer_preparer_assignment.revoked'
         | 'company_pricing_adjustment_assignment.granted'
         | 'company_pricing_adjustment_assignment.revoked'
         | 'company_commercial_activity_reader_assignment.granted'
@@ -188,6 +191,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       };
@@ -283,6 +287,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_configuration_assignment.revoked'
     | 'company_pricing_user_assignment.granted'
     | 'company_pricing_user_assignment.revoked'
+    | 'company_offer_preparer_assignment.granted'
+    | 'company_offer_preparer_assignment.revoked'
     | 'company_pricing_adjustment_assignment.granted'
     | 'company_pricing_adjustment_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
@@ -357,6 +363,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       }

@@ -95,6 +95,10 @@ export interface ReadablePricingOpportunity {
   readonly originalClientAccountId: string | null;
 }
 
+export interface ReadableOfferOpportunity extends ReadablePricingOpportunity {
+  readonly status: 'OPEN';
+}
+
 export type CommercialClientProjection = NonNullable<
   CommercialIntakeDetail['clientReference']
 >;

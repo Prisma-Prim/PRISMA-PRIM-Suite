@@ -38,6 +38,7 @@ import {
   commercialIntakeEvents,
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
+  offerEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -70,6 +71,53 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 @Injectable()
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordOfferCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    illustrativeReference: number;
+    pricingSnapshotId: string;
+    recipientKind: 'PRIMARY' | 'ADDITIONAL';
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(offerEvents).values([
+      {
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'offer.created',
+        offerId: input.offerId,
+        offerVersionId: null,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          offerId: input.offerId,
+          illustrativeReference: input.illustrativeReference,
+          provenance: 'ILLUSTRATIVE',
+        },
+      },
+      {
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'offer_version.created',
+        offerId: input.offerId,
+        offerVersionId: input.offerVersionId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          offerId: input.offerId,
+          offerVersionId: input.offerVersionId,
+          versionNumber: 1,
+          pricingSnapshotId: input.pricingSnapshotId,
+          recipientKind: input.recipientKind,
+          provenance: 'ILLUSTRATIVE',
+        },
+      },
+    ]);
+  }
 
   async recordTaskEvent(input: {
     actor: ActorContext;
@@ -1782,6 +1830,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_configuration_assignment.revoked':
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
+    case 'company_offer_preparer_assignment.granted':
+    case 'company_offer_preparer_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':
     case 'company_pricing_adjustment_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':

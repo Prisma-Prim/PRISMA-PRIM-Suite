@@ -360,11 +360,8 @@ export class PricingSnapshotService {
     limitInput: unknown,
   ): Promise<PricingSnapshotPage> {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requirePricingUserAccess(
-        actor,
-        ['commercial.pricing.snapshot.read'],
-        true,
-      );
+      const companyId =
+        await this.authorization.requirePricingSnapshotReadAccess(actor, true);
       const opportunity = await this.intake.requireReadablePricingOpportunity(
         actor,
         opportunityId,
@@ -416,11 +413,8 @@ export class PricingSnapshotService {
     snapshotId: string;
   }): Promise<PricingSnapshotRecord> {
     return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requirePricingUserAccess(
-        actor,
-        ['commercial.pricing.snapshot.read'],
-        true,
-      );
+      const companyId =
+        await this.authorization.requirePricingSnapshotReadAccess(actor, true);
       const opportunity = await this.intake.requireReadablePricingOpportunity(
         actor,
         opportunityId,
@@ -433,6 +427,46 @@ export class PricingSnapshotService {
         snapshotId: snapshotId.toLowerCase(),
       });
     });
+  }
+
+  /**
+   * Offer's public Pricing seam. It returns one immutable readable Snapshot,
+   * checks the exact Company and Opportunity, and never exposes calculation.
+   * The caller owns the surrounding business transaction.
+   */
+  async resolveOfferSnapshot({
+    actor,
+    companyId,
+    opportunityId,
+    snapshotId,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    snapshotId: string;
+  }): Promise<PricingSnapshotRecord> {
+    const authorizedCompanyId =
+      await this.authorization.requirePricingSnapshotReadAccess(actor, true);
+    if (authorizedCompanyId !== companyId || !UUID_GRAMMAR.test(snapshotId))
+      throw new NotFoundException();
+    const [snapshot] = await this.databaseContext.connection
+      .select()
+      .from(pricingSnapshots)
+      .where(
+        and(
+          eq(pricingSnapshots.workspaceId, actor.workspaceId),
+          eq(pricingSnapshots.companyId, companyId),
+          eq(pricingSnapshots.id, snapshotId.toLowerCase()),
+        ),
+      );
+    if (!snapshot) throw new NotFoundException();
+    if (snapshot.opportunityId !== opportunityId) {
+      throw new ConflictException({
+        code: 'PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY',
+        message: 'The Pricing Snapshot is not for this Opportunity.',
+      });
+    }
+    return this.snapshotView(actor, snapshot);
   }
 
   private async requireRule(
