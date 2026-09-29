@@ -56,9 +56,11 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
+        id: repository_tests
         run: pnpm test
 
       - name: Verify acceptance failure evidence
+        if: ${{ !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
         run: node scripts/verify-acceptance-evidence.mjs
 
       - name: Upload browser evidence

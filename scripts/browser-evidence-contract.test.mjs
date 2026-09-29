@@ -96,6 +96,16 @@ test('acceptance failures retain first-attempt evidence without a retry', async 
   const workflow = await readFile(workflowUrl, 'utf8');
   assert.match(workflow, /apps\/web\/test-results\/acceptance\/\*\*/u);
   assert.match(workflow, /node scripts\/verify-acceptance-evidence\.mjs/u);
+  assert.match(workflow, /id: repository_tests/u);
+  const probeStep = workflow.slice(
+    workflow.indexOf('- name: Verify acceptance failure evidence'),
+    workflow.indexOf('- name: Upload browser evidence'),
+  );
+  assert.match(
+    probeStep,
+    /if: \$\{\{ !cancelled\(\) && \(steps\.repository_tests\.outcome == 'success' \|\| steps\.repository_tests\.outcome == 'failure'\) \}\}/u,
+    'the isolated evidence probe must run after a failed product test, but not after cancellation or skipped tests',
+  );
   assert.match(
     workflow,
     /apps\/web\/test-results\/acceptance-evidence-probe\/\*\*/u,
