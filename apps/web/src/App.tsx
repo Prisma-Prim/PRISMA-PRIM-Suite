@@ -773,6 +773,9 @@ function activityDescription(event: ActivityLogEvent): string {
     'document.version.drafted': documentsCopy.versionDraftedActivity,
     'document.version.designated_official':
       documentsCopy.versionDesignatedActivity,
+    'document.representation.added': documentsCopy.representationAddedActivity,
+    'document.representation.removed':
+      documentsCopy.representationRemovedActivity,
     'internal_user.provisioned': 'was provisioned',
     'project.created': projectCopy.activityAction,
     'project.responsible.changed': projectCopy.responsible.activityAction,

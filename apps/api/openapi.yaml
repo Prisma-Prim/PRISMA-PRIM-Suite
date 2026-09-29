@@ -1223,7 +1223,7 @@ paths:
         detail read; a superseded original Client stays readable. Authority,
         visibility and the Versions share one repeatable-read snapshot. At
         most 50 Versions are returned, highest number first. Each Version
-        holds exactly one unverified external reference; its URL is returned
+        holds ordered typed unverified external references; each URL is returned
         only to a current Representation reader. Actor labels are existing
         display labels, never emails. Reading writes nothing.
       tags:
@@ -1255,7 +1255,8 @@ paths:
         detail read authority and an active original Client related to the
         active Company. The Document must have a current official Version and
         no draft. Version n+1 is created as a draft attributed to the actor,
-        holding a new reference with the official Version's URL. The
+        holding copies of the references present when the official Version
+        was designated, excluding later appends. The
         command takes the per-actor key lock, then checks live authority,
         visibility and replay, locks the original Client and the Document,
         then checks the working revision and the Version state. One
@@ -1361,6 +1362,110 @@ paths:
             current draft; or the Document key-reuse conflict when the
             Idempotency-Key was used for another Version command. Nothing is
             written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionConflict'
+  /api/documents/{documentId}/versions/{versionId}/representations:
+    post:
+      operationId: addDocumentVersionRepresentation
+      summary: Add a typed external reference to a draft or current official Version
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/DocumentId'
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRepresentationAdditionInput'
+      responses:
+        '201':
+          description: The reference was added, or the exact command was replayed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRepresentationAddedReceipt'
+        '400':
+          {
+            description: The key,
+            identifier,
+            expected revision,
+            form or credential-free HTTPS URL is invalid,
+            or the body has another key.,
+          }
+        '401': { description: No verified External Principal is available. }
+        '403':
+          {
+            description: The actor lacks live Registrar v3,
+            Document,
+            Representation or Client read authority in the active Company.,
+          }
+        '404':
+          {
+            description: The Document or Version is not visible inside the active Company and Document.,
+          }
+        '409':
+          description: The revision or Version state is stale, the applicable five or ten reference capacity is reached, or the key was reused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionConflict'
+  /api/documents/{documentId}/versions/{versionId}/representations/{representationId}/removal:
+    post:
+      operationId: removeDraftDocumentVersionRepresentation
+      summary: Retain and hide one reference from the current draft
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/DocumentId'
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: representationId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentVersionCommandInput'
+      responses:
+        '200':
+          description: The draft reference was retained as removed, or the exact command was replayed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRepresentationRemovedReceipt'
+        '400':
+          {
+            description: The key or identifier is invalid,
+            or the body is not exactly an expected revision.,
+          }
+        '401': { description: No verified External Principal is available. }
+        '403':
+          {
+            description: The actor lacks live Registrar v3,
+            Document,
+            Representation or Client read authority in the active Company.,
+          }
+        '404':
+          {
+            description: The Document,
+            Version or current reference is not visible inside its owning boundary.,
+          }
+        '409':
+          description: The revision is stale, the Version is not the draft, the reference is the last current draft reference, or the key was reused.
           content:
             application/json:
               schema:
@@ -3750,21 +3855,41 @@ components:
           type: string
     DocumentVersionReferences:
       description: >-
-        Exactly one unverified external reference per Version in this slice.
+        Ordered current unverified external references. A draft has at most
+        five and an official Version at most ten. The first item is primary.
         The external content is never stored, fetched or verified and may
         change at its source.
       type: array
       minItems: 1
-      maxItems: 1
+      maxItems: 10
       items:
         oneOf:
           - type: object
             additionalProperties: false
-            required: [id, kind, verification, access, url]
+            required:
+              [
+                id,
+                kind,
+                verification,
+                position,
+                form,
+                primary,
+                appendedAfterDesignation,
+                addedAt,
+                addedBy,
+                access,
+                url,
+              ]
             properties:
               id:
                 type: string
                 format: uuid
+              position: { type: integer, minimum: 1 }
+              form: { type: string, enum: [editable, rendered, signed, other] }
+              primary: { type: boolean }
+              appendedAfterDesignation: { type: boolean }
+              addedAt: { type: string, format: date-time }
+              addedBy: { $ref: '#/components/schemas/DocumentActorLabel' }
               kind:
                 type: string
                 const: external-reference
@@ -3779,11 +3904,29 @@ components:
                 format: uri
           - type: object
             additionalProperties: false
-            required: [id, kind, verification, access]
+            required:
+              [
+                id,
+                kind,
+                verification,
+                position,
+                form,
+                primary,
+                appendedAfterDesignation,
+                addedAt,
+                addedBy,
+                access,
+              ]
             properties:
               id:
                 type: string
                 format: uuid
+              position: { type: integer, minimum: 1 }
+              form: { type: string, enum: [editable, rendered, signed, other] }
+              primary: { type: boolean }
+              appendedAfterDesignation: { type: boolean }
+              addedAt: { type: string, format: date-time }
+              addedBy: { $ref: '#/components/schemas/DocumentActorLabel' }
               kind:
                 type: string
                 const: external-reference
@@ -3805,6 +3948,23 @@ components:
           format: int32
           minimum: 1
           maximum: 2147483646
+    DocumentRepresentationAdditionInput:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, form, url]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483646
+        form:
+          type: string
+          enum: [editable, rendered, signed, other]
+        url:
+          type: string
+          format: uri
+          pattern: '^https://'
     DocumentVersionDraftedReceipt:
       type: object
       additionalProperties: false
@@ -3875,6 +4035,46 @@ components:
             - 'null'
           minimum: 1
           maximum: 49
+    DocumentRepresentationAddedReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          documentId,
+          workingRevision,
+          action,
+          versionId,
+          versionNumber,
+          representationId,
+          appendedAfterDesignation,
+        ]
+      properties:
+        documentId: { type: string, format: uuid }
+        workingRevision: { type: integer, format: int32, minimum: 2 }
+        action: { type: string, const: representation_added }
+        versionId: { type: string, format: uuid }
+        versionNumber: { type: integer, minimum: 1, maximum: 50 }
+        representationId: { type: string, format: uuid }
+        appendedAfterDesignation: { type: boolean }
+    DocumentRepresentationRemovedReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          documentId,
+          workingRevision,
+          action,
+          versionId,
+          versionNumber,
+          representationId,
+        ]
+      properties:
+        documentId: { type: string, format: uuid }
+        workingRevision: { type: integer, format: int32, minimum: 2 }
+        action: { type: string, const: representation_removed }
+        versionId: { type: string, format: uuid }
+        versionNumber: { type: integer, minimum: 1, maximum: 50 }
+        representationId: { type: string, format: uuid }
     DocumentVersionConflict:
       description: >-
         A coded Version conflict, or the Document key-reuse conflict (a
@@ -3887,6 +4087,7 @@ components:
             - document_revision_conflict
             - document_version_state_invalid
             - document_version_capacity_exceeded
+            - document_representation_capacity_exceeded
         message:
           type: string
     PossibleDuplicateReviewConflict:

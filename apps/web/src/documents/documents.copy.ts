@@ -50,4 +50,6 @@ export const documentsCopy = {
   correctionActivity: 'corrected a working Document reference',
   versionDraftedActivity: 'started a new draft Document Version',
   versionDesignatedActivity: 'designated an official Document Version',
+  representationAddedActivity: 'added a Document reference',
+  representationRemovedActivity: 'removed a draft Document reference',
 } as const;

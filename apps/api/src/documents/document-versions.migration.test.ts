@@ -20,7 +20,12 @@ const VERSION = '00000000-0000-4000-8000-000000004009';
 const REFERENCE = '00000000-0000-4000-8000-000000004010';
 const SECOND_VERSION = '00000000-0000-4000-8000-000000004011';
 const THIRD_VERSION = '00000000-0000-4000-8000-000000004012';
+const OFFICIAL_REFERENCE = '00000000-0000-4000-8000-000000004014';
+const SUPERSEDED_REFERENCE = '00000000-0000-4000-8000-000000004015';
+const DRAFT_REFERENCE = '00000000-0000-4000-8000-000000004016';
 const CREATED_AT = '2026-09-01T10:00:00.000Z';
+const OFFICIAL_CREATED_AT = '2026-09-02T10:00:00.000Z';
+const DRAFT_CREATED_AT = '2026-09-03T10:00:00.000Z';
 const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 const RAISED = 'P0001';
@@ -195,6 +200,9 @@ it.skipIf(!databaseUrl)(
         'activity_log_events',
       ];
       const projectsIndex = preserved.indexOf('projects');
+      const representationsIndex = preserved.indexOf(
+        'document_representations',
+      );
       const snapshot = () =>
         Promise.all(
           preserved.map(
@@ -214,7 +222,18 @@ it.skipIf(!databaseUrl)(
         before.map((rows, index) =>
           index === projectsIndex
             ? rows.map((row) => ({ ...row, lifecycle_revision: 0 }))
-            : rows,
+            : index === representationsIndex
+              ? rows.map((row) => ({
+                  ...row,
+                  position: 1,
+                  form: 'other',
+                  added_by_membership_id: CREATOR,
+                  added_at: new Date(CREATED_AT),
+                  appended_after_designation: false,
+                  removed_by_membership_id: null,
+                  removed_at: null,
+                }))
+              : rows,
         ),
       );
       expect(after[projectsIndex].map((row) => row.lifecycle_revision)).toEqual(
@@ -309,8 +328,10 @@ it.skipIf(!databaseUrl)(
       for (const statement of [
         `UPDATE document_representations SET url = 'https://example.test/changed' WHERE version_id = $1`,
         `DELETE FROM document_representations WHERE version_id = $1`,
-        `INSERT INTO document_representations (workspace_id, company_id, version_id, url)
-           SELECT workspace_id, company_id, id, 'https://example.test/appended'
+        `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+             position, form, added_by_membership_id, appended_after_designation)
+           SELECT workspace_id, company_id, id, 'https://example.test/appended',
+             2, 'signed', created_by_membership_id, false
              FROM document_versions WHERE id = $1`,
         `UPDATE document_versions SET frozen_title = 'Rewritten' WHERE id = $1`,
         `UPDATE document_versions
@@ -320,6 +341,21 @@ it.skipIf(!databaseUrl)(
         `DELETE FROM document_versions WHERE id = $1`,
       ])
         await expect(query(statement, [VERSION])).rejects.toMatchObject(frozen);
+      // The only designated-reference write allowed is an append to the
+      // current official Version, explicitly marked after designation.
+      await query(
+        `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+           position, form, added_by_membership_id, appended_after_designation)
+         VALUES ($1, $2, $3, 'https://example.test/signed', 2, 'signed', $4, true)`,
+        [WORKSPACE, COMPANY, VERSION, MEMBERSHIP],
+      );
+      await expect(
+        query(
+          `UPDATE document_representations SET form = 'other'
+            WHERE version_id = $1 AND appended_after_designation = true`,
+          [VERSION],
+        ),
+      ).rejects.toMatchObject(frozen);
       await expect(
         query(`UPDATE document_versions SET number = 7 WHERE id = $1`, [
           VERSION,
@@ -389,15 +425,27 @@ it.skipIf(!databaseUrl)(
       // A new draft's reference may be inserted and corrected.
       await insertVersion(THIRD_VERSION, 3);
       await query(
-        `INSERT INTO document_representations (workspace_id, company_id, version_id, url)
-         VALUES ($1, $2, $3, 'https://example.test/third')`,
-        [WORKSPACE, COMPANY, THIRD_VERSION],
+        `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+           added_by_membership_id)
+         VALUES ($1, $2, $3, 'https://example.test/third', $4)`,
+        [WORKSPACE, COMPANY, THIRD_VERSION, MEMBERSHIP],
       );
       await query(
         `UPDATE document_representations SET url = 'https://example.test/third-corrected'
           WHERE version_id = $1`,
         [THIRD_VERSION],
       );
+      await query(
+        `UPDATE document_representations
+            SET removed_by_membership_id = $2, removed_at = now()
+          WHERE version_id = $1`,
+        [THIRD_VERSION, MEMBERSHIP],
+      );
+      await expect(
+        query(`DELETE FROM document_representations WHERE version_id = $1`, [
+          THIRD_VERSION,
+        ]),
+      ).rejects.toMatchObject({ code: RAISED });
 
       // The Version command table is append-only and checked.
       await query(
@@ -406,6 +454,15 @@ it.skipIf(!databaseUrl)(
            idempotency_key, request_fingerprint, expected_revision, revision)
          VALUES ($1, $2, $3, 'drafted', $4, 3, 2, $5, 'drafted-key', 'fingerprint', 2, 3)`,
         [WORKSPACE, COMPANY, DOCUMENT, THIRD_VERSION, MEMBERSHIP],
+      );
+      await query(
+        `INSERT INTO document_version_commands (workspace_id, company_id, document_id, action,
+           version_id, version_number, representation_id, representation_form,
+           appended_after_designation, actor_membership_id, idempotency_key,
+           request_fingerprint, expected_revision, revision)
+         VALUES ($1, $2, $3, 'representation_added', $4, 1, $5, 'signed', true,
+           $6, 'representation-added-key', 'representation-fingerprint', 3, 4)`,
+        [WORKSPACE, COMPANY, DOCUMENT, VERSION, REFERENCE, MEMBERSHIP],
       );
       await expect(
         query(`UPDATE document_version_commands SET revision = 4`),
@@ -422,6 +479,316 @@ it.skipIf(!databaseUrl)(
           [WORKSPACE, COMPANY, DOCUMENT, THIRD_VERSION, MEMBERSHIP],
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+    } finally {
+      if (previous) await rm(previous, { recursive: true, force: true });
+      await database.close();
+    }
+  },
+  60_000,
+);
+
+it.skipIf(!databaseUrl)(
+  'upgrades the complete main schema while preserving draft, official and superseded references',
+  async () => {
+    if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
+    const database = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl,
+      namePrefix: 'typed_document_references_upgrade',
+    });
+    let previous: string | undefined;
+    try {
+      const journal: unknown = JSON.parse(
+        await readFile('drizzle/meta/_journal.json', 'utf8'),
+      );
+      if (
+        typeof journal !== 'object' ||
+        journal === null ||
+        !('entries' in journal) ||
+        !Array.isArray(journal.entries)
+      )
+        throw new Error('Invalid migration journal.');
+      const allTags = journal.entries.map((entry: unknown) => {
+        if (
+          typeof entry !== 'object' ||
+          entry === null ||
+          !('tag' in entry) ||
+          typeof entry.tag !== 'string' ||
+          !/^\d{4}_[a-z0-9_-]+$/u.test(entry.tag)
+        )
+          throw new Error('Invalid migration tag.');
+        return entry.tag;
+      });
+      const typedReferencesIndex = allTags.findIndex((tag) =>
+        tag.endsWith('_yummy_maginty'),
+      );
+      expect(typedReferencesIndex).toBeGreaterThan(0);
+      const entries: unknown[] = journal.entries.slice(0, typedReferencesIndex);
+      const tags = allTags.slice(0, typedReferencesIndex);
+      expect(tags).toHaveLength(41);
+      expect(tags[0]).toMatch(/^0000_/u);
+      expect(tags.at(-1)).toBe('0040_pricing_adjustments');
+      previous = await mkdtemp(join(tmpdir(), 'prisma-401-upgrade-'));
+      await mkdir(join(previous, 'meta'));
+      await writeFile(
+        join(previous, 'meta/_journal.json'),
+        JSON.stringify({ ...journal, entries }),
+      );
+      for (const tag of tags)
+        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
+
+      const connection = drizzle(database.targetPool);
+      await migrate(connection, { migrationsFolder: previous });
+      const query = (text: string, values: unknown[] = []) =>
+        database.targetPool.query(text, values);
+
+      await query(
+        `INSERT INTO workspaces (id, name) VALUES ($1, 'Typed reference upgrade')`,
+        [WORKSPACE],
+      );
+      await query(
+        `INSERT INTO internal_users (id, external_provider, external_subject, display_name, email)
+         VALUES ($1, 'deterministic-test', 'document-owner', 'Document Owner', 'document-owner@example.test'),
+                ($2, 'deterministic-test', 'document-creator', 'Document Creator', 'document-creator@example.test')`,
+        [USER, CREATOR_USER],
+      );
+      await query(
+        `INSERT INTO workspace_memberships (id, workspace_id, internal_user_id)
+         VALUES ($1, $2, $3), ($4, $2, $5)`,
+        [MEMBERSHIP, WORKSPACE, USER, CREATOR, CREATOR_USER],
+      );
+      await query(
+        `INSERT INTO companies (id, workspace_id, display_name, created_by_internal_user_id,
+           created_by_workspace_membership_id, registration_idempotency_key)
+         VALUES ($1, $2, 'Typed Reference Company', $3, $4, 'typed-reference-company')`,
+        [COMPANY, WORKSPACE, USER, MEMBERSHIP],
+      );
+      await query(
+        `INSERT INTO client_accounts (id, workspace_id, display_name, created_by_internal_user_id,
+           created_by_workspace_membership_id)
+         VALUES ($1, $2, 'Typed Reference Client', $3, $4)`,
+        [CLIENT, WORKSPACE, USER, MEMBERSHIP],
+      );
+      await query(
+        `INSERT INTO client_company_relationships (workspace_id, client_account_id, company_id,
+           created_by_internal_user_id, created_by_workspace_membership_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [WORKSPACE, CLIENT, COMPANY, USER, MEMBERSHIP],
+      );
+      await query(
+        `INSERT INTO working_documents (id, workspace_id, company_id, client_id,
+           working_revision, title, purpose, created_by_membership_id, created_at,
+           idempotency_key, request_fingerprint)
+         VALUES ($1, $2, $3, $4, 5, 'Versioned questionnaire', 'Upgrade proof', $5, $6,
+           'typed-reference-document', 'typed-reference-fingerprint')`,
+        [DOCUMENT, WORKSPACE, COMPANY, CLIENT, CREATOR, CREATED_AT],
+      );
+
+      const insertVersion = async ({
+        id,
+        number,
+        creator,
+        createdAt,
+        referenceId,
+        url,
+      }: {
+        id: string;
+        number: number;
+        creator: string;
+        createdAt: string;
+        referenceId: string;
+        url: string;
+      }) => {
+        await query(
+          `INSERT INTO document_versions (id, workspace_id, company_id, document_id, number,
+             created_by_membership_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [id, WORKSPACE, COMPANY, DOCUMENT, number, creator, createdAt],
+        );
+        await query(
+          `INSERT INTO document_representations (id, workspace_id, company_id, version_id, url)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [referenceId, WORKSPACE, COMPANY, id, url],
+        );
+      };
+      const designate = (id: string, title: string) =>
+        query(
+          `UPDATE document_versions
+              SET status = 'official', designated_by_membership_id = $2,
+                  designated_at = '2026-09-10T10:00:00.000Z', frozen_title = $3,
+                  frozen_purpose = 'Upgrade proof'
+            WHERE id = $1`,
+          [id, MEMBERSHIP, title],
+        );
+
+      await insertVersion({
+        id: VERSION,
+        number: 1,
+        creator: CREATOR,
+        createdAt: CREATED_AT,
+        referenceId: SUPERSEDED_REFERENCE,
+        url: 'https://example.test/superseded',
+      });
+      await designate(VERSION, 'Version one');
+      await insertVersion({
+        id: SECOND_VERSION,
+        number: 2,
+        creator: MEMBERSHIP,
+        createdAt: OFFICIAL_CREATED_AT,
+        referenceId: OFFICIAL_REFERENCE,
+        url: 'https://example.test/official',
+      });
+      await query(
+        `UPDATE document_versions
+            SET status = 'superseded', superseded_at = '2026-09-11T10:00:00.000Z',
+                superseded_by_version_id = $2
+          WHERE id = $1`,
+        [VERSION, SECOND_VERSION],
+      );
+      await designate(SECOND_VERSION, 'Version two');
+      await insertVersion({
+        id: THIRD_VERSION,
+        number: 3,
+        creator: CREATOR,
+        createdAt: DRAFT_CREATED_AT,
+        referenceId: DRAFT_REFERENCE,
+        url: 'https://example.test/draft',
+      });
+
+      await migrate(connection, { migrationsFolder: resolve('drizzle') });
+
+      expect(
+        (
+          await query(
+            `SELECT version.number, version.status, representation.id,
+                    representation.url, representation.position, representation.form,
+                    representation.added_by_membership_id, representation.added_at,
+                    representation.appended_after_designation,
+                    representation.removed_by_membership_id, representation.removed_at
+               FROM document_versions AS version
+               JOIN document_representations AS representation
+                 ON representation.workspace_id = version.workspace_id
+                AND representation.company_id = version.company_id
+                AND representation.version_id = version.id
+              WHERE version.document_id = $1
+              ORDER BY version.number`,
+            [DOCUMENT],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          number: 1,
+          status: 'superseded',
+          id: SUPERSEDED_REFERENCE,
+          url: 'https://example.test/superseded',
+          position: 1,
+          form: 'other',
+          added_by_membership_id: CREATOR,
+          added_at: new Date(CREATED_AT),
+          appended_after_designation: false,
+          removed_by_membership_id: null,
+          removed_at: null,
+        },
+        {
+          number: 2,
+          status: 'official',
+          id: OFFICIAL_REFERENCE,
+          url: 'https://example.test/official',
+          position: 1,
+          form: 'other',
+          added_by_membership_id: MEMBERSHIP,
+          added_at: new Date(OFFICIAL_CREATED_AT),
+          appended_after_designation: false,
+          removed_by_membership_id: null,
+          removed_at: null,
+        },
+        {
+          number: 3,
+          status: 'draft',
+          id: DRAFT_REFERENCE,
+          url: 'https://example.test/draft',
+          position: 1,
+          form: 'other',
+          added_by_membership_id: CREATOR,
+          added_at: new Date(DRAFT_CREATED_AT),
+          appended_after_designation: false,
+          removed_by_membership_id: null,
+          removed_at: null,
+        },
+      ]);
+
+      const frozen = {
+        code: RAISED,
+        message: expect.stringMatching(/frozen/u),
+      };
+      for (const [statement, values] of [
+        [
+          `UPDATE document_representations SET url = 'https://example.test/changed'
+            WHERE id = $1`,
+          [OFFICIAL_REFERENCE],
+        ],
+        [
+          `DELETE FROM document_representations WHERE id = $1`,
+          [OFFICIAL_REFERENCE],
+        ],
+        [
+          `UPDATE document_representations SET url = 'https://example.test/changed'
+            WHERE id = $1`,
+          [SUPERSEDED_REFERENCE],
+        ],
+        [
+          `DELETE FROM document_representations WHERE id = $1`,
+          [SUPERSEDED_REFERENCE],
+        ],
+        [
+          `UPDATE document_representations
+              SET version_id = $2, position = 2, appended_after_designation = true
+            WHERE id = $1`,
+          [DRAFT_REFERENCE, SECOND_VERSION],
+        ],
+        [
+          `UPDATE document_representations
+              SET version_id = $2, position = 2, appended_after_designation = true
+            WHERE id = $1`,
+          [DRAFT_REFERENCE, VERSION],
+        ],
+      ] as const)
+        await expect(query(statement, [...values])).rejects.toMatchObject(
+          frozen,
+        );
+
+      await query(
+        `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+           position, form, added_by_membership_id, appended_after_designation)
+         VALUES ($1, $2, $3, 'https://example.test/official-append', 2, 'signed', $4, true)`,
+        [WORKSPACE, COMPANY, SECOND_VERSION, MEMBERSHIP],
+      );
+      await expect(
+        query(
+          `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+             position, form, added_by_membership_id, appended_after_designation)
+           VALUES ($1, $2, $3, 'https://example.test/unmarked-official-append', 3, 'other', $4, false)`,
+          [WORKSPACE, COMPANY, SECOND_VERSION, MEMBERSHIP],
+        ),
+      ).rejects.toMatchObject(frozen);
+      await expect(
+        query(
+          `INSERT INTO document_representations (workspace_id, company_id, version_id, url,
+             position, form, added_by_membership_id, appended_after_designation)
+           VALUES ($1, $2, $3, 'https://example.test/superseded-append', 2, 'signed', $4, true)`,
+          [WORKSPACE, COMPANY, VERSION, MEMBERSHIP],
+        ),
+      ).rejects.toMatchObject(frozen);
+      await query(
+        `UPDATE document_representations
+            SET removed_by_membership_id = $2, removed_at = now()
+          WHERE id = $1`,
+        [DRAFT_REFERENCE, MEMBERSHIP],
+      );
+      await expect(
+        query(`DELETE FROM document_representations WHERE id = $1`, [
+          DRAFT_REFERENCE,
+        ]),
+      ).rejects.toMatchObject({ code: RAISED });
     } finally {
       if (previous) await rm(previous, { recursive: true, force: true });
       await database.close();

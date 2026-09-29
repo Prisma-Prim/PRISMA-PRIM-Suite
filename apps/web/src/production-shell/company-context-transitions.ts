@@ -178,7 +178,11 @@ export interface DocumentCorrectedActivityLogEvent {
 /** One committed Version command; its Version numbers are not presented. */
 export interface DocumentVersionActivityLogEvent {
   id: string;
-  action: 'document.version.drafted' | 'document.version.designated_official';
+  action:
+    | 'document.version.drafted'
+    | 'document.version.designated_official'
+    | 'document.representation.added'
+    | 'document.representation.removed';
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target: {

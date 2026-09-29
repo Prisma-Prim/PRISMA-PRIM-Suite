@@ -188,17 +188,20 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'document.corrected',
     { type: 'document', documentId: 'document-1', companyId },
   ],
-  ...['document.version.drafted', 'document.version.designated_official'].map(
-    (action): [string, Record<string, unknown>] => [
-      action,
-      {
-        type: 'document',
-        documentId: 'document-1',
-        documentTitle: 'Audit contract',
-        companyId,
-      },
-    ],
-  ),
+  ...[
+    'document.version.drafted',
+    'document.version.designated_official',
+    'document.representation.added',
+    'document.representation.removed',
+  ].map((action): [string, Record<string, unknown>] => [
+    action,
+    {
+      type: 'document',
+      documentId: 'document-1',
+      documentTitle: 'Audit contract',
+      companyId,
+    },
+  ]),
   ['document.project.linked', documentProjectTarget],
   ['document.project.unlinked', documentProjectTarget],
   ['client_request.created', requestTarget],

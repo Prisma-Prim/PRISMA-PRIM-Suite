@@ -460,12 +460,22 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   const secondTitle =
     'Chestionar de evaluare inițială — GRUP Demo SA — versiune corectată cu observațiile primite de la client';
   const secondUrl = `https://example.test/demo/${'segment-foarte-lung-'.repeat(8)}chestionar-v2.docx`;
+  const renderedUrl = 'https://example.test/demo/chestionar-v1.pdf';
+  const signedUrl = 'https://example.test/demo/chestionar-v1-semnat.pdf';
+  interface StoredReference {
+    id: string;
+    position: number;
+    form: 'editable' | 'rendered' | 'signed' | 'other';
+    appendedAfterDesignation: boolean;
+    addedAt: string;
+    url: string;
+  }
   interface StoredVersion {
     id: string;
     number: number;
     status: 'draft' | 'official' | 'superseded';
     createdAt: string;
-    url: string;
+    references: StoredReference[];
     designatedAt?: string;
     frozen?: { title: string; purpose: string };
     supersededAt?: string;
@@ -480,12 +490,18 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   };
   const at = (minute: number) =>
     `2026-09-26T08:${String(minute).padStart(2, '0')}:00.000Z`;
-  const reference = (version: StoredVersion) => ({
-    id: `reference-${version.number}`,
+  const reference = (stored: StoredReference, index: number) => ({
+    id: stored.id,
     kind: 'external-reference',
     verification: 'unverified',
+    position: stored.position,
+    form: stored.form,
+    primary: index === 0,
+    appendedAfterDesignation: stored.appendedAfterDesignation,
+    addedAt: stored.addedAt,
+    addedBy: { displayName: 'Document Registrar' },
     access: 'granted',
-    url: version.url,
+    url: stored.url,
   });
   const working = () =>
     server.versions.find((version) => version.status === 'draft') ??
@@ -493,6 +509,8 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   const detail = () => {
     const version = working();
     if (!version) throw new Error('Expected a working Version.');
+    const primary = version.references[0];
+    if (!primary) throw new Error('Expected a primary reference.');
     return {
       id: documentId,
       companyId: company.id,
@@ -508,7 +526,7 @@ test('designates official Versions, starts and corrects a new draft and keeps th
       version: {
         id: version.id,
         status: version.status,
-        representation: reference(version),
+        representation: reference(primary, 0),
       },
     };
   };
@@ -518,7 +536,7 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     status: version.status,
     createdAt: version.createdAt,
     createdBy: { displayName: 'Document Registrar' },
-    representations: [reference(version)],
+    representations: version.references.map(reference),
     ...(version.status === 'draft'
       ? {}
       : {
@@ -595,7 +613,16 @@ test('designates official Versions, starts and corrects a new draft and keeps th
           number: 1,
           status: 'draft',
           createdAt: at(0),
-          url: firstUrl,
+          references: [
+            {
+              id: 'reference-1-other',
+              position: 1,
+              form: 'other',
+              appendedAfterDesignation: false,
+              addedAt: at(0),
+              url: firstUrl,
+            },
+          ],
         },
       ];
       return route.fulfill({ status: 201, json: detail() });
@@ -629,6 +656,73 @@ test('designates official Versions, starts and corrects a new draft and keeps th
           json: { code: 'document_revision_conflict', message: 'Stale.' },
         });
       const minute = server.workingRevision + 1;
+      const addMatch = path.match(
+        new RegExp(
+          `^/api/documents/${documentId}/versions/([^/]+)/representations$`,
+        ),
+      );
+      if (addMatch) {
+        const version = server.versions.find(
+          (candidate) => candidate.id === addMatch[1],
+        );
+        if (!version) throw new Error('Expected the target Version.');
+        if (
+          typeof body !== 'object' ||
+          body === null ||
+          !('form' in body) ||
+          !('url' in body) ||
+          typeof body.url !== 'string' ||
+          (body.form !== 'editable' &&
+            body.form !== 'rendered' &&
+            body.form !== 'signed' &&
+            body.form !== 'other')
+        )
+          throw new Error('Expected a typed reference command.');
+        const added: StoredReference = {
+          id: `reference-${version.number}-${version.references.length + 1}`,
+          position:
+            Math.max(...version.references.map((item) => item.position)) + 1,
+          form: body.form,
+          appendedAfterDesignation: version.status === 'official',
+          addedAt: at(minute),
+          url: body.url,
+        };
+        version.references.push(added);
+        server.workingRevision += 1;
+        return route.fulfill({
+          status: 201,
+          json: receipt(version, {
+            action: 'representation_added',
+            representationId: added.id,
+            appendedAfterDesignation: added.appendedAfterDesignation,
+          }),
+        });
+      }
+      const removalMatch = path.match(
+        new RegExp(
+          `^/api/documents/${documentId}/versions/([^/]+)/representations/([^/]+)/removal$`,
+        ),
+      );
+      if (removalMatch) {
+        const version = server.versions.find(
+          (candidate) => candidate.id === removalMatch[1],
+        );
+        if (!version) throw new Error('Expected the target Version.');
+        const removed = version.references.find(
+          (item) => item.id === removalMatch[2],
+        );
+        if (!removed) throw new Error('Expected the target reference.');
+        version.references = version.references.filter(
+          (item) => item.id !== removed.id,
+        );
+        server.workingRevision += 1;
+        return route.fulfill({
+          json: receipt(version, {
+            action: 'representation_removed',
+            representationId: removed.id,
+          }),
+        });
+      }
       if (path.endsWith('/official-designation')) {
         const draft = server.versions.find(
           (version) =>
@@ -664,7 +758,14 @@ test('designates official Versions, starts and corrects a new draft and keeps th
         number: server.versions.length + 1,
         status: 'draft',
         createdAt: at(minute),
-        url: source.url,
+        references: source.references
+          .filter((item) => !item.appendedAfterDesignation)
+          .map((item, index) => ({
+            ...item,
+            id: `reference-${server.versions.length + 1}-${index + 1}`,
+            position: index + 1,
+            addedAt: at(minute),
+          })),
       };
       server.versions.push(drafted);
       server.workingRevision += 1;
@@ -686,7 +787,11 @@ test('designates official Versions, starts and corrects a new draft and keeps th
       if (typeof body === 'object' && body !== null) {
         if ('title' in body && typeof body.title === 'string')
           server.title = body.title;
-        if ('url' in body && typeof body.url === 'string') draft.url = body.url;
+        if ('url' in body && typeof body.url === 'string') {
+          const primary = draft.references[0];
+          if (!primary) throw new Error('Expected a primary reference.');
+          primary.url = body.url;
+        }
       }
       server.workingRevision += 1;
       return route.fulfill({
@@ -720,21 +825,30 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     .click();
   await expect(page.getByRole('heading', { name: firstTitle })).toBeVisible();
 
-  // 1. The Approver designates Version 1 from the keyboard.
   const versions = page.getByRole('region', { name: 'Versions' });
   const rows = versions
     .getByRole('list', { name: 'Document Versions, newest first' })
-    .getByRole('listitem');
+    .locator(':scope > li');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('Version 1');
   await expect(rows.first()).toContainText('Draft');
-  await versions
-    .getByRole('link', { name: 'Open Version 1 reference' })
-    .focus();
-  await page.keyboard.press('Tab');
+
+  // 1. The registrar records the rendered form before designation.
+  await selectOption(rows.first().getByLabel('Reference form'), 'rendered');
+  await rows.first().getByLabel('HTTPS URL').fill(renderedUrl);
+  await rows.first().getByRole('button', { name: 'Add reference' }).click();
+  await expect(versions.getByRole('status')).toHaveText(
+    'A reference was added to Version 1.',
+  );
+  await expect(
+    rows.first().getByRole('list', { name: 'References for Version 1' }),
+  ).toContainText('Rendered · Position 2');
+
+  // 2. The Approver designates Version 1 from the keyboard.
   const designate = versions.getByRole('button', {
     name: 'Designate as official',
   });
+  await designate.focus();
   await expect(designate).toBeFocused();
   expect(
     await designate.evaluate(
@@ -761,7 +875,7 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     page.getByRole('button', { name: 'Edit reference' }),
   ).toHaveCount(0);
   await expect(rows.first()).toContainText(
-    'The recorded reference and title of this official Version are frozen.',
+    'The recorded references, their forms, and the title of this official Version are frozen.',
   );
   expect(
     await page.evaluate(
@@ -774,7 +888,29 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     fullPage: true,
   });
 
-  // 2. The registrar starts Version 2 and corrects its title and URL.
+  // 3. The registrar confirms the irreversible signed append.
+  await selectOption(rows.first().getByLabel('Reference form'), 'signed');
+  await rows.first().getByLabel('HTTPS URL').fill(signedUrl);
+  await rows
+    .first()
+    .getByRole('button', { name: 'Add reference to official Version' })
+    .click();
+  await expect(
+    versions.getByRole('group', {
+      name: 'Add this reference to official Version 1? It will belong to this exact Version and can never be removed.',
+    }),
+  ).toBeVisible();
+  await versions
+    .getByRole('button', { name: 'Add irreversible reference' })
+    .click();
+  await expect(versions.getByRole('status')).toHaveText(
+    'A reference was added to Version 1.',
+  );
+  await expect(rows.first()).toContainText('Signed · Position 3');
+  await expect(rows.first()).toContainText('Added after designation');
+
+  // 4. Version 2 copies the two pre-designation references, then drops the
+  // original source before its primary URL is corrected.
   await versions.getByRole('button', { name: 'Start new draft' }).click();
   await expect(versions.getByRole('status')).toHaveText(
     'Version 2 was started as a draft.',
@@ -783,13 +919,29 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     page.getByText('Draft questionnaire · Company-confidential'),
   ).toBeVisible();
   await expect(rows).toHaveCount(2);
+  const draftReferences = rows
+    .first()
+    .getByRole('list', { name: 'References for Version 2' })
+    .locator(':scope > li');
+  await expect(draftReferences).toHaveCount(2);
+  await expect(
+    rows.first().getByRole('list', { name: 'References for Version 2' }),
+  ).not.toContainText('Signed');
+  await draftReferences.first().getByRole('button', { name: 'Remove' }).click();
+  await expect(versions.getByRole('status')).toHaveText(
+    'A draft reference was removed from Version 2.',
+  );
+  await expect(draftReferences).toHaveCount(1);
+  await expect(draftReferences.first()).toContainText(
+    'Rendered · Position 2 · Primary',
+  );
   await page.getByRole('button', { name: 'Edit reference' }).click();
   await page.getByLabel('Title', { exact: true }).fill(secondTitle);
   await page.getByLabel('External HTTPS link').fill(secondUrl);
   await page.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByRole('heading', { name: secondTitle })).toBeVisible();
 
-  // 3. The Approver designates Version 2; Version 1 stays readable, superseded.
+  // 5. The Approver designates Version 2; Version 1 stays readable, superseded.
   await versions.getByRole('button', { name: 'Designate as official' }).click();
   await expect(
     versions.getByRole('group', {
@@ -805,8 +957,13 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   await expect(rows.nth(1)).toContainText('Superseded');
   await expect(rows.nth(1)).toContainText('Superseded by Version 2');
   await expect(rows.nth(1)).toContainText(firstTitle);
+  const supersededReferences = rows
+    .nth(1)
+    .getByRole('list', { name: 'References for Version 1' });
+  await expect(supersededReferences).toContainText('Signed · Position 3');
+  await expect(supersededReferences).toContainText('Added after designation');
   await expect(
-    rows.nth(1).getByRole('link', { name: 'Open Version 1 reference' }),
+    rows.nth(1).getByRole('link', { name: 'Open Version 1 reference' }).first(),
   ).toHaveAttribute('href', firstUrl);
   await expect(rows.first()).toContainText('Official');
   await expect(rows.first()).toContainText(secondTitle);
@@ -817,10 +974,13 @@ test('designates official Versions, starts and corrects a new draft and keeps th
   await expect(secondLink).toHaveAttribute('target', '_blank');
   await expect(secondLink).toHaveAttribute('rel', 'noopener noreferrer');
   expect(server.commands.map((command) => command.body)).toEqual([
-    { expectedRevision: 1 },
+    { expectedRevision: 1, form: 'rendered', url: renderedUrl },
     { expectedRevision: 2 },
-    { expectedRevision: 3, title: secondTitle, purpose, url: secondUrl },
+    { expectedRevision: 3, form: 'signed', url: signedUrl },
     { expectedRevision: 4 },
+    { expectedRevision: 5 },
+    { expectedRevision: 6, title: secondTitle, purpose, url: secondUrl },
+    { expectedRevision: 7 },
   ]);
   expect(
     await page.evaluate(

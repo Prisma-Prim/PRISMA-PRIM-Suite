@@ -291,6 +291,41 @@ withPostgres('Official Document Versions REST contract', () => {
       key: options.key,
     });
   }
+  function addReference(
+    documentId: string,
+    versionId: string,
+    expectedRevision: number,
+    form: 'editable' | 'rendered' | 'signed' | 'other',
+    url: string,
+    options: { as?: Caller; key?: string; body?: unknown } = {},
+  ) {
+    return call(
+      `/documents/${documentId}/versions/${versionId}/representations`,
+      {
+        as: options.as ?? 'registrar',
+        method: 'POST',
+        body: options.body ?? { expectedRevision, form, url },
+        key: options.key,
+      },
+    );
+  }
+  function removeReference(
+    documentId: string,
+    versionId: string,
+    representationId: string,
+    expectedRevision: number,
+    options: { as?: Caller; key?: string } = {},
+  ) {
+    return call(
+      `/documents/${documentId}/versions/${versionId}/representations/${representationId}/removal`,
+      {
+        as: options.as ?? 'registrar',
+        method: 'POST',
+        body: { expectedRevision },
+        key: options.key,
+      },
+    );
+  }
   function correct(
     documentId: string,
     body: Record<string, unknown>,
@@ -333,7 +368,9 @@ withPostgres('Official Document Versions REST contract', () => {
     expect(response.status).toBe(200);
     return list((await json(response)).events)
       .map(record)
-      .filter((event) => text(event.action).startsWith('document.version.'));
+      .filter((event) =>
+        /^document\.(?:version|representation)\./u.test(text(event.action)),
+      );
   }
   async function conflictCode(response: Response): Promise<unknown> {
     expect(response.status).toBe(409);
@@ -358,6 +395,12 @@ withPostgres('Official Document Versions REST contract', () => {
               id: expect.any(String),
               kind: 'external-reference',
               verification: 'unverified',
+              position: 1,
+              form: 'other',
+              primary: true,
+              appendedAfterDesignation: false,
+              addedAt: expect.any(String),
+              addedBy: { displayName: MEMBERS.registrar },
               access: 'granted',
               url: DEMO.url,
             },
@@ -415,6 +458,305 @@ withPostgres('Official Document Versions REST contract', () => {
       version: { id: versionId, status: 'official' },
     });
   });
+
+  it('adds a rendered reference to the draft through the shared revision seam', async () => {
+    const documentId = await register();
+    const versionId = await versionIdOf(documentId, 1);
+    const url = 'https://example.test/demo/chestionar-v1.pdf';
+
+    const response = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      url,
+    );
+
+    expect(response.status).toBe(201);
+    expect(await json(response)).toMatchObject({
+      documentId,
+      workingRevision: 2,
+      action: 'representation_added',
+      versionId,
+      versionNumber: 1,
+      representationId: expect.any(String),
+      appendedAfterDesignation: false,
+    });
+    const read = await versionsOf(documentId);
+    expect(read.workingRevision).toBe(2);
+    expect(record(read.versions[0]).representations).toEqual([
+      expect.objectContaining({ position: 1, form: 'other', primary: true }),
+      expect.objectContaining({
+        position: 2,
+        form: 'rendered',
+        primary: false,
+        appendedAfterDesignation: false,
+        url,
+      }),
+    ]);
+    const events = await harness.pool.query<{ action: string }>(
+      `SELECT action FROM document_version_commands WHERE document_id = $1 ORDER BY occurred_at`,
+      [documentId],
+    );
+    expect(events.rows).toEqual([{ action: 'representation_added' }]);
+    const [activity] = await versionEvents();
+    expect(activity).toMatchObject({
+      action: 'document.representation.added',
+      target: { companyId },
+      metadata: {
+        versionNumber: 1,
+        form: 'rendered',
+        appendedAfterDesignation: false,
+      },
+    });
+    expect(JSON.stringify(activity)).not.toMatch(/chestionar|https|project/iu);
+  });
+
+  it('keeps official appends on their exact Version and promotes the next draft primary reference', async () => {
+    const documentId = await register();
+    const versionOneId = await versionIdOf(documentId, 1);
+    const renderedUrl = 'https://example.test/demo/chestionar-v1.pdf';
+    expect(
+      (await addReference(documentId, versionOneId, 1, 'rendered', renderedUrl))
+        .status,
+    ).toBe(201);
+    expect((await designate(documentId, versionOneId, 2)).status).toBe(200);
+    const signed = await addReference(
+      documentId,
+      versionOneId,
+      3,
+      'signed',
+      'https://example.test/demo/chestionar-v1-semnat.pdf',
+    );
+    expect(signed.status).toBe(201);
+    const signedReceipt = await json(signed);
+    expect(signedReceipt.appendedAfterDesignation).toBe(true);
+    expect(
+      await conflictCode(
+        await removeReference(
+          documentId,
+          versionOneId,
+          text(signedReceipt.representationId),
+          4,
+        ),
+      ),
+    ).toBe('document_version_state_invalid');
+
+    expect((await startDraft(documentId, 4)).status).toBe(201);
+    const drafted = await versionsOf(documentId);
+    const versionTwo = drafted.versions.find((row) => row.number === 2);
+    const copied = list(versionTwo?.representations).map(record);
+    expect(copied).toHaveLength(2);
+    expect(copied.map((row) => row.form)).toEqual(['other', 'rendered']);
+    expect(copied.some((row) => row.form === 'signed')).toBe(false);
+    expect(
+      (
+        await removeReference(
+          documentId,
+          text(versionTwo?.id),
+          text(copied[0]?.id),
+          5,
+        )
+      ).status,
+    ).toBe(200);
+    const afterRemoval = await versionsOf(documentId);
+    const current = afterRemoval.versions.find((row) => row.number === 2);
+    expect(list(current?.representations).map(record)).toEqual([
+      expect.objectContaining({
+        position: 2,
+        form: 'rendered',
+        primary: true,
+      }),
+    ]);
+    expect(
+      (
+        await correct(documentId, {
+          expectedRevision: 6,
+          url: 'https://example.test/demo/chestionar-v2.pdf',
+        })
+      ).status,
+    ).toBe(200);
+    expect((await designate(documentId, text(current?.id), 7)).status).toBe(
+      200,
+    );
+    const final = await versionsOf(documentId);
+    expect(final.workingRevision).toBe(8);
+    expect(
+      list(final.versions.find((row) => row.number === 1)?.representations)
+        .map(record)
+        .some((row) => row.form === 'signed'),
+    ).toBe(true);
+  });
+
+  it('validates typed references, current capacity, replay and immutable official removals', async () => {
+    const documentId = await register();
+    const versionId = await versionIdOf(documentId, 1);
+    const initial = await persisted(documentId);
+    for (const body of [
+      { expectedRevision: 1, form: 'unknown', url: 'https://example.test/x' },
+      {
+        expectedRevision: 1,
+        form: 'rendered',
+        url: 'https://user:secret@example.test/x',
+      },
+      {
+        expectedRevision: 1,
+        form: 'rendered',
+        url: 'https://example.test/x',
+        note: 'extra',
+      },
+    ])
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            1,
+            'rendered',
+            'https://example.test/x',
+            { body },
+          )
+        ).status,
+      ).toBe(400);
+    expect(await persisted(documentId)).toEqual(initial);
+    const initialRead = await versionsOf(documentId);
+    const initialReferences = list(initialRead.versions[0]?.representations);
+    const initialReference = text(record(initialReferences[0]).id);
+    expect(
+      await conflictCode(
+        await removeReference(documentId, versionId, initialReference, 1),
+      ),
+    ).toBe('document_version_state_invalid');
+    expect(await persisted(documentId)).toEqual(initial);
+    expect(
+      (
+        await addReference(
+          documentId,
+          versionId,
+          1,
+          'rendered',
+          'https://example.test/v1-2.pdf',
+          { as: 'colleague' },
+        )
+      ).status,
+    ).toBe(403);
+
+    const key = randomUUID();
+    const firstAddition = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      'https://example.test/v1-2.pdf',
+      { key },
+    );
+    expect(firstAddition.status).toBe(201);
+    const firstReceipt = await json(firstAddition);
+    for (let position = 3; position <= 5; position += 1)
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            position - 1,
+            'other',
+            `https://example.test/v1-${position}`,
+          )
+        ).status,
+      ).toBe(201);
+    const replayed = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      'https://example.test/v1-2.pdf',
+      { key },
+    );
+    expect(replayed.status).toBe(201);
+    expect(await json(replayed)).toEqual(firstReceipt);
+    const reused = await addReference(
+      documentId,
+      versionId,
+      1,
+      'signed',
+      'https://example.test/changed',
+      { key },
+    );
+    expect(reused.status).toBe(409);
+    expect(await json(reused)).toMatchObject({
+      message: 'Idempotency-Key was already used for another Version command.',
+    });
+    const capacity = await addReference(
+      documentId,
+      versionId,
+      5,
+      'signed',
+      'https://example.test/sixth',
+    );
+    expect(await conflictCode(capacity)).toBe(
+      'document_representation_capacity_exceeded',
+    );
+
+    const fullDraft = await versionsOf(documentId);
+    const references = list(fullDraft.versions[0]?.representations).map(record);
+    expect(references).toHaveLength(5);
+    expect(
+      (await removeReference(documentId, versionId, text(references[0]?.id), 5))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await addReference(
+          documentId,
+          versionId,
+          6,
+          'editable',
+          'https://example.test/replacement',
+        )
+      ).status,
+    ).toBe(201);
+    const afterReplacement = await versionsOf(documentId);
+    expect(
+      list(afterReplacement.versions[0]?.representations).map(
+        (value) => record(value).position,
+      ),
+    ).toEqual([2, 3, 4, 5, 6]);
+
+    expect((await designate(documentId, versionId, 7)).status).toBe(200);
+    for (let append = 1; append <= 5; append += 1)
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            7 + append,
+            'signed',
+            `https://example.test/signed-${append}`,
+          )
+        ).status,
+      ).toBe(201);
+    expect(
+      await conflictCode(
+        await addReference(
+          documentId,
+          versionId,
+          13,
+          'signed',
+          'https://example.test/eleventh',
+        ),
+      ),
+    ).toBe('document_representation_capacity_exceeded');
+    expect(
+      await conflictCode(
+        await removeReference(
+          documentId,
+          versionId,
+          text(firstReceipt.representationId),
+          13,
+        ),
+      ),
+    ).toBe('document_version_state_invalid');
+  }, 60_000);
 
   it('runs the lifecycle on one working revision: new draft, correction, designation and supersession', async () => {
     const documentId = await register();
