@@ -502,14 +502,20 @@ withPostgres('Official Document Versions REST contract', () => {
     const [activity] = await versionEvents();
     expect(activity).toMatchObject({
       action: 'document.representation.added',
-      target: { companyId },
-      metadata: {
-        versionNumber: 1,
-        form: 'rendered',
-        appendedAfterDesignation: false,
+      target: {
+        type: 'document',
+        documentId,
+        documentTitle: DEMO.title,
+        companyId,
       },
     });
-    expect(JSON.stringify(activity)).not.toMatch(/chestionar|https|project/iu);
+    const metadata = record(activity?.metadata);
+    expect(metadata).toEqual({
+      versionNumber: 1,
+      form: 'rendered',
+      appendedAfterDesignation: false,
+    });
+    expect(JSON.stringify(metadata)).not.toMatch(/chestionar|https|project/iu);
   });
 
   it('keeps official appends on their exact Version and promotes the next draft primary reference', async () => {

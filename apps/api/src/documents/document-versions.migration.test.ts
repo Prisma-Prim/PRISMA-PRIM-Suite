@@ -493,7 +493,7 @@ it.skipIf(!databaseUrl)(
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'typed_document_references_upgrade',
+      namePrefix: 'typed_refs_upgrade',
     });
     let previous: string | undefined;
     try {
