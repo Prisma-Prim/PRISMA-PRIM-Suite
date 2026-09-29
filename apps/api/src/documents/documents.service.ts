@@ -132,6 +132,8 @@ export class DocumentsService {
         companyId,
         versionId: version.id,
         url: command.url,
+        addedByMembershipId: actor.workspaceMembershipId,
+        addedAt: version.createdAt,
       });
       await this.accountability.recordDocumentRegistered({
         actor,

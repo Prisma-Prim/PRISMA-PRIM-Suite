@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { ActorContext } from '../access/access.types.js';
 import {
@@ -36,6 +36,12 @@ import type {
 } from './document-versions.types.js';
 
 const MAXIMUM_EXPECTED_REVISION = 2147483646;
+type RepresentationForm = DocumentVersionReference['form'];
+interface RepresentationAddition {
+  expectedRevision: number;
+  form: RepresentationForm;
+  url: string;
+}
 
 /** A Document identified inside its Workspace and responsible Company. */
 export interface DocumentScope {
@@ -46,7 +52,7 @@ export interface DocumentScope {
 
 /**
  * The working Version: the draft if one exists, otherwise the current
- * official Version, with its one reference.
+ * official Version, with its ordered references.
  */
 export interface WorkingVersion {
   id: string;
@@ -61,13 +67,16 @@ interface AppliedCommand {
   versionId: string;
   versionNumber: number;
   relatedVersionNumber: number | null;
+  representationId?: string;
+  representationForm?: DocumentVersionReference['form'];
+  appendedAfterDesignation?: boolean;
 }
 
 /**
  * The Document Versions sub-capability: the formal Versions of a working
  * Document, their designation as official and the start of a new draft
  * (Document Registry PRD section 21). It owns the Version rows, each
- * Version's reference copy and the append-only Version command table, which
+ * Version's reference copies and the append-only Version command table, which
  * is both the durable receipt and the Activity Log event of each command.
  */
 @Injectable()
@@ -108,8 +117,10 @@ export class DocumentVersionsService {
           eq(documentVersions.companyId, scope.companyId),
           eq(documentVersions.documentId, scope.documentId),
           inArray(documentVersions.status, ['draft', 'official']),
+          isNull(documentRepresentations.removedAt),
         ),
-      );
+      )
+      .orderBy(asc(documentRepresentations.position));
     const working =
       rows.find((row) => row.status === 'draft') ??
       rows.find((row) => row.status === 'official');
@@ -150,6 +161,11 @@ export class DocumentVersionsService {
           'version_designator_membership',
         );
         const designator = alias(internalUsers, 'version_designator');
+        const adderMembership = alias(
+          workspaceMemberships,
+          'representation_adder_membership',
+        );
+        const adder = alias(internalUsers, 'representation_adder');
         const successor = alias(documentVersions, 'version_successor');
         const rows = await this.database.connection
           .select({
@@ -158,6 +174,12 @@ export class DocumentVersionsService {
             designatorDisplayName: designator.displayName,
             supersededByVersionNumber: successor.number,
             representationId: documentRepresentations.id,
+            representationPosition: documentRepresentations.position,
+            representationForm: documentRepresentations.form,
+            representationAppendedAfterDesignation:
+              documentRepresentations.appendedAfterDesignation,
+            representationAddedAt: documentRepresentations.addedAt,
+            representationAddedByDisplayName: adder.displayName,
             url: documentRepresentations.url,
           })
           .from(documentVersions)
@@ -180,6 +202,20 @@ export class DocumentVersionsService {
             ),
           )
           .innerJoin(creator, eq(creator.id, creatorMembership.internalUserId))
+          .innerJoin(
+            adderMembership,
+            and(
+              eq(
+                adderMembership.workspaceId,
+                documentRepresentations.workspaceId,
+              ),
+              eq(
+                adderMembership.id,
+                documentRepresentations.addedByMembershipId,
+              ),
+            ),
+          )
+          .innerJoin(adder, eq(adder.id, adderMembership.internalUserId))
           .leftJoin(
             designatorMembership,
             and(
@@ -211,26 +247,51 @@ export class DocumentVersionsService {
               eq(documentVersions.workspaceId, actor.workspaceId),
               eq(documentVersions.companyId, visible.companyId),
               eq(documentVersions.documentId, visible.document.id),
+              isNull(documentRepresentations.removedAt),
             ),
           )
-          .orderBy(desc(documentVersions.number))
-          .limit(MAXIMUM_DOCUMENT_VERSIONS);
+          .orderBy(
+            desc(documentVersions.number),
+            asc(documentRepresentations.position),
+          )
+          .limit(MAXIMUM_DOCUMENT_VERSIONS * 10);
         const referenceReader = canReadReference(actor);
-        return {
-          workingRevision: visible.document.workingRevision,
-          mutable: visible.client.status === 'active',
-          versions: rows.map((row) =>
+        const grouped = new Map<string, DocumentVersionView>();
+        for (const row of rows) {
+          const existing = grouped.get(row.version.id);
+          const item = reference(
+            {
+              id: row.representationId,
+              url: row.url,
+              position: row.representationPosition,
+              form: row.representationForm,
+              appendedAfterDesignation:
+                row.representationAppendedAfterDesignation,
+              addedAt: row.representationAddedAt,
+              addedByDisplayName: row.representationAddedByDisplayName,
+            },
+            referenceReader,
+            existing === undefined,
+          );
+          if (existing) {
+            existing.representations.push(item);
+            continue;
+          }
+          grouped.set(
+            row.version.id,
             versionView({
               version: row.version,
               creatorDisplayName: row.creatorDisplayName,
               designatorDisplayName: row.designatorDisplayName,
               supersededByVersionNumber: row.supersededByVersionNumber,
-              reference: reference(
-                { id: row.representationId, url: row.url },
-                referenceReader,
-              ),
+              reference: item,
             }),
-          ),
+          );
+        }
+        return {
+          workingRevision: visible.document.workingRevision,
+          mutable: visible.client.status === 'active',
+          versions: [...grouped.values()],
         };
       },
       { isolationLevel: 'repeatable read' },
@@ -239,7 +300,7 @@ export class DocumentVersionsService {
 
   /**
    * Designates the current draft as the official Version. The Document's
-   * current title and purpose are frozen onto it with its reference, and the
+   * current title and purpose are frozen onto it with its references, and the
    * previous official Version, if any, becomes superseded.
    */
   async designate(
@@ -270,7 +331,7 @@ export class DocumentVersionsService {
 
   /**
    * Starts the next Version as a draft copied from the current official
-   * Version's reference, when an official Version and no draft exist.
+   * Version's eligible references, when an official Version and no draft exist.
    */
   async startDraft(
     actor: ActorContext,
@@ -291,6 +352,67 @@ export class DocumentVersionsService {
     });
   }
 
+  async addRepresentation(
+    actor: ActorContext,
+    request: {
+      documentId: unknown;
+      versionId: unknown;
+      body: unknown;
+      key: string | undefined;
+    },
+  ): Promise<DocumentVersionReceipt> {
+    const documentId = requireUuid(request.documentId);
+    const versionId = requireUuid(request.versionId);
+    const body = representationAddition(request.body);
+    const idempotencyKey = requireIdempotencyKey(request.key);
+    return this.execute(actor, {
+      action: 'representation_added',
+      documentId,
+      versionId,
+      expectedRevision: body.expectedRevision,
+      idempotencyKey,
+      fingerprintBody: { form: body.form, url: body.url },
+      authorize: () =>
+        this.authorization.requireDocumentVersionManagement(actor),
+      apply: (scope) =>
+        this.applyRepresentationAddition(actor, scope, versionId, body),
+    });
+  }
+
+  async removeRepresentation(
+    actor: ActorContext,
+    request: {
+      documentId: unknown;
+      versionId: unknown;
+      representationId: unknown;
+      body: unknown;
+      key: string | undefined;
+    },
+  ): Promise<DocumentVersionReceipt> {
+    const documentId = requireUuid(request.documentId);
+    const versionId = requireUuid(request.versionId);
+    const representationId = requireUuid(request.representationId);
+    const expectedRevision = versionCommandBody(request.body);
+    const idempotencyKey = requireIdempotencyKey(request.key);
+    return this.execute(actor, {
+      action: 'representation_removed',
+      documentId,
+      versionId,
+      expectedRevision,
+      idempotencyKey,
+      fingerprintBody: { representationId },
+      authorize: () =>
+        this.authorization.requireDocumentVersionManagement(actor),
+      apply: (scope) =>
+        this.applyRepresentationRemoval(
+          actor,
+          scope,
+          versionId,
+          representationId,
+        ),
+    });
+  }
+
   /**
    * The common command contract, in the delivered correction's order: the
    * per-actor key lock, live authority, visibility, replay, the original
@@ -306,6 +428,7 @@ export class DocumentVersionsService {
       versionId: string | null;
       expectedRevision: number;
       idempotencyKey: string;
+      fingerprintBody?: Readonly<Record<string, unknown>>;
       authorize: () => Promise<string>;
       apply: (
         scope: DocumentScope,
@@ -343,6 +466,7 @@ export class DocumentVersionsService {
             versionId: command.versionId,
             action: command.action,
             expectedRevision: command.expectedRevision,
+            ...command.fingerprintBody,
           }),
         )
         .digest('hex');
@@ -412,6 +536,9 @@ export class DocumentVersionsService {
           versionId: applied.versionId,
           versionNumber: applied.versionNumber,
           relatedVersionNumber: applied.relatedVersionNumber,
+          representationId: applied.representationId,
+          representationForm: applied.representationForm,
+          appendedAfterDesignation: applied.appendedAfterDesignation,
           actorMembershipId: actor.workspaceMembershipId,
           idempotencyKey: command.idempotencyKey,
           requestFingerprint: fingerprint,
@@ -494,17 +621,24 @@ export class DocumentVersionsService {
         code: 'document_version_capacity_exceeded',
         message: 'This Document cannot hold another Version.',
       });
-    const [officialReference] = await this.database.connection
-      .select({ url: documentRepresentations.url })
+    const officialReferences = await this.database.connection
+      .select({
+        position: documentRepresentations.position,
+        form: documentRepresentations.form,
+        url: documentRepresentations.url,
+      })
       .from(documentRepresentations)
       .where(
         and(
           eq(documentRepresentations.workspaceId, scope.workspaceId),
           eq(documentRepresentations.companyId, scope.companyId),
           eq(documentRepresentations.versionId, official.id),
+          eq(documentRepresentations.appendedAfterDesignation, false),
+          isNull(documentRepresentations.removedAt),
         ),
-      );
-    if (!officialReference)
+      )
+      .orderBy(asc(documentRepresentations.position));
+    if (officialReferences.length === 0)
       throw new Error('The official Version has no reference.');
     const number = Math.max(...versions.map((version) => version.number)) + 1;
     const [draft] = await this.database.connection
@@ -517,19 +651,130 @@ export class DocumentVersionsService {
         status: 'draft',
         createdByMembershipId: actor.workspaceMembershipId,
       })
-      .returning({ id: documentVersions.id });
+      .returning({
+        id: documentVersions.id,
+        createdAt: documentVersions.createdAt,
+      });
     if (!draft) throw new Error('The draft Version was not created.');
-    await this.database.connection.insert(documentRepresentations).values({
-      workspaceId: scope.workspaceId,
-      companyId: scope.companyId,
-      versionId: draft.id,
-      url: officialReference.url,
-    });
+    await this.database.connection.insert(documentRepresentations).values(
+      officialReferences.map((reference, index) => ({
+        workspaceId: scope.workspaceId,
+        companyId: scope.companyId,
+        versionId: draft.id,
+        position: index + 1,
+        form: reference.form,
+        url: reference.url,
+        addedByMembershipId: actor.workspaceMembershipId,
+        addedAt: draft.createdAt,
+        appendedAfterDesignation: false,
+      })),
+    );
     return {
       versionId: draft.id,
       versionNumber: number,
       relatedVersionNumber: official.number,
     };
+  }
+
+  private async applyRepresentationAddition(
+    actor: ActorContext,
+    scope: DocumentScope,
+    versionId: string,
+    addition: RepresentationAddition,
+  ): Promise<AppliedCommand> {
+    const versions = await this.versionsOf(scope);
+    const version = versions.find((candidate) => candidate.id === versionId);
+    if (!version || version.status === 'superseded')
+      throw documentVersionStateInvalid();
+    const references = await this.referencesOf(scope, versionId);
+    const maximum = version.status === 'draft' ? 5 : 10;
+    if (
+      references.filter((reference) => reference.removedAt === null).length >=
+      maximum
+    )
+      throw representationCapacityExceeded();
+    const nextPosition =
+      references.reduce(
+        (maximumPosition, reference) =>
+          Math.max(maximumPosition, reference.position),
+        0,
+      ) + 1;
+    const appendedAfterDesignation = version.status === 'official';
+    const [created] = await this.database.connection
+      .insert(documentRepresentations)
+      .values({
+        workspaceId: scope.workspaceId,
+        companyId: scope.companyId,
+        versionId,
+        position: nextPosition,
+        form: addition.form,
+        url: addition.url,
+        addedByMembershipId: actor.workspaceMembershipId,
+        appendedAfterDesignation,
+      })
+      .returning({ id: documentRepresentations.id });
+    if (!created) throw new Error('The reference was not created.');
+    return {
+      versionId,
+      versionNumber: version.number,
+      relatedVersionNumber: null,
+      representationId: created.id,
+      representationForm: addition.form,
+      appendedAfterDesignation,
+    };
+  }
+
+  private async applyRepresentationRemoval(
+    actor: ActorContext,
+    scope: DocumentScope,
+    versionId: string,
+    representationId: string,
+  ): Promise<AppliedCommand> {
+    const versions = await this.versionsOf(scope);
+    const version = versions.find((candidate) => candidate.id === versionId);
+    if (!version) throw new NotFoundException();
+    if (version.status !== 'draft') throw documentVersionStateInvalid();
+    const references = await this.referencesOf(scope, versionId);
+    const current = references.filter(
+      (reference) => reference.removedAt === null,
+    );
+    const target = current.find(
+      (reference) => reference.id === representationId,
+    );
+    if (!target) throw new NotFoundException();
+    if (current.length === 1) throw documentVersionStateInvalid();
+    await this.database.connection
+      .update(documentRepresentations)
+      .set({
+        removedByMembershipId: actor.workspaceMembershipId,
+        removedAt: sql`now()`,
+      })
+      .where(eq(documentRepresentations.id, target.id));
+    return {
+      versionId,
+      versionNumber: version.number,
+      relatedVersionNumber: null,
+      representationId: target.id,
+      representationForm: target.form,
+    };
+  }
+
+  private referencesOf(scope: DocumentScope, versionId: string) {
+    return this.database.connection
+      .select({
+        id: documentRepresentations.id,
+        position: documentRepresentations.position,
+        form: documentRepresentations.form,
+        removedAt: documentRepresentations.removedAt,
+      })
+      .from(documentRepresentations)
+      .where(
+        and(
+          eq(documentRepresentations.workspaceId, scope.workspaceId),
+          eq(documentRepresentations.companyId, scope.companyId),
+          eq(documentRepresentations.versionId, versionId),
+        ),
+      );
   }
 
   private versionsOf(scope: DocumentScope) {
@@ -565,6 +810,59 @@ export function documentVersionStateInvalid(): ConflictException {
     message:
       'This change is not possible for the Document as it is now. Reload it.',
   });
+}
+
+function representationCapacityExceeded(): ConflictException {
+  return new ConflictException({
+    code: 'document_representation_capacity_exceeded',
+    message: 'This Version cannot hold another reference.',
+  });
+}
+
+function representationAddition(value: unknown): RepresentationAddition {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw invalidVersionCommand();
+  const row: Record<string, unknown> = Object.fromEntries(
+    Object.entries(value),
+  );
+  if (
+    Object.keys(row).some(
+      (key) => !['expectedRevision', 'form', 'url'].includes(key),
+    ) ||
+    Object.keys(row).length !== 3
+  )
+    throw invalidVersionCommand();
+  const expectedRevision = versionCommandBody({
+    expectedRevision: row.expectedRevision,
+  });
+  if (!isRepresentationForm(row.form)) throw invalidVersionCommand();
+  return {
+    expectedRevision,
+    form: row.form,
+    url: representationUrl(row.url),
+  };
+}
+
+function isRepresentationForm(value: unknown): value is RepresentationForm {
+  return (
+    value === 'editable' ||
+    value === 'rendered' ||
+    value === 'signed' ||
+    value === 'other'
+  );
+}
+
+function representationUrl(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) throw invalidVersionCommand();
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw invalidVersionCommand();
+  }
+  if (url.protocol !== 'https:' || url.username || url.password)
+    throw invalidVersionCommand();
+  return url.href;
 }
 
 /** The only accepted body is `{ expectedRevision }` in the delivered range. */
@@ -612,19 +910,60 @@ function receipt(command: CommandRow): DocumentVersionReceipt {
         versionNumber: command.versionNumber,
         sourceVersionNumber: command.relatedVersionNumber,
       };
+    case 'representation_added':
+      if (
+        command.representationId === null ||
+        command.appendedAfterDesignation === null
+      )
+        throw new Error('An added-reference receipt is incomplete.');
+      return {
+        documentId: command.documentId,
+        workingRevision: command.revision,
+        action: 'representation_added',
+        versionId: command.versionId,
+        versionNumber: command.versionNumber,
+        representationId: command.representationId,
+        appendedAfterDesignation: command.appendedAfterDesignation,
+      };
+    case 'representation_removed':
+      if (command.representationId === null)
+        throw new Error('A removed-reference receipt is incomplete.');
+      return {
+        documentId: command.documentId,
+        workingRevision: command.revision,
+        action: 'representation_removed',
+        versionId: command.versionId,
+        versionNumber: command.versionNumber,
+        representationId: command.representationId,
+      };
     default:
       return assertNever(command.action);
   }
 }
 
 function reference(
-  representation: { id: string; url: string },
+  representation: {
+    id: string;
+    url: string;
+    position: number;
+    form: RepresentationForm;
+    appendedAfterDesignation: boolean;
+    addedAt: Date;
+    addedByDisplayName: string;
+  },
   referenceReader: boolean,
+  primary: boolean,
 ): DocumentVersionReference {
   const base = {
     id: representation.id,
     kind: 'external-reference',
     verification: 'unverified',
+    position: representation.position,
+    form: representation.form,
+    primary,
+    appendedAfterDesignation: representation.appendedAfterDesignation,
+    addedAt: representation.addedAt.toISOString(),
+    addedBy: { displayName: representation.addedByDisplayName },
   } as const;
   return referenceReader
     ? { ...base, access: 'granted', url: representation.url }

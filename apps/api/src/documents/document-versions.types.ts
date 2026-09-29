@@ -1,8 +1,14 @@
-/** The one unverified external reference each Version holds in this slice. */
+/** One current typed, unverified external reference held by a Version. */
 export type DocumentVersionReference = {
   id: string;
   kind: 'external-reference';
   verification: 'unverified';
+  position: number;
+  form: 'editable' | 'rendered' | 'signed' | 'other';
+  primary: boolean;
+  appendedAfterDesignation: boolean;
+  addedAt: string;
+  addedBy: { displayName: string };
 } & ({ access: 'granted'; url: string } | { access: 'denied' });
 
 interface DocumentVersionBase {
@@ -55,4 +61,13 @@ export type DocumentVersionReceipt =
   | (DocumentVersionReceiptBase & {
       action: 'drafted';
       sourceVersionNumber: number;
+    })
+  | (DocumentVersionReceiptBase & {
+      action: 'representation_added';
+      representationId: string;
+      appendedAfterDesignation: boolean;
+    })
+  | (DocumentVersionReceiptBase & {
+      action: 'representation_removed';
+      representationId: string;
     });

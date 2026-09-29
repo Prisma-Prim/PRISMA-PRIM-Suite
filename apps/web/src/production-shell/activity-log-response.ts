@@ -72,6 +72,8 @@ const targetTypes = {
   'document.corrected': 'document',
   'document.version.drafted': 'document',
   'document.version.designated_official': 'document',
+  'document.representation.added': 'document',
+  'document.representation.removed': 'document',
   'document.project.linked': 'document_project',
   'document.project.unlinked': 'document_project',
   'client.union_confirmed': 'client_union_operation',
@@ -155,6 +157,8 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
     case 'document.registered':
     case 'document.version.drafted':
     case 'document.version.designated_official':
+    case 'document.representation.added':
+    case 'document.representation.removed':
       return {
         ...recorded(value),
         action,

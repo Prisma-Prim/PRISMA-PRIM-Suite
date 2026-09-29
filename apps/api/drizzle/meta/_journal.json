@@ -288,6 +288,13 @@
       "when": 1790512546187,
       "tag": "0040_pricing_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790700437829,
+      "tag": "0041_yummy_maginty",
+      "breakpoints": true
     }
   ]
 }

@@ -1072,6 +1072,9 @@ export class AccountabilityService {
         action: documentVersionCommands.action,
         versionNumber: documentVersionCommands.versionNumber,
         relatedVersionNumber: documentVersionCommands.relatedVersionNumber,
+        representationForm: documentVersionCommands.representationForm,
+        appendedAfterDesignation:
+          documentVersionCommands.appendedAfterDesignation,
         documentId: documentVersionCommands.documentId,
         documentTitle: workingDocuments.title,
         companyId: documentVersionCommands.companyId,
@@ -1173,6 +1176,32 @@ export class AccountabilityService {
             metadata: {
               versionNumber: row.versionNumber,
               supersededVersionNumber: row.relatedVersionNumber,
+            },
+          };
+        case 'representation_added':
+          if (
+            row.representationForm === null ||
+            row.appendedAfterDesignation === null
+          )
+            throw new Error('An added-reference event is incomplete.');
+          return {
+            ...recorded,
+            action: 'document.representation.added',
+            metadata: {
+              versionNumber: row.versionNumber,
+              form: row.representationForm,
+              appendedAfterDesignation: row.appendedAfterDesignation,
+            },
+          };
+        case 'representation_removed':
+          if (row.representationForm === null)
+            throw new Error('A removed-reference event is incomplete.');
+          return {
+            ...recorded,
+            action: 'document.representation.removed',
+            metadata: {
+              versionNumber: row.versionNumber,
+              form: row.representationForm,
             },
           };
         default:
