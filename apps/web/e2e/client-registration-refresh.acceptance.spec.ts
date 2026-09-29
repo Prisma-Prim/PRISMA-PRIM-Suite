@@ -1,4 +1,5 @@
 import { selectOption } from './select-option';
+import { actorWithComparableDocumentPermissions } from '../src/test/equivalent-actor';
 import {
   expect,
   test,
@@ -264,7 +265,9 @@ async function refreshActiveCompany({
     companyId,
   );
   const actualActor: unknown = await refreshedActor.json();
-  expect(actualActor).toEqual(expectedActor);
+  expect(actorWithComparableDocumentPermissions(actualActor)).toEqual(
+    actorWithComparableDocumentPermissions(expectedActor),
+  );
   expect((await activity).status()).toBe(200);
   // The enabled Search action proves the recovery callback has finished before
   // the held registration is released; observing the HTTP reply alone does not.
