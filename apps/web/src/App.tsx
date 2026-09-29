@@ -786,7 +786,13 @@ function activityDescription(event: ActivityLogEvent): string {
     ...commercialIntakeCopy.activityActionLabels,
     ...workspaceInvitationsCopy.activityActionLabels,
   };
-  return `${actorName} ${actionLabels[event.action]}`;
+  const description = `${actorName} ${actionLabels[event.action]}`;
+  return event.action === 'opportunity.responsible.changed'
+    ? `${description} ${commercialIntakeCopy.activityResponsibleChange(
+        event.metadata.before.displayLabel,
+        event.metadata.after.displayLabel,
+      )}`
+    : description;
 }
 
 function responsibleChange({

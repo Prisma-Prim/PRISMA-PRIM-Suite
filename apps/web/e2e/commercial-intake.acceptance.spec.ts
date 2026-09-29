@@ -1,6 +1,6 @@
 import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -654,6 +654,223 @@ test('opens the Request from its commercial Activity events through the real API
     await revokeCommercialActivityReader(page);
   }
 });
+
+test('changes the responsible actor of a Request within its Company through the real API and PostgreSQL', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const subject = `Solicitare audit ISO 9001 — ${suffix}`;
+  const originalText = `Exact source of the ${suffix} reassignment.`;
+  const colleague = await colleagueMembershipId(page);
+  await grantOpportunityManager(page);
+  await grantColleagueIntake(page, colleague);
+  try {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const company = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    const intake = page.locator('.commercial-intake-workspace');
+    await selectCompany(page, company, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    await captureRequest(page, intake, {
+      originalText,
+      subject,
+      opportunityTitle: `Prepare the ${suffix} ISO 9001 audit`,
+      nextAction: 'Arrange the audit call',
+    });
+    await expect(
+      intake.getByText('Responsible actor: Ada Ionescu', { exact: true }),
+    ).toBeVisible();
+
+    await intake.getByRole('button', { name: 'Change responsible' }).click();
+    const choice = intake.getByLabel('New responsible actor', { exact: true });
+    await expectValue(
+      choice,
+      requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID'),
+    );
+    const choices = await openSelect(choice);
+    const colleagueOption = choices.getByRole('option', {
+      name: /^Ion Popa · [0-9A-Z]+$/u,
+    });
+    await expect(colleagueOption).toHaveCount(1);
+    await expect(colleagueOption).toHaveAttribute('data-value', colleague);
+    await colleagueOption.click();
+    await expectValue(choice, colleague);
+    await expect(
+      intake.getByRole('button', { name: 'Edit next action' }),
+    ).toBeDisabled();
+    await capture(
+      page,
+      testInfo,
+      `commercial-responsible-editor-${suffix.toLowerCase()}.png`,
+    );
+    const change = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/commercial-intake\/opportunities\/[^/]+\/responsible$/u.test(
+          new URL(response.url()).pathname,
+        ),
+    );
+    await intake.getByRole('button', { name: 'Save responsible' }).click();
+    expect((await change).status()).toBe(200);
+    const responsibleFeedback = intake.getByRole('alert').filter({
+      hasText: /^Responsible actor changed\.$/u,
+    });
+    await expect(responsibleFeedback).toHaveCount(1);
+    await expect(responsibleFeedback).toBeVisible();
+    await expect(
+      intake.getByText('Responsible actor: Ion Popa', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      intake.getByText('Next action: Arrange the audit call', { exact: true }),
+    ).toBeVisible();
+    await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+
+    await page.reload();
+    const row = intake.getByRole('button').filter({
+      has: page.getByText(subject, { exact: true }),
+    });
+    await expect(
+      row.getByText('Responsible actor: Ion Popa', { exact: true }),
+    ).toBeVisible();
+    await capture(
+      page,
+      testInfo,
+      `commercial-responsible-list-${suffix.toLowerCase()}.png`,
+    );
+    await row.click();
+    await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+    await expect(
+      intake.getByText('Responsible actor: Ion Popa', { exact: true }),
+    ).toBeVisible();
+
+    await grantCommercialActivityReader(page);
+    try {
+      await page.reload();
+      await navigate(page, navigation, 'Activity Log', narrow);
+      const entry = page
+        .locator('.activity-log .activity-log-list > li')
+        .filter({
+          hasText:
+            /Ada Ionescu changed the responsible actor of an Opportunity \(Ada Ionescu · [0-9A-Z]+ → Ion Popa · [0-9A-Z]+\)/u,
+        })
+        .first();
+      await expect(entry).toBeVisible();
+      await capture(
+        page,
+        testInfo,
+        `commercial-responsible-activity-${suffix.toLowerCase()}.png`,
+      );
+      await entry.getByRole('button', { name: 'Open Request' }).click();
+      await expect(page.locator('#requests')).toBeFocused();
+      await expect(
+        intake.getByText(originalText, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        intake.getByText('Responsible actor: Ion Popa', { exact: true }),
+      ).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    } finally {
+      await revokeCommercialActivityReader(page);
+    }
+  } finally {
+    await revokeOpportunityManager(page);
+    await revokeColleagueIntake(page, colleague);
+  }
+});
+
+const colleagueIdentityHeaders = {
+  'x-test-external-provider': 'local-demo',
+  'x-test-external-subject': 'responsible-colleague',
+  'x-test-display-name': 'Ion Popa',
+  'x-test-email': 'ion@example.test',
+};
+
+async function colleagueMembershipId(page: Page): Promise<string> {
+  const response = await page.request.get(
+    'http://127.0.0.1:4174/api/access/current-actor',
+    { headers: colleagueIdentityHeaders },
+  );
+  expect(response.status()).toBe(200);
+  const actor: unknown = await response.json();
+  if (!isRecord(actor) || typeof actor.workspaceMembershipId !== 'string')
+    throw new Error('Expected the responsible colleague actor.');
+  return actor.workspaceMembershipId;
+}
+
+async function grantOpportunityManager(page: Page): Promise<void> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/company-opportunity-manager-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-manager-${crypto.randomUUID()}`,
+      },
+      data: {
+        workspaceMembershipId: requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+        ),
+        companyId: requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function revokeOpportunityManager(page: Page): Promise<void> {
+  const response = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-opportunity-manager-assignments/${requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID')}/${requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID')}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-manager-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
+async function grantColleagueIntake(
+  page: Page,
+  workspaceMembershipId: string,
+): Promise<void> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/company-commercial-intake-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-colleague-${crypto.randomUUID()}`,
+      },
+      data: {
+        workspaceMembershipId,
+        companyId: requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function revokeColleagueIntake(
+  page: Page,
+  workspaceMembershipId: string,
+): Promise<void> {
+  const response = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-commercial-intake-assignments/${workspaceMembershipId}/${requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID')}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-colleague-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
 
 const apiIdentityHeaders = {
   'x-test-external-provider': 'local-demo',

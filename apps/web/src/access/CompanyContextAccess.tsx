@@ -37,6 +37,7 @@ type AssignmentBundle =
   | 'pricing-user'
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
+  | 'opportunity-manager'
   | 'project'
   | 'project-approver';
 // Indexing by the selected bundle makes a new bundle a type error until its
@@ -56,6 +57,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
+  'opportunity-manager': '/company-opportunity-manager-assignments',
   project: '/company-project-assignments',
   'project-approver': '/company-project-approver-assignments',
 };
@@ -479,6 +481,10 @@ export function CompanyContextAccess({
                 value: 'commercial-activity-reader',
                 label: copy.commercialActivityReaderBundle,
               },
+              {
+                value: 'opportunity-manager',
+                label: copy.opportunityManagerBundle,
+              },
               { value: 'director-client', label: copy.directorClientBundle },
               {
                 value: 'document-project-organizer',
@@ -506,6 +512,7 @@ export function CompanyContextAccess({
                 value === 'pricing-user' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
+                value === 'opportunity-manager' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -532,6 +539,9 @@ export function CompanyContextAccess({
             <p>{copy.documentApproverPrerequisites}</p>
           )}
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {bundle === 'opportunity-manager' && (
+            <p>{copy.opportunityManagerPrerequisites}</p>
+          )}
           {bundle === 'pricing-adjustment' && (
             <p>{copy.pricingAdjustmentPrerequisites}</p>
           )}
@@ -617,6 +627,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-user': copy.pricingUserBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
+    'opportunity-manager': copy.opportunityManagerBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',

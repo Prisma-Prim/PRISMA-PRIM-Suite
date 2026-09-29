@@ -1,7 +1,7 @@
 # PRD — Release 3 Commercial Workflow
 
 **Status:** Provisional MVP execution scope — business validation pending  
-**Version:** 0.2  
+**Version:** 0.2\
 **Owner:** Dan Popescu  
 **Release:** 3  
 **Decisions:** DEC-023–DEC-026, DEC-100–DEC-123, DEC-125, DEC-128–DEC-129, DEC-132–DEC-134 and DEC-140\
@@ -45,15 +45,15 @@ Release 3 must:
 
 ## 4. Actors and scope
 
-| Actor                             | Capability consequence                                                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Authorized commercial intake user | Creates and reads Company-owned Requests and their initial Opportunities.                                                             |
-| Opportunity responsible actor     | Owns the next action; R3A1 fixes this to the creating membership.                                                                     |
-| Pricing user                      | Runs deterministic calculation with separately authorized Company configuration.                                                      |
-| Commercial approver               | Decides against an exact immutable Offer or Contract version under a later approved threshold matrix.                                 |
-| Configuration owner               | Versions Company offerings, Tariffs, Pricing Rules, Templates and clauses; illustrative provenance does not grant approval authority. |
-| Client Contact                    | Supplies requests or responses but has no internal product access in Release 3.                                                       |
-| AI capability                     | Produces proposals only through the AI Governance boundary.                                                                           |
+| Actor                             | Capability consequence                                                                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorized commercial intake user | Creates and reads Company-owned Requests and their initial Opportunities.                                                               |
+| Opportunity responsible actor     | Owns the next action; R3A1 sets it to the creating membership and section 21 lets an authorized manager reassign it within the Company. |
+| Pricing user                      | Runs deterministic calculation with separately authorized Company configuration.                                                        |
+| Commercial approver               | Decides against an exact immutable Offer or Contract version under a later approved threshold matrix.                                   |
+| Configuration owner               | Versions Company offerings, Tariffs, Pricing Rules, Templates and clauses; illustrative provenance does not grant approval authority.   |
+| Client Contact                    | Supplies requests or responses but has no internal product access in Release 3.                                                         |
+| AI capability                     | Produces proposals only through the AI Governance boundary.                                                                             |
 
 Workspace is the hard isolation boundary. Commercial records have one responsible Company whenever they become Company activity. R3A1 creates both the Request and Opportunity inside the server-validated active Company. A future Workspace triage queue for an unassigned request remains deferred and grants no implied visibility today.
 
@@ -91,7 +91,7 @@ This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R
 - Internal approval, transmission and Client outcome remain separate.
 - Contract drafts are versions; an executed agreement is immutable and later legal changes are separate instruments.
 - Approved or signed commercial records are never hard-deleted.
-- NestJS owns commands, validation, authorization and transitions. Clients never set ownership, actor, approval or arbitrary status fields.
+- NestJS owns commands, validation, authorization and transitions. Clients never set ownership, actor, approval or arbitrary status fields. The only change of responsible actor is the section 21 command, whose requested member NestJS revalidates against Company eligibility and current authority.
 
 ## 8. R3A1 — manual Request with initial Opportunity
 
@@ -128,7 +128,7 @@ The bundle grants no Client read, Company context, assignment administration, pr
 | Opportunity scope         | Optional, at most 2,000 characters.                                                                       |
 | Next action               | Required, 1–500 non-whitespace characters.                                                                |
 
-The server assigns Request id, Opportunity id, Workspace, Company, capture time, creating actor membership, responsible actor membership, Opportunity status `OPEN` and version fields. The initial responsible actor is the creator; arbitrary assignment and reassignment are deferred.
+The server assigns Request id, Opportunity id, Workspace, Company, capture time, creating actor membership, responsible actor membership, Opportunity status `OPEN` and version fields. The initial responsible actor is the creator; choosing another responsible actor at capture remains deferred, and section 21 decides reassignment within the Company.
 
 ### 8.4 Create, read, reload and concurrency
 
@@ -221,7 +221,7 @@ R3B–R3D later add deterministic pricing, provenance propagation, version immut
 
 R3A1 excludes file uploads, provider ingestion, AI Analysis, Client creation or relationship attachment, Workspace triage, editing, status transitions, configurable stages, reassignment, advanced search, bulk actions, pricing, Offers, Contracts, Project creation, dashboards and external messages.
 
-Sections 16, 17 and 20 decide separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself. Section 20 permits only the first association of an existing Client Account; replacement, correction and removal remain excluded.
+Sections 16, 17, 20 and 21 decide separate later R3A increments. They do not widen the delivered R3A1 boundary above, and each remains excluded from R3A1 itself. Section 20 permits only the first association of an existing Client Account; replacement, correction and removal remain excluded.
 
 Release 3 excludes mass marketing automation, a universal CRM or CPQ engine, AI-determined prices or approvals, an internal qualified-signature service and a Client portal.
 
@@ -237,7 +237,7 @@ No statement here claims that Dan approved the exact provisional rules, or that 
 
 ## 16. Approved provisional Opportunity next-action update (#306)
 
-This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides the only Opportunity mutation permitted after R3A1; every other edit, transition and reassignment stays excluded.
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides the next-action mutation after R3A1; section 21 decides reassignment, and every other edit and transition stays excluded.
 
 ### 16.1 Observable outcome
 
@@ -247,7 +247,7 @@ An authorized user working in a server-validated active Company opens a Company-
 
 The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns captured **Company Commercial Intake v2**, whose permission set is v1 plus `commercial.opportunity.next_action.update`. Existing v1 assignments never expand in place; only an explicit revocation followed by a fresh grant captures v2, and null or unknown captured versions fail closed.
 
-Authority to update is not ownership. Any holder of the captured v2 bundle in the responsible Company may update the next action whether or not they are the responsible actor, and the command never transfers responsibility, changes the durable status, assigns a sales stage, reassigns the Opportunity or grants Client, pricing, Offer, Contract, administration or Activity Log authority. The R3A1 rule that the creator remains the responsible actor is preserved unchanged.
+Authority to update is not ownership. Any holder of the captured v2 bundle in the responsible Company may update the next action whether or not they are the responsible actor, and the command never transfers responsibility, changes the durable status, assigns a sales stage, reassigns the Opportunity or grants Client, pricing, Offer, Contract, administration or Activity Log authority. The R3A1 rule that the creator is the initial responsible actor is preserved; only section 21 changes the responsible actor.
 
 ### 16.3 Input, immutability and server-owned fields
 
@@ -289,7 +289,7 @@ The highest stable seam is the public REST interface against PostgreSQL, followe
 
 ### 16.8 Exclusions and unresolved ambiguity
 
-This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect.
+This section excludes Opportunity title, scope, Client-association and status editing, reassignment, sales stages, deletion, bulk edits, scheduling, reminders and any external effect. Reassignment is owned by section 21.
 
 Unresolved and deliberately not presented as business fact: whether a commercial next action should remain free text or later become a structured, dated commitment owned by the Task capability; whether a future business rule should restrict updates to the responsible actor or a commercial manager; and whether the Opportunity should later expose its own next-action history outside the Activity Log. Iurie's validation under section 15 may correct any of these.
 
@@ -311,9 +311,9 @@ Its grant and revocation are attributable through the assignment-lifecycle event
 
 A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
 
-Only the known actions `client_request.created`, `opportunity.created` and, when their owning slices are implemented, `opportunity.next_action.updated` and `client_request.client_associated` are eligible. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice can ship before either later event exists; it adds no producer or lifecycle for them.
+Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated` and `opportunity.responsible.changed` are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
 
-A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target.
+A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target. For `opportunity.responsible.changed` the projection additionally returns the previous and new responsible actor as membership identifier and captured display label, not the version; any other metadata shape fails closed.
 
 ### 17.4 Error, empty and permission states
 
@@ -1047,3 +1047,27 @@ Every existing Request-create and read prerequisite accepts v3 because it contai
 Excluded: replacing, correcting or removing an association; creating a Client or Client–Company Relationship from the Request; selecting or changing a Client Legal Entity; rewriting or backfilling any Pricing Snapshot; Opportunity reassignment, status, stage or additional Opportunities; pricing formulas; Offer or Contract behaviour; external messages; CSS redesign; and any permission beyond Intake v3's one association permission.
 
 The approved sources do not decide whether an Offer may reuse a Pricing Snapshot created while the Request still had no Client after a later association. This section neither permits nor forbids that reuse. Its complete demonstration calculates a fresh Snapshot after association, preserving a usable Request → Pricing → Offer path without inventing Offer policy or rewriting history.
+
+## 21. Approved provisional Opportunity reassignment (#399)
+
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides how an Opportunity's responsible actor changes inside its responsible Company; transfer between Companies stays excluded (S04-Q06 is not mapped).
+
+### 21.1 Outcome and permission
+
+A holder of captured **Company Opportunity Manager v1** ([authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families)) working in the server-validated active Company replaces the responsible actor of a Company-owned Opportunity with an eligible member of the same Company. Detail and list show the new responsible actor after reload and restart. `commercial.opportunity.assign` is effective only while the same actor also holds live captured Commercial Intake read (`commercial.request.read`, `commercial.opportunity.read`) and Company context in that Company; partial authority returns the safe denial. Authority is not ownership: holding the bundle does not make its holder responsible, and being responsible grants no permission.
+
+### 21.2 Eligibility
+
+An eligible member is an active Internal User with an active same-Workspace membership, effective Company context and live captured Commercial Intake read in the Opportunity's Company. Access owns this rule and a narrow query returning only membership identifiers and display labels, never email, unrelated members, counts or exclusion reasons; an empty result is valid. A new responsible actor is revalidated inside the command, including a directly submitted identifier, serialized with suspension and revocation of the actor and the target. Every rejected target returns one uniform unavailable response. A responsible actor who later loses eligibility stays recorded and displayed, gains nothing and may be replaced.
+
+### 21.3 Command, version and receipt
+
+The command carries the Opportunity identifier, the observed Opportunity version, an idempotency key and exactly one business field, the new responsible membership. An Opportunity always has exactly one responsible actor; the command cannot clear it. It shares the Opportunity version with section 16 and applies the section 16.4 expected-version, durable receipt, replay-before-staleness, revocation, changed-payload and concurrency rules in its own key space. Submitting the current responsible actor is a no-op that still passes authority, visibility and expected-version checks and stores an unchanged receipt. A material change commits the new responsible actor, the incremented version, the last-mutation attribution, the receipt and one event atomically. Next action, status, title, scope, Request, Client association and Company never change through it.
+
+### 21.4 Activity
+
+One material change records one `opportunity.responsible.changed` event attributed to the acting membership, scoped to the responsible Company and targeting the Opportunity. Its metadata is exactly the resulting Opportunity version and the previous and new responsible actor, each as a membership identifier and the display label captured at the change; it contains no email, next-action or request content. Rejected commands, safe denials, no-ops and exact replays record none. Section 17.3 owns its projection.
+
+### 21.5 Interface, exclusions and unresolved ambiguity
+
+The Request detail offers the change only with the permission and its prerequisites, lists eligible members and applies the section 16.6 editor states, with at most one Opportunity editor open at a time. Excluded: transfer between Companies, choosing a responsible actor other than the creator at capture, multiple or role-specific responsible actors, acceptance by the new responsible actor, notifications, reminders, bulk reassignment and any effect on Tasks, pricing, Offers or Contracts. Unresolved and not presented as business fact: who should decide a reassignment (S04-Q06; default: whoever the administrator grants the bundle, provisionally Iurie's memberships), and whether a handover should force the next action to be revisited (default: no).
