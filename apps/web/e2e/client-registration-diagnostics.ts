@@ -1,22 +1,24 @@
 import { writeFile } from 'node:fs/promises';
 import { test as base, type Request, type Response } from '@playwright/test';
 
-type RegistrationEvent = { delivery: 'deliver' | 'lose' } & (
-  | {
-      phase: 'committed';
-      status: number;
-      clientId: string;
-    }
-  | {
-      phase:
-        | 'held'
-        | 'released'
-        | 'delivered'
-        | 'handler-failed'
-        | 'unroute-start'
-        | 'unroute-finished';
-    }
-);
+type RegistrationEvent =
+  | ({ delivery: 'deliver' | 'lose' } & (
+      | {
+          phase: 'committed';
+          status: number;
+          clientId: string;
+        }
+      | {
+          phase:
+            | 'held'
+            | 'released'
+            | 'handler-failed'
+            | 'unroute-start'
+            | 'unroute-finished';
+        }
+    ))
+  | { delivery: 'deliver'; phase: 'delivered' }
+  | { delivery: 'lose'; phase: 'lost' };
 
 type EvidenceEvent =
   | {

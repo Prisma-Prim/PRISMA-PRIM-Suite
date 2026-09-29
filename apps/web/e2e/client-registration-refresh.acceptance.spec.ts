@@ -214,9 +214,13 @@ async function holdNextClientRegistration(
       });
       recordCommit(committedReceipt);
       await released;
-      if (delivery === 'lose') await route.abort('connectionfailed');
-      else await route.fulfill({ response });
-      diagnostics.record({ delivery, phase: 'delivered' });
+      if (delivery === 'lose') {
+        await route.abort('connectionfailed');
+        diagnostics.record({ delivery, phase: 'lost' });
+      } else {
+        await route.fulfill({ response });
+        diagnostics.record({ delivery, phase: 'delivered' });
+      }
     } catch (error: unknown) {
       diagnostics.record({ delivery, phase: 'handler-failed' });
       failCommit(error);
