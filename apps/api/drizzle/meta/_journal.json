@@ -288,6 +288,13 @@
       "when": 1790512546187,
       "tag": "0040_pricing_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790707261442,
+      "tag": "0041_opportunity_responsible_reassignment",
+      "breakpoints": true
     }
   ]
 }

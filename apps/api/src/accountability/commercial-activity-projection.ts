@@ -8,13 +8,14 @@ import type { CommercialActivityEvent } from './accountability.types.js';
 /**
  * The only commercial actions this projection may return, with the commercial
  * target whose current read authority each one requires. An action absent from
- * this map, or malformed persisted metadata, fails closed. The next-action
- * update is owned by its own slice; accepting it here adds no producer for it.
+ * this map, or malformed persisted metadata, fails closed. Each action is
+ * recorded by its owning slice; accepting it here adds no producer for it.
  */
 const COMMERCIAL_ACTIVITY_TARGETS = {
   'client_request.created': 'client_request',
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
+  'opportunity.responsible.changed': 'opportunity',
 } as const satisfies Record<string, CommercialTargetKind>;
 
 export type CommercialActivityAction = keyof typeof COMMERCIAL_ACTIVITY_TARGETS;
@@ -24,7 +25,35 @@ const COMMERCIAL_ACTIVITY_ACTIONS: readonly CommercialActivityAction[] = [
   'client_request.created',
   'opportunity.created',
   'opportunity.next_action.updated',
+  'opportunity.responsible.changed',
 ];
+
+/** A responsible actor as the change event captured it. */
+export interface RecordedOpportunityResponsible {
+  workspaceMembershipId: string;
+  displayLabel: string;
+}
+
+/**
+ * The validated action of one persisted commercial event and the only metadata
+ * its projection returns: nothing, or for a responsible-actor change the
+ * previous and new responsible actor without the version.
+ */
+export type CommercialActivityRecord =
+  | {
+      action: Exclude<
+        CommercialActivityAction,
+        'opportunity.responsible.changed'
+      >;
+      metadata: Record<string, never>;
+    }
+  | {
+      action: 'opportunity.responsible.changed';
+      metadata: {
+        before: RecordedOpportunityResponsible;
+        after: RecordedOpportunityResponsible;
+      };
+    };
 
 export function commercialActivityTargetOf(
   action: CommercialActivityAction,
@@ -81,18 +110,23 @@ export function eligibleCommercialActions(
 }
 
 /**
- * The exact persisted metadata each action may carry. Both creation events are
+ * The exact persisted version each action may carry. Both creation events are
  * recorded by commercial intake and constrained by
  * `commercial_intake_events_action_metadata_check` to exactly
  * `{"requestVersion": 1}` and `{"opportunityVersion": 1}`. The next-action
  * update carries its resulting Opportunity version only, starting at 2 after
- * the first increment. Every shape is closed: exactly the named field, nothing
- * else.
+ * the first increment. A responsible-actor change carries its resulting
+ * version plus exactly the previous and new responsible actor. Every shape is
+ * closed: exactly the named fields, nothing else.
  */
 const COMMERCIAL_ACTIVITY_METADATA = {
   'client_request.created': { versionField: 'requestVersion', version: 1 },
   'opportunity.created': { versionField: 'opportunityVersion', version: 1 },
   'opportunity.next_action.updated': {
+    versionField: 'opportunityVersion',
+    version: 'resulting',
+  },
+  'opportunity.responsible.changed': {
     versionField: 'opportunityVersion',
     version: 'resulting',
   },
@@ -106,31 +140,80 @@ const COMMERCIAL_ACTIVITY_METADATA = {
  * action, or metadata that is not exactly the shape its action records, is
  * omitted rather than projected.
  */
-export function readCommercialActivityAction(
+export function readCommercialActivity(
   row: unknown,
-): CommercialActivityAction | undefined {
+): CommercialActivityRecord | undefined {
   if (!isPlainObject(row)) return undefined;
   const action = COMMERCIAL_ACTIVITY_ACTIONS.find(
     (candidate) => candidate === row.action,
   );
-  if (!action) return undefined;
-  return recordsMetadata(action, row.metadata) ? action : undefined;
+  if (!action || !isPlainObject(row.metadata)) return undefined;
+  const { metadata } = row;
+  if (action !== 'opportunity.responsible.changed')
+    return recordsVersionOnly(action, metadata)
+      ? { action, metadata: {} }
+      : undefined;
+  const fields = Object.keys(metadata).sort();
+  if (
+    fields.join(',') !== 'after,before,opportunityVersion' ||
+    !isVersion(action, metadata.opportunityVersion)
+  )
+    return undefined;
+  const before = recordedResponsible(metadata.before);
+  const after = recordedResponsible(metadata.after);
+  if (
+    !before ||
+    !after ||
+    before.workspaceMembershipId === after.workspaceMembershipId
+  )
+    return undefined;
+  return { action, metadata: { before, after } };
 }
 
-function recordsMetadata(
+/** The validated action alone; see `readCommercialActivity`. */
+export function readCommercialActivityAction(
+  row: unknown,
+): CommercialActivityAction | undefined {
+  return readCommercialActivity(row)?.action;
+}
+
+function recordsVersionOnly(
   action: CommercialActivityAction,
-  metadata: unknown,
+  metadata: Record<string, unknown>,
 ): boolean {
-  if (!isPlainObject(metadata)) return false;
   const contract = COMMERCIAL_ACTIVITY_METADATA[action];
   const fields = Object.keys(metadata);
-  if (fields.length !== 1 || fields[0] !== contract.versionField) return false;
-  const version = metadata[contract.versionField];
+  return (
+    fields.length === 1 &&
+    fields[0] === contract.versionField &&
+    isVersion(action, metadata[contract.versionField])
+  );
+}
+
+function isVersion(action: CommercialActivityAction, version: unknown) {
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1)
     return false;
+  const contract = COMMERCIAL_ACTIVITY_METADATA[action];
   return contract.version === 'resulting'
     ? version >= 2
     : version === contract.version;
+}
+
+function recordedResponsible(
+  value: unknown,
+): RecordedOpportunityResponsible | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const fields = Object.keys(value).sort();
+  const { workspaceMembershipId, displayLabel } = value;
+  if (
+    fields.join(',') !== 'displayLabel,workspaceMembershipId' ||
+    typeof workspaceMembershipId !== 'string' ||
+    workspaceMembershipId.trim().length === 0 ||
+    typeof displayLabel !== 'string' ||
+    displayLabel.trim().length === 0
+  )
+    return undefined;
+  return { workspaceMembershipId, displayLabel };
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

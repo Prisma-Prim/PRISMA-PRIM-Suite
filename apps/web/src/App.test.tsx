@@ -501,6 +501,10 @@ describe('App', () => {
         'revoked Company Project Approver',
       'company_pricing_user_assignment.granted': 'granted Company Pricing User',
       'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+      'company_opportunity_manager_assignment.granted':
+        'granted Company Opportunity Manager',
+      'company_opportunity_manager_assignment.revoked':
+        'revoked Company Opportunity Manager',
       'company_pricing_adjustment_assignment.granted':
         'granted Company Pricing Adjustment',
       'company_pricing_adjustment_assignment.revoked':

@@ -21,9 +21,10 @@ import type {
   COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
-import type { CommercialActivityAction } from './commercial-activity-projection.js';
+import type { CommercialActivityRecord } from './commercial-activity-projection.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -165,6 +166,8 @@ export type CanonicalActivityEvent =
         | 'company_pricing_adjustment_assignment.revoked'
         | 'company_commercial_activity_reader_assignment.granted'
         | 'company_commercial_activity_reader_assignment.revoked'
+        | 'company_opportunity_manager_assignment.granted'
+        | 'company_opportunity_manager_assignment.revoked'
         | 'company_project_approver_assignment.granted'
         | 'company_project_approver_assignment.revoked';
       target: {
@@ -186,9 +189,10 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
           | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
+          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+          | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       };
       transitionId: string;
@@ -287,6 +291,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_adjustment_assignment.revoked'
     | 'company_commercial_activity_reader_assignment.granted'
     | 'company_commercial_activity_reader_assignment.revoked'
+    | 'company_opportunity_manager_assignment.granted'
+    | 'company_opportunity_manager_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
@@ -355,9 +361,10 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
           | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
           | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
-          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
+          | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+          | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
@@ -452,11 +459,11 @@ export interface DocumentProjectActivityEvent {
 /**
  * The authorized Company projection of an already recorded commercial event.
  * It carries the canonical action, the responsible Company, the existing actor
- * label, the server time and a target reference only.
+ * label, the server time and a target reference, plus the previous and new
+ * responsible actor of a responsible-actor change and nothing else.
  */
-export interface CommercialActivityEvent {
+export type CommercialActivityEvent = CommercialActivityRecord & {
   id: string;
-  action: CommercialActivityAction;
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target:
@@ -472,8 +479,7 @@ export interface CommercialActivityEvent {
         clientRequestId?: string;
         companyId: string;
       };
-  metadata: Record<string, never>;
-}
+};
 
 export type ActivityLogEvent =
   | TaskEvent

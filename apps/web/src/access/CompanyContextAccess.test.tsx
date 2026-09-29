@@ -29,6 +29,7 @@ const bundleLabels = {
   pricingUser: 'Company Pricing User',
   pricingAdjustment: 'Company Pricing Adjustment',
   reader: 'Company Commercial Activity Reader',
+  manager: 'Company Opportunity Manager',
   project: 'Company Project Access',
   approver: 'Company Project Approver',
 } as const;
@@ -41,6 +42,7 @@ const serverVersions = {
   pricingUser: 'v1',
   pricingAdjustment: 'v1',
   reader: 'v1',
+  manager: 'v1',
   project: 'v2',
   approver: 'v1',
 } as const;
@@ -416,6 +418,14 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a V1 Pricing Configuration version',
       assignment: { bundle: 'Company Pricing Configuration', version: 'V1' },
+    },
+    {
+      name: 'a v2 Opportunity Manager version',
+      assignment: { bundle: 'Company Opportunity Manager', version: 'v2' },
+    },
+    {
+      name: 'a null Opportunity Manager version',
+      assignment: { bundle: 'Company Opportunity Manager', version: null },
     },
     {
       name: 'a null Project Approver version',
@@ -1505,6 +1515,79 @@ describe('CompanyContextAccess', () => {
       },
     ]);
     expect(commands[0]?.key).not.toBe(commands[1]?.key);
+  });
+
+  it('grants and revokes Company Opportunity Manager v1 with its prerequisites stated', async () => {
+    let active = false;
+    const commands: { method: string; path: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(administration(active ? 'manager' : undefined));
+        if (path.startsWith('/api/company-opportunity-manager-assignments')) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'manager-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Opportunity Manager',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    const bundleSelect = screen.getByLabelText('Access bundle');
+    selectOption(bundleSelect, 'opportunity-manager');
+    expect(bundleSelect).toHaveTextContent('Company Opportunity Manager');
+    expect(
+      screen.getByText(
+        'Company Opportunity Manager v1 changes the responsible actor only; Company context and Commercial Intake read are authorized separately.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Not granted$/,
+    );
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-opportunity-manager-assignments',
+        key: expect.any(String),
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-opportunity-manager-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+      },
+    ]);
   });
 
   it('grants and revokes Company Project Approver v1 with its lifecycle-only note', async () => {

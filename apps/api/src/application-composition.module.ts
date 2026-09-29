@@ -66,6 +66,7 @@ import { CompanyPricingConfigurationAssignmentController } from './access/compan
 import { CompanyPricingUserAssignmentController } from './access/company-pricing-user-assignment.controller.js';
 import { CompanyPricingAdjustmentAssignmentController } from './access/company-pricing-adjustment-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
+import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
 import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
@@ -123,6 +124,7 @@ import { OperationalHomeController } from './operational-home/operational-home.c
     CompanyPricingUserAssignmentController,
     CompanyPricingAdjustmentAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
+    CompanyOpportunityManagerAssignmentController,
     OperationalHomeController,
   ],
   providers: [

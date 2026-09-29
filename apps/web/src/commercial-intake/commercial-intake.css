@@ -309,3 +309,23 @@
     grid-column: auto;
   }
 }
+
+.commercial-intake-responsible {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.commercial-intake-responsible label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.commercial-intake-responsible .shared-select {
+  max-width: 36rem;
+}
+
+.commercial-intake-primary-action {
+  font-weight: 700;
+}

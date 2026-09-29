@@ -1,4 +1,4 @@
-import { render, screen } from './test/render-with-interface-locale';
+import { render, screen, within } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -102,6 +102,46 @@ describe('commercial history in the Activity Log', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(`Target: Opportunity: ${OPPORTUNITY_ID}`),
+    ).toBeInTheDocument();
+  });
+
+  it('names both responsible actors of an Opportunity change and offers its Request', async () => {
+    stubTransport([
+      {
+        id: 'event-3',
+        action: 'opportunity.responsible.changed',
+        occurredAt: '2026-09-21T10:07:00.000Z',
+        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+        target: {
+          type: 'opportunity',
+          opportunityId: OPPORTUNITY_ID,
+          clientRequestId: REQUEST_ID,
+          companyId: COMPANY_ID,
+        },
+        metadata: {
+          before: {
+            workspaceMembershipId: 'membership-1',
+            displayLabel: 'Ada Ionescu · 1A',
+          },
+          after: {
+            workspaceMembershipId: 'membership-2',
+            displayLabel: 'Ion Popa · 2B',
+          },
+        },
+      },
+    ]);
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    const entry = (
+      await screen.findByText(
+        'Ada Ionescu changed the responsible actor of an Opportunity (Ada Ionescu · 1A → Ion Popa · 2B)',
+      )
+    ).closest('li');
+    if (!entry) throw new Error('Expected the Activity entry.');
+    expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
+    expect(
+      within(entry).getByRole('button', { name: 'Open Request' }),
     ).toBeInTheDocument();
   });
 

@@ -153,6 +153,8 @@ trimming or normalization, so a no-op here is a byte-identical resubmission
 rather than the normalized comparison used by Tasks. Recording this event grants
 no read of it.
 
+For the approved [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#21-approved-provisional-opportunity-reassignment-399), one committed material change creates exactly one `opportunity.responsible.changed` event in the same transaction as the new responsible actor, the incremented shared Opportunity version and the durable receipt. It retains the acting membership, server time, responsible Company and Opportunity target; its metadata carries only the resulting version and the previous and new responsible actor (membership identifier and captured display label), with no email or commercial text. Rejected commands, denials, no-ops and exact replays create none. The commercial projection of section 17.3 returns the two responsible actors.
+
 The separately approved [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
 owns the first authorized projection of commercial events, which the intake
 slice deliberately left unprojected. A commercial event appears only inside the
@@ -212,6 +214,7 @@ Retention and authorized export require a later policy based on business and leg
 - Commercial intake actions `client_request.created`, `opportunity.created`
   and `opportunity.next_action.updated` use the authorized Company projection
   under its separate opt-in permission and current target read. The approved
+  provisional reassignment adds `opportunity.responsible.changed`. The approved
   one-time Client-association contract adds `client_request.client_associated`
   to that projection only when its owning implementation is delivered.
 - A generic event bus or observability platform is not required.

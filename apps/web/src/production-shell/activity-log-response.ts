@@ -3,6 +3,7 @@ import { readLifecycleActivityMetadata } from '../project/project-lifecycle-resp
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
+  OpportunityResponsibleChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
   ProjectResponsibleChangedActivityLogEvent,
 } from './company-context-transitions';
@@ -40,6 +41,8 @@ const targetTypes = {
     'company_role_assignment',
   'company_commercial_activity_reader_assignment.revoked':
     'company_role_assignment',
+  'company_opportunity_manager_assignment.granted': 'company_role_assignment',
+  'company_opportunity_manager_assignment.revoked': 'company_role_assignment',
   'company_project_approver_assignment.granted': 'company_role_assignment',
   'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',
@@ -79,6 +82,7 @@ const targetTypes = {
   'client_request.created': 'client_request',
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
+  'opportunity.responsible.changed': 'opportunity',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
 
 /**
@@ -200,20 +204,19 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         },
       };
     case 'opportunity.created':
-    case 'opportunity.next_action.updated': {
-      // Absent unless the actor currently reads Requests in this Company.
-      const clientRequestId = optional(target.clientRequestId, identifier);
+    case 'opportunity.next_action.updated':
       return {
         ...recorded(value),
         action,
-        target: {
-          type: 'opportunity',
-          opportunityId: identifier(target.opportunityId),
-          ...(clientRequestId === undefined ? {} : { clientRequestId }),
-          companyId: identifier(target.companyId),
-        },
+        target: opportunityTarget(target),
       };
-    }
+    case 'opportunity.responsible.changed':
+      return {
+        ...recorded(value),
+        action,
+        target: opportunityTarget(target),
+        metadata: opportunityResponsibleChange(value.metadata),
+      };
     default:
       return {
         ...recorded(value),
@@ -316,6 +319,39 @@ function clientUnionEvent(
     actor: { kind: 'authorized_resolver' },
     target: { type: 'client_union_operation', projectionReference, companyId },
   };
+}
+
+/** An Opportunity and, only for a current Request reader, its Request. */
+function opportunityTarget(
+  target: Record<string, unknown>,
+): OpportunityResponsibleChangedActivityLogEvent['target'] {
+  const clientRequestId = optional(target.clientRequestId, identifier);
+  return {
+    type: 'opportunity',
+    opportunityId: identifier(target.opportunityId),
+    ...(clientRequestId === undefined ? {} : { clientRequestId }),
+    companyId: identifier(target.companyId),
+  };
+}
+
+/**
+ * A material Opportunity responsible-actor change: two different members,
+ * each a membership identifier and captured label. An Opportunity always has a
+ * responsible actor, so neither side is ever none.
+ */
+function opportunityResponsibleChange(
+  metadata: unknown,
+): OpportunityResponsibleChangedActivityLogEvent['metadata'] {
+  if (!isRecord(metadata)) invalid();
+  const before = readOptionalResponsibleMember(metadata.before);
+  const after = readOptionalResponsibleMember(metadata.after);
+  if (
+    before === null ||
+    after === null ||
+    before.workspaceMembershipId === after.workspaceMembershipId
+  )
+    invalid();
+  return { before, after };
 }
 
 /**

@@ -76,6 +76,32 @@ export const commercialIntakeCopy = {
     'You no longer have permission to update the next action of this Opportunity.',
   nextActionUncertain:
     'The next action update did not complete. Retry to confirm the result.',
+  // The responsible-actor change names members by label only, never email.
+  changeResponsible: 'Change responsible',
+  responsibleChoice: 'New responsible actor',
+  responsibleSelectMember: 'Select a member',
+  responsibleMembersLoading: 'Loading eligible members…',
+  responsibleMembersError:
+    'The eligible members could not be loaded. Reload the list.',
+  responsibleReloadList: 'Reload the list',
+  responsibleNoOtherMember:
+    'No other eligible member; the current responsible actor stays.',
+  responsibleCurrentIneligible: (displayName: string) =>
+    `Current responsible actor: ${displayName} — no longer eligible.`,
+  saveResponsible: 'Save responsible',
+  cancelResponsible: 'Cancel',
+  retryResponsible: 'Retry update',
+  responsibleSaving: 'Saving responsible actor…',
+  responsibleChanged: 'Responsible actor changed.',
+  responsibleUnchanged: 'This member was already responsible.',
+  responsibleConflict:
+    'This Opportunity changed since you loaded it. Reload the Request before changing the responsible actor.',
+  responsibleUnavailable:
+    'This member can no longer become responsible. Reload the list.',
+  responsibleDenied:
+    'You no longer have permission to change the responsible actor of this Opportunity.',
+  responsibleUncertain:
+    'The responsible actor change did not complete. Retry to confirm the result.',
   validation: 'Enter the required request and Opportunity fields.',
   unavailableClient:
     'The selected Client is no longer available. Refresh the Client search before trying again.',
@@ -88,13 +114,20 @@ export const commercialIntakeCopy = {
     'client_request.created': 'captured a Client Request',
     'opportunity.created': 'created an initial Opportunity',
     'opportunity.next_action.updated': 'updated an Opportunity next action',
+    'opportunity.responsible.changed':
+      'changed the responsible actor of an Opportunity',
   },
+  // The previous and new responsible actor, as the change captured them.
+  activityResponsibleChange: (before: string, after: string) =>
+    `(${before} → ${after})`,
   activityRequestTarget: 'Client Request',
   activityOpportunityTarget: 'Opportunity',
   // Offered on a commercial Activity event; it names no event content.
   activityOpenRequest: 'Open Request',
   requestedAfterNextActionEdit:
     'The requested Client Request opens after the next-action edit is saved or cancelled.',
+  requestedAfterResponsibleEdit:
+    'The requested Client Request opens after the responsible actor change is saved or cancelled.',
   requestedAfterCapture:
     'The requested Client Request opens after this capture is confirmed.',
 };
