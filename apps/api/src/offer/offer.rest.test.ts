@@ -5,6 +5,7 @@ import { AccountabilityService } from '../accountability/accountability.service.
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { CommercialCatalogueService } from '../commercial-catalogue/commercial-catalogue.service.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import { readCreateCommercialIntakeCommand } from '../commercial-intake/commercial-intake.validation.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { OfferService } from './offer.service.js';
@@ -34,6 +35,69 @@ const ASSIGNMENTS = [
   '/company-pricing-user-assignments',
   '/company-offer-preparer-assignments',
 ] as const;
+
+const FOLLOW_ON_OPPORTUNITIES = {
+  concurrent: {
+    title: 'Concurrent Offer for the same Client',
+    nextAction: 'Prepare Offer',
+  },
+  mismatch: {
+    title: 'Second illustrative Opportunity',
+    nextAction: 'Calculate the second Snapshot',
+  },
+  reference: {
+    title: 'Second Offer',
+    nextAction: 'Prepare Offer',
+  },
+};
+
+interface WaitingRequest {
+  pid: number;
+  blockers: number[];
+  clientWrite: boolean;
+}
+
+describe('Offer REST test support', () => {
+  it.each(Object.entries(FOLLOW_ON_OPPORTUNITIES))(
+    'accepts the %s follow-on Request fixture through the public validator',
+    (_name, opportunity) => {
+      expect(() =>
+        readCreateCommercialIntakeCommand({
+          originalText: 'Synthetic follow-on Request.',
+          opportunity,
+        }),
+      ).not.toThrow();
+    },
+  );
+
+  it('observes both direct and queued waiters behind the same barrier', () => {
+    expect(
+      countBlockedRequests(
+        [
+          { pid: 20, blockers: [10], clientWrite: false },
+          { pid: 30, blockers: [20], clientWrite: false },
+          { pid: 40, blockers: [99], clientWrite: false },
+        ],
+        10,
+      ),
+    ).toBe(2);
+  });
+
+  it('counts only Client writers in the barrier chain when requested', () => {
+    expect(
+      countBlockedRequests(
+        [
+          { pid: 30, blockers: [20], clientWrite: true },
+          { pid: 20, blockers: [10], clientWrite: true },
+          { pid: 40, blockers: [10], clientWrite: false },
+          { pid: 50, blockers: [99], clientWrite: true },
+        ],
+        10,
+        true,
+      ),
+    ).toBe(2);
+  });
+});
 
 let instant = new Date('2026-09-27T09:00:00.000Z');
 const serverClock: ServerClock = { now: () => new Date(instant.getTime()) };
@@ -477,11 +541,7 @@ withPostgres('First illustrative Offer REST', () => {
           originalText: 'Another synthetic Request for the same Client.',
           subject: 'Concurrent Offer',
           clientAccountId: fixture.clientId,
-          opportunity: {
-            title: 'Concurrent Offer for the same Client',
-            scope: null,
-            nextAction: 'Prepare Offer',
-          },
+          opportunity: FOLLOW_ON_OPPORTUNITIES.concurrent,
         },
         'concurrent-client-request',
         fixture.companyId,
@@ -584,11 +644,7 @@ withPostgres('First illustrative Offer REST', () => {
           originalText: 'A second synthetic Request.',
           subject: 'Second Opportunity',
           clientAccountId: fixture.clientId,
-          opportunity: {
-            title: 'Second illustrative Opportunity',
-            scope: null,
-            nextAction: 'Calculate the second Snapshot',
-          },
+          opportunity: FOLLOW_ON_OPPORTUNITIES.mismatch,
         },
         'second-request-456',
         fixture.companyId,
@@ -1231,11 +1287,7 @@ withPostgres('First illustrative Offer REST', () => {
           originalText: 'Second synthetic Request',
           subject: 'Second Offer',
           clientAccountId: first.clientId,
-          opportunity: {
-            title: 'Second Offer',
-            scope: null,
-            nextAction: 'Prepare Offer',
-          },
+          opportunity: FOLLOW_ON_OPPORTUNITIES.reference,
         },
         'next-reference-request',
         first.companyId,
@@ -1320,18 +1372,19 @@ withPostgres('First illustrative Offer REST', () => {
     clientWriteOnly = false,
   ): Promise<void> {
     for (let attempt = 0; attempt < 400; attempt += 1) {
-      const waiting = await pool.query<{ count: string }>(
-        `SELECT count(*) AS count FROM pg_stat_activity
+      const waiting = await pool.query<WaitingRequest>(
+        `SELECT pid, pg_blocking_pids(pid) AS blockers,
+                (query ILIKE '%"client_accounts"%'
+                  AND query ILIKE '%for update%') AS "clientWrite"
+           FROM pg_stat_activity
           WHERE datname = current_database()
-            AND (
-              (NOT $2::boolean AND $1::integer = ANY(pg_blocking_pids(pid)))
-              OR ($2::boolean AND wait_event_type = 'Lock'
-                AND query ILIKE '%"client_accounts"%'
-                AND query ILIKE '%for update%')
-            )`,
-        [blockerPid, clientWriteOnly],
+            AND wait_event_type = 'Lock'`,
       );
-      if (Number(waiting.rows[0]?.count) >= expected) return;
+      if (
+        countBlockedRequests(waiting.rows, blockerPid, clientWriteOnly) >=
+        expected
+      )
+        return;
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     throw new Error(`No ${expected} Offer creations reached the barrier.`);
@@ -1509,12 +1562,37 @@ withPostgres('First illustrative Offer REST', () => {
       body: JSON.stringify(body),
     });
     const value = await json(response);
-    expect({ path, status: response.status, value }).toMatchObject({
-      status: 201,
-    });
+    expect(response.status, JSON.stringify({ path, value })).toBe(201);
     return value;
   }
 });
+
+function countBlockedRequests(
+  requests: readonly WaitingRequest[],
+  blockerPid: number,
+  clientWriteOnly = false,
+): number {
+  const blockedPids = new Set([blockerPid]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const request of requests) {
+      if (
+        !blockedPids.has(request.pid) &&
+        request.blockers.some((pid) => blockedPids.has(pid))
+      ) {
+        blockedPids.add(request.pid);
+        added = true;
+      }
+    }
+  }
+  return requests.filter(
+    (request) =>
+      request.pid !== blockerPid &&
+      blockedPids.has(request.pid) &&
+      (!clientWriteOnly || request.clientWrite),
+  ).length;
+}
 
 function identifiedRecord(
   value: unknown,
