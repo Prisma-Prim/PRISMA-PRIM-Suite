@@ -12,6 +12,10 @@ const acceptanceConfigUrl = new URL(
 );
 const workflowUrl = new URL('../.github/workflows/ci.yml', import.meta.url);
 const uploadedEvidenceRoot = 'test-results';
+const evidenceProbeConfigUrl = new URL(
+  '../apps/web/playwright.evidence.config.ts',
+  import.meta.url,
+);
 
 async function readOutputDirectory(configUrl, suite) {
   const config = await readFile(configUrl, 'utf8');
@@ -43,12 +47,22 @@ test('the two browser suites write evidence into disjoint output directories', a
     !contains(mocked, acceptance) && !contains(acceptance, mocked),
     `neither output directory may contain the other: ${mocked} and ${acceptance}`,
   );
+  const probe = await readOutputDirectory(
+    evidenceProbeConfigUrl,
+    'failure evidence probe',
+  );
+  for (const directory of [mocked, acceptance])
+    assert.ok(
+      !contains(directory, probe) && !contains(probe, directory),
+      'the induced failure probe must not erase either real suite evidence directory',
+    );
 });
 
 test('both suite directories stay under the uploaded evidence root', async () => {
   for (const [configUrl, suite] of [
     [mockedConfigUrl, 'mocked browser'],
     [acceptanceConfigUrl, 'real acceptance'],
+    [evidenceProbeConfigUrl, 'failure evidence probe'],
   ]) {
     const outputDirectory = await readOutputDirectory(configUrl, suite);
     assert.ok(
@@ -68,7 +82,22 @@ test('CI uploads screenshots from every suite directory', async () => {
 
   assert.match(
     uploadStep,
-    new RegExp(`path: apps/web/${uploadedEvidenceRoot}/\\*\\*/\\*\\.png`, 'u'),
+    new RegExp(`apps/web/${uploadedEvidenceRoot}/\\*\\*/\\*\\.png`, 'u'),
     'the upload glob must keep matching screenshots in both suite directories',
+  );
+});
+
+test('acceptance failures retain first-attempt evidence without a retry', async () => {
+  const config = await readFile(acceptanceConfigUrl, 'utf8');
+  assert.match(config, /trace: 'retain-on-failure'/u);
+  assert.match(config, /screenshot: 'only-on-failure'/u);
+  assert.doesNotMatch(config, /retries:\s*[1-9]/u);
+
+  const workflow = await readFile(workflowUrl, 'utf8');
+  assert.match(workflow, /apps\/web\/test-results\/acceptance\/\*\*/u);
+  assert.match(workflow, /node scripts\/verify-acceptance-evidence\.mjs/u);
+  assert.match(
+    workflow,
+    /apps\/web\/test-results\/acceptance-evidence-probe\/\*\*/u,
   );
 });

@@ -58,12 +58,18 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify acceptance failure evidence
+        run: node scripts/verify-acceptance-evidence.mjs
+
       - name: Upload browser evidence
         if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-pr-${{ github.event.pull_request.number }}
-          path: apps/web/test-results/**/*.png
+          path: |
+            apps/web/test-results/**/*.png
+            apps/web/test-results/acceptance/**
+            apps/web/test-results/acceptance-evidence-probe/**
           if-no-files-found: warn
           retention-days: 14
 
