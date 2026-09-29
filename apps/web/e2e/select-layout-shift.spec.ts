@@ -15,13 +15,14 @@ for (const movement of ['layout expansion', 'scroll'] as const) {
     // loading state, Select geometry or option behavior is mocked.
     await page.addStyleTag({
       content: `
-      html { overflow-anchor: none; }
+      html { overflow-anchor: none; scroll-behavior: auto; }
+      #root { display: flow-root; min-height: 2200px; }
       .public-welcome { display: none; }
       .interface-locale-control {
         position: relative;
         inset: auto;
         width: 240px;
-        margin: 100px auto 1400px;
+        margin: 100px auto;
       }
     `,
     });
@@ -53,10 +54,10 @@ for (const movement of ['layout expansion', 'scroll'] as const) {
       await expect(popup).toHaveCSS('bottom', '8px');
     } else {
       await trigger.evaluate((element) => {
-        window.scrollTo(
-          0,
-          window.scrollY + element.getBoundingClientRect().bottom + 100,
-        );
+        window.scrollTo({
+          top: window.scrollY + element.getBoundingClientRect().bottom + 100,
+          behavior: 'instant',
+        });
       });
       expect(
         await trigger.evaluate(
