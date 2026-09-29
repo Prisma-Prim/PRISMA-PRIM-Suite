@@ -1264,9 +1264,11 @@ describe('CommercialIntakeWorkspace', () => {
     changeValue(screen.getByLabelText('Next action'), 'Call back on Monday');
     fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Saving next action…',
-    );
+    expect(
+      await screen.findByText('Saving next action…', {
+        selector: '[role="status"]',
+      }),
+    ).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Save next action' }),
     ).toBeDisabled();
@@ -1571,9 +1573,11 @@ describe('CommercialIntakeWorkspace', () => {
         'Obsolete in-flight edit',
       );
       fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
-      expect(await screen.findByRole('status')).toHaveTextContent(
-        'Saving next action…',
-      );
+      expect(
+        await screen.findByText('Saving next action…', {
+          selector: '[role="status"]',
+        }),
+      ).toBeVisible();
 
       revalidateActor(actor);
       revalidateActor(editorActor());

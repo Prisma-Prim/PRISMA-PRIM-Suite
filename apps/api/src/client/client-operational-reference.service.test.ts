@@ -5,6 +5,46 @@ import { DatabaseContext } from '../database/database-context.js';
 import { ClientOperationalReferenceService } from './client-operational-reference.service.js';
 
 describe('ClientOperationalReferenceService', () => {
+  it('keeps a Workspace manager reference name-only without Company Client read', async () => {
+    const client = { id: 'original-client', displayName: 'Shared Client' };
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(query([client]))
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(query([{ id: client.id }]));
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ClientOperationalReferenceService,
+        { provide: DatabaseContext, useValue: { connection: { select } } },
+      ],
+    }).compile();
+    const service = moduleRef.get(ClientOperationalReferenceService);
+    const references = await service.readProjectReferences(workspaceManager, [
+      client.id,
+    ]);
+
+    expect(references.get(client.id)).toEqual(client);
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not disclose legal recipient identity to a Workspace manager without Company Client read', async () => {
+    const select = vi.fn();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ClientOperationalReferenceService,
+        { provide: DatabaseContext, useValue: { connection: { select } } },
+      ],
+    }).compile();
+    const service = moduleRef.get(ClientOperationalReferenceService);
+
+    await expect(
+      service.lockOfferRecipient(workspaceManager, 'original-client', {
+        kind: 'PRIMARY',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(select).not.toHaveBeenCalled();
+  });
+
   it('uses a fixed three-query plan for 51 readable Project references without unions', async () => {
     const clients = Array.from({ length: 51 }, (_, index) => ({
       id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
@@ -67,6 +107,17 @@ const actor: ActorContext = {
     id: '44444444-4444-4444-8444-444444444444',
     displayName: 'BIC',
     clientPermissions: ['client.read'],
+    projectPermissions: ['project.read'],
+  },
+};
+
+const workspaceManager: ActorContext = {
+  ...actor,
+  workspacePermissions: ['client.manage'],
+  activeCompany: {
+    id: '44444444-4444-4444-8444-444444444444',
+    displayName: 'BIC',
+    clientPermissions: [],
     projectPermissions: ['project.read'],
   },
 };

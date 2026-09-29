@@ -49,6 +49,12 @@ export const clientRequests = pgTable(
       table.companyId,
       table.id,
     ),
+    uniqueIndex('client_requests_offer_client_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+      table.clientAccountId,
+    ),
     index('client_requests_company_newest_index').on(
       table.workspaceId,
       table.companyId,
