@@ -26,6 +26,8 @@ import {
 } from './commercial-intake-pagination.js';
 import type {
   CommercialIntakeDetail,
+  CommercialIntakeListClientProjection,
+  CommercialIntakeListItem,
   CommercialIntakeListPage,
   CreateCommercialIntakeCommand,
   OpportunityNextActionUpdateResult,
@@ -161,9 +163,28 @@ export class CommercialIntakeService {
     return this.loadDetail(actor, companyId, requestId, false);
   }
 
+  /**
+   * Call inside the owning command transaction to answer with the same
+   * permission-filtered detail as `read`. The captured read authority is held
+   * under share locks until that command commits, so a concurrent revocation
+   * orders entirely before the command or after its answer.
+   */
+  async readWithinCommand(
+    actor: ActorContext,
+    requestId: string,
+  ): Promise<CommercialIntakeDetail> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+      true,
+    );
+    return this.loadDetail(actor, companyId, requestId, false);
+  }
+
   // Pricing reuses this exact Commercial Intake read boundary. The captured
-  // assignment is held under a share lock, while the Opportunity row is only
-  // read, so unrelated next-action updates do not wait on a calculation.
+  // assignment and Request are held under share locks, while the Opportunity
+  // row is only read. Client association is therefore ordered on the Request,
+  // and unrelated next-action updates do not wait on a calculation.
   async requireReadablePricingOpportunity(
     actor: ActorContext,
     opportunityId: string,
@@ -195,7 +216,8 @@ export class CommercialIntakeService {
           eq(opportunities.companyId, companyId),
           eq(opportunities.id, opportunityId.toLowerCase()),
         ),
-      );
+      )
+      .for('share', { of: clientRequests });
     if (!target) throw new NotFoundException();
     return target;
   }
@@ -412,21 +434,24 @@ export class CommercialIntakeService {
       .limit(limit + 1);
     const pageRows = rows.slice(0, limit);
     const last = pageRows.at(-1);
-    const dossierIds = await this.currentClientDossierIds(
+    const clientProjections = await this.currentClientProjections(
       actor,
       pageRows.map(({ request }) => request.clientAccountId),
     );
     return {
       items: pageRows.map(
-        ({ request, opportunity, responsibleDisplayName }) => {
-          const clientDossierId = request.clientAccountId
-            ? dossierIds.get(request.clientAccountId)
+        ({
+          request,
+          opportunity,
+          responsibleDisplayName,
+        }): CommercialIntakeListItem => {
+          const clientProjection = request.clientAccountId
+            ? clientProjections.get(request.clientAccountId)
             : undefined;
-          return {
+          const item = {
             id: request.id,
             subject: request.subject,
             capturedAt: request.capturedAt.toISOString(),
-            ...(clientDossierId ? { clientDossierId } : {}),
             initialOpportunity: {
               title: opportunity.title,
               nextAction: opportunity.nextAction,
@@ -437,6 +462,7 @@ export class CommercialIntakeService {
               },
             },
           };
+          return clientProjection ? { ...item, ...clientProjection } : item;
         },
       ),
       ...(rows.length > limit && last
@@ -452,26 +478,30 @@ export class CommercialIntakeService {
 
   /**
    * Client resolves every linked row of one page in a single batched call to
-   * its operational-reference projection, which owns union, reversal and the
-   * Company `client.read` condition behind a current dossier. A row without
-   * one stays listed unchanged.
+   * its operational-reference projection. That owner decides whether a name
+   * is readable and whether a current dossier exists after union, reversal and
+   * the Company `client.read` condition.
    */
-  private async currentClientDossierIds(
+  private async currentClientProjections(
     actor: ActorContext,
     clientIds: ReadonlyArray<string | null>,
-  ): Promise<ReadonlyMap<string, string>> {
-    const dossierIds = new Map<string, string>();
+  ): Promise<ReadonlyMap<string, CommercialIntakeListClientProjection>> {
+    const projections = new Map<string, CommercialIntakeListClientProjection>();
     const linkedClientIds = clientIds.filter((clientId) => clientId !== null);
     if (linkedClientIds.length === 0 || !canReadClients(actor))
-      return dossierIds;
+      return projections;
     const references = await this.clients.readProjectReferences(
       actor,
       linkedClientIds,
     );
     for (const [clientId, reference] of references)
-      if (reference.clientDossierId)
-        dossierIds.set(clientId, reference.clientDossierId);
-    return dossierIds;
+      projections.set(clientId, {
+        clientDisplayName: reference.displayName,
+        ...(reference.clientDossierId
+          ? { clientDossierId: reference.clientDossierId }
+          : {}),
+      });
+    return projections;
   }
 
   private async loadDetail(
@@ -765,7 +795,11 @@ function detailView({
   responsibleDisplayName: string;
   client?: NonNullable<CommercialIntakeDetail['clientReference']>;
 }): CommercialIntakeDetail {
-  if (request.version !== 1 || opportunity.version < 1)
+  if (
+    (request.version !== 1 && request.version !== 2) ||
+    (request.version === 2 && !request.clientAccountId) ||
+    opportunity.version < 1
+  )
     throw new Error('Unsupported commercial intake version.');
   return {
     id: request.id,
@@ -778,6 +812,11 @@ function detailView({
     capturedByWorkspaceMembershipId: request.capturedByWorkspaceMembershipId,
     capturedAt: request.capturedAt.toISOString(),
     version: request.version,
+    clientAssociationStatus: request.clientAccountId
+      ? client
+        ? 'visible'
+        : 'hidden'
+      : 'absent',
     ...(request.clientAccountId && client
       ? {
           clientReference: client,

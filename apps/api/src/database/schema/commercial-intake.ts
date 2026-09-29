@@ -94,7 +94,13 @@ export const clientRequests = pgTable(
       'client_requests_source_kind_check',
       sql`${table.sourceKind} = 'MANUAL_TEXT'`,
     ),
-    check('client_requests_version_check', sql`${table.version} = 1`),
+    check(
+      'client_requests_version_check',
+      sql`(
+        ${table.version} = 1
+        OR (${table.version} = 2 AND ${table.clientAccountId} IS NOT NULL)
+      )`,
+    ),
   ],
 );
 
@@ -278,6 +284,64 @@ export const commercialIntakeNextActionCommands = pgTable(
   ],
 );
 
+export const commercialIntakeClientAssociationCommands = pgTable(
+  'commercial_intake_client_association_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    clientRequestId: uuid('client_request_id').notNull(),
+    clientAccountId: uuid('client_account_id').notNull(),
+    expectedVersion: integer('expected_version').notNull(),
+    resultVersion: integer('result_version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex(
+      'commercial_intake_client_association_commands_actor_key_unique',
+    ).on(
+      table.workspaceId,
+      table.companyId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex(
+      'commercial_intake_client_association_commands_request_unique',
+    ).on(table.workspaceId, table.companyId, table.clientRequestId),
+    foreignKey({
+      name: 'commercial_intake_client_association_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_client_association_commands_request_fk',
+      columns: [table.workspaceId, table.companyId, table.clientRequestId],
+      foreignColumns: [
+        clientRequests.workspaceId,
+        clientRequests.companyId,
+        clientRequests.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_client_association_commands_client_fk',
+      columns: [table.workspaceId, table.clientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    check(
+      'commercial_intake_client_association_commands_version_check',
+      sql`${table.expectedVersion} = 1 AND ${table.resultVersion} = 2`,
+    ),
+  ],
+);
+
 export const commercialIntakeCommands = pgTable(
   'commercial_intake_commands',
   {
@@ -332,6 +396,7 @@ export const commercialIntakeEvents = pgTable(
     action: text('action', {
       enum: [
         'client_request.created',
+        'client_request.client_associated',
         'opportunity.created',
         'opportunity.next_action.updated',
       ],
@@ -352,6 +417,9 @@ export const commercialIntakeEvents = pgTable(
     uniqueIndex('commercial_intake_events_opportunity_created_unique')
       .on(table.workspaceId, table.opportunityId)
       .where(sql`${table.action} = 'opportunity.created'`),
+    uniqueIndex('commercial_intake_events_client_associated_unique')
+      .on(table.workspaceId, table.clientRequestId)
+      .where(sql`${table.action} = 'client_request.client_associated'`),
     // Exactly one update event per resulting Opportunity version.
     uniqueIndex('commercial_intake_events_next_action_version_unique')
       .on(
@@ -367,6 +435,9 @@ export const commercialIntakeEvents = pgTable(
       sql`(
         (${table.action} = 'client_request.created'
           AND ${table.metadata} = '{"requestVersion": 1}'::jsonb)
+        OR
+        (${table.action} = 'client_request.client_associated'
+          AND ${table.metadata} = '{"requestVersion": 2}'::jsonb)
         OR
         (${table.action} = 'opportunity.created'
           AND ${table.metadata} = '{"opportunityVersion": 1}'::jsonb)

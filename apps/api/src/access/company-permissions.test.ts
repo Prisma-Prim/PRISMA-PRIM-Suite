@@ -159,6 +159,17 @@ describe('Company Commercial Intake permission sets', () => {
         'commercial.opportunity.next_action.update',
       ],
     ],
+    [
+      'v3',
+      [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+        'commercial.request.client.associate',
+      ],
+    ],
   ] satisfies Array<
     [CompanyCommercialIntakePermissionSetVersion, readonly string[]]
   >)('resolves immutable %s permissions', (version, expected) => {
@@ -166,7 +177,7 @@ describe('Company Commercial Intake permission sets', () => {
     expect(isCommercialIntakePermissionSetVersion(version)).toBe(true);
   });
 
-  it.each([null, undefined, '', 'V2', 'v3'])(
+  it.each([null, undefined, '', 'V3', 'v4'])(
     'fails closed for an unsupported captured version: %s',
     (version) => {
       expect(commercialIntakePermissionsFor(version)).toEqual([]);

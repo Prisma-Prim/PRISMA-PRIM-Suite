@@ -23,7 +23,25 @@ export const commercialIntakeCopy = {
   clientSearchDenied:
     'Client search is not available. You can capture this Request without a Client.',
   clientSearchError: 'The Client search could not be loaded. Please try again.',
+  clientSearchLoading: 'Loading accessible Clients…',
   client: 'Client',
+  noClientAssociated: 'No Client associated',
+  clientAssociationHidden: 'The associated Client is not currently available.',
+  associateClient: 'Associate a Client',
+  confirmClientAssociation: 'Confirm Client association',
+  retryClientAssociation: 'Retry Client association',
+  clientAssociationValidation: 'Choose a Client before confirming.',
+  clientAssociationLoading: 'Associating Client…',
+  clientAssociationSuccess: 'Client associated.',
+  clientAssociationStale:
+    'This Request changed since you loaded it. Reload it before retrying.',
+  clientAlreadyAssociated: 'This Request already has a Client association.',
+  clientAssociationDenied:
+    'You no longer have permission to associate a Client with this Request.',
+  clientAssociationUncertain:
+    'The association result is uncertain. Retry with the unchanged selection to confirm it.',
+  clientAssociationError:
+    'The Client association could not be completed. Reload the Request and try again.',
   opportunityTitle: 'Opportunity title',
   opportunityScope: 'Opportunity scope',
   nextAction: 'Next action',
@@ -86,6 +104,7 @@ export const commercialIntakeCopy = {
   // labels name the action and the target reference, never request content.
   activityActionLabels: {
     'client_request.created': 'captured a Client Request',
+    'client_request.client_associated': 'associated a Client with a Request',
     'opportunity.created': 'created an initial Opportunity',
     'opportunity.next_action.updated': 'updated an Opportunity next action',
   },
@@ -97,4 +116,6 @@ export const commercialIntakeCopy = {
     'The requested Client Request opens after the next-action edit is saved or cancelled.',
   requestedAfterCapture:
     'The requested Client Request opens after this capture is confirmed.',
+  requestedAfterClientAssociation:
+    'The requested Client Request opens after this Client association is confirmed.',
 };

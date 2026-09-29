@@ -707,6 +707,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     'company-pricing-configuration',
     'company-commercial-intake',
     'company-pricing-user',
+    'company-director-client',
     'company-pricing-adjustment',
   ] as const;
   const granted = new Set<(typeof bundles)[number]>();
@@ -750,6 +751,11 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       target.companyId,
       suffix,
     );
+    const client = await createClient(
+      page,
+      target.companyId,
+      `Associated Pricing Client ${suffix}`,
+    );
     // The Pricing User bundle is sufficient for configuration reads. The
     // separate Intake bundle remains the sole owner of Opportunity visibility.
     for (const bundle of [
@@ -774,6 +780,31 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     await requests
       .getByRole('button', { name: new RegExp(request.subject, 'u') })
       .click();
+    await expect(
+      requests.getByText('No Client associated', { exact: true }),
+    ).toBeVisible();
+    await requests
+      .getByLabel('Search Clients by name', { exact: true })
+      .fill(client.displayName);
+    await requests.getByRole('button', { name: 'Search Clients' }).click();
+    await selectOption(
+      requests.getByLabel('Existing Client', { exact: true }),
+      { label: client.displayName },
+    );
+    const associationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/commercial-intake\/requests\/[^/]+\/client-association$/u.test(
+          new URL(response.url()).pathname,
+        ),
+    );
+    await requests
+      .getByRole('button', { name: 'Confirm Client association' })
+      .click();
+    expect((await associationResponse).status()).toBe(200);
+    await expect(requests.locator(':scope > [role="alert"]')).toHaveText(
+      'Client associated.',
+    );
     const panel = requests.locator('.pricing-snapshot-panel');
     await expect(
       panel.getByText('Illustrative pricing', { exact: true }),
@@ -947,6 +978,20 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       path: testInfo.outputPath(`pricing-adjustment-reopened-${suffix}.png`),
       fullPage: true,
     });
+    await requests.getByRole('button', { name: 'Open Client dossier' }).click();
+    await expect(page.locator('#clients')).toBeFocused();
+    await expect(
+      page
+        .locator('.client-dossier-detail')
+        .getByRole('heading', { name: client.displayName, exact: true }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `pricing-associated-client-dossier-${suffix}.png`,
+      ),
+      fullPage: true,
+    });
   } finally {
     for (const bundle of [...granted].reverse())
       await changeAssignment(page, { operation: 'revoke', bundle, ...target });
@@ -1053,6 +1098,32 @@ async function createCommercialRequest(
   return { subject, opportunityId: body.initialOpportunity.id };
 }
 
+async function createClient(
+  page: Page,
+  companyId: string,
+  displayName: string,
+): Promise<{ id: string; displayName: string }> {
+  const response = await page.request.post(`${apiOrigin}/api/clients`, {
+    headers: {
+      ...primaryMemberHeaders,
+      'content-type': 'application/json',
+      'idempotency-key': `acceptance-pricing-client-${crypto.randomUUID()}`,
+      'x-company-context-id': companyId,
+    },
+    data: { displayName },
+  });
+  expect(response.status()).toBe(201);
+  const body: unknown = await response.json();
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('id' in body) ||
+    typeof body.id !== 'string'
+  )
+    throw new Error('Expected the registered Client id.');
+  return { id: body.id, displayName };
+}
+
 async function createCompany(page: Page, displayName: string): Promise<string> {
   const response = await page.request.post(`${apiOrigin}/api/companies`, {
     headers: {
@@ -1089,7 +1160,8 @@ async function changeAssignment(
       | 'company-pricing-configuration'
       | 'company-pricing-user'
       | 'company-pricing-adjustment'
-      | 'company-service-catalogue';
+      | 'company-service-catalogue'
+      | 'company-director-client';
     workspaceMembershipId: string;
     companyId: string;
   },
