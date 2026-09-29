@@ -11,6 +11,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
+  clientLegalEntities,
   clientUnionOperations,
   clientUnionReviews,
   clientUnionReversals,
@@ -22,6 +23,30 @@ export interface ProjectClientReference {
   id: string;
   displayName: string;
   clientDossierId?: string;
+}
+
+export type ClientLegalRecipientSelection =
+  | { readonly kind: 'PRIMARY' }
+  | { readonly kind: 'ADDITIONAL'; readonly legalEntityId: string };
+
+export interface LockedClientLegalRecipient {
+  readonly originalClientAccountId: string;
+  readonly currentClientAccountId: string;
+  readonly currentClientVersion: number;
+  readonly recipient:
+    | {
+        readonly kind: 'PRIMARY';
+        readonly legalName: string;
+        readonly taxId: string | null;
+        readonly legalAddress: string | null;
+      }
+    | {
+        readonly kind: 'ADDITIONAL';
+        readonly additionalLegalEntityId: string;
+        readonly legalName: string;
+        readonly taxId: string | null;
+        readonly legalAddress: string | null;
+      };
 }
 
 /** Client owns the identity and relationship checks used by operational records. */
@@ -65,6 +90,7 @@ export class ClientOperationalReferenceService {
     actor: ActorContext,
     originalClientIds: readonly string[],
     lockAuthority = false,
+    lockClientsForUpdate = false,
   ): Promise<Map<string, ProjectClientReference>> {
     const companyId = this.requireClientRead(actor);
     if (lockAuthority) await this.lockClientReadAuthority(actor, companyId);
@@ -100,10 +126,12 @@ export class ClientOperationalReferenceService {
       visibleClients.map((client) => [client.id, client]),
     );
     const activeCompany = actor.activeCompany;
+    const canReadCurrentDossier =
+      actor.workspacePermissions.includes('client.manage') ||
+      activeCompany?.clientPermissions.includes('client.read') === true;
     if (
       !activeCompany ||
-      (!activeCompany.clientPermissions.includes('client.read') &&
-        !lockAuthority) ||
+      (!canReadCurrentDossier && !lockAuthority) ||
       references.size === 0
     )
       return references;
@@ -128,6 +156,7 @@ export class ClientOperationalReferenceService {
         [...visitedByOriginal.values()].flatMap((visited) => [...visited]),
         currentDossierByOriginal,
         invalidOriginalIds,
+        lockClientsForUpdate,
       );
     }
     const readableDossiers = await this.databaseContext.connection
@@ -161,7 +190,7 @@ export class ClientOperationalReferenceService {
         clientDossierId &&
         !invalidOriginalIds.has(originalId) &&
         readableDossierIds.has(clientDossierId) &&
-        activeCompany.clientPermissions.includes('client.read')
+        canReadCurrentDossier
       )
         references.set(originalId, { ...reference, clientDossierId });
     }
@@ -174,7 +203,114 @@ export class ClientOperationalReferenceService {
       [...visitedByOriginal.values()].flatMap((visited) => [...visited]),
       currentDossierByOriginal,
       invalidOriginalIds,
+      lockClientsForUpdate,
     );
+  }
+
+  /**
+   * Resolves and locks one legal recipient through Client's identity and
+   * relationship ownership. Offer receives only the fixed copy and fence data.
+   */
+  async lockOfferRecipient(
+    actor: ActorContext,
+    originalClientAccountId: string,
+    selection: ClientLegalRecipientSelection,
+  ): Promise<LockedClientLegalRecipient> {
+    const references = await this.readProjectReferences(
+      actor,
+      [originalClientAccountId],
+      true,
+      true,
+    );
+    const reference = references.get(originalClientAccountId);
+    if (!reference) throw new NotFoundException();
+    const currentClientAccountId = reference.clientDossierId ?? reference.id;
+    const [client] = await this.databaseContext.connection
+      .select({
+        id: clientAccounts.id,
+        displayName: clientAccounts.displayName,
+        taxId: clientAccounts.taxId,
+        address: clientAccounts.address,
+        version: clientAccounts.version,
+        status: clientAccounts.status,
+      })
+      .from(clientAccounts)
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          eq(clientAccounts.id, currentClientAccountId),
+          eq(clientAccounts.status, 'active'),
+        ),
+      )
+      .for('share');
+    if (!client) throw new NotFoundException();
+    if (selection.kind === 'PRIMARY') {
+      return {
+        originalClientAccountId,
+        currentClientAccountId: client.id,
+        currentClientVersion: client.version,
+        recipient: {
+          kind: 'PRIMARY',
+          legalName: client.displayName,
+          taxId: client.taxId,
+          legalAddress: client.address,
+        },
+      };
+    }
+    const [entity] = await this.databaseContext.connection
+      .select({
+        id: clientLegalEntities.id,
+        legalName: clientLegalEntities.legalName,
+        taxId: clientLegalEntities.taxId,
+        legalAddress: clientLegalEntities.legalAddress,
+      })
+      .from(clientLegalEntities)
+      .where(
+        and(
+          eq(clientLegalEntities.workspaceId, actor.workspaceId),
+          eq(clientLegalEntities.clientAccountId, client.id),
+          eq(clientLegalEntities.id, selection.legalEntityId),
+        ),
+      )
+      .for('share');
+    if (!entity) throw new NotFoundException();
+    return {
+      originalClientAccountId,
+      currentClientAccountId: client.id,
+      currentClientVersion: client.version,
+      recipient: {
+        kind: 'ADDITIONAL',
+        additionalLegalEntityId: entity.id,
+        legalName: entity.legalName,
+        taxId: entity.taxId,
+        legalAddress: entity.legalAddress,
+      },
+    };
+  }
+
+  /** Advance the union/reversal fence only after a new Offer will commit. */
+  async recordLockedReferenceUse(
+    actor: ActorContext,
+    resolution: LockedClientLegalRecipient,
+  ): Promise<void> {
+    if (resolution.currentClientVersion >= 2_147_483_647)
+      throw new ConflictException('Client reference version is exhausted.');
+    const updated = await this.databaseContext.connection
+      .update(clientAccounts)
+      .set({
+        version: resolution.currentClientVersion + 1,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          eq(clientAccounts.id, resolution.currentClientAccountId),
+          eq(clientAccounts.version, resolution.currentClientVersion),
+          eq(clientAccounts.status, 'active'),
+        ),
+      )
+      .returning({ id: clientAccounts.id });
+    if (updated.length !== 1) throw new NotFoundException();
   }
 
   private async resolveCurrentDossiers(
@@ -297,6 +433,7 @@ export class ClientOperationalReferenceService {
     traversedIds: readonly string[],
     expectedHeads: ReadonlyMap<string, string>,
     invalidOriginalIds: ReadonlySet<string>,
+    lockClientsForUpdate: boolean,
   ): Promise<Map<string, ProjectClientReference>> {
     const clientIds = [...new Set([...originalIds, ...traversedIds])].sort();
     const lockedClients = await this.databaseContext.connection
@@ -309,7 +446,7 @@ export class ClientOperationalReferenceService {
         ),
       )
       .orderBy(asc(clientAccounts.id))
-      .for('share');
+      .for(lockClientsForUpdate ? 'update' : 'share');
     if (lockedClients.length !== clientIds.length)
       throw new NotFoundException();
     const lockedRelationships = await this.databaseContext.connection

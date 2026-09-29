@@ -398,6 +398,12 @@ export const pricingSnapshots = pgTable(
       table.companyId,
       table.id,
     ),
+    uniqueIndex('pricing_snapshots_offer_reference_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.opportunityId,
+      table.id,
+    ),
     uniqueIndex('pricing_snapshots_line_trace_unique').on(
       table.workspaceId,
       table.companyId,

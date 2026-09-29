@@ -7,6 +7,7 @@ import {
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
+  offerPreparerPermissionsFor,
   pricingAdjustmentPermissionsFor,
   pricingConfigurationPermissionsFor,
   projectApproverPermissionsFor,
@@ -19,6 +20,25 @@ import {
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Offer Preparer permission sets', () => {
+  it('resolves exactly the four captured v1 permissions without calculation', () => {
+    expect(offerPreparerPermissionsFor('v1')).toEqual([
+      'commercial.offer.read',
+      'commercial.offer.prepare',
+      'commercial.offer.transmission.record',
+      'commercial.pricing.snapshot.read',
+    ]);
+    expect(offerPreparerPermissionsFor('v1')).not.toContain(
+      'commercial.pricing.calculate',
+    );
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => expect(offerPreparerPermissionsFor(version)).toEqual([]),
+  );
+});
 
 describe('Company Pricing Adjustment permission sets', () => {
   it('resolves only the captured v1 adjustment permission', () => {

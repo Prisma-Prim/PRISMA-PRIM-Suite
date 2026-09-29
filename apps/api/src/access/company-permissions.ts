@@ -137,6 +137,23 @@ export function pricingUserPermissionsFor(
 ): readonly CompanyPricingUserPermission[] {
   return version === 'v1' ? COMPANY_PRICING_USER_V1_PERMISSIONS : [];
 }
+export const COMPANY_OFFER_PREPARER_BUNDLE = 'company_offer_preparer' as const;
+export const COMPANY_OFFER_PREPARER_BUNDLE_LABEL =
+  'Company Offer Preparer' as const;
+export const COMPANY_OFFER_PREPARER_V1_PERMISSIONS = [
+  'commercial.offer.read',
+  'commercial.offer.prepare',
+  'commercial.offer.transmission.record',
+  'commercial.pricing.snapshot.read',
+] as const;
+export type CompanyOfferPreparerPermission =
+  (typeof COMPANY_OFFER_PREPARER_V1_PERMISSIONS)[number];
+export function offerPreparerPermissionsFor(
+  version: unknown,
+): readonly CompanyOfferPreparerPermission[] {
+  return version === 'v1' ? COMPANY_OFFER_PREPARER_V1_PERMISSIONS : [];
+}
+
 export const COMPANY_PRICING_ADJUSTMENT_BUNDLE =
   'company_pricing_adjustment' as const;
 export const COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL =
