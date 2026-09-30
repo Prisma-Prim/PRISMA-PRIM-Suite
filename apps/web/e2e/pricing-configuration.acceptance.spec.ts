@@ -1050,12 +1050,19 @@ test.describe('Pricing Snapshot and Offer journey', () => {
 
     await selectOption(snapshotSelect, ordinarySnapshotValue);
     await offer.getByRole('button', { name: 'Prepare version 1' }).click();
-    await expect(offer.getByText('Illustrative and provisional')).toBeVisible();
+    const createdOffer = offer.locator('.offer-summary');
     await expect(
-      offer.getByText('Synthetic Offer Recipient', { exact: false }),
+      createdOffer.getByText('Illustrative and provisional', { exact: true }),
     ).toBeVisible();
     await expect(
-      offer.getByText('Pending · not transmitted · no Client response'),
+      createdOffer.getByText(`Synthetic Offer Recipient ${suffix}`, {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      createdOffer.getByText('Pending · not transmitted · no Client response', {
+        exact: true,
+      }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
@@ -1070,15 +1077,18 @@ test.describe('Pricing Snapshot and Offer journey', () => {
       .locator('.commercial-intake-workspace')
       .getByRole('button', { name: new RegExp(request.subject, 'u') })
       .click();
-    const reopenedOffer = page.locator('.offer-panel');
+    const reopenedOffer = page.locator('.offer-panel .offer-summary');
     await expect(
-      reopenedOffer.getByText('Illustrative reference'),
+      reopenedOffer.getByText('Illustrative reference', { exact: true }),
     ).toBeVisible();
     await expect(
-      reopenedOffer.getByText('Illustrative and provisional'),
+      reopenedOffer.getByText('Illustrative and provisional', { exact: true }),
     ).toBeVisible();
     await expect(
-      reopenedOffer.getByText('Pending · not transmitted · no Client response'),
+      reopenedOffer.getByText(
+        'Pending · not transmitted · no Client response',
+        { exact: true },
+      ),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
