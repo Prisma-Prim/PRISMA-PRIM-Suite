@@ -61,10 +61,11 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 ## 6. Release 3 capability PRDs
 
-| Capability PRD                                                              | Document status                                               | Depends on                                                                               |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md)                 | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration  |
-| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md) | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
+| Capability PRD                                                                                  | Document status                                               | Depends on                                                                                                                   |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md)                                     | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
+| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                     | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
+| [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md) | Draft — owner review pending                                  | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 
