@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, DrizzleQueryError, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -230,35 +230,62 @@ export class OfferService {
     await this.authorization.requireOfferAccess(actor, [
       'commercial.offer.read',
     ]);
-    return this.databaseContext.transaction(
-      async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.read'],
-          true,
+    // A profile refresh can invalidate a locked row after the repeatable-read
+    // snapshot began. Restart the entire read, including live authority checks;
+    // never continue an aborted transaction or retry a mutation here.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.databaseContext.transaction(
+          async () => {
+            const companyId = await this.authorization.requireOfferAccess(
+              actor,
+              ['commercial.offer.read'],
+              true,
+            );
+            const opportunity =
+              await this.intake.requireReadableOfferOpportunity(
+                actor,
+                opportunityId,
+                false,
+              );
+            const offer = await this.findOffer(
+              actor.workspaceId,
+              companyId,
+              opportunity.id,
+            );
+            if (!offer) return null;
+            const stored = await this.requireOfferById(
+              actor,
+              companyId,
+              offer.id,
+            );
+            const snapshot = await this.pricing.resolveOfferSnapshot({
+              actor,
+              companyId,
+              opportunityId: opportunity.id,
+              snapshotId: stored.version.pricingSnapshotId,
+            });
+            return this.offerView(
+              actor,
+              stored.offer,
+              stored.version,
+              snapshot,
+            );
+          },
+          { isolationLevel: 'repeatable read' },
         );
-        const opportunity = await this.intake.requireReadableOfferOpportunity(
-          actor,
-          opportunityId,
-          false,
-        );
-        const offer = await this.findOffer(
-          actor.workspaceId,
-          companyId,
-          opportunity.id,
-        );
-        if (!offer) return null;
-        const stored = await this.requireOfferById(actor, companyId, offer.id);
-        const snapshot = await this.pricing.resolveOfferSnapshot({
-          actor,
-          companyId,
-          opportunityId: opportunity.id,
-          snapshotId: stored.version.pricingSnapshotId,
-        });
-        return this.offerView(actor, stored.offer, stored.version, snapshot);
-      },
-      { isolationLevel: 'repeatable read' },
-    );
+      } catch (error) {
+        const cause = error instanceof DrizzleQueryError ? error.cause : error;
+        if (
+          attempt >= 3 ||
+          typeof cause !== 'object' ||
+          cause === null ||
+          !('code' in cause) ||
+          cause.code !== '40001'
+        )
+          throw error;
+      }
+    }
   }
 
   private async offerView(

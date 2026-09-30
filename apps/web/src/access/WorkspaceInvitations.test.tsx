@@ -1,8 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
+import {
+  useInterfaceLocale,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
 import { WorkspaceInvitations } from './WorkspaceInvitations';
 
 const actor: ActorContext = {
@@ -173,12 +182,15 @@ describe('Workspace invitation controls', () => {
     });
     vi.stubGlobal('fetch', transport);
     render(
-      <WorkspaceInvitations
-        actor={actor}
-        identity={identity}
-        onActivityRecorded={() => {}}
-        onWorkspaceAccessRejected={() => {}}
-      />,
+      <>
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />
+        <LocaleChange locale="fr" />
+      </>,
     );
     await screen.findByLabelText('Recipient email');
     fireEvent.change(screen.getByLabelText('Recipient email'), {
@@ -186,10 +198,97 @@ describe('Workspace invitation controls', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
     await screen.findByRole('alert');
-    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+    expect(screen.getByLabelText('E-mail du destinataire')).toHaveValue(
+      invitation.email,
+    );
+    expect(screen.getByLabelText('Expire dans ce nombre de jours')).toHaveValue(
+      7,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Envoyer l’invitation' }),
+    );
     await waitFor(() => expect(sends).toHaveLength(2));
     expect(sends[0]?.body).toEqual(sends[1]?.body);
     expect(sends[0]?.headers).toEqual(sends[1]?.headers);
+  });
+
+  it('shows invitation-owned required errors and translates them without sending a command', async () => {
+    const transport = vi.fn(async () =>
+      Response.json({ invitations: [], nextCursor: null }),
+    );
+    vi.stubGlobal('fetch', transport);
+    render(
+      <>
+        <WorkspaceInvitations
+          actor={actor}
+          identity={identity}
+          onActivityRecorded={() => {}}
+          onWorkspaceAccessRejected={() => {}}
+        />
+        <LocaleChange locale="fr" />
+      </>,
+    );
+
+    await screen.findByLabelText('Recipient email');
+    fireEvent.change(screen.getByLabelText('Expires in days'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    expect(await screen.findByText('Enter the recipient email.')).toBeVisible();
+    expect(
+      screen.getByText('Enter the number of days before expiry.'),
+    ).toBeVisible();
+    expect(transport).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Passer en français' }));
+    expect(
+      screen.getByText('Saisissez l’e-mail du destinataire.'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Saisissez le nombre de jours avant l’expiration.'),
+    ).toBeVisible();
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects malformed email and non-integer or out-of-range expiry without sending a command', async () => {
+    const transport = vi.fn(async () =>
+      Response.json({ invitations: [], nextCursor: null }),
+    );
+    vi.stubGlobal('fetch', transport);
+    render(
+      <WorkspaceInvitations
+        actor={actor}
+        identity={identity}
+        onActivityRecorded={() => {}}
+        onWorkspaceAccessRejected={() => {}}
+      />,
+    );
+
+    const emailInput = await screen.findByLabelText('Recipient email');
+    const expiryInput = screen.getByLabelText('Expires in days');
+    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+    fireEvent.change(expiryInput, { target: { value: '1.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    expect(screen.getByText('Enter a valid email address.')).toBeVisible();
+    expect(
+      screen.getByText('Enter a whole number between 1 and 30.'),
+    ).toBeVisible();
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(expiryInput).toHaveAttribute('aria-invalid', 'true');
+    expect(transport).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(emailInput, { target: { value: invitation.email } });
+    for (const invalidExpiry of ['0', '31']) {
+      fireEvent.change(expiryInput, { target: { value: invalidExpiry } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+      expect(
+        screen.getByText('Enter a whole number between 1 and 30.'),
+      ).toBeVisible();
+      expect(transport).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('requires confirmation to revoke and distinguishes local revocation from provider confirmation', async () => {
@@ -221,3 +320,12 @@ describe('Workspace invitation controls', () => {
     );
   });
 });
+
+function LocaleChange({ locale }: { locale: InterfaceLocale }) {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <button type="button" onClick={() => changeLocale(locale)}>
+      Passer en français
+    </button>
+  );
+}

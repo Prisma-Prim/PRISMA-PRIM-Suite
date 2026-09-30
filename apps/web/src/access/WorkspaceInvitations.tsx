@@ -2,20 +2,30 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
   invitationPageResponse,
   invitationResponse,
   type InvitationPage,
 } from './workspace-invitation-response';
-import { workspaceInvitationsCopy as copy } from './workspace-invitations.copy';
+import { useWorkspaceInvitationsCopy } from './workspace-invitations.copy';
 import './workspace-invitations.css';
 
 type PageState =
   | { status: 'loading' | 'error' | 'forbidden' }
   | { status: 'ready'; page: InvitationPage };
 type Command = { path: string; body: string; key: string };
+type FieldValidationError = 'required' | 'invalid' | null;
+type ValidationErrors = {
+  email: FieldValidationError;
+  expiry: FieldValidationError;
+};
+
+const noValidationErrors = {
+  email: null,
+  expiry: null,
+} satisfies ValidationErrors;
 
 export function WorkspaceInvitations({
   actor,
@@ -28,15 +38,21 @@ export function WorkspaceInvitations({
   onActivityRecorded: () => void | Promise<void>;
   onWorkspaceAccessRejected: () => void | Promise<void>;
 }) {
+  const copy = useWorkspaceInvitationsCopy();
+  const { formatDateTime, formatNumber } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [email, setEmail] = useState('');
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState('7');
+  const [validationErrors, setValidationErrors] =
+    useState<ValidationErrors>(noValidationErrors);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const retry = useRef<Command | undefined>(undefined);
   const request = useRef<AbortController | undefined>(undefined);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const expiryInput = useRef<HTMLInputElement>(null);
   const callbacks = useRef({ onActivityRecorded, onWorkspaceAccessRejected });
   callbacks.current = { onActivityRecorded, onWorkspaceAccessRejected };
 
@@ -84,6 +100,7 @@ export function WorkspaceInvitations({
   useEffect(() => {
     retry.current = undefined;
     setEmail('');
+    setValidationErrors(noValidationErrors);
     setReviewing(null);
     setFailed(false);
     setBusy(false);
@@ -191,38 +208,111 @@ export function WorkspaceInvitations({
         <>
           <form
             className={isPrisme ? 'workspace-invitations-form' : undefined}
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
-              void submit('', { email, expiresInDays: days });
+              const emailElement = emailInput.current;
+              const expiryElement = expiryInput.current;
+              if (!emailElement || !expiryElement) return;
+              const errors = {
+                email: emailElement.validity.valueMissing
+                  ? 'required'
+                  : emailElement.validity.valid
+                    ? null
+                    : 'invalid',
+                expiry: expiryElement.validity.valueMissing
+                  ? 'required'
+                  : expiryElement.validity.valid
+                    ? null
+                    : 'invalid',
+              } satisfies ValidationErrors;
+              setValidationErrors(errors);
+              if (errors.email !== null) {
+                emailElement.focus();
+                return;
+              }
+              if (errors.expiry !== null) {
+                expiryElement.focus();
+                return;
+              }
+              void submit('', { email, expiresInDays: Number(days) });
             }}
           >
             <label htmlFor="invitation-email">{copy.email}</label>
             <input
+              ref={emailInput}
               id="invitation-email"
               type="email"
               required
               maxLength={254}
               disabled={busy}
               value={email}
+              aria-invalid={validationErrors.email !== null}
+              aria-describedby={
+                validationErrors.email === null
+                  ? undefined
+                  : 'invitation-email-error'
+              }
               onChange={(event) => {
                 setEmail(event.target.value);
+                setValidationErrors((current) => ({
+                  ...current,
+                  email: null,
+                }));
                 retry.current = undefined;
               }}
             />
+            {validationErrors.email !== null && (
+              <p
+                id="invitation-email-error"
+                className="workspace-invitation-validation-error"
+                role="alert"
+              >
+                {validationErrors.email === 'required'
+                  ? copy.emailRequired
+                  : copy.emailInvalid}
+              </p>
+            )}
             <label htmlFor="invitation-days">{copy.expiry}</label>
             <input
+              ref={expiryInput}
               id="invitation-days"
               type="number"
               min={1}
               max={30}
+              step={1}
               required
               disabled={busy}
               value={days}
+              aria-valuetext={
+                days === '' ? undefined : formatNumber(Number(days))
+              }
+              aria-invalid={validationErrors.expiry !== null}
+              aria-describedby={
+                validationErrors.expiry === null
+                  ? undefined
+                  : 'invitation-days-error'
+              }
               onChange={(event) => {
-                setDays(event.target.valueAsNumber);
+                setDays(event.target.value);
+                setValidationErrors((current) => ({
+                  ...current,
+                  expiry: null,
+                }));
                 retry.current = undefined;
               }}
             />
+            {validationErrors.expiry !== null && (
+              <p
+                id="invitation-days-error"
+                className="workspace-invitation-validation-error"
+                role="alert"
+              >
+                {validationErrors.expiry === 'required'
+                  ? copy.expiryRequired
+                  : copy.expiryInvalid}
+              </p>
+            )}
             <button
               type="submit"
               className={
@@ -250,7 +340,7 @@ export function WorkspaceInvitations({
                 <p>
                   {copy.expires}:{' '}
                   <time dateTime={invitation.expiresAt}>
-                    {formatApplicationDateTime(invitation.expiresAt)}
+                    {formatDateTime(invitation.expiresAt)}
                   </time>
                 </p>
                 {invitation.revokedAt &&
@@ -263,8 +353,7 @@ export function WorkspaceInvitations({
                     <p role="status">{copy.usedBeforeRevocation}</p>
                   )}
                 <p>
-                  {copy.checkAfter}:{' '}
-                  {formatApplicationDateTime(invitation.nextCheckAt)}
+                  {copy.checkAfter}: {formatDateTime(invitation.nextCheckAt)}
                 </p>
                 <button
                   className={

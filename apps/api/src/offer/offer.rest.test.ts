@@ -840,62 +840,88 @@ withPostgres('First illustrative Offer REST', () => {
     });
   });
 
+  it.each(['profile refresh', 'Offer revocation'])(
+    'restarts a coherent Offer read after a concurrent %s commits',
+    async (change) => {
+      const fixture = await preparedOffer();
+      const created = identifiedRecord(
+        await command(
+          `/offers/opportunities/${fixture.opportunityId}`,
+          {
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'before-read-conflict',
+          fixture.companyId,
+        ),
+      );
+      const queries: string[] = [];
+      const { offers, actor } = await offerServiceContext(fixture, queries);
+      const barrier = await pool.connect();
+      let pending: ReturnType<typeof offers.read> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        const [backend] = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows;
+        if (!backend)
+          throw new Error('Expected the profile transaction backend.');
+        // Preflight reads see the old committed identity. The locked read then
+        // takes its snapshot before waiting on this real concurrent update.
+        await barrier.query(
+          'UPDATE internal_users SET display_name = $1 WHERE id = $2',
+          ['Refreshed synthetic reader', actor.internalUserId],
+        );
+        if (change === 'Offer revocation')
+          await barrier.query(
+            "UPDATE company_role_assignments SET revoked_at = now() WHERE workspace_membership_id = $1 AND company_id = $2 AND bundle = 'company_offer_preparer'",
+            [fixture.actorMembershipId, fixture.companyId],
+          );
+        pending = offers.read(actor, fixture.opportunityId);
+        // Attach a handler before releasing the barrier to avoid an unhandled
+        // denial while PostgreSQL and the test runner settle their promises.
+        const outcome = pending.then(
+          (value) => ({ kind: 'read' as const, value }),
+          (error: unknown) => ({ kind: 'denied' as const, error }),
+        );
+        await waitForBlockedRequests(backend.pid, 1);
+        await barrier.query('COMMIT');
+        const result = await outcome;
+        if (change === 'Offer revocation') {
+          expect(result.kind).toBe('denied');
+          if (result.kind !== 'denied')
+            throw new Error('Expected current authority denial.');
+          expect(result.error).toMatchObject({ status: 403 });
+        } else {
+          expect(result.kind).toBe('read');
+          if (result.kind !== 'read')
+            throw new Error('Expected the recovered Offer read.');
+          expect(result.value).toEqual(created);
+        }
+        expect(queries.filter((query) => query.startsWith('begin'))).toEqual([
+          'begin isolation level repeatable read',
+          'begin isolation level repeatable read',
+        ]);
+        expect(queries.filter((query) => query === 'rollback')).toHaveLength(
+          change === 'Offer revocation' ? 2 : 1,
+        );
+        expect((await pool.query('SELECT id FROM offer_events')).rowCount).toBe(
+          2,
+        );
+        expect(
+          (await pool.query('SELECT id FROM offer_commands')).rowCount,
+        ).toBe(1);
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        if (pending) await Promise.allSettled([pending]);
+      }
+    },
+  );
+
   it('enforces prepare and read independently through the real Offer public interface', async () => {
     const fixture = await preparedOffer();
-    const databaseContext = new DatabaseContext(drizzle(pool));
-    const authorization = new CompanyContextAuthorization(databaseContext);
-    const accountability = new AccountabilityService(databaseContext);
-    const clients = new ClientOperationalReferenceService(databaseContext);
-    const catalogue = new CommercialCatalogueService(
-      databaseContext,
-      authorization,
-    );
-    const intake = new CommercialIntakeService(
-      databaseContext,
-      authorization,
-      clients,
-      accountability,
-      new CommercialResponsibleAccessService(databaseContext),
-    );
-    const pricing = new PricingSnapshotService(
-      databaseContext,
-      authorization,
-      catalogue,
-      intake,
-      accountability,
-      serverClock,
-    );
-    const offers = new OfferService(
-      databaseContext,
-      authorization,
-      accountability,
-      clients,
-      intake,
-      pricing,
-      serverClock,
-    );
-    const [member] = (
-      await pool.query<{ internal_user_id: string }>(
-        'SELECT internal_user_id FROM workspace_memberships WHERE id = $1',
-        [fixture.actorMembershipId],
-      )
-    ).rows;
-    if (!member) throw new Error('Expected the synthetic membership.');
-    const actor: ActorContext = {
-      internalUserId: member.internal_user_id,
-      workspaceMembershipId: fixture.actorMembershipId,
-      workspaceId: WORKSPACE_ID,
-      workspaceName: 'Synthetic',
-      displayName: 'Synthetic',
-      email: 'synthetic@example.test',
-      active: true,
-      workspacePermissions: ['company.manage', 'client.manage'],
-    };
-    const company = await authorization.resolveAuthorizedActiveCompany(
-      actor,
-      fixture.companyId,
-    );
-    if (!company) throw new Error('Expected the authorized Company.');
+    const { offers, actor, company } = await offerServiceContext(fixture);
     const preparer: ActorContext = {
       ...actor,
       activeCompany: {
@@ -1393,6 +1419,72 @@ withPostgres('First illustrative Offer REST', () => {
       ).rows[0]?.current_reference,
     ).toBe(1);
   });
+
+  async function offerServiceContext(
+    fixture: PreparedOffer,
+    queries: string[] = [],
+  ) {
+    const databaseContext = new DatabaseContext(
+      drizzle({
+        client: pool,
+        logger: { logQuery: (query) => queries.push(query) },
+      }),
+    );
+    const authorization = new CompanyContextAuthorization(databaseContext);
+    const accountability = new AccountabilityService(databaseContext);
+    const clients = new ClientOperationalReferenceService(databaseContext);
+    const catalogue = new CommercialCatalogueService(
+      databaseContext,
+      authorization,
+    );
+    const intake = new CommercialIntakeService(
+      databaseContext,
+      authorization,
+      clients,
+      accountability,
+      new CommercialResponsibleAccessService(databaseContext),
+    );
+    const pricing = new PricingSnapshotService(
+      databaseContext,
+      authorization,
+      catalogue,
+      intake,
+      accountability,
+      serverClock,
+    );
+    const offers = new OfferService(
+      databaseContext,
+      authorization,
+      accountability,
+      clients,
+      intake,
+      pricing,
+      serverClock,
+    );
+    const [member] = (
+      await pool.query<{ internal_user_id: string }>(
+        'SELECT internal_user_id FROM workspace_memberships WHERE id = $1',
+        [fixture.actorMembershipId],
+      )
+    ).rows;
+    if (!member) throw new Error('Expected the synthetic membership.');
+    const actor: ActorContext = {
+      internalUserId: member.internal_user_id,
+      workspaceMembershipId: fixture.actorMembershipId,
+      workspaceId: WORKSPACE_ID,
+      workspaceName: 'Synthetic',
+      displayName: 'Synthetic',
+      email: 'synthetic@example.test',
+      active: true,
+      workspacePermissions: ['company.manage', 'client.manage'],
+    };
+    const company = await authorization.resolveAuthorizedActiveCompany(
+      actor,
+      fixture.companyId,
+    );
+    if (!company) throw new Error('Expected the authorized Company.');
+    return { offers, actor: { ...actor, activeCompany: company }, company };
+  }
 
   async function postOffer(
     fixture: PreparedOffer,

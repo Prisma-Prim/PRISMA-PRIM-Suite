@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
+import { selectOption } from './select-option';
 
 const invitationId = 'aaaaaaaa-0000-4000-8000-000000000163';
 const workspaceId = '00000000-0000-4000-8000-000000001630';
@@ -91,12 +92,16 @@ for (const deniedAt of ['acceptance', 'current access']) {
           invitationId +
           '&__clerk_ticket=opaque_ticket',
       );
-      await page.getByRole('button', { name: 'Accept invitation' }).click();
+      await selectOption(
+        page.getByRole('combobox', { name: 'Interface language' }),
+        'ru',
+      );
+      await page.getByRole('button', { name: 'Принять приглашение' }).click();
       await expect(page.getByRole('alert')).toHaveText(
-        'This invitation cannot be accepted with your current access. Ask a Workspace Owner for help.',
+        'Это приглашение нельзя принять с текущим доступом. Обратитесь за помощью к Владельцу рабочего пространства.',
       );
       await expect(
-        page.getByRole('button', { name: 'Accept invitation' }),
+        page.getByRole('button', { name: 'Принять приглашение' }),
       ).toHaveCount(0);
       await expect(
         page.getByText('Invited Workspace', { exact: true }),
@@ -173,30 +178,46 @@ test('recipient retries an uncertain acceptance and enters only the server-autho
   );
   await page.getByRole('button', { name: 'Accept invitation' }).click();
   await expect(page.getByRole('alert')).toContainText('could not be confirmed');
+  await selectOption(
+    page.getByRole('combobox', { name: 'Interface language' }),
+    'fr',
+  );
+  await expect(page.getByRole('alert')).toContainText(
+    'n’a pas pu être confirmée',
+  );
   await page.reload();
-  await page.getByRole('button', { name: 'Retry acceptance' }).click();
+  await page.getByRole('button', { name: 'Réessayer l’acceptation' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Hello, Recipient.' }),
+    page.getByRole('heading', { name: 'Bonjour, Recipient.' }),
   ).toBeVisible();
   if (testInfo.project.name === 'narrow')
-    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Ouvrir la navigation' }).click();
   expect(keys[0]).toBeTruthy();
   expect(keys[1]).toBe(keys[0]);
   await expect(page.locator('.prisme-breadcrumb')).toContainText(
     'Invited Workspace',
   );
   await expect(
-    page.getByRole('button', { name: 'Register Company' }),
+    page.getByRole('button', { name: 'Enregistrer l’Entreprise' }),
   ).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Clients', exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByText('No Company is assigned to you.', { exact: false }),
+    page.getByText('Aucune Entreprise ne vous est attribuée.', {
+      exact: false,
+    }),
   ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   expect(page.url()).not.toContain('opaque_ticket');
   await page.screenshot({
-    path: testInfo.outputPath('invitation-admitted-empty-shell.png'),
+    path: testInfo.outputPath(
+      `invitation-admitted-empty-shell-fr-${testInfo.project.name}.png`,
+    ),
     fullPage: true,
   });
 });
@@ -284,7 +305,9 @@ for (const failureAt of ['after capture', 'after commit', 'before replay']) {
       );
       await page.addInitScript(failStorage);
       await page.reload();
-      await page.getByRole('button', { name: 'Retry acceptance' }).click();
+      await page
+        .getByRole('button', { name: 'Reîncercați acceptarea' })
+        .click();
       await expect.poll(() => keys.length).toBe(2);
       expect(keys[1]).toBe(keys[0]);
     }

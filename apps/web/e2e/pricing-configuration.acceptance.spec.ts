@@ -913,9 +913,21 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       fullPage: true,
     });
 
-    await adjustedOffering
-      .getByLabel('Apply a fixed net discount', { exact: true })
-      .uncheck();
+    // A successful calculation clears the draft. Start a complete new
+    // unadjusted calculation before preparing the illustrative Offer.
+    await panel.getByLabel(offeringALabel, { exact: true }).check();
+    await adjustedOffering.getByLabel('Quantity', { exact: true }).fill('2.5');
+    await panel.getByLabel(offeringBLabel, { exact: true }).check();
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringBLabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('1');
+    await expect(
+      adjustedOffering.getByLabel('Apply a fixed net discount', {
+        exact: true,
+      }),
+    ).not.toBeChecked();
     const ordinarySnapshotResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
@@ -923,11 +935,10 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
           .url()
           .includes(
             `/api/pricing/opportunities/${request.opportunityId}/snapshots`,
-          ) &&
-        response.status() === 201,
+          ),
     );
     await panel.getByRole('button', { name: 'Calculate and save' }).click();
-    await ordinarySnapshotResponse;
+    expect((await ordinarySnapshotResponse).status()).toBe(201);
 
     await page.reload();
     await selectCompany(page, companySelect, companyName, narrow);
@@ -1168,7 +1179,7 @@ async function createClient(
     },
     data: {
       displayName,
-      taxId: 'SYNTHETIC-OFFER',
+      taxId: `SYNTHETIC-OFFER-${companyId}`,
       address: '1 Synthetic Offer Street',
     },
   });
