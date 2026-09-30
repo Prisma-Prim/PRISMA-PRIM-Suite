@@ -1,17 +1,18 @@
 # Draft PRD — Release 3B Confirmed-Cost Profitability Estimate
 
-- **Status:** Draft — evidence pending
+- **Status:** Draft — owner review pending
 - **Version:** 0.1
 - **Owner:** Dan Popescu
 - **Release:** 3, proposed R3B slice
 - **Parent authority:** [Release 3 Commercial Workflow PRD](release-3-commercial-workflow-prd.md)
 - **Current pricing authority:** [Release 3B Illustrative Deterministic Pricing PRD](release-3-illustrative-pricing-prd.md)
 - **Originating issue:** [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488)
+- **Authorization direction:** Dan, 2026-09-30 — designated collaborators may read and create; the Director retains the final decision
 - **Downstream consumers:** none until this Draft is approved and a separate implementation issue passes every readiness gate
 
 ## 1. Authority, status and boundary
 
-This Draft proposes one internal, Company-owned economic estimate for one Opportunity. It combines human-confirmed cost amounts with one proposed commercial price and shows total cost, profit and estimated profitability. It does not authorize implementation or operational pricing while its open decisions remain unresolved.
+This Draft proposes one internal, Company-owned economic estimate for one Opportunity. It combines human-confirmed cost amounts with one proposed commercial price and shows total cost, profit and estimated profitability. It does not authorize implementation or operational pricing before owner review makes the contract executable.
 
 The [Commercial Workflow PRD](release-3-commercial-workflow-prd.md) continues to own the Request → Opportunity → pricing → Offer → Contract → Project journey. The [Illustrative Deterministic Pricing PRD](release-3-illustrative-pricing-prd.md) continues to own every existing Service Definition, Company Service Offering, Tariff Version, Pricing Rule Version and Pricing Snapshot. This Draft does not amend, retag, reprice, migrate or reinterpret any of those records.
 
@@ -20,8 +21,8 @@ The [Tenant, Company, Client and Authorization PRD](tenant-company-client-author
 Every rule below is labelled as one of:
 
 - **Source-backed rule:** supported by the controlled source and compatible with current product authorities.
+- **Product Owner decision:** decided by Dan and normalized into the owning product authorities.
 - **Draft proposal:** a reversible, testable product choice that still requires product review.
-- **Open decision:** missing policy that prevents an implementation issue from becoming `ready-for-agent`.
 
 No Draft proposal becomes approved business policy merely by appearing here.
 
@@ -80,7 +81,7 @@ The proposed local term **Profitability Estimate** means the Company-owned inter
 
 The estimate belongs to the active Company and one Company-owned Opportunity that the actor may already read. It does not create or change a Client, Client Request, Opportunity, Offer, Contract or Project.
 
-The entry point appears only after the authorization owner defines and grants the required captured permissions. No existing bundle or assignment gains new authority automatically.
+The entry point appears only after the authorization owner grants the required captured permissions defined in section 6. No existing bundle or assignment gains new authority automatically.
 
 ### 5.2 Human-confirmed inputs
 
@@ -158,15 +159,31 @@ The example proves only the four arithmetic relationships above. It defines no r
 
 **Source-backed rule:** final Director validation is mandatory.
 
-**Draft proposals:**
+**Product Owner decision — Dan, 2026-09-30:** designated collaborators may read and create estimates. The final `APPROVE`, `MODIFY` or `REJECT` decision remains Director-only.
+
+The [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns two separate captured, Company-scoped opt-in bundles:
+
+| Bundle                                   | Captured permissions                                                                 | Capability                                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Company Profitability Contributor v1** | `commercial.profitability_estimate.read`, `commercial.profitability_estimate.create` | Read and create estimates for Opportunities the holder may already read             |
+| **Company Profitability Director v1**    | `commercial.profitability_estimate.read`, `commercial.profitability_estimate.decide` | Read estimates and record `APPROVE`, `MODIFY` or `REJECT` against one exact version |
+
+An active administrator with `company.assignment.manage` explicitly grants or revokes each bundle for an active same-Workspace membership and active Company through existing Company assignment administration. No existing assignment, bundle, Workspace ownership, migration backfill, job title, person name or Director label confers either bundle. Null or unknown captured versions fail closed.
+
+Additional rules:
 
 - the estimate is Company-owned and follows the Opportunity's existing Workspace and responsible Company;
-- create, read and Director-validation authority are checked independently at command time and before returning an idempotent result;
-- Opportunity readability remains an independent prerequisite;
-- a user who can create an estimate cannot validate it merely because they created it; and
+- read requires live Contributor v1 or Director v1 plus current Opportunity readability and active Company context;
+- create requires live Contributor v1 plus the same Opportunity and Company prerequisites;
+- a Director decision requires live Director v1, current Opportunity readability and active Company context;
+- Contributor v1 never permits a Director decision;
+- Director v1 grants estimate read and Director decision, but no create authority;
+- a Director who must enter an estimate receives Contributor v1 through the same explicit grant path;
+- business status as Director grants nothing without the captured assignments;
+- every command and idempotent replay revalidates current authority before returning a result; and
 - no estimate amount, count, reason or existence crosses a Company boundary.
 
-**Open decision:** the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) must name the captured permissions, bundles and eligible Director validator. Existing Company Pricing User, Pricing Adjustment, Offer Preparer and Offer Approver assignments do not expand in place. “Director” is a business responsibility configured through the authorization owner, not a hard-coded person or identity.
+Grant and revoke events follow the existing Company assignment-administration convention: one attributed event per actual state change, bundle-label-only metadata, and no event for repeated state, denial, failure or exact replay. The bundle assignment is the explicit Company-scoped designation for this capability; runtime authorization never checks a free-form role name or hard-coded identity.
 
 ## 7. History, configuration and compatibility
 
@@ -207,36 +224,41 @@ Missing Offer or Contract templates, numbering and full commercial-dossier evide
 
 ## 10. Proposed acceptance and test matrix
 
-The expected outcomes below are **Draft proposals**. Authorization rows remain open until the owning authorization PRD names their permissions and eligible actors.
+Calculation rows below are **Draft proposals**; authorization rows are decided by Dan's 2026-09-30 direction.
 
-| Case                                               | Proposed expected outcome                                                                                                                                                                 | Status             |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Positive same-currency estimate                    | Exact total cost, profit, profitability and target difference are stored and reload unchanged                                                                                             | Proposed           |
-| Proposed price is missing or malformed             | Refuse the field; commit nothing                                                                                                                                                          | Proposed           |
-| Proposed price is zero                             | Refuse because profitability has a zero denominator; commit nothing                                                                                                                       | Proposed           |
-| Proposed price is negative                         | Refuse; commit nothing                                                                                                                                                                    | Proposed           |
-| Negative cost amount                               | Refuse the field; commit nothing                                                                                                                                                          | Proposed           |
-| Zero-valued direct-cost line                       | Refuse the line and allow its omission; do not create meaningless lines                                                                                                                   | Proposed           |
-| No direct-cost lines                               | Accept when required executor, fiscal and overhead inputs are present                                                                                                                     | Proposed           |
-| Mixed currency                                     | Refuse the whole command; never convert or partially total                                                                                                                                | Proposed           |
-| Exact retry                                        | Return the same immutable version and create no second event                                                                                                                              | Proposed           |
-| Same idempotency key, changed payload              | Return a conflict and preserve the original version                                                                                                                                       | Proposed           |
-| Repeated direct-cost submission key                | Refuse the payload; equal amounts under different keys remain separate and visible                                                                                                        | Proposed           |
-| Suspected semantic double count                    | Show every line and require human bundle confirmation plus final Director validation; do not guess or merge                                                                               | Proposed           |
-| Rounding boundary such as `1.005`                  | Apply the stored scale-2 `HALF_UP` Draft convention reproducibly                                                                                                                          | Proposed           |
-| Configuration changes after commit                 | Old version and decision stay byte-for-byte reproducible; a new calculation names the new configuration version                                                                           | Proposed           |
-| Proposed price changes with a price-dependent cost | Require a new version and reconfirm the dependent cost; calculate no fixed-cost minimum price                                                                                             | Proposed           |
-| Creator lacks estimate authority                   | Safe denial with no record, amount, count or event disclosed                                                                                                                              | Authorization open |
-| Validator lacks Director authority                 | Safe denial; version remains awaiting a Director decision                                                                                                                                 | Authorization open |
-| Authority revoked before replay                    | Safe denial before returning the recorded result                                                                                                                                          | Proposed           |
-| Concurrent Director decisions on one version       | The decision names the expected version; one result commits and a stale competitor commits nothing; prior versions and decisions remain immutable and are never invalidated retroactively | Proposed           |
-| Earlier illustrative Snapshot and Offer            | No mutation, retagging, repricing or changed Offer result                                                                                                                                 | Proposed           |
+| Case                                               | Proposed expected outcome                                                                                                                                                                 | Status   |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Positive same-currency estimate                    | Exact total cost, profit, profitability and target difference are stored and reload unchanged                                                                                             | Proposed |
+| Proposed price is missing or malformed             | Refuse the field; commit nothing                                                                                                                                                          | Proposed |
+| Proposed price is zero                             | Refuse because profitability has a zero denominator; commit nothing                                                                                                                       | Proposed |
+| Proposed price is negative                         | Refuse; commit nothing                                                                                                                                                                    | Proposed |
+| Negative cost amount                               | Refuse the field; commit nothing                                                                                                                                                          | Proposed |
+| Zero-valued direct-cost line                       | Refuse the line and allow its omission; do not create meaningless lines                                                                                                                   | Proposed |
+| No direct-cost lines                               | Accept when required executor, fiscal and overhead inputs are present                                                                                                                     | Proposed |
+| Mixed currency                                     | Refuse the whole command; never convert or partially total                                                                                                                                | Proposed |
+| Exact retry                                        | Return the same immutable version and create no second event                                                                                                                              | Proposed |
+| Same idempotency key, changed payload              | Return a conflict and preserve the original version                                                                                                                                       | Proposed |
+| Repeated direct-cost submission key                | Refuse the payload; equal amounts under different keys remain separate and visible                                                                                                        | Proposed |
+| Suspected semantic double count                    | Show every line and require human bundle confirmation plus final Director validation; do not guess or merge                                                                               | Proposed |
+| Rounding boundary such as `1.005`                  | Apply the stored scale-2 `HALF_UP` Draft convention reproducibly                                                                                                                          | Proposed |
+| Configuration changes after commit                 | Old version and decision stay byte-for-byte reproducible; a new calculation names the new configuration version                                                                           | Proposed |
+| Proposed price changes with a price-dependent cost | Require a new version and reconfirm the dependent cost; calculate no fixed-cost minimum price                                                                                             | Proposed |
+| Reader lacks both Contributor v1 and Director v1   | Safe denial with no record, amount, count or event disclosed                                                                                                                              | Decided  |
+| Creator lacks Contributor v1                       | Safe denial; no estimate or event is created                                                                                                                                              | Decided  |
+| Contributor attempts a Director decision           | Safe denial; the exact version remains awaiting a Director decision                                                                                                                       | Decided  |
+| Director v1 holder lacks Contributor v1            | May read and decide an authorized estimate but cannot create one                                                                                                                          | Decided  |
+| Director holds both explicit bundles               | May create through Contributor v1 and separately decide the exact version through Director v1                                                                                             | Decided  |
+| Actor has only a Director job label                | Safe denial; a label or person identity grants no read, create or decision authority                                                                                                      | Decided  |
+| Actor holds bundles in another Company             | Safe denial without revealing the estimate or Opportunity                                                                                                                                 | Decided  |
+| Authority revoked before replay                    | Safe denial before returning the recorded result                                                                                                                                          | Proposed |
+| Concurrent Director decisions on one version       | The decision names the expected version; one result commits and a stale competitor commits nothing; prior versions and decisions remain immutable and are never invalidated retroactively | Proposed |
+| Earlier illustrative Snapshot and Offer            | No mutation, retagging, repricing or changed Offer result                                                                                                                                 | Proposed |
 
 The highest stable future test seam is the public business command and read interface, with persistence/restart proof for immutable history and negative cross-Company cases. This Draft names no endpoint or storage shape.
 
-## 11. Remaining decision and reversible technical choices
+## 11. Resolved authorization and reversible technical choices
 
-One genuine product decision remains for the first implementation issue: the [Tenant, Company, Client and Authorization PRD](tenant-company-client-authorization-prd.md) must name the captured create, read and Director-decision permissions, their bundles and the memberships eligible to act as Director. Existing assignments cannot answer that question or expand silently.
+Dan's 2026-09-30 decision resolves the first slice's authorization question through the two captured bundles in section 6 and their owning authorization PRD. No additional role or permission evidence is required for this bounded journey.
 
 The following are concrete **Draft proposals**, not requests for more external business evidence:
 
@@ -251,13 +273,14 @@ The following real policies are intentionally later and do not block the first j
 
 ## 12. Draft readiness assessment
 
-This document is **Draft — evidence pending** and complete enough for owner review, not implementation. It has a bounded outcome, source provenance, proposed observable behaviour, explicit exclusions and a test matrix. Its reversible technical boundaries still need product approval, and its authorization owner has not yet named the required permissions and eligible Director membership.
+This document is **Draft — owner review pending**. It now contains the bounded outcome, source provenance, observable behaviour, exclusions, authorization contract and test matrix needed for the first confirmed-cost implementation lot. No unresolved business question remains inside that lot. The reversible technical boundaries still require the root owner's final documentation review before this becomes an executable product contract.
 
 A later implementation issue may become `ready-for-agent` only after:
 
-1. this product contract, including the Draft proposals in section 11, is approved;
-2. the authorization decision in section 11 is normalized in its owning PRD;
-3. the issue names the public command/read seam and exact acceptance cases; and
-4. every ordinary repository readiness gate passes.
+1. this product contract and its authorization amendment pass root owner review and are published;
+2. a focused implementation issue links these authorities and names the public command/read seam and exact acceptance cases; and
+3. every ordinary repository readiness gate passes.
+
+After those repository steps, the first lot needs no further routine business clarification about who may read, create or decide. Later fiscal formulas, modifiers, actual-cost comparison and Offer compatibility remain separate work and do not block it.
 
 This documentation issue changes no runtime behaviour and delivers no MVP coverage increase.
