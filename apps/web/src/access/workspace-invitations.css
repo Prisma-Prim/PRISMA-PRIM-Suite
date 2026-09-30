@@ -34,6 +34,13 @@
   grid-column: 1 / -1;
 }
 
+.prisme-shell
+  .workspace-invitations-form
+  > .workspace-invitation-validation-error {
+  grid-column: 1 / -1;
+  margin: -0.25rem 0 0;
+}
+
 .prisme-shell .workspace-invitations--prisme input {
   width: 100%;
   min-width: 0;
