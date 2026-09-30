@@ -92,6 +92,117 @@ describe('OfferPanel', () => {
     ).toBeTruthy();
   });
 
+  it('selects named Snapshots and legal recipients by keyboard after an adjusted Snapshot refusal', async () => {
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = input.toString();
+      if (init?.method === 'POST') {
+        posts.push(init);
+        return posts.length === 1
+          ? response({ code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED' }, 409)
+          : response({
+              ...offerView(),
+              version: {
+                ...offerView().version,
+                pricingSnapshotId: 'ordinary',
+                pricingSnapshot: {
+                  ...snapshot(),
+                  id: 'ordinary',
+                  total: '346.72',
+                },
+                recipient: {
+                  kind: 'ADDITIONAL',
+                  legalEntityId: 'entity-one',
+                  legalName: 'Additional Entity',
+                  taxId: null,
+                  legalAddress: null,
+                },
+              },
+            });
+      }
+      if (url.includes('/pricing/opportunities/'))
+        return response({
+          items: [
+            { ...snapshot(), id: 'adjusted', total: '337.03' },
+            { ...snapshot(), id: 'ordinary', total: '346.72' },
+          ],
+        });
+      if (url.includes('/legal-entities'))
+        return response({
+          clientVersion: 1,
+          legalEntities: [
+            {
+              id: 'entity-one',
+              legalName: 'Additional Entity',
+              taxId: null,
+              legalAddress: null,
+              createdAt: '2026-09-27T08:00:00.000Z',
+            },
+          ],
+        });
+      return emptyOfferFetch(input);
+    });
+    renderPanel(actor('company-one'));
+    await screen.findByRole('button', { name: 'Prepare version 1' });
+    const snapshotSelect = screen.getByLabelText('Pricing Snapshot', {
+      exact: true,
+    });
+    const recipient = screen.getByLabelText('Legal recipient', { exact: true });
+    expect(snapshotSelect).toHaveRole('combobox');
+    expect(snapshotSelect).toHaveAccessibleName('Pricing Snapshot');
+    expect(recipient).toHaveRole('combobox');
+    expect(recipient).toHaveAccessibleName('Legal recipient');
+    fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
+    expect(
+      screen.getByRole('listbox', { name: 'Pricing Snapshot' }),
+    ).toBeVisible();
+    fireEvent.keyDown(snapshotSelect, { key: 'Home' });
+    fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare version 1' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The selected Pricing Snapshot contains an adjustment',
+    );
+    fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
+    fireEvent.keyDown(snapshotSelect, { key: 'End' });
+    fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
+    expect(
+      screen.getByLabelText('Pricing Snapshot', { exact: true }),
+    ).toHaveAttribute('data-value', 'ordinary');
+    expect(snapshotSelect).toHaveFocus();
+    fireEvent.keyDown(recipient, { key: 'Enter' });
+    expect(
+      screen.getByRole('listbox', { name: 'Legal recipient' }),
+    ).toBeVisible();
+    fireEvent.keyDown(recipient, { key: 'End' });
+    fireEvent.keyDown(recipient, { key: 'Enter' });
+    expect(
+      screen.getByLabelText('Legal recipient', { exact: true }),
+    ).toHaveAttribute('data-value', 'entity-one');
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare version 1' }));
+    await screen.findByText('Illustrative and provisional');
+    expect(screen.getByText('Additional Entity')).toBeVisible();
+    expect(posts).toHaveLength(2);
+    expect(new Headers(posts[1]?.headers).get('idempotency-key')).not.toBe(
+      new Headers(posts[0]?.headers).get('idempotency-key'),
+    );
+    expect(posts.map((post) => JSON.parse(String(post.body)))).toEqual([
+      {
+        pricingSnapshotId: 'adjusted',
+        recipient: { kind: 'PRIMARY' },
+        validityDays: 30,
+        scopeNote: null,
+        commercialConditions: null,
+      },
+      {
+        pricingSnapshotId: 'ordinary',
+        recipient: { kind: 'ADDITIONAL', legalEntityId: 'entity-one' },
+        validityDays: 30,
+        scopeNote: null,
+        commercialConditions: null,
+      },
+    ]);
+  });
+
   it('renders denied without issuing a request when Offer read is absent', () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     renderPanel(actorWithOfferPermissions('company-one', []));

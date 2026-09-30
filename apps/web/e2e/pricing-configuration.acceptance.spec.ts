@@ -688,34 +688,61 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
   }
 });
 
-test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on an Opportunity', async ({
-  page,
-}, testInfo) => {
-  test.setTimeout(240_000);
-  const narrow = testInfo.project.name.endsWith('narrow');
-  const suffix = narrow ? 'narrow' : 'desktop';
-  const companyName = `Pricing snapshot ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
-  const target = {
-    workspaceMembershipId: requiredEnvironment(
-      'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
-    ),
-    companyId: await createCompany(page, companyName),
-  };
-  const bundles = [
-    'company-context',
-    'company-service-catalogue',
-    'company-pricing-configuration',
-    'company-commercial-intake',
-    'company-pricing-user',
-    'company-director-client',
-    'company-offer-preparer',
-    'company-pricing-adjustment',
-  ] as const;
-  const granted = new Set<(typeof bundles)[number]>();
-  try {
+test.describe('Pricing Snapshot and Offer journey', () => {
+  const assignments = new Map<
+    Parameters<typeof changeAssignment>[1]['bundle'],
+    { workspaceMembershipId: string; companyId: string }
+  >();
+
+  // Playwright runs afterEach in its teardown budget, even when the journey
+  // exhausts its deadline. Keep the original failure and attempt every revoke.
+  test.afterEach(async ({ request }) => {
+    const failures: unknown[] = [];
+    for (const [bundle, target] of [...assignments].reverse()) {
+      try {
+        await changeAssignment(
+          { request },
+          { operation: 'revoke', bundle, ...target },
+        );
+      } catch (error: unknown) {
+        failures.push(error);
+      }
+    }
+    assignments.clear();
+    if (failures.length > 0)
+      throw new AggregateError(
+        failures,
+        'Pricing Snapshot fixture assignments could not all be revoked.',
+      );
+  });
+
+  test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on an Opportunity', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    const narrow = testInfo.project.name.endsWith('narrow');
+    const suffix = narrow ? 'narrow' : 'desktop';
+    const companyName = `Pricing snapshot ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
+    const target = {
+      workspaceMembershipId: requiredEnvironment(
+        'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+      ),
+      companyId: await createCompany(page, companyName),
+    };
+    const bundles = [
+      'company-context',
+      'company-service-catalogue',
+      'company-pricing-configuration',
+      'company-commercial-intake',
+      'company-pricing-user',
+      'company-director-client',
+      'company-offer-preparer',
+      'company-pricing-adjustment',
+    ] as const;
+
     for (const bundle of bundles) {
+      assignments.set(bundle, target);
       await changeAssignment(page, { operation: 'grant', bundle, ...target });
-      granted.add(bundle);
     }
     const offeringA = await createOffering(
       page,
@@ -765,7 +792,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       'company-service-catalogue',
     ] as const) {
       await changeAssignment(page, { operation: 'revoke', bundle, ...target });
-      granted.delete(bundle);
+      assignments.delete(bundle);
     }
     await page.waitForTimeout(
       Math.max(0, new Date(effectiveFrom).getTime() - Date.now() + 1_500),
@@ -987,7 +1014,8 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
     await expect(
       offer.getByText('Illustrative Offer', { exact: true }),
     ).toBeVisible();
-    const snapshotSelect = offer.getByLabel('Pricing Snapshot', {
+    const snapshotSelect = offer.getByRole('combobox', {
+      name: 'Pricing Snapshot',
       exact: true,
     });
     const snapshotOptions = (await openSelect(snapshotSelect)).getByRole(
@@ -1057,10 +1085,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       path: testInfo.outputPath(`offer-reopened-${suffix}.png`),
       fullPage: true,
     });
-  } finally {
-    for (const bundle of [...granted].reverse())
-      await changeAssignment(page, { operation: 'revoke', bundle, ...target });
-  }
+  });
 });
 
 async function publishThroughApi(
@@ -1217,7 +1242,7 @@ async function createCompany(page: Page, displayName: string): Promise<string> {
 }
 
 async function changeAssignment(
-  page: Page,
+  page: Pick<Page, 'request'>,
   {
     operation,
     bundle,
