@@ -8,8 +8,10 @@ import type {
   CompanyServiceCataloguePermission,
   CompanyPricingConfigurationPermission,
   CompanyPricingUserPermission,
+  CompanyOfferPreparerPermission,
   CompanyPricingAdjustmentPermission,
   CompanyCommercialActivityPermission,
+  CompanyOpportunityManagerPermission,
   CompanyProjectPermission,
   CompanyProjectApproverPermission,
 } from './company-permissions.js';
@@ -55,11 +57,17 @@ export interface ActiveCompanyContext {
   pricingUserPermissions?: CompanyPricingUserPermission[];
   pricingUserPermissionAssignmentId?: string;
   pricingUserPermissionSetVersion?: 'v1';
+  offerPermissions?: CompanyOfferPreparerPermission[];
+  offerPermissionAssignmentId?: string;
+  offerPermissionSetVersion?: 'v1';
   pricingAdjustmentPermissions?: CompanyPricingAdjustmentPermission[];
   pricingAdjustmentPermissionAssignmentId?: string;
   pricingAdjustmentPermissionSetVersion?: 'v1';
   commercialActivityPermissions?: CompanyCommercialActivityPermission[];
   commercialActivityPermissionSetVersion?: 'v1';
+  opportunityManagerPermissions?: CompanyOpportunityManagerPermission[];
+  opportunityManagerPermissionAssignmentId?: string;
+  opportunityManagerPermissionSetVersion?: 'v1';
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }

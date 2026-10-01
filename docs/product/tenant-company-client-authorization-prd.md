@@ -1,9 +1,10 @@
 # PRD — Tenant, Company, Shared Client and Authorization
 
 **Status:** Draft — Company Director dossier delivered and governed duplicate-resolution boundary approved; wider authorization pending
-**Version:** 0.6
+**Version:** 0.8
 **Owner:** Dan Popescu  
 **Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212, DEC-213
+**Profitability authorization direction:** Dan, 2026-09-30, normalized through [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488)
 
 ## 1. Problem statement
 
@@ -47,6 +48,8 @@ Role names are initial templates. Permissions, not role-name conditions, authori
 13. As platform support, I want exceptional access to require authorization, so that support has no standing tenant visibility.
 14. As an auditor of business history, I want critical membership and permission changes attributable, so that access decisions can be reconstructed.
 15. As a user without permission, I want a safe denial that does not reveal hidden record existence, so that metadata does not leak.
+16. As a designated profitability contributor, I want to read and create confirmed-cost estimates for Opportunities I may already read, so that colleagues can prepare the calculation without receiving Director authority.
+17. As the explicitly assigned profitability Director, I want to decide one exact estimate version, so that final validation stays separate from preparation.
 
 ## 6. Domain model
 
@@ -75,6 +78,8 @@ The canonical UI label may remain Client while the internal distinction stays pr
 10. Clients with critical history are archived rather than hard-deleted.
 11. A Company Director's Client authority is limited to the Company or Companies they direct.
 12. Cross-Company shared identity never includes Company-confidential operational categories.
+13. Profitability-estimate contribution and Director decision are separate opt-in permissions; neither implies the other.
+14. A business title, role label or person identity never substitutes for an explicit captured profitability assignment.
 
 ## 8. Initial permission families
 
@@ -218,6 +223,23 @@ failed attempt record none. These events attribute the transition only; neither
 recording nor reading them confers `commercial.activity.read` or any commercial
 read, and the bundle's permission semantics above are unchanged.
 
+Dan's 2026-09-30 Product Owner decision for [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488) adds two separate opt-in bundles for the [approved first confirmed-cost profitability journey](release-3-confirmed-cost-profitability-estimate-prd.md):
+
+| Bundle                                   | Captured v1 permissions                                                              | Authorized result                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Company Profitability Contributor v1** | `commercial.profitability_estimate.read`, `commercial.profitability_estimate.create` | Read and create estimates for Opportunities the holder may already read             |
+| **Company Profitability Director v1**    | `commercial.profitability_estimate.read`, `commercial.profitability_estimate.decide` | Read estimates and record `APPROVE`, `MODIFY` or `REJECT` against one exact version |
+
+An active administrator with `company.assignment.manage` explicitly grants or revokes each captured v1 assignment for an active same-Workspace membership and active Company through existing Company assignment administration. Both are independent. No existing bundle, assignment, Workspace ownership, migration backfill, business title, role-name string or hard-coded identity confers either permission; null or unknown captured versions fail closed.
+
+Contributor v1 grants no Company context, Opportunity read, Director decision, Offer, Contract, Activity Log, assignment administration or cross-Company authority. Estimate read requires live Contributor v1 or Director v1; estimate create requires live Contributor v1. Both operations also require the server-validated active Company and current readability of the target Opportunity through its existing owner.
+
+Director v1 grants only estimate read and `commercial.profitability_estimate.decide`. It grants no estimate create, Company context or Opportunity read. An `APPROVE`, `MODIFY` or `REJECT` command therefore requires live Director v1, current Opportunity readability and the same active Company. A Director who prepares estimates must receive Contributor v1 through the same explicit administration path. Contributor v1 alone never authorizes a Director decision, and a Company Director label without the captured assignments authorizes nothing.
+
+The two assignment lifecycles are `company_profitability_contributor_assignment.granted` / `.revoked` and `company_profitability_director_assignment.granted` / `.revoked`. They follow the canonical Company-scoped permission-transition convention already stated for the Commercial Activity Reader: acting administrator membership, server time, responsible Company, `company_role_assignment` target and bundle-label-only metadata; exactly one event per actual state change; none for repeated state, denied or failed attempts, or exact replay. These administration events remain visible only through the existing assignment-administration boundary and confer no profitability access.
+
+The [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#21-approved-provisional-opportunity-reassignment-399) adds **Company Opportunity Manager v1**, containing exactly `commercial.opportunity.assign`. An administrator with `company.assignment.manage` explicitly grants or revokes the captured v1 bundle for an active same-Workspace membership and active Company through the existing Company assignment administration. It is an independent opt-in bundle: no existing bundle, assignment or backfill confers it, Commercial Intake is unchanged, and null or unknown captured versions fail closed. It authorizes reassignment only while its holder independently retains live captured Commercial Intake read and Company context in the same server-validated active Company. It grants none of those prerequisites and no create, next-action, Client, pricing, Offer, Contract, Activity Log, administration or cross-Company authority, and holding it does not make its holder the responsible actor. Access owns the Opportunity responsible-actor eligibility rule and its narrow membership-and-label query. The bundle's assignment lifecycle is exactly `company_opportunity_manager_assignment.granted` and `company_opportunity_manager_assignment.revoked`, recorded under the same convention, bundle-label-only metadata, one-event-per-actual-state-change rule and administration visibility as the Commercial Activity Reader lifecycle above.
+
 Access owns a narrow eligible-assignee query for the manager's authorized Project
 scope. It filters active Internal Users and active same-Workspace memberships by
 effective captured Company-context, Project-read, Task-read and Client-read grants,
@@ -261,6 +283,7 @@ Existing Internal Users receive explicit Workspace Memberships, and existing Act
 - Issue #141 uses REST/PostgreSQL and browser seams to prove that the bootstrap Workspace Owner can create one minimal Workspace Client, relate the same identifier to two active Companies deliberately, and receive no other-Company relationship or activity metadata.
 - The next duplicate-resolution slice proves that authorization covers every affected Company as defined by the Shared Client PRD, and that missing, stale, inactive or partial authority denies without revealing hidden activity.
 - The commercial Activity Reader slice proves that one committed grant records exactly one `company_commercial_activity_reader_assignment.granted` event and one committed revocation records exactly one `company_commercial_activity_reader_assignment.revoked` event, each attributed to the acting administrator's membership with server time, Company scope, the `company_role_assignment` target and bundle-label-only metadata; that a repeated grant, a repeated revocation, an exact replay and a denied attempt record none; that the captured version stored by the grant is `v1`; and that these events remain visible only under the existing Company assignment administration boundary while conferring no commercial read.
+- The profitability slice proves each bundle independently in both directions; explicit grant and revoke; no expansion of existing assignments; read with Contributor v1 or Director v1 plus current Opportunity and Company prerequisites; create only with Contributor v1; Director decision only with Director v1; a Director able to create only after explicit Contributor grant; actors with neither bundle and label-only actors denied; revocation before replay denied; and no cross-Company record, amount, count, event or identifier leakage.
 
 ## 13. Acceptance journey
 
@@ -279,10 +302,11 @@ The audited evidence boundary and Iurie's direct 2026-08-23 response establish t
 - The director of each Company may create, view and correct Client dossiers for that Company. Iurie currently holds that responsibility for all three Companies.
 - The Shared Client PRD owns the approved common-field inventory, Company-confidential categories and Client correction/duplicate-history boundary.
 - Cross-Company exceptions to that Shared Client confidentiality boundary may be authorized only by Iurie.
+- Dan's 2026-09-30 decision permits designated collaborators to read and create confirmed-cost profitability estimates while preserving the final `APPROVE`, `MODIFY` or `REJECT` decision for the explicitly assigned Director. A Director receives create authority only through a separate Contributor assignment; neither a title nor a named person grants access.
 
 Material blockers that remain:
 
-- first-tenant role/permission bundles beyond the approved Company Director Client slice and wider approval delegation;
+- other first-tenant role/permission bundles beyond the approved Company Director Client slice and the bounded profitability bundles above;
 - legitimate exceptional support-access cases, authorization boundary and restricted periods;
 - the Client Legal Entity capabilities excluded by [Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393);
 - asynchronous multi-person duplicate approval and general fuzzy-matching evaluation against real examples;
@@ -305,7 +329,7 @@ Question sources: S00, S01, S02 and the direct 2026-08-23 answer in #81. Provena
 
 The cross-cutting model is ready to govern Release 1 PRDs. The foundation through #65, #66, #67 and #88 is delivered, and #141 delivers the separately approved conservative Shared Client tracer.
 
-Issue #146 / PR #147 delivered the Company Director's bounded Client permissions, approved shared fields and server-side Company confidentiality. After #148 normalization, one next vertical slice may add governed duplicate resolution for a resolver who holds every affected Company scope. Every broader assignment or permission bundle, asynchronous multi-person approval, consolidated view, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
+Issue #146 / PR #147 delivered the Company Director's bounded Client permissions, approved shared fields and server-side Company confidentiality. After #148 normalization, one next vertical slice may add governed duplicate resolution for a resolver who holds every affected Company scope. Dan's 2026-09-30 decision additionally normalizes the two profitability bundles above for the bounded first estimate lot, whose bounded first-journey PRD was approved under delegated root review on 2026-10-01 in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497); approval is not runtime delivery. Every other broader assignment or permission bundle, asynchronous multi-person approval, consolidated view, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
 
 ## 17. Evidence authority boundary
 

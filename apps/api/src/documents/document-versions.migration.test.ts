@@ -519,14 +519,14 @@ it.skipIf(!databaseUrl)(
         return entry.tag;
       });
       const typedReferencesIndex = allTags.findIndex((tag) =>
-        tag.endsWith('_yummy_maginty'),
+        tag.endsWith('_lethal_spyke'),
       );
       expect(typedReferencesIndex).toBeGreaterThan(0);
       const entries: unknown[] = journal.entries.slice(0, typedReferencesIndex);
       const tags = allTags.slice(0, typedReferencesIndex);
-      expect(tags).toHaveLength(41);
+      expect(tags).toHaveLength(43);
       expect(tags[0]).toMatch(/^0000_/u);
-      expect(tags.at(-1)).toBe('0040_pricing_adjustments');
+      expect(tags.at(-1)).toBe('0042_offer_first_version');
       previous = await mkdtemp(join(tmpdir(), 'prisma-401-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(

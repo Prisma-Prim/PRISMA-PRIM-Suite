@@ -38,13 +38,15 @@ import {
   commercialIntakeEvents,
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
+  offerEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
 import {
   commercialActivityTarget,
   eligibleCommercialActions,
-  readCommercialActivityAction,
+  readCommercialActivity,
+  type RecordedOpportunityResponsible,
 } from './commercial-activity-projection.js';
 import { readClientCorrectionChanges } from './client-correction-history.js';
 import type {
@@ -70,6 +72,53 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 @Injectable()
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordOfferCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    illustrativeReference: number;
+    pricingSnapshotId: string;
+    recipientKind: 'PRIMARY' | 'ADDITIONAL';
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(offerEvents).values([
+      {
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'offer.created',
+        offerId: input.offerId,
+        offerVersionId: null,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          offerId: input.offerId,
+          illustrativeReference: input.illustrativeReference,
+          provenance: 'ILLUSTRATIVE',
+        },
+      },
+      {
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        action: 'offer_version.created',
+        offerId: input.offerId,
+        offerVersionId: input.offerVersionId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: {
+          offerId: input.offerId,
+          offerVersionId: input.offerVersionId,
+          versionNumber: 1,
+          pricingSnapshotId: input.pricingSnapshotId,
+          recipientKind: input.recipientKind,
+          provenance: 'ILLUSTRATIVE',
+        },
+      },
+    ]);
+  }
 
   async recordTaskEvent(input: {
     actor: ActorContext;
@@ -302,6 +351,43 @@ export class AccountabilityService {
       });
   }
 
+  // Records one material responsible-actor change. Metadata carries the
+  // resulting version and the previous and new responsible actor, each a
+  // membership identifier and the label captured now; the caller commits it
+  // with the change, its version and its receipt.
+  async recordOpportunityResponsibleChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+    opportunityVersion: number;
+    before: RecordedOpportunityResponsible;
+    after: RecordedOpportunityResponsible;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'opportunity.responsible.changed',
+        metadata: {
+          opportunityVersion: input.opportunityVersion,
+          before: {
+            workspaceMembershipId: input.before.workspaceMembershipId,
+            displayLabel: input.before.displayLabel,
+          },
+          after: {
+            workspaceMembershipId: input.after.workspaceMembershipId,
+            displayLabel: input.after.displayLabel,
+          },
+        },
+      });
+  }
+
   // Recorded but projected by no Activity read surface. Metadata carries
   // identifiers, the version number and provenance only, never the label; the
   // caller commits it with the publication itself.
@@ -458,18 +544,17 @@ export class AccountabilityService {
       )
       .limit(INITIAL_PAGE_SIZE);
     return rows.flatMap((row) => {
-      const action = readCommercialActivityAction(row);
-      if (!action) return [];
+      const recorded = readCommercialActivity(row);
+      if (!recorded) return [];
       const projected: CommercialActivityEvent = {
+        ...recorded,
         id: row.id,
-        action,
         occurredAt: row.occurredAt.toISOString(),
         actor: {
           internalUserId: row.internalUserId,
           displayName: row.displayName,
         },
-        target: commercialActivityTarget(company, action, row),
-        metadata: {},
+        target: commercialActivityTarget(company, recorded.action, row),
       };
       return [projected];
     });
@@ -1811,10 +1896,14 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_configuration_assignment.revoked':
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
+    case 'company_offer_preparer_assignment.granted':
+    case 'company_offer_preparer_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':
     case 'company_pricing_adjustment_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':
     case 'company_commercial_activity_reader_assignment.revoked':
+    case 'company_opportunity_manager_assignment.granted':
+    case 'company_opportunity_manager_assignment.revoked':
     case 'company_project_approver_assignment.granted':
     case 'company_project_approver_assignment.revoked':
       return {

@@ -25,6 +25,12 @@ export const companyContextAccessCopy = {
   pricingUserBundle: 'Company Pricing User',
   pricingUserPrerequisites:
     'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
+  offerPreparerBundle: 'Company Offer Preparer',
+  offerPreparerPrerequisites:
+    'Company Offer Preparer v1 grants Offer read and preparation plus Pricing Snapshot read. Company context, Commercial Intake read and Client read must already be authorized separately.',
+  opportunityManagerBundle: 'Company Opportunity Manager',
+  opportunityManagerPrerequisites:
+    'Company Opportunity Manager v1 changes the responsible actor only; Company context and Commercial Intake read are authorized separately.',
   pricingAdjustmentBundle: 'Company Pricing Adjustment',
   pricingAdjustmentPrerequisites:
     'Company Pricing Adjustment v1 grants only the application of a fixed net discount during a Pricing calculation. Company context, Opportunity visibility and Company Pricing User access must already be authorized separately.',
@@ -91,6 +97,14 @@ export const companyContextAccessCopy = {
       'revoked Company Project Approver',
     'company_pricing_user_assignment.granted': 'granted Company Pricing User',
     'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+    'company_offer_preparer_assignment.granted':
+      'granted Company Offer Preparer',
+    'company_offer_preparer_assignment.revoked':
+      'revoked Company Offer Preparer',
+    'company_opportunity_manager_assignment.granted':
+      'granted Company Opportunity Manager',
+    'company_opportunity_manager_assignment.revoked':
+      'revoked Company Opportunity Manager',
     'company_pricing_adjustment_assignment.granted':
       'granted Company Pricing Adjustment',
     'company_pricing_adjustment_assignment.revoked':

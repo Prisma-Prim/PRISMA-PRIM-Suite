@@ -31,6 +31,10 @@ Before drafting an implementation issue, read the Product Vision, every applicab
 | [Historical issue #81 snapshot](evidence/iurie-business-interview-issue-81-comments.jsonl)                                            | Reproducible predecessor boundary of 104 comments through 2026-08-18                                     |
 | [Sarcina v1.0 reconciliation](sarcina-v1-reconciliation.md)                                                                           | Non-canonical source comparison, implementation evidence and unresolved conflicts                        |
 
+The [October controlled commercial source reconciliation](commercial-source-reconciliation-2026-10.md) maps the newly received dossier package to existing commercial, pricing and Document owners. It is non-canonical evidence, with source hashes and remaining decisions; it authorizes no operational Templates, prices, acceptance, signatures or numbering. Commercial Workflow §22 owns its workflow consequences.
+
+The [candidate Offer/Contract models](commercial-candidate-models-2026-10.md) turn that primary evidence into blank review skeletons and a located placeholder matrix. They are non-canonical preparation, with operational Template, clause, variant and policy approval still pending.
+
 The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/112) records the rollover from 104 to 108 comments. Issue #144 adds immutable comments 109–112 and their semantic delta without reopening recovery of items 526–765. The coverage matrix owns semantic classifications and blocker deltas; immutable snapshots are evidence inputs.
 
 The pinned matrix preserves the duplicate matching/union-design blocker as it stood at the 2026-08-23 evidence snapshot. Later DEC-213 / #148 Product Owner synthesis by Dan resolves one conservative governed duplicate-resolution slice without changing Iurie evidence. General fuzzy matching, asynchronous multi-person approval and Client Legal Entity/branch modelling remain outside that slice. The decision record and owning PRDs resolve only the product-design blocker; live GitHub trackers continue to own current implementation readiness, blockers and delivery state.
@@ -61,14 +65,17 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 ## 6. Release 3 capability PRDs
 
-| Capability PRD                                                              | Document status                                               | Depends on                                                                               |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md)                 | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration  |
-| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md) | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
+| Capability PRD                                                                                  | Document status                                               | Depends on                                                                                                                   |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md)                                     | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
+| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                     | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
+| [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md) | Approved — bounded first journey; runtime not delivered       | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 
 The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the future governed illustrative fixed net discount created atomically with a new Snapshot. It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
+
+The Confirmed-Cost Profitability Estimate PRD owns a separate manual-input first journey finalized in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497): immutable cost/price/result versions and exact Director decisions with independent opt-in assignments. Approval changes no existing illustrative record or Offer and does not claim runtime delivery. Its implementation child and readiness are owned by the live tracker.
 
 R3B4 is an additive future slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; after R3B4 delivery, a separately approved Offer compatibility slice reads and renders the immutable adjustment trace without repricing it.
 

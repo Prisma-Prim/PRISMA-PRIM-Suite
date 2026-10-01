@@ -166,9 +166,18 @@ export function Select({
     setListboxLabel(accessibleLabel(trigger, title, displayValue));
     const viewportWidth = document.documentElement.clientWidth;
     const viewportHeight = document.documentElement.clientHeight;
-    const availableBelow =
-      viewportHeight - bounds.bottom - menuGap - viewportGap;
-    const availableAbove = bounds.top - menuGap - viewportGap;
+    // Loading content can move an open trigger completely offscreen.
+    const furthestOffset = Math.max(viewportGap, viewportHeight - viewportGap);
+    const top = Math.min(
+      Math.max(viewportGap, bounds.bottom + menuGap),
+      furthestOffset,
+    );
+    const bottom = Math.min(
+      Math.max(viewportGap, viewportHeight - bounds.top + menuGap),
+      furthestOffset,
+    );
+    const availableBelow = viewportHeight - top - viewportGap;
+    const availableAbove = viewportHeight - bottom - viewportGap;
     const placement =
       availableBelow < minimumMenuHeight && availableAbove > availableBelow
         ? 'above'
@@ -189,10 +198,10 @@ export function Select({
 
     setPosition(
       placement === 'below'
-        ? { placement, top: bounds.bottom + menuGap, left, width, maxHeight }
+        ? { placement, top, left, width, maxHeight }
         : {
             placement,
-            bottom: viewportHeight - bounds.top + menuGap,
+            bottom,
             left,
             width,
             maxHeight,
@@ -339,10 +348,30 @@ export function Select({
         closeMenu();
     };
     const reposition = () => updatePosition();
+    let previousBounds = triggerRef.current?.getBoundingClientRect();
+    let animationFrame: number;
+    // Position can change without a scroll or resize (including sibling loads).
+    // Read geometry while open, but only update React state when it moves.
+    const trackAnchor = () => {
+      const bounds = triggerRef.current?.getBoundingClientRect();
+      if (
+        bounds &&
+        previousBounds &&
+        (bounds.top !== previousBounds.top ||
+          bounds.bottom !== previousBounds.bottom ||
+          bounds.left !== previousBounds.left ||
+          bounds.width !== previousBounds.width)
+      )
+        updatePosition();
+      previousBounds = bounds;
+      animationFrame = window.requestAnimationFrame(trackAnchor);
+    };
+    animationFrame = window.requestAnimationFrame(trackAnchor);
     document.addEventListener('pointerdown', dismissOutside);
     window.addEventListener('resize', reposition);
     window.addEventListener('scroll', reposition, true);
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       document.removeEventListener('pointerdown', dismissOutside);
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);

@@ -562,6 +562,49 @@ describe('PricingSnapshotPanel', () => {
     },
   );
 
+  it('starts a fresh unadjusted calculation for an Offer after an adjusted retry clears the draft', async () => {
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: (call) => {
+        if (call === 1) throw new TypeError('network interrupted');
+        return Response.json(call === 2 ? adjustedSnapshot() : snapshot(), {
+          status: 201,
+        });
+      },
+    });
+    renderPanel();
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    await screen.findByText(/outcome is uncertain/u);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry the same calculation' }),
+    );
+    await screen.findByText('337.02 EUR');
+
+    expect(screen.getByLabelText('Illustrative service A')).not.toBeChecked();
+    expect(screen.getByLabelText('Illustrative label B')).not.toBeChecked();
+    await selectWorkedExample();
+    for (const checkbox of screen.getAllByLabelText(
+      'Apply a fixed net discount',
+    ))
+      expect(checkbox).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    await waitFor(() => expect(postCalls(fetchMock)).toHaveLength(3));
+    const calls = postCalls(fetchMock);
+    expect(calls[1]).toEqual(calls[0]);
+    expect(calls[2]).toMatchObject({
+      body: {
+        lines: [
+          { offeringId: OFFERING_A, quantity: '2.5' },
+          { offeringId: OFFERING_B, quantity: '1' },
+        ],
+      },
+    });
+    expect(JSON.stringify(calls[2]?.body)).not.toContain('adjustment');
+    expect(await screen.findByText('346.72 EUR')).toBeInTheDocument();
+  });
+
   it('keeps an excessive reduction and associates the server field error with it', async () => {
     const fetchMock = stubApi({
       ...baseRoutes(),

@@ -49,26 +49,27 @@ test('CI preserves every verification seam in order and fails formatting first',
     'verification steps must keep their documented order',
   );
 
-  const stepBody = (step, nextStep) =>
-    workflow.slice(
-      workflow.indexOf(`- name: ${step}`),
-      workflow.indexOf(`- name: ${nextStep}`),
-    );
+  const stepBody = (step) => {
+    const start = workflow.indexOf(`- name: ${step}`);
+    const next = workflow.indexOf('\n      - name:', start);
+    return workflow.slice(start, next === -1 ? undefined : next);
+  };
   assert.match(
-    stepBody('Verify supported agent environment', 'Check formatting'),
+    stepBody('Verify supported agent environment'),
     /run: pnpm agent:doctor:web-postgres/,
   );
-  assert.match(stepBody('Check formatting', 'Lint'), /run: pnpm format:check/);
-  assert.match(stepBody('Lint', 'Type-check'), /run: pnpm lint/);
-  assert.match(stepBody('Type-check', 'Test'), /run: pnpm typecheck/);
-  assert.match(stepBody('Test', 'Upload browser evidence'), /run: pnpm test\n/);
+  assert.match(stepBody('Check formatting'), /run: pnpm format:check/);
+  assert.match(stepBody('Lint'), /run: pnpm lint/);
+  assert.match(stepBody('Type-check'), /run: pnpm typecheck/);
+  assert.match(stepBody('Test'), /run: pnpm test\n/);
   assert.match(
     workflow.slice(workflow.indexOf('- name: Build')),
     /run: pnpm build/,
   );
-  assert.doesNotMatch(
-    stepBody('Check formatting', 'Upload browser evidence'),
-    /\bif:/,
-    'formatting, lint, type-check, and test steps must be unconditional',
-  );
+  for (const step of ['Check formatting', 'Lint', 'Type-check', 'Test'])
+    assert.doesNotMatch(
+      stepBody(step),
+      /\bif:/,
+      `${step} must be unconditional`,
+    );
 });

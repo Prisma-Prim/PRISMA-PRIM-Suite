@@ -8,6 +8,7 @@ import {
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
+import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -16,6 +17,7 @@ import {
   clientRequests,
   commercialIntakeCommands,
   commercialIntakeNextActionCommands,
+  commercialIntakeResponsibleCommands,
   internalUsers,
   opportunities,
 } from '../database/schema/index.js';
@@ -25,16 +27,21 @@ import {
   readCommercialIntakeLimit,
 } from './commercial-intake-pagination.js';
 import type {
+  ChangeOpportunityResponsibleCommand,
   CommercialIntakeDetail,
   CommercialIntakeListPage,
   CreateCommercialIntakeCommand,
   OpportunityNextActionUpdateResult,
+  OpportunityResponsibleCandidatePage,
+  OpportunityResponsibleChangeResult,
   ReadablePricingOpportunity,
+  ReadableOfferOpportunity,
   CommercialClientProjection,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 import {
   MAXIMUM_OPPORTUNITY_VERSION,
+  readChangeOpportunityResponsibleCommand,
   readCreateCommercialIntakeCommand,
   readUpdateOpportunityNextActionCommand,
 } from './commercial-intake.validation.js';
@@ -43,6 +50,8 @@ type ClientRequestRow = typeof clientRequests.$inferSelect;
 type OpportunityRow = typeof opportunities.$inferSelect;
 type NextActionCommandRow =
   typeof commercialIntakeNextActionCommands.$inferSelect;
+type ResponsibleCommandRow =
+  typeof commercialIntakeResponsibleCommands.$inferSelect;
 
 const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -54,6 +63,7 @@ export class CommercialIntakeService {
     private readonly authorization: CompanyContextAuthorization,
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
+    private readonly responsibleAccess: CommercialResponsibleAccessService,
   ) {}
 
   async create(
@@ -228,6 +238,50 @@ export class CommercialIntakeService {
     }
   }
 
+  /**
+   * Offer's public Commercial Intake seam. It proves current Opportunity read,
+   * keeps cross-scope targets indistinguishable, and optionally serializes
+   * Create Offer on the Opportunity row.
+   */
+  async requireReadableOfferOpportunity(
+    actor: ActorContext,
+    opportunityId: string,
+    lock: boolean,
+  ): Promise<ReadableOfferOpportunity> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+      lock,
+    );
+    if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
+    const query = this.databaseContext.connection
+      .select({
+        id: opportunities.id,
+        clientRequestId: opportunities.clientRequestId,
+        originalClientAccountId: clientRequests.clientAccountId,
+        status: opportunities.status,
+      })
+      .from(opportunities)
+      .innerJoin(
+        clientRequests,
+        and(
+          eq(clientRequests.workspaceId, opportunities.workspaceId),
+          eq(clientRequests.companyId, opportunities.companyId),
+          eq(clientRequests.id, opportunities.clientRequestId),
+        ),
+      )
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          eq(opportunities.id, opportunityId.toLowerCase()),
+        ),
+      );
+    const [target] = lock ? await query.for('update') : await query;
+    if (!target) throw new NotFoundException();
+    return target;
+  }
+
   async updateNextAction(
     actor: ActorContext,
     opportunityId: string,
@@ -361,6 +415,195 @@ export class CommercialIntakeService {
         ),
       };
     });
+  }
+
+  /**
+   * Replaces the responsible actor of one Company-owned Opportunity with an
+   * eligible member of the same Company. It shares the Opportunity version with
+   * the next-action update and changes nothing else about the Opportunity, its
+   * Request or its Client association.
+   */
+  async changeResponsible(
+    actor: ActorContext,
+    opportunityId: string,
+    value: unknown,
+    key: string | undefined,
+  ): Promise<OpportunityResponsibleChangeResult> {
+    await this.authorization.requireOpportunityAssign(actor);
+    const command = readChangeOpportunityResponsibleCommand(value);
+    const idempotencyKey = requireIdempotencyKey(key);
+    const fingerprint = responsibleFingerprint(opportunityId, command);
+    return this.databaseContext.transaction(async () => {
+      // Authority is re-read under a share lock so a concurrent revocation
+      // or suspension commits either before this check or after this write.
+      const companyId = await this.authorization.requireOpportunityAssign(
+        actor,
+        true,
+      );
+      await this.lockResponsibleCommand(actor, companyId, idempotencyKey);
+      const replay = await this.findResponsibleCommand(
+        actor,
+        companyId,
+        idempotencyKey,
+      );
+      if (replay) {
+        if (replay.fingerprint !== fingerprint)
+          throw new ConflictException({
+            code: 'IDEMPOTENCY_CONFLICT',
+            message:
+              'Idempotency-Key was already used for another responsible actor change.',
+          });
+        // An exact retry resolves before its now-stale observed version
+        // could be rejected: target visibility is rechecked, then the
+        // recorded receipt returns without a second write or event.
+        const current = await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return {
+          receipt: responsibleReceiptView(replay),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            current.clientRequestId,
+            false,
+          ),
+        };
+      }
+
+      const current = await this.requireVisibleOpportunity(
+        actor,
+        companyId,
+        opportunityId,
+        true,
+      );
+      if (current.version !== command.expectedVersion) throw staleVersion();
+      const receipt = {
+        actor,
+        companyId,
+        opportunityId,
+        idempotencyKey,
+        fingerprint,
+        command,
+      };
+      // Naming the current responsible actor is a no-op that needs no
+      // eligibility check: nothing changes, so nothing is granted either.
+      if (
+        current.responsibleWorkspaceMembershipId ===
+        command.workspaceMembershipId
+      )
+        return {
+          receipt: responsibleReceiptView(
+            await this.recordResponsibleCommand({
+              ...receipt,
+              outcome: 'unchanged',
+              resultVersion: current.version,
+            }),
+          ),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            current.clientRequestId,
+            false,
+          ),
+        };
+      // Refused before any write, so no Opportunity change, event or
+      // receipt commits and the key stays unused.
+      if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+        throw versionExhausted();
+      const after = await this.responsibleAccess.requireEligibleMember(
+        actor,
+        companyId,
+        command.workspaceMembershipId,
+      );
+      const before = {
+        workspaceMembershipId: current.responsibleWorkspaceMembershipId,
+        displayLabel: await this.responsibleAccess.recordedLabel(
+          actor,
+          current.responsibleWorkspaceMembershipId,
+        ),
+      };
+
+      const resultVersion = current.version + 1;
+      const [updated] = await this.databaseContext.connection
+        .update(opportunities)
+        .set({
+          responsibleInternalUserId: after.internalUserId,
+          responsibleWorkspaceMembershipId: after.workspaceMembershipId,
+          version: resultVersion,
+          lastUpdatedByInternalUserId: actor.internalUserId,
+          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          lastUpdatedAt: sql`now()`,
+        })
+        .where(
+          and(
+            eq(opportunities.workspaceId, actor.workspaceId),
+            eq(opportunities.companyId, companyId),
+            eq(opportunities.id, opportunityId),
+            eq(opportunities.version, command.expectedVersion),
+          ),
+        )
+        .returning();
+      if (!updated) throw staleVersion();
+      await this.accountability.recordOpportunityResponsibleChanged({
+        actor,
+        companyId,
+        clientRequestId: updated.clientRequestId,
+        opportunityId: updated.id,
+        opportunityVersion: updated.version,
+        before,
+        after: {
+          workspaceMembershipId: after.workspaceMembershipId,
+          displayLabel: after.displayLabel,
+        },
+      });
+      return {
+        receipt: responsibleReceiptView(
+          await this.recordResponsibleCommand({
+            ...receipt,
+            outcome: 'updated',
+            resultVersion,
+          }),
+        ),
+        request: await this.loadDetail(
+          actor,
+          companyId,
+          updated.clientRequestId,
+          false,
+        ),
+      };
+    });
+  }
+
+  /**
+   * The members who may become responsible for one visible Opportunity. The
+   * same authority as the command is required; Access owns eligibility.
+   */
+  async eligibleResponsibleActors(
+    actor: ActorContext,
+    opportunityId: string,
+  ): Promise<OpportunityResponsibleCandidatePage> {
+    return this.databaseContext.transaction(
+      async () => {
+        const companyId =
+          await this.authorization.requireOpportunityAssign(actor);
+        await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return {
+          members: await this.responsibleAccess.eligibleMembers(
+            actor,
+            companyId,
+          ),
+        };
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
   }
 
   async list(
@@ -676,6 +919,81 @@ export class CommercialIntakeService {
     );
   }
 
+  private async recordResponsibleCommand(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    idempotencyKey: string;
+    fingerprint: string;
+    command: ChangeOpportunityResponsibleCommand;
+    outcome: ResponsibleCommandRow['outcome'];
+    resultVersion: number;
+  }): Promise<ResponsibleCommandRow> {
+    const [receipt] = await this.databaseContext.connection
+      .insert(commercialIntakeResponsibleCommands)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        idempotencyKey: input.idempotencyKey,
+        fingerprint: input.fingerprint,
+        opportunityId: input.opportunityId,
+        expectedVersion: input.command.expectedVersion,
+        resultVersion: input.resultVersion,
+        outcome: input.outcome,
+        responsibleWorkspaceMembershipId: input.command.workspaceMembershipId,
+      })
+      .returning();
+    if (!receipt)
+      throw new Error('The responsible actor command was not recorded.');
+    return receipt;
+  }
+
+  private async lockResponsibleCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'commercial-intake.change-responsible',
+      actor.workspaceId,
+      companyId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.databaseContext.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+  }
+
+  private async findResponsibleCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<ResponsibleCommandRow | undefined> {
+    const [command] = await this.databaseContext.connection
+      .select()
+      .from(commercialIntakeResponsibleCommands)
+      .where(
+        and(
+          eq(
+            commercialIntakeResponsibleCommands.workspaceId,
+            actor.workspaceId,
+          ),
+          eq(commercialIntakeResponsibleCommands.companyId, companyId),
+          eq(
+            commercialIntakeResponsibleCommands.actorWorkspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(
+            commercialIntakeResponsibleCommands.idempotencyKey,
+            idempotencyKey,
+          ),
+        ),
+      );
+    return command;
+  }
+
   private async findNextActionCommand(
     actor: ActorContext,
     companyId: string,
@@ -712,6 +1030,32 @@ function nextActionFingerprint(
       }),
     )
     .digest('hex');
+}
+
+function responsibleFingerprint(
+  opportunityId: string,
+  command: ChangeOpportunityResponsibleCommand,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        opportunityId,
+        expectedVersion: command.expectedVersion,
+        workspaceMembershipId: command.workspaceMembershipId,
+      }),
+    )
+    .digest('hex');
+}
+
+function responsibleReceiptView(
+  command: ResponsibleCommandRow,
+): OpportunityResponsibleChangeResult['receipt'] {
+  return {
+    opportunityId: command.opportunityId,
+    workspaceMembershipId: command.responsibleWorkspaceMembershipId,
+    version: command.resultVersion,
+    outcome: command.outcome,
+  };
 }
 
 function receiptView(

@@ -38,6 +38,7 @@ const actor = {
   workspacePermissions: [],
 };
 beforeEach(() => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   vi.stubGlobal(
     'matchMedia',
     vi.fn(
@@ -138,6 +139,31 @@ for (const entry of ['Sign in', 'Create your invited account']) {
     expect(window.location.href).not.toContain('opaque_ticket');
   });
 }
+
+it.each([
+  ['ro', 'Conectați-vă', 'Creați contul invitat'],
+  ['ru', 'Войти', 'Создать приглашённую учётную запись'],
+  ['fr', 'Se connecter', 'Créer votre compte invité'],
+  ['en', 'Sign in', 'Create your invited account'],
+] as const)(
+  'localizes the invitation-owned authentication choices in %s',
+  (locale, signIn, signUp) => {
+    vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+    localStorage.setItem(interfaceLocaleStorageKey, locale);
+    window.history.replaceState(
+      null,
+      '',
+      '/accept-invitation?invitation=' +
+        invitationId +
+        '&__clerk_ticket=opaque_ticket',
+    );
+
+    render(<ApplicationRoot pathname="/accept-invitation" />);
+
+    expect(screen.getByRole('link', { name: signIn })).toBeVisible();
+    expect(screen.getByRole('link', { name: signUp })).toBeVisible();
+  },
+);
 
 for (const continuation of [
   '{invalid-json',

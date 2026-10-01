@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialActivityPermissionsFor,
   commercialIntakePermissionsFor,
+  commercialIntakeVersionsWith,
+  opportunityManagerPermissionsFor,
   companyDirectorClientPermissionsFor,
   documentApproverPermissionsFor,
   documentPermissionsFor,
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
+  offerPreparerPermissionsFor,
   pricingAdjustmentPermissionsFor,
   pricingConfigurationPermissionsFor,
   projectApproverPermissionsFor,
@@ -19,6 +23,71 @@ import {
   type DocumentPermissionSetVersion,
   type CompanyDirectorClientPermissionSetVersion,
 } from './company-permissions.js';
+
+describe('Company Offer Preparer permission sets', () => {
+  it('resolves exactly the four captured v1 permissions without calculation', () => {
+    expect(offerPreparerPermissionsFor('v1')).toEqual([
+      'commercial.offer.read',
+      'commercial.offer.prepare',
+      'commercial.offer.transmission.record',
+      'commercial.pricing.snapshot.read',
+    ]);
+    expect(offerPreparerPermissionsFor('v1')).not.toContain(
+      'commercial.pricing.calculate',
+    );
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => expect(offerPreparerPermissionsFor(version)).toEqual([]),
+  );
+});
+
+describe('Company Opportunity Manager permission sets', () => {
+  it('resolves exactly the captured v1 reassignment permission', () => {
+    expect(opportunityManagerPermissionsFor('v1')).toEqual([
+      'commercial.opportunity.assign',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(opportunityManagerPermissionsFor(version)).toEqual([]);
+    },
+  );
+
+  it('is never conferred by another bundle and confers none of their permissions', () => {
+    const others: ReadonlyArray<readonly string[]> = [
+      commercialIntakePermissionsFor('v1'),
+      commercialIntakePermissionsFor('v2'),
+      commercialActivityPermissionsFor('v1'),
+      pricingConfigurationPermissionsFor('v1'),
+      pricingAdjustmentPermissionsFor('v1'),
+      serviceCataloguePermissionsFor('v1'),
+      companyDirectorClientPermissionsFor('v2'),
+      projectPermissionsFor('v2'),
+      taskPermissionsFor('v1'),
+      documentPermissionsFor('v2'),
+    ];
+    for (const permissions of others) {
+      expect(permissions).not.toContain('commercial.opportunity.assign');
+      for (const permission of opportunityManagerPermissionsFor('v1'))
+        expect(permissions).not.toContain(permission);
+    }
+  });
+
+  it('accepts every captured Commercial Intake version carrying both reads as the read prerequisite', () => {
+    expect(
+      commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
+    ).toEqual(['v1', 'v2']);
+    expect(
+      commercialIntakeVersionsWith([
+        'commercial.opportunity.next_action.update',
+      ]),
+    ).toEqual(['v2']);
+  });
+});
 
 describe('Company Pricing Adjustment permission sets', () => {
   it('resolves only the captured v1 adjustment permission', () => {

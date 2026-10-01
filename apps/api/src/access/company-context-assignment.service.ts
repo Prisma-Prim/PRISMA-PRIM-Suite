@@ -54,10 +54,14 @@ import {
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PRICING_USER_BUNDLE,
   COMPANY_PRICING_USER_BUNDLE_LABEL,
+  COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
@@ -90,9 +94,11 @@ type BundleDefinition = {
     | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
-    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
     | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
+    | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
+    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
+    | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
@@ -164,6 +170,11 @@ const PRICING_USER_BUNDLE: BundleDefinition = {
   label: COMPANY_PRICING_USER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const OFFER_PREPARER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OFFER_PREPARER_BUNDLE,
+  label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   label: COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
@@ -172,6 +183,11 @@ const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
 const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  label: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 // The opt-in lifecycle approver exists only as captured v1.
@@ -192,8 +208,10 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   COMPANY_PRICING_USER_BUNDLE,
+  COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE,
 ] as const;
 
@@ -481,6 +499,36 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  async grantOfferPreparer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OFFER_PREPARER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeOfferPreparer(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OFFER_PREPARER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
   async grantPricingAdjustment(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -541,6 +589,20 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  async grantOpportunityManager(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_MANAGER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
   async grantProjectApprover(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -552,6 +614,22 @@ export class CompanyContextAssignmentService {
       command.workspaceMembershipId,
       command.companyId,
       command.idempotencyKey,
+    );
+  }
+
+  async revokeOpportunityManager(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPPORTUNITY_MANAGER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
     );
   }
 
@@ -1084,6 +1162,10 @@ function assignmentAction(
       return granted
         ? 'company_pricing_user_assignment.granted'
         : 'company_pricing_user_assignment.revoked';
+    case COMPANY_OFFER_PREPARER_BUNDLE:
+      return granted
+        ? 'company_offer_preparer_assignment.granted'
+        : 'company_offer_preparer_assignment.revoked';
     case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
       return granted
         ? 'company_pricing_adjustment_assignment.granted'
@@ -1092,6 +1174,10 @@ function assignmentAction(
       return granted
         ? 'company_commercial_activity_reader_assignment.granted'
         : 'company_commercial_activity_reader_assignment.revoked';
+    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
+      return granted
+        ? 'company_opportunity_manager_assignment.granted'
+        : 'company_opportunity_manager_assignment.revoked';
     case COMPANY_PROJECT_APPROVER_BUNDLE:
       return granted
         ? 'company_project_approver_assignment.granted'
@@ -1237,6 +1323,14 @@ function assignmentRecord(
         bundle: COMPANY_PRICING_USER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
+    case COMPANY_OFFER_PREPARER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Offer Preparer version.');
+      return {
+        ...base,
+        bundle: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
     case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Company Pricing Adjustment version.');
@@ -1251,6 +1345,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Opportunity Manager version.');
+      return {
+        ...base,
+        bundle: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_PROJECT_APPROVER_BUNDLE:

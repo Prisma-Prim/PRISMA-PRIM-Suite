@@ -58,11 +58,22 @@ export interface ActorContext {
     >;
     pricingUserPermissionAssignmentId?: string;
     pricingUserPermissionSetVersion?: 'v1';
+    offerPermissions?: Array<
+      | 'commercial.offer.read'
+      | 'commercial.offer.prepare'
+      | 'commercial.offer.transmission.record'
+      | 'commercial.pricing.snapshot.read'
+    >;
+    offerPermissionAssignmentId?: string;
+    offerPermissionSetVersion?: 'v1';
     pricingAdjustmentPermissions?: Array<'commercial.pricing.adjustment.apply'>;
     pricingAdjustmentPermissionAssignmentId?: string;
     pricingAdjustmentPermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
+    opportunityManagerPermissions?: Array<'commercial.opportunity.assign'>;
+    opportunityManagerPermissionAssignmentId?: string;
+    opportunityManagerPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

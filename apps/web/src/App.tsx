@@ -21,7 +21,7 @@ import type { BrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { CompanyContextAccess } from './access/CompanyContextAccess';
 import { WorkspaceInvitations } from './access/WorkspaceInvitations';
-import { workspaceInvitationsCopy } from './access/workspace-invitations.copy';
+import { useWorkspaceInvitationsCopy } from './access/workspace-invitations.copy';
 import { companyContextAccessCopy } from './access/company-context-access.copy';
 import { workspaceMembershipSuspensionCopy } from './access/workspace-membership-suspension.copy';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
@@ -699,6 +699,8 @@ function ActivityLog({
   /** Present only while the shell offers the Requests section. */
   onOpenRequest: ((clientRequestId: string) => void) | undefined;
 }) {
+  const invitationActivityActionLabels =
+    useWorkspaceInvitationsCopy().activityActionLabels;
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -728,7 +730,9 @@ function ActivityLog({
             return (
               <li key={entry}>
                 <div>
-                  <strong>{activityDescription(event)}</strong>
+                  <strong>
+                    {activityDescription(event, invitationActivityActionLabels)}
+                  </strong>
                   <span id={openedRequest ? targetId : undefined}>
                     Target: {activityTargetDescription(event)}
                   </span>
@@ -757,7 +761,12 @@ function ActivityLog({
   );
 }
 
-function activityDescription(event: ActivityLogEvent): string {
+function activityDescription(
+  event: ActivityLogEvent,
+  invitationActivityActionLabels: ReturnType<
+    typeof useWorkspaceInvitationsCopy
+  >['activityActionLabels'],
+): string {
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
   if (event.action === 'project.lifecycle.changed')
@@ -787,9 +796,15 @@ function activityDescription(event: ActivityLogEvent): string {
     ...clientLegalEntitiesCopy.activityActionLabels,
     ...clientUnionCopy.actionLabels,
     ...commercialIntakeCopy.activityActionLabels,
-    ...workspaceInvitationsCopy.activityActionLabels,
+    ...invitationActivityActionLabels,
   };
-  return `${actorName} ${actionLabels[event.action]}`;
+  const description = `${actorName} ${actionLabels[event.action]}`;
+  return event.action === 'opportunity.responsible.changed'
+    ? `${description} ${commercialIntakeCopy.activityResponsibleChange(
+        event.metadata.before.displayLabel,
+        event.metadata.after.displayLabel,
+      )}`
+    : description;
 }
 
 function responsibleChange({

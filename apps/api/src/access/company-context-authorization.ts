@@ -45,6 +45,13 @@ import {
   COMPANY_PRICING_USER_BUNDLE,
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
+  COMPANY_OFFER_PREPARER_BUNDLE,
+  offerPreparerPermissionsFor,
+  type CompanyOfferPreparerPermission,
+  COMMERCIAL_INTAKE_READ_PERMISSIONS,
+  commercialIntakeVersionsWith,
+  COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  opportunityManagerPermissionsFor,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   pricingAdjustmentPermissionsFor,
   type CompanyPricingAdjustmentPermission,
@@ -665,10 +672,55 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
-  // Calculation and snapshot reads belong only to Company Pricing User v1.
-  // Configuration, Intake, Catalogue and Workspace ownership cannot lend
-  // these permissions. A locked read serializes the operation against a
-  // concurrent revocation of the captured assignment.
+  // Reassignment needs the live captured Company Opportunity Manager v1, a live
+  // Commercial Intake version carrying both reads and live Company context, all
+  // in the same active Company. A locked read serializes the command against
+  // revocation of any of them and suspension of the actor. It leaves the
+  // Company row unlocked: the command later share-locks its target member
+  // before that row, the order Company assignment administration uses, so a
+  // concurrent grant or revocation for the target cannot deadlock with it.
+  async requireOpportunityAssign(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    const intakePermissions = company?.commercialIntakePermissions ?? [];
+    if (
+      !company?.opportunityManagerPermissions?.includes(
+        'commercial.opportunity.assign',
+      ) ||
+      COMMERCIAL_INTAKE_READ_PERMISSIONS.some(
+        (permission) => !intakePermissions.includes(permission),
+      )
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      capturedGrant(COMPANY_OPPORTUNITY_MANAGER_BUNDLE),
+      lock,
+      'member-rows',
+    );
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${eq(
+        companyRoleAssignments.bundle,
+        COMPANY_COMMERCIAL_INTAKE_BUNDLE,
+      )} AND ${inArray(
+        companyRoleAssignments.permissionSetVersion,
+        commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
+      )})`,
+      lock,
+      'member-rows',
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  // Calculation belongs only to Company Pricing User v1. Snapshot reads use
+  // requirePricingSnapshotReadAccess because Offer Preparer v1 also carries
+  // that one permission without gaining calculation authority.
   async requirePricingUserAccess(
     actor: ActorContext,
     required: readonly CompanyPricingUserPermission[],
@@ -681,6 +733,24 @@ export class CompanyContextAuthorization {
       actor,
       company.id,
       capturedGrant(COMPANY_PRICING_USER_BUNDLE),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  async requireOfferAccess(
+    actor: ActorContext,
+    required: readonly CompanyOfferPreparerPermission[],
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (!company || !carriesEvery(company.offerPermissions, required))
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      capturedGrant(COMPANY_OFFER_PREPARER_BUNDLE),
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
@@ -704,6 +774,33 @@ export class CompanyContextAuthorization {
       actor,
       company.id,
       capturedGrant(COMPANY_PRICING_ADJUSTMENT_BUNDLE),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  // Snapshot read may come from Pricing User v1 or Offer Preparer v1. Each
+  // grant is checked independently and neither confers calculation authority.
+  async requirePricingSnapshotReadAccess(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (
+      company?.pricingUserPermissions?.includes(
+        'commercial.pricing.snapshot.read',
+      )
+    )
+      grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
+    if (company?.offerPermissions?.includes('commercial.pricing.snapshot.read'))
+      grants.push(capturedGrant(COMPANY_OFFER_PREPARER_BUNDLE));
+    if (!company || grants.length === 0) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      anyCapturedGrant(grants),
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
@@ -744,6 +841,9 @@ export class CompanyContextAuthorization {
     companyId: string,
     grant: SQL,
     lock: boolean,
+    // Which joined rows a locked read share-locks: every row, or only the
+    // assignment, membership and Internal User rows of the actor.
+    lockedRows: 'all-rows' | 'member-rows' = 'all-rows',
   ): Promise<void> {
     const query = this.databaseContext.connection
       .select({ id: companyRoleAssignments.id })
@@ -790,7 +890,13 @@ export class CompanyContextAuthorization {
           isNull(companyRoleAssignments.revokedAt),
         ),
       );
-    const rows = lock ? await query.for('share') : await query;
+    const rows = !lock
+      ? await query
+      : lockedRows === 'member-rows'
+        ? await query.for('share', {
+            of: [companyRoleAssignments, workspaceMemberships, internalUsers],
+          })
+        : await query.for('share');
     if (rows.length === 0) throw new ForbiddenException();
   }
 
@@ -877,8 +983,10 @@ export class CompanyContextAuthorization {
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
+        COMPANY_OFFER_PREPARER_BUNDLE,
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
+        COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -1000,6 +1108,18 @@ export class CompanyContextAuthorization {
         ];
         company.commercialActivityPermissionSetVersion = 'v1';
       }
+      // The manager bundle carries reassignment only and never contributes
+      // Company context; its prerequisites are evaluated separately.
+      if (
+        row.bundle === COMPANY_OPPORTUNITY_MANAGER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.opportunityManagerPermissions = [
+          ...opportunityManagerPermissionsFor(row.permissionSetVersion),
+        ];
+        company.opportunityManagerPermissionAssignmentId = row.assignmentId;
+        company.opportunityManagerPermissionSetVersion = 'v1';
+      }
       if (
         row.bundle === COMPANY_SERVICE_CATALOGUE_BUNDLE &&
         row.permissionSetVersion === 'v1'
@@ -1059,6 +1179,16 @@ export class CompanyContextAuthorization {
         company.pricingAdjustmentPermissionSetVersion = 'v1';
       }
       if (
+        row.bundle === COMPANY_OFFER_PREPARER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.offerPermissions = [
+          ...offerPreparerPermissionsFor(row.permissionSetVersion),
+        ];
+        company.offerPermissionAssignmentId = row.assignmentId;
+        company.offerPermissionSetVersion = 'v1';
+      }
+      if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
           (bundle) => row.bundle === bundle,
         )
@@ -1083,9 +1213,11 @@ function capturedGrant(
   bundle:
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE
     | typeof COMPANY_PRICING_USER_BUNDLE
-    | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE,
+    | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE
+    | typeof COMPANY_PROJECT_APPROVER_BUNDLE
+    | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
+    | typeof COMPANY_OFFER_PREPARER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
