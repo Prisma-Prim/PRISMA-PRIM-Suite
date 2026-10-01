@@ -35,6 +35,8 @@ const targetTypes = {
   'company_pricing_configuration_assignment.revoked': 'company_role_assignment',
   'company_pricing_user_assignment.granted': 'company_role_assignment',
   'company_pricing_user_assignment.revoked': 'company_role_assignment',
+  'company_offer_preparer_assignment.granted': 'company_role_assignment',
+  'company_offer_preparer_assignment.revoked': 'company_role_assignment',
   'company_pricing_adjustment_assignment.granted': 'company_role_assignment',
   'company_pricing_adjustment_assignment.revoked': 'company_role_assignment',
   'company_commercial_activity_reader_assignment.granted':

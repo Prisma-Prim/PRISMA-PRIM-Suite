@@ -295,6 +295,13 @@
       "when": 1790707261442,
       "tag": "0041_opportunity_responsible_reassignment",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790712231673,
+      "tag": "0042_offer_first_version",
+      "breakpoints": true
     }
   ]
 }

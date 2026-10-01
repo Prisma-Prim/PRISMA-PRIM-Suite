@@ -35,6 +35,7 @@ type AssignmentBundle =
   | 'service-catalogue'
   | 'pricing-configuration'
   | 'pricing-user'
+  | 'offer-preparer'
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
   | 'opportunity-manager'
@@ -54,6 +55,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'pricing-user': '/company-pricing-user-assignments',
+  'offer-preparer': '/company-offer-preparer-assignments',
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
@@ -473,6 +475,7 @@ export function CompanyContextAccess({
                 label: copy.pricingConfigurationBundle,
               },
               { value: 'pricing-user', label: copy.pricingUserBundle },
+              { value: 'offer-preparer', label: copy.offerPreparerBundle },
               {
                 value: 'pricing-adjustment',
                 label: copy.pricingAdjustmentBundle,
@@ -510,6 +513,7 @@ export function CompanyContextAccess({
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
+                value === 'offer-preparer' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
                 value === 'opportunity-manager' ||
@@ -539,6 +543,9 @@ export function CompanyContextAccess({
             <p>{copy.documentApproverPrerequisites}</p>
           )}
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {bundle === 'offer-preparer' && (
+            <p>{copy.offerPreparerPrerequisites}</p>
+          )}
           {bundle === 'opportunity-manager' && (
             <p>{copy.opportunityManagerPrerequisites}</p>
           )}
@@ -625,6 +632,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
     'pricing-user': copy.pricingUserBundle,
+    'offer-preparer': copy.offerPreparerBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,

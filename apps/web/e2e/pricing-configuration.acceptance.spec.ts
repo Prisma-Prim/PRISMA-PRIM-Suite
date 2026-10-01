@@ -1,6 +1,6 @@
 import { expectSelectAppearance } from './select-appearance';
 import { enterClassicCompatibility } from './classic-compatibility';
-import { expectValue, selectOption } from './select-option';
+import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
@@ -688,32 +688,61 @@ test('shows Pricing Configuration read-only to a Company Pricing User', async ({
   }
 });
 
-test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on an Opportunity', async ({
-  page,
-}, testInfo) => {
-  test.setTimeout(240_000);
-  const narrow = testInfo.project.name.endsWith('narrow');
-  const suffix = narrow ? 'narrow' : 'desktop';
-  const companyName = `Pricing snapshot ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
-  const target = {
-    workspaceMembershipId: requiredEnvironment(
-      'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
-    ),
-    companyId: await createCompany(page, companyName),
-  };
-  const bundles = [
-    'company-context',
-    'company-service-catalogue',
-    'company-pricing-configuration',
-    'company-commercial-intake',
-    'company-pricing-user',
-    'company-pricing-adjustment',
-  ] as const;
-  const granted = new Set<(typeof bundles)[number]>();
-  try {
+test.describe('Pricing Snapshot and Offer journey', () => {
+  const assignments = new Map<
+    Parameters<typeof changeAssignment>[1]['bundle'],
+    { workspaceMembershipId: string; companyId: string }
+  >();
+
+  // Playwright runs afterEach in its teardown budget, even when the journey
+  // exhausts its deadline. Keep the original failure and attempt every revoke.
+  test.afterEach(async ({ request }) => {
+    const failures: unknown[] = [];
+    for (const [bundle, target] of [...assignments].reverse()) {
+      try {
+        await changeAssignment(
+          { request },
+          { operation: 'revoke', bundle, ...target },
+        );
+      } catch (error: unknown) {
+        failures.push(error);
+      }
+    }
+    assignments.clear();
+    if (failures.length > 0)
+      throw new AggregateError(
+        failures,
+        'Pricing Snapshot fixture assignments could not all be revoked.',
+      );
+  });
+
+  test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on an Opportunity', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    const narrow = testInfo.project.name.endsWith('narrow');
+    const suffix = narrow ? 'narrow' : 'desktop';
+    const companyName = `Pricing snapshot ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
+    const target = {
+      workspaceMembershipId: requiredEnvironment(
+        'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+      ),
+      companyId: await createCompany(page, companyName),
+    };
+    const bundles = [
+      'company-context',
+      'company-service-catalogue',
+      'company-pricing-configuration',
+      'company-commercial-intake',
+      'company-pricing-user',
+      'company-director-client',
+      'company-offer-preparer',
+      'company-pricing-adjustment',
+    ] as const;
+
     for (const bundle of bundles) {
+      assignments.set(bundle, target);
       await changeAssignment(page, { operation: 'grant', bundle, ...target });
-      granted.add(bundle);
     }
     const offeringA = await createOffering(
       page,
@@ -745,10 +774,16 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       taxRatePercent: '0',
       effectiveFrom,
     });
+    const clientId = await createClient(
+      page,
+      target.companyId,
+      `Synthetic Offer Recipient ${suffix}`,
+    );
     const request = await createCommercialRequest(
       page,
       target.companyId,
       suffix,
+      clientId,
     );
     // The Pricing User bundle is sufficient for configuration reads. The
     // separate Intake bundle remains the sole owner of Opportunity visibility.
@@ -757,7 +792,7 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       'company-service-catalogue',
     ] as const) {
       await changeAssignment(page, { operation: 'revoke', bundle, ...target });
-      granted.delete(bundle);
+      assignments.delete(bundle);
     }
     await page.waitForTimeout(
       Math.max(0, new Date(effectiveFrom).getTime() - Date.now() + 1_500),
@@ -905,6 +940,33 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       fullPage: true,
     });
 
+    // A successful calculation clears the draft. Start a complete new
+    // unadjusted calculation before preparing the illustrative Offer.
+    await panel.getByLabel(offeringALabel, { exact: true }).check();
+    await adjustedOffering.getByLabel('Quantity', { exact: true }).fill('2.5');
+    await panel.getByLabel(offeringBLabel, { exact: true }).check();
+    await panel
+      .getByRole('group')
+      .filter({ has: page.getByLabel(offeringBLabel, { exact: true }) })
+      .getByLabel('Quantity', { exact: true })
+      .fill('1');
+    await expect(
+      adjustedOffering.getByLabel('Apply a fixed net discount', {
+        exact: true,
+      }),
+    ).not.toBeChecked();
+    const ordinarySnapshotResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response
+          .url()
+          .includes(
+            `/api/pricing/opportunities/${request.opportunityId}/snapshots`,
+          ),
+    );
+    await panel.getByRole('button', { name: 'Calculate and save' }).click();
+    expect((await ordinarySnapshotResponse).status()).toBe(201);
+
     await page.reload();
     await selectCompany(page, companySelect, companyName, narrow);
     await navigate(page, navigation, 'Client Requests', narrow);
@@ -947,10 +1009,93 @@ test('applies, reloads and reopens an immutable Pricing Snapshot adjustment on a
       path: testInfo.outputPath(`pricing-adjustment-reopened-${suffix}.png`),
       fullPage: true,
     });
-  } finally {
-    for (const bundle of [...granted].reverse())
-      await changeAssignment(page, { operation: 'revoke', bundle, ...target });
-  }
+
+    const offer = page.locator('.offer-panel');
+    await expect(
+      offer.getByText('Illustrative Offer', { exact: true }),
+    ).toBeVisible();
+    const snapshotSelect = offer.getByRole('combobox', {
+      name: 'Pricing Snapshot',
+      exact: true,
+    });
+    const snapshotOptions = (await openSelect(snapshotSelect)).getByRole(
+      'option',
+    );
+    const adjustedSnapshotValue = await snapshotOptions
+      .filter({ hasText: '337.03 EUR' })
+      .first()
+      .getAttribute('data-value');
+    const ordinarySnapshotValue = await snapshotOptions
+      .filter({ hasNotText: '337.03 EUR' })
+      .first()
+      .getAttribute('data-value');
+    if (!adjustedSnapshotValue || !ordinarySnapshotValue)
+      throw new Error('Expected adjusted and unadjusted Snapshot options.');
+    await page.keyboard.press('Escape');
+    await selectOption(snapshotSelect, adjustedSnapshotValue);
+    await offer.getByRole('button', { name: 'Prepare version 1' }).focus();
+    await expect(
+      offer.getByRole('button', { name: 'Prepare version 1' }),
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(offer.getByRole('alert')).toHaveText(
+      'The selected Pricing Snapshot contains an adjustment and cannot be used for Offer version 1.',
+    );
+    await expect(offer.getByText('Illustrative reference')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-adjustment-rejected-${suffix}.png`),
+      fullPage: true,
+    });
+
+    await selectOption(snapshotSelect, ordinarySnapshotValue);
+    await offer.getByRole('button', { name: 'Prepare version 1' }).click();
+    const createdOffer = offer.locator('.offer-summary');
+    await expect(
+      createdOffer.getByText('Illustrative and provisional', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      createdOffer.getByText(`Synthetic Offer Recipient ${suffix}`, {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      createdOffer.getByText('Pending · not transmitted · no Client response', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-created-${suffix}.png`),
+      fullPage: true,
+    });
+
+    await page.reload();
+    await selectCompany(page, companySelect, companyName, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    await page
+      .locator('.commercial-intake-workspace')
+      .getByRole('button', { name: new RegExp(request.subject, 'u') })
+      .click();
+    const reopenedOffer = page.locator('.offer-panel .offer-summary');
+    await expect(
+      reopenedOffer.getByText('Illustrative reference', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reopenedOffer.getByText('Illustrative and provisional', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reopenedOffer.getByText(
+        'Pending · not transmitted · no Client response',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-reopened-${suffix}.png`),
+      fullPage: true,
+    });
+  });
 });
 
 async function publishThroughApi(
@@ -1014,6 +1159,7 @@ async function createCommercialRequest(
   page: Page,
   companyId: string,
   suffix: string,
+  clientAccountId?: string,
 ): Promise<{ subject: string; opportunityId: string }> {
   const subject = `Illustrative snapshot request ${suffix}`;
   const response = await page.request.post(
@@ -1030,6 +1176,7 @@ async function createCommercialRequest(
           'Synthetic request for the Pricing Snapshot acceptance proof.',
         sourceLabel: 'Synthetic browser proof',
         subject,
+        ...(clientAccountId ? { clientAccountId } : {}),
         opportunity: {
           title: `Illustrative Opportunity ${suffix}`,
           scope: 'Synthetic scope',
@@ -1051,6 +1198,36 @@ async function createCommercialRequest(
   )
     throw new Error('Expected the created Opportunity id.');
   return { subject, opportunityId: body.initialOpportunity.id };
+}
+
+async function createClient(
+  page: Page,
+  companyId: string,
+  displayName: string,
+): Promise<string> {
+  const response = await page.request.post(`${apiOrigin}/api/clients`, {
+    headers: {
+      ...primaryMemberHeaders,
+      'content-type': 'application/json',
+      'idempotency-key': `acceptance-offer-client-${crypto.randomUUID()}`,
+      'x-company-context-id': companyId,
+    },
+    data: {
+      displayName,
+      taxId: `SYNTHETIC-OFFER-${companyId}`,
+      address: '1 Synthetic Offer Street',
+    },
+  });
+  expect(response.status()).toBe(201);
+  const body: unknown = await response.json();
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('id' in body) ||
+    typeof body.id !== 'string'
+  )
+    throw new Error('Expected the created Client id.');
+  return body.id;
 }
 
 async function createCompany(page: Page, displayName: string): Promise<string> {
@@ -1075,7 +1252,7 @@ async function createCompany(page: Page, displayName: string): Promise<string> {
 }
 
 async function changeAssignment(
-  page: Page,
+  page: Pick<Page, 'request'>,
   {
     operation,
     bundle,
@@ -1088,8 +1265,10 @@ async function changeAssignment(
       | 'company-commercial-intake'
       | 'company-pricing-configuration'
       | 'company-pricing-user'
-      | 'company-pricing-adjustment'
-      | 'company-service-catalogue';
+      | 'company-service-catalogue'
+      | 'company-director-client'
+      | 'company-offer-preparer'
+      | 'company-pricing-adjustment';
     workspaceMembershipId: string;
     companyId: string;
   },

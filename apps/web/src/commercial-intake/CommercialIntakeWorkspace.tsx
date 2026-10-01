@@ -12,6 +12,7 @@ import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
+import { OfferPanel } from '../offer/OfferPanel';
 import {
   OpportunityResponsible,
   type ResponsibleCandidate,
@@ -1823,6 +1824,17 @@ function RequestDetail({
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
+      <OfferPanel
+        key={`offer:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
+        currentClientId={request.clientReference?.currentClientId}
+        clientDisplayName={request.clientReference?.displayName}
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}

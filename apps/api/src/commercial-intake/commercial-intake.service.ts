@@ -35,6 +35,7 @@ import type {
   OpportunityResponsibleCandidatePage,
   OpportunityResponsibleChangeResult,
   ReadablePricingOpportunity,
+  ReadableOfferOpportunity,
   CommercialClientProjection,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
@@ -235,6 +236,50 @@ export class CommercialIntakeService {
         return undefined;
       throw error;
     }
+  }
+
+  /**
+   * Offer's public Commercial Intake seam. It proves current Opportunity read,
+   * keeps cross-scope targets indistinguishable, and optionally serializes
+   * Create Offer on the Opportunity row.
+   */
+  async requireReadableOfferOpportunity(
+    actor: ActorContext,
+    opportunityId: string,
+    lock: boolean,
+  ): Promise<ReadableOfferOpportunity> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+      lock,
+    );
+    if (!UUID_GRAMMAR.test(opportunityId)) throw new NotFoundException();
+    const query = this.databaseContext.connection
+      .select({
+        id: opportunities.id,
+        clientRequestId: opportunities.clientRequestId,
+        originalClientAccountId: clientRequests.clientAccountId,
+        status: opportunities.status,
+      })
+      .from(opportunities)
+      .innerJoin(
+        clientRequests,
+        and(
+          eq(clientRequests.workspaceId, opportunities.workspaceId),
+          eq(clientRequests.companyId, opportunities.companyId),
+          eq(clientRequests.id, opportunities.clientRequestId),
+        ),
+      )
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          eq(opportunities.id, opportunityId.toLowerCase()),
+        ),
+      );
+    const [target] = lock ? await query.for('update') : await query;
+    if (!target) throw new NotFoundException();
+    return target;
   }
 
   async updateNextAction(

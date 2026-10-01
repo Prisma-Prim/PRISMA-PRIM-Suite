@@ -281,9 +281,11 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
     fireEvent.click(
       screen.getByRole('button', { name: copy.changeResponsible }),
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      copy.responsibleMembersLoading,
-    );
+    expect(
+      screen.getByText(copy.responsibleMembersLoading, {
+        selector: '[role="status"]',
+      }),
+    ).toBeVisible();
     await members.settle({ members: [adaCandidate, ionCandidate] });
 
     // The recorded member is preselected; only labels are offered.
@@ -719,9 +721,11 @@ describe('CommercialIntakeWorkspace responsible actor', () => {
         displayName: 'Synthetic Client',
       },
     });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      copy.requestedAfterResponsibleEdit,
-    );
+    expect(
+      screen.getByText(copy.requestedAfterResponsibleEdit, {
+        selector: '[role="status"]',
+      }),
+    ).toBeVisible();
     expect(responsibleSelect()).toHaveValue(ion.workspaceMembershipId);
     expect(transport.calls(detailPath('request-2'))).toEqual([]);
 

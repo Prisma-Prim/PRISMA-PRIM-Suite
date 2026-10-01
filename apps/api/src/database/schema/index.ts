@@ -16,3 +16,5 @@ export * from './commercial-intake.js';
 export * from './commercial-catalogue.js';
 
 export * from './pricing-configuration.js';
+
+export * from './offer.js';

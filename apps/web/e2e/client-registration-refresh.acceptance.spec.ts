@@ -35,13 +35,26 @@ test('keeps a Client registration across an equivalent Company refresh through t
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  const expectedCompanyId = process.env.ACCEPTANCE_PRIMARY_COMPANY_ID;
+  if (!expectedCompanyId)
+    throw new Error('Missing the primary acceptance Company.');
   const initialActor = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/access/current-actor' &&
       response.request().method() === 'GET' &&
-      response.request().headers()['x-company-context-id'] !== undefined,
+      response.request().headers()['x-company-context-id'] ===
+        expectedCompanyId,
   );
   await page.goto('/');
+  const company = page.getByLabel('Active Company', { exact: true });
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  // A previous test may leave another readable Company after failing. Select
+  // this journey's Company before waiting for its Company-scoped actor.
+  await selectOption(company, { label: 'PRISMA-PRIM' });
+  await expect(company).toHaveText('PRISMA-PRIM');
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
   const initialActorResponse = await initialActor;
   expect(initialActorResponse.status()).toBe(200);
   const expectedActor: unknown = await initialActorResponse.json();
@@ -53,7 +66,7 @@ test('keeps a Client registration across an equivalent Company refresh through t
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
-  const company = page.getByLabel('Active Company', { exact: true });
+
   const navigation = page.getByRole('navigation', {
     name: 'Primary navigation',
   });
