@@ -1393,24 +1393,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocumentRepresentationAddedReceipt'
         '400':
-          {
-            description: The key,
-            identifier,
-            expected revision,
-            form or credential-free HTTPS URL is invalid,
-            or the body has another key.,
-          }
+          description: >-
+            The key, identifier, expected revision, form or credential-free HTTPS URL is invalid, or the body has another key.
         '401': { description: No verified External Principal is available. }
         '403':
-          {
-            description: The actor lacks live Registrar v3,
-            Document,
-            Representation or Client read authority in the active Company.,
-          }
+          description: >-
+            The actor lacks live Registrar v3, Document, Representation or Client read authority in the active Company.
         '404':
-          {
-            description: The Document or Version is not visible inside the active Company and Document.,
-          }
+          description: >-
+            The Document or Version is not visible inside the active Company and Document.
         '409':
           description: The revision or Version state is stale, the applicable five or ten reference capacity is reached, or the key was reused.
           content:
@@ -1448,22 +1439,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocumentRepresentationRemovedReceipt'
         '400':
-          {
-            description: The key or identifier is invalid,
-            or the body is not exactly an expected revision.,
-          }
+          description: >-
+            The key or identifier is invalid, or the body is not exactly an expected revision.
         '401': { description: No verified External Principal is available. }
         '403':
-          {
-            description: The actor lacks live Registrar v3,
-            Document,
-            Representation or Client read authority in the active Company.,
-          }
+          description: >-
+            The actor lacks live Registrar v3, Document, Representation or Client read authority in the active Company.
         '404':
-          {
-            description: The Document,
-            Version or current reference is not visible inside its owning boundary.,
-          }
+          description: >-
+            The Document, Version or current reference is not visible inside its owning boundary.
         '409':
           description: The revision is stale, the Version is not the draft, the reference is the last current draft reference, or the key was reused.
           content:
@@ -2188,6 +2172,57 @@ components:
         - $ref: '#/components/schemas/OrdinaryActivityLogEvent'
         - $ref: '#/components/schemas/ClientUnionProjection'
         - $ref: '#/components/schemas/ProjectLifecycleChangedActivityEvent'
+        - $ref: '#/components/schemas/DocumentRepresentationAddedActivityEvent'
+        - $ref: '#/components/schemas/DocumentRepresentationRemovedActivityEvent'
+    DocumentRepresentationAddedActivityEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, occurredAt, actor, target, metadata]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, const: document.representation.added }
+        occurredAt: { type: string, format: date-time }
+        actor:
+          $ref: '#/components/schemas/ActivityLogInternalUserReference'
+        target:
+          $ref: '#/components/schemas/ActivityLogDocumentTargetReference'
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [versionNumber, form, appendedAfterDesignation]
+          properties:
+            versionNumber: { type: integer, minimum: 1, maximum: 50 }
+            form: { type: string, enum: [editable, rendered, signed, other] }
+            appendedAfterDesignation: { type: boolean }
+    DocumentRepresentationRemovedActivityEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, occurredAt, actor, target, metadata]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, const: document.representation.removed }
+        occurredAt: { type: string, format: date-time }
+        actor:
+          $ref: '#/components/schemas/ActivityLogInternalUserReference'
+        target:
+          $ref: '#/components/schemas/ActivityLogDocumentTargetReference'
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [versionNumber, form, appendedAfterDesignation]
+          properties:
+            versionNumber: { type: integer, minimum: 1, maximum: 50 }
+            form: { type: string, enum: [editable, rendered, signed, other] }
+            appendedAfterDesignation: { type: boolean, const: false }
+    ActivityLogDocumentTargetReference:
+      type: object
+      additionalProperties: false
+      required: [type, documentId, documentTitle, companyId]
+      properties:
+        type: { type: string, const: document }
+        documentId: { type: string, format: uuid }
+        documentTitle: { type: string }
+        companyId: { type: string, format: uuid }
     OrdinaryActivityLogEvent:
       type: object
       additionalProperties: false
