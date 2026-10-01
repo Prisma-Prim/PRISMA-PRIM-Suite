@@ -53,6 +53,8 @@ The controlled source remains outside Git.
 
 Only generic business rules and clearly synthetic examples may enter the repository. Real Client names, case amounts, overhead accounts, accounting details and email contents are excluded from this PRD, issues, fixtures, screenshots and tests.
 
+The October [controlled-source reconciliation](commercial-source-reconciliation-2026-10.md) identifies the same specification bytes (E08); no rediscovery or second pricing contract is needed. E01 states that the primary historical dossier had no standardized price workbook and its price preceded the formal method. The dossier cannot establish historical cost, effort, overhead or margin, and is not a calibration target. Unknown costs remain unknown; the proposed estimate still requires newly human-confirmed costs for its proposed price. The Draft status, permissions proposal and excluded minimum-price/tax/overhead automation remain unchanged.
+
 ## 4. Source-backed rules
 
 The controlled source supports these rules:
