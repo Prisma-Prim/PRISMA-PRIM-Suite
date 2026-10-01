@@ -1,7 +1,7 @@
 # PRD — Activity Log and Accountability
 
 **Status:** Draft — foundation and Client correction delivered; duplicate-resolution events approved; later event families capability-owned  
-**Version:** 0.2  
+**Version:** 0.3\
 **Owner:** Dan Popescu  
 **Decisions:** DEC-028, DEC-041–DEC-045, DEC-067, DEC-073, DEC-087–DEC-089, DEC-096–DEC-097, DEC-122, DEC-128, DEC-183, DEC-213
 
@@ -183,6 +183,12 @@ eligible for the existing commercial projection only under Company Commercial
 Activity Reader plus current Request read, and its projection reveals no Client
 identity. Recording or reading it grants no association or Client authority.
 
+For the [approved first confirmed-cost profitability journey](release-3-confirmed-cost-profitability-estimate-prd.md#5-approved-first-journey), normalized under delegated root product review on 2026-10-01 in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497), each committed version submission records exactly one `profitability_estimate_version.created`; each committed exact-version Director decision records exactly one `profitability_estimate_version.decided`. Both target the frozen `profitability_estimate_version` identifier in its responsible Company and use the canonical envelope's server actor membership, Workspace, Company and timestamp.
+
+Typed metadata carries only the owning estimate identifier and version number, plus the decision code (`APPROVE`, `MODIFY` or `REJECT`) on the decision event. It contains no amount, currency, percentage, executor type, cost category/label, strategic reason, Client identity or confidential text. Version/decision, any head advance, authorized command result and durable receipt, and required event commit in one transaction through Accountability's public recording boundary. A failed write or response construction rolls back all of them; denied, invalid, stale, already-decided and exact-replay commands create no success event.
+
+These are **internal recording semantics only**. No Activity read surface, commercial allowlist, count, filter, export or target link returns them in this journey, even to an existing Activity reader. Neither profitability bundle confers Activity Log access. The authorization PRD §8 owns the separate Contributor/Director assignment grant/revoke events and their unchanged administration visibility. An approved event contract is not evidence of runtime delivery.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
@@ -240,6 +246,7 @@ Retention and authorized export require a later policy based on business and leg
   `client_request.client_associated` event with Request-version-only metadata in
   the atomic association transaction, none for refusals or replays, and no Client
   identity disclosure through the commercial projection.
+- The profitability journey proves one version-creation or exact-version-decision event per committed command through its public REST/PostgreSQL seam, atomic rollback with its records/receipt/result, exact-retry convergence, constrained identifier/version/decision metadata and no profitability event through any Activity read surface. Separate assignment events retain their existing administration boundary.
 - The next duplicate-resolution slice must prove exactly one union or reversal projection per affected Company linked server-side to one internal operation, distinct unpredictable public projection references across Companies, no internal operation identifier, actor identity, exact/coarse action time or cross-scope ordering key in redacted reads, independently generated Company-local ordering, complete affected-Company authorization before shared correlation/actor/time is returned, and no success projection for blocked identifiers, disagreement, stale state, cancellation or replay.
 
 ## 12. Acceptance journey
@@ -262,4 +269,4 @@ Technical dependencies:
 
 ## 14. Readiness
 
-Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds the approved Company-context assignment grant and revocation events; [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds Client creation and Client–Company Relationship establishment; and issue #146 / PR #147 adds Company Director Client assignment and Client correction events. After #148 normalization, one next vertical slice may deliver `client.union_confirmed` and `client.union_reversed`. After #306 normalization, one vertical slice may deliver `opportunity.next_action.updated` and a separate vertical slice may deliver the authorized Company projection of commercial intake events; the two are independent in either order. Every other event family remains blocked until its owning capability PRD and permissions are ready.
+Issue #22 delivered the initial provisioning event and visible history. [Issue #65](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/65) preserves that seam while adding explicit membership; [issue #66](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/66) adds only its approved provider-Company registration event; [issue #67](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/67) adds active Company selection without authorizing another event family; [issue #88](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/88) adds the approved Company-context assignment grant and revocation events; [issue #141](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/141) adds Client creation and Client–Company Relationship establishment; and issue #146 / PR #147 adds Company Director Client assignment and Client correction events. After #148 normalization, one next vertical slice may deliver `client.union_confirmed` and `client.union_reversed`. After #306 normalization, one vertical slice may deliver `opportunity.next_action.updated` and a separate vertical slice may deliver the authorized Company projection of commercial intake events; the two are independent in either order. The approved first confirmed-cost profitability contract additionally permits the two internal version/decision recording semantics in section 7 when its implementation child is ready; it permits no projection. Every other event family remains blocked until its owning capability PRD and permissions are ready.
