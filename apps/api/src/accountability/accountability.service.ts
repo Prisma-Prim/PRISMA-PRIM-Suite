@@ -1,4 +1,5 @@
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
+import { randomUUID } from 'node:crypto';
 import type {
   ProjectResponsibleChangedActivityEvent,
   ProjectResponsibleMember,
@@ -39,6 +40,7 @@ import {
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
   offerEvents,
+  profitabilityEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -72,6 +74,39 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 @Injectable()
 export class AccountabilityService {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordProfitabilityEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    estimateId: string;
+    estimateVersionId: string;
+    versionNumber: number;
+    action:
+      | 'profitability_estimate_version.created'
+      | 'profitability_estimate_version.decided';
+    decisionCode?: 'APPROVE' | 'MODIFY' | 'REJECT';
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(profitabilityEvents).values({
+      id: randomUUID(),
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      action: input.action,
+      estimateId: input.estimateId,
+      estimateVersionId: input.estimateVersionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata:
+        input.decisionCode === undefined
+          ? { estimateId: input.estimateId, versionNumber: input.versionNumber }
+          : {
+              estimateId: input.estimateId,
+              versionNumber: input.versionNumber,
+              decisionCode: input.decisionCode,
+            },
+    });
+  }
 
   async recordOfferCreated(input: {
     actor: ActorContext;
@@ -1877,6 +1912,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_opportunity_manager_assignment.revoked':
     case 'company_project_approver_assignment.granted':
     case 'company_project_approver_assignment.revoked':
+    case 'company_profitability_contributor_assignment.granted':
+    case 'company_profitability_contributor_assignment.revoked':
+    case 'company_profitability_director_assignment.granted':
+    case 'company_profitability_director_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

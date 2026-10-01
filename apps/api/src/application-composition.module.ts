@@ -73,6 +73,12 @@ import { OperationalHomeModule } from './operational-home/operational-home.modul
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
+import { ProfitabilityModule } from './profitability/profitability.module.js';
+import { ProfitabilityController } from './profitability/profitability.controller.js';
+import {
+  CompanyProfitabilityContributorAssignmentController,
+  CompanyProfitabilityDirectorAssignmentController,
+} from './access/company-profitability-assignment.controller.js';
 
 @Module({
   imports: [
@@ -90,6 +96,7 @@ import { OfferModule } from './offer/offer.module.js';
     PricingConfigurationModule,
     OperationalHomeModule,
     OfferModule,
+    ProfitabilityModule,
   ],
   controllers: [
     TaskController,
@@ -132,6 +139,9 @@ import { OfferModule } from './offer/offer.module.js';
     CompanyOpportunityManagerAssignmentController,
     OperationalHomeController,
     OfferController,
+    ProfitabilityController,
+    CompanyProfitabilityContributorAssignmentController,
+    CompanyProfitabilityDirectorAssignmentController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

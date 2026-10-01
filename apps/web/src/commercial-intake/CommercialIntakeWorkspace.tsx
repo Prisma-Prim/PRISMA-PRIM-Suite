@@ -13,6 +13,7 @@ import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
 import { OfferPanel } from '../offer/OfferPanel';
+import { ProfitabilityPanel } from '../profitability/ProfitabilityPanel';
 import {
   OpportunityResponsible,
   type ResponsibleCandidate,
@@ -1838,6 +1839,12 @@ function RequestDetail({
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
+      <ProfitabilityPanel
+        key={`profitability:${request.initialOpportunity.id}:${actor.activeCompany?.profitabilityContributorAssignmentId ?? 'no-contributor'}:${actor.activeCompany?.profitabilityDirectorAssignmentId ?? 'no-director'}`}
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
       />
     </article>
   );

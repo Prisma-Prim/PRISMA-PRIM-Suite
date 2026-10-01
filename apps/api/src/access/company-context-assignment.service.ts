@@ -64,6 +64,10 @@ import {
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
   isDocumentPermissionSetVersion,
@@ -99,7 +103,9 @@ type BundleDefinition = {
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
+    | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
+    | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
+    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
@@ -196,6 +202,16 @@ const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
   label: COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const PROFITABILITY_CONTRIBUTOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+  label: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const PROFITABILITY_DIRECTOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+  label: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -213,6 +229,8 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
   COMPANY_PROJECT_APPROVER_BUNDLE,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
 ] as const;
 
 @Injectable()
@@ -662,6 +680,63 @@ export class CompanyContextAssignmentService {
       workspaceMembershipId,
       companyId,
       idempotencyKey,
+    );
+  }
+
+  grantProfitabilityContributor(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PROFITABILITY_CONTRIBUTOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeProfitabilityContributor(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    key: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      PROFITABILITY_CONTRIBUTOR_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      key,
+    );
+  }
+  grantProfitabilityDirector(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ) {
+    return this.mutate(
+      actor,
+      PROFITABILITY_DIRECTOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeProfitabilityDirector(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    key: string | undefined,
+  ) {
+    return this.mutate(
+      actor,
+      PROFITABILITY_DIRECTOR_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      key,
     );
   }
 
@@ -1182,6 +1257,14 @@ function assignmentAction(
       return granted
         ? 'company_project_approver_assignment.granted'
         : 'company_project_approver_assignment.revoked';
+    case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:
+      return granted
+        ? 'company_profitability_contributor_assignment.granted'
+        : 'company_profitability_contributor_assignment.revoked';
+    case COMPANY_PROFITABILITY_DIRECTOR_BUNDLE:
+      return granted
+        ? 'company_profitability_director_assignment.granted'
+        : 'company_profitability_director_assignment.revoked';
     case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
       return granted
         ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
@@ -1228,6 +1311,18 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:
+    case COMPANY_PROFITABILITY_DIRECTOR_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Profitability assignment version.');
+      return {
+        ...base,
+        bundle:
+          assignment.bundle === COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE
+            ? COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
+            : COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
     case COMPANY_TASK_MANAGER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Company Task Manager version.');

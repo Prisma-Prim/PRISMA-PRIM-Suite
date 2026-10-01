@@ -40,7 +40,9 @@ type AssignmentBundle =
   | 'commercial-activity-reader'
   | 'opportunity-manager'
   | 'project'
-  | 'project-approver';
+  | 'project-approver'
+  | 'profitability-contributor'
+  | 'profitability-director';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
@@ -62,6 +64,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'opportunity-manager': '/company-opportunity-manager-assignments',
   project: '/company-project-assignments',
   'project-approver': '/company-project-approver-assignments',
+  'profitability-contributor': '/company-profitability-contributor-assignments',
+  'profitability-director': '/company-profitability-director-assignments',
 };
 type AdministrationLoadState =
   | { status: 'loading' }
@@ -475,6 +479,14 @@ export function CompanyContextAccess({
                 label: copy.pricingConfigurationBundle,
               },
               { value: 'pricing-user', label: copy.pricingUserBundle },
+              {
+                value: 'profitability-contributor',
+                label: copy.profitabilityContributorBundle,
+              },
+              {
+                value: 'profitability-director',
+                label: copy.profitabilityDirectorBundle,
+              },
               { value: 'offer-preparer', label: copy.offerPreparerBundle },
               {
                 value: 'pricing-adjustment',
@@ -513,6 +525,8 @@ export function CompanyContextAccess({
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
+                value === 'profitability-contributor' ||
+                value === 'profitability-director' ||
                 value === 'offer-preparer' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
@@ -543,6 +557,10 @@ export function CompanyContextAccess({
             <p>{copy.documentApproverPrerequisites}</p>
           )}
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {(bundle === 'profitability-contributor' ||
+            bundle === 'profitability-director') && (
+            <p>{copy.profitabilityPrerequisites}</p>
+          )}
           {bundle === 'offer-preparer' && (
             <p>{copy.offerPreparerPrerequisites}</p>
           )}
@@ -632,6 +650,8 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,
     'pricing-user': copy.pricingUserBundle,
+    'profitability-contributor': copy.profitabilityContributorBundle,
+    'profitability-director': copy.profitabilityDirectorBundle,
     'offer-preparer': copy.offerPreparerBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,

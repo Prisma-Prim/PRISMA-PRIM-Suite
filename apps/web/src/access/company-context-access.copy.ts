@@ -23,6 +23,10 @@ export const companyContextAccessCopy = {
   projectApproverPrerequisites:
     'Changes the Project lifecycle only; Project and Client read are authorized separately.',
   pricingUserBundle: 'Company Pricing User',
+  profitabilityContributorBundle: 'Company Profitability Contributor',
+  profitabilityDirectorBundle: 'Company Profitability Director',
+  profitabilityPrerequisites:
+    'Profitability authority is explicit and independent. Opportunity and Company access must already be authorized separately.',
   pricingUserPrerequisites:
     'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
   offerPreparerBundle: 'Company Offer Preparer',
@@ -97,6 +101,14 @@ export const companyContextAccessCopy = {
       'revoked Company Project Approver',
     'company_pricing_user_assignment.granted': 'granted Company Pricing User',
     'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+    'company_profitability_contributor_assignment.granted':
+      'granted Company Profitability Contributor',
+    'company_profitability_contributor_assignment.revoked':
+      'revoked Company Profitability Contributor',
+    'company_profitability_director_assignment.granted':
+      'granted Company Profitability Director',
+    'company_profitability_director_assignment.revoked':
+      'revoked Company Profitability Director',
     'company_offer_preparer_assignment.granted':
       'granted Company Offer Preparer',
     'company_offer_preparer_assignment.revoked':

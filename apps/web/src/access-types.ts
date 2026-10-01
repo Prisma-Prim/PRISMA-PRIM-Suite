@@ -74,6 +74,18 @@ export interface ActorContext {
     opportunityManagerPermissions?: Array<'commercial.opportunity.assign'>;
     opportunityManagerPermissionAssignmentId?: string;
     opportunityManagerPermissionSetVersion?: 'v1';
+    profitabilityContributorPermissions?: Array<
+      | 'commercial.profitability_estimate.read'
+      | 'commercial.profitability_estimate.create'
+    >;
+    profitabilityContributorAssignmentId?: string;
+    profitabilityContributorPermissionSetVersion?: 'v1';
+    profitabilityDirectorPermissions?: Array<
+      | 'commercial.profitability_estimate.read'
+      | 'commercial.profitability_estimate.decide'
+    >;
+    profitabilityDirectorAssignmentId?: string;
+    profitabilityDirectorPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

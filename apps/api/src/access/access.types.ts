@@ -14,6 +14,7 @@ import type {
   CompanyOpportunityManagerPermission,
   CompanyProjectPermission,
   CompanyProjectApproverPermission,
+  CompanyProfitabilityPermission,
 } from './company-permissions.js';
 
 export interface ExternalPrincipal {
@@ -68,6 +69,12 @@ export interface ActiveCompanyContext {
   opportunityManagerPermissions?: CompanyOpportunityManagerPermission[];
   opportunityManagerPermissionAssignmentId?: string;
   opportunityManagerPermissionSetVersion?: 'v1';
+  profitabilityContributorPermissions?: CompanyProfitabilityPermission[];
+  profitabilityContributorAssignmentId?: string;
+  profitabilityContributorPermissionSetVersion?: 'v1';
+  profitabilityDirectorPermissions?: CompanyProfitabilityPermission[];
+  profitabilityDirectorAssignmentId?: string;
+  profitabilityDirectorPermissionSetVersion?: 'v1';
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }

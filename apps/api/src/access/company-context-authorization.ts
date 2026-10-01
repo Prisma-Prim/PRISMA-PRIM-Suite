@@ -55,6 +55,10 @@ import {
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   pricingAdjustmentPermissionsFor,
   type CompanyPricingAdjustmentPermission,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+  profitabilityContributorPermissionsFor,
+  profitabilityDirectorPermissionsFor,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -991,6 +995,8 @@ export class CompanyContextAuthorization {
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
+        COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+        COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -1187,6 +1193,26 @@ export class CompanyContextAuthorization {
         ];
         company.offerPermissionAssignmentId = row.assignmentId;
         company.offerPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.profitabilityContributorPermissions = [
+          ...profitabilityContributorPermissionsFor(row.permissionSetVersion),
+        ];
+        company.profitabilityContributorAssignmentId = row.assignmentId;
+        company.profitabilityContributorPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_PROFITABILITY_DIRECTOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.profitabilityDirectorPermissions = [
+          ...profitabilityDirectorPermissionsFor(row.permissionSetVersion),
+        ];
+        company.profitabilityDirectorAssignmentId = row.assignmentId;
+        company.profitabilityDirectorPermissionSetVersion = 'v1';
       }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(

@@ -501,6 +501,14 @@ describe('App', () => {
         'revoked Company Project Approver',
       'company_pricing_user_assignment.granted': 'granted Company Pricing User',
       'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+      'company_profitability_contributor_assignment.granted':
+        'granted Company Profitability Contributor',
+      'company_profitability_contributor_assignment.revoked':
+        'revoked Company Profitability Contributor',
+      'company_profitability_director_assignment.granted':
+        'granted Company Profitability Director',
+      'company_profitability_director_assignment.revoked':
+        'revoked Company Profitability Director',
       'company_offer_preparer_assignment.granted':
         'granted Company Offer Preparer',
       'company_offer_preparer_assignment.revoked':

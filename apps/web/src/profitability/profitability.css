@@ -1,0 +1,55 @@
+.profitability-panel {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-color, #d8d5e3);
+  padding: clamp(1rem, 3vw, 2rem);
+}
+.profitability-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.profitability-form label,
+.profitability-form fieldset {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.profitability-form fieldset,
+.profitability-form textarea,
+.profitability-form button {
+  grid-column: 1 / -1;
+}
+.profitability-history {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.profitability-history article {
+  border-top: 1px solid #d8d5e3;
+  padding-top: 1rem;
+}
+.profitability-history dl {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) 1fr;
+  gap: 0.35rem 1rem;
+}
+.profitability-history dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.profitability-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (max-width: 560px) {
+  .profitability-form {
+    grid-template-columns: 1fr;
+  }
+  .profitability-form > * {
+    grid-column: 1;
+  }
+  .profitability-history dl {
+    grid-template-columns: 1fr;
+  }
+}

@@ -53,6 +53,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_commercial_activity_reader',
   'company_opportunity_manager',
   'company_project_approver',
+  'company_profitability_contributor',
+  'company_profitability_director',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -329,9 +331,9 @@ export const companyRoleAssignments = pgTable(
         OR
         (${table.bundle}::text IN ('company_commercial_intake', 'company_project_access') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
         OR
-        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
+        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
         OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver')
+        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director')
           AND ${table.permissionSetVersion} IS NULL)
       )`,
     ),
@@ -698,6 +700,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_opportunity_manager_assignment.revoked',
   'company_project_approver_assignment.granted',
   'company_project_approver_assignment.revoked',
+  'company_profitability_contributor_assignment.granted',
+  'company_profitability_contributor_assignment.revoked',
+  'company_profitability_director_assignment.granted',
+  'company_profitability_director_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -758,7 +764,9 @@ export const activityLogEvents = pgTable(
               | 'Company Pricing Adjustment'
               | 'Company Commercial Activity Reader'
               | 'Company Opportunity Manager'
-              | 'Company Project Approver';
+              | 'Company Project Approver'
+              | 'Company Profitability Contributor'
+              | 'Company Profitability Director';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
         | { legalEntityId: string; values: ClientLegalEntityValues }
