@@ -98,18 +98,18 @@ The entry point appears only after the authorization owner grants the required c
 
 ### 5.2 Human-confirmed inputs
 
-| Input                     | Approved boundary                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Currency                  | One required ISO currency for the whole estimate; no conversion                                       |
-| Executor type             | One required value from the four source-backed types; it selects no formula in this slice             |
-| Executor cost             | Explicit zero-or-positive decimal amount confirmed by a human                                         |
-| Fiscal cost               | Explicit zero-or-positive decimal amount; the product calculates no tax or contribution               |
-| Direct-cost lines         | Zero or more lines with a submission key, category, short label and positive amount                   |
-| Allocated overhead        | One explicit zero-or-positive decimal amount; no allocation formula or equal split                    |
-| Target profitability      | Required explicit decimal percentage; no default, range or approval threshold is imposed              |
-| Proposed commercial price | Required positive decimal amount in the estimate currency                                             |
-| Pricing intent            | Required choice between ordinary and strategic pricing; it selects no formula                         |
-| Strategic-price reason    | Required only when the author marks the proposed price as strategic                                   |
+| Input                     | Approved boundary                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| Currency                  | One required ISO currency for the whole estimate; no conversion                           |
+| Executor type             | One required value from the four source-backed types; it selects no formula in this slice |
+| Executor cost             | Explicit zero-or-positive decimal amount confirmed by a human                             |
+| Fiscal cost               | Explicit zero-or-positive decimal amount; the product calculates no tax or contribution   |
+| Direct-cost lines         | Zero or more lines with a submission key, category, short label and positive amount       |
+| Allocated overhead        | One explicit zero-or-positive decimal amount; no allocation formula or equal split        |
+| Target profitability      | Required explicit decimal percentage; no default, range or approval threshold is imposed  |
+| Proposed commercial price | Required positive decimal amount in the estimate currency                                 |
+| Pricing intent            | Required choice between ordinary and strategic pricing; it selects no formula             |
+| Strategic-price reason    | Required only when the author marks the proposed price as strategic                       |
 
 Direct-cost categories are limited to patent cost, travel, subcontractor, translation/material/consumable and other project-specific direct cost. A category describes the entered amount; it does not trigger an automatic calculation.
 
@@ -271,36 +271,36 @@ Missing Offer or Contract templates, numbering and full commercial-dossier evide
 
 The full journey is: explicitly grant Contributor and Director independently; submit the synthetic bundle; reload its exact frozen version; record `MODIFY`; append a fresh confirmed correction; record `APPROVE` against that exact new version; reload both versions and decisions. Revocation then prevents reading, creation, decision and replay according to the command's current prerequisites. The following cases are approved expectations, not claims of existing tests or runtime delivery.
 
-| Case                                               | Expected outcome                                                                                                                                                                          | Status   |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| Positive same-currency estimate                    | Exact total cost, profit, profitability and target difference are stored and reload unchanged                                                                                             | Approved |
-| Proposed price is missing or malformed             | Refuse the field; commit nothing                                                                                                                                                          | Approved |
-| Proposed price is zero                             | Refuse because profitability has a zero denominator; commit nothing                                                                                                                       | Approved |
-| Proposed price is negative                         | Refuse; commit nothing                                                                                                                                                                    | Approved |
-| Negative cost amount                               | Refuse the field; commit nothing                                                                                                                                                          | Approved |
-| Zero-valued direct-cost line                       | Refuse the line and allow its omission; do not create meaningless lines                                                                                                                   | Approved |
-| No direct-cost lines                               | Accept when required executor, fiscal and overhead inputs and explicit completeness confirmation are present                                                                              | Approved |
-| Mixed currency                                     | Refuse the whole command; never convert or partially total                                                                                                                                | Approved |
-| Exact retry                                        | Return the same immutable version and create no second event                                                                                                                              | Approved |
-| Same idempotency key, changed payload              | Return a conflict and preserve the original version                                                                                                                                       | Approved |
-| Repeated direct-cost submission key                | Refuse the payload; equal amounts under different keys remain separate and visible                                                                                                        | Approved |
-| Suspected semantic double count                    | Show every line and require human bundle confirmation plus final Director validation; do not guess or merge                                                                               | Approved |
-| Monetary input `1.005`                             | Reject overprecision, commit nothing; never round the submitted amount                                                                                                                    | Approved |
-| Exact intermediate profitability `1.005%`          | Price `200.00`, total cost `197.99`, profit `2.01`: profitability `1.01%`; target `1.00%` gives independently rounded difference `0.01` points                                            | Approved |
-| Independent percentage rounding                    | Same inputs, target `1.01%`: exact difference `-0.005` gives `-0.01` points, not displayed-profitability subtraction `0.00`                                                               | Approved |
-| Negative profit and half boundary                  | Price `200.00`, cost `202.01`: profit `-2.01`, profitability `-1.01%`; target `0` gives difference `-1.01` points                                                                         | Approved |
-| Configuration changes after commit                 | Old version and decision stay byte-for-byte reproducible; a new calculation names any new rule/configuration version actually used                                                        | Approved |
-| Proposed price changes with a price-dependent cost | Require a new version and reconfirm the dependent cost; calculate no fixed-cost minimum price                                                                                             | Approved |
-| Reader lacks both Contributor v1 and Director v1   | Safe denial with no record, amount, count or event disclosed                                                                                                                              | Approved |
-| Creator lacks Contributor v1                       | Safe denial; no estimate or event is created                                                                                                                                              | Approved |
-| Contributor attempts a Director decision           | Safe denial; the exact version remains awaiting a Director decision                                                                                                                       | Approved |
-| Director v1 holder lacks Contributor v1            | May read and decide an authorized estimate but cannot create one                                                                                                                          | Approved |
-| Director holds both explicit bundles               | May create through Contributor v1 and separately decide the exact version through Director v1                                                                                             | Approved |
-| Actor has only a Director job label                | Safe denial; a label or person identity grants no read, create or decision authority                                                                                                      | Approved |
-| Actor holds bundles in another Company             | Safe denial without revealing the estimate or Opportunity                                                                                                                                 | Approved |
-| Authority revoked before replay                    | Safe denial before returning the recorded result                                                                                                                                          | Approved |
-| Concurrent Director decisions on one version       | One exact version gains one decision; a distinct competing key conflicts without writes; earlier frozen versions and decisions are never invalidated retroactively                        | Approved |
-| Earlier illustrative Snapshot and Offer            | No mutation, retagging, repricing or changed Offer result                                                                                                                                 | Approved |
+| Case                                               | Expected outcome                                                                                                                                                   | Status   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| Positive same-currency estimate                    | Exact total cost, profit, profitability and target difference are stored and reload unchanged                                                                      | Approved |
+| Proposed price is missing or malformed             | Refuse the field; commit nothing                                                                                                                                   | Approved |
+| Proposed price is zero                             | Refuse because profitability has a zero denominator; commit nothing                                                                                                | Approved |
+| Proposed price is negative                         | Refuse; commit nothing                                                                                                                                             | Approved |
+| Negative cost amount                               | Refuse the field; commit nothing                                                                                                                                   | Approved |
+| Zero-valued direct-cost line                       | Refuse the line and allow its omission; do not create meaningless lines                                                                                            | Approved |
+| No direct-cost lines                               | Accept when required executor, fiscal and overhead inputs and explicit completeness confirmation are present                                                       | Approved |
+| Mixed currency                                     | Refuse the whole command; never convert or partially total                                                                                                         | Approved |
+| Exact retry                                        | Return the same immutable version and create no second event                                                                                                       | Approved |
+| Same idempotency key, changed payload              | Return a conflict and preserve the original version                                                                                                                | Approved |
+| Repeated direct-cost submission key                | Refuse the payload; equal amounts under different keys remain separate and visible                                                                                 | Approved |
+| Suspected semantic double count                    | Show every line and require human bundle confirmation plus final Director validation; do not guess or merge                                                        | Approved |
+| Monetary input `1.005`                             | Reject overprecision, commit nothing; never round the submitted amount                                                                                             | Approved |
+| Exact intermediate profitability `1.005%`          | Price `200.00`, total cost `197.99`, profit `2.01`: profitability `1.01%`; target `1.00%` gives independently rounded difference `0.01` points                     | Approved |
+| Independent percentage rounding                    | Same inputs, target `1.01%`: exact difference `-0.005` gives `-0.01` points, not displayed-profitability subtraction `0.00`                                        | Approved |
+| Negative profit and half boundary                  | Price `200.00`, cost `202.01`: profit `-2.01`, profitability `-1.01%`; target `0` gives difference `-1.01` points                                                  | Approved |
+| Configuration changes after commit                 | Old version and decision stay byte-for-byte reproducible; a new calculation names any new rule/configuration version actually used                                 | Approved |
+| Proposed price changes with a price-dependent cost | Require a new version and reconfirm the dependent cost; calculate no fixed-cost minimum price                                                                      | Approved |
+| Reader lacks both Contributor v1 and Director v1   | Safe denial with no record, amount, count or event disclosed                                                                                                       | Approved |
+| Creator lacks Contributor v1                       | Safe denial; no estimate or event is created                                                                                                                       | Approved |
+| Contributor attempts a Director decision           | Safe denial; the exact version remains awaiting a Director decision                                                                                                | Approved |
+| Director v1 holder lacks Contributor v1            | May read and decide an authorized estimate but cannot create one                                                                                                   | Approved |
+| Director holds both explicit bundles               | May create through Contributor v1 and separately decide the exact version through Director v1                                                                      | Approved |
+| Actor has only a Director job label                | Safe denial; a label or person identity grants no read, create or decision authority                                                                               | Approved |
+| Actor holds bundles in another Company             | Safe denial without revealing the estimate or Opportunity                                                                                                          | Approved |
+| Authority revoked before replay                    | Safe denial before returning the recorded result                                                                                                                   | Approved |
+| Concurrent Director decisions on one version       | One exact version gains one decision; a distinct competing key conflicts without writes; earlier frozen versions and decisions are never invalidated retroactively | Approved |
+| Earlier illustrative Snapshot and Offer            | No mutation, retagging, repricing or changed Offer result                                                                                                          | Approved |
 
 Additional proofs cover omitted/false confirmation, empty/invalid labels and strategic reason, every executor/category choice without formula selection, target with no hidden default or business range, unknown captured permission versions, independent assignment grant/revoke and unchanged legacy assignments. Submission races cover absent/current head and exact retries. Decision races cover different codes and different keys with the same code; decision-versus-append preserves both facts. Failure injection at each version/head/decision/receipt/event write and response construction proves all-or-none persistence. Authority and target loss before replay refuse the recorded result; a successful replay precedes stale-head evaluation.
 
