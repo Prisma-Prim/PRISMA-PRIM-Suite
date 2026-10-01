@@ -112,6 +112,14 @@ _Avoid_: Quote, estimate
 The immutable inputs, rule and Tariff versions, lines, adjustments, tax, rounding, and totals produced by a Pricing Calculation.
 _Avoid_: Current price
 
+**Profitability Estimate**:
+A Company-owned internal economic record for one Opportunity, based on human-confirmed costs, an explicit proposed commercial price and target profitability.
+_Avoid_: Pricing Calculation, Pricing Snapshot, Offer, actual profit
+
+**Profitability Estimate Version**:
+One immutable submission of a Profitability Estimate's confirmed inputs and computed results, with at most one separately recorded Director decision against that exact version.
+_Avoid_: Mutable estimate, approved estimate when only one version is approved
+
 ## Commercial documents
 
 **Offer**:

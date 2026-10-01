@@ -1,7 +1,7 @@
 # PRD — Tenant, Company, Shared Client and Authorization
 
 **Status:** Draft — Company Director dossier delivered and governed duplicate-resolution boundary approved; wider authorization pending
-**Version:** 0.7
+**Version:** 0.8
 **Owner:** Dan Popescu  
 **Decisions:** DEC-014–DEC-036, DEC-063, DEC-177–DEC-179, DEC-191, DEC-193–DEC-195, DEC-212, DEC-213
 **Profitability authorization direction:** Dan, 2026-09-30, normalized through [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488)
@@ -223,7 +223,7 @@ failed attempt record none. These events attribute the transition only; neither
 recording nor reading them confers `commercial.activity.read` or any commercial
 read, and the bundle's permission semantics above are unchanged.
 
-Dan's 2026-09-30 Product Owner decision for [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488) adds two separate opt-in bundles for the [Draft confirmed-cost profitability estimate](release-3-confirmed-cost-profitability-estimate-prd.md):
+Dan's 2026-09-30 Product Owner decision for [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488) adds two separate opt-in bundles for the [approved first confirmed-cost profitability journey](release-3-confirmed-cost-profitability-estimate-prd.md):
 
 | Bundle                                   | Captured v1 permissions                                                              | Authorized result                                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -329,7 +329,7 @@ Question sources: S00, S01, S02 and the direct 2026-08-23 answer in #81. Provena
 
 The cross-cutting model is ready to govern Release 1 PRDs. The foundation through #65, #66, #67 and #88 is delivered, and #141 delivers the separately approved conservative Shared Client tracer.
 
-Issue #146 / PR #147 delivered the Company Director's bounded Client permissions, approved shared fields and server-side Company confidentiality. After #148 normalization, one next vertical slice may add governed duplicate resolution for a resolver who holds every affected Company scope. Dan's 2026-09-30 decision additionally normalizes the two profitability bundles above for the bounded first estimate lot, subject to final review of its Draft PRD. Every other broader assignment or permission bundle, asynchronous multi-person approval, consolidated view, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
+Issue #146 / PR #147 delivered the Company Director's bounded Client permissions, approved shared fields and server-side Company confidentiality. After #148 normalization, one next vertical slice may add governed duplicate resolution for a resolver who holds every affected Company scope. Dan's 2026-09-30 decision additionally normalizes the two profitability bundles above for the bounded first estimate lot, whose bounded first-journey PRD was approved under delegated root review on 2026-10-01 in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497); approval is not runtime delivery. Every other broader assignment or permission bundle, asynchronous multi-person approval, consolidated view, broader deactivation and exceptional-access mechanism remains blocked on a separately approved vertical issue.
 
 ## 17. Evidence authority boundary
 
