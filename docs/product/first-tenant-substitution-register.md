@@ -53,3 +53,10 @@ Condensed from the evidence lists of the [question bank](iurie-business-question
 11. The Romanian and Russian terms list.
 
 Outside the MVP and not indexed here: Release 2 Google accounts, Release 4 accreditation, Release 5 finance and Release 6 migration.
+
+
+## October 2026 received materials
+
+The [controlled-source reconciliation](commercial-source-reconciliation-2026-10.md) records the newly received primary dossier and comparison variants. Relevant CSV `real_input_needed` cells distinguish material already received from the validation or examples still needed. Do not request a standardized historical calculation workbook for the primary dossier: E01 explicitly says none existed. Suitable worked calculations must come from another case.
+
+Receipt, candidate reusable content and approved substitution are separate. Every `decision`, `decision_ref`, historical `evidence_refs` and demonstration `seed_key` is unchanged by this reconciliation. Acceptance is described for one case only; final numbering rules and reusable Templates/clauses remain pending. Commercial Workflow §22 and the linked source matrix own these facts; this register grants no real-use approval and reclassifies no delivered capability.
