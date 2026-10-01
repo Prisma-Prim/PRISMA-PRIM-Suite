@@ -1635,6 +1635,10 @@ withPostgres('Official Document Versions REST contract', () => {
         fence: await clientVersion(),
       };
     }
+    const versionRevisionConflict = {
+      code: 'document_revision_conflict',
+      message: 'The Document changed. Reload it before changing its Versions.',
+    };
     async function expectOneCommit(
       results: ReadonlyArray<{
         status: number;
@@ -1643,6 +1647,9 @@ withPostgres('Official Document Versions REST contract', () => {
       before: Awaited<ReturnType<typeof concurrencyState>>,
       documentId: string,
       observer: Caller,
+      conflictBodies: ReadonlyArray<Record<string, unknown>> = results.map(
+        () => versionRevisionConflict,
+      ),
     ): Promise<Record<string, unknown>> {
       const committed = results.filter(
         (result) => result.status === 200 || result.status === 201,
@@ -1650,7 +1657,11 @@ withPostgres('Official Document Versions REST contract', () => {
       const refused = results.filter((result) => result.status === 409);
       expect(committed).toHaveLength(1);
       expect(refused).toHaveLength(1);
-      expect(refused[0]?.body.code).toBe('document_revision_conflict');
+      expect(conflictBodies).toHaveLength(results.length);
+      for (const [index, result] of results.entries()) {
+        if (result.status === 409)
+          expect(result.body).toEqual(conflictBodies[index]);
+      }
       const after = await concurrencyState(documentId, observer);
       expect(after.revision).toBe(before.revision + 1);
       const versionReceiptDelta =
@@ -1921,6 +1932,15 @@ withPostgres('Official Document Versions REST contract', () => {
         before,
         documentId,
         observer,
+        [
+          versionRevisionConflict,
+          {
+            message:
+              'The working Document changed. Reload before correcting it.',
+            error: 'Conflict',
+            statusCode: 409,
+          },
+        ],
       );
       const current = references(await versionsOf(documentId, observer), 1);
       if (receipt.action === 'representation_removed') {
