@@ -464,6 +464,26 @@ it.skipIf(!databaseUrl)(
            $6, 'representation-added-key', 'representation-fingerprint', 3, 4)`,
         [WORKSPACE, COMPANY, DOCUMENT, VERSION, REFERENCE, MEMBERSHIP],
       );
+      await query(
+        `INSERT INTO document_version_commands (workspace_id, company_id, document_id, action,
+           version_id, version_number, representation_id, representation_form,
+           appended_after_designation, actor_membership_id, idempotency_key,
+           request_fingerprint, expected_revision, revision)
+         VALUES ($1, $2, $3, 'representation_removed', $4, 3, $5, 'other', false,
+           $6, 'representation-removed-key', 'removal-fingerprint', 4, 5)`,
+        [WORKSPACE, COMPANY, DOCUMENT, THIRD_VERSION, REFERENCE, MEMBERSHIP],
+      );
+      await expect(
+        query(
+          `INSERT INTO document_version_commands (workspace_id, company_id, document_id, action,
+             version_id, version_number, representation_id, representation_form,
+             appended_after_designation, actor_membership_id, idempotency_key,
+             request_fingerprint, expected_revision, revision)
+           VALUES ($1, $2, $3, 'representation_removed', $4, 3, $5, 'other', true,
+             $6, 'invalid-removal-key', 'invalid-removal-fingerprint', 5, 6)`,
+          [WORKSPACE, COMPANY, DOCUMENT, THIRD_VERSION, REFERENCE, MEMBERSHIP],
+        ),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       await expect(
         query(`UPDATE document_version_commands SET revision = 4`),
       ).rejects.toMatchObject({ code: RAISED });

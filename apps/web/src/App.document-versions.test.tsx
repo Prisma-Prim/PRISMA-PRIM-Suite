@@ -48,7 +48,11 @@ it.each([
   ],
   [
     'document.representation.removed',
-    { versionNumber: 2, form: 'editable' },
+    {
+      versionNumber: 2,
+      form: 'editable',
+      appendedAfterDesignation: false,
+    },
     documentTarget,
     'removed a draft Document reference',
     'Target: Working Document: Chestionar de evaluare inițială — GRUP Demo SA',

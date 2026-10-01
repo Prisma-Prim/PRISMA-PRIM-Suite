@@ -57,7 +57,7 @@ ALTER TABLE "document_version_commands" ADD CONSTRAINT "document_version_command
             AND "document_version_commands"."related_version_number" IS NULL
             AND "document_version_commands"."representation_id" IS NOT NULL
             AND "document_version_commands"."representation_form" IN ('editable', 'rendered', 'signed', 'other')
-            AND "document_version_commands"."appended_after_designation" IS NULL))
+            AND "document_version_commands"."appended_after_designation" IS FALSE))
       ) IS TRUE);
 --> statement-breakpoint
 -- A draft reference remains mutable. A current official Version accepts only

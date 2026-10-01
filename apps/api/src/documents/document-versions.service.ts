@@ -756,6 +756,7 @@ export class DocumentVersionsService {
       relatedVersionNumber: null,
       representationId: target.id,
       representationForm: target.form,
+      appendedAfterDesignation: false,
     };
   }
 
@@ -926,7 +927,10 @@ function receipt(command: CommandRow): DocumentVersionReceipt {
         appendedAfterDesignation: command.appendedAfterDesignation,
       };
     case 'representation_removed':
-      if (command.representationId === null)
+      if (
+        command.representationId === null ||
+        command.appendedAfterDesignation !== false
+      )
         throw new Error('A removed-reference receipt is incomplete.');
       return {
         documentId: command.documentId,

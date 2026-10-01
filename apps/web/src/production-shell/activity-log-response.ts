@@ -3,6 +3,7 @@ import { readLifecycleActivityMetadata } from '../project/project-lifecycle-resp
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
+  DocumentVersionActivityLogEvent,
   OpportunityResponsibleChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
   ProjectResponsibleChangedActivityLogEvent,
@@ -160,11 +161,12 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
           companyId: identifier(target.companyId),
         },
       };
-    case 'document.registered':
     case 'document.version.drafted':
     case 'document.version.designated_official':
     case 'document.representation.added':
     case 'document.representation.removed':
+      return documentVersionEvent(value, action, target);
+    case 'document.registered':
       return {
         ...recorded(value),
         action,
@@ -229,6 +231,77 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         action,
         target: ordinaryTarget(targetTypes[action], target),
       };
+  }
+}
+
+function documentVersionEvent(
+  event: Record<string, unknown>,
+  action: DocumentVersionActivityLogEvent['action'],
+  target: Record<string, unknown>,
+): DocumentVersionActivityLogEvent {
+  if (!isRecord(event.metadata)) invalid();
+  const base = {
+    ...recorded(event),
+    target: {
+      type: 'document' as const,
+      documentId: identifier(target.documentId),
+      documentTitle: text(target.documentTitle),
+      companyId: identifier(target.companyId),
+    },
+  };
+  const versionNumber = positiveInteger(event.metadata.versionNumber);
+  switch (action) {
+    case 'document.version.drafted':
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          sourceVersionNumber: positiveInteger(
+            event.metadata.sourceVersionNumber,
+          ),
+        },
+      };
+    case 'document.version.designated_official':
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          supersededVersionNumber:
+            event.metadata.supersededVersionNumber === null
+              ? null
+              : positiveInteger(event.metadata.supersededVersionNumber),
+        },
+      };
+    case 'document.representation.added': {
+      const appendedAfterDesignation = event.metadata.appendedAfterDesignation;
+      if (typeof appendedAfterDesignation !== 'boolean') invalid();
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          form: representationForm(event.metadata.form),
+          appendedAfterDesignation,
+        },
+      };
+    }
+    case 'document.representation.removed':
+      if (event.metadata.appendedAfterDesignation !== false) invalid();
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          form: representationForm(event.metadata.form),
+          appendedAfterDesignation: false,
+        },
+      };
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
+    }
   }
 }
 
@@ -410,6 +483,25 @@ function text(value: unknown): string {
 
 function timestamp(value: unknown): string {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
+    invalid();
+  return value;
+}
+
+function positiveInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
+    invalid();
+  return value;
+}
+
+function representationForm(
+  value: unknown,
+): 'editable' | 'rendered' | 'signed' | 'other' {
+  if (
+    value !== 'editable' &&
+    value !== 'rendered' &&
+    value !== 'signed' &&
+    value !== 'other'
+  )
     invalid();
   return value;
 }

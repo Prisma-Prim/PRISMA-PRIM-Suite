@@ -472,7 +472,7 @@ export const documentVersionCommands = pgTable(
             AND ${table.relatedVersionNumber} IS NULL
             AND ${table.representationId} IS NOT NULL
             AND ${table.representationForm} IN ('editable', 'rendered', 'signed', 'other')
-            AND ${table.appendedAfterDesignation} IS NULL))
+            AND ${table.appendedAfterDesignation} IS FALSE))
       ) IS TRUE`,
     ),
   ],

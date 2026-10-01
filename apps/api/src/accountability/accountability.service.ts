@@ -1279,7 +1279,10 @@ export class AccountabilityService {
             },
           };
         case 'representation_removed':
-          if (row.representationForm === null)
+          if (
+            row.representationForm === null ||
+            row.appendedAfterDesignation !== false
+          )
             throw new Error('A removed-reference event is incomplete.');
           return {
             ...recorded,
@@ -1287,6 +1290,7 @@ export class AccountabilityService {
             metadata: {
               versionNumber: row.versionNumber,
               form: row.representationForm,
+              appendedAfterDesignation: false,
             },
           };
         default:

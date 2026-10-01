@@ -555,16 +555,34 @@ withPostgres('Official Document Versions REST contract', () => {
     expect(copied).toHaveLength(2);
     expect(copied.map((row) => row.form)).toEqual(['other', 'rendered']);
     expect(copied.some((row) => row.form === 'signed')).toBe(false);
+    const removedReferenceId = text(copied[0]?.id);
+    const removal = await removeReference(
+      documentId,
+      text(versionTwo?.id),
+      removedReferenceId,
+      5,
+    );
+    expect(removal.status).toBe(200);
     expect(
       (
-        await removeReference(
-          documentId,
-          text(versionTwo?.id),
-          text(copied[0]?.id),
-          5,
+        await harness.pool.query<{
+          appended_after_designation: boolean | null;
+        }>(
+          `SELECT appended_after_designation
+             FROM document_version_commands
+            WHERE document_id = $1 AND action = 'representation_removed'`,
+          [documentId],
         )
-      ).status,
-    ).toBe(200);
+      ).rows,
+    ).toEqual([{ appended_after_designation: false }]);
+    const removalEvent = (await versionEvents()).find(
+      (event) => event.action === 'document.representation.removed',
+    );
+    expect(record(removalEvent?.metadata)).toEqual({
+      versionNumber: 2,
+      form: 'other',
+      appendedAfterDesignation: false,
+    });
     const afterRemoval = await versionsOf(documentId);
     const current = afterRemoval.versions.find((row) => row.number === 2);
     expect(list(current?.representations).map(record)).toEqual([

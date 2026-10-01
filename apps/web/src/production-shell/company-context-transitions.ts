@@ -179,14 +179,35 @@ export interface DocumentCorrectedActivityLogEvent {
     companyId: string;
   };
 }
-/** One committed Version command; its Version numbers are not presented. */
-export interface DocumentVersionActivityLogEvent {
+/** One committed Version command with its minimal, validated metadata. */
+export type DocumentVersionActivityLogEvent =
+  | DocumentVersionActivityLogEventBase<
+      'document.version.drafted',
+      { versionNumber: number; sourceVersionNumber: number }
+    >
+  | DocumentVersionActivityLogEventBase<
+      'document.version.designated_official',
+      { versionNumber: number; supersededVersionNumber: number | null }
+    >
+  | DocumentVersionActivityLogEventBase<
+      'document.representation.added',
+      {
+        versionNumber: number;
+        form: 'editable' | 'rendered' | 'signed' | 'other';
+        appendedAfterDesignation: boolean;
+      }
+    >
+  | DocumentVersionActivityLogEventBase<
+      'document.representation.removed',
+      {
+        versionNumber: number;
+        form: 'editable' | 'rendered' | 'signed' | 'other';
+        appendedAfterDesignation: false;
+      }
+    >;
+interface DocumentVersionActivityLogEventBase<Action extends string, Metadata> {
   id: string;
-  action:
-    | 'document.version.drafted'
-    | 'document.version.designated_official'
-    | 'document.representation.added'
-    | 'document.representation.removed';
+  action: Action;
   occurredAt: string;
   actor: { internalUserId: string; displayName: string };
   target: {
@@ -195,6 +216,7 @@ export interface DocumentVersionActivityLogEvent {
     documentTitle: string;
     companyId: string;
   };
+  metadata: Metadata;
 }
 export interface DocumentProjectActivityLogEvent {
   id: string;

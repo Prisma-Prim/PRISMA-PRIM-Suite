@@ -448,6 +448,7 @@ export type DocumentVersionActivityEvent =
       {
         versionNumber: number;
         form: 'editable' | 'rendered' | 'signed' | 'other';
+        appendedAfterDesignation: false;
       }
     >;
 interface DocumentVersionActivityEventBase<Action extends string, Metadata> {
