@@ -3520,7 +3520,6 @@ Formal question-bank completeness is not the same as evidence sufficiency. A par
 
 Implementation issues must continue to derive from the owning canonical PRD after material blockers are closed, never directly from the raw interview.
 
-
 ### 34.5 October controlled commercial sources
 
 The [October source reconciliation](commercial-source-reconciliation-2026-10.md), delivered under #493, preserves generic provenance from the new dossier package and the separate acceptance/numbering clarification. The primary dossier is selected by Iurie; its historical price was commercial judgement before the formal method, with no standardized workbook. Representative document receipt now reduces collection gaps without validating reusable content or operational use.
