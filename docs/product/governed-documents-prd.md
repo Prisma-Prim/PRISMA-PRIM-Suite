@@ -132,6 +132,8 @@ An authorized user registers a Document for a Client Project, creates a formal V
 
 October controlled sources now include completed questionnaire, editable Offer/Contract files, PDFs, signature annotations and a final scan; the [source mapping](commercial-source-reconciliation-2026-10.md) preserves exact hashes and locations without Client data. Receipt partially satisfies representative-example collection, not approval of a reusable Template, clause, Representation equivalence, ownership or signing mandate. The legacy editable formats require reliable conversion before content equivalence is claimed. Conflicting dates and Standard editions require a validated candidate model while originals remain unchanged. Official-designation, retention and confidentiality policy remain unresolved where not already decided. Commercial Workflow §22 owns the acceptance-ordering and numbering consequences; no Document permission or import/storage capability changes here.
 
+The [candidate Offer/Contract mapping](commercial-candidate-models-2026-10.md) supplies reusable review skeletons and source-located empty slots. Its conversion comparison supports structural preparation only and records remaining layout/annotation differences; it approves no Template Version, clause or Representation equivalence.
+
 Question source: S03.
 
 ## 15. Technical dependencies
