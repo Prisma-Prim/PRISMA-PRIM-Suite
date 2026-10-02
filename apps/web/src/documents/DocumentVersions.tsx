@@ -15,11 +15,13 @@ import {
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
 import { formatApplicationDateTime } from '../presentation/date-time';
+import { Select } from '../presentation/Select';
 import {
   readDocumentVersionReceipt,
   readDocumentVersions,
-  type DocumentReference,
+  type DocumentRepresentationForm,
   type DocumentVersion,
+  type DocumentVersionReference,
   type DocumentVersions as VersionsRead,
 } from './document-response';
 import { documentVersionsCopy as copy } from './document-versions.copy';
@@ -31,26 +33,47 @@ type ReadState =
 
 /** One Version command exactly as submitted; a retry resends it unchanged. */
 interface VersionCommand {
-  action: 'designated_official' | 'drafted';
+  action:
+    | 'designated_official'
+    | 'drafted'
+    | 'representation_added'
+    | 'representation_removed';
   path: string;
   payload: string;
   key: string;
+  capacityScope?: 'draft' | 'official';
 }
 type CommandState =
   | { status: 'idle' }
   | {
       status: 'confirming';
+      action: 'designation';
       versionId: string;
       versionNumber: number;
       supersededVersionNumber: number | null;
       expectedRevision: number;
+    }
+  | {
+      status: 'confirming';
+      action: 'official-append';
+      versionId: string;
+      versionNumber: number;
+      expectedRevision: number;
+      form: DocumentRepresentationForm;
+      url: string;
     }
   | { status: 'pending'; command: VersionCommand }
   | { status: 'uncertain'; command: VersionCommand }
   | { status: 'confirmed'; message: string }
   | {
       status: 'refused';
-      reason: 'conflict' | 'unavailable' | 'capacity' | 'denied';
+      reason:
+        | 'conflict'
+        | 'unavailable'
+        | 'version-capacity'
+        | 'draft-reference-capacity'
+        | 'official-reference-capacity'
+        | 'denied';
     };
 
 interface AccessRejection {
@@ -61,7 +84,7 @@ interface AccessRejection {
 
 /**
  * The formal Versions of one open working Document: each Version's status,
- * attribution and reference, with the designation and new-draft commands the
+ * attribution and references, with the designation and new-draft commands the
  * live permissions allow. It is keyed to the Document, member, Company and
  * Document permission set, including the Approver assignment, it was read
  * under: any change starts a new section, whose predecessor's late replies
@@ -248,8 +271,13 @@ function VersionsSection({
             reason:
               result.reason === undefined &&
               result.code === 'document_version_capacity_exceeded'
-                ? 'capacity'
-                : 'conflict',
+                ? 'version-capacity'
+                : result.reason === undefined &&
+                    result.code === 'document_representation_capacity_exceeded'
+                  ? next.capacityScope === 'official'
+                    ? 'official-reference-capacity'
+                    : 'draft-reference-capacity'
+                  : 'conflict',
           });
           return;
         case 'validation':
@@ -265,12 +293,25 @@ function VersionsSection({
             receipt.action !== next.action
           )
             throw new Error('Unexpected Version receipt');
+          const message = (() => {
+            switch (receipt.action) {
+              case 'designated_official':
+                return copy.designated(receipt.versionNumber);
+              case 'drafted':
+                return copy.drafted(receipt.versionNumber);
+              case 'representation_added':
+                return copy.referenceAdded(receipt.versionNumber);
+              case 'representation_removed':
+                return copy.referenceRemoved(receipt.versionNumber);
+              default: {
+                const exhaustive: never = receipt;
+                return exhaustive;
+              }
+            }
+          })();
           setCommand({
             status: 'confirmed',
-            message:
-              receipt.action === 'designated_official'
-                ? copy.designated(receipt.versionNumber)
-                : copy.drafted(receipt.versionNumber),
+            message,
           });
           setReloads((count) => count + 1);
           // The owner reports its own refresh failure; the confirmed command
@@ -298,11 +339,71 @@ function VersionsSection({
   }
 
   function confirmDesignation(): void {
-    if (command.status !== 'confirming') return;
+    if (command.status !== 'confirming' || command.action !== 'designation')
+      return;
     void submit({
       action: 'designated_official',
       path: `/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(command.versionId)}/official-designation`,
       payload: JSON.stringify({ expectedRevision: command.expectedRevision }),
+      key: crypto.randomUUID(),
+    });
+  }
+
+  function addReference(
+    version: DocumentVersion,
+    form: DocumentRepresentationForm,
+    url: string,
+  ): void {
+    if (version.status === 'official') {
+      setCommand({
+        status: 'confirming',
+        action: 'official-append',
+        versionId: version.id,
+        versionNumber: version.number,
+        expectedRevision:
+          read.status === 'ready' ? read.read.workingRevision : 0,
+        form,
+        url,
+      });
+      return;
+    }
+    if (read.status !== 'ready') return;
+    void submit(
+      referenceAdditionCommand(
+        documentId,
+        version,
+        read.read.workingRevision,
+        form,
+        url,
+      ),
+    );
+  }
+
+  function confirmOfficialAppend(): void {
+    if (command.status !== 'confirming' || command.action !== 'official-append')
+      return;
+    void submit({
+      action: 'representation_added',
+      path: `/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(command.versionId)}/representations`,
+      payload: JSON.stringify({
+        expectedRevision: command.expectedRevision,
+        form: command.form,
+        url: command.url,
+      }),
+      key: crypto.randomUUID(),
+      capacityScope: 'official',
+    });
+  }
+
+  function removeReference(
+    version: DocumentVersion,
+    reference: DocumentVersionReference,
+  ): void {
+    if (read.status !== 'ready') return;
+    void submit({
+      action: 'representation_removed',
+      path: `/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(version.id)}/representations/${encodeURIComponent(reference.id)}/removal`,
+      payload: JSON.stringify({ expectedRevision: read.read.workingRevision }),
       key: crypto.randomUUID(),
     });
   }
@@ -347,7 +448,15 @@ function VersionsSection({
           {!read.read.mutable && <p>{copy.readOnly}</p>}
           <ol className="working-document-versions-list" aria-label={copy.list}>
             {read.read.versions.map((version) => (
-              <VersionRow key={version.id} version={version}>
+              <VersionRow
+                key={version.id}
+                version={version}
+                mutable={read.read.mutable}
+                canManage={canStartDraft}
+                busy={busy}
+                onAdd={addReference}
+                onRemove={removeReference}
+              >
                 {read.read.mutable &&
                   canDesignate &&
                   version.status === 'draft' && (
@@ -357,6 +466,7 @@ function VersionsSection({
                       onClick={() =>
                         setCommand({
                           status: 'confirming',
+                          action: 'designation',
                           versionId: version.id,
                           versionNumber: version.number,
                           supersededVersionNumber:
@@ -394,6 +504,7 @@ function VersionsSection({
         confirmationId={confirmationId}
         confirmButton={confirmButton}
         onConfirm={confirmDesignation}
+        onConfirmOfficialAppend={confirmOfficialAppend}
         onCancel={() => setCommand({ status: 'idle' })}
         onRetry={(pending) => void submit(pending)}
         onReload={reload}
@@ -404,9 +515,26 @@ function VersionsSection({
 
 function VersionRow({
   version,
+  mutable,
+  canManage,
+  busy,
+  onAdd,
+  onRemove,
   children,
 }: {
   version: DocumentVersion;
+  mutable: boolean;
+  canManage: boolean;
+  busy: boolean;
+  onAdd: (
+    version: DocumentVersion,
+    form: DocumentRepresentationForm,
+    url: string,
+  ) => void;
+  onRemove: (
+    version: DocumentVersion,
+    reference: DocumentVersionReference,
+  ) => void;
   children: ReactNode;
 }) {
   return (
@@ -424,8 +552,44 @@ function VersionRow({
         at={version.createdAt}
       />
       <Designation version={version} />
-      <VersionReference number={version.number} reference={version.reference} />
+      <ol
+        className="working-document-version-references"
+        aria-label={copy.references(version.number)}
+      >
+        {version.references.map((reference) => (
+          <li key={reference.id}>
+            <VersionReference
+              number={version.number}
+              reference={reference}
+              showPrimary={version.status === 'draft'}
+            />
+            <Attribution
+              label={copy.addedBy(reference.addedByDisplayName)}
+              at={reference.addedAt}
+            />
+            {mutable &&
+              canManage &&
+              version.status === 'draft' &&
+              version.references.length > 1 && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onRemove(version, reference)}
+                >
+                  {copy.removeReference}
+                </button>
+              )}
+          </li>
+        ))}
+      </ol>
       <div className="working-document-version-actions">{children}</div>
+      {mutable && canManage && version.status !== 'superseded' && (
+        <ReferenceForm
+          version={version}
+          busy={busy}
+          onAdd={(form, url) => onAdd(version, form, url)}
+        />
+      )}
     </li>
   );
 }
@@ -482,19 +646,43 @@ function Attribution({ label, at }: { label: string; at: string }) {
 function VersionReference({
   number,
   reference,
+  showPrimary,
 }: {
   number: number;
-  reference: DocumentReference;
+  reference: DocumentVersionReference;
+  showPrimary: boolean;
 }) {
+  const label = (
+    <span className="working-document-version-reference-label">
+      {copy.formLabels[reference.form]} · {copy.position(reference.position)}
+      {showPrimary && reference.primary ? ` · ${copy.primary}` : ''}
+      {reference.appendedAfterDesignation
+        ? ` · ${copy.appendedAfterDesignation}`
+        : ''}
+    </span>
+  );
   switch (reference.access) {
     case 'granted':
       return (
-        <a href={reference.url} target="_blank" rel="noopener noreferrer">
-          {copy.openReference(number)}
-        </a>
+        <div className="working-document-version-reference">
+          {label}
+          <a
+            href={reference.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={copy.openReference(number)}
+          >
+            {reference.url}
+          </a>
+        </div>
       );
     case 'denied':
-      return <p>{copy.referenceDenied}</p>;
+      return (
+        <div className="working-document-version-reference">
+          {label}
+          <p>{copy.referenceDenied}</p>
+        </div>
+      );
     default: {
       const exhaustive: never = reference;
       return exhaustive;
@@ -502,11 +690,98 @@ function VersionReference({
   }
 }
 
+function ReferenceForm({
+  version,
+  busy,
+  onAdd,
+}: {
+  version: DocumentVersion;
+  busy: boolean;
+  onAdd: (form: DocumentRepresentationForm, url: string) => void;
+}) {
+  const id = useId();
+  const [form, setForm] = useState<DocumentRepresentationForm>('other');
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState(false);
+  return (
+    <form
+      className="working-document-reference-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        let parsed: URL;
+        try {
+          parsed = new URL(url.trim());
+        } catch {
+          setError(true);
+          return;
+        }
+        if (
+          parsed.protocol !== 'https:' ||
+          parsed.username ||
+          parsed.password
+        ) {
+          setError(true);
+          return;
+        }
+        setError(false);
+        onAdd(form, parsed.href);
+      }}
+    >
+      <label htmlFor={`${id}-form`}>
+        {copy.form}
+        <Select
+          id={`${id}-form`}
+          value={form}
+          options={copy.formOptions}
+          onValueChange={(value) => {
+            if (isRepresentationForm(value)) setForm(value);
+          }}
+          disabled={busy}
+          required
+        />
+      </label>
+      <label htmlFor={`${id}-url`}>
+        {copy.url}
+        <input
+          id={`${id}-url`}
+          type="url"
+          required
+          value={url}
+          aria-invalid={error}
+          aria-describedby={error ? `${id}-url-error` : undefined}
+          onChange={(event) => {
+            setUrl(event.target.value);
+            setError(false);
+          }}
+          disabled={busy}
+        />
+      </label>
+      {error && (
+        <p id={`${id}-url-error`} role="alert">
+          {copy.invalidUrl}
+        </p>
+      )}
+      <button type="submit" disabled={busy}>
+        {version.status === 'official'
+          ? copy.appendReference
+          : copy.addReference}
+      </button>
+    </form>
+  );
+}
+
+function isRepresentationForm(
+  value: string,
+): value is DocumentRepresentationForm {
+  return copy.formOptions.some((option) => option.value === value);
+}
+
 function CommandFeedback({
   command,
   confirmationId,
   confirmButton,
   onConfirm,
+  onConfirmOfficialAppend,
   onCancel,
   onRetry,
   onReload,
@@ -515,6 +790,7 @@ function CommandFeedback({
   confirmationId: string;
   confirmButton: RefObject<HTMLButtonElement | null>;
   onConfirm: () => void;
+  onConfirmOfficialAppend: () => void;
   onCancel: () => void;
   onRetry: (command: VersionCommand) => void;
   onReload: () => void;
@@ -523,6 +799,28 @@ function CommandFeedback({
     case 'idle':
       return null;
     case 'confirming':
+      if (command.action === 'official-append')
+        return (
+          <div
+            className="working-document-version-confirmation"
+            role="group"
+            aria-labelledby={confirmationId}
+          >
+            <p id={confirmationId}>
+              {copy.confirmOfficialAppend(command.versionNumber)}
+            </p>
+            <button
+              type="button"
+              ref={confirmButton}
+              onClick={onConfirmOfficialAppend}
+            >
+              {copy.confirmAppend}
+            </button>
+            <button type="button" onClick={onCancel}>
+              {copy.cancelAppend}
+            </button>
+          </div>
+        );
       return (
         <div
           className="working-document-version-confirmation"
@@ -583,8 +881,12 @@ function refusalMessage(
       return copy.conflict;
     case 'unavailable':
       return copy.unavailableCommand;
-    case 'capacity':
-      return copy.capacity;
+    case 'version-capacity':
+      return copy.versionCapacity;
+    case 'draft-reference-capacity':
+      return copy.draftReferenceCapacity;
+    case 'official-reference-capacity':
+      return copy.officialReferenceCapacity;
     case 'denied':
       return copy.denied;
     default: {
@@ -592,4 +894,20 @@ function refusalMessage(
       return exhaustive;
     }
   }
+}
+
+function referenceAdditionCommand(
+  documentId: string,
+  version: DocumentVersion,
+  expectedRevision: number,
+  form: DocumentRepresentationForm,
+  url: string,
+): VersionCommand {
+  return {
+    action: 'representation_added',
+    path: `/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(version.id)}/representations`,
+    payload: JSON.stringify({ expectedRevision, form, url }),
+    key: crypto.randomUUID(),
+    capacityScope: version.status === 'official' ? 'official' : 'draft',
+  };
 }

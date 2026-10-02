@@ -13,6 +13,13 @@ export function draftVersionsOf(document: {
   correction: string;
   version: { id: string; representation: unknown };
 }) {
+  const representation = document.version.representation;
+  if (
+    !representation ||
+    typeof representation !== 'object' ||
+    Array.isArray(representation)
+  )
+    throw new Error('Expected a Document representation fixture.');
   return {
     workingRevision: document.workingRevision,
     mutable: document.correction === 'allowed',
@@ -23,7 +30,17 @@ export function draftVersionsOf(document: {
         status: 'draft',
         createdAt: document.createdAt,
         createdBy: { displayName: 'Document Registrar' },
-        representations: [document.version.representation],
+        representations: [
+          {
+            ...representation,
+            position: 1,
+            form: 'other',
+            primary: true,
+            appendedAfterDesignation: false,
+            addedAt: document.createdAt,
+            addedBy: { displayName: 'Document Registrar' },
+          },
+        ],
       },
     ],
   };

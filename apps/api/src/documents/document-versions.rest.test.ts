@@ -291,6 +291,41 @@ withPostgres('Official Document Versions REST contract', () => {
       key: options.key,
     });
   }
+  function addReference(
+    documentId: string,
+    versionId: string,
+    expectedRevision: number,
+    form: 'editable' | 'rendered' | 'signed' | 'other',
+    url: string,
+    options: { as?: Caller; key?: string; body?: unknown } = {},
+  ) {
+    return call(
+      `/documents/${documentId}/versions/${versionId}/representations`,
+      {
+        as: options.as ?? 'registrar',
+        method: 'POST',
+        body: options.body ?? { expectedRevision, form, url },
+        key: options.key,
+      },
+    );
+  }
+  function removeReference(
+    documentId: string,
+    versionId: string,
+    representationId: string,
+    expectedRevision: number,
+    options: { as?: Caller; key?: string } = {},
+  ) {
+    return call(
+      `/documents/${documentId}/versions/${versionId}/representations/${representationId}/removal`,
+      {
+        as: options.as ?? 'registrar',
+        method: 'POST',
+        body: { expectedRevision },
+        key: options.key,
+      },
+    );
+  }
   function correct(
     documentId: string,
     body: Record<string, unknown>,
@@ -333,7 +368,9 @@ withPostgres('Official Document Versions REST contract', () => {
     expect(response.status).toBe(200);
     return list((await json(response)).events)
       .map(record)
-      .filter((event) => text(event.action).startsWith('document.version.'));
+      .filter((event) =>
+        /^document\.(?:version|representation)\./u.test(text(event.action)),
+      );
   }
   async function conflictCode(response: Response): Promise<unknown> {
     expect(response.status).toBe(409);
@@ -358,6 +395,12 @@ withPostgres('Official Document Versions REST contract', () => {
               id: expect.any(String),
               kind: 'external-reference',
               verification: 'unverified',
+              position: 1,
+              form: 'other',
+              primary: true,
+              appendedAfterDesignation: false,
+              addedAt: expect.any(String),
+              addedBy: { displayName: MEMBERS.registrar },
               access: 'granted',
               url: DEMO.url,
             },
@@ -415,6 +458,329 @@ withPostgres('Official Document Versions REST contract', () => {
       version: { id: versionId, status: 'official' },
     });
   });
+
+  it('adds a rendered reference to the draft through the shared revision seam', async () => {
+    const documentId = await register();
+    const versionId = await versionIdOf(documentId, 1);
+    const url = 'https://example.test/demo/chestionar-v1.pdf';
+
+    const response = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      url,
+    );
+
+    expect(response.status).toBe(201);
+    expect(await json(response)).toMatchObject({
+      documentId,
+      workingRevision: 2,
+      action: 'representation_added',
+      versionId,
+      versionNumber: 1,
+      representationId: expect.any(String),
+      appendedAfterDesignation: false,
+    });
+    const read = await versionsOf(documentId);
+    expect(read.workingRevision).toBe(2);
+    expect(record(read.versions[0]).representations).toEqual([
+      expect.objectContaining({ position: 1, form: 'other', primary: true }),
+      expect.objectContaining({
+        position: 2,
+        form: 'rendered',
+        primary: false,
+        appendedAfterDesignation: false,
+        url,
+      }),
+    ]);
+    const events = await harness.pool.query<{ action: string }>(
+      `SELECT action FROM document_version_commands WHERE document_id = $1 ORDER BY occurred_at`,
+      [documentId],
+    );
+    expect(events.rows).toEqual([{ action: 'representation_added' }]);
+    const [activity] = await versionEvents();
+    expect(activity).toMatchObject({
+      action: 'document.representation.added',
+      target: {
+        type: 'document',
+        documentId,
+        documentTitle: DEMO.title,
+        companyId,
+      },
+    });
+    const metadata = record(activity?.metadata);
+    expect(metadata).toEqual({
+      versionNumber: 1,
+      form: 'rendered',
+      appendedAfterDesignation: false,
+    });
+    expect(JSON.stringify(metadata)).not.toMatch(/chestionar|https|project/iu);
+  });
+
+  it('keeps official appends on their exact Version and promotes the next draft primary reference', async () => {
+    const documentId = await register();
+    const versionOneId = await versionIdOf(documentId, 1);
+    const renderedUrl = 'https://example.test/demo/chestionar-v1.pdf';
+    expect(
+      (await addReference(documentId, versionOneId, 1, 'rendered', renderedUrl))
+        .status,
+    ).toBe(201);
+    expect((await designate(documentId, versionOneId, 2)).status).toBe(200);
+    const signed = await addReference(
+      documentId,
+      versionOneId,
+      3,
+      'signed',
+      'https://example.test/demo/chestionar-v1-semnat.pdf',
+    );
+    expect(signed.status).toBe(201);
+    const signedReceipt = await json(signed);
+    expect(signedReceipt.appendedAfterDesignation).toBe(true);
+    expect(
+      await conflictCode(
+        await removeReference(
+          documentId,
+          versionOneId,
+          text(signedReceipt.representationId),
+          4,
+        ),
+      ),
+    ).toBe('document_version_state_invalid');
+
+    expect((await startDraft(documentId, 4)).status).toBe(201);
+    const drafted = await versionsOf(documentId);
+    const versionTwo = drafted.versions.find((row) => row.number === 2);
+    const copied = list(versionTwo?.representations).map(record);
+    expect(copied).toHaveLength(2);
+    expect(copied.map((row) => row.form)).toEqual(['other', 'rendered']);
+    expect(copied.some((row) => row.form === 'signed')).toBe(false);
+    const removedReferenceId = text(copied[0]?.id);
+    const removal = await removeReference(
+      documentId,
+      text(versionTwo?.id),
+      removedReferenceId,
+      5,
+    );
+    expect(removal.status).toBe(200);
+    expect(
+      (
+        await harness.pool.query<{
+          appended_after_designation: boolean | null;
+        }>(
+          `SELECT appended_after_designation
+             FROM document_version_commands
+            WHERE document_id = $1 AND action = 'representation_removed'`,
+          [documentId],
+        )
+      ).rows,
+    ).toEqual([{ appended_after_designation: false }]);
+    const removalEvent = (await versionEvents()).find(
+      (event) => event.action === 'document.representation.removed',
+    );
+    expect(record(removalEvent?.metadata)).toEqual({
+      versionNumber: 2,
+      form: 'other',
+      appendedAfterDesignation: false,
+    });
+    const afterRemoval = await versionsOf(documentId);
+    const current = afterRemoval.versions.find((row) => row.number === 2);
+    expect(list(current?.representations).map(record)).toEqual([
+      expect.objectContaining({
+        position: 2,
+        form: 'rendered',
+        primary: true,
+      }),
+    ]);
+    expect(
+      (
+        await correct(documentId, {
+          expectedRevision: 6,
+          url: 'https://example.test/demo/chestionar-v2.pdf',
+        })
+      ).status,
+    ).toBe(200);
+    expect((await designate(documentId, text(current?.id), 7)).status).toBe(
+      200,
+    );
+    const final = await versionsOf(documentId);
+    expect(final.workingRevision).toBe(8);
+    expect(
+      list(final.versions.find((row) => row.number === 1)?.representations)
+        .map(record)
+        .some((row) => row.form === 'signed'),
+    ).toBe(true);
+  });
+
+  it('validates typed references, current capacity, replay and immutable official removals', async () => {
+    const documentId = await register();
+    const versionId = await versionIdOf(documentId, 1);
+    const initial = await persisted(documentId);
+    for (const body of [
+      { expectedRevision: 1, form: 'unknown', url: 'https://example.test/x' },
+      {
+        expectedRevision: 1,
+        form: 'rendered',
+        url: 'https://user:secret@example.test/x',
+      },
+      {
+        expectedRevision: 1,
+        form: 'rendered',
+        url: 'https://example.test/x',
+        note: 'extra',
+      },
+    ])
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            1,
+            'rendered',
+            'https://example.test/x',
+            { body },
+          )
+        ).status,
+      ).toBe(400);
+    expect(await persisted(documentId)).toEqual(initial);
+    const initialRead = await versionsOf(documentId);
+    const initialReferences = list(initialRead.versions[0]?.representations);
+    const initialReference = text(record(initialReferences[0]).id);
+    expect(
+      await conflictCode(
+        await removeReference(documentId, versionId, initialReference, 1),
+      ),
+    ).toBe('document_version_state_invalid');
+    expect(await persisted(documentId)).toEqual(initial);
+    expect(
+      (
+        await addReference(
+          documentId,
+          versionId,
+          1,
+          'rendered',
+          'https://example.test/v1-2.pdf',
+          { as: 'colleague' },
+        )
+      ).status,
+    ).toBe(403);
+
+    const key = randomUUID();
+    const firstAddition = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      'https://example.test/v1-2.pdf',
+      { key },
+    );
+    expect(firstAddition.status).toBe(201);
+    const firstReceipt = await json(firstAddition);
+    for (let position = 3; position <= 5; position += 1)
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            position - 1,
+            'other',
+            `https://example.test/v1-${position}`,
+          )
+        ).status,
+      ).toBe(201);
+    const replayed = await addReference(
+      documentId,
+      versionId,
+      1,
+      'rendered',
+      'https://example.test/v1-2.pdf',
+      { key },
+    );
+    expect(replayed.status).toBe(201);
+    expect(await json(replayed)).toEqual(firstReceipt);
+    const reused = await addReference(
+      documentId,
+      versionId,
+      1,
+      'signed',
+      'https://example.test/changed',
+      { key },
+    );
+    expect(reused.status).toBe(409);
+    expect(await json(reused)).toMatchObject({
+      message: 'Idempotency-Key was already used for another Version command.',
+    });
+    const capacity = await addReference(
+      documentId,
+      versionId,
+      5,
+      'signed',
+      'https://example.test/sixth',
+    );
+    expect(await conflictCode(capacity)).toBe(
+      'document_representation_capacity_exceeded',
+    );
+
+    const fullDraft = await versionsOf(documentId);
+    const references = list(fullDraft.versions[0]?.representations).map(record);
+    expect(references).toHaveLength(5);
+    expect(
+      (await removeReference(documentId, versionId, text(references[0]?.id), 5))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await addReference(
+          documentId,
+          versionId,
+          6,
+          'editable',
+          'https://example.test/replacement',
+        )
+      ).status,
+    ).toBe(201);
+    const afterReplacement = await versionsOf(documentId);
+    expect(
+      list(afterReplacement.versions[0]?.representations).map(
+        (value) => record(value).position,
+      ),
+    ).toEqual([2, 3, 4, 5, 6]);
+
+    expect((await designate(documentId, versionId, 7)).status).toBe(200);
+    for (let append = 1; append <= 5; append += 1)
+      expect(
+        (
+          await addReference(
+            documentId,
+            versionId,
+            7 + append,
+            'signed',
+            `https://example.test/signed-${append}`,
+          )
+        ).status,
+      ).toBe(201);
+    expect(
+      await conflictCode(
+        await addReference(
+          documentId,
+          versionId,
+          13,
+          'signed',
+          'https://example.test/eleventh',
+        ),
+      ),
+    ).toBe('document_representation_capacity_exceeded');
+    expect(
+      await conflictCode(
+        await removeReference(
+          documentId,
+          versionId,
+          text(firstReceipt.representationId),
+          13,
+        ),
+      ),
+    ).toBe('document_version_state_invalid');
+  }, 60_000);
 
   it('runs the lifecycle on one working revision: new draft, correction, designation and supersession', async () => {
     const documentId = await register();
@@ -1153,6 +1519,7 @@ withPostgres('Official Document Versions REST contract', () => {
      * and replay checks, until both contenders are observed waiting.
      */
     async function holdClientRow(): Promise<{
+      blockerPid: number;
       connection: PoolClient;
       release: () => Promise<void>;
     }> {
@@ -1162,8 +1529,15 @@ withPostgres('Official Document Versions REST contract', () => {
         'SELECT id FROM client_accounts WHERE id = $1 FOR SHARE',
         [clientId],
       );
+      const { rows } = await connection.query<{ pid: number }>(
+        'SELECT pg_backend_pid()::int AS pid',
+      );
+      const blockerPid = rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('Expected the barrier backend PID.');
       let released = false;
       return {
+        blockerPid,
         connection,
         release: async () => {
           if (released) return;
@@ -1173,20 +1547,50 @@ withPostgres('Official Document Versions REST contract', () => {
         },
       };
     }
-    /** Waits until `count` backends of this database wait on a lock. */
-    async function waitForLockWaiters(count: number): Promise<void> {
+    /** Waits until `count` contenders are blocked by the held Client row. */
+    async function waitForLockWaiters(
+      blockerPid: number,
+      count: number,
+    ): Promise<void> {
+      let observed: Array<{ pid: number; blockers: number[] }> = [];
       for (let attempt = 0; attempt < 400; attempt += 1) {
-        const { rows } = await harness.pool.query<{ waiting: number }>(
-          `SELECT count(DISTINCT lock.pid)::int AS waiting
+        const { rows } = await harness.pool.query<{
+          pid: number;
+          blockers: number[];
+        }>(
+          `SELECT DISTINCT activity.pid, pg_blocking_pids(activity.pid) AS blockers
              FROM pg_locks AS lock
              JOIN pg_stat_activity AS activity ON activity.pid = lock.pid
             WHERE NOT lock.granted
               AND activity.datname = current_database()`,
         );
-        if (rows[0]?.waiting === count) return;
+        observed = rows;
+        const blockedPids = new Set([blockerPid]);
+        let added = true;
+        while (added) {
+          added = false;
+          for (const waiter of observed) {
+            if (
+              !blockedPids.has(waiter.pid) &&
+              waiter.blockers.some((pid) => blockedPids.has(pid))
+            ) {
+              blockedPids.add(waiter.pid);
+              added = true;
+            }
+          }
+        }
+        if (
+          observed.filter(
+            (waiter) =>
+              waiter.pid !== blockerPid && blockedPids.has(waiter.pid),
+          ).length === count
+        )
+          return;
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
-      throw new Error('The contenders did not reach the Client lock.');
+      throw new Error(
+        `The contenders did not reach the Client lock: ${JSON.stringify(observed)}`,
+      );
     }
     async function contend(
       commands: ReadonlyArray<() => Promise<Response>>,
@@ -1194,7 +1598,7 @@ withPostgres('Official Document Versions REST contract', () => {
       const barrier = await holdClientRow();
       try {
         const pending = commands.map((command) => command());
-        await waitForLockWaiters(commands.length);
+        await waitForLockWaiters(barrier.blockerPid, commands.length);
         await barrier.release();
         return Promise.all(
           (await Promise.all(pending)).map(async (response) => ({
@@ -1210,6 +1614,85 @@ withPostgres('Official Document Versions REST contract', () => {
       results
         .map((result) => result.status)
         .sort((left, right) => left - right);
+    async function concurrentEvents(observer: Caller) {
+      const response = await call('/activity-log', { as: observer });
+      expect(response.status).toBe(200);
+      return list((await json(response)).events)
+        .map(record)
+        .filter((event) =>
+          /^document\.(?:corrected|version\.|representation\.)/u.test(
+            text(event.action),
+          ),
+        );
+    }
+    async function concurrencyState(documentId: string, observer: Caller) {
+      const stored = record(await persisted(documentId));
+      return {
+        revision: Number(stored.revision),
+        versionReceipts: Number(stored.commands),
+        correctionReceipts: Number(stored.corrections),
+        events: (await concurrentEvents(observer)).length,
+        fence: await clientVersion(),
+      };
+    }
+    const versionRevisionConflict = {
+      code: 'document_revision_conflict',
+      message: 'The Document changed. Reload it before changing its Versions.',
+    };
+    async function expectOneCommit(
+      results: ReadonlyArray<{
+        status: number;
+        body: Record<string, unknown>;
+      }>,
+      before: Awaited<ReturnType<typeof concurrencyState>>,
+      documentId: string,
+      observer: Caller,
+      conflictBodies: ReadonlyArray<Record<string, unknown>> = results.map(
+        () => versionRevisionConflict,
+      ),
+    ): Promise<Record<string, unknown>> {
+      const committed = results.filter(
+        (result) => result.status === 200 || result.status === 201,
+      );
+      const refused = results.filter((result) => result.status === 409);
+      expect(committed).toHaveLength(1);
+      expect(refused).toHaveLength(1);
+      expect(conflictBodies).toHaveLength(results.length);
+      for (const [index, result] of results.entries()) {
+        if (result.status === 409)
+          expect(result.body).toEqual(conflictBodies[index]);
+      }
+      const after = await concurrencyState(documentId, observer);
+      expect(after.revision).toBe(before.revision + 1);
+      const versionReceiptDelta =
+        after.versionReceipts - before.versionReceipts;
+      const correctionReceiptDelta =
+        after.correctionReceipts - before.correctionReceipts;
+      expect(versionReceiptDelta).toBeGreaterThanOrEqual(0);
+      expect(correctionReceiptDelta).toBeGreaterThanOrEqual(0);
+      expect(versionReceiptDelta + correctionReceiptDelta).toBe(1);
+      expect(after.events).toBe(before.events + 1);
+      expect(after.fence).toBe(before.fence + 1);
+      const receipt = committed[0]?.body;
+      if (!receipt) throw new Error('Expected one committed receipt.');
+      return receipt;
+    }
+    function version(
+      state: Awaited<ReturnType<typeof versionsOf>>,
+      number: number,
+    ): Record<string, unknown> {
+      const found = state.versions.find(
+        (candidate) => candidate.number === number,
+      );
+      if (!found) throw new Error(`Expected Version ${number}.`);
+      return found;
+    }
+    function references(
+      state: Awaited<ReturnType<typeof versionsOf>>,
+      number: number,
+    ): Record<string, unknown>[] {
+      return list(version(state, number).representations).map(record);
+    }
 
     it('commits one of two designations by different Approvers', async () => {
       await grant('second-approver', '/company-director-client-assignments');
@@ -1273,6 +1756,212 @@ withPostgres('Official Document Versions REST contract', () => {
           { number: 2, status: 'draft' },
         ],
       });
+    });
+
+    it('keeps the draft capacity bound when two Registrar v3 members add the fifth reference', async () => {
+      await grant('second-registrar', '/company-director-client-assignments');
+      await grant(
+        'second-registrar',
+        '/company-document-registrar-assignments',
+      );
+      const documentId = await register();
+      const first = await versionIdOf(documentId, 1);
+      const preparatoryReferences: ReadonlyArray<readonly [number, string]> = [
+        [1, 'second'],
+        [2, 'third'],
+        [3, 'fourth'],
+      ];
+      for (const [revision, suffix] of preparatoryReferences) {
+        expect(
+          (
+            await addReference(
+              documentId,
+              first,
+              revision,
+              'other',
+              `https://example.test/demo/${suffix}.pdf`,
+            )
+          ).status,
+        ).toBe(201);
+      }
+      const observer: Caller = 'colleague';
+      const before = await concurrencyState(documentId, observer);
+      const contenders = [
+        'https://example.test/demo/capacity-a.pdf',
+        'https://example.test/demo/capacity-b.pdf',
+      ];
+      const results = await contend([
+        () => addReference(documentId, first, 4, 'rendered', contenders[0]),
+        () =>
+          addReference(documentId, first, 4, 'signed', contenders[1], {
+            as: 'second-registrar',
+          }),
+      ]);
+      await expectOneCommit(results, before, documentId, observer);
+      const current = references(await versionsOf(documentId, observer), 1);
+      expect(current).toHaveLength(5);
+      expect(
+        current.filter((reference) => contenders.includes(text(reference.url))),
+      ).toHaveLength(1);
+      expect(new Set(current.map((reference) => text(reference.id))).size).toBe(
+        5,
+      );
+    });
+
+    it('commits one of a draft reference addition and its designation by different members', async () => {
+      const documentId = await register();
+      const first = await versionIdOf(documentId, 1);
+      const observer: Caller = 'colleague';
+      const before = await concurrencyState(documentId, observer);
+      const addedUrl = 'https://example.test/demo/designation-race.pdf';
+      const results = await contend([
+        () => addReference(documentId, first, 1, 'rendered', addedUrl),
+        () => designate(documentId, first, 1, { as: 'approver' }),
+      ]);
+      const receipt = await expectOneCommit(
+        results,
+        before,
+        documentId,
+        observer,
+      );
+      const state = await versionsOf(documentId, observer);
+      const current = version(state, 1);
+      const currentReferences = references(state, 1);
+      if (receipt.action === 'representation_added') {
+        expect(current.status).toBe('draft');
+        expect(currentReferences.map((reference) => reference.url)).toContain(
+          addedUrl,
+        );
+        expect(currentReferences).toHaveLength(2);
+      } else {
+        expect(receipt.action).toBe('designated_official');
+        expect(current.status).toBe('official');
+        expect(
+          currentReferences.map((reference) => reference.url),
+        ).not.toContain(addedUrl);
+        expect(currentReferences).toHaveLength(1);
+      }
+      expect(
+        new Set(currentReferences.map((reference) => text(reference.id))).size,
+      ).toBe(currentReferences.length);
+    });
+
+    it('never copies an official append when it races with starting a new draft', async () => {
+      await grant('second-registrar', '/company-director-client-assignments');
+      await grant(
+        'second-registrar',
+        '/company-document-registrar-assignments',
+      );
+      const documentId = await register();
+      const first = await versionIdOf(documentId, 1);
+      expect((await designate(documentId, first, 1)).status).toBe(200);
+      const observer: Caller = 'colleague';
+      const before = await concurrencyState(documentId, observer);
+      const appendedUrl = 'https://example.test/demo/racing-signed.pdf';
+      const results = await contend([
+        () => addReference(documentId, first, 2, 'signed', appendedUrl),
+        () => startDraft(documentId, 2, { as: 'second-registrar' }),
+      ]);
+      const receipt = await expectOneCommit(
+        results,
+        before,
+        documentId,
+        observer,
+      );
+      if (receipt.action === 'representation_added') {
+        expect(
+          (await startDraft(documentId, 3, { as: 'second-registrar' })).status,
+        ).toBe(201);
+      } else {
+        expect(receipt.action).toBe('drafted');
+        expect(
+          (await addReference(documentId, first, 3, 'signed', appendedUrl))
+            .status,
+        ).toBe(201);
+      }
+      const state = await versionsOf(documentId, observer);
+      const officialReferences = references(state, 1);
+      const draftReferences = references(state, 2);
+      expect(officialReferences).toHaveLength(2);
+      expect(officialReferences.map((reference) => reference.url)).toContain(
+        appendedUrl,
+      );
+      expect(
+        officialReferences.find((reference) => reference.url === appendedUrl),
+      ).toMatchObject({ appendedAfterDesignation: true });
+      expect(draftReferences.map((reference) => reference.url)).not.toContain(
+        appendedUrl,
+      );
+      expect(draftReferences).toHaveLength(1);
+      expect(
+        new Set(officialReferences.map((reference) => text(reference.id))).size,
+      ).toBe(2);
+      expect(
+        new Set(draftReferences.map((reference) => text(reference.id))).size,
+      ).toBe(1);
+    });
+
+    it('commits one of removing the primary reference and correcting its URL', async () => {
+      const documentId = await register();
+      const first = await versionIdOf(documentId, 1);
+      const secondaryUrl = 'https://example.test/demo/removal-race-second.pdf';
+      expect(
+        (await addReference(documentId, first, 1, 'rendered', secondaryUrl))
+          .status,
+      ).toBe(201);
+      const observer: Caller = 'approver';
+      const initialReferences = references(
+        await versionsOf(documentId, observer),
+        1,
+      );
+      const primaryId = text(initialReferences[0]?.id);
+      const before = await concurrencyState(documentId, observer);
+      const correctedUrl =
+        'https://example.test/demo/removal-race-corrected.docx';
+      const results = await contend([
+        () => removeReference(documentId, first, primaryId, 2),
+        () =>
+          correct(
+            documentId,
+            { expectedRevision: 2, url: correctedUrl },
+            'colleague',
+          ),
+      ]);
+      const receipt = await expectOneCommit(
+        results,
+        before,
+        documentId,
+        observer,
+        [
+          versionRevisionConflict,
+          {
+            message:
+              'The working Document changed. Reload before correcting it.',
+            error: 'Conflict',
+            statusCode: 409,
+          },
+        ],
+      );
+      const current = references(await versionsOf(documentId, observer), 1);
+      if (receipt.action === 'representation_removed') {
+        expect(current).toHaveLength(1);
+        expect(current[0]).toMatchObject({
+          url: secondaryUrl,
+          primary: true,
+        });
+      } else {
+        expect(receipt.outcome).toBe('corrected');
+        expect(current).toHaveLength(2);
+        expect(current[0]).toMatchObject({
+          id: primaryId,
+          url: correctedUrl,
+          primary: true,
+        });
+        expect(current[1]?.url).toBe(secondaryUrl);
+      }
+      expect(new Set(current.map((reference) => text(reference.id))).size).toBe(
+        current.length,
+      );
     });
 
     it('commits a new draft and a correction of another Document of the same Client', async () => {

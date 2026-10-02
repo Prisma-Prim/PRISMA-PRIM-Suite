@@ -434,6 +434,22 @@ export type DocumentVersionActivityEvent =
   | DocumentVersionActivityEventBase<
       'document.version.designated_official',
       { versionNumber: number; supersededVersionNumber: number | null }
+    >
+  | DocumentVersionActivityEventBase<
+      'document.representation.added',
+      {
+        versionNumber: number;
+        form: 'editable' | 'rendered' | 'signed' | 'other';
+        appendedAfterDesignation: boolean;
+      }
+    >
+  | DocumentVersionActivityEventBase<
+      'document.representation.removed',
+      {
+        versionNumber: number;
+        form: 'editable' | 'rendered' | 'signed' | 'other';
+        appendedAfterDesignation: false;
+      }
     >;
 interface DocumentVersionActivityEventBase<Action extends string, Metadata> {
   id: string;

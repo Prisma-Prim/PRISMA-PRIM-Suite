@@ -40,6 +40,24 @@ it.each([
     'Target: Working Document: Chestionar de evaluare inițială — GRUP Demo SA',
   ],
   [
+    'document.representation.added',
+    { versionNumber: 2, form: 'signed', appendedAfterDesignation: true },
+    documentTarget,
+    'added a Document reference',
+    'Target: Working Document: Chestionar de evaluare inițială — GRUP Demo SA',
+  ],
+  [
+    'document.representation.removed',
+    {
+      versionNumber: 2,
+      form: 'editable',
+      appendedAfterDesignation: false,
+    },
+    documentTarget,
+    'removed a draft Document reference',
+    'Target: Working Document: Chestionar de evaluare inițială — GRUP Demo SA',
+  ],
+  [
     'company_document_approver_assignment.granted',
     { bundle: 'Company Document Approver' },
     approverTarget,
