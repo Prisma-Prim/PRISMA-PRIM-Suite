@@ -238,12 +238,10 @@ async function holdNextClientRegistration(
       diagnostics.record({ delivery, phase: 'handler-failed' });
       failCommit(error);
       throw error;
-    } finally {
-      diagnostics.record({ delivery, phase: 'unroute-start' });
-      await page.unroute(clientCollection, handler);
-      diagnostics.record({ delivery, phase: 'unroute-finished' });
     }
   };
+  // Keep this one-use route for the isolated page's lifetime so releasing the
+  // reply does not change interception while success-triggered reads begin.
   await page.route(clientCollection, handler);
   return {
     committed,
