@@ -1124,9 +1124,16 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     await expect(createdFrame.locator('script')).toHaveCount(0);
     await expectNoFrameHorizontalOverflow(createdFrame);
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`offer-representation-created-${suffix}.png`),
-      fullPage: true,
+    await captureOfferRepresentation({
+      page,
+      frameElement: createdFrameElement,
+      frame: createdFrame,
+      viewportScreenshotPath: testInfo.outputPath(
+        `offer-representation-created-${suffix}.png`,
+      ),
+      documentScreenshotPath: testInfo.outputPath(
+        `offer-document-created-${suffix}.png`,
+      ),
     });
 
     await page.reload();
@@ -1175,9 +1182,16 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     );
     await expectNoFrameHorizontalOverflow(reopenedFrame);
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`offer-representation-reopened-${suffix}.png`),
-      fullPage: true,
+    await captureOfferRepresentation({
+      page,
+      frameElement: reopenedFrameElement,
+      frame: reopenedFrame,
+      viewportScreenshotPath: testInfo.outputPath(
+        `offer-representation-reopened-${suffix}.png`,
+      ),
+      documentScreenshotPath: testInfo.outputPath(
+        `offer-document-reopened-${suffix}.png`,
+      ),
     });
   });
 });
@@ -1582,4 +1596,35 @@ async function expectNoFrameHorizontalOverflow(
     dimensions.documentWidth,
     JSON.stringify(dimensions),
   ).toBeLessThanOrEqual(dimensions.viewportWidth);
+}
+
+async function captureOfferRepresentation({
+  page,
+  frameElement,
+  frame,
+  viewportScreenshotPath,
+  documentScreenshotPath,
+}: {
+  page: Page;
+  frameElement: Locator;
+  frame: FrameLocator;
+  viewportScreenshotPath: string;
+  documentScreenshotPath: string;
+}): Promise<void> {
+  await frameElement.scrollIntoViewIfNeeded();
+  const heading = frame.getByRole('heading', {
+    name: 'Illustrative Offer',
+    exact: true,
+  });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(frameElement).toBeInViewport({ ratio: 1 });
+  await expect(heading).toBeInViewport({ ratio: 1 });
+  await expect(
+    frame.getByText(
+      'Provisional illustrative document — cannot be accepted — no legal effect — no official number',
+      { exact: true },
+    ),
+  ).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: viewportScreenshotPath, fullPage: false });
+  await frameElement.screenshot({ path: documentScreenshotPath });
 }
