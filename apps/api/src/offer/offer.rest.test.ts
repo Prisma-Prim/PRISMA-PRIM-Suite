@@ -482,14 +482,22 @@ withPostgres('First illustrative Offer REST', () => {
           'idempotency-key': 'correct-client-after-offer',
         },
         body: JSON.stringify({
-          expectedVersion: 1,
+          expectedVersion: await readClientVersion(fixture),
           displayName: 'Corrected current Client',
           taxId: 'CORRECTED-501',
           address: '501 Current Street',
         }),
       },
     );
-    expect(correctedClient.status).toBe(200);
+    const correctedClientBody = await json(correctedClient);
+    expect(correctedClient.status, JSON.stringify(correctedClientBody)).toBe(
+      200,
+    );
+    expect(correctedClientBody).toMatchObject({
+      displayName: 'Corrected current Client',
+      taxId: 'CORRECTED-501',
+      address: '501 Current Street',
+    });
     await pool.query('UPDATE companies SET display_name = $1 WHERE id = $2', [
       'Corrected current Company',
       fixture.companyId,
