@@ -16,6 +16,8 @@ import { clientAccounts, companies, workspaceMemberships } from './core.js';
 import { pricingSnapshots } from './pricing-configuration.js';
 
 export const OFFER_PROVENANCE = 'ILLUSTRATIVE' as const;
+export const OFFER_TEMPLATE_CODE = 'OFFER_ILLUSTRATIVE' as const;
+export const OFFER_TEMPLATE_VERSION = 1 as const;
 
 /** The durable commercial identity. O1 permits exactly one per Opportunity. */
 export const offers = pgTable(
@@ -147,6 +149,10 @@ export const offerVersions = pgTable(
     validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
     scopeNote: text('scope_note'),
     commercialConditions: text('commercial_conditions'),
+    templateCode: text('template_code', {
+      enum: [OFFER_TEMPLATE_CODE],
+    }).notNull(),
+    templateVersion: integer('template_version').notNull(),
     decisionState: text('decision_state', { enum: ['PENDING'] })
       .default('PENDING')
       .notNull(),
@@ -267,6 +273,11 @@ export const offerVersions = pgTable(
         AND ${table.validUntil} = ${table.createdAt} + (${table.validityDays} * interval '24 hours')
         AND (${table.scopeNote} IS NULL OR char_length(${table.scopeNote}) <= 2000)
         AND (${table.commercialConditions} IS NULL OR char_length(${table.commercialConditions}) <= 4000)`,
+    ),
+    check(
+      'offer_versions_template_check',
+      sql`${table.templateCode} = 'OFFER_ILLUSTRATIVE'
+        AND ${table.templateVersion} = 1`,
     ),
   ],
 );

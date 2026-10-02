@@ -36,4 +36,9 @@ export const offerCopy = {
   stateValue: 'Pending · not transmitted · no Client response',
   snapshotTotal: 'Referenced illustrative total',
   provisional: 'Illustrative and provisional',
+  draftState: 'Draft — not approved',
+  representation: 'Exact version representation',
+  templateVersion: 'Template Version',
+  checksum: 'SHA-256 checksum',
+  representationFrame: 'Illustrative Offer representation',
 } as const;

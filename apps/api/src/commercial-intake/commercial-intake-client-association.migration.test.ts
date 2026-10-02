@@ -22,7 +22,7 @@ const CHECK_VIOLATION = '23514';
 const UNIQUE_VIOLATION = '23505';
 
 it.skipIf(!databaseUrl)(
-  'adds one-time Request Client association after 0040 without rewriting Requests, grants or events',
+  'adds one-time Request Client association after 0044 without rewriting Requests, grants or events',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -57,7 +57,8 @@ it.skipIf(!databaseUrl)(
       );
       expect(associationIndex).toBeGreaterThan(0);
       const previousTags = tags.slice(0, associationIndex);
-      expect(previousTags.at(-1)).toBe('0040_pricing_adjustments');
+      expect(previousTags).toHaveLength(45);
+      expect(previousTags.at(-1)).toBe('0044_offer_template_binding');
       previous = await mkdtemp(join(tmpdir(), 'prisma-452-upgrade-'));
       await mkdir(join(previous, 'meta'));
       await writeFile(
@@ -131,6 +132,19 @@ it.skipIf(!databaseUrl)(
             '{"opportunityVersion":1}'::jsonb);
       `);
 
+      for (const bundle of [
+        'company_offer_preparer',
+        'company_opportunity_manager',
+        'company_director_client_access',
+        'company_project_access',
+      ])
+        await query(
+          `INSERT INTO company_role_assignments (workspace_id, company_id,
+             workspace_membership_id, bundle, permission_set_version)
+           VALUES ($1, $2, $3, $4, 'v1')`,
+          [WORKSPACE, COMPANY, MEMBERSHIP, bundle],
+        );
+
       const preserved = () =>
         Promise.all(
           [
@@ -201,6 +215,21 @@ it.skipIf(!databaseUrl)(
                workspace_membership_id, bundle, permission_set_version, revoked_at)
              VALUES ($1, $2, $3, 'company_commercial_intake', $4, now())`,
             [WORKSPACE, COMPANY, MEMBERSHIP, version],
+          ),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+
+      for (const [bundle, version] of [
+        ['company_offer_preparer', 'v2'],
+        ['company_opportunity_manager', 'v2'],
+        ['company_director_client_access', 'v3'],
+        ['company_project_access', 'v3'],
+      ])
+        await expect(
+          query(
+            `INSERT INTO company_role_assignments (workspace_id, company_id,
+               workspace_membership_id, bundle, permission_set_version, revoked_at)
+             VALUES ($1, $2, $3, $4, $5, now())`,
+            [WORKSPACE, COMPANY, MEMBERSHIP, bundle, version],
           ),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 

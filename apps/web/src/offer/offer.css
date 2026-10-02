@@ -25,6 +25,24 @@
   overflow-wrap: anywhere;
 }
 
+.offer-representation {
+  margin-top: 1.5rem;
+}
+
+.offer-representation code {
+  overflow-wrap: anywhere;
+}
+
+.offer-representation iframe {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 32rem;
+  margin-top: 1rem;
+  border: 1px solid var(--color-border, #d8dee8);
+  border-radius: 0.5rem;
+}
+
 @media (max-width: 40rem) {
   .offer-summary dl > div {
     grid-template-columns: 1fr;
