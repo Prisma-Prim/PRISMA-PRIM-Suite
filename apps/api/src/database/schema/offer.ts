@@ -1,0 +1,427 @@
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  foreignKey,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { clientLegalEntities } from './client-legal-entity.js';
+import { clientRequests, opportunities } from './commercial-intake.js';
+import { clientAccounts, companies, workspaceMemberships } from './core.js';
+import { pricingSnapshots } from './pricing-configuration.js';
+
+export const OFFER_PROVENANCE = 'ILLUSTRATIVE' as const;
+
+/** The durable commercial identity. O1 permits exactly one per Opportunity. */
+export const offers = pgTable(
+  'offers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    clientRequestId: uuid('client_request_id').notNull(),
+    originalClientAccountId: uuid('original_client_account_id').notNull(),
+    illustrativeReference: integer('illustrative_reference').notNull(),
+    revision: integer('revision').default(1).notNull(),
+    createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
+    createdByWorkspaceMembershipId: uuid(
+      'created_by_workspace_membership_id',
+    ).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('offers_scope_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+    ),
+    uniqueIndex('offers_complete_identity_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.opportunityId,
+      table.clientRequestId,
+      table.originalClientAccountId,
+      table.id,
+    ),
+    uniqueIndex('offers_opportunity_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.opportunityId,
+    ),
+    uniqueIndex('offers_company_reference_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.illustrativeReference,
+    ),
+    foreignKey({
+      name: 'offers_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    foreignKey({
+      name: 'offers_opportunity_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.clientRequestId,
+        table.opportunityId,
+      ],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.clientRequestId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offers_request_client_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.clientRequestId,
+        table.originalClientAccountId,
+      ],
+      foreignColumns: [
+        clientRequests.workspaceId,
+        clientRequests.companyId,
+        clientRequests.id,
+        clientRequests.clientAccountId,
+      ],
+    }),
+    foreignKey({
+      name: 'offers_original_client_fk',
+      columns: [table.workspaceId, table.originalClientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'offers_creator_fk',
+      columns: [
+        table.workspaceId,
+        table.createdByWorkspaceMembershipId,
+        table.createdByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offers_initial_state_check',
+      sql`${table.illustrativeReference} > 0 AND ${table.revision} = 1`,
+    ),
+  ],
+);
+
+/** Immutable complete content of the first illustrative Offer Version. */
+export const offerVersions = pgTable(
+  'offer_versions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    offerId: uuid('offer_id').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    clientRequestId: uuid('client_request_id').notNull(),
+    originalClientAccountId: uuid('original_client_account_id').notNull(),
+    versionNumber: integer('version_number').default(1).notNull(),
+    pricingSnapshotId: uuid('pricing_snapshot_id').notNull(),
+    recipientClientAccountId: uuid('recipient_client_account_id').notNull(),
+    recipientKind: text('recipient_kind', {
+      enum: ['PRIMARY', 'ADDITIONAL'],
+    }).notNull(),
+    recipientAdditionalLegalEntityId: uuid(
+      'recipient_additional_legal_entity_id',
+    ),
+    recipientLegalName: text('recipient_legal_name').notNull(),
+    recipientTaxId: text('recipient_tax_id'),
+    recipientLegalAddress: text('recipient_legal_address'),
+    issuingCompanyLabel: text('issuing_company_label').notNull(),
+    validityDays: integer('validity_days').notNull(),
+    validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
+    scopeNote: text('scope_note'),
+    commercialConditions: text('commercial_conditions'),
+    decisionState: text('decision_state', { enum: ['PENDING'] })
+      .default('PENDING')
+      .notNull(),
+    transmissionState: text('transmission_state', {
+      enum: ['NOT_TRANSMITTED'],
+    })
+      .default('NOT_TRANSMITTED')
+      .notNull(),
+    clientResponseState: text('client_response_state', { enum: ['NONE'] })
+      .default('NONE')
+      .notNull(),
+    provenance: text('provenance', { enum: [OFFER_PROVENANCE] })
+      .default(OFFER_PROVENANCE)
+      .notNull(),
+    createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
+    createdByWorkspaceMembershipId: uuid(
+      'created_by_workspace_membership_id',
+    ).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('offer_versions_scope_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.id,
+    ),
+    uniqueIndex('offer_versions_number_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerId,
+      table.versionNumber,
+    ),
+    foreignKey({
+      name: 'offer_versions_offer_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.opportunityId,
+        table.clientRequestId,
+        table.originalClientAccountId,
+        table.offerId,
+      ],
+      foreignColumns: [
+        offers.workspaceId,
+        offers.companyId,
+        offers.opportunityId,
+        offers.clientRequestId,
+        offers.originalClientAccountId,
+        offers.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_snapshot_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.opportunityId,
+        table.pricingSnapshotId,
+      ],
+      foreignColumns: [
+        pricingSnapshots.workspaceId,
+        pricingSnapshots.companyId,
+        pricingSnapshots.opportunityId,
+        pricingSnapshots.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_recipient_client_fk',
+      columns: [table.workspaceId, table.recipientClientAccountId],
+      foreignColumns: [clientAccounts.workspaceId, clientAccounts.id],
+    }),
+    foreignKey({
+      name: 'offer_versions_additional_entity_fk',
+      columns: [
+        table.workspaceId,
+        table.recipientClientAccountId,
+        table.recipientAdditionalLegalEntityId,
+      ],
+      foreignColumns: [
+        clientLegalEntities.workspaceId,
+        clientLegalEntities.clientAccountId,
+        clientLegalEntities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_creator_fk',
+      columns: [
+        table.workspaceId,
+        table.createdByWorkspaceMembershipId,
+        table.createdByInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offer_versions_initial_state_check',
+      sql`${table.versionNumber} = 1
+        AND ${table.decisionState} = 'PENDING'
+        AND ${table.transmissionState} = 'NOT_TRANSMITTED'
+        AND ${table.clientResponseState} = 'NONE'
+        AND ${table.provenance} = 'ILLUSTRATIVE'`,
+    ),
+    check(
+      'offer_versions_recipient_kind_check',
+      sql`(${table.recipientKind} = 'PRIMARY' AND ${table.recipientAdditionalLegalEntityId} IS NULL)
+        OR (${table.recipientKind} = 'ADDITIONAL' AND ${table.recipientAdditionalLegalEntityId} IS NOT NULL)`,
+    ),
+    check(
+      'offer_versions_content_check',
+      sql`char_length(${table.recipientLegalName}) BETWEEN 1 AND 200
+        AND (${table.recipientTaxId} IS NULL OR char_length(${table.recipientTaxId}) BETWEEN 1 AND 500)
+        AND (${table.recipientLegalAddress} IS NULL OR char_length(${table.recipientLegalAddress}) BETWEEN 1 AND 2000)
+        AND char_length(${table.issuingCompanyLabel}) > 0
+        AND ${table.validityDays} BETWEEN 1 AND 365
+        AND ${table.validUntil} = ${table.createdAt} + (${table.validityDays} * interval '24 hours')
+        AND (${table.scopeNote} IS NULL OR char_length(${table.scopeNote}) <= 2000)
+        AND (${table.commercialConditions} IS NULL OR char_length(${table.commercialConditions}) <= 4000)`,
+    ),
+  ],
+);
+
+/** Atomic, monotone and independent illustrative references per Company. */
+export const offerReferenceCounters = pgTable(
+  'offer_reference_counters',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    currentReference: integer('current_reference').notNull(),
+  },
+  (table) => [
+    uniqueIndex('offer_reference_counters_company_unique').on(
+      table.workspaceId,
+      table.companyId,
+    ),
+    foreignKey({
+      name: 'offer_reference_counters_company_fk',
+      columns: [table.workspaceId, table.companyId],
+      foreignColumns: [companies.workspaceId, companies.id],
+    }),
+    check(
+      'offer_reference_counters_positive_check',
+      sql`${table.currentReference} > 0`,
+    ),
+  ],
+);
+
+/** Durable receipt for Create Offer, scoped to actor and active Company. */
+export const offerCommands = pgTable(
+  'offer_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    resultOfferId: uuid('result_offer_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('offer_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      name: 'offer_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_commands_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_commands_result_fk',
+      columns: [table.workspaceId, table.companyId, table.resultOfferId],
+      foreignColumns: [offers.workspaceId, offers.companyId, offers.id],
+    }),
+  ],
+);
+
+/** O1 events stay recorded and deliberately have no public projection. */
+export const offerEvents = pgTable(
+  'offer_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    action: text('action', {
+      enum: ['offer.created', 'offer_version.created'],
+    }).notNull(),
+    offerId: uuid('offer_id').notNull(),
+    offerVersionId: uuid('offer_version_id'),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull(),
+  },
+  (table) => [
+    uniqueIndex('offer_events_offer_created_unique')
+      .on(table.workspaceId, table.offerId)
+      .where(sql`${table.action} = 'offer.created'`),
+    uniqueIndex('offer_events_version_created_unique')
+      .on(table.workspaceId, table.offerVersionId)
+      .where(sql`${table.action} = 'offer_version.created'`),
+    foreignKey({
+      name: 'offer_events_offer_fk',
+      columns: [table.workspaceId, table.companyId, table.offerId],
+      foreignColumns: [offers.workspaceId, offers.companyId, offers.id],
+    }),
+    foreignKey({
+      name: 'offer_events_version_fk',
+      columns: [table.workspaceId, table.companyId, table.offerVersionId],
+      foreignColumns: [
+        offerVersions.workspaceId,
+        offerVersions.companyId,
+        offerVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_events_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offer_events_target_check',
+      sql`(${table.action} = 'offer.created' AND ${table.offerVersionId} IS NULL)
+        OR (${table.action} = 'offer_version.created' AND ${table.offerVersionId} IS NOT NULL)`,
+    ),
+    check(
+      'offer_events_metadata_check',
+      sql`(CASE
+        WHEN jsonb_typeof(${table.metadata}) <> 'object' THEN false
+        WHEN ${table.action} = 'offer.created' THEN
+          ${table.metadata} ?& ARRAY['offerId', 'illustrativeReference', 'provenance']
+          AND (${table.metadata} - ARRAY['offerId', 'illustrativeReference', 'provenance']::text[]) = '{}'::jsonb
+          AND ${table.metadata}->>'offerId' = ${table.offerId}::text
+          AND jsonb_typeof(${table.metadata}->'illustrativeReference') = 'number'
+          AND ${table.metadata}->>'illustrativeReference' ~ '^[1-9][0-9]*$'
+          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
+        WHEN ${table.action} = 'offer_version.created' THEN
+          ${table.metadata} ?& ARRAY['offerId', 'offerVersionId', 'versionNumber', 'pricingSnapshotId', 'recipientKind', 'provenance']
+          AND (${table.metadata} - ARRAY['offerId', 'offerVersionId', 'versionNumber', 'pricingSnapshotId', 'recipientKind', 'provenance']::text[]) = '{}'::jsonb
+          AND ${table.metadata}->>'offerId' = ${table.offerId}::text
+          AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+          AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
+          AND ${table.metadata}->>'versionNumber' = '1'
+          AND jsonb_typeof(${table.metadata}->'pricingSnapshotId') = 'string'
+          AND ${table.metadata}->>'pricingSnapshotId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          AND ${table.metadata}->>'recipientKind' IN ('PRIMARY', 'ADDITIONAL')
+          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
+        ELSE false
+      END) IS TRUE`,
+    ),
+  ],
+);

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import type {
   AssociateClientCommand,
+  ChangeOpportunityResponsibleCommand,
   CreateCommercialIntakeCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
@@ -20,6 +21,12 @@ const CLIENT_ASSOCIATION_FIELDS = new Set([
   'expectedVersion',
   'clientAccountId',
 ]);
+const RESPONSIBLE_CHANGE_FIELDS = new Set([
+  'expectedVersion',
+  'workspaceMembershipId',
+]);
+const MEMBERSHIP_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 // Opportunity versions are PostgreSQL integers. The maximum stays a valid
 // observation so an unchanged or replayed command can confirm it; the command
 // refuses only a material update from it.
@@ -54,20 +61,45 @@ export function readUpdateOpportunityNextActionCommand(
 ): UpdateOpportunityNextActionCommand {
   const body = record(value, 'update');
   rejectExtraFields(body, NEXT_ACTION_UPDATE_FIELDS, 'update');
-  const expectedVersion = body.expectedVersion;
-  if (
-    typeof expectedVersion !== 'number' ||
-    !Number.isInteger(expectedVersion) ||
-    expectedVersion < 1 ||
-    expectedVersion > MAXIMUM_OPPORTUNITY_VERSION
-  )
-    invalid('expectedVersion', 'Reload the Request before editing.');
   return {
-    expectedVersion,
+    expectedVersion: observedVersion(body.expectedVersion),
     // The next action follows the intake rule exactly: no trimming or
     // normalization of the submitted text.
     nextAction: requiredString(body.nextAction, 'nextAction', 500),
   };
+}
+
+/**
+ * Exactly an observed Opportunity version and one new responsible membership.
+ * A null, missing or malformed member is field validation; there is no clear.
+ */
+export function readChangeOpportunityResponsibleCommand(
+  value: unknown,
+): ChangeOpportunityResponsibleCommand {
+  const body = record(value, 'change');
+  rejectExtraFields(body, RESPONSIBLE_CHANGE_FIELDS, 'change');
+  const expectedVersion = observedVersion(body.expectedVersion);
+  const { workspaceMembershipId } = body;
+  if (
+    typeof workspaceMembershipId !== 'string' ||
+    !MEMBERSHIP_ID.test(workspaceMembershipId)
+  )
+    invalid('workspaceMembershipId', 'Choose an eligible member.');
+  return {
+    expectedVersion,
+    workspaceMembershipId: workspaceMembershipId.toLowerCase(),
+  };
+}
+
+function observedVersion(value: unknown): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > MAXIMUM_OPPORTUNITY_VERSION
+  )
+    invalid('expectedVersion', 'Reload the Request before editing.');
+  return value;
 }
 
 export function readCreateCommercialIntakeCommand(

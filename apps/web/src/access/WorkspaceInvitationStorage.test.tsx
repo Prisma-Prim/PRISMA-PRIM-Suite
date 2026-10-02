@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
 import type { BrowserIdentity } from '../access-composition';
+import { interfaceLocaleStorageKey } from '../localization/interface-locale';
 
 const invitationId = 'aaaaaaaa-0000-4000-8000-000000000163';
 const workspaceId = '00000000-0000-4000-8000-000000001630';
@@ -79,7 +80,7 @@ it('enters the intended server-authorized shell when storage fills after admissi
     }),
   );
   render(<ApplicationRoot pathname="/accept-invitation" identity={identity} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Accept invitation' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Acceptați invitația' }));
   expect(
     await screen.findByRole('heading', {
       name: 'Bună, Recipient.',
@@ -98,6 +99,7 @@ it('enters the intended server-authorized shell when storage fills after admissi
 });
 
 it('replays the captured intent after storage becomes unreadable and the page is restored', async () => {
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
   window.history.replaceState(
     null,
     '',
@@ -126,16 +128,32 @@ it('replays the captured intent after storage becomes unreadable and the page is
     'could not be confirmed',
   );
   first.unmount();
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-    throw new DOMException('Unavailable', 'SecurityError');
+  localStorage.setItem(interfaceLocaleStorageKey, 'fr');
+  const originalGetItem = Storage.prototype.getItem;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+    this: Storage,
+    key,
+  ) {
+    if (this === sessionStorage)
+      throw new DOMException('Unavailable', 'SecurityError');
+    return originalGetItem.call(this, key);
   });
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-    throw new DOMException('Unavailable', 'SecurityError');
+  const originalSetItem = Storage.prototype.setItem;
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+    this: Storage,
+    key,
+    value,
+  ) {
+    if (this === sessionStorage)
+      throw new DOMException('Unavailable', 'SecurityError');
+    originalSetItem.call(this, key, value);
   });
   render(<ApplicationRoot pathname="/accept-invitation" identity={identity} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Retry acceptance' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Réessayer l’acceptation' }),
+  );
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    'could not be confirmed',
+    'n’a pas pu être confirmée',
   );
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBeTruthy();

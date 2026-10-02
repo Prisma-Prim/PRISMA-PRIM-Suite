@@ -227,9 +227,18 @@ interface DocumentVersionBase {
   number: number;
   createdAt: string;
   createdByDisplayName: string;
-  /** The one unverified external reference this Version holds. */
-  reference: DocumentReference;
+  references: DocumentVersionReference[];
 }
+export type DocumentRepresentationForm =
+  'editable' | 'rendered' | 'signed' | 'other';
+export type DocumentVersionReference = DocumentReference & {
+  position: number;
+  form: DocumentRepresentationForm;
+  primary: boolean;
+  appendedAfterDesignation: boolean;
+  addedAt: string;
+  addedByDisplayName: string;
+};
 interface DocumentVersionDesignation {
   designatedAt: string;
   designatedByDisplayName: string;
@@ -283,14 +292,28 @@ export function readDocumentVersions(value: unknown): DocumentVersions {
 }
 function readDocumentVersion(value: unknown): DocumentVersion {
   const row = record(value);
-  if (!Array.isArray(row.representations) || row.representations.length !== 1)
+  if (
+    !Array.isArray(row.representations) ||
+    row.representations.length < 1 ||
+    row.representations.length > 10
+  )
     throw new Error('Invalid Version reference');
+  const references = row.representations.map(readDocumentVersionReference);
+  let previousPosition = 0;
+  for (const [index, reference] of references.entries()) {
+    if (
+      reference.position <= previousPosition ||
+      reference.primary !== (index === 0)
+    )
+      throw new Error('Invalid Version reference');
+    previousPosition = reference.position;
+  }
   const base: DocumentVersionBase = {
     id: string(row.id),
     number: versionNumber(row.number),
     createdAt: instant(row.createdAt),
     createdByDisplayName: string(record(row.createdBy).displayName),
-    reference: readReference(row.representations[0]),
+    references,
   };
   switch (row.status) {
     case 'draft':
@@ -308,6 +331,36 @@ function readDocumentVersion(value: unknown): DocumentVersion {
     default:
       throw new Error('Unknown Version status');
   }
+}
+function readDocumentVersionReference(
+  value: unknown,
+): DocumentVersionReference {
+  const row = record(value);
+  if (
+    !isRepresentationForm(row.form) ||
+    typeof row.primary !== 'boolean' ||
+    typeof row.appendedAfterDesignation !== 'boolean'
+  )
+    throw new Error('Invalid Version reference');
+  return {
+    ...readReference(value),
+    position: positiveInteger(row.position),
+    form: row.form,
+    primary: row.primary,
+    appendedAfterDesignation: row.appendedAfterDesignation,
+    addedAt: instant(row.addedAt),
+    addedByDisplayName: string(record(row.addedBy).displayName),
+  };
+}
+function isRepresentationForm(
+  value: unknown,
+): value is DocumentRepresentationForm {
+  return (
+    value === 'editable' ||
+    value === 'rendered' ||
+    value === 'signed' ||
+    value === 'other'
+  );
 }
 function readDesignation(
   row: Record<string, unknown>,
@@ -339,6 +392,15 @@ export type DocumentVersionReceipt =
   | (DocumentVersionReceiptBase & {
       action: 'drafted';
       sourceVersionNumber: number;
+    })
+  | (DocumentVersionReceiptBase & {
+      action: 'representation_added';
+      representationId: string;
+      appendedAfterDesignation: boolean;
+    })
+  | (DocumentVersionReceiptBase & {
+      action: 'representation_removed';
+      representationId: string;
     });
 export function readDocumentVersionReceipt(
   value: unknown,
@@ -365,6 +427,21 @@ export function readDocumentVersionReceipt(
         ...base,
         action: 'drafted',
         sourceVersionNumber: versionNumber(row.sourceVersionNumber),
+      };
+    case 'representation_added':
+      if (typeof row.appendedAfterDesignation !== 'boolean')
+        throw new Error('Unknown Version command');
+      return {
+        ...base,
+        action: 'representation_added',
+        representationId: string(row.representationId),
+        appendedAfterDesignation: row.appendedAfterDesignation,
+      };
+    case 'representation_removed':
+      return {
+        ...base,
+        action: 'representation_removed',
+        representationId: string(row.representationId),
       };
     default:
       throw new Error('Unknown Version command');

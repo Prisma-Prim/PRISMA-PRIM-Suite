@@ -100,7 +100,17 @@ function serve(detail: unknown) {
             status: workingDocument.version.status,
             createdAt: workingDocument.createdAt,
             createdBy: { displayName: documentReader.displayName },
-            representations: [workingDocument.version.representation],
+            representations: [
+              {
+                ...workingDocument.version.representation,
+                position: 1,
+                form: 'other',
+                primary: true,
+                appendedAfterDesignation: false,
+                addedAt: workingDocument.createdAt,
+                addedBy: { displayName: 'Document Registrar' },
+              },
+            ],
           },
         ],
       });

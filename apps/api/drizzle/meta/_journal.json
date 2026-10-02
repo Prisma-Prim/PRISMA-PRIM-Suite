@@ -292,8 +292,22 @@
     {
       "idx": 41,
       "version": "7",
-      "when": 1790532744025,
-      "tag": "0041_request_client_association",
+      "when": 1790707261442,
+      "tag": "0041_opportunity_responsible_reassignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790712231673,
+      "tag": "0042_offer_first_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790872046810,
+      "tag": "0043_lethal_spyke",
       "breakpoints": true
     }
   ]

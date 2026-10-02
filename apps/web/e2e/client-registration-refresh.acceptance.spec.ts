@@ -1,8 +1,11 @@
 import { selectOption } from './select-option';
 import { actorWithComparableDocumentPermissions } from '../src/test/equivalent-actor';
 import {
-  expect,
   test,
+  type ClientRegistrationDiagnostics,
+} from './client-registration-diagnostics';
+import {
+  expect,
   type Locator,
   type Page,
   type Response,
@@ -11,6 +14,7 @@ import {
 
 test('keeps a Client registration across an equivalent Company refresh through the real API and PostgreSQL', async ({
   page,
+  clientDiagnostics,
 }, testInfo) => {
   test.setTimeout(120_000);
   const narrow = testInfo.project.name.endsWith('narrow');
@@ -31,13 +35,26 @@ test('keeps a Client registration across an equivalent Company refresh through t
   });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  const expectedCompanyId = process.env.ACCEPTANCE_PRIMARY_COMPANY_ID;
+  if (!expectedCompanyId)
+    throw new Error('Missing the primary acceptance Company.');
   const initialActor = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/access/current-actor' &&
       response.request().method() === 'GET' &&
-      response.request().headers()['x-company-context-id'] !== undefined,
+      response.request().headers()['x-company-context-id'] ===
+        expectedCompanyId,
   );
   await page.goto('/');
+  const company = page.getByLabel('Active Company', { exact: true });
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  // A previous test may leave another readable Company after failing. Select
+  // this journey's Company before waiting for its Company-scoped actor.
+  await selectOption(company, { label: 'PRISMA-PRIM' });
+  await expect(company).toHaveText('PRISMA-PRIM');
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
   const initialActorResponse = await initialActor;
   expect(initialActorResponse.status()).toBe(200);
   const expectedActor: unknown = await initialActorResponse.json();
@@ -49,7 +66,7 @@ test('keeps a Client registration across an equivalent Company refresh through t
   await expect(
     page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
   ).toBeVisible();
-  const company = page.getByLabel('Active Company', { exact: true });
+
   const navigation = page.getByRole('navigation', {
     name: 'Primary navigation',
   });
@@ -60,7 +77,11 @@ test('keeps a Client registration across an equivalent Company refresh through t
     .getByRole('button', { name: 'New Client', exact: true })
     .click();
 
-  const settled = await holdNextClientRegistration(page, 'deliver');
+  const settled = await holdNextClientRegistration(
+    page,
+    'deliver',
+    clientDiagnostics,
+  );
   await clients.getByLabel('Client display name').fill(settledName);
   await clients
     .getByRole('button', { name: 'Create Client', exact: true })
@@ -88,7 +109,11 @@ test('keeps a Client registration across an equivalent Company refresh through t
   ).toHaveCount(1);
   expect(commands).toHaveLength(1);
 
-  const lost = await holdNextClientRegistration(page, 'lose');
+  const lost = await holdNextClientRegistration(
+    page,
+    'lose',
+    clientDiagnostics,
+  );
   await clients.getByLabel('Client display name').fill(retriedName);
   await clients
     .getByRole('button', { name: 'Create Client', exact: true })
@@ -170,6 +195,7 @@ type HeldRegistration = {
 async function holdNextClientRegistration(
   page: Page,
   delivery: 'deliver' | 'lose',
+  diagnostics: ClientRegistrationDiagnostics,
 ): Promise<HeldRegistration> {
   let release: () => void = () => undefined;
   const released = new Promise<void>((resolve) => {
@@ -189,21 +215,43 @@ async function holdNextClientRegistration(
       return;
     }
     held = true;
+    diagnostics.record({ delivery, phase: 'held' });
     try {
       const response = await route.fetch();
-      recordCommit(await receipt(response));
+      const committedReceipt = await receipt(response);
+      diagnostics.record({
+        delivery,
+        phase: 'committed',
+        status: committedReceipt.status,
+        clientId: committedReceipt.id,
+      });
+      recordCommit(committedReceipt);
       await released;
-      if (delivery === 'lose') await route.abort('connectionfailed');
-      else await route.fulfill({ response });
+      if (delivery === 'lose') {
+        await route.abort('connectionfailed');
+        diagnostics.record({ delivery, phase: 'lost' });
+      } else {
+        await route.fulfill({ response });
+        diagnostics.record({ delivery, phase: 'delivered' });
+      }
     } catch (error: unknown) {
+      diagnostics.record({ delivery, phase: 'handler-failed' });
       failCommit(error);
       throw error;
     } finally {
+      diagnostics.record({ delivery, phase: 'unroute-start' });
       await page.unroute(clientCollection, handler);
+      diagnostics.record({ delivery, phase: 'unroute-finished' });
     }
   };
   await page.route(clientCollection, handler);
-  return { committed, release: () => release() };
+  return {
+    committed,
+    release: () => {
+      diagnostics.record({ delivery, phase: 'released' });
+      release();
+    },
+  };
 }
 
 async function refreshActiveCompany({

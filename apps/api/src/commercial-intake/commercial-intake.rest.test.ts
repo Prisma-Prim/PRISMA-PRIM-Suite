@@ -3356,7 +3356,7 @@ withPostgres('Company commercial intake REST', () => {
            FROM pg_stat_activity
           WHERE datname = current_database()
             AND wait_event_type = 'Lock'
-            AND query ILIKE '%from "opportunities"%for update%'`,
+            AND query ILIKE '%from "opportunities"%for no key update%'`,
       );
       if (Number(waiting.rows[0]?.count) >= expected) return;
       await new Promise((resolve) => setTimeout(resolve, 25));

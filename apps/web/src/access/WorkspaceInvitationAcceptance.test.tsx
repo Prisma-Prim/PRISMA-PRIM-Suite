@@ -1,4 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+} from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { BrowserIdentity } from '../access-composition';
 import { WorkspaceInvitationAcceptance } from './WorkspaceInvitationAcceptance';

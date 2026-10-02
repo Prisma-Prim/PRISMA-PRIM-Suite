@@ -1,5 +1,5 @@
 {
-  "id": "a723bdec-a4d5-44d9-97b7-e37ca02eef43",
+  "id": "8b3ffec7-c103-4ee9-857e-49faf4f754cf",
   "prevId": "ea03af7b-29c4-445a-9ae6-adc4720e0188",
   "version": "7",
   "dialect": "postgresql",
@@ -1572,7 +1572,7 @@
       "checkConstraints": {
         "company_role_assignments_permission_set_version_check": {
           "name": "company_role_assignments_permission_set_version_check",
-          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_commercial_intake' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_project_access' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_project_approver') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_project_approver')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
+          "value": "(\n        (\"company_role_assignments\".\"bundle\"::text = 'company_director_client_access'\n          AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL\n          AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text = 'company_document_registrar' AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2', 'v3'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_commercial_intake', 'company_project_access') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" IN ('v1', 'v2'))\n        OR\n        (\"company_role_assignments\".\"bundle\"::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver') AND \"company_role_assignments\".\"permission_set_version\" IS NOT NULL AND \"company_role_assignments\".\"permission_set_version\" = 'v1')\n        OR\n        (\"company_role_assignments\".\"bundle\"::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver')\n          AND \"company_role_assignments\".\"permission_set_version\" IS NULL)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -7800,202 +7800,7 @@
         },
         "client_requests_version_check": {
           "name": "client_requests_version_check",
-          "value": "(\n        \"client_requests\".\"version\" = 1\n        OR (\"client_requests\".\"version\" = 2 AND \"client_requests\".\"client_account_id\" IS NOT NULL)\n      )"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.commercial_intake_client_association_commands": {
-      "name": "commercial_intake_client_association_commands",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_workspace_membership_id": {
-          "name": "actor_workspace_membership_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_request_id": {
-          "name": "client_request_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "client_account_id": {
-          "name": "client_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_version": {
-          "name": "expected_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_version": {
-          "name": "result_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "commercial_intake_client_association_commands_actor_key_unique": {
-          "name": "commercial_intake_client_association_commands_actor_key_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "actor_workspace_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "commercial_intake_client_association_commands_request_unique": {
-          "name": "commercial_intake_client_association_commands_request_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "client_request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "commercial_intake_client_association_commands_actor_fk": {
-          "name": "commercial_intake_client_association_commands_actor_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "workspace_memberships",
-          "columnsFrom": [
-            "workspace_id",
-            "actor_workspace_membership_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_client_association_commands_request_fk": {
-          "name": "commercial_intake_client_association_commands_request_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "client_requests",
-          "columnsFrom": [
-            "workspace_id",
-            "company_id",
-            "client_request_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "company_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "commercial_intake_client_association_commands_client_fk": {
-          "name": "commercial_intake_client_association_commands_client_fk",
-          "tableFrom": "commercial_intake_client_association_commands",
-          "tableTo": "client_accounts",
-          "columnsFrom": [
-            "workspace_id",
-            "client_account_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "commercial_intake_client_association_commands_version_check": {
-          "name": "commercial_intake_client_association_commands_version_check",
-          "value": "\"commercial_intake_client_association_commands\".\"expected_version\" = 1 AND \"commercial_intake_client_association_commands\".\"result_version\" = 2"
+          "value": "\"client_requests\".\"version\" = 1"
         }
       },
       "isRLSEnabled": false
@@ -8242,28 +8047,6 @@
           "method": "btree",
           "with": {}
         },
-        "commercial_intake_events_client_associated_unique": {
-          "name": "commercial_intake_events_client_associated_unique",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "client_request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"commercial_intake_events\".\"action\" = 'client_request.client_associated'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "commercial_intake_events_next_action_version_unique": {
           "name": "commercial_intake_events_next_action_version_unique",
           "columns": [
@@ -8288,6 +8071,34 @@
           ],
           "isUnique": true,
           "where": "\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "commercial_intake_events_responsible_version_unique": {
+          "name": "commercial_intake_events_responsible_version_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "opportunity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "(\"metadata\" ->> 'opportunityVersion')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"commercial_intake_events\".\"action\" = 'opportunity.responsible.changed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -8354,7 +8165,7 @@
       "checkConstraints": {
         "commercial_intake_events_action_metadata_check": {
           "name": "commercial_intake_events_action_metadata_check",
-          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'client_request.client_associated'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 2}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n      )"
+          "value": "(\n        (\"commercial_intake_events\".\"action\" = 'client_request.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"requestVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.created'\n          AND \"commercial_intake_events\".\"metadata\" = '{\"opportunityVersion\": 1}'::jsonb)\n        OR\n        (\"commercial_intake_events\".\"action\" = 'opportunity.next_action.updated'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object('opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer)\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2)\n        OR\n        ((\"commercial_intake_events\".\"action\" = 'opportunity.responsible.changed'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" -> 'opportunityVersion') = 'number'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{before,workspaceMembershipId}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{before,displayLabel}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{after,workspaceMembershipId}') = 'string'\n          AND jsonb_typeof(\"commercial_intake_events\".\"metadata\" #> '{after,displayLabel}') = 'string'\n          AND \"commercial_intake_events\".\"metadata\" = jsonb_build_object(\n            'opportunityVersion', (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer,\n            'before', jsonb_build_object(\n              'workspaceMembershipId', \"commercial_intake_events\".\"metadata\" #>> '{before,workspaceMembershipId}',\n              'displayLabel', \"commercial_intake_events\".\"metadata\" #>> '{before,displayLabel}'),\n            'after', jsonb_build_object(\n              'workspaceMembershipId', \"commercial_intake_events\".\"metadata\" #>> '{after,workspaceMembershipId}',\n              'displayLabel', \"commercial_intake_events\".\"metadata\" #>> '{after,displayLabel}'))\n          AND (\"commercial_intake_events\".\"metadata\" ->> 'opportunityVersion')::integer >= 2\n          AND length(btrim(\"commercial_intake_events\".\"metadata\" #>> '{before,displayLabel}')) > 0\n          AND length(btrim(\"commercial_intake_events\".\"metadata\" #>> '{after,displayLabel}')) > 0\n          AND \"commercial_intake_events\".\"metadata\" #>> '{before,workspaceMembershipId}'\n            <> \"commercial_intake_events\".\"metadata\" #>> '{after,workspaceMembershipId}') IS TRUE)\n      )"
         }
       },
       "isRLSEnabled": false
@@ -8546,6 +8357,208 @@
         "commercial_intake_next_action_commands_next_action_check": {
           "name": "commercial_intake_next_action_commands_next_action_check",
           "value": "length(\"commercial_intake_next_action_commands\".\"next_action\") BETWEEN 1 AND 500 AND length(btrim(\"commercial_intake_next_action_commands\".\"next_action\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.commercial_intake_responsible_commands": {
+      "name": "commercial_intake_responsible_commands",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_workspace_membership_id": {
+          "name": "actor_workspace_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opportunity_id": {
+          "name": "opportunity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_version": {
+          "name": "expected_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result_version": {
+          "name": "result_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsible_workspace_membership_id": {
+          "name": "responsible_workspace_membership_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "commercial_intake_responsible_commands_actor_key_unique": {
+          "name": "commercial_intake_responsible_commands_actor_key_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_workspace_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "idempotency_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "commercial_intake_responsible_commands_version_unique": {
+          "name": "commercial_intake_responsible_commands_version_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "opportunity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "result_version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"commercial_intake_responsible_commands\".\"outcome\" = 'updated'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "commercial_intake_responsible_commands_actor_fk": {
+          "name": "commercial_intake_responsible_commands_actor_fk",
+          "tableFrom": "commercial_intake_responsible_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "actor_workspace_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "commercial_intake_responsible_commands_opportunity_fk": {
+          "name": "commercial_intake_responsible_commands_opportunity_fk",
+          "tableFrom": "commercial_intake_responsible_commands",
+          "tableTo": "opportunities",
+          "columnsFrom": [
+            "workspace_id",
+            "company_id",
+            "opportunity_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "company_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "commercial_intake_responsible_commands_responsible_fk": {
+          "name": "commercial_intake_responsible_commands_responsible_fk",
+          "tableFrom": "commercial_intake_responsible_commands",
+          "tableTo": "workspace_memberships",
+          "columnsFrom": [
+            "workspace_id",
+            "responsible_workspace_membership_id"
+          ],
+          "columnsTo": [
+            "workspace_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "commercial_intake_responsible_commands_outcome_check": {
+          "name": "commercial_intake_responsible_commands_outcome_check",
+          "value": "\"commercial_intake_responsible_commands\".\"expected_version\" >= 1 AND (\n        (\"commercial_intake_responsible_commands\".\"outcome\" = 'updated'\n          AND \"commercial_intake_responsible_commands\".\"result_version\" = (\"commercial_intake_responsible_commands\".\"expected_version\")::bigint + 1)\n        OR\n        (\"commercial_intake_responsible_commands\".\"outcome\" = 'unchanged'\n          AND \"commercial_intake_responsible_commands\".\"result_version\" = \"commercial_intake_responsible_commands\".\"expected_version\")\n      )"
         }
       },
       "isRLSEnabled": false
@@ -11957,6 +11970,8 @@
         "company_pricing_adjustment_assignment.revoked",
         "company_commercial_activity_reader_assignment.granted",
         "company_commercial_activity_reader_assignment.revoked",
+        "company_opportunity_manager_assignment.granted",
+        "company_opportunity_manager_assignment.revoked",
         "company_project_approver_assignment.granted",
         "company_project_approver_assignment.revoked",
         "client.created",
@@ -12021,6 +12036,7 @@
         "company_pricing_user",
         "company_pricing_adjustment",
         "company_commercial_activity_reader",
+        "company_opportunity_manager",
         "company_project_approver"
       ]
     },

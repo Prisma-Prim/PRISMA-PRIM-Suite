@@ -13,6 +13,13 @@ import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
+import { OfferPanel } from '../offer/OfferPanel';
+import {
+  OpportunityResponsible,
+  type ResponsibleCandidate,
+  type ResponsibleEdit,
+  type ResponsibleEditor,
+} from './OpportunityResponsible';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import { RequestClientAssociation } from './RequestClientAssociation';
 import './commercial-intake.css';
@@ -78,8 +85,9 @@ type ClientRestriction = { clientDossierId: string; displayName: string };
 type RequestedRequest = { clientRequestId: string; requestId: number };
 
 // What the one shared in-flight controller serves: an ordinary detail read, or
-// a capture or next-action command until the reads that follow its outcome end.
-type InFlight = 'none' | 'read' | 'capture' | 'next-action';
+// a capture, next-action or responsible-actor command until the reads that
+// follow its outcome end.
+type InFlight = 'none' | 'read' | 'capture' | 'next-action' | 'responsible';
 type AssociationProtection = 'idle' | 'loading' | 'uncertain';
 
 type NextActionUpdateResult = {
@@ -105,6 +113,23 @@ type NextActionRetry = {
   opportunityId: string;
   expectedVersion: number;
   nextAction: string;
+  key: string;
+};
+
+type ResponsibleChangeResult = {
+  receipt: {
+    opportunityId: string;
+    workspaceMembershipId: string;
+    version: number;
+    outcome: 'updated' | 'unchanged';
+  };
+  request: ClientRequest;
+};
+
+type ResponsibleRetry = {
+  opportunityId: string;
+  expectedVersion: number;
+  workspaceMembershipId: string;
   key: string;
 };
 
@@ -212,6 +237,9 @@ export function CommercialIntakeWorkspace({
   const [nextActionEdit, setNextActionEdit] = useState<NextActionEdit>({
     kind: 'idle',
   });
+  const [responsibleEdit, setResponsibleEdit] = useState<ResponsibleEdit>({
+    kind: 'idle',
+  });
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
@@ -220,6 +248,11 @@ export function CommercialIntakeWorkspace({
   // The next-action save whose response has not arrived yet; commandRequest
   // is shared with capture and detail reads.
   const nextActionCommand = useRef<AbortController | undefined>(undefined);
+  const responsibleRetry = useRef<ResponsibleRetry | undefined>(undefined);
+  // The responsible-actor save whose response has not arrived yet, and the
+  // eligible-member read of an open responsible-actor editor.
+  const responsibleCommand = useRef<AbortController | undefined>(undefined);
+  const membersRequest = useRef<AbortController | undefined>(undefined);
   // The ordinary detail read in flight, if any; never a command.
   const detailRead = useRef<AbortController | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
@@ -228,19 +261,23 @@ export function CommercialIntakeWorkspace({
     nextActionEdit.kind === 'editing' ||
     nextActionEdit.kind === 'saving' ||
     nextActionEdit.kind === 'uncertain';
-  const nextActionInProgress = useRef(false);
-  nextActionInProgress.current = nextActionEditOpen;
+  const responsibleEditOpen =
+    responsibleEdit.kind !== 'idle' && responsibleEdit.kind !== 'conflict';
+  // At most one Opportunity editor is open; either one is protected work.
+  const opportunityEditInProgress = useRef(false);
+  opportunityEditInProgress.current = nextActionEditOpen || responsibleEditOpen;
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
-  // Work a requested Request never interrupts; it opens once that work ends.
   const protectedWork =
     associationProtection !== 'idle'
       ? 'client-association'
       : nextActionEditOpen || inFlight === 'next-action'
         ? 'next-action-edit'
-        : inFlight === 'capture' || captureUncertain
-          ? 'capture'
-          : undefined;
+        : responsibleEditOpen || inFlight === 'responsible'
+          ? 'responsible-edit'
+          : inFlight === 'capture' || captureUncertain
+            ? 'capture'
+            : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -262,6 +299,24 @@ export function CommercialIntakeWorkspace({
     actor.activeCompany?.commercialIntakePermissions?.includes(
       'commercial.request.client.associate',
     ) === true;
+  // Reassignment needs the manager bundle and both Intake reads; the server
+  // also requires live Company context.
+  const intakePermissions =
+    actor.activeCompany?.commercialIntakePermissions ?? [];
+  const canChangeResponsible =
+    actor.activeCompany?.opportunityManagerPermissions?.includes(
+      'commercial.opportunity.assign',
+    ) === true &&
+    intakePermissions.includes('commercial.request.read') &&
+    intakePermissions.includes('commercial.opportunity.read');
+  // The captured manager assignment the editor belongs to, like a remount key.
+  const responsibleAuthority = JSON.stringify([
+    actor.workspaceMembershipId,
+    companyId,
+    actor.activeCompany?.opportunityManagerPermissionAssignmentId,
+    actor.activeCompany?.opportunityManagerPermissionSetVersion,
+    canChangeResponsible,
+  ]);
 
   const request = useCallback(
     async ({
@@ -330,7 +385,8 @@ export function CommercialIntakeWorkspace({
         | 'intake'
         | 'client-search'
         | 'client-association'
-        | 'next-action-update' = 'intake',
+        | 'next-action-update'
+        | 'responsible-update' = 'intake',
     ): Promise<'ok' | 'retained' | 'rejected'> => {
       if (signal.aborted) return 'rejected';
       if (result.status === 401) {
@@ -372,13 +428,16 @@ export function CommercialIntakeWorkspace({
           setRestriction(undefined);
           setNextActionEdit({ kind: 'idle' });
           setAssociationProtection('idle');
+          setResponsibleEdit({ kind: 'idle' });
           setInFlight('none');
           setCaptureUncertain(false);
           setRequestToOpen(undefined);
           retry.current = undefined;
           nextActionRetry.current = undefined;
+          responsibleRetry.current = undefined;
           listRequest.current?.abort();
           commandRequest.current?.abort();
+          membersRequest.current?.abort();
         }
       }
       return retainAuthorizedIntake && !signal.aborted
@@ -441,11 +500,14 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     commandRequest.current?.abort();
     clientSearchRequest.current?.abort();
+    membersRequest.current?.abort();
     retry.current = undefined;
     nextActionRetry.current = undefined;
+    responsibleRetry.current = undefined;
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
+    setResponsibleEdit({ kind: 'idle' });
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
@@ -463,6 +525,7 @@ export function CommercialIntakeWorkspace({
       listRequest.current?.abort();
       commandRequest.current?.abort();
       clientSearchRequest.current?.abort();
+      membersRequest.current?.abort();
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
 
@@ -472,11 +535,11 @@ export function CommercialIntakeWorkspace({
     setRestriction(clientRestriction);
     if (
       !clientRestriction ||
-      nextActionInProgress.current ||
+      opportunityEditInProgress.current ||
       associationInProgress.current
     )
       return;
-    // A next-action draft, save or uncertain retry stays open until Back.
+    // An active editor or uncertain retry stays open until Back.
     const read = detailRead.current;
     if (read && !read.signal.aborted) {
       read.abort();
@@ -485,6 +548,8 @@ export function CommercialIntakeWorkspace({
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     nextActionRetry.current = undefined;
+    setResponsibleEdit({ kind: 'idle' });
+    responsibleRetry.current = undefined;
   }, [clientRestriction]);
 
   // The shell owns the requested Request. A new one supersedes any older or
@@ -590,6 +655,42 @@ export function CommercialIntakeWorkspace({
     setFeedback(copy.nextActionDenied);
   }, [canEditNextAction, nextActionEdit.kind]);
 
+  // Losing reassignment authority keeps the read-only detail, but retires the
+  // editor, its eligible members, the pending command and any in-flight save,
+  // so a later regrant can neither restore nor replay them.
+  useEffect(() => {
+    if (canChangeResponsible) return;
+    responsibleRetry.current = undefined;
+    membersRequest.current?.abort();
+    const save = responsibleCommand.current;
+    responsibleCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    if (responsibleEdit.kind === 'idle') return;
+    setResponsibleEdit({ kind: 'idle' });
+    if (responsibleEdit.kind !== 'conflict')
+      setFeedback(copy.responsibleDenied);
+  }, [canChangeResponsible, responsibleEdit.kind]);
+
+  // Another captured manager assignment is a new authority: like a remount
+  // keyed on it, it retires every responsible-actor draft and command.
+  const readResponsibleAuthority = useRef(responsibleAuthority);
+  useEffect(() => {
+    if (readResponsibleAuthority.current === responsibleAuthority) return;
+    readResponsibleAuthority.current = responsibleAuthority;
+    responsibleRetry.current = undefined;
+    membersRequest.current?.abort();
+    const save = responsibleCommand.current;
+    responsibleCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    setResponsibleEdit({ kind: 'idle' });
+  }, [responsibleAuthority]);
+
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -658,6 +759,9 @@ export function CommercialIntakeWorkspace({
     if (!preserveConflict) {
       setNextActionEdit({ kind: 'idle' });
       nextActionRetry.current = undefined;
+      setResponsibleEdit({ kind: 'idle' });
+      responsibleRetry.current = undefined;
+      membersRequest.current?.abort();
     }
     try {
       const result = await request({
@@ -675,6 +779,8 @@ export function CommercialIntakeWorkspace({
         });
         setNextActionEdit({ kind: 'idle' });
         nextActionRetry.current = undefined;
+        setResponsibleEdit({ kind: 'idle' });
+        responsibleRetry.current = undefined;
       } else setFeedback(copy.error);
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
@@ -686,11 +792,216 @@ export function CommercialIntakeWorkspace({
 
   function closeDetail(): void {
     commandRequest.current?.abort();
+    membersRequest.current?.abort();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
     nextActionRetry.current = undefined;
+    setResponsibleEdit({ kind: 'idle' });
+    responsibleRetry.current = undefined;
     setInFlight('none');
+  }
+
+  // A vanished Opportunity follows the next-action missing flow: the detail
+  // closes and the list is read again.
+  async function closeMissingOpportunity(companyContextId: string) {
+    setNextActionEdit({ kind: 'idle' });
+    nextActionRetry.current = undefined;
+    setResponsibleEdit({ kind: 'idle' });
+    responsibleRetry.current = undefined;
+    setSelected(undefined);
+    setFeedback(copy.nextActionMissing);
+    await loadRequests(companyContextId);
+  }
+
+  async function openResponsibleEditor(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    const opportunity = selected.request.initialOpportunity;
+    membersRequest.current?.abort();
+    const controller = new AbortController();
+    membersRequest.current = controller;
+    responsibleRetry.current = undefined;
+    setResponsibleEdit({ kind: 'loading' });
+    setFeedback('');
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(opportunity.id)}/eligible-responsible-actors`,
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      const access = await handleAccess(
+        result,
+        companyId,
+        controller.signal,
+        'responsible-update',
+      );
+      if (controller.signal.aborted) return;
+      if (access === 'retained') {
+        setResponsibleEdit({ kind: 'idle' });
+        setFeedback(copy.responsibleDenied);
+        return;
+      }
+      if (access === 'rejected') return;
+      if (result.status === 404) {
+        await closeMissingOpportunity(companyId);
+        return;
+      }
+      if (result.status === 200 && isResponsibleCandidates(result.body)) {
+        const { members } = result.body;
+        // The recorded member is preselected only while still eligible.
+        const current = opportunity.responsibleWorkspaceMembershipId;
+        setResponsibleEdit({
+          kind: 'choosing',
+          members,
+          selection: members.some(
+            (member) => member.workspaceMembershipId === current,
+          )
+            ? current
+            : '',
+        });
+        return;
+      }
+      setResponsibleEdit({ kind: 'load-error' });
+      setFeedback(copy.responsibleMembersError);
+    } catch {
+      if (!controller.signal.aborted) {
+        setResponsibleEdit({ kind: 'load-error' });
+        setFeedback(copy.responsibleMembersError);
+      }
+    } finally {
+      if (membersRequest.current === controller)
+        membersRequest.current = undefined;
+    }
+  }
+
+  async function saveResponsible(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    if (
+      responsibleEdit.kind !== 'choosing' &&
+      responsibleEdit.kind !== 'uncertain'
+    )
+      return;
+    const { members } = responsibleEdit;
+    const preservedRetry =
+      responsibleEdit.kind === 'uncertain'
+        ? responsibleRetry.current
+        : undefined;
+    const workspaceMembershipId =
+      preservedRetry?.workspaceMembershipId ?? responsibleEdit.selection;
+    if (!workspaceMembershipId) return;
+    const opportunityId =
+      preservedRetry?.opportunityId ?? selected.request.initialOpportunity.id;
+    const expectedVersion =
+      preservedRetry?.expectedVersion ??
+      selected.request.initialOpportunity.version;
+    const previous = responsibleRetry.current;
+    // An explicit retry reuses the key only for the exact same member and
+    // observed version, so the server can replay the original receipt.
+    const key =
+      previous &&
+      previous.opportunityId === opportunityId &&
+      previous.expectedVersion === expectedVersion &&
+      previous.workspaceMembershipId === workspaceMembershipId
+        ? previous.key
+        : crypto.randomUUID();
+    responsibleRetry.current = {
+      opportunityId,
+      expectedVersion,
+      workspaceMembershipId,
+      key,
+    };
+    commandRequest.current?.abort();
+    const controller = new AbortController();
+    commandRequest.current = controller;
+    responsibleCommand.current = controller;
+    const startedUnderRevision = identityRevision.current;
+    setResponsibleEdit({
+      kind: 'saving',
+      members,
+      selection: workspaceMembershipId,
+    });
+    setInFlight('responsible');
+    setFeedback('');
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/responsible`,
+        companyContextId: companyId,
+        signal: controller.signal,
+        method: 'POST',
+        body: JSON.stringify({ expectedVersion, workspaceMembershipId }),
+        idempotencyKey: key,
+      });
+      if (responsibleCommand.current === controller)
+        responsibleCommand.current = undefined;
+      if (controller.signal.aborted) return;
+      const access = await handleAccess(
+        result,
+        companyId,
+        controller.signal,
+        'responsible-update',
+      );
+      if (controller.signal.aborted) return;
+      if (access === 'retained') {
+        // Reassignment authority was lost while read authority remains: the
+        // editor and pending command are dropped, the read-only detail stays.
+        setResponsibleEdit({ kind: 'idle' });
+        responsibleRetry.current = undefined;
+        setFeedback(copy.responsibleDenied);
+        return;
+      }
+      if (access === 'rejected') return;
+      if (result.status === 404) {
+        await closeMissingOpportunity(companyId);
+        return;
+      }
+      if (result.status === 409) {
+        setResponsibleEdit({ kind: 'conflict' });
+        responsibleRetry.current = undefined;
+        setFeedback(copy.responsibleConflict);
+        return;
+      }
+      if (result.status === 400) {
+        setResponsibleEdit({ kind: 'unavailable' });
+        responsibleRetry.current = undefined;
+        setFeedback(copy.responsibleUnavailable);
+        return;
+      }
+      if (result.status === 200 && isResponsibleChangeResult(result.body)) {
+        const { receipt, request: updated } = result.body;
+        setSelected({
+          request: updated,
+          identityRevision: startedUnderRevision,
+        });
+        setResponsibleEdit({ kind: 'idle' });
+        responsibleRetry.current = undefined;
+        setFeedback(
+          receipt.outcome === 'updated'
+            ? copy.responsibleChanged
+            : copy.responsibleUnchanged,
+        );
+        if (receipt.outcome === 'updated') await onActivityRecorded();
+        if (!controller.signal.aborted) await loadRequests(companyId);
+        return;
+      }
+      setResponsibleEdit({
+        kind: 'uncertain',
+        members,
+        selection: workspaceMembershipId,
+      });
+      setFeedback(copy.responsibleUncertain);
+    } catch {
+      if (!controller.signal.aborted) {
+        setResponsibleEdit({
+          kind: 'uncertain',
+          members,
+          selection: workspaceMembershipId,
+        });
+        setFeedback(copy.responsibleUncertain);
+      }
+    } finally {
+      if (!controller.signal.aborted) setInFlight('none');
+    }
   }
 
   async function saveNextAction(): Promise<void> {
@@ -765,11 +1076,7 @@ export function CommercialIntakeWorkspace({
       }
       if (access === 'rejected') return;
       if (result.status === 404) {
-        setNextActionEdit({ kind: 'idle' });
-        nextActionRetry.current = undefined;
-        setSelected(undefined);
-        setFeedback(copy.nextActionMissing);
-        await loadRequests(companyId);
+        await closeMissingOpportunity(companyId);
         return;
       }
       if (result.status === 409) {
@@ -951,7 +1258,9 @@ export function CommercialIntakeWorkspace({
             ? copy.requestedAfterCapture
             : protectedWork === 'client-association'
               ? copy.requestedAfterClientAssociation
-              : copy.requestedAfterNextActionEdit}
+              : protectedWork === 'responsible-edit'
+                ? copy.requestedAfterResponsibleEdit
+                : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
       {selected ? (
@@ -966,10 +1275,37 @@ export function CommercialIntakeWorkspace({
               ? () => onOpenClientDossier(dossierTarget)
               : undefined
           }
+          responsible={
+            canChangeResponsible
+              ? {
+                  edit: responsibleEdit,
+                  current: selected.request.initialOpportunity.responsibleActor,
+                  blocked: nextActionEdit.kind !== 'idle',
+                  onOpen: () => void openResponsibleEditor(),
+                  onSelect: (workspaceMembershipId) =>
+                    setResponsibleEdit((current) =>
+                      current.kind === 'choosing'
+                        ? { ...current, selection: workspaceMembershipId }
+                        : current,
+                    ),
+                  onSave: () => void saveResponsible(),
+                  onCancel: () => {
+                    membersRequest.current?.abort();
+                    setResponsibleEdit({ kind: 'idle' });
+                    responsibleRetry.current = undefined;
+                    setFeedback('');
+                  },
+                  onReloadList: () => void openResponsibleEditor(),
+                  onReloadRequest: () =>
+                    void selectRequest(selected.request.id, true),
+                }
+              : undefined
+          }
           nextAction={
             canEditNextAction
               ? {
                   edit: nextActionEdit,
+                  blocked: responsibleEdit.kind !== 'idle',
                   onEdit: () => {
                     setFeedback('');
                     setNextActionEdit({
@@ -1454,6 +1790,8 @@ function matchesFilter(
 
 type NextActionEditor = {
   edit: NextActionEdit;
+  /** The responsible-actor editor is open, so this one cannot start. */
+  blocked: boolean;
   onEdit: () => void;
   onDraftChange: (draft: string) => void;
   onSave: () => void;
@@ -1468,6 +1806,7 @@ function RequestDetail({
   onBack,
   pending,
   onOpenClientDossier,
+  responsible,
   nextAction,
   clientAssociation,
   onCompanyContextRejected,
@@ -1481,6 +1820,8 @@ function RequestDetail({
   pending: boolean;
   /** Offered only for a current dossier identity, never a name or original id. */
   onOpenClientDossier: (() => void) | undefined;
+  /** Offered only with reassignment authority and the Intake reads. */
+  responsible: ResponsibleEditor | undefined;
   nextAction: NextActionEditor | undefined;
   clientAssociation: ReactNode;
   onCompanyContextRejected: (companyContextId: string) => void;
@@ -1571,6 +1912,9 @@ function RequestDetail({
           {copy.responsible}:{' '}
           {request.initialOpportunity.responsibleActor.displayName}
         </p>
+        {responsible ? (
+          <OpportunityResponsible editor={responsible} pending={pending} />
+        ) : null}
         <p>
           {copy.status}:{' '}
           {copy.opportunityStatusLabels[request.initialOpportunity.status]}
@@ -1591,6 +1935,17 @@ function RequestDetail({
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
+      <OfferPanel
+        key={`offer:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
+        currentClientId={request.clientReference?.currentClientId}
+        clientDisplayName={request.clientReference?.displayName}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
     </article>
   );
 }
@@ -1606,7 +1961,11 @@ function NextActionEditForm({
   switch (edit.kind) {
     case 'idle':
       return (
-        <button type="button" onClick={editor.onEdit} disabled={pending}>
+        <button
+          type="button"
+          onClick={editor.onEdit}
+          disabled={pending || editor.blocked}
+        >
           {copy.editNextAction}
         </button>
       );
@@ -1802,6 +2161,36 @@ function isNextActionUpdateResult(
   return (
     typeof receipt.opportunityId === 'string' &&
     typeof receipt.nextAction === 'string' &&
+    typeof receipt.version === 'number' &&
+    Number.isInteger(receipt.version) &&
+    (receipt.outcome === 'updated' || receipt.outcome === 'unchanged') &&
+    isClientRequest(value.request)
+  );
+}
+
+function isResponsibleCandidates(
+  value: unknown,
+): value is { members: ResponsibleCandidate[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.members) &&
+    value.members.every(
+      (member: unknown) =>
+        isRecord(member) &&
+        typeof member.workspaceMembershipId === 'string' &&
+        typeof member.displayLabel === 'string',
+    )
+  );
+}
+
+function isResponsibleChangeResult(
+  value: unknown,
+): value is ResponsibleChangeResult {
+  if (!isRecord(value) || !isRecord(value.receipt)) return false;
+  const receipt = value.receipt;
+  return (
+    typeof receipt.opportunityId === 'string' &&
+    typeof receipt.workspaceMembershipId === 'string' &&
     typeof receipt.version === 'number' &&
     Number.isInteger(receipt.version) &&
     (receipt.outcome === 'updated' || receipt.outcome === 'unchanged') &&

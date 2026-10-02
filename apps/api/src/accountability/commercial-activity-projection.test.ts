@@ -4,6 +4,7 @@ import {
   commercialActivityTarget,
   commercialActivityTargetOf,
   eligibleCommercialActions,
+  readCommercialActivity,
   readCommercialActivityAction,
 } from './commercial-activity-projection.js';
 
@@ -56,7 +57,11 @@ describe('commercial Activity projection rules', () => {
           commercialIntakePermissions: ['commercial.opportunity.read'],
         }),
       ),
-    ).toEqual(['opportunity.created', 'opportunity.next_action.updated']);
+    ).toEqual([
+      'opportunity.created',
+      'opportunity.next_action.updated',
+      'opportunity.responsible.changed',
+    ]);
   });
 
   it('projects every known action for a complete reader', () => {
@@ -77,6 +82,7 @@ describe('commercial Activity projection rules', () => {
       'client_request.client_associated',
       'opportunity.created',
       'opportunity.next_action.updated',
+      'opportunity.responsible.changed',
     ]);
   });
 
@@ -107,6 +113,107 @@ describe('commercial Activity projection rules', () => {
           metadata: { opportunityVersion },
         }),
       ).toBe('opportunity.next_action.updated');
+  });
+
+  describe('the responsible-actor change', () => {
+    const before = {
+      workspaceMembershipId: '00000000-0000-4000-8000-000000000401',
+      displayLabel: 'Ada Ionescu · 1A',
+    };
+    const after = {
+      workspaceMembershipId: '00000000-0000-4000-8000-000000000402',
+      displayLabel: 'Ion Popa · 2B',
+    };
+
+    it('projects the previous and new responsible actor, not the version', () => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.responsible.changed',
+          metadata: { opportunityVersion: 2, before, after },
+        }),
+      ).toEqual({
+        action: 'opportunity.responsible.changed',
+        metadata: { before, after },
+      });
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.next_action.updated',
+          metadata: { opportunityVersion: 3 },
+        }),
+      ).toEqual({ action: 'opportunity.next_action.updated', metadata: {} });
+    });
+
+    it('requires Opportunity read like every other Opportunity event', () => {
+      expect(
+        eligibleCommercialActions(
+          company({
+            commercialActivityPermissions: ['commercial.activity.read'],
+            commercialIntakePermissions: ['commercial.request.read'],
+          }),
+        ),
+      ).not.toContain('opportunity.responsible.changed');
+      expect(
+        commercialActivityTargetOf('opportunity.responsible.changed'),
+      ).toBe('opportunity');
+    });
+
+    it.each([
+      ['a missing version', { before, after }],
+      ['the first version', { opportunityVersion: 1, before, after }],
+      ['a text version', { opportunityVersion: '2', before, after }],
+      ['a fractional version', { opportunityVersion: 2.5, before, after }],
+      [
+        'an extra key',
+        { opportunityVersion: 2, before, after, nextAction: 'Call back' },
+      ],
+      ['a missing side', { opportunityVersion: 2, after }],
+      ['a null side', { opportunityVersion: 2, before: null, after }],
+      [
+        'an extra side field',
+        {
+          opportunityVersion: 2,
+          before: { ...before, email: 'ada@example.test' },
+          after,
+        },
+      ],
+      [
+        'a blank label',
+        {
+          opportunityVersion: 2,
+          before: { ...before, displayLabel: ' ' },
+          after,
+        },
+      ],
+      [
+        'an untyped membership',
+        {
+          opportunityVersion: 2,
+          before,
+          after: { ...after, workspaceMembershipId: 402 },
+        },
+      ],
+      [
+        'the same member on both sides',
+        { opportunityVersion: 2, before, after: before },
+      ],
+      ['version-only metadata', { opportunityVersion: 2 }],
+    ])('fails closed on %s', (_case, metadata) => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.responsible.changed',
+          metadata,
+        }),
+      ).toBeUndefined();
+    });
+
+    it('never accepts responsible-actor metadata for another action', () => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.next_action.updated',
+          metadata: { opportunityVersion: 2, before, after },
+        }),
+      ).toBeUndefined();
+    });
   });
 
   it('fails closed on an unknown action', () => {
@@ -264,6 +371,9 @@ describe('commercial Activity projection rules', () => {
       'opportunity',
     );
     expect(commercialActivityTargetOf('opportunity.next_action.updated')).toBe(
+      'opportunity',
+    );
+    expect(commercialActivityTargetOf('opportunity.responsible.changed')).toBe(
       'opportunity',
     );
   });

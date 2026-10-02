@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   foreignKey,
   integer,
@@ -211,15 +212,31 @@ export const documentRepresentations = pgTable(
     workspaceId: uuid('workspace_id').notNull(),
     companyId: uuid('company_id').notNull(),
     versionId: uuid('version_id').notNull(),
+    position: integer('position').notNull().default(1),
+    form: text('form', {
+      enum: ['editable', 'rendered', 'signed', 'other'],
+    })
+      .notNull()
+      .default('other'),
     url: text('url').notNull(),
     kind: text('kind').notNull().default('external-reference'),
     verification: text('verification').notNull().default('unverified'),
+    addedByMembershipId: uuid('added_by_membership_id').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    appendedAfterDesignation: boolean('appended_after_designation')
+      .notNull()
+      .default(false),
+    removedByMembershipId: uuid('removed_by_membership_id'),
+    removedAt: timestamp('removed_at', { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex('document_representations_version_unique').on(
+    uniqueIndex('document_representations_version_position_unique').on(
       table.workspaceId,
       table.companyId,
       table.versionId,
+      table.position,
     ),
     foreignKey({
       name: 'document_representations_version_fk',
@@ -230,9 +247,25 @@ export const documentRepresentations = pgTable(
         documentVersions.id,
       ],
     }),
+    foreignKey({
+      name: 'document_representations_adder_fk',
+      columns: [table.workspaceId, table.addedByMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'document_representations_remover_fk',
+      columns: [table.workspaceId, table.removedByMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
     check(
       'document_representations_state_check',
-      sql`${table.kind} = 'external-reference' AND ${table.verification} = 'unverified' AND ${table.url} LIKE 'https://%'`,
+      sql`${table.kind} = 'external-reference' AND ${table.verification} = 'unverified' AND ${table.url} LIKE 'https://%' AND ${table.position} >= 1 AND ${table.form} IN ('editable', 'rendered', 'signed', 'other') AND ((${table.removedAt} IS NULL AND ${table.removedByMembershipId} IS NULL) OR (${table.removedAt} IS NOT NULL AND ${table.removedByMembershipId} IS NOT NULL))`,
     ),
   ],
 );
@@ -343,12 +376,22 @@ export const documentVersionCommands = pgTable(
     companyId: uuid('company_id').notNull(),
     documentId: uuid('document_id').notNull(),
     action: text('action', {
-      enum: ['drafted', 'designated_official'],
+      enum: [
+        'drafted',
+        'designated_official',
+        'representation_added',
+        'representation_removed',
+      ],
     }).notNull(),
     versionId: uuid('version_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     /** The source Version of a draft, or the Version a designation superseded. */
     relatedVersionNumber: integer('related_version_number'),
+    representationId: uuid('representation_id'),
+    representationForm: text('representation_form', {
+      enum: ['editable', 'rendered', 'signed', 'other'],
+    }),
+    appendedAfterDesignation: boolean('appended_after_designation'),
     actorMembershipId: uuid('actor_membership_id').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     requestFingerprint: text('request_fingerprint').notNull(),
@@ -410,10 +453,26 @@ export const documentVersionCommands = pgTable(
         AND ${table.versionNumber} BETWEEN 1 AND 50
         AND ((${table.action} = 'drafted'
             AND ${table.relatedVersionNumber} IS NOT NULL
-            AND ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1)
+            AND ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1
+            AND ${table.representationId} IS NULL
+            AND ${table.representationForm} IS NULL
+            AND ${table.appendedAfterDesignation} IS NULL)
           OR (${table.action} = 'designated_official'
             AND (${table.relatedVersionNumber} IS NULL
-              OR ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1)))
+              OR ${table.relatedVersionNumber} BETWEEN 1 AND ${table.versionNumber} - 1)
+            AND ${table.representationId} IS NULL
+            AND ${table.representationForm} IS NULL
+            AND ${table.appendedAfterDesignation} IS NULL)
+          OR (${table.action} = 'representation_added'
+            AND ${table.relatedVersionNumber} IS NULL
+            AND ${table.representationId} IS NOT NULL
+            AND ${table.representationForm} IN ('editable', 'rendered', 'signed', 'other')
+            AND ${table.appendedAfterDesignation} IS NOT NULL)
+          OR (${table.action} = 'representation_removed'
+            AND ${table.relatedVersionNumber} IS NULL
+            AND ${table.representationId} IS NOT NULL
+            AND ${table.representationForm} IN ('editable', 'rendered', 'signed', 'other')
+            AND ${table.appendedAfterDesignation} IS FALSE))
       ) IS TRUE`,
     ),
   ],

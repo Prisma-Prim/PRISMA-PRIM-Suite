@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; wider governance remains Draft
-**Version:** 0.8
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; wider governance remains Draft
+**Version:** 0.9
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -380,20 +380,27 @@ Content status is one dimension only. Approval rationale, transmission, receipt,
 **Designation.** A holder of Company Document Approver v1 (authorization PRD §8) who also has Document metadata and Representation read designates the current draft as official. One transaction:
 
 - makes the draft `official`, recording the actor and server time;
-- freezes its reference, and the Document's title and purpose at that moment, with the Version;
+- freezes its references and their forms, and the Document's title and purpose at that moment, with the Version;
 - makes the previously official Version, if any, `superseded`, recording the superseding Version.
 
-A designated Version is never corrected in place. A superseded Version stays readable with its reference, designation and supersession.
+A designated Version is never corrected in place. A superseded Version stays readable with its references, designation and supersession.
 
 First-tenant configuration grants Approver v1 only to Iurie's membership in each Company. This is an assignment, not a product role or hard-coded identity. Because the per-family responsibility matrix is incomplete (S03-Q02 Partial), no family-specific rule exists. A member holding both bundles may designate a Version they prepared; both acts stay attributed.
 
 Designation freezes only what the system records: reference values and metadata. It does not store, fetch or verify external content, which may still change at its source. It does not make the Version an Approved Document for knowledge indexing.
 
-**New draft.** When an official Version exists and no draft does, a holder of Company Document Registrar v3 starts the next Version as `draft`, copying the official Version's reference.
+**New draft.** When an official Version exists and no draft does, a holder of Company Document Registrar v3 starts the next Version as `draft`, copying its references as the References paragraph states.
 
-The section 19 working correction now applies only to the current draft: title and purpose on the Document, and the URL of the draft's reference. While no draft exists, the Document is correction read-only.
+The section 19 working correction now applies only to the current draft: title and purpose on the Document, and the URL of the draft's primary reference. While no draft exists, the Document is correction read-only.
 
-**References in this slice.** Each Version holds exactly one unverified external reference under section 17. Version 1 holds the registration reference, and each new draft holds a copy of the official Version's reference. The reference of an official or superseded Version never changes. Registrations that existed before this section become Version 1.
+**References (#401).** Every Version holds typed, credential-free HTTPS external references. Each has a form: `editable`, `rendered`, `signed` or `other`. They remain unverified external references under section 17, and a received original is never replaced by a working copy (coverage S03-Q08). A holder of Company Document Registrar v3 may:
+
+- on the draft, add references (at most 5 current) and remove any reference except the last one. A removal is retained internally and attributed, but hidden from the Version;
+- on the current official Version, only append references (at most 10 in total), for example a signed scan of that exact Version (DEC-133; Governed Documents invariant 3). An appended reference can never be removed.
+
+Superseded Versions accept nothing. A new draft copies the references the official Version held when it was designated; references appended afterwards stay with their own Version. The primary reference of a Version is its lowest-positioned current reference. Existing references become form `other` at position 1.
+
+A `signed` form is a label on a reference, not signature evidence: it proves no signatory, time or validity (DEC-136).
 
 **Guarantees.** Every Version command and every section 19 correction share the Document's working revision as one concurrency token. Each committed command:
 
@@ -404,13 +411,15 @@ Among concurrent commands on one observed revision, at most one commits; the oth
 
 Every command requires the original Client and its Company relationship to remain active. A superseded original stays readable and read-only, as in section 19. Reading Versions follows the Document detail read boundary, and URLs require Representation read.
 
-**Events.** The events are `document.version.drafted` and `document.version.designated_official` (with the superseded Version number), projected as Activity Log PRD section 7 states.
+**Events.** The events are `document.version.drafted`, `document.version.designated_official` (with the superseded Version number), `document.representation.added` and `document.representation.removed`, projected as Activity Log PRD section 7 states.
 
 **Provisional choices for Iurie's validation:**
 
 - Approver v1 is held only by Iurie;
 - at most 50 Versions;
-- a new draft copies the official reference;
+- a new draft copies the references held at designation, not later appends;
+- Registrar v3 holders append to official Versions;
+- at most 5 draft references and 10 official references;
 - no reason or note on designation;
 - no discarding of a draft;
 - no review or rejection state.
@@ -426,6 +435,6 @@ Excluded, and not presented as business fact:
 - templates and generation;
 - archive, restore and deletion;
 - discarding a draft;
-- several or typed references per Version, their removal, and references appended to an official Version, such as a signed scan;
+- changing a reference's form or position in place, removing an appended reference, and appending to a superseded Version;
 - Evidence Links and knowledge indexing;
 - Offer and Contract Documents, which reuse this model only through their own capability sections.

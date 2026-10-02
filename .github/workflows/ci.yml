@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:17-alpine
@@ -56,14 +56,22 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
+        id: repository_tests
         run: pnpm test
+
+      - name: Verify acceptance failure evidence
+        if: ${{ !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
+        run: node scripts/verify-acceptance-evidence.mjs
 
       - name: Upload browser evidence
         if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-pr-${{ github.event.pull_request.number }}
-          path: apps/web/test-results/**/*.png
+          path: |
+            apps/web/test-results/**/*.png
+            apps/web/test-results/acceptance/**
+            apps/web/test-results/acceptance-evidence-probe/**
           if-no-files-found: warn
           retention-days: 14
 

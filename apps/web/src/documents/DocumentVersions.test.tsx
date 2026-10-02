@@ -77,6 +77,12 @@ const reference = (id: string, url: string, granted = true) =>
         id,
         kind: 'external-reference',
         verification: 'unverified',
+        position: 1,
+        form: 'other',
+        primary: true,
+        appendedAfterDesignation: false,
+        addedAt: CREATED,
+        addedBy: { displayName: 'Document Registrar' },
         access: 'granted',
         url,
       }
@@ -84,6 +90,12 @@ const reference = (id: string, url: string, granted = true) =>
         id,
         kind: 'external-reference',
         verification: 'unverified',
+        position: 1,
+        form: 'other',
+        primary: true,
+        appendedAfterDesignation: false,
+        addedAt: CREATED,
+        addedBy: { displayName: 'Document Registrar' },
         access: 'denied',
       };
 function documentAt(
@@ -233,7 +245,9 @@ async function versionRows() {
   const list = await within(versionsSection()).findByRole('list', {
     name: 'Document Versions, newest first',
   });
-  return within(list).getAllByRole('listitem');
+  return Array.from(list.children).filter(
+    (child): child is HTMLElement => child instanceof HTMLElement,
+  );
 }
 const reads = (requests: Recorded[], path: string) =>
   requests.filter(
@@ -294,7 +308,7 @@ describe('the Document Versions section', () => {
     expect(second).toHaveTextContent('Frozen titleChestionar corectat');
     expect(second).toHaveTextContent('Frozen purposeAssess the revised scope');
     expect(second).toHaveTextContent(
-      'The recorded reference and title of this official Version are frozen. The linked external content is not stored or verified here and may change at its source.',
+      'The recorded references, their forms, and the title of this official Version are frozen. The linked external content is not stored or verified here and may change at its source.',
     );
     const secondLink = within(second).getByRole('link', {
       name: 'Open Version 2 reference',
@@ -425,14 +439,14 @@ describe('the Document Versions section', () => {
       permissions: REGISTRAR_V3,
       versions: [official(1, V1_URL)],
       mutable: true,
-      offered: ['Start new draft'],
+      offered: ['Start new draft', 'Add reference to official Version'],
     },
     {
       name: 'Registrar v3 cannot start a second draft',
       permissions: REGISTRAR_V3,
       versions: [draft(2, V1_URL), official(1, V1_URL)],
       mutable: true,
-      offered: [],
+      offered: ['Add reference', 'Add reference to official Version'],
     },
     {
       name: 'a Registrar v2 colleague sees no Version command',

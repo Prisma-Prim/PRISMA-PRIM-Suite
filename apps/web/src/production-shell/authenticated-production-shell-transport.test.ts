@@ -52,6 +52,12 @@ const taskTarget = {
   taskTitle: 'Collect the audit file',
   companyId,
 };
+const documentTarget = {
+  type: 'document',
+  documentId: 'document-1',
+  documentTitle: 'Audit contract',
+  companyId,
+};
 const documentProjectTarget = {
   type: 'document_project',
   documentId: 'document-1',
@@ -77,6 +83,12 @@ const responsibleChanged = event(
   responsibleTarget,
   { revision: 2, before: ion, after: maria },
 );
+const opportunityResponsibleChanged = event(
+  'event-opportunity-responsible',
+  'opportunity.responsible.changed',
+  opportunityTarget,
+  { before: ion, after: maria },
+);
 const unionEvent = {
   action: 'client.union_confirmed',
   projectionReference: 'union-1',
@@ -90,7 +102,9 @@ const unionEvent = {
 };
 
 /** Every delivered action with a legitimate target of its kind. */
-const legitimateTargets: Array<[string, Record<string, unknown>]> = [
+const legitimateTargets: Array<
+  [string, Record<string, unknown>, Record<string, unknown>?]
+> = [
   [
     'workspace_invitation.issued',
     { type: 'workspace_invitation', invitationId: 'invitation-1' },
@@ -127,6 +141,7 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
     'company_pricing_user_assignment',
     'company_pricing_adjustment_assignment',
     'company_commercial_activity_reader_assignment',
+    'company_opportunity_manager_assignment',
     'company_context_assignment',
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',
@@ -175,30 +190,31 @@ const legitimateTargets: Array<[string, Record<string, unknown>]> = [
   ['task.completed', taskTarget],
   ['task.cancelled', taskTarget],
   ['task.reopened', taskTarget],
-  [
-    'document.registered',
-    {
-      type: 'document',
-      documentId: 'document-1',
-      documentTitle: 'Audit contract',
-      companyId,
-    },
-  ],
+  ['document.registered', documentTarget],
   [
     'document.corrected',
     { type: 'document', documentId: 'document-1', companyId },
   ],
-  ...['document.version.drafted', 'document.version.designated_official'].map(
-    (action): [string, Record<string, unknown>] => [
-      action,
-      {
-        type: 'document',
-        documentId: 'document-1',
-        documentTitle: 'Audit contract',
-        companyId,
-      },
-    ],
-  ),
+  [
+    'document.version.drafted',
+    documentTarget,
+    { versionNumber: 2, sourceVersionNumber: 1 },
+  ],
+  [
+    'document.version.designated_official',
+    documentTarget,
+    { versionNumber: 2, supersededVersionNumber: 1 },
+  ],
+  [
+    'document.representation.added',
+    documentTarget,
+    { versionNumber: 2, form: 'signed', appendedAfterDesignation: true },
+  ],
+  [
+    'document.representation.removed',
+    documentTarget,
+    { versionNumber: 2, form: 'editable', appendedAfterDesignation: false },
+  ],
   ['document.project.linked', documentProjectTarget],
   ['document.project.unlinked', documentProjectTarget],
   ['client_request.created', requestTarget],
@@ -286,8 +302,8 @@ describe('the authenticated Activity Log transport', () => {
 
   it('accepts every delivered action with its own target, including historical Client scope, responsible-member changes and redacted unions', async () => {
     const events = [
-      ...legitimateTargets.map(([action, target], index) =>
-        event(`event-${index}`, action, target),
+      ...legitimateTargets.map(([action, target, metadata], index) =>
+        event(`event-${index}`, action, target, metadata),
       ),
       responsibleChanged,
       unionEvent,
@@ -299,12 +315,13 @@ describe('the authenticated Activity Log transport', () => {
       status: 'ok',
       value: {
         events: [
-          ...legitimateTargets.map(([action, target], index) => ({
+          ...legitimateTargets.map(([action, target, metadata], index) => ({
             id: `event-${index}`,
             action,
             occurredAt,
             actor,
             target,
+            ...(metadata === undefined ? {} : { metadata }),
           })),
           responsibleChanged,
           unionEvent,
@@ -312,6 +329,34 @@ describe('the authenticated Activity Log transport', () => {
       },
     });
   });
+
+  it.each([
+    ['missing designation timing', { versionNumber: 2, form: 'editable' }],
+    [
+      'designation timing set to true',
+      {
+        versionNumber: 2,
+        form: 'editable',
+        appendedAfterDesignation: true,
+      },
+    ],
+  ])(
+    'fails closed on a removed-reference event with %s',
+    async (_case, metadata) => {
+      const { result } = await loadActivityLog({
+        events: [
+          event(
+            'event-reference-removed',
+            'document.representation.removed',
+            documentTarget,
+            metadata,
+          ),
+        ],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
 
   it('keeps only the revision and each side’s membership and label of a responsible-member change', async () => {
     const { result } = await loadActivityLog({
@@ -423,6 +468,80 @@ describe('the authenticated Activity Log transport', () => {
     async (_case, malformed) => {
       const { result } = await loadActivityLog({
         events: [responsibleChanged, malformed],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
+
+  it('keeps exactly both responsible actors of an Opportunity change and its Request link', async () => {
+    const { result } = await loadActivityLog({
+      events: [
+        event(
+          'event-opportunity-responsible',
+          'opportunity.responsible.changed',
+          opportunityTarget,
+          {
+            before: { ...ion, email: 'ion@example.test' },
+            after: maria,
+            opportunityVersion: 2,
+          },
+        ),
+      ],
+    });
+
+    expect(result).toEqual({
+      status: 'ok',
+      value: {
+        events: [
+          {
+            ...opportunityResponsibleChanged,
+            metadata: { before: ion, after: maria },
+          },
+        ],
+      },
+    });
+  });
+
+  it.each<[string, unknown]>([
+    ['no metadata', { ...opportunityResponsibleChanged, metadata: undefined }],
+    [
+      'a cleared side',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: { before: ion, after: null },
+      },
+    ],
+    [
+      'a missing side',
+      { ...opportunityResponsibleChanged, metadata: { after: maria } },
+    ],
+    [
+      'a side without its label',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: {
+          before: ion,
+          after: { workspaceMembershipId: maria.workspaceMembershipId },
+        },
+      },
+    ],
+    [
+      'the same member on both sides',
+      {
+        ...opportunityResponsibleChanged,
+        metadata: { before: ion, after: { ...ion } },
+      },
+    ],
+    [
+      'a Request target',
+      { ...opportunityResponsibleChanged, target: requestTarget },
+    ],
+  ])(
+    'fails closed on an Opportunity responsible change with %s next to a valid one',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [opportunityResponsibleChanged, malformed],
       });
 
       expect(result).toEqual({ status: 'error' });

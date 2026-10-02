@@ -3,6 +3,8 @@ import { readLifecycleActivityMetadata } from '../project/project-lifecycle-resp
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
+  DocumentVersionActivityLogEvent,
+  OpportunityResponsibleChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
   ProjectResponsibleChangedActivityLogEvent,
 } from './company-context-transitions';
@@ -34,12 +36,16 @@ const targetTypes = {
   'company_pricing_configuration_assignment.revoked': 'company_role_assignment',
   'company_pricing_user_assignment.granted': 'company_role_assignment',
   'company_pricing_user_assignment.revoked': 'company_role_assignment',
+  'company_offer_preparer_assignment.granted': 'company_role_assignment',
+  'company_offer_preparer_assignment.revoked': 'company_role_assignment',
   'company_pricing_adjustment_assignment.granted': 'company_role_assignment',
   'company_pricing_adjustment_assignment.revoked': 'company_role_assignment',
   'company_commercial_activity_reader_assignment.granted':
     'company_role_assignment',
   'company_commercial_activity_reader_assignment.revoked':
     'company_role_assignment',
+  'company_opportunity_manager_assignment.granted': 'company_role_assignment',
+  'company_opportunity_manager_assignment.revoked': 'company_role_assignment',
   'company_project_approver_assignment.granted': 'company_role_assignment',
   'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',
@@ -72,6 +78,8 @@ const targetTypes = {
   'document.corrected': 'document',
   'document.version.drafted': 'document',
   'document.version.designated_official': 'document',
+  'document.representation.added': 'document',
+  'document.representation.removed': 'document',
   'document.project.linked': 'document_project',
   'document.project.unlinked': 'document_project',
   'client.union_confirmed': 'client_union_operation',
@@ -80,6 +88,7 @@ const targetTypes = {
   'client_request.client_associated': 'client_request',
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
+  'opportunity.responsible.changed': 'opportunity',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
 
 /**
@@ -153,9 +162,12 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
           companyId: identifier(target.companyId),
         },
       };
-    case 'document.registered':
     case 'document.version.drafted':
     case 'document.version.designated_official':
+    case 'document.representation.added':
+    case 'document.representation.removed':
+      return documentVersionEvent(value, action, target);
+    case 'document.registered':
       return {
         ...recorded(value),
         action,
@@ -202,26 +214,96 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         },
       };
     case 'opportunity.created':
-    case 'opportunity.next_action.updated': {
-      // Absent unless the actor currently reads Requests in this Company.
-      const clientRequestId = optional(target.clientRequestId, identifier);
+    case 'opportunity.next_action.updated':
       return {
         ...recorded(value),
         action,
-        target: {
-          type: 'opportunity',
-          opportunityId: identifier(target.opportunityId),
-          ...(clientRequestId === undefined ? {} : { clientRequestId }),
-          companyId: identifier(target.companyId),
-        },
+        target: opportunityTarget(target),
       };
-    }
+    case 'opportunity.responsible.changed':
+      return {
+        ...recorded(value),
+        action,
+        target: opportunityTarget(target),
+        metadata: opportunityResponsibleChange(value.metadata),
+      };
     default:
       return {
         ...recorded(value),
         action,
         target: ordinaryTarget(targetTypes[action], target),
       };
+  }
+}
+
+function documentVersionEvent(
+  event: Record<string, unknown>,
+  action: DocumentVersionActivityLogEvent['action'],
+  target: Record<string, unknown>,
+): DocumentVersionActivityLogEvent {
+  if (!isRecord(event.metadata)) invalid();
+  const base = {
+    ...recorded(event),
+    target: {
+      type: 'document' as const,
+      documentId: identifier(target.documentId),
+      documentTitle: text(target.documentTitle),
+      companyId: identifier(target.companyId),
+    },
+  };
+  const versionNumber = positiveInteger(event.metadata.versionNumber);
+  switch (action) {
+    case 'document.version.drafted':
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          sourceVersionNumber: positiveInteger(
+            event.metadata.sourceVersionNumber,
+          ),
+        },
+      };
+    case 'document.version.designated_official':
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          supersededVersionNumber:
+            event.metadata.supersededVersionNumber === null
+              ? null
+              : positiveInteger(event.metadata.supersededVersionNumber),
+        },
+      };
+    case 'document.representation.added': {
+      const appendedAfterDesignation = event.metadata.appendedAfterDesignation;
+      if (typeof appendedAfterDesignation !== 'boolean') invalid();
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          form: representationForm(event.metadata.form),
+          appendedAfterDesignation,
+        },
+      };
+    }
+    case 'document.representation.removed':
+      if (event.metadata.appendedAfterDesignation !== false) invalid();
+      return {
+        ...base,
+        action,
+        metadata: {
+          versionNumber,
+          form: representationForm(event.metadata.form),
+          appendedAfterDesignation: false,
+        },
+      };
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
+    }
   }
 }
 
@@ -320,6 +402,39 @@ function clientUnionEvent(
   };
 }
 
+/** An Opportunity and, only for a current Request reader, its Request. */
+function opportunityTarget(
+  target: Record<string, unknown>,
+): OpportunityResponsibleChangedActivityLogEvent['target'] {
+  const clientRequestId = optional(target.clientRequestId, identifier);
+  return {
+    type: 'opportunity',
+    opportunityId: identifier(target.opportunityId),
+    ...(clientRequestId === undefined ? {} : { clientRequestId }),
+    companyId: identifier(target.companyId),
+  };
+}
+
+/**
+ * A material Opportunity responsible-actor change: two different members,
+ * each a membership identifier and captured label. An Opportunity always has a
+ * responsible actor, so neither side is ever none.
+ */
+function opportunityResponsibleChange(
+  metadata: unknown,
+): OpportunityResponsibleChangedActivityLogEvent['metadata'] {
+  if (!isRecord(metadata)) invalid();
+  const before = readOptionalResponsibleMember(metadata.before);
+  const after = readOptionalResponsibleMember(metadata.after);
+  if (
+    before === null ||
+    after === null ||
+    before.workspaceMembershipId === after.workspaceMembershipId
+  )
+    invalid();
+  return { before, after };
+}
+
 /**
  * A material responsible-member change: its resulting revision and two
  * different sides, each a membership identifier and label or none.
@@ -370,6 +485,25 @@ function text(value: unknown): string {
 
 function timestamp(value: unknown): string {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
+    invalid();
+  return value;
+}
+
+function positiveInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
+    invalid();
+  return value;
+}
+
+function representationForm(
+  value: unknown,
+): 'editable' | 'rendered' | 'signed' | 'other' {
+  if (
+    value !== 'editable' &&
+    value !== 'rendered' &&
+    value !== 'signed' &&
+    value !== 'other'
+  )
     invalid();
   return value;
 }

@@ -90,6 +90,45 @@ export function isCommercialIntakePermissionSetVersion(
 ): version is CompanyCommercialIntakePermissionSetVersion {
   return version === 'v1' || version === 'v2' || version === 'v3';
 }
+const COMPANY_COMMERCIAL_INTAKE_PERMISSION_SET_VERSIONS = [
+  'v1',
+  'v2',
+  'v3',
+] as const satisfies readonly CompanyCommercialIntakePermissionSetVersion[];
+/**
+ * Every captured Commercial Intake version whose permission set includes all
+ * `required` permissions, so a later version carrying them is accepted.
+ */
+export function commercialIntakeVersionsWith(
+  required: readonly CompanyCommercialIntakePermission[],
+): CompanyCommercialIntakePermissionSetVersion[] {
+  return COMPANY_COMMERCIAL_INTAKE_PERMISSION_SET_VERSIONS.filter((version) =>
+    required.every((permission) =>
+      commercialIntakePermissionsFor(version).includes(permission),
+    ),
+  );
+}
+export const COMMERCIAL_INTAKE_READ_PERMISSIONS = [
+  'commercial.request.read',
+  'commercial.opportunity.read',
+] as const satisfies readonly CompanyCommercialIntakePermission[];
+export const COMPANY_OPPORTUNITY_MANAGER_BUNDLE =
+  'company_opportunity_manager' as const;
+export const COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL =
+  'Company Opportunity Manager' as const;
+// The opt-in manager bundle replaces an Opportunity's responsible actor only.
+// Company context and Commercial Intake read are prerequisites it never grants.
+export const COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS = [
+  'commercial.opportunity.assign',
+] as const;
+export type CompanyOpportunityManagerPermission =
+  (typeof COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS)[number];
+// Never inherited: a null or unknown captured version resolves to nothing.
+export function opportunityManagerPermissionsFor(
+  version: unknown,
+): readonly CompanyOpportunityManagerPermission[] {
+  return version === 'v1' ? COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS : [];
+}
 export const COMPANY_SERVICE_CATALOGUE_BUNDLE =
   'company_service_catalogue' as const;
 export const COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL =
@@ -145,6 +184,23 @@ export function pricingUserPermissionsFor(
 ): readonly CompanyPricingUserPermission[] {
   return version === 'v1' ? COMPANY_PRICING_USER_V1_PERMISSIONS : [];
 }
+export const COMPANY_OFFER_PREPARER_BUNDLE = 'company_offer_preparer' as const;
+export const COMPANY_OFFER_PREPARER_BUNDLE_LABEL =
+  'Company Offer Preparer' as const;
+export const COMPANY_OFFER_PREPARER_V1_PERMISSIONS = [
+  'commercial.offer.read',
+  'commercial.offer.prepare',
+  'commercial.offer.transmission.record',
+  'commercial.pricing.snapshot.read',
+] as const;
+export type CompanyOfferPreparerPermission =
+  (typeof COMPANY_OFFER_PREPARER_V1_PERMISSIONS)[number];
+export function offerPreparerPermissionsFor(
+  version: unknown,
+): readonly CompanyOfferPreparerPermission[] {
+  return version === 'v1' ? COMPANY_OFFER_PREPARER_V1_PERMISSIONS : [];
+}
+
 export const COMPANY_PRICING_ADJUSTMENT_BUNDLE =
   'company_pricing_adjustment' as const;
 export const COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL =
