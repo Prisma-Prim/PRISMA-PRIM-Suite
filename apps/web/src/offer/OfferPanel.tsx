@@ -422,6 +422,35 @@ function OfferSummary({ offer }: { offer: OfferView }) {
       </dl>
       {version.scopeNote && <p>{version.scopeNote}</p>}
       {version.commercialConditions && <p>{version.commercialConditions}</p>}
+      <section
+        className="offer-representation"
+        aria-labelledby="offer-representation-title"
+      >
+        <h5 id="offer-representation-title">{copy.representation}</h5>
+        <p>
+          <strong>{copy.draftState}</strong>
+        </p>
+        <dl>
+          <div>
+            <dt>{copy.templateVersion}</dt>
+            <dd>
+              {version.representation.templateCode} v
+              {version.representation.templateVersion}
+            </dd>
+          </div>
+          <div>
+            <dt>{copy.checksum}</dt>
+            <dd>
+              <code>{version.representation.sha256}</code>
+            </dd>
+          </div>
+        </dl>
+        <iframe
+          title={copy.representationFrame}
+          sandbox=""
+          srcDoc={version.representation.html}
+        />
+      </section>
     </div>
   );
 }

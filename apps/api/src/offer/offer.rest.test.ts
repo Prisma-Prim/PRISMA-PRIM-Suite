@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { ActorContext } from '../access/access.types.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
@@ -237,6 +238,34 @@ withPostgres('First illustrative Offer REST', () => {
         createdAt: instant.toISOString(),
       },
     });
+    const representation = record(record(created.version).representation);
+    const html = stringField(representation, 'html');
+    expect(representation).toMatchObject({
+      templateCode: 'OFFER_ILLUSTRATIVE',
+      templateVersion: 1,
+      sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
+    });
+    const orderedContent = [
+      'Provisional illustrative document',
+      'Issuing Company',
+      'Illustrative Offer reference',
+      'Recipient legal name',
+      'Created at',
+      'Services',
+      'Subtotal',
+      'Scope note',
+      'Commercial conditions',
+      'Template Version',
+    ];
+    const contentOffsets = orderedContent.map((value) => html.indexOf(value));
+    expect(contentOffsets).not.toContain(-1);
+    expect(contentOffsets).toEqual(
+      [...contentOffsets].sort((left, right) => left - right),
+    );
+    expect(html).not.toContain('PENDING');
+    expect(html).not.toContain('NOT_TRANSMITTED');
+    expect(html).not.toContain('NONE');
+    expect(html).not.toContain('not approved');
 
     const storedColumns = await pool.query<{ column_name: string }>(
       `SELECT column_name
@@ -317,6 +346,15 @@ withPostgres('First illustrative Offer REST', () => {
       }
     }
 
+    const beforeReopenSideEffects = await pool.query<{
+      receipts: string;
+      events: string;
+      activity: string;
+    }>(`SELECT
+      (SELECT count(*) FROM offer_commands)::text AS receipts,
+      (SELECT count(*) FROM offer_events)::text AS events,
+      (SELECT count(*) FROM activity_log_events)::text AS activity`);
+
     await harness.close();
     await openHarness();
     const reopenedResponse = await request(
@@ -328,6 +366,13 @@ withPostgres('First illustrative Offer REST', () => {
       record(await json(reopenedResponse)).offer,
     );
     expect(reopened).toEqual(created);
+    expect(reopened.revision).toBe(1);
+    expect(
+      await pool.query(`SELECT
+        (SELECT count(*) FROM offer_commands)::text AS receipts,
+        (SELECT count(*) FROM offer_events)::text AS events,
+        (SELECT count(*) FROM activity_log_events)::text AS activity`),
+    ).toMatchObject({ rows: beforeReopenSideEffects.rows });
   });
 
   it('freezes an ADDITIONAL recipient copy when the Client entity is corrected later', async () => {
@@ -401,11 +446,120 @@ withPostgres('First illustrative Offer REST', () => {
     expect(record(record(reopened.version).recipient)).toEqual(
       record(record(created.version).recipient),
     );
+    expect(record(record(reopened.version).representation)).toEqual(
+      record(record(created.version).representation),
+    );
     expect(record(reopened.version)).toMatchObject({
       validityDays: 45,
       scopeNote: '  Text is kept exactly.  ',
       commercialConditions: '',
     });
+  });
+
+  it('keeps PRIMARY representation bytes after later Client, Company and pricing changes and reads without Offer side effects', async () => {
+    const fixture = await preparedOffer();
+    const created = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'offer-before-source-changes',
+        fixture.companyId,
+      ),
+    );
+    const createdVersion = record(created.version);
+    const representation = record(createdVersion.representation);
+
+    const correctedClient = await request(
+      `/clients/${fixture.clientId}`,
+      fixture.companyId,
+      {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'correct-client-after-offer',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          displayName: 'Corrected current Client',
+          taxId: 'CORRECTED-501',
+          address: '501 Current Street',
+        }),
+      },
+    );
+    expect(correctedClient.status).toBe(200);
+    await pool.query('UPDATE companies SET display_name = $1 WHERE id = $2', [
+      'Corrected current Company',
+      fixture.companyId,
+    ]);
+    const successorEffectiveFrom = '2026-09-28T09:00:00.000Z';
+    await command(
+      '/pricing-configuration/rule-versions',
+      {
+        label: 'Later illustrative rule',
+        effectiveFrom: successorEffectiveFrom,
+        expectedActiveVersionNumber: fixture.ruleVersionNumber,
+      },
+      'later-rule-after-offer',
+      fixture.companyId,
+    );
+    await command(
+      `/pricing-configuration/offerings/${fixture.offeringId}/tariff-versions`,
+      {
+        unit: 'later-unit',
+        unitAmount: '999.0000',
+        currency: 'USD',
+        taxRatePercent: '20.00',
+        taxLabel: 'Later tax',
+        effectiveFrom: successorEffectiveFrom,
+        expectedActiveVersionNumber: fixture.tariffVersionNumber,
+      },
+      'later-tariff-after-offer',
+      fixture.companyId,
+    );
+
+    const sideEffects = () =>
+      pool.query<{
+        revision: number;
+        receipts: string;
+        events: string;
+        activity: string;
+      }>(
+        `SELECT offer.revision,
+                (SELECT count(*) FROM offer_commands WHERE result_offer_id = offer.id)::text AS receipts,
+                (SELECT count(*) FROM offer_events WHERE offer_id = offer.id)::text AS events,
+                (SELECT count(*) FROM activity_log_events)::text AS activity
+           FROM offers offer WHERE offer.id = $1`,
+        [created.id],
+      );
+    const beforeRead = await sideEffects();
+    const reopened = identifiedRecord(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+
+    const reopenedVersion = record(reopened.version);
+    expect(reopenedVersion).toMatchObject({
+      recipient: {
+        legalName: 'Synthetic Recipient SA',
+        taxId: 'SYNTHETIC-456',
+        legalAddress: '456 Example Street',
+      },
+      issuingCompanyLabel: 'Illustrative Company 456',
+    });
+    expect(record(reopenedVersion.pricingSnapshot)).toEqual(
+      record(createdVersion.pricingSnapshot),
+    );
+    expect(record(reopenedVersion.representation)).toEqual(representation);
+    expect(await sideEffects()).toMatchObject({ rows: beforeRead.rows });
   });
 
   it('replays exactly, conflicts a changed payload and denies replay after revocation without new success events', async () => {
