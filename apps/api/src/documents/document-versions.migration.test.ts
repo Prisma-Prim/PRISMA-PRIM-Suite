@@ -290,6 +290,7 @@ it.skipIf(!databaseUrl)(
         await insertAssignment(bundle, version);
       await insertAssignment('company_document_registrar', 'v3');
       await insertAssignment('company_document_approver', 'v1');
+      await insertAssignment('company_commercial_intake', 'v3');
       for (const [bundle, version] of [
         ['company_document_approver', null],
         ['company_document_approver', 'v2'],
@@ -297,7 +298,7 @@ it.skipIf(!databaseUrl)(
         ['company_document_registrar', 'v4'],
         ['company_document_registrar', null],
         ['company_document_project_organizer', 'v2'],
-        ['company_commercial_intake', 'v3'],
+        ['company_commercial_intake', 'v4'],
         ['company_project_access', 'v3'],
         ['company_director_client_access', 'v3'],
         ['company_pricing_configuration', 'v2'],

@@ -17,6 +17,11 @@ export interface UpdateOpportunityNextActionCommand {
   readonly nextAction: string;
 }
 
+export interface AssociateClientCommand {
+  readonly expectedVersion: number;
+  readonly clientAccountId: string;
+}
+
 /** Exactly one business field: the new responsible membership. No clear. */
 export interface ChangeOpportunityResponsibleCommand {
   readonly expectedVersion: number;
@@ -43,7 +48,8 @@ export interface CommercialIntakeDetail {
   readonly originalText: string;
   readonly capturedByWorkspaceMembershipId: string;
   readonly capturedAt: string;
-  readonly version: 1;
+  readonly version: 1 | 2;
+  readonly clientAssociationStatus: 'absent' | 'hidden' | 'visible';
   readonly clientReference?: {
     readonly originalClientId: string;
     readonly currentClientId?: string;
@@ -60,6 +66,15 @@ export interface CommercialIntakeDetail {
     readonly createdAt: string;
     readonly version: number;
   };
+}
+
+export interface ClientAssociationResult {
+  readonly receipt: {
+    readonly requestId: string;
+    readonly version: 2;
+    readonly outcome: 'associated';
+  };
+  readonly request: CommercialIntakeDetail;
 }
 
 // The receipt confirms what one command did; `request` is the current
@@ -94,21 +109,31 @@ export interface OpportunityResponsibleCandidatePage {
   }>;
 }
 
-export interface CommercialIntakeListItem {
+export type CommercialIntakeListClientProjection =
+  | {
+      readonly clientDisplayName: string;
+      readonly clientDossierId?: string;
+    }
+  | {
+      readonly clientDisplayName?: undefined;
+      readonly clientDossierId?: undefined;
+    };
+
+export type CommercialIntakeListItem = {
   readonly id: string;
   readonly subject: string | null;
   readonly capturedAt: string;
   /**
-   * Derived navigation target owned by Client, present only for a current
-   * Company Client reader; never persisted, accepted as input or used for access.
+   * Derived projection owned by Client. Its name may remain readable without
+   * a current dossier; navigation is offered only when `clientDossierId` is
+   * present. Neither field is persisted, accepted as input or used for access.
    */
-  readonly clientDossierId?: string;
   readonly initialOpportunity: {
     readonly title: string;
     readonly nextAction: string;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
   };
-}
+} & CommercialIntakeListClientProjection;
 
 export interface CommercialIntakeListPage {
   readonly items: CommercialIntakeListItem[];

@@ -85,6 +85,7 @@ const targetTypes = {
   'client.union_confirmed': 'client_union_operation',
   'client.union_reversed': 'client_union_operation',
   'client_request.created': 'client_request',
+  'client_request.client_associated': 'client_request',
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
   'opportunity.responsible.changed': 'opportunity',
@@ -202,6 +203,7 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         },
       };
     case 'client_request.created':
+    case 'client_request.client_associated':
       return {
         ...recorded(value),
         action,

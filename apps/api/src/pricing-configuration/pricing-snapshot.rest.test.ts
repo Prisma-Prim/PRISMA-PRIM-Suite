@@ -1341,6 +1341,445 @@ withPostgres('Pricing Snapshots REST', () => {
     expect(restrictedSnapshot.total).toBe('346.72');
   });
 
+  it.each(['next-action', 'responsible'] as const)(
+    'keeps association and a concurrent %s change atomic without coupling their versions',
+    async (mutation) => {
+      const fixture = await prepared();
+      const actor = record(
+        await json(
+          await request('/access/current-actor', undefined, {
+            headers: CONFIGURATION_MEMBER,
+          }),
+        ),
+      );
+      const membershipId = stringField(actor, 'workspaceMembershipId');
+      for (const path of [
+        '/company-context-assignments',
+        ASSIGNMENTS.intake,
+        ...(mutation === 'responsible'
+          ? ['/company-opportunity-manager-assignments']
+          : []),
+      ])
+        await command(
+          path,
+          { companyId: fixture.companyId, workspaceMembershipId: membershipId },
+          mutation + '-association-grant-' + path,
+        );
+      const client = entity(
+        await command(
+          '/clients',
+          { displayName: 'Concurrent ' + mutation + ' Client' },
+          mutation + '-association-client',
+          fixture.companyId,
+        ),
+      );
+      const barrier = await holdTransaction(async (connection) => {
+        await connection.query(
+          'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+          [client.id],
+        );
+      });
+      let association: Promise<Response> | undefined;
+      let change: Promise<Response> | undefined;
+      let keyShareCompatible = false;
+      try {
+        association = post(
+          '/commercial-intake/requests/' +
+            fixture.requestId +
+            '/client-association',
+          { expectedVersion: 1, clientAccountId: client.id },
+          mutation + '-association',
+          fixture.companyId,
+        );
+        const associationPid = await waitForBlockedBy(barrier.backendPid);
+        change = post(
+          '/commercial-intake/opportunities/' +
+            fixture.opportunityId +
+            '/' +
+            mutation,
+          mutation === 'next-action'
+            ? {
+                expectedVersion: 1,
+                nextAction: 'Review after the concurrent association',
+              }
+            : { expectedVersion: 1, workspaceMembershipId: membershipId },
+          mutation + '-during-association',
+          fixture.companyId,
+          CONFIGURATION_MEMBER,
+        );
+        const writerPid = await waitForBlockedBy(associationPid);
+        const waiting = await pool.query<{ query: string }>(
+          'SELECT query FROM pg_stat_activity WHERE pid = $1',
+          [writerPid],
+        );
+        expect(waiting.rows[0]?.query).toContain('commercial_intake_events');
+        // The writer holds Opportunity and its event waits on Request. Its
+        // lock must still let association's event acquire Opportunity KEY SHARE.
+        await barrier.connection.query('SAVEPOINT association_key_share_proof');
+        try {
+          await barrier.connection.query(
+            'SELECT id FROM opportunities WHERE id = $1 FOR KEY SHARE NOWAIT',
+            [fixture.opportunityId],
+          );
+          keyShareCompatible = true;
+        } catch (error: unknown) {
+          await barrier.connection.query(
+            'ROLLBACK TO SAVEPOINT association_key_share_proof',
+          );
+          if (
+            typeof error !== 'object' ||
+            error === null ||
+            !('code' in error) ||
+            error.code !== '55P03'
+          )
+            throw error;
+        }
+      } finally {
+        await release(barrier);
+      }
+      if (!association || !change)
+        throw new Error('Expected both public commands at the event barrier.');
+      const [associated, changed] = await Promise.all([association, change]);
+      expect(keyShareCompatible).toBe(true);
+      expect(associated.status).toBe(200);
+      expect(changed.status).toBe(200);
+      const result = record(await json(changed));
+      expect(record(result.receipt)).toMatchObject({
+        version: 2,
+        outcome: 'updated',
+      });
+      const current = record(
+        await json(
+          await request(
+            '/commercial-intake/requests/' + fixture.requestId,
+            fixture.companyId,
+          ),
+        ),
+      );
+      expect(current.version).toBe(2);
+      expect(record(current.clientReference).originalClientId).toBe(client.id);
+      expect(record(current.initialOpportunity)).toMatchObject(
+        mutation === 'next-action'
+          ? {
+              version: 2,
+              nextAction: 'Review after the concurrent association',
+            }
+          : { version: 2, responsibleWorkspaceMembershipId: membershipId },
+      );
+      const action =
+        mutation === 'next-action'
+          ? 'opportunity.next_action.updated'
+          : 'opportunity.responsible.changed';
+      expect(
+        (
+          await pool.query(
+            `SELECT
+        (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS associations,
+        (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS association_events,
+        (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = $2) AS change_events`,
+            [fixture.requestId, action],
+          )
+        ).rows,
+      ).toEqual([{ associations: 1, association_events: 1, change_events: 1 }]);
+    },
+  );
+
+  it('orders Offer behind association on the Request before taking Opportunity and Client locks', async () => {
+    const fixture = await prepared();
+    const offerActor = record(
+      await json(
+        await request('/access/current-actor', undefined, {
+          headers: CONFIGURATION_MEMBER,
+        }),
+      ),
+    );
+    for (const path of [
+      '/company-context-assignments',
+      ASSIGNMENTS.intake,
+      '/company-director-client-assignments',
+      '/company-offer-preparer-assignments',
+    ])
+      await command(
+        path,
+        {
+          companyId: fixture.companyId,
+          workspaceMembershipId: stringField(
+            offerActor,
+            'workspaceMembershipId',
+          ),
+        },
+        'offer-association-grant-' + path,
+      );
+    // command() creates the full recipient as OWNER. Workspace ownership
+    // alone only permits minimal Client registration, so grant its Company
+    // Client authority explicitly before supplying taxId and address.
+    await command(
+      '/company-director-client-assignments',
+      {
+        companyId: fixture.companyId,
+        workspaceMembershipId: fixture.membershipId,
+      },
+      'offer-association-owner-client-grant',
+    );
+    const client = entity(
+      await command(
+        '/clients',
+        {
+          displayName: 'Synthetic association and Offer recipient',
+          taxId: 'SYNTHETIC-ASSOCIATION-OFFER',
+          address: '1 Synthetic Street',
+        },
+        'offer-association-client',
+        fixture.companyId,
+      ),
+    );
+    // A Snapshot for another Opportunity has an already defined refusal.
+    // This proof makes no decision on reusing a historically Clientless Snapshot.
+    const other = record(
+      await command(
+        '/commercial-intake/requests',
+        {
+          originalText:
+            'Synthetic second Request for a Snapshot mismatch proof.',
+          opportunity: {
+            title: 'Different Opportunity',
+            nextAction: 'Calculate its Snapshot',
+          },
+        },
+        'offer-association-other-request',
+        fixture.companyId,
+      ),
+    );
+    const differentOpportunity = stringField(
+      record(other.initialOpportunity),
+      'id',
+    );
+    const differentSnapshot = snapshot(
+      await command(
+        snapshotsPath(differentOpportunity),
+        calculationBody(fixture),
+        'offer-association-mismatch-snapshot',
+        fixture.companyId,
+      ),
+    );
+    const barrier = await holdTransaction(async (connection) => {
+      await connection.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+        [client.id],
+      );
+    });
+    let association: Promise<Response> | undefined;
+    let offer: Promise<Response> | undefined;
+    try {
+      association = post(
+        '/commercial-intake/requests/' +
+          fixture.requestId +
+          '/client-association',
+        { expectedVersion: 1, clientAccountId: client.id },
+        'association-racing-offer',
+        fixture.companyId,
+      );
+      const associationPid = await waitForBlockedBy(barrier.backendPid);
+      offer = post(
+        '/offers/opportunities/' + fixture.opportunityId,
+        {
+          pricingSnapshotId: differentSnapshot.id,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'offer-racing-association',
+        fixture.companyId,
+        CONFIGURATION_MEMBER,
+      );
+      const offerPid = await waitForBlockedBy(associationPid);
+      const waiting = await pool.query<{ query: string }>(
+        'SELECT query FROM pg_stat_activity WHERE pid = $1',
+        [offerPid],
+      );
+      expect(waiting.rows[0]?.query).toContain('client_requests');
+      // Offer must not own Opportunity while it is waiting for Request.
+      // Otherwise association's event FK could wait back on that Opportunity.
+      await barrier.connection.query(
+        'SELECT id FROM opportunities WHERE id = $1 FOR UPDATE NOWAIT',
+        [fixture.opportunityId],
+      );
+    } finally {
+      await release(barrier);
+    }
+    if (!association || !offer)
+      throw new Error('Expected both commands at the lock barrier.');
+    const [associated, refused] = await Promise.all([association, offer]);
+    expect(associated.status).toBe(200);
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY',
+    });
+    const detail = record(
+      await json(
+        await request(
+          '/commercial-intake/requests/' + fixture.requestId,
+          fixture.companyId,
+        ),
+      ),
+    );
+    expect(detail.version).toBe(2);
+    expect(record(detail.clientReference).originalClientId).toBe(client.id);
+    expect(
+      (
+        await pool.query(
+          `SELECT
+      (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts,
+      (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events,
+      (SELECT count(*)::integer FROM offers WHERE client_request_id = $1) AS offers`,
+          [fixture.requestId],
+        )
+      ).rows,
+    ).toEqual([{ receipts: 1, events: 1, offers: 0 }]);
+    expect(
+      snapshot(
+        await json(
+          await request(
+            snapshotsPath(differentOpportunity) + '/' + differentSnapshot.id,
+            fixture.companyId,
+          ),
+        ),
+      ),
+    ).toEqual(differentSnapshot);
+  });
+
+  it('orders Client association with Pricing on the Request lock and never changes an existing snapshot', async () => {
+    for (const associationFirst of [true, false]) {
+      const fixture = await prepared();
+      // A second identity reaches the Request independently: the first command
+      // holds its own identity FOR SHARE, which blocks same-identity admission.
+      const pricingActor = record(
+        await json(
+          await request('/access/current-actor', undefined, {
+            headers: CONFIGURATION_MEMBER,
+          }),
+        ),
+      );
+      for (const path of [
+        '/company-context-assignments',
+        ASSIGNMENTS.intake,
+        ASSIGNMENTS.pricing,
+        '/company-director-client-assignments',
+      ])
+        await command(
+          path,
+          {
+            companyId: fixture.companyId,
+            workspaceMembershipId: stringField(
+              pricingActor,
+              'workspaceMembershipId',
+            ),
+          },
+          `association-order-grant-${path}-${associationFirst}`,
+        );
+      const client = entity(
+        await command(
+          '/clients',
+          {
+            displayName: associationFirst
+              ? 'Associated before Pricing'
+              : 'Associated after Pricing',
+          },
+          `pricing-association-client-${associationFirst}`,
+          fixture.companyId,
+        ),
+      );
+      const barrier = await holdTransaction(async (connection) => {
+        await connection.query(
+          'SELECT id FROM client_requests WHERE id = $1 FOR UPDATE',
+          [fixture.requestId],
+        );
+      });
+      let association: Promise<Response> | undefined;
+      let calculation: Promise<Response> | undefined;
+      try {
+        const startAssociation = () =>
+          post(
+            `/commercial-intake/requests/${fixture.requestId}/client-association`,
+            { expectedVersion: 1, clientAccountId: client.id },
+            `pricing-association-${associationFirst}`,
+            fixture.companyId,
+          );
+        const startCalculation = () =>
+          post(
+            snapshotsPath(fixture.opportunityId),
+            calculationBody(fixture),
+            `pricing-association-snapshot-${associationFirst}`,
+            fixture.companyId,
+            CONFIGURATION_MEMBER,
+          );
+        if (associationFirst) {
+          association = startAssociation();
+          await waitForBlockedBy(barrier.backendPid);
+          calculation = startCalculation();
+        } else {
+          calculation = startCalculation();
+          await waitForBlockedBy(barrier.backendPid);
+          association = startAssociation();
+        }
+        await waitForBlockedCount(barrier.backendPid, 2);
+      } finally {
+        await release(barrier);
+      }
+      if (!association || !calculation)
+        throw new Error('Expected both Request writers to start.');
+      const [associationResponse, calculationResponse] = await Promise.all([
+        association,
+        calculation,
+      ]);
+      expect(associationResponse.status).toBe(200);
+      expect(calculationResponse.status).toBe(201);
+      const created = snapshot(await json(calculationResponse));
+      if (associationFirst)
+        expect(created.clientReference).toEqual({
+          originalClientId: client.id,
+          currentClientId: client.id,
+          displayName: 'Associated before Pricing',
+        });
+      else expect(created).not.toHaveProperty('clientReference');
+
+      const snapshotPath = `${snapshotsPath(fixture.opportunityId)}/${created.id}`;
+      const pricingActorReload = await request(
+        snapshotPath,
+        fixture.companyId,
+        { headers: CONFIGURATION_MEMBER },
+      );
+      expect(pricingActorReload.status).toBe(200);
+      expect(snapshot(await json(pricingActorReload))).toEqual(created);
+
+      const ownerReload = await request(snapshotPath, fixture.companyId, {
+        headers: OWNER,
+      });
+      expect(ownerReload.status).toBe(200);
+      const ownerSnapshot = snapshot(await json(ownerReload));
+      if (associationFirst)
+        expect(ownerSnapshot).toEqual({
+          ...created,
+          clientReference: {
+            originalClientId: client.id,
+            displayName: 'Associated before Pricing',
+          },
+        });
+      else {
+        expect(ownerSnapshot).toEqual(created);
+        expect(ownerSnapshot).not.toHaveProperty('clientReference');
+      }
+      expect(
+        (
+          await pool.query(
+            `SELECT
+               (SELECT count(*)::integer FROM pricing_snapshots WHERE client_request_id = $1) AS snapshots,
+               (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS associations`,
+            [fixture.requestId],
+          )
+        ).rows,
+      ).toEqual([{ snapshots: 1, associations: 1 }]);
+    }
+  });
+
   it('refuses invalid, unknown, stale, not-effective and mixed-currency declarations without partial writes', async () => {
     const fixture = await prepared();
     const path = snapshotsPath(fixture.opportunityId);
@@ -2592,6 +3031,45 @@ withPostgres('Pricing Snapshots REST', () => {
     );
     throw new Error(
       `No ${advisory ? 'advisory ' : ''}waiter behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
+    );
+  }
+
+  // PostgreSQL queues later tuple lockers behind the first waiter. Follow
+  // that chain, but count only commands already waiting on the Request row.
+  async function waitForBlockedCount(
+    backendPid: number,
+    expected: number,
+  ): Promise<void> {
+    const deadline = Date.now() + 2_000;
+    do {
+      const result = await pool.query<{ count: string }>(
+        `WITH RECURSIVE request_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND query ILIKE '%"client_requests"%'
+              AND (query ILIKE '%for update%' OR query ILIKE '%for share%')
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM request_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
+        [backendPid],
+      );
+      if (Number(result.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    } while (Date.now() < deadline);
+    const activity = await pool.query(
+      `SELECT pid, wait_event, pg_blocking_pids(pid) AS blockers, query
+         FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    throw new Error(
+      `Fewer than ${expected} Request waiters behind backend ${backendPid}: ${JSON.stringify(activity.rows)}`,
     );
   }
 

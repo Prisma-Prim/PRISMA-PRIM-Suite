@@ -83,6 +83,7 @@ function requestDetail(
     capturedByWorkspaceMembershipId: ada.workspaceMembershipId,
     capturedAt: '2026-09-26T08:00:00.000Z',
     version: 1,
+    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `Prepare ${id}`,

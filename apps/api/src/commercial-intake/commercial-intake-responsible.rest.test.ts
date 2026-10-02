@@ -838,6 +838,42 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
+    it.each(['v1', 'v2', 'v3'] as const)(
+      'keeps Manager reassignment and candidate eligibility with captured Intake %s',
+      async (version) => {
+        const ada = await grant('ada', MANAGER);
+        const ion = await grant('ion', ELIGIBLE);
+        await harness.pool.query(
+          `UPDATE company_role_assignments SET permission_set_version = $1
+            WHERE workspace_membership_id IN ($2, $3)
+              AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+          [version, ada, ion],
+        );
+        const opportunityId = opportunityOf(await capture('ada'));
+        expect(
+          (await candidates(opportunityId)).map(
+            (entry) => entry.workspaceMembershipId,
+          ),
+        ).toEqual([ada, ion]);
+        const denied = await reassign(
+          opportunityId,
+          {
+            expectedVersion: 1,
+            workspaceMembershipId: ada,
+          },
+          { subject: 'ion' },
+        );
+        expect(denied.status).toBe(403);
+        await reassigned(opportunityId, {
+          expectedVersion: 1,
+          workspaceMembershipId: ion,
+        });
+        await expectUnchanged(opportunityId, ion, 2);
+        expect(await responsibleEvents(opportunityId)).toHaveLength(1);
+        expect(await receipts(opportunityId)).toHaveLength(1);
+      },
+    );
+
     it('lists only eligible members without directory data and rejects every ineligible target with one unavailable response', async () => {
       const ada = await grant('ada', MANAGER);
       const ion = await grant('ion', ELIGIBLE);
@@ -1329,7 +1365,7 @@ describe.skipIf(!databaseUrl)(
           { expectedVersion: 1, nextAction: 'Racing next action' },
           { subject: 'maria' },
         );
-        await waitForLockWaiters('%from "opportunities"%for update%', 2);
+        await waitForLockWaiters('%from "opportunities"%for no key update%', 2);
         await held.query('COMMIT');
         released = true;
         const outcomes = await Promise.all([reassignment, nextAction]);
@@ -1381,7 +1417,7 @@ describe.skipIf(!databaseUrl)(
           { expectedVersion: 1, workspaceMembershipId: elena },
           { subject: 'mihai' },
         );
-        await waitForLockWaiters('%from "opportunities"%for update%', 2);
+        await waitForLockWaiters('%from "opportunities"%for no key update%', 2);
         await held.query('COMMIT');
         released = true;
         const outcomes = await Promise.all([first, second]);
@@ -1452,7 +1488,10 @@ describe.skipIf(!databaseUrl)(
               expectedVersion: 1,
               workspaceMembershipId: ion,
             });
-            await waitForLockWaiters('%from "opportunities"%for update%', 1);
+            await waitForLockWaiters(
+              '%from "opportunities"%for no key update%',
+              1,
+            );
             // The waiting reassignment holds no lock the change needs.
             expect((await changeTarget(ion)).status).toBe(changedStatus);
             await held.query('COMMIT');
