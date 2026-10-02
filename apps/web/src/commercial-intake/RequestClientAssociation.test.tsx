@@ -75,6 +75,135 @@ describe('RequestClientAssociation', () => {
     expect(screen.getByText(copy.clientAssociationSuccess)).toBeVisible();
   });
 
+  it.each(['success', 'http-error', 'network-error', 'pending-access'])(
+    'ignores an obsolete %s search after editing the query and associates the newly selected Client',
+    async (outcome) => {
+      let resolveSearch:
+        | ((value: Awaited<ReturnType<CommercialIntakeRequest>>) => void)
+        | undefined;
+      let rejectSearch: ((reason: Error) => void) | undefined;
+      const pendingSearch = new Promise<
+        Awaited<ReturnType<CommercialIntakeRequest>>
+      >((resolve, reject) => {
+        resolveSearch = resolve;
+        rejectSearch = reject;
+      });
+      let resolveAccess:
+        | ((value: Awaited<ReturnType<CommercialIntakeAccessHandler>>) => void)
+        | undefined;
+      const pendingAccess = new Promise<
+        Awaited<ReturnType<CommercialIntakeAccessHandler>>
+      >((resolve) => {
+        resolveAccess = resolve;
+      });
+      const currentClient = {
+        id: '44444444-4444-4444-8444-444444444444',
+        displayName: 'Current Client',
+        relatedToActiveCompany: true,
+      };
+      const request = vi.fn<CommercialIntakeRequest>(
+        async ({ path, method }) => {
+          if (path === '/clients/search?query=Accessible') return pendingSearch;
+          return method === 'POST'
+            ? {
+                status: 200,
+                body: {
+                  receipt: {
+                    requestId: 'request-1',
+                    version: 2,
+                    outcome: 'associated',
+                  },
+                  request: {
+                    id: 'request-1',
+                    companyId: 'company-1',
+                    version: 2,
+                  },
+                },
+              }
+            : { status: 200, body: [currentClient] };
+        },
+      );
+      const handleAccess = vi.fn<CommercialIntakeAccessHandler>(
+        async (result) =>
+          outcome === 'pending-access' && result.status === 403
+            ? pendingAccess
+            : 'ok',
+      );
+      const onAssociated = vi.fn(async () => true);
+      renderAssociation({ request, handleAccess, onAssociated });
+      fireEvent.change(screen.getByLabelText(copy.clientSearch), {
+        target: { value: 'Accessible' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+      expect(request).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/clients/search?query=Accessible' }),
+      );
+      if (outcome === 'pending-access') {
+        await act(async () => {
+          resolveSearch?.({ status: 403, body: { code: 'FORBIDDEN' } });
+        });
+        await waitFor(() => expect(handleAccess).toHaveBeenCalled());
+      }
+
+      fireEvent.change(screen.getByLabelText(copy.clientSearch), {
+        target: { value: 'Current' },
+      });
+      // The boundary deliberately settles even if its AbortSignal is aborted.
+      await act(async () => {
+        if (outcome === 'network-error') {
+          rejectSearch?.(new Error('Search failed'));
+        } else if (outcome === 'pending-access') {
+          resolveAccess?.('retained');
+        } else {
+          resolveSearch?.(
+            outcome === 'success'
+              ? { status: 200, body: [client] }
+              : { status: 500, body: {} },
+          );
+        }
+      });
+
+      expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('Current');
+      expect(
+        screen.queryByRole('combobox', { name: copy.existingClient }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(copy.clientSearchError),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(copy.clientSearchDenied),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: copy.searchClients }),
+      ).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+      fireEvent.click(
+        await screen.findByRole('combobox', { name: copy.existingClient }),
+      );
+      expect(
+        screen.queryByRole('option', { name: client.displayName }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('option', { name: currentClient.displayName }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      expect(
+        await screen.findByText(copy.clientAssociationSuccess),
+      ).toBeVisible();
+      expect(request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            expectedVersion: 1,
+            clientAccountId: currentClient.id,
+          }),
+        }),
+      );
+      expect(onAssociated).toHaveBeenCalledTimes(1);
+    },
+  );
   it.each([
     ['receipt Request', { receiptRequestId: 'request-2' }],
     ['returned Request', { requestId: 'request-2' }],

@@ -272,6 +272,7 @@ export function RequestClientAssociation({
           maxLength={200}
           disabled={waiting || uncertain}
           onChange={(event) => {
+            searchRequest.current?.abort();
             setQuery(event.target.value);
             setSelectedClientId('');
             setSearch({ kind: 'idle' });
