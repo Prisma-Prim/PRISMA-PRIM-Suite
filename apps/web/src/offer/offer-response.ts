@@ -29,6 +29,12 @@ export type OfferView = {
     clientResponseState: 'NONE';
     provenance: 'ILLUSTRATIVE';
     provisional: true;
+    representation: {
+      templateCode: 'OFFER_ILLUSTRATIVE';
+      templateVersion: 1;
+      html: string;
+      sha256: string;
+    };
   };
 };
 
@@ -83,7 +89,29 @@ export function readOffer(value: unknown): OfferView {
       clientResponseState: 'NONE',
       provenance: 'ILLUSTRATIVE',
       provisional: true,
+      representation: readRepresentation(version.representation),
     },
+  };
+}
+
+function readRepresentation(
+  value: unknown,
+): OfferView['version']['representation'] {
+  const representation = record(value);
+  if (
+    representation.templateCode !== 'OFFER_ILLUSTRATIVE' ||
+    representation.templateVersion !== 1 ||
+    typeof representation.html !== 'string' ||
+    representation.html.length === 0 ||
+    typeof representation.sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(representation.sha256)
+  )
+    invalid();
+  return {
+    templateCode: 'OFFER_ILLUSTRATIVE',
+    templateVersion: 1,
+    html: representation.html,
+    sha256: representation.sha256,
   };
 }
 

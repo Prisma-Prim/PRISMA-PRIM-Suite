@@ -18,6 +18,8 @@ import {
   offerReferenceCounters,
   offerVersions,
   offers,
+  OFFER_TEMPLATE_CODE,
+  OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
@@ -28,6 +30,7 @@ import type {
   OfferRecipientCopy,
 } from './offer.types.js';
 import { readCreateOfferCommand } from './offer.validation.js';
+import { renderOfferRepresentation } from './offer-representation.js';
 
 type OfferRow = typeof offers.$inferSelect;
 type OfferVersionRow = typeof offerVersions.$inferSelect;
@@ -187,6 +190,8 @@ export class OfferService {
           validUntil,
           scopeNote: command.scopeNote,
           commercialConditions: command.commercialConditions,
+          templateCode: OFFER_TEMPLATE_CODE,
+          templateVersion: OFFER_TEMPLATE_VERSION,
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
           createdAt,
@@ -310,7 +315,7 @@ export class OfferService {
       createdByWorkspaceMembershipId: offer.createdByWorkspaceMembershipId,
       createdAt: offer.createdAt.toISOString(),
       ...(clientReference ? { clientReference } : {}),
-      version: offerVersionView(version, snapshot),
+      version: offerVersionView(offer.illustrativeReference, version, snapshot),
     };
   }
 
@@ -422,6 +427,7 @@ export class OfferService {
 }
 
 function offerVersionView(
+  illustrativeReference: number,
   row: OfferVersionRow,
   pricingSnapshot: PricingSnapshotRecord,
 ): OfferVersionRecord {
@@ -451,6 +457,29 @@ function offerVersionView(
     provisional: true,
     createdByWorkspaceMembershipId: row.createdByWorkspaceMembershipId,
     createdAt: row.createdAt.toISOString(),
+    representation: renderOfferRepresentation({
+      templateCode: row.templateCode,
+      templateVersion: row.templateVersion,
+      illustrativeReference,
+      versionNumber: row.versionNumber,
+      issuingCompanyLabel: row.issuingCompanyLabel,
+      recipient: {
+        legalName: row.recipientLegalName,
+        taxId: row.recipientTaxId,
+        legalAddress: row.recipientLegalAddress,
+      },
+      createdAt: row.createdAt.toISOString(),
+      validUntil: row.validUntil.toISOString(),
+      lines: pricingSnapshot.lines,
+      subtotal: pricingSnapshot.subtotal,
+      taxTotal: pricingSnapshot.taxTotal,
+      total: pricingSnapshot.total,
+      currency: pricingSnapshot.currency,
+      scopeNote: row.scopeNote,
+      commercialConditions: row.commercialConditions,
+      pricingSnapshotId: pricingSnapshot.id,
+      provenance: 'ILLUSTRATIVE',
+    }),
   };
 }
 
