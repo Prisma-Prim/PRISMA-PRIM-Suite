@@ -4,10 +4,12 @@ import { expectValue, openSelect, selectOption } from './select-option';
 import {
   expect,
   test,
+  type FrameLocator,
   type Locator,
   type Page,
   type Response,
 } from '@playwright/test';
+import { createHash } from 'node:crypto';
 
 import { canonicalDateTimeLocalValue } from '../src/pricing-configuration/datetime-local-test-helper';
 
@@ -1049,7 +1051,20 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     });
 
     await selectOption(snapshotSelect, ordinarySnapshotValue);
-    await offer.getByRole('button', { name: 'Prepare version 1' }).click();
+    const longScopeNote =
+      'Scope <illustrative> & "quoted" — ' + 'long scope detail · '.repeat(60);
+    const longCommercialConditions =
+      'Commercial conditions remain illustrative — ' +
+      'long illustrative condition · '.repeat(100);
+    await offer.getByLabel('Scope note', { exact: true }).fill(longScopeNote);
+    await offer
+      .getByLabel('Commercial conditions', { exact: true })
+      .fill(longCommercialConditions);
+    await offer.getByRole('button', { name: 'Prepare version 1' }).focus();
+    await expect(
+      offer.getByRole('button', { name: 'Prepare version 1' }),
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
     const createdOffer = offer.locator('.offer-summary');
     await expect(
       createdOffer.getByText('Illustrative and provisional', { exact: true }),
@@ -1064,10 +1079,61 @@ test.describe('Pricing Snapshot and Offer journey', () => {
         exact: true,
       }),
     ).toBeVisible();
+    await expect(
+      createdOffer.getByText('Draft — not approved', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      createdOffer.getByText('OFFER_ILLUSTRATIVE v1', { exact: true }),
+    ).toBeVisible();
+    const createdChecksum = await createdOffer
+      .locator('.offer-representation code')
+      .textContent();
+    expect(createdChecksum).toMatch(/^[0-9a-f]{64}$/u);
+    const createdFrameElement = createdOffer.getByTitle(
+      'Illustrative Offer representation',
+    );
+    await expect(createdFrameElement).toHaveAttribute('sandbox', '');
+    expect(await createdFrameElement.getAttribute('allow')).toBeNull();
+    const createdHtml = await createdFrameElement.getAttribute('srcdoc');
+    if (!createdHtml || !createdChecksum)
+      throw new Error('Expected the exact created Offer representation.');
+    expect(createHash('sha256').update(createdHtml, 'utf8').digest('hex')).toBe(
+      createdChecksum,
+    );
+    expect(createdHtml).not.toMatch(
+      /Draft — not approved|PENDING|NOT_TRANSMITTED|>NONE</u,
+    );
+    const createdFrame = createdOffer.frameLocator(
+      'iframe[title="Illustrative Offer representation"]',
+    );
+    await expect(
+      createdFrame.getByText(
+        'Provisional illustrative document — cannot be accepted — no legal effect — no official number',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      createdFrame.getByText(`Synthetic Offer Recipient ${suffix}`, {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(createdFrame.locator('body')).toContainText(longScopeNote);
+    await expect(createdFrame.locator('body')).toContainText(
+      longCommercialConditions,
+    );
+    await expect(createdFrame.locator('script')).toHaveCount(0);
+    await expectNoFrameHorizontalOverflow(createdFrame);
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`offer-created-${suffix}.png`),
-      fullPage: true,
+    await captureOfferRepresentation({
+      page,
+      frameElement: createdFrameElement,
+      frame: createdFrame,
+      viewportScreenshotPath: testInfo.outputPath(
+        `offer-representation-created-${suffix}.png`,
+      ),
+      documentScreenshotPath: testInfo.outputPath(
+        `offer-document-created-${suffix}.png`,
+      ),
     });
 
     await page.reload();
@@ -1090,10 +1156,42 @@ test.describe('Pricing Snapshot and Offer journey', () => {
         { exact: true },
       ),
     ).toBeVisible();
+    await expect(
+      reopenedOffer.getByText('Draft — not approved', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reopenedOffer.getByText('OFFER_ILLUSTRATIVE v1', { exact: true }),
+    ).toBeVisible();
+    const reopenedChecksum = await reopenedOffer
+      .locator('.offer-representation code')
+      .textContent();
+    const reopenedFrameElement = reopenedOffer.getByTitle(
+      'Illustrative Offer representation',
+    );
+    await expect(reopenedFrameElement).toHaveAttribute('sandbox', '');
+    expect(await reopenedFrameElement.getAttribute('allow')).toBeNull();
+    const reopenedHtml = await reopenedFrameElement.getAttribute('srcdoc');
+    expect(reopenedChecksum).toBe(createdChecksum);
+    expect(reopenedHtml).toBe(createdHtml);
+    const reopenedFrame = reopenedOffer.frameLocator(
+      'iframe[title="Illustrative Offer representation"]',
+    );
+    await expect(reopenedFrame.locator('body')).toContainText(longScopeNote);
+    await expect(reopenedFrame.locator('body')).toContainText(
+      longCommercialConditions,
+    );
+    await expectNoFrameHorizontalOverflow(reopenedFrame);
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`offer-reopened-${suffix}.png`),
-      fullPage: true,
+    await captureOfferRepresentation({
+      page,
+      frameElement: reopenedFrameElement,
+      frame: reopenedFrame,
+      viewportScreenshotPath: testInfo.outputPath(
+        `offer-representation-reopened-${suffix}.png`,
+      ),
+      documentScreenshotPath: testInfo.outputPath(
+        `offer-document-reopened-${suffix}.png`,
+      ),
     });
   });
 });
@@ -1485,4 +1583,48 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     dimensions.documentWidth,
     JSON.stringify(dimensions),
   ).toBeLessThanOrEqual(dimensions.viewportWidth);
+}
+
+async function expectNoFrameHorizontalOverflow(
+  frame: FrameLocator,
+): Promise<void> {
+  const dimensions = await frame.locator('html').evaluate(() => ({
+    viewportWidth: document.documentElement.clientWidth,
+    documentWidth: document.documentElement.scrollWidth,
+  }));
+  expect(
+    dimensions.documentWidth,
+    JSON.stringify(dimensions),
+  ).toBeLessThanOrEqual(dimensions.viewportWidth);
+}
+
+async function captureOfferRepresentation({
+  page,
+  frameElement,
+  frame,
+  viewportScreenshotPath,
+  documentScreenshotPath,
+}: {
+  page: Page;
+  frameElement: Locator;
+  frame: FrameLocator;
+  viewportScreenshotPath: string;
+  documentScreenshotPath: string;
+}): Promise<void> {
+  await frameElement.scrollIntoViewIfNeeded();
+  const heading = frame.getByRole('heading', {
+    name: 'Illustrative Offer',
+    exact: true,
+  });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(frameElement).toBeInViewport({ ratio: 1 });
+  await expect(heading).toBeInViewport({ ratio: 1 });
+  await expect(
+    frame.getByText(
+      'Provisional illustrative document — cannot be accepted — no legal effect — no official number',
+      { exact: true },
+    ),
+  ).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: viewportScreenshotPath, fullPage: false });
+  await frameElement.screenshot({ path: documentScreenshotPath });
 }

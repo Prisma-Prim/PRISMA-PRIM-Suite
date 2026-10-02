@@ -1841,6 +1841,47 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ProjectLifecycleConflict'
                   - $ref: '#/components/schemas/GenericConflict'
+  /api/offers/opportunities/{opportunityId}:
+    get:
+      operationId: readOpportunityOffer
+      summary: Read the exact illustrative Offer Version for one Opportunity
+      description: >-
+        Requires the live Offer read, Opportunity read and applicable Client
+        visibility in the active Company. The response is scoped to the
+        current Workspace and Company and uses the same safe not-found for an
+        unknown or hidden Opportunity. When an Offer exists, its version binds
+        the persisted `OFFER_ILLUSTRATIVE` v1 Template and returns deterministic
+        English HTML plus the lowercase SHA-256 checksum of those exact UTF-8
+        bytes. Rendering uses only the immutable copied Offer fields and its
+        immutable unadjusted Pricing Snapshot. The read creates no command,
+        Offer event, Activity event, file or provider side effect and changes
+        no Offer revision.
+      tags:
+        - Offer
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: opportunityId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The readable Offer and its exact version, or null when the readable Opportunity has no Offer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: >-
+            No valid active Company context, or the actor lacks the live Offer,
+            Opportunity or applicable Client read required by the delivered
+            Offer boundary.
+        '404':
+          description: No readable Opportunity matches the malformed, unknown or cross-scope identifier.
   /api/operational-home:
     get:
       operationId: readOperationalHome
@@ -1963,6 +2004,441 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    OfferDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - offer
+      properties:
+        offer:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OfferRecord'
+    OfferRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - companyId
+        - opportunityId
+        - clientRequestId
+        - originalClientAccountId
+        - illustrativeReference
+        - revision
+        - provisional
+        - createdByWorkspaceMembershipId
+        - createdAt
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        opportunityId:
+          type: string
+          format: uuid
+        clientRequestId:
+          type: string
+          format: uuid
+        originalClientAccountId:
+          type: string
+          format: uuid
+        illustrativeReference:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          const: 1
+        provisional:
+          type: boolean
+          const: true
+        createdByWorkspaceMembershipId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        clientReference:
+          $ref: '#/components/schemas/OfferClientReference'
+        version:
+          $ref: '#/components/schemas/OfferVersion'
+    OfferClientReference:
+      type: object
+      additionalProperties: false
+      required:
+        - originalClientId
+        - displayName
+      properties:
+        originalClientId:
+          type: string
+          format: uuid
+        currentClientId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    OfferVersion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - versionNumber
+        - pricingSnapshotId
+        - pricingSnapshot
+        - recipient
+        - issuingCompanyLabel
+        - validityDays
+        - validUntil
+        - scopeNote
+        - commercialConditions
+        - decisionState
+        - transmissionState
+        - clientResponseState
+        - provenance
+        - provisional
+        - createdByWorkspaceMembershipId
+        - createdAt
+        - representation
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          const: 1
+        pricingSnapshotId:
+          type: string
+          format: uuid
+        pricingSnapshot:
+          $ref: '#/components/schemas/OfferPricingSnapshot'
+        recipient:
+          $ref: '#/components/schemas/OfferRecipientCopy'
+        issuingCompanyLabel:
+          type: string
+          minLength: 1
+        validityDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        validUntil:
+          type: string
+          format: date-time
+        scopeNote:
+          oneOf:
+            - type: 'null'
+            - type: string
+              maxLength: 2000
+        commercialConditions:
+          oneOf:
+            - type: 'null'
+            - type: string
+              maxLength: 4000
+        decisionState:
+          type: string
+          const: PENDING
+        transmissionState:
+          type: string
+          const: NOT_TRANSMITTED
+        clientResponseState:
+          type: string
+          const: NONE
+        provenance:
+          type: string
+          const: ILLUSTRATIVE
+        provisional:
+          type: boolean
+          const: true
+        createdByWorkspaceMembershipId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        representation:
+          $ref: '#/components/schemas/OfferRepresentation'
+    OfferRecipientCopy:
+      oneOf:
+        - $ref: '#/components/schemas/OfferPrimaryRecipientCopy'
+        - $ref: '#/components/schemas/OfferAdditionalRecipientCopy'
+    OfferPrimaryRecipientCopy:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - legalName
+        - taxId
+        - legalAddress
+      properties:
+        kind:
+          type: string
+          const: PRIMARY
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        taxId:
+          oneOf:
+            - type: 'null'
+            - type: string
+              minLength: 1
+              maxLength: 500
+        legalAddress:
+          oneOf:
+            - type: 'null'
+            - type: string
+              minLength: 1
+              maxLength: 2000
+    OfferAdditionalRecipientCopy:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - additionalLegalEntityId
+        - legalName
+        - taxId
+        - legalAddress
+      properties:
+        kind:
+          type: string
+          const: ADDITIONAL
+        additionalLegalEntityId:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        taxId:
+          oneOf:
+            - type: 'null'
+            - type: string
+              minLength: 1
+              maxLength: 500
+        legalAddress:
+          oneOf:
+            - type: 'null'
+            - type: string
+              minLength: 1
+              maxLength: 2000
+    OfferRepresentation:
+      type: object
+      additionalProperties: false
+      required:
+        - templateCode
+        - templateVersion
+        - html
+        - sha256
+      properties:
+        templateCode:
+          type: string
+          const: OFFER_ILLUSTRATIVE
+        templateVersion:
+          type: integer
+          const: 1
+        html:
+          type: string
+          minLength: 1
+          description: Deterministic English HTML bytes decoded as UTF-8; no stored file is created.
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: Lowercase SHA-256 of the UTF-8 bytes represented by `html`.
+    OfferPricingSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - opportunityId
+        - clientRequestId
+        - pricingRuleVersion
+        - currency
+        - lines
+        - subtotal
+        - taxTotal
+        - total
+        - calculatedByWorkspaceMembershipId
+        - calculatedAt
+        - committedAt
+        - version
+        - provenance
+        - provisional
+      properties:
+        id:
+          type: string
+          format: uuid
+        opportunityId:
+          type: string
+          format: uuid
+        clientRequestId:
+          type: string
+          format: uuid
+        clientReference:
+          $ref: '#/components/schemas/OfferClientReference'
+        pricingRuleVersion:
+          $ref: '#/components/schemas/OfferPricingRuleVersion'
+        currency:
+          type: string
+          enum:
+            - MDL
+            - EUR
+            - RON
+            - USD
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/OfferPricingSnapshotLine'
+        subtotal:
+          type: string
+        taxTotal:
+          type: string
+        total:
+          type: string
+        calculatedByWorkspaceMembershipId:
+          type: string
+          format: uuid
+        calculatedAt:
+          type: string
+          format: date-time
+        committedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          const: 1
+        provenance:
+          type: string
+          const: ILLUSTRATIVE
+        provisional:
+          type: boolean
+          const: true
+    OfferPricingRuleVersion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - versionNumber
+        - ruleShape
+        - roundingMode
+        - roundingScale
+        - taxApplication
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 1
+        ruleShape:
+          type: string
+          const: UNIT_PRICE_TIMES_QUANTITY
+        roundingMode:
+          type: string
+          const: HALF_UP
+        roundingScale:
+          type: integer
+          const: 2
+        taxApplication:
+          type: string
+          const: PER_LINE
+    OfferPricingSnapshotLine:
+      type: object
+      additionalProperties: false
+      required:
+        - position
+        - serviceDefinitionId
+        - serviceCode
+        - serviceName
+        - offeringId
+        - commercialLabel
+        - tariffVersionId
+        - tariffVersionNumber
+        - unit
+        - unitAmount
+        - currency
+        - taxRatePercent
+        - taxLabel
+        - quantity
+        - ruleShape
+        - rawLineAmount
+        - lineNet
+        - rawLineTax
+        - lineTax
+        - adjustment
+        - netReduction
+        - taxReduction
+        - adjustedLineNet
+        - adjustedRawLineTax
+        - adjustedLineTax
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 20
+        serviceDefinitionId:
+          type: string
+          format: uuid
+        serviceCode:
+          type: string
+        serviceName:
+          type: string
+        offeringId:
+          type: string
+          format: uuid
+        commercialLabel:
+          oneOf:
+            - type: 'null'
+            - type: string
+        tariffVersionId:
+          type: string
+          format: uuid
+        tariffVersionNumber:
+          type: integer
+          minimum: 1
+        unit:
+          type: string
+        unitAmount:
+          type: string
+        currency:
+          type: string
+          enum:
+            - MDL
+            - EUR
+            - RON
+            - USD
+        taxRatePercent:
+          type: string
+        taxLabel:
+          type: string
+        quantity:
+          type: string
+        ruleShape:
+          type: string
+          const: UNIT_PRICE_TIMES_QUANTITY
+        rawLineAmount:
+          type: string
+        lineNet:
+          type: string
+        rawLineTax:
+          type: string
+        lineTax:
+          type: string
+        adjustment:
+          type: 'null'
+          description: O2 exposes only the unadjusted Snapshot shape accepted by Offer v1.
+        netReduction:
+          type: string
+        taxReduction:
+          type: string
+        adjustedLineNet:
+          type: string
+        adjustedRawLineTax:
+          type: string
+        adjustedLineTax:
+          type: string
     OperationalHome:
       type: object
       additionalProperties: false

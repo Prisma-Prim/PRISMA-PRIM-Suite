@@ -92,6 +92,60 @@ describe('OfferPanel', () => {
     ).toBeTruthy();
   });
 
+  it('shows the exact provisional representation outside the current Offer states', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({ offer: offerView() }),
+    );
+
+    renderPanel(actor('company-one'));
+
+    expect(await screen.findByText('Draft — not approved')).toBeVisible();
+    expect(screen.getByText('OFFER_ILLUSTRATIVE v1')).toBeVisible();
+    expect(
+      screen.getByText(
+        '1161a98c95f65605a37e3c82383cd044335e9be41e00ce8a8559dd553db0c865',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Pending · not transmitted · no Client response'),
+    ).toBeVisible();
+    const representation = screen.getByTitle(
+      'Illustrative Offer representation',
+    );
+    expect(representation).toHaveAttribute('sandbox', '');
+    expect(representation).toHaveAttribute(
+      'srcdoc',
+      '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1></body></html>',
+    );
+  });
+
+  it('shows unavailable when an Offer representation is malformed', async () => {
+    const offer = offerView();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offer,
+          version: {
+            ...offer.version,
+            representation: {
+              ...offer.version.representation,
+              sha256: 'not-a-checksum',
+            },
+          },
+        },
+      }),
+    );
+
+    renderPanel(actor('company-one'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Offer could not be loaded. Try again.',
+    );
+    expect(
+      screen.queryByTitle('Illustrative Offer representation'),
+    ).not.toBeInTheDocument();
+  });
+
   it('selects named Snapshots and legal recipients by keyboard after an adjusted Snapshot refusal', async () => {
     const posts: RequestInit[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -354,6 +408,59 @@ describe('OfferPanel', () => {
       expect(screen.queryByText('Old Company')).not.toBeInTheDocument(),
     );
   });
+
+  it('never renders a late Offer reply after read permission is removed', async () => {
+    let release: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const current = actor('company-one');
+    const rendered = renderPanel(current);
+    await waitFor(() => expect(release).toBeTypeOf('function'));
+
+    rendered.rerender(
+      panel(actorWithOfferPermissions('company-one', []), 'opportunity-one'),
+    );
+    expect(
+      await screen.findByText(
+        'Offer access is not available for this Opportunity.',
+      ),
+    ).toBeVisible();
+    release?.(response({ offer: offerView('Revoked reply') }));
+    await waitFor(() =>
+      expect(screen.queryByText('Revoked reply')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('never renders a late Offer reply from the previous identity', async () => {
+    let release: ((value: Response) => void) | undefined;
+    let requestNumber = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      requestNumber += 1;
+      if (requestNumber === 1)
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      return Promise.resolve(response({ offer: offerView('New identity') }));
+    });
+    const rendered = renderPanel(actor('company-one'));
+    await waitFor(() => expect(release).toBeTypeOf('function'));
+    const nextIdentity = deterministicBrowserIdentity({
+      'x-test-external-subject': 'replacement-offer-reader',
+    });
+
+    rendered.rerender(
+      panel(actor('company-one'), 'opportunity-one', nextIdentity),
+    );
+    expect(await screen.findByText('New identity')).toBeVisible();
+    release?.(response({ offer: offerView('Old identity') }));
+    await waitFor(() =>
+      expect(screen.queryByText('Old identity')).not.toBeInTheDocument(),
+    );
+  });
 });
 
 function renderPanel(
@@ -363,11 +470,15 @@ function renderPanel(
   return render(panel(currentActor, opportunityId));
 }
 
-function panel(currentActor: ActorContext, opportunityId: string) {
+function panel(
+  currentActor: ActorContext,
+  opportunityId: string,
+  currentIdentity = identity,
+) {
   return (
     <OfferPanel
       actor={currentActor}
-      identity={identity}
+      identity={currentIdentity}
       opportunityId={opportunityId}
       currentClientId="client-one"
       clientDisplayName="Primary Client"
@@ -449,6 +560,13 @@ function offerView(company = 'Illustrative Company') {
       clientResponseState: 'NONE',
       provenance: 'ILLUSTRATIVE',
       provisional: true,
+      representation: {
+        templateCode: 'OFFER_ILLUSTRATIVE',
+        templateVersion: 1,
+        html: '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1></body></html>',
+        sha256:
+          '1161a98c95f65605a37e3c82383cd044335e9be41e00ce8a8559dd553db0c865',
+      },
     },
   };
 }
