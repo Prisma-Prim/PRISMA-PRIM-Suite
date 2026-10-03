@@ -182,6 +182,706 @@ withPostgres('First illustrative Offer REST', () => {
     await database?.close();
   });
 
+  it('records one simulated transmission of the approved bytes and reopens pending response evidence', async () => {
+    const { fixture, offer, base } = await decisionOffer();
+    const version = record(offer.version);
+    await command(
+      base + '/approve',
+      { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+      'approval',
+      fixture.companyId,
+    );
+    const body = {
+      expectedOfferRevision: 2,
+      acknowledgedWarningCodes: [],
+      note: 'Synthetic simulation only.',
+    };
+    const transmission = record(
+      await command(
+        base + '/transmission',
+        body,
+        'transmission',
+        fixture.companyId,
+      ),
+    );
+    expect(transmission).toMatchObject({
+      channel: 'SIMULATED',
+      offerRevision: 3,
+      transmittedAt: instant.toISOString(),
+      actorWorkspaceMembershipId: fixture.actorMembershipId,
+      note: body.note,
+      acknowledgedWarningCodes: [],
+      representationSha256: record(version.representation).sha256,
+    });
+    expect(record(transmission.qualityRun).results).toHaveLength(8);
+    expect(
+      await command(
+        base + '/transmission',
+        body,
+        'transmission',
+        fixture.companyId,
+      ),
+    ).toEqual(transmission);
+    const reopened = record(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(reopened.revision).toBe(3);
+    expect(record(reopened.version)).toMatchObject({
+      transmissionState: 'TRANSMITTED',
+      clientResponseState: 'PENDING',
+      transmission,
+      representation: version.representation,
+    });
+  });
+
+  it('requires approval and exact transmission input, and refuses changed retries, stale revisions and duplicate transmission', async () => {
+    const { fixture, offer, base } = await decisionOffer();
+    const body = { expectedOfferRevision: 1, acknowledgedWarningCodes: [] };
+    const pending = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      body,
+      'pending',
+    );
+    expect(pending.status).toBe(409);
+    expect(await json(pending)).toMatchObject({
+      code: 'OFFER_VERSION_NOT_APPROVED',
+    });
+    await command(base + '/approve', body, 'approval', fixture.companyId);
+    for (const [index, input] of [
+      { ...body, expectedOfferRevision: 0 },
+      { ...body, acknowledgedWarningCodes: ['UNKNOWN'] },
+      { ...body, acknowledgedWarningCodes: ['VALIDITY_OPEN', 'VALIDITY_OPEN'] },
+      { ...body, note: 'a'.repeat(501) },
+      { ...body, note: 'unsafe\0note' },
+      { ...body, channel: 'EMAIL' },
+    ].entries()) {
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            base + '/transmission',
+            input,
+            'invalid-' + index,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    const stale = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      body,
+      'stale',
+    );
+    expect(stale.status).toBe(409);
+    expect(await json(stale)).toMatchObject({ code: 'STALE_OFFER_REVISION' });
+    const valid = { ...body, expectedOfferRevision: 2 };
+    const recorded = await command(
+      base + '/transmission',
+      valid,
+      'exact',
+      fixture.companyId,
+    );
+    const altered = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      { ...valid, note: null },
+      'exact',
+    );
+    expect(altered.status).toBe(409);
+    expect(await json(altered)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    const duplicate = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      { ...valid, expectedOfferRevision: 3 },
+      'second',
+    );
+    expect(duplicate.status).toBe(409);
+    expect(await json(duplicate)).toMatchObject({
+      code: 'OFFER_VERSION_ALREADY_TRANSMITTED',
+    });
+    instant = new Date('2027-01-01T00:00:00.000Z');
+    expect(
+      await command(base + '/transmission', valid, 'exact', fixture.companyId),
+    ).toEqual(recorded);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_transmissions',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_quality_runs',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_commands',
+        )
+      ).rows,
+    ).toEqual([{ count: 3 }]);
+    expect(
+      (
+        await pool.query(
+          "SELECT metadata FROM offer_events WHERE action = 'offer_version.transmission_recorded'",
+        )
+      ).rows,
+    ).toEqual([
+      {
+        metadata: {
+          offerId: offer.id,
+          offerVersionId: record(recorded).offerVersionId,
+          versionNumber: 1,
+          channel: 'SIMULATED',
+          provenance: 'ILLUSTRATIVE',
+          ruleSetVersion: 1,
+          acknowledgedWarningCodes: [],
+        },
+      },
+    ]);
+  });
+
+  it('requires current preparer and Opportunity authority before exact transmission replay', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    const body = { expectedOfferRevision: 2, acknowledgedWarningCodes: [] };
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_offer_preparer'",
+      [fixture.companyId],
+    );
+    expect(
+      (await decisionRequest(fixture, base + '/transmission', body, 'denied'))
+        .status,
+    ).toBe(403);
+    await command(
+      '/company-offer-preparer-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'restore-preparer',
+    );
+    await command(base + '/transmission', body, 'exact', fixture.companyId);
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_commercial_intake'",
+      [fixture.companyId],
+    );
+    expect(
+      (await decisionRequest(fixture, base + '/transmission', body, 'exact'))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_transmissions',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  });
+
+  it('fails closed for unknown captured preparer versions and reopens only recorded recipient identity without Client read', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    const body = { expectedOfferRevision: 2, acknowledgedWarningCodes: [] };
+    const constraint = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'company_role_assignments_permission_set_version_check'",
+      )
+    ).rows[0];
+    if (!constraint) throw new Error('Expected assignment constraint');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v99']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version = $1 WHERE company_id = $2 AND bundle::text = 'company_offer_preparer'",
+          [version, fixture.companyId],
+        );
+        expect(
+          (
+            await decisionRequest(
+              fixture,
+              base + '/transmission',
+              body,
+              'unknown-' + version,
+            )
+          ).status,
+        ).toBe(403);
+      }
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version = 'v1' WHERE company_id = $1 AND bundle::text = 'company_offer_preparer'",
+        [fixture.companyId],
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          constraint.definition,
+      );
+    }
+    const ordinaryHeaders = await grantConcurrentPreparer(fixture.companyId);
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_director_client_access'",
+      [fixture.companyId],
+    );
+    const response = await request(base + '/transmission', fixture.companyId, {
+      method: 'POST',
+      headers: {
+        ...ordinaryHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': 'no-client-read',
+      },
+      body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(201);
+    const evidence = await json(response);
+    const offer = record(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+            { headers: ordinaryHeaders },
+          ),
+        ),
+      ).offer,
+    );
+    expect(offer).not.toHaveProperty('clientReference');
+    expect(record(offer.version)).toMatchObject({
+      transmission: evidence,
+      transmissionState: 'TRANSMITTED',
+      clientResponseState: 'PENDING',
+    });
+    expect(
+      (
+        await request(`/clients/${fixture.clientId}`, fixture.companyId, {
+          headers: ordinaryHeaders,
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it('fences transmission against a concurrent Client identity correction before evaluating warnings', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    const barrier = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const backend = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0];
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query(
+        'UPDATE client_accounts SET display_name = $1 WHERE id = $2',
+        ['Concurrent corrected identity', fixture.clientId],
+      );
+      pending = decisionRequest(
+        fixture,
+        base + '/transmission',
+        { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+        'client-race',
+      );
+      await waitForBlockedRequests(backend.pid, 1);
+      await barrier.query('COMMIT');
+      const result = await pending;
+      expect(result.status).toBe(409);
+      expect(await json(result)).toMatchObject({
+        code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+      });
+      await expectNoTransmissionEffects();
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+    await command(
+      base + '/transmission',
+      {
+        expectedOfferRevision: 2,
+        acknowledgedWarningCodes: ['RECIPIENT_IDENTITY_CURRENT'],
+      },
+      'client-race-acknowledged',
+      fixture.companyId,
+    );
+  });
+
+  it('uses uniform safe not-found for unknown versions and cross-Company transmission targets', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    const other = entity(
+      await command(
+        '/companies',
+        { displayName: 'Other transmission Company' },
+        'other',
+      ),
+    );
+    for (const path of [
+      '/company-commercial-intake-assignments',
+      '/company-offer-preparer-assignments',
+    ])
+      await command(
+        path,
+        {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: other.id,
+        },
+        'other-' + path,
+      );
+    const payload = {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'hidden',
+      },
+      body: JSON.stringify({
+        expectedOfferRevision: 2,
+        acknowledgedWarningCodes: [],
+      }),
+    };
+    const cross = await request(base + '/transmission', other.id, payload);
+    const unknown = await request(
+      base.replace(/[^/]+$/u, '00000000-0000-4000-8000-999999999999') +
+        '/transmission',
+      fixture.companyId,
+      payload,
+    );
+    expect(cross.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(await json(cross)).toEqual(await json(unknown));
+    await expectNoTransmissionEffects();
+  });
+
+  it('serializes competing transmissions at the Offer revision fence', async () => {
+    const { fixture, offer, base } = await approvedTransmissionOffer();
+    const barrier = await pool.connect();
+    let pending: Promise<Response[]> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const backend = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0];
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query('SELECT id FROM offers WHERE id = $1 FOR UPDATE', [
+        offer.id,
+      ]);
+      pending = Promise.all(
+        ['first', 'second'].map((key) =>
+          decisionRequest(
+            fixture,
+            base + '/transmission',
+            { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+            key,
+          ),
+        ),
+      );
+      await waitForBlockedRequests(backend.pid, 2);
+      await barrier.query('COMMIT');
+      const responses = await pending;
+      expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+      const loser = responses.find((r) => r.status === 409);
+      if (!loser) throw new Error('Expected stale loser');
+      expect(await json(loser)).toMatchObject({ code: 'STALE_OFFER_REVISION' });
+      expect((await pool.query('SELECT revision FROM offers')).rows).toEqual([
+        { revision: 3 },
+      ]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_transmissions',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_quality_runs',
+          )
+        ).rows,
+      ).toEqual([{ count: 2 }]);
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+
+  it('denies transmission waiting behind a committed preparer revocation', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    const { offers: service, actor } = await offerServiceContext(fixture);
+    const offerVersionId = base.split('/').at(-1);
+    if (!offerVersionId) throw new Error('Expected version');
+    const barrier = await pool.connect();
+    let pending: Promise<unknown> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const backend = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0];
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query(
+        "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_offer_preparer'",
+        [fixture.companyId],
+      );
+      pending = service.recordTransmission({
+        actor,
+        opportunityId: fixture.opportunityId,
+        offerVersionId,
+        payload: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+        idempotencyKey: 'revoked-race',
+      });
+      const settled = pending.then(
+        (value) => ({ value, error: undefined }),
+        (error: unknown) => ({ value: undefined, error }),
+      );
+      await waitForBlockedRequests(backend.pid, 1);
+      await barrier.query('COMMIT');
+      expect((await settled).error).toMatchObject({ status: 403 });
+      await expectNoTransmissionEffects();
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+
+  it.each(['offer_commands', 'offer_events'])(
+    'rolls back simulated transmission, run, revision and receipt when %s fails and allows identical retry',
+    async (table) => {
+      const { fixture, base } = await approvedTransmissionOffer();
+      await pool.query(
+        "CREATE FUNCTION fail_synthetic_transmission() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic write failure'; END; $$",
+      );
+      await pool.query(
+        `CREATE TRIGGER fail_synthetic_transmission BEFORE INSERT ON ${table} FOR EACH ROW EXECUTE FUNCTION fail_synthetic_transmission()`,
+      );
+      const body = {
+        expectedOfferRevision: 2,
+        acknowledgedWarningCodes: [],
+        note: 'Private synthetic note',
+      };
+      try {
+        const response = await decisionRequest(
+          fixture,
+          base + '/transmission',
+          body,
+          'retry',
+        );
+        expect(response.status).toBe(500);
+        const failure = await json(response);
+        expect(failure).toMatchObject({
+          code: 'OFFER_TRANSMISSION_UNCERTAIN',
+          correlationId: expect.any(String),
+        });
+        expect(JSON.stringify(failure)).not.toContain(body.note);
+        await expectNoTransmissionEffects();
+      } finally {
+        await pool.query(
+          `DROP TRIGGER fail_synthetic_transmission ON ${table}`,
+        );
+        await pool.query('DROP FUNCTION fail_synthetic_transmission()');
+      }
+      await command(base + '/transmission', body, 'retry', fixture.companyId);
+      await expect(
+        pool.query("UPDATE offer_transmissions SET note = 'Changed'"),
+      ).rejects.toMatchObject({ code: '23514' });
+      await expect(
+        pool.query('DELETE FROM offer_transmissions'),
+      ).rejects.toMatchObject({ code: '23514' });
+    },
+  );
+
+  it('requires exactly new warning codes and preserves warnings acknowledged at approval', async () => {
+    const { fixture, offer, base } = await decisionOffer();
+    await pool.query(
+      'UPDATE offer_versions SET recipient_tax_id = NULL WHERE offer_id = $1',
+      [offer.id],
+    );
+    await command(
+      base + '/approve',
+      {
+        expectedOfferRevision: 1,
+        acknowledgedWarningCodes: [
+          'RECIPIENT_IDENTITY_CURRENT',
+          'RECIPIENT_TAX_ID_RECORDED',
+        ],
+      },
+      'approval',
+      fixture.companyId,
+    );
+    const wrong = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      {
+        expectedOfferRevision: 2,
+        acknowledgedWarningCodes: ['RECIPIENT_TAX_ID_RECORDED'],
+      },
+      'extra-warning',
+    );
+    expect(wrong.status).toBe(409);
+    expect(await json(wrong)).toMatchObject({
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    });
+    const transmission = record(
+      await command(
+        base + '/transmission',
+        { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+        'transmission',
+        fixture.companyId,
+      ),
+    );
+    expect(transmission.acknowledgedWarningCodes).toEqual([]);
+    expect(record(transmission.qualityRun).results).toContainEqual({
+      code: 'RECIPIENT_TAX_ID_RECORDED',
+      status: 'WARNING',
+    });
+  });
+
+  it('blocks a new identity warning until acknowledged without altering approved bytes', async () => {
+    const { fixture, offer, base } = await approvedTransmissionOffer();
+    const correction = await request(
+      `/clients/${fixture.clientId}`,
+      fixture.companyId,
+      {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'new-identity',
+        },
+        body: JSON.stringify({
+          expectedVersion: await readClientVersion(fixture),
+          displayName: 'Corrected synthetic identity',
+        }),
+      },
+    );
+    expect(correction.status).toBe(200);
+    const denied = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      'missing-warning',
+    );
+    expect(denied.status).toBe(409);
+    expect(await json(denied)).toMatchObject({
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    });
+    const transmission = record(
+      await command(
+        base + '/transmission',
+        {
+          expectedOfferRevision: 2,
+          acknowledgedWarningCodes: ['RECIPIENT_IDENTITY_CURRENT'],
+        },
+        'new-warning',
+        fixture.companyId,
+      ),
+    );
+    expect(transmission.representationSha256).toBe(
+      record(record(offer.version).representation).sha256,
+    );
+    expect(transmission.acknowledgedWarningCodes).toEqual([
+      'RECIPIENT_IDENTITY_CURRENT',
+    ]);
+  });
+
+  it.each([
+    'PRICING_SNAPSHOT_COHERENT',
+    'VALIDITY_OPEN',
+    'RECIPIENT_AVAILABLE',
+    'PROVISIONAL_MARKER_PRESENT',
+  ])(
+    'refuses simulated transmission for current %s and rolls back every new record',
+    async (code) => {
+      const { fixture, base } = await approvedTransmissionOffer();
+      let constraint: string | undefined;
+      if (code === 'PRICING_SNAPSHOT_COHERENT')
+        await pool.query(
+          'UPDATE pricing_snapshots SET subtotal = subtotal + 1, total = total + 1 WHERE id = $1',
+          [fixture.snapshotId],
+        );
+      if (code === 'VALIDITY_OPEN')
+        instant = new Date(instant.getTime() + 30 * 86400000);
+      if (code === 'RECIPIENT_AVAILABLE')
+        await pool.query(
+          "UPDATE client_company_relationships SET status = 'archived' WHERE company_id = $1",
+          [fixture.companyId],
+        );
+      if (code === 'PROVISIONAL_MARKER_PRESENT') {
+        const row = (
+          await pool.query<{ definition: string }>(
+            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'offer_versions_initial_state_check'",
+          )
+        ).rows[0];
+        if (!row) throw new Error('Expected version constraint');
+        constraint = row.definition;
+        await pool.query(
+          'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
+        );
+        await pool.query(
+          "UPDATE offer_versions SET provenance = 'INVALID_SYNTHETIC'",
+        );
+      }
+      try {
+        const response = await decisionRequest(
+          fixture,
+          base + '/transmission',
+          { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+          'blocked',
+        );
+        expect(response.status).toBe(409);
+        expect(await json(response)).toMatchObject({
+          code: 'QUALITY_CHECK_ERRORS',
+        });
+        await expectNoTransmissionEffects();
+      } finally {
+        if (constraint) {
+          await pool.query(
+            "UPDATE offer_versions SET provenance = 'ILLUSTRATIVE'",
+          );
+          await pool.query(
+            'ALTER TABLE offer_versions ADD CONSTRAINT offer_versions_initial_state_check ' +
+              constraint,
+          );
+        }
+      }
+    },
+  );
+
+  it('refuses a representation checksum mismatch without committing', async () => {
+    const { fixture, base } = await approvedTransmissionOffer();
+    await pool.query(
+      'ALTER TABLE offer_decisions DISABLE TRIGGER offer_decisions_immutable',
+    );
+    try {
+      await pool.query(
+        "UPDATE offer_decisions SET representation_sha256 = repeat('a',64)",
+      );
+    } finally {
+      await pool.query(
+        'ALTER TABLE offer_decisions ENABLE TRIGGER offer_decisions_immutable',
+      );
+    }
+    const response = await decisionRequest(
+      fixture,
+      base + '/transmission',
+      { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      'mismatch',
+    );
+    expect(response.status).toBe(409);
+    expect(await json(response)).toMatchObject({
+      code: 'REPRESENTATION_MISMATCH',
+    });
+    await expectNoTransmissionEffects();
+  });
+
   it('approves the exact version with a committed decision run and unchanged representation', async () => {
     const fixture = await preparedOffer();
     const offer = identifiedRecord(
@@ -2971,6 +3671,48 @@ withPostgres('First illustrative Offer REST', () => {
     );
     expect(response.status).toBe(200);
     return numberField(record(await json(response)), 'version');
+  }
+
+  async function expectNoTransmissionEffects() {
+    expect((await pool.query('SELECT revision FROM offers')).rows).toEqual([
+      { revision: 2 },
+    ]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_transmissions',
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_quality_runs',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_commands',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+    expect(
+      (await pool.query('SELECT count(*)::integer AS count FROM offer_events'))
+        .rows,
+    ).toEqual([{ count: 3 }]);
+  }
+
+  async function approvedTransmissionOffer() {
+    const prepared = await decisionOffer();
+    await command(
+      prepared.base + '/approve',
+      { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+      'approval',
+      prepared.fixture.companyId,
+    );
+    return prepared;
   }
 
   async function decisionOffer() {

@@ -1342,7 +1342,7 @@ test.describe('Pricing Snapshot and Offer journey', () => {
   });
 });
 
-test('approves and rejects exact illustrative Offer Versions with explicit Company authority', async ({
+test('approves, simulates transmission and rejects exact illustrative Offer Versions with explicit Company authority', async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
@@ -1529,6 +1529,67 @@ test('approves and rejects exact illustrative Offer Versions with explicit Compa
       .getByText(workspaceMembershipId, { exact: true }),
   ).toBeVisible();
   await captureDecision('offer-approved-reopened');
+  const transmissionPanel = offer.locator('.offer-transmission');
+  await expect(transmissionPanel).toContainText('No message is sent.');
+  await expect(transmissionPanel.getByRole('checkbox')).toHaveCount(0);
+  const simulationNote = `Synthetic ${suffix} transmission only; no external message.`;
+  await transmissionPanel
+    .getByLabel('Simulation note', { exact: true })
+    .fill(simulationNote);
+  const transmissionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith('/transmission'),
+  );
+  const transmit = transmissionPanel.getByRole('button', {
+    name: 'Record simulated transmission',
+    exact: true,
+  });
+  await transmit.focus();
+  await expect(transmit).toBeFocused();
+  await page.keyboard.press('Enter');
+  const response = await transmissionResponse;
+  expect(response.status()).toBe(201);
+  const evidence: unknown = await response.json();
+  expect(evidence).toMatchObject({
+    channel: 'SIMULATED',
+    offerRevision: 3,
+    note: simulationNote,
+    acknowledgedWarningCodes: [],
+    representationSha256: checksum,
+  });
+  await expect(
+    offer.getByText(
+      'Simulated transmission recorded · Client response pending',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    offer.getByRole('button', { name: 'Record simulated transmission' }),
+  ).toHaveCount(0);
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await expect(offer.locator('.offer-transmission-evidence')).toContainText(
+    simulationNote,
+  );
+  await captureDecision('offer-transmission');
+  await open(approvedRequest.subject);
+  await expect(
+    offer.getByText(
+      'Simulated transmission recorded · Client response pending',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(offer.locator('.offer-transmission-evidence')).toContainText(
+    simulationNote,
+  );
+  await expect(
+    offer.locator('.offer-transmission-evidence code'),
+  ).toContainText([workspaceMembershipId, '', checksum ?? '']);
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await expect(offer.locator('.offer-representation code')).toHaveText(
+    checksum ?? '',
+  );
+  await captureDecision('offer-transmission-reopened');
   await open(rejectedRequest.subject);
   const reason = 'Synthetic rejection: clarify the illustrative conditions.';
   await offer.getByLabel('Rejection reason', { exact: true }).fill(reason);

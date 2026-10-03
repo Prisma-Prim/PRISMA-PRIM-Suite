@@ -198,7 +198,7 @@ it.skipIf(!databaseUrl)(
               table === 'offer_versions'
                 ? " - ARRAY['template_code', 'template_version']::text[]"
                 : table === 'offer_commands'
-                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id']::text[]"
+                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id']::text[]"
                   : '';
             return (
               await query(
@@ -216,7 +216,8 @@ it.skipIf(!databaseUrl)(
         (
           await query(
             `SELECT kind, result_quality_run_id AS "resultQualityRunId",
-                    result_decision_id AS "resultDecisionId"
+                    result_decision_id AS "resultDecisionId",
+                    result_transmission_id AS "resultTransmissionId"
                FROM offer_commands WHERE id = $1`,
             [COMMAND],
           )
@@ -226,6 +227,7 @@ it.skipIf(!databaseUrl)(
           kind: 'CREATE_OFFER',
           resultQualityRunId: null,
           resultDecisionId: null,
+          resultTransmissionId: null,
         },
       ]);
       expect(
@@ -234,7 +236,7 @@ it.skipIf(!databaseUrl)(
             `SELECT column_name AS "columnName", column_default AS "columnDefault"
                FROM information_schema.columns
               WHERE table_schema = 'public' AND table_name = 'offer_commands'
-                AND column_name IN ('kind', 'result_quality_run_id', 'result_decision_id')
+                AND column_name IN ('kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id')
               ORDER BY column_name`,
           )
         ).rows,
@@ -242,6 +244,7 @@ it.skipIf(!databaseUrl)(
         { columnName: 'kind', columnDefault: "'CREATE_OFFER'::text" },
         { columnName: 'result_decision_id', columnDefault: null },
         { columnName: 'result_quality_run_id', columnDefault: null },
+        { columnName: 'result_transmission_id', columnDefault: null },
       ]);
       expect(
         (

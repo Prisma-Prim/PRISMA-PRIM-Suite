@@ -41,7 +41,32 @@ export type OfferRecipientCopy = {
   | { readonly kind: 'ADDITIONAL'; readonly additionalLegalEntityId: string }
 );
 
-export interface OfferVersionRecord {
+export interface OfferTransmission {
+  readonly id: string;
+  readonly offerVersionId: string;
+  readonly offerRevision: number;
+  readonly actorWorkspaceMembershipId: string;
+  readonly transmittedAt: string;
+  readonly channel: 'SIMULATED';
+  readonly note: string | null;
+  readonly qualityRun: OfferQualityRun;
+  readonly acknowledgedWarningCodes: readonly OfferQualityCode[];
+  readonly representationSha256: string;
+}
+
+export type OfferTransmissionState =
+  | {
+      readonly transmissionState: 'NOT_TRANSMITTED';
+      readonly clientResponseState: 'NONE';
+      readonly transmission: null;
+    }
+  | {
+      readonly transmissionState: 'TRANSMITTED';
+      readonly clientResponseState: 'PENDING';
+      readonly transmission: OfferTransmission;
+    };
+
+export type OfferVersionRecord = {
   readonly id: string;
   readonly versionNumber: 1;
   readonly pricingSnapshotId: string;
@@ -54,15 +79,13 @@ export interface OfferVersionRecord {
   readonly commercialConditions: string | null;
   readonly decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
   readonly decision: OfferDecision | null;
-  readonly transmissionState: 'NOT_TRANSMITTED';
-  readonly clientResponseState: 'NONE';
   readonly provenance: 'ILLUSTRATIVE';
   readonly provisional: true;
   readonly createdByWorkspaceMembershipId: string;
   readonly createdAt: string;
   readonly representation: OfferRepresentation;
   readonly latestQualityRun: OfferQualityRun | null;
-}
+} & OfferTransmissionState;
 
 export interface OfferRecord {
   readonly id: string;

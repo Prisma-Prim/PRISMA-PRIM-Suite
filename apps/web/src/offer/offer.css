@@ -5,21 +5,25 @@
   border-radius: 0.75rem;
 }
 
-.offer-decision {
+.offer-decision,
+.offer-transmission {
   margin-top: 1rem;
   display: grid;
   gap: 0.75rem;
 }
-.offer-decision fieldset {
+.offer-decision fieldset,
+.offer-transmission fieldset {
   display: grid;
   gap: 0.5rem;
   min-width: 0;
 }
-.offer-decision fieldset label {
+.offer-decision fieldset label,
+.offer-transmission fieldset label {
   display: flex;
   align-items: start;
 }
-.offer-decision textarea {
+.offer-decision textarea,
+.offer-transmission textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 6rem;

@@ -24,6 +24,7 @@ import {
   offers,
   offerQualityRuns,
   offerDecisions,
+  offerTransmissions,
   OFFER_TEMPLATE_CODE,
   OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
@@ -35,11 +36,14 @@ import type {
   OfferVersionRecord,
   OfferRecipientCopy,
   OfferDecision,
+  OfferTransmission,
+  OfferTransmissionState,
 } from './offer.types.js';
 import {
   readCreateOfferCommand,
   readOfferDecisionCommand,
   readOfferWarningCodes,
+  readOfferTransmissionCommand,
 } from './offer.validation.js';
 import { renderOfferRepresentation } from './offer-representation.js';
 import {
@@ -461,8 +465,8 @@ export class OfferService {
         provenance: target.provenance,
         provisional: target.provenance === 'ILLUSTRATIVE',
       });
-      // O1 permits only version 1 and no transmissions. O5/O7 supply the earlier
-      // transmitted version when their actual persisted states are introduced.
+      // Version 1 has no earlier transmitted version. O7 owns successor lineage
+      // and the earlier transmitted currency when that slice is introduced.
       const [run] = await this.databaseContext.connection
         .insert(offerQualityRuns)
         .values({
@@ -759,6 +763,339 @@ export class OfferService {
       });
   }
 
+  async recordTransmission(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    payload: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<OfferTransmission> {
+    const { actor } = input;
+    await this.authorization.requireOfferAccess(actor, [
+      'commercial.offer.transmission.record',
+    ]);
+    const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+    return this.databaseContext
+      .transaction(async () => {
+        const companyId = await this.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.transmission.record'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          actor,
+          input.opportunityId,
+          true,
+        );
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            input.offerVersionId,
+          )
+        )
+          throw new NotFoundException();
+        const existing = await this.findOffer(
+          actor.workspaceId,
+          companyId,
+          opportunity.id,
+        );
+        if (!existing) throw new NotFoundException();
+        const [target] = await this.databaseContext.connection
+          .select()
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, existing.id),
+              eq(offerVersions.id, input.offerVersionId),
+            ),
+          );
+        if (!target) throw new NotFoundException();
+        const fingerprint = commandFingerprint({
+          kind: 'RECORD_TRANSMISSION',
+          opportunityId: opportunity.id,
+          offerVersionId: input.offerVersionId,
+          payload: input.payload,
+        });
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const receipt = await this.findCommand(
+          actor,
+          companyId,
+          idempotencyKey,
+        );
+        if (receipt) {
+          if (
+            receipt.kind !== 'RECORD_TRANSMISSION' ||
+            receipt.fingerprint !== fingerprint ||
+            receipt.resultOfferId !== existing.id ||
+            !receipt.resultTransmissionId
+          )
+            throw namedConflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was already used for another Offer command.',
+            );
+          const row = await this.findTransmission(
+            actor.workspaceId,
+            companyId,
+            target.id,
+          );
+          if (!row || row.id !== receipt.resultTransmissionId)
+            throw new Error('The recorded Offer transmission is missing.');
+          return this.transmissionView(row);
+        }
+        const command = readOfferTransmissionCommand(input.payload);
+        const [offer] = await this.databaseContext.connection
+          .select()
+          .from(offers)
+          .where(
+            and(
+              eq(offers.workspaceId, actor.workspaceId),
+              eq(offers.companyId, companyId),
+              eq(offers.id, existing.id),
+            ),
+          )
+          .for('update');
+        if (!offer) throw new NotFoundException();
+        const [head] = await this.databaseContext.connection
+          .select({ id: offerVersions.id })
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, offer.id),
+            ),
+          )
+          .orderBy(desc(offerVersions.versionNumber))
+          .limit(1);
+        requireHeadOfferVersion({
+          offerVersionId: target.id,
+          headVersionId: head?.id,
+        });
+        if (offer.revision !== command.expectedOfferRevision)
+          throw namedConflict(
+            'STALE_OFFER_REVISION',
+            'The Offer changed. Reload it before transmission.',
+          );
+        const approval = await this.findDecision(
+          actor.workspaceId,
+          companyId,
+          target.id,
+        );
+        if (approval?.state !== 'APPROVED' || !approval.representationSha256)
+          throw namedConflict(
+            'OFFER_VERSION_NOT_APPROVED',
+            'The Offer Version is not approved.',
+          );
+        if (
+          await this.findTransmission(actor.workspaceId, companyId, target.id)
+        )
+          throw namedConflict(
+            'OFFER_VERSION_ALREADY_TRANSMITTED',
+            'The Offer Version already has a transmission.',
+          );
+        const pricing = await this.pricing.inspectOfferQualitySnapshot({
+          actor,
+          companyId,
+          opportunityId: offer.opportunityId,
+          snapshotId: target.pricingSnapshotId,
+        });
+        const recipient = offerRecipientCopy(target);
+        const context = await this.clients.inspectOfferQualityContext({
+          actor,
+          companyId,
+          originalClientAccountId: offer.originalClientAccountId,
+          snapshotOriginalClientAccountId: pricing.originalClientAccountId,
+          recipient:
+            recipient.kind === 'PRIMARY'
+              ? { kind: 'PRIMARY' }
+              : {
+                  kind: 'ADDITIONAL',
+                  legalEntityId: recipient.additionalLegalEntityId,
+                },
+          recordedIdentity: recipient,
+        });
+        const transmittedAt = this.clock.now();
+        if (!Number.isFinite(transmittedAt.getTime()))
+          throw new Error('Invalid server instant.');
+        const results = evaluateOfferQuality({
+          instant: transmittedAt,
+          validUntil: target.validUntil,
+          snapshot: {
+            ...pricing.snapshot,
+            belongsToOffer:
+              pricing.snapshot.opportunityId === offer.opportunityId,
+          },
+          previousTransmittedCurrency: null,
+          ...context,
+          recipientTaxId: target.recipientTaxId,
+          provenance: target.provenance,
+          provisional: target.provenance === 'ILLUSTRATIVE',
+        });
+        if (results.some((result) => result.status === 'ERROR'))
+          throw namedConflict(
+            'QUALITY_CHECK_ERRORS',
+            'Current Quality Check errors prevent transmission.',
+          );
+        const previouslyAcknowledged = readOfferWarningCodes(
+          approval.acknowledgedWarningCodes,
+        );
+        const warnings = results
+          .filter(
+            (result) =>
+              result.status === 'WARNING' &&
+              !previouslyAcknowledged.includes(result.code),
+          )
+          .map((result) => result.code);
+        if (
+          warnings.length !== command.acknowledgedWarningCodes.length ||
+          !warnings.every((code) =>
+            command.acknowledgedWarningCodes.includes(code),
+          )
+        )
+          throw namedConflict(
+            'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+            'Acknowledge exactly the current warnings not acknowledged at approval.',
+          );
+        const representation = offerVersionView(
+          offer.illustrativeReference,
+          target,
+          pricing.snapshot,
+        ).representation;
+        if (representation.sha256 !== approval.representationSha256)
+          throw namedConflict(
+            'REPRESENTATION_MISMATCH',
+            'The representation does not match the approved checksum.',
+          );
+        const [run] = await this.databaseContext.connection
+          .insert(offerQualityRuns)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: target.id,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            evaluatedAt: transmittedAt,
+            results,
+          })
+          .returning();
+        if (!run)
+          throw new Error(
+            'The transmission Quality Check run was not recorded.',
+          );
+        const [transmission] = await this.databaseContext.connection
+          .insert(offerTransmissions)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: target.id,
+            offerRevision: offer.revision + 1,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            transmittedAt,
+            qualityRunId: run.id,
+            acknowledgedWarningCodes: command.acknowledgedWarningCodes,
+            representationSha256: approval.representationSha256,
+            note: command.note,
+          })
+          .returning();
+        if (!transmission)
+          throw new Error('The Offer transmission was not recorded.');
+        await this.databaseContext.connection
+          .update(offers)
+          .set({ revision: transmission.offerRevision })
+          .where(eq(offers.id, offer.id));
+        await this.databaseContext.connection.insert(offerCommands).values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          idempotencyKey,
+          fingerprint,
+          opportunityId: opportunity.id,
+          resultOfferId: offer.id,
+          kind: 'RECORD_TRANSMISSION',
+          resultTransmissionId: transmission.id,
+          createdAt: transmittedAt,
+        });
+        await this.accountability.recordOfferTransmission({
+          actor,
+          companyId,
+          offerId: offer.id,
+          offerVersionId: target.id,
+          occurredAt: transmittedAt,
+          acknowledgedWarningCodes: command.acknowledgedWarningCodes,
+        });
+        return this.transmissionView(transmission);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof HttpException) throw error;
+        // SQL parameters can include the private note. Expose only safe diagnostics.
+        throw new InternalServerErrorException({
+          code: 'OFFER_TRANSMISSION_UNCERTAIN',
+          correlationId: randomUUID(),
+          message:
+            'The transmission outcome is uncertain. Retry the identical command.',
+        });
+      });
+  }
+
+  private async findTransmission(
+    workspaceId: string,
+    companyId: string,
+    offerVersionId: string,
+  ) {
+    const [row] = await this.databaseContext.connection
+      .select()
+      .from(offerTransmissions)
+      .where(
+        and(
+          eq(offerTransmissions.workspaceId, workspaceId),
+          eq(offerTransmissions.companyId, companyId),
+          eq(offerTransmissions.offerVersionId, offerVersionId),
+        ),
+      );
+    return row;
+  }
+
+  private async transmissionView(
+    row: typeof offerTransmissions.$inferSelect,
+  ): Promise<OfferTransmission> {
+    if (
+      row.channel !== 'SIMULATED' ||
+      !Number.isFinite(row.transmittedAt.getTime())
+    )
+      throw new Error('Invalid stored Offer transmission.');
+    const [run] = await this.databaseContext.connection
+      .select()
+      .from(offerQualityRuns)
+      .where(
+        and(
+          eq(offerQualityRuns.workspaceId, row.workspaceId),
+          eq(offerQualityRuns.companyId, row.companyId),
+          eq(offerQualityRuns.offerId, row.offerId),
+          eq(offerQualityRuns.offerVersionId, row.offerVersionId),
+          eq(offerQualityRuns.id, row.qualityRunId),
+        ),
+      );
+    if (!run) throw new Error('The transmission Quality Check run is missing.');
+    return {
+      id: row.id,
+      offerVersionId: row.offerVersionId,
+      offerRevision: row.offerRevision,
+      actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+      transmittedAt: row.transmittedAt.toISOString(),
+      channel: row.channel,
+      note: row.note,
+      qualityRun: qualityRunView(run),
+      acknowledgedWarningCodes: readOfferWarningCodes(
+        row.acknowledgedWarningCodes,
+      ),
+      representationSha256: row.representationSha256,
+    };
+  }
+
   private async findDecision(
     workspaceId: string,
     companyId: string,
@@ -847,6 +1184,22 @@ export class OfferService {
       version.id,
     );
     const decision = decisionRow ? await this.decisionView(decisionRow) : null;
+    const transmissionRow = await this.findTransmission(
+      actor.workspaceId,
+      offer.companyId,
+      version.id,
+    );
+    const transmissionState: OfferTransmissionState = transmissionRow
+      ? {
+          transmissionState: 'TRANSMITTED',
+          clientResponseState: 'PENDING',
+          transmission: await this.transmissionView(transmissionRow),
+        }
+      : {
+          transmissionState: 'NOT_TRANSMITTED',
+          clientResponseState: 'NONE',
+          transmission: null,
+        };
     return {
       id: offer.id,
       companyId: offer.companyId,
@@ -864,6 +1217,7 @@ export class OfferService {
         latestQualityRun: latestRun ? qualityRunView(latestRun) : null,
         decision,
         decisionState: decision?.state ?? 'PENDING',
+        ...transmissionState,
       },
     };
   }
@@ -1002,6 +1356,7 @@ function offerVersionView(
     decisionState: 'PENDING',
     transmissionState: 'NOT_TRANSMITTED',
     clientResponseState: 'NONE',
+    transmission: null,
     provenance: 'ILLUSTRATIVE',
     provisional: true,
     createdByWorkspaceMembershipId: row.createdByWorkspaceMembershipId,

@@ -51,6 +51,31 @@ export function readOfferDecisionCommand(
     throw invalid('reason');
   return { kind, expectedOfferRevision, reason };
 }
+
+export function readOfferTransmissionCommand(value: unknown) {
+  const input = record(value, 'body');
+  for (const field of Object.keys(input))
+    if (
+      !['expectedOfferRevision', 'acknowledgedWarningCodes', 'note'].includes(
+        field,
+      )
+    )
+      throw invalid(field);
+  const expectedOfferRevision = input.expectedOfferRevision;
+  if (
+    typeof expectedOfferRevision !== 'number' ||
+    !Number.isSafeInteger(expectedOfferRevision) ||
+    expectedOfferRevision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  return {
+    expectedOfferRevision,
+    acknowledgedWarningCodes: readOfferWarningCodes(
+      input.acknowledgedWarningCodes,
+    ),
+    note: optionalText(input, 'note', 500).value,
+  };
+}
 import type {
   CreateOfferCommand,
   OfferRecipientSelection,

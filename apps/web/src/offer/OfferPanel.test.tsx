@@ -15,6 +15,267 @@ describe('OfferPanel', () => {
   it.each([
     [
       'QUALITY_CHECK_ERRORS',
+      'Current Quality Check errors prevent transmission. Run Quality Checks to review them.',
+    ],
+    [
+      'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+      'Acknowledge exactly the new warnings. Run Quality Checks to refresh them.',
+    ],
+    [
+      'STALE_OFFER_REVISION',
+      'The Offer changed. Reload the Request before transmission.',
+    ],
+    [
+      'OFFER_VERSION_SUPERSEDED',
+      'This version has been superseded. Reload the Request.',
+    ],
+    [
+      'OFFER_VERSION_NOT_APPROVED',
+      'This version is no longer approved. Reload the Request.',
+    ],
+    [
+      'OFFER_VERSION_ALREADY_TRANSMITTED',
+      'This version already has a simulated transmission. Reload the Request.',
+    ],
+    [
+      'REPRESENTATION_MISMATCH',
+      'The representation does not match the approved version. Reload the Request.',
+    ],
+    [
+      'IDEMPOTENCY_CONFLICT',
+      'This retry no longer matches. Reload the Request.',
+    ],
+  ])(
+    'explains %s transmission refusal without an uncertain retry',
+    async (code, message) => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().endsWith('/transmission')
+          ? response({ code }, 409)
+          : response({ offer: approvedOfferView() }),
+      );
+      renderPanel(actor('company-one'));
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Record simulated transmission',
+        }),
+      );
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Retry the same transmission' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('preserves a correctable simulation note and requires a fresh key after validation', async () => {
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (!input.toString().endsWith('/transmission'))
+        return response({ offer: approvedOfferView() });
+      if (init) posts.push(init);
+      return posts.length === 1
+        ? response({ field: 'note' }, 400)
+        : response(transmissionView());
+    });
+    renderPanel(actor('company-one'));
+    fireEvent.change(await screen.findByLabelText('Simulation note'), {
+      target: { value: 'Synthetic note' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated transmission' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Use a note of at most 500 characters',
+    );
+    expect(screen.getByLabelText('Simulation note')).toHaveValue(
+      'Synthetic note',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated transmission' }),
+    );
+    await screen.findByText(
+      'Simulated transmission recorded · Client response pending',
+    );
+    expect(new Headers(posts[0]?.headers).get('idempotency-key')).not.toBe(
+      new Headers(posts[1]?.headers).get('idempotency-key'),
+    );
+  });
+
+  it('withholds transmission from a pending version or an approver without preparer authority', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({ offer: approvedOfferView() }),
+    );
+    const rendered = renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    await screen.findByText('Version approved.');
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated transmission' }),
+    ).not.toBeInTheDocument();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({ offer: offerView() }),
+    );
+    rendered.rerender(panel(actor('company-two'), 'opportunity-two'));
+    await screen.findByText('Draft — not approved');
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated transmission' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('reports denied transmission after revalidating current Company authority', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/transmission')
+        ? response({}, 403)
+        : input.toString().includes('/access/current-actor')
+          ? response(actor('company-one'))
+          : response({ offer: approvedOfferView() }),
+    );
+    renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Record simulated transmission',
+      }),
+    );
+    expect(
+      await screen.findByText('Transmission access is no longer available.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated transmission' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('discards a late transmission after Company authority changes', async () => {
+    let release: ((value: Response) => void) | undefined;
+    const reply = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/transmission')
+        ? reply
+        : response({ offer: approvedOfferView() }),
+    );
+    const rendered = renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Record simulated transmission',
+      }),
+    );
+    await screen.findByText('Recording simulated transmission…');
+    rendered.rerender(
+      panel(
+        actorWithOfferPermissions('company-one', ['commercial.offer.read']),
+        'opportunity-one',
+      ),
+    );
+    release?.(response(transmissionView()));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Recording simulated transmission…'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(
+        'Simulated transmission recorded · Client response pending',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    'nonfinite-time',
+    'wrong-channel',
+    'missing-evidence',
+    'checksum-mismatch',
+    'contradictory-response',
+  ])(
+    'fails closed when reopened transmission evidence has %s',
+    async (mutation) => {
+      const evidence = transmissionView();
+      const approved = approvedOfferView();
+      const version = {
+        ...approved.version,
+        transmissionState: 'TRANSMITTED',
+        clientResponseState:
+          mutation === 'contradictory-response' ? 'NONE' : 'PENDING',
+        transmission:
+          mutation === 'missing-evidence'
+            ? null
+            : {
+                ...evidence,
+                transmittedAt:
+                  mutation === 'nonfinite-time'
+                    ? 'Infinity'
+                    : evidence.transmittedAt,
+                channel:
+                  mutation === 'wrong-channel' ? 'EMAIL' : evidence.channel,
+                representationSha256:
+                  mutation === 'checksum-mismatch'
+                    ? 'a'.repeat(64)
+                    : evidence.representationSha256,
+              },
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({ offer: { ...approved, revision: 3, version } }),
+      );
+      renderPanel(actor('company-one'));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The Offer could not be loaded.',
+      );
+      expect(
+        screen.queryByText(
+          'Simulated transmission recorded · Client response pending',
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('retries an uncertain simulated transmission with identical values and key', async () => {
+    const current = approvedOfferView();
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/transmission')) {
+        if (init) posts.push(init);
+        return posts.length === 1
+          ? response({}, 500)
+          : response(transmissionView());
+      }
+      return response({ offer: current });
+    });
+    renderPanel(actor('company-one'));
+    fireEvent.change(await screen.findByLabelText('Simulation note'), {
+      target: { value: 'Synthetic note' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated transmission' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Retry the same transmission',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'Simulated transmission recorded · Client response pending',
+      ),
+    ).toBeVisible();
+    expect(posts).toHaveLength(2);
+    expect(posts[0]?.body).toBe(posts[1]?.body);
+    expect(new Headers(posts[0]?.headers).get('idempotency-key')).toBe(
+      new Headers(posts[1]?.headers).get('idempotency-key'),
+    );
+    expect(JSON.parse(String(posts[0]?.body))).toEqual({
+      expectedOfferRevision: 2,
+      acknowledgedWarningCodes: [],
+      note: 'Synthetic note',
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated transmission' }),
+    ).not.toBeInTheDocument();
+  });
+  it.each([
+    [
+      'QUALITY_CHECK_ERRORS',
       'Current Quality Check errors prevent approval. Run Quality Checks to review them.',
     ],
     [
@@ -953,6 +1214,45 @@ function offerView(company = 'Illustrative Company') {
           '1161a98c95f65605a37e3c82383cd044335e9be41e00ce8a8559dd553db0c865',
       },
     },
+  };
+}
+
+function approvedOfferView() {
+  const current = offerView();
+  return {
+    ...current,
+    revision: 2,
+    version: {
+      ...current.version,
+      latestQualityRun: qualityRun(),
+      decisionState: 'APPROVED',
+      decision: {
+        id: 'approval',
+        offerVersionId: 'version-one',
+        offerRevision: 2,
+        actorWorkspaceMembershipId: 'membership-one',
+        decidedAt: qualityRun().evaluatedAt,
+        state: 'APPROVED',
+        qualityRun: qualityRun(),
+        acknowledgedWarningCodes: ['RECIPIENT_TAX_ID_RECORDED'],
+        representationSha256: current.version.representation.sha256,
+      },
+    },
+  };
+}
+
+function transmissionView() {
+  return {
+    id: 'transmission',
+    offerVersionId: 'version-one',
+    offerRevision: 3,
+    actorWorkspaceMembershipId: 'membership-one',
+    transmittedAt: qualityRun().evaluatedAt,
+    channel: 'SIMULATED',
+    note: 'Synthetic note',
+    qualityRun: { ...qualityRun(), id: 'transmission-run' },
+    acknowledgedWarningCodes: [],
+    representationSha256: offerView().version.representation.sha256,
   };
 }
 
