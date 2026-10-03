@@ -3002,6 +3002,10 @@ withPostgres('Company commercial intake REST', () => {
     'orders post-capture association against a real Client union (%s)',
     async (order) => {
       const setup = await unionSetup();
+      const ownerHeaders = await independentClientOwner([
+        setup.company.id,
+        setup.other.id,
+      ]);
       const reviewReference = await setup.beginUnion();
       const created = detail(
         await command(
@@ -3015,7 +3019,7 @@ withPostgres('Company commercial intake REST', () => {
         await raceClientAssociation({
           order,
           clientId: setup.second.id,
-          owner: () => setup.confirmUnion(reviewReference),
+          owner: () => setup.confirmUnion(reviewReference, ownerHeaders),
           association: () =>
             associateClient(
               setup.other.id,
@@ -3102,6 +3106,10 @@ withPostgres('Company commercial intake REST', () => {
     'orders post-capture association against a real Client union reversal (%s)',
     async (order) => {
       const setup = await unionSetup();
+      const ownerHeaders = await independentClientOwner([
+        setup.company.id,
+        setup.other.id,
+      ]);
       const reference = await setup.unite();
       const created = detail(
         await command(
@@ -3115,7 +3123,7 @@ withPostgres('Company commercial intake REST', () => {
         await raceClientAssociation({
           order,
           clientId: setup.client.id,
-          owner: () => setup.reverse(reference),
+          owner: () => setup.reverse(reference, ownerHeaders),
           association: () =>
             associateClient(
               setup.other.id,
@@ -3185,6 +3193,7 @@ withPostgres('Company commercial intake REST', () => {
     'permits a harmless real Client correction alongside post-capture association (%s)',
     async (order) => {
       const setup = await prepared(true);
+      const ownerHeaders = await independentClientOwner([setup.company.id]);
       const client = entity(
         await command(
           '/clients',
@@ -3210,6 +3219,7 @@ withPostgres('Company commercial intake REST', () => {
             request(`/clients/${client.id}`, setup.company.id, {
               method: 'PATCH',
               headers: {
+                ...ownerHeaders,
                 'content-type': 'application/json',
                 'idempotency-key': 'correction-race-owner',
               },
@@ -3273,6 +3283,67 @@ withPostgres('Company commercial intake REST', () => {
       });
     },
   );
+
+  it('drains both public commands after a barrier observation fails before the next Request', async () => {
+    const setup = await unionSetup();
+    const ownerHeaders = await independentClientOwner([
+      setup.company.id,
+      setup.other.id,
+    ]);
+    const reviewReference = await setup.beginUnion();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'cleanup-race-unassociated-request',
+        setup.other.id,
+      ),
+    );
+    const completed = new Map<'owner' | 'association', number>();
+    await expect(
+      raceClientAssociation({
+        order: 'association-first',
+        clientId: setup.second.id,
+        owner: async () => {
+          const response = await setup.confirmUnion(
+            reviewReference,
+            ownerHeaders,
+          );
+          completed.set('owner', response.status);
+          return response;
+        },
+        association: async () => {
+          const response = await associateClient(
+            setup.other.id,
+            created.id,
+            { expectedVersion: 1, clientAccountId: setup.second.id },
+            'cleanup-race-association',
+          );
+          completed.set('association', response.status);
+          return response;
+        },
+        onOwnerFenceObserved: () => {
+          throw new Error('Forced Client barrier observation failure.');
+        },
+      }),
+    ).rejects.toThrow('Forced Client barrier observation failure.');
+    // Rejection is delivered only after rollback releases the barrier and both
+    // real HTTP commands have finished, not while they still own transactions.
+    expect(completed.get('association')).toBe(200);
+    expect(completed.get('owner')).toBe(404);
+    await expectAssociationState(created.id, {
+      version: 2,
+      client_account_id: setup.second.id,
+      receipts: 1,
+      events: 1,
+    });
+    const following = await postIntake(
+      setup.other.id,
+      { ...representativeBody(), subject: 'Request after drained race' },
+      'request-after-drained-race',
+    );
+    expect(following.status).toBe(201);
+  });
 
   it('answers an association under its authority locks, so a racing revocation orders after the success', async () => {
     const setup = await preparedRestrictedMember(true);
@@ -3852,6 +3923,37 @@ withPostgres('Company commercial intake REST', () => {
     );
   }
 
+  // Actor resolution synchronizes internal_users before entering the Client
+  // owner. Association share-locks its own actor for live authority, so the
+  // competing Client command must use a distinct, explicitly authorized member
+  // to reach the Client fence rather than serialize at that profile write.
+  async function independentClientOwner(companyIds: readonly string[]) {
+    const headers = {
+      'x-test-external-subject': 'commercial-only-member',
+      'x-test-display-name': 'Commercial Member',
+      'x-test-email': 'commercial-member@example.test',
+    };
+    const response = await request('/access/current-actor', undefined, {
+      headers,
+    });
+    expect(response.status).toBe(200);
+    const member = actorRecord(await response.json());
+    for (const companyId of companyIds) {
+      const grant = record(
+        await command(
+          '/company-director-client-assignments',
+          {
+            companyId,
+            workspaceMembershipId: member.workspaceMembershipId,
+          },
+          `independent-client-owner-${crypto.randomUUID()}`,
+        ),
+      );
+      expect(grant.permissionSetVersion).toBe('v2');
+    }
+    return headers;
+  }
+
   // Client-first queues its real owner mutation before association on the Client
   // row. Association-first holds its event write after the Client fence advance,
   // then observes the owner command blocked by that association's transaction.
@@ -3861,15 +3963,26 @@ withPostgres('Company commercial intake REST', () => {
     owner,
     association,
     ownerWait = 'mutation',
+    onOwnerFenceObserved,
   }: {
     order: 'client-first' | 'association-first';
     clientId: string;
     owner: () => Promise<Response>;
     association: () => Promise<Response>;
     ownerWait?: 'mutation' | 'correction-receipt';
+    onOwnerFenceObserved?: () => void;
   }): Promise<{ ownerResponse: Response; associationResponse: Response }> {
     const barrier = await pool.connect();
     let released = false;
+    const pendingCommands: Promise<Response>[] = [];
+    function start(command: () => Promise<Response>): Promise<Response> {
+      const pending = command();
+      pendingCommands.push(pending);
+      // Observe rejection immediately while the barrier assertions run. The
+      // original promise still carries its error to the result and final drain.
+      void pending.catch(() => undefined);
+      return pending;
+    }
     try {
       await barrier.query('BEGIN');
       const backend = await barrier.query<{ backendPid: number }>(
@@ -3881,17 +3994,21 @@ withPostgres('Company commercial intake REST', () => {
         await barrier.query(
           'LOCK TABLE commercial_intake_events IN ACCESS EXCLUSIVE MODE',
         );
-        const pendingAssociation = association();
+        const pendingAssociation = start(association);
         const associationPid = await blockedBackend(backendPid);
-        const stoppedAssociation = await pool.query<{ query: string }>(
-          'SELECT query FROM pg_stat_activity WHERE pid = $1',
+        const stoppedAssociation = await pool.query<{ waiting: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM pg_locks
+              WHERE pid = $1 AND NOT granted AND locktype = 'relation'
+                AND relation = 'commercial_intake_events'::regclass
+                AND mode = 'RowExclusiveLock'
+           ) AS waiting`,
           [associationPid],
         );
-        expect(stoppedAssociation.rows[0]?.query).toMatch(
-          /insert into "commercial_intake_events"/iu,
-        );
-        const pendingOwner = owner();
+        expect(stoppedAssociation.rows).toEqual([{ waiting: true }]);
+        const pendingOwner = start(owner);
         await waitForOwnerClientFence(associationPid, ownerWait);
+        onOwnerFenceObserved?.();
         await barrier.query('COMMIT');
         released = true;
         const [associationResponse, ownerResponse] = await Promise.all([
@@ -3906,9 +4023,9 @@ withPostgres('Company commercial intake REST', () => {
         'SELECT id FROM client_accounts WHERE workspace_id = $1 AND id = $2 FOR NO KEY UPDATE',
         [WORKSPACE_ID, clientId],
       );
-      const first = owner();
+      const first = start(owner);
       await waitForBlockedBy(backendPid);
-      const second = association();
+      const second = start(association);
       await waitForClientMutationWaiters(backendPid, 2);
       await barrier.query('COMMIT');
       released = true;
@@ -3921,8 +4038,18 @@ withPostgres('Company commercial intake REST', () => {
         associationResponse: secondResponse,
       };
     } finally {
-      if (!released) await barrier.query('ROLLBACK');
-      barrier.release();
+      try {
+        if (!released) await barrier.query('ROLLBACK');
+      } finally {
+        // Even a failed barrier observation has already launched HTTP commands.
+        // Let every one finish after releasing the blocker before TRUNCATE in
+        // the next test can compete with their still-open transactions.
+        try {
+          barrier.release();
+        } finally {
+          await Promise.allSettled(pendingCommands);
+        }
+      }
     }
   }
 
@@ -3930,24 +4057,45 @@ withPostgres('Company commercial intake REST', () => {
     associationPid: number,
     ownerWait: 'mutation' | 'correction-receipt',
   ): Promise<void> {
+    // The access guard never row-locks client_accounts. Union/reversal acquire
+    // this relation's RowShareLock through snapshot FOR UPDATE; correction's
+    // receipt FK acquires it through Client KEY SHARE. Their transaction-id
+    // wait on association proves the Client owner has reached that reference
+    // fence. The receipt variant also proves its correction INSERT has begun.
+    // Catalog locks do not depend on pg_stat_activity's truncated SQL text.
     for (let attempt = 0; attempt < 100; attempt += 1) {
-      const blocked = await pool.query<{ query: string }>(
-        `SELECT query FROM pg_stat_activity
-          WHERE datname = current_database()
-            AND wait_event_type = 'Lock'
-            AND $1::integer = ANY(pg_blocking_pids(pid))`,
-        [associationPid],
+      const blocked = await pool.query<{ waiting: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1 FROM pg_stat_activity owner
+            WHERE owner.datname = current_database()
+              AND owner.wait_event_type = 'Lock'
+              AND $1::integer = ANY(pg_blocking_pids(owner.pid))
+              AND EXISTS (
+                SELECT 1 FROM pg_locks client_lock
+                 WHERE client_lock.pid = owner.pid AND client_lock.granted
+                   AND client_lock.locktype = 'relation'
+                   AND client_lock.relation = 'client_accounts'::regclass
+                   AND client_lock.mode = 'RowShareLock'
+              )
+              AND EXISTS (
+                SELECT 1 FROM pg_locks waiting JOIN pg_locks held
+                  ON held.locktype = 'transactionid'
+                    AND held.transactionid = waiting.transactionid
+                    AND held.pid = $1 AND held.granted
+                 WHERE waiting.pid = owner.pid AND NOT waiting.granted
+                   AND waiting.locktype = 'transactionid'
+              )
+              AND ($2::text = 'mutation' OR EXISTS (
+                SELECT 1 FROM pg_locks receipt_lock
+                 WHERE receipt_lock.pid = owner.pid AND receipt_lock.granted
+                   AND receipt_lock.locktype = 'relation'
+                   AND receipt_lock.relation = 'client_account_correction_commands'::regclass
+                   AND receipt_lock.mode = 'RowExclusiveLock'
+              ))
+         ) AS waiting`,
+        [associationPid, ownerWait],
       );
-      if (
-        blocked.rows.some(({ query }) =>
-          ownerWait === 'correction-receipt'
-            ? // Association holds Client FOR UPDATE. The real correction's receipt
-              // FK must therefore obtain Client KEY SHARE before its mutation lock.
-              /insert into "client_account_correction_commands"/iu.test(query)
-            : /"client_accounts"/iu.test(query) && /for update/iu.test(query),
-        )
-      )
-        return;
+      if (blocked.rows[0]?.waiting) return;
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     throw new Error(
@@ -3966,8 +4114,13 @@ withPostgres('Company commercial intake REST', () => {
              FROM pg_stat_activity
             WHERE datname = current_database()
               AND wait_event_type = 'Lock'
-              AND query ILIKE '%"client_accounts"%'
-              AND (query ILIKE '%for update%' OR query ILIKE '%for no key update%')
+              AND EXISTS (
+                SELECT 1 FROM pg_locks client_lock
+                 WHERE client_lock.pid = pg_stat_activity.pid
+                   AND client_lock.granted AND client_lock.locktype = 'relation'
+                   AND client_lock.relation = 'client_accounts'::regclass
+                   AND client_lock.mode = 'RowShareLock'
+              )
          ), blocked_tree(pid) AS (
            SELECT $1::integer
            UNION
@@ -4141,13 +4294,17 @@ withPostgres('Company commercial intake REST', () => {
       );
       return stringField(review, 'reviewReference');
     }
-    function confirmUnion(reviewReference: string) {
+    function confirmUnion(
+      reviewReference: string,
+      headers: Record<string, string> = {},
+    ) {
       return request(
         `/client-union-reviews/${reviewReference}/confirm`,
         setup.company.id,
         {
           method: 'POST',
           headers: {
+            ...headers,
             'content-type': 'application/json',
             'idempotency-key': crypto.randomUUID(),
           },
@@ -4174,13 +4331,14 @@ withPostgres('Company commercial intake REST', () => {
       const result = record(await response.json());
       return stringField(result, 'projectionReference');
     }
-    function reverse(reference: string) {
+    function reverse(reference: string, headers: Record<string, string> = {}) {
       return request(
         `/client-union-operations/${reference}/reversal`,
         setup.company.id,
         {
           method: 'POST',
           headers: {
+            ...headers,
             'content-type': 'application/json',
             'idempotency-key': crypto.randomUUID(),
           },
