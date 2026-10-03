@@ -505,6 +505,10 @@ describe('App', () => {
         'granted Company Offer Preparer',
       'company_offer_preparer_assignment.revoked':
         'revoked Company Offer Preparer',
+      'company_offer_approver_assignment.granted':
+        'granted Company Offer Approver',
+      'company_offer_approver_assignment.revoked':
+        'revoked Company Offer Approver',
       'company_opportunity_manager_assignment.granted':
         'granted Company Opportunity Manager',
       'company_opportunity_manager_assignment.revoked':
