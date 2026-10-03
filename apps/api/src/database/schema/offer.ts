@@ -405,12 +405,19 @@ export const offerCommands = pgTable(
     opportunityId: uuid('opportunity_id').notNull(),
     resultOfferId: uuid('result_offer_id').notNull(),
     kind: text('kind', {
-      enum: ['CREATE_OFFER', 'RUN_QUALITY_CHECKS', 'APPROVE', 'REJECT'],
+      enum: [
+        'CREATE_OFFER',
+        'RUN_QUALITY_CHECKS',
+        'APPROVE',
+        'REJECT',
+        'RECORD_TRANSMISSION',
+      ],
     })
       .default('CREATE_OFFER')
       .notNull(),
     resultQualityRunId: uuid('result_quality_run_id'),
     resultDecisionId: uuid('result_decision_id'),
+    resultTransmissionId: uuid('result_transmission_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -459,9 +466,10 @@ export const offerCommands = pgTable(
     }),
     check(
       'offer_commands_kind_result_check',
-      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL)
-      OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL)
-      OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL)`,
+      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL)
+      OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL)
+      OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL)
+      OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL)`,
     ),
     foreignKey({
       name: 'offer_commands_decision_result_fk',
@@ -476,6 +484,21 @@ export const offerCommands = pgTable(
         offerDecisions.companyId,
         offerDecisions.offerId,
         offerDecisions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_commands_transmission_result_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.resultOfferId,
+        table.resultTransmissionId,
+      ],
+      foreignColumns: [
+        offerTransmissions.workspaceId,
+        offerTransmissions.companyId,
+        offerTransmissions.offerId,
+        offerTransmissions.id,
       ],
     }),
   ],
@@ -494,6 +517,7 @@ export const offerEvents = pgTable(
         'offer_version.created',
         'offer_version.approved',
         'offer_version.rejected',
+        'offer_version.transmission_recorded',
       ],
     }).notNull(),
     offerId: uuid('offer_id').notNull(),
@@ -545,7 +569,7 @@ export const offerEvents = pgTable(
     check(
       'offer_events_target_check',
       sql`(${table.action} = 'offer.created' AND ${table.offerVersionId} IS NULL)
-        OR (${table.action} IN ('offer_version.created','offer_version.approved','offer_version.rejected') AND ${table.offerVersionId} IS NOT NULL)`,
+        OR (${table.action} IN ('offer_version.created','offer_version.approved','offer_version.rejected','offer_version.transmission_recorded') AND ${table.offerVersionId} IS NOT NULL)`,
     ),
     check(
       'offer_events_metadata_check',
@@ -578,6 +602,16 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
           AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND ${table.metadata}->>'ruleSetVersion' = '1' AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
           OR (${table.action} = 'offer_version.rejected' AND ${table.metadata}->>'outcome' = 'REJECTED' AND NOT (${table.metadata} ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
+        WHEN ${table.action} = 'offer_version.transmission_recorded' THEN
+          ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']
+          AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']::text[]) = '{}'::jsonb
+          AND ${table.metadata}->>'offerId' = ${table.offerId}::text
+          AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+          AND ${table.metadata}->>'versionNumber' = '1'
+          AND ${table.metadata}->>'channel' = 'SIMULATED'
+          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
+          AND ${table.metadata}->>'ruleSetVersion' = '1'
+          AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array'
         ELSE false
       END) IS TRUE`,
     ),
@@ -665,6 +699,95 @@ export const offerDecisions = pgTable(
     check(
       'offer_decisions_state_check',
       sql`${table.offerRevision} > 1 AND ((${table.state} = 'APPROVED' AND ${table.qualityRunId} IS NOT NULL AND ${table.acknowledgedWarningCodes} IS NOT NULL AND jsonb_typeof(${table.acknowledgedWarningCodes}) = 'array' AND ${table.representationSha256} IS NOT NULL AND ${table.representationSha256} ~ '^[0-9a-f]{64}$' AND ${table.reason} IS NULL) OR (${table.state} = 'REJECTED' AND ${table.qualityRunId} IS NULL AND ${table.acknowledgedWarningCodes} IS NULL AND ${table.representationSha256} IS NULL AND ${table.reason} IS NOT NULL AND char_length(${table.reason}) BETWEEN 1 AND 500))`,
+    ),
+  ],
+);
+
+/** One immutable simulated transmission of the approved representation. */
+export const offerTransmissions = pgTable(
+  'offer_transmissions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    offerId: uuid('offer_id').notNull(),
+    offerVersionId: uuid('offer_version_id').notNull(),
+    channel: text('channel', { enum: ['SIMULATED'] })
+      .default('SIMULATED')
+      .notNull(),
+    offerRevision: integer('offer_revision').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    transmittedAt: timestamp('transmitted_at', {
+      withTimezone: true,
+    }).notNull(),
+    qualityRunId: uuid('quality_run_id').notNull(),
+    acknowledgedWarningCodes: jsonb('acknowledged_warning_codes')
+      .$type<unknown>()
+      .notNull(),
+    representationSha256: text('representation_sha256').notNull(),
+    note: text('note'),
+  },
+  (table) => [
+    uniqueIndex('offer_transmissions_version_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerVersionId,
+    ),
+    uniqueIndex('offer_transmissions_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'offer_transmissions_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.offerVersionId,
+      ],
+      foreignColumns: [
+        offerVersions.workspaceId,
+        offerVersions.companyId,
+        offerVersions.offerId,
+        offerVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_transmissions_run_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.offerVersionId,
+        table.qualityRunId,
+      ],
+      foreignColumns: [
+        offerQualityRuns.workspaceId,
+        offerQualityRuns.companyId,
+        offerQualityRuns.offerId,
+        offerQualityRuns.offerVersionId,
+        offerQualityRuns.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_transmissions_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offer_transmissions_state_check',
+      sql`${table.offerRevision} > 2 AND ${table.channel} = 'SIMULATED' AND jsonb_typeof(${table.acknowledgedWarningCodes}) = 'array' AND ${table.representationSha256} ~ '^[0-9a-f]{64}$' AND (${table.note} IS NULL OR char_length(${table.note}) <= 500)`,
     ),
   ],
 );

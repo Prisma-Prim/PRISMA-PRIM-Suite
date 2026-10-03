@@ -30,7 +30,8 @@ import {
 import './offer.css';
 import { OfferQualityPanel } from './OfferQualityPanel';
 import { OfferDecisionPanel } from './OfferDecisionPanel';
-import { offerDecisionCopy } from './offer.copy';
+import { OfferTransmissionPanel } from './OfferTransmissionPanel';
+import { offerDecisionCopy, offerTransmissionCopy } from './offer.copy';
 
 type Ready = {
   kind: 'empty';
@@ -69,6 +70,9 @@ export function OfferPanel({
   const mayRead = permissions.includes('commercial.offer.read');
   const mayPrepare = permissions.includes('commercial.offer.prepare');
   const mayApprove = permissions.includes('commercial.offer.approve');
+  const mayTransmit = permissions.includes(
+    'commercial.offer.transmission.record',
+  );
   const authorityStamp = JSON.stringify([
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -455,6 +459,39 @@ export function OfferPanel({
               }
             />
           )}
+          {companyId &&
+            mayTransmit &&
+            view.offer.version.decisionState === 'APPROVED' &&
+            view.offer.version.transmissionState === 'NOT_TRANSMITTED' && (
+              <OfferTransmissionPanel
+                key={`transmission:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                offer={view.offer}
+                reject={reject}
+                onTransmission={(transmission) =>
+                  setView((current) =>
+                    current.kind === 'offer'
+                      ? {
+                          kind: 'offer',
+                          offer: {
+                            ...current.offer,
+                            revision: transmission.offerRevision,
+                            version: {
+                              ...current.offer.version,
+                              transmissionState: 'TRANSMITTED',
+                              clientResponseState: 'PENDING',
+                              transmission,
+                              latestQualityRun: transmission.qualityRun,
+                            },
+                          },
+                        }
+                      : current,
+                  )
+                }
+              />
+            )}
         </>
       )}
     </section>
@@ -490,11 +527,13 @@ function OfferSummary({ offer }: { offer: OfferView }) {
         <div>
           <dt>{copy.states}</dt>
           <dd>
-            {version.decisionState === 'PENDING'
-              ? copy.stateValue
-              : version.decisionState === 'APPROVED'
-                ? offerDecisionCopy.approvedState
-                : offerDecisionCopy.rejectedState}
+            {version.transmissionState === 'TRANSMITTED'
+              ? offerTransmissionCopy.success
+              : version.decisionState === 'PENDING'
+                ? copy.stateValue
+                : version.decisionState === 'APPROVED'
+                  ? offerDecisionCopy.approvedState
+                  : offerDecisionCopy.rejectedState}
           </dd>
         </div>
         <div>
@@ -506,6 +545,59 @@ function OfferSummary({ offer }: { offer: OfferView }) {
       </dl>
       {version.scopeNote && <p>{version.scopeNote}</p>}
       {version.commercialConditions && <p>{version.commercialConditions}</p>}
+      {version.transmission && (
+        <section
+          className="offer-transmission-evidence"
+          aria-labelledby="offer-transmission-evidence-title"
+        >
+          <h5 id="offer-transmission-evidence-title">
+            {offerTransmissionCopy.title}
+          </h5>
+          <p>{offerTransmissionCopy.explanation}</p>
+          <dl>
+            <div>
+              <dt>{offerTransmissionCopy.actor}</dt>
+              <dd>
+                <code>{version.transmission.actorWorkspaceMembershipId}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{offerTransmissionCopy.transmittedAt}</dt>
+              <dd>
+                {formatApplicationDateTime(version.transmission.transmittedAt)}
+              </dd>
+            </div>
+            <div>
+              <dt>{offerTransmissionCopy.note}</dt>
+              <dd>
+                {version.transmission.note ?? offerTransmissionCopy.noNote}
+              </dd>
+            </div>
+            <div>
+              <dt>{offerTransmissionCopy.run}</dt>
+              <dd>
+                <code>{version.transmission.qualityRun.id}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{offerTransmissionCopy.warnings}</dt>
+              <dd>
+                {version.transmission.acknowledgedWarningCodes.length
+                  ? version.transmission.acknowledgedWarningCodes
+                      .map((code) => offerQualityLabels[code])
+                      .join(', ')
+                  : offerDecisionCopy.noWarnings}
+              </dd>
+            </div>
+            <div>
+              <dt>{offerTransmissionCopy.checksum}</dt>
+              <dd>
+                <code>{version.transmission.representationSha256}</code>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      )}
       {version.decision && (
         <dl>
           <div>

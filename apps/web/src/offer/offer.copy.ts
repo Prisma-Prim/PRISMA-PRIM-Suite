@@ -43,6 +43,42 @@ export const offerCopy = {
   representationFrame: 'Illustrative Offer representation',
 } as const;
 
+export const offerTransmissionCopy = {
+  title: 'Simulated transmission',
+  explanation:
+    'Record a provisional simulation of this approved version. No message is sent. This does not confirm Client acceptance.',
+  record: 'Record simulated transmission',
+  note: 'Simulation note',
+  noNote: 'No simulation note',
+  acknowledge: 'Acknowledge warnings not acknowledged at approval',
+  running: 'Recording simulated transmission…',
+  retry: 'Retry the same transmission',
+  uncertain:
+    'The outcome is uncertain. Retry sends the exact same transmission, values and key.',
+  invalid:
+    'Use a note of at most 500 characters and check the warning acknowledgements.',
+  denied: 'Transmission access is no longer available.',
+  unavailable: 'The Offer Version is no longer available. Reload the Request.',
+  stale: 'The Offer changed. Reload the Request before transmission.',
+  superseded: 'This version has been superseded. Reload the Request.',
+  notApproved: 'This version is no longer approved. Reload the Request.',
+  alreadyTransmitted:
+    'This version already has a simulated transmission. Reload the Request.',
+  mismatch:
+    'The representation does not match the approved version. Reload the Request.',
+  conflict: 'This retry no longer matches. Reload the Request.',
+  qualityErrors:
+    'Current Quality Check errors prevent transmission. Run Quality Checks to review them.',
+  warningsChanged:
+    'Acknowledge exactly the new warnings. Run Quality Checks to refresh them.',
+  success: 'Simulated transmission recorded · Client response pending',
+  actor: 'Transmitting membership',
+  transmittedAt: 'Simulated transmission recorded at',
+  run: 'Transmission Quality Check run',
+  checksum: 'Transmitted SHA-256 checksum',
+  warnings: 'Warnings acknowledged at transmission',
+} as const;
+
 export const offerQualityCopy = {
   title: 'Quality Checks',
   empty: 'No Quality Check run yet.',

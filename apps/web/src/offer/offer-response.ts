@@ -28,8 +28,6 @@ export type OfferView = {
     commercialConditions: string | null;
     decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
     decision: OfferDecisionView | null;
-    transmissionState: 'NOT_TRANSMITTED';
-    clientResponseState: 'NONE';
     provenance: 'ILLUSTRATIVE';
     provisional: true;
     representation: {
@@ -38,8 +36,32 @@ export type OfferView = {
       html: string;
       sha256: string;
     };
-  };
+  } & OfferTransmissionState;
 };
+
+export type OfferTransmissionView = {
+  id: string;
+  offerVersionId: string;
+  offerRevision: number;
+  actorWorkspaceMembershipId: string;
+  transmittedAt: string;
+  channel: 'SIMULATED';
+  note: string | null;
+  qualityRun: OfferQualityRunView;
+  acknowledgedWarningCodes: Array<keyof typeof offerQualityLabels>;
+  representationSha256: string;
+};
+type OfferTransmissionState =
+  | {
+      transmissionState: 'NOT_TRANSMITTED';
+      clientResponseState: 'NONE';
+      transmission: null;
+    }
+  | {
+      transmissionState: 'TRANSMITTED';
+      clientResponseState: 'PENDING';
+      transmission: OfferTransmissionView;
+    };
 
 export function readOfferDetail(value: unknown): OfferView | null {
   const detail = record(value);
@@ -62,11 +84,10 @@ export function readOffer(value: unknown): OfferView {
     typeof version.issuingCompanyLabel !== 'string' ||
     !positiveInteger(version.validityDays) ||
     typeof version.validUntil !== 'string' ||
+    !Number.isFinite(Date.parse(version.validUntil)) ||
     (version.decisionState !== 'PENDING' &&
       version.decisionState !== 'APPROVED' &&
       version.decisionState !== 'REJECTED') ||
-    version.transmissionState !== 'NOT_TRANSMITTED' ||
-    version.clientResponseState !== 'NONE' ||
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true
   )
@@ -82,6 +103,37 @@ export function readOffer(value: unknown): OfferView {
   )
     invalid();
   const representation = readRepresentation(version.representation);
+  let transmissionState: OfferTransmissionState;
+  if (
+    version.transmissionState === 'NOT_TRANSMITTED' &&
+    version.clientResponseState === 'NONE' &&
+    (version.transmission === null || version.transmission === undefined)
+  )
+    transmissionState = {
+      transmissionState: 'NOT_TRANSMITTED',
+      clientResponseState: 'NONE',
+      transmission: null,
+    };
+  else if (
+    version.transmissionState === 'TRANSMITTED' &&
+    version.clientResponseState === 'PENDING'
+  ) {
+    const transmission = readOfferTransmission(
+      version.transmission,
+      version.id,
+      decision,
+    );
+    if (
+      transmission.offerRevision > root.revision ||
+      Date.parse(transmission.transmittedAt) >= Date.parse(version.validUntil)
+    )
+      invalid();
+    transmissionState = {
+      transmissionState: 'TRANSMITTED',
+      clientResponseState: 'PENDING',
+      transmission,
+    };
+  } else invalid();
   if (
     decision?.state === 'APPROVED' &&
     decision.representationSha256 !== representation.sha256
@@ -113,8 +165,7 @@ export function readOffer(value: unknown): OfferView {
       commercialConditions: optionalText(version.commercialConditions),
       decisionState: version.decisionState,
       decision,
-      transmissionState: 'NOT_TRANSMITTED',
-      clientResponseState: 'NONE',
+      ...transmissionState,
       provenance: 'ILLUSTRATIVE',
       provisional: true,
       representation,
@@ -198,6 +249,67 @@ export function readOfferDecision(
     qualityRun,
     acknowledgedWarningCodes,
     representationSha256: row.representationSha256,
+  };
+}
+
+export function readOfferTransmission(
+  value: unknown,
+  offerVersionId: string,
+  approval: OfferDecisionView | null,
+): OfferTransmissionView {
+  const row = record(value);
+  if (
+    approval?.state !== 'APPROVED' ||
+    typeof row.id !== 'string' ||
+    row.offerVersionId !== offerVersionId ||
+    !positiveInteger(row.offerRevision) ||
+    row.offerRevision <= approval.offerRevision ||
+    typeof row.actorWorkspaceMembershipId !== 'string' ||
+    typeof row.transmittedAt !== 'string' ||
+    !Number.isFinite(Date.parse(row.transmittedAt)) ||
+    Date.parse(row.transmittedAt) < Date.parse(approval.decidedAt) ||
+    row.channel !== 'SIMULATED' ||
+    (row.note !== null &&
+      (typeof row.note !== 'string' ||
+        row.note.length > 500 ||
+        row.note.includes('\0'))) ||
+    row.representationSha256 !== approval.representationSha256 ||
+    !Array.isArray(row.acknowledgedWarningCodes)
+  )
+    invalid();
+  const acknowledgedWarningCodes: Array<keyof typeof offerQualityLabels> = [];
+  for (const code of row.acknowledgedWarningCodes) {
+    if (!isQualityCode(code) || acknowledgedWarningCodes.includes(code))
+      invalid();
+    acknowledgedWarningCodes.push(code);
+  }
+  const qualityRun = readOfferQualityRun(row.qualityRun, offerVersionId);
+  const newWarnings = qualityRun.results
+    .filter(
+      (result) =>
+        result.status === 'WARNING' &&
+        !approval.acknowledgedWarningCodes.includes(result.code),
+    )
+    .map((result) => result.code);
+  if (
+    qualityRun.actorWorkspaceMembershipId !== row.actorWorkspaceMembershipId ||
+    qualityRun.evaluatedAt !== row.transmittedAt ||
+    qualityRun.results.some((result) => result.status === 'ERROR') ||
+    newWarnings.length !== acknowledgedWarningCodes.length ||
+    !newWarnings.every((code) => acknowledgedWarningCodes.includes(code))
+  )
+    invalid();
+  return {
+    id: row.id,
+    offerVersionId,
+    offerRevision: row.offerRevision,
+    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+    transmittedAt: row.transmittedAt,
+    channel: 'SIMULATED',
+    note: row.note,
+    qualityRun,
+    acknowledgedWarningCodes,
+    representationSha256: approval.representationSha256,
   };
 }
 
