@@ -241,6 +241,7 @@ export interface CommercialActivityLogEvent {
   id: string;
   action:
     | 'client_request.created'
+    | 'client_request.client_associated'
     | 'opportunity.created'
     | 'opportunity.next_action.updated';
   occurredAt: string;

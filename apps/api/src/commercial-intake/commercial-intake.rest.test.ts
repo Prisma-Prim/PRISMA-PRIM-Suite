@@ -85,7 +85,7 @@ withPostgres('Company commercial intake REST', () => {
     );
     expect(assignment).toMatchObject({
       bundle: 'Company Commercial Intake',
-      permissionSetVersion: 'v2',
+      permissionSetVersion: 'v3',
       active: true,
     });
 
@@ -297,8 +297,9 @@ withPostgres('Company commercial intake REST', () => {
       'commercial.opportunity.read',
       'commercial.opportunity.create',
       'commercial.opportunity.next_action.update',
+      'commercial.request.client.associate',
     ]);
-    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v2');
+    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v3');
     expect(
       (
         await request('/commercial-intake/requests', company.id, {
@@ -1114,9 +1115,15 @@ withPostgres('Company commercial intake REST', () => {
       second.id,
       first.id,
     ]);
+    expect(page.items.map((item) => item.clientDisplayName)).toEqual([
+      undefined,
+      'Shared display name',
+      'Shared display name',
+    ]);
     expect(page.items[0]).not.toHaveProperty('clientDossierId');
-    // The derived identity is the only Client datum a row gains: no display
-    // name, original reference or count.
+    expect(page.items[0]).not.toHaveProperty('clientDisplayName');
+    // Both derived fields come from the Client-owned projection. The list
+    // never returns the original reference or a count.
     for (const item of page.items)
       expect(Object.keys(item).sort()).toEqual(
         [
@@ -1124,10 +1131,11 @@ withPostgres('Company commercial intake REST', () => {
           'id',
           'initialOpportunity',
           'subject',
-          ...(item.clientDossierId === undefined ? [] : ['clientDossierId']),
+          ...(item.clientDossierId === undefined
+            ? []
+            : ['clientDossierId', 'clientDisplayName']),
         ].sort(),
       );
-    expect(JSON.stringify(page)).not.toContain('Shared display name');
     expect(page).not.toHaveProperty('total');
 
     // Page size, cursor and order are unchanged by the derived field.
@@ -1151,7 +1159,13 @@ withPostgres('Company commercial intake REST', () => {
       ).json(),
     );
     expect(olderPage).toEqual({
-      items: [{ ...page.items[2], clientDossierId: first.id }],
+      items: [
+        {
+          ...page.items[2],
+          clientDossierId: first.id,
+          clientDisplayName: 'Shared display name',
+        },
+      ],
     });
 
     // One batched Client projection per page: more linked rows, each with its
@@ -1215,6 +1229,23 @@ withPostgres('Company commercial intake REST', () => {
     // Workspace client.manage alone and a commercial-only member get none.
     expect(await derived()).toEqual([undefined]);
     expect(await derived(setup.memberHeaders)).toEqual([undefined]);
+
+    const hiddenPage = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    );
+    expect(hiddenPage.items[0]?.clientDisplayName).toBe(
+      'Workspace-managed shared name',
+    );
+    const commercialOnlyPage = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).json(),
+    );
+    expect(commercialOnlyPage.items[0]).not.toHaveProperty('clientDisplayName');
 
     await command(
       '/company-director-client-assignments',
@@ -2296,6 +2327,1312 @@ withPostgres('Company commercial intake REST', () => {
     });
   });
 
+  it('associates one existing Client once, preserves Request history and replays one durable receipt after restart', async () => {
+    const setup = await prepared(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Existing association Client' },
+        'association-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'association-request',
+        setup.company.id,
+      ),
+    );
+    expect(created).toMatchObject({
+      version: 1,
+      clientAssociationStatus: 'absent',
+    });
+    expect(created).not.toHaveProperty('clientReference');
+    const immutableBefore = await pool.query(
+      `SELECT original_text, source_kind, source_label, reported_received_at,
+              subject, captured_by_internal_user_id,
+              captured_by_workspace_membership_id, captured_at
+         FROM client_requests WHERE id = $1`,
+      [created.id],
+    );
+    const opportunityBefore = await pool.query<JsonRow>(
+      'SELECT to_jsonb(opportunity) AS row FROM opportunities AS opportunity WHERE client_request_id = $1',
+      [created.id],
+    );
+
+    const response = await associateClient(
+      setup.company.id,
+      created.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'associate-once',
+    );
+    expect(response.status).toBe(200);
+    const associated = record(await response.json());
+    expect(associated.receipt).toEqual({
+      requestId: created.id,
+      version: 2,
+      outcome: 'associated',
+    });
+    expect(associated.request).toEqual({
+      ...created,
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: client.id,
+        currentClientId: client.id,
+        displayName: 'Existing association Client',
+      },
+    });
+    expect(
+      (
+        await pool.query(
+          `SELECT original_text, source_kind, source_label, reported_received_at,
+                  subject, captured_by_internal_user_id,
+                  captured_by_workspace_membership_id, captured_at
+             FROM client_requests WHERE id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual(immutableBefore.rows);
+    expect(
+      (
+        await pool.query<JsonRow>(
+          'SELECT to_jsonb(opportunity) AS row FROM opportunities AS opportunity WHERE client_request_id = $1',
+          [created.id],
+        )
+      ).rows,
+    ).toEqual(opportunityBefore.rows);
+    expect(
+      (
+        await pool.query(
+          `SELECT action, actor_workspace_membership_id, client_request_id,
+                  opportunity_id, metadata
+             FROM commercial_intake_events
+            WHERE client_request_id = $1
+              AND action = 'client_request.client_associated'`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        action: 'client_request.client_associated',
+        actor_workspace_membership_id: setup.actor.workspaceMembershipId,
+        client_request_id: created.id,
+        opportunity_id: created.initialOpportunity.id,
+        metadata: { requestVersion: 2 },
+      },
+    ]);
+
+    const replay = await associateClient(
+      setup.company.id,
+      created.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'associate-once',
+    );
+    expect(replay.status).toBe(200);
+    expect(record(await replay.json()).receipt).toEqual(associated.receipt);
+    const changedReuse = await associateClient(
+      setup.company.id,
+      created.id,
+      { expectedVersion: 2, clientAccountId: client.id },
+      'associate-once',
+    );
+    expect(changedReuse.status).toBe(409);
+    expect(await changedReuse.json()).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    const secondKey = await associateClient(
+      setup.company.id,
+      created.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'associate-again',
+    );
+    expect(secondKey.status).toBe(409);
+    expect(await secondKey.json()).toMatchObject({
+      code: 'CLIENT_ALREADY_ASSOCIATED',
+    });
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM commercial_intake_client_association_commands WHERE client_request_id = $1',
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+
+    await harness.close();
+    await openHarness();
+    const reloaded = detail(
+      await (
+        await request(
+          `/commercial-intake/requests/${created.id}`,
+          setup.company.id,
+        )
+      ).json(),
+    );
+    expect(reloaded).toEqual(record(associated.request));
+    const reloadedItem = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    ).items.find((item) => item.id === created.id);
+    expect(reloadedItem).toMatchObject({
+      clientDossierId: client.id,
+      clientDisplayName: 'Existing association Client',
+    });
+  });
+
+  it('keeps historical v1 and v2 grants stable, hides unavailable Client identity and revalidates every replay', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Authority boundary Client' },
+        'authority-client',
+        setup.company.id,
+      ),
+    );
+    const linked = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), clientAccountId: client.id },
+        'historical-linked-request',
+        setup.company.id,
+      ),
+    );
+    const unlinked = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), subject: 'Unlinked authority proof' },
+        'historical-unlinked-request',
+        setup.company.id,
+      ),
+    );
+    const otherCompany = entity(
+      await command(
+        '/companies',
+        { displayName: 'Association isolation Company' },
+        'association-isolation-company',
+      ),
+    );
+    for (const path of [
+      '/company-context-assignments',
+      '/company-commercial-intake-assignments',
+      '/company-director-client-assignments',
+    ])
+      await command(
+        path,
+        {
+          companyId: otherCompany.id,
+          workspaceMembershipId: setup.member.workspaceMembershipId,
+        },
+        `association-isolation-${path}`,
+      );
+    const crossCompany = await associateClientAs(
+      otherCompany.id,
+      unlinked.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'association-cross-company',
+      setup.memberHeaders,
+    );
+    const unknown = await associateClientAs(
+      otherCompany.id,
+      '00000000-0000-4000-8000-000000000994',
+      { expectedVersion: 1, clientAccountId: client.id },
+      'association-unknown',
+      setup.memberHeaders,
+    );
+    expect(crossCompany.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(await crossCompany.text()).toBe(await unknown.text());
+    expect(
+      (
+        await request(
+          `/commercial-intake/requests/${unlinked.id}/client-association`,
+          setup.company.id,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'association-foreign-workspace',
+              ...setup.memberHeaders,
+              'x-workspace-context-id': '00000000-0000-4000-8000-000000000996',
+            },
+            body: JSON.stringify({
+              expectedVersion: 1,
+              clientAccountId: client.id,
+            }),
+          },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(
+          `${origin}/api/commercial-intake/requests/${unlinked.id}/client-association`,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'association-anonymous',
+            },
+            body: JSON.stringify({
+              expectedVersion: 1,
+              clientAccountId: client.id,
+            }),
+          },
+        )
+      ).status,
+    ).toBe(401);
+    await pool.query(
+      `UPDATE company_role_assignments
+          SET permission_set_version = 'v2'
+        WHERE workspace_id = $1 AND company_id = $2
+          AND workspace_membership_id = $3
+          AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
+    );
+    const v2Actor = record(
+      await (
+        await request('/access/current-actor', setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).json(),
+    );
+    expect(v2Actor.workspacePermissions).not.toContain('client.manage');
+    expect(
+      record(v2Actor.activeCompany).commercialIntakePermissions,
+    ).not.toContain('commercial.request.client.associate');
+    expect(
+      (
+        await associateClientAs(
+          setup.company.id,
+          unlinked.id,
+          { expectedVersion: 1, clientAccountId: client.id },
+          'v2-denied',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    await pool.query(
+      `UPDATE company_role_assignments
+          SET permission_set_version = 'v1'
+        WHERE workspace_id = $1 AND company_id = $2
+          AND workspace_membership_id = $3
+          AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
+    );
+    expect(
+      detail(
+        await (
+          await request(
+            `/commercial-intake/requests/${linked.id}`,
+            setup.company.id,
+            { headers: setup.memberHeaders },
+          )
+        ).json(),
+      ),
+    ).toMatchObject({
+      version: 1,
+      clientAssociationStatus: 'visible',
+      clientReference: { originalClientId: client.id },
+    });
+
+    await pool.query(
+      `UPDATE company_role_assignments
+          SET permission_set_version = 'v3'
+        WHERE workspace_id = $1 AND company_id = $2
+          AND workspace_membership_id = $3
+          AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
+    );
+    expect(
+      (
+        await associateClientAs(
+          setup.company.id,
+          unlinked.id,
+          { expectedVersion: 1, clientAccountId: client.id },
+          'authority-associated',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(200);
+    const deniedRequest = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'client-authority-denied-request',
+        setup.company.id,
+      ),
+    );
+    await pool.query(
+      `UPDATE company_role_assignments SET revoked_at = clock_timestamp()
+        WHERE workspace_id = $1 AND company_id = $2
+          AND workspace_membership_id = $3
+          AND bundle = 'company_director_client_access' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
+    );
+    const hidden = detail(
+      await (
+        await request(
+          `/commercial-intake/requests/${unlinked.id}`,
+          setup.company.id,
+          { headers: setup.memberHeaders },
+        )
+      ).json(),
+    );
+    expect(hidden).toMatchObject({
+      version: 2,
+      clientAssociationStatus: 'hidden',
+    });
+    expect(hidden).not.toHaveProperty('clientReference');
+    const unavailableReplay = await associateClientAs(
+      setup.company.id,
+      unlinked.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'authority-associated',
+      setup.memberHeaders,
+    );
+    expect(unavailableReplay.status).toBe(404);
+    expect(await unavailableReplay.json()).toMatchObject({
+      code: 'CLIENT_REFERENCE_UNAVAILABLE',
+    });
+    const unavailableAssociation = await associateClientAs(
+      setup.company.id,
+      deniedRequest.id,
+      { expectedVersion: 1, clientAccountId: client.id },
+      'client-authority-denied-association',
+      setup.memberHeaders,
+    );
+    expect(unavailableAssociation.status).toBe(404);
+    expect(await unavailableAssociation.json()).toMatchObject({
+      code: 'CLIENT_REFERENCE_UNAVAILABLE',
+    });
+    await pool.query(
+      `UPDATE company_role_assignments SET revoked_at = clock_timestamp()
+        WHERE workspace_id = $1 AND company_id = $2
+          AND workspace_membership_id = $3
+          AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.company.id, setup.member.workspaceMembershipId],
+    );
+    expect(
+      (
+        await associateClientAs(
+          setup.company.id,
+          unlinked.id,
+          { expectedVersion: 1, clientAccountId: client.id },
+          'authority-associated',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await pool.query(
+          `SELECT id, version, client_account_id,
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = request.id) AS receipts,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = request.id AND action = 'client_request.client_associated') AS events
+           FROM client_requests request WHERE id = ANY($1::uuid[]) ORDER BY version`,
+          [[deniedRequest.id, unlinked.id]],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        id: deniedRequest.id,
+        version: 1,
+        client_account_id: null,
+        receipts: 0,
+        events: 0,
+      },
+      {
+        id: unlinked.id,
+        version: 2,
+        client_account_id: client.id,
+        receipts: 1,
+        events: 1,
+      },
+    ]);
+  });
+
+  it('serializes competing associations and rolls every partial write back on receipt failure', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const firstClient = entity(
+      await command(
+        '/clients',
+        { displayName: 'First race Client' },
+        'race-first-client',
+        setup.company.id,
+      ),
+    );
+    const secondClient = entity(
+      await command(
+        '/clients',
+        { displayName: 'Second race Client' },
+        'race-second-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'race-request',
+        setup.company.id,
+      ),
+    );
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = blocker.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      await barrier.query(
+        'SELECT id FROM client_requests WHERE id = $1 FOR UPDATE',
+        [created.id],
+      );
+      const first = associateClient(
+        setup.company.id,
+        created.id,
+        { expectedVersion: 1, clientAccountId: firstClient.id },
+        'race-owner',
+      );
+      const second = associateClientAs(
+        setup.company.id,
+        created.id,
+        { expectedVersion: 1, clientAccountId: secondClient.id },
+        'race-member',
+        setup.memberHeaders,
+      );
+      await waitForBlockedCount(backendPid, 2);
+      await barrier.query('COMMIT');
+      released = true;
+      const outcomes = await Promise.all([first, second]);
+      expect(outcomes.map((response) => response.status).sort()).toEqual([
+        200, 409,
+      ]);
+      const rejected = outcomes.find((response) => response.status === 409);
+      if (!rejected) throw new Error('Expected one refused association.');
+      expect(await rejected.json()).toMatchObject({
+        code: 'CLIENT_ALREADY_ASSOCIATED',
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    expect(
+      (
+        await pool.query(
+          `SELECT
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([{ receipts: 1, events: 1 }]);
+
+    const replayRequest = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), subject: 'Concurrent exact replay proof' },
+        'concurrent-replay-request',
+        setup.company.id,
+      ),
+    );
+    const replayCommand = {
+      expectedVersion: 1,
+      clientAccountId: firstClient.id,
+    };
+    const concurrentReplays = await Promise.all([
+      associateClient(
+        setup.company.id,
+        replayRequest.id,
+        replayCommand,
+        'concurrent-exact-replay',
+      ),
+      associateClient(
+        setup.company.id,
+        replayRequest.id,
+        replayCommand,
+        'concurrent-exact-replay',
+      ),
+    ]);
+    expect(concurrentReplays.map((response) => response.status)).toEqual([
+      200, 200,
+    ]);
+    const replayBodies = await Promise.all(
+      concurrentReplays.map((response) => response.json()),
+    );
+    expect(replayBodies[1]).toEqual(replayBodies[0]);
+    expect(
+      (
+        await pool.query(
+          `SELECT
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events`,
+          [replayRequest.id],
+        )
+      ).rows,
+    ).toEqual([{ receipts: 1, events: 1 }]);
+
+    const rollbackRequest = detail(
+      await command(
+        '/commercial-intake/requests',
+        { ...representativeBody(), subject: 'Rollback association proof' },
+        'rollback-request',
+        setup.company.id,
+      ),
+    );
+    await pool.query(`
+      CREATE FUNCTION test_fail_client_association_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        RAISE EXCEPTION 'synthetic receipt failure';
+      END $$;
+      CREATE TRIGGER test_fail_client_association_receipt
+        BEFORE INSERT ON commercial_intake_client_association_commands
+        FOR EACH ROW EXECUTE FUNCTION test_fail_client_association_receipt();
+    `);
+    try {
+      expect(
+        (
+          await associateClient(
+            setup.company.id,
+            rollbackRequest.id,
+            { expectedVersion: 1, clientAccountId: firstClient.id },
+            'rollback-association',
+          )
+        ).status,
+      ).toBe(500);
+    } finally {
+      await pool.query(
+        'DROP TRIGGER IF EXISTS test_fail_client_association_receipt ON commercial_intake_client_association_commands; DROP FUNCTION IF EXISTS test_fail_client_association_receipt()',
+      );
+    }
+    expect(
+      (
+        await pool.query(
+          `SELECT version, client_account_id,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events,
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts
+           FROM client_requests WHERE id = $1`,
+          [rollbackRequest.id],
+        )
+      ).rows,
+    ).toEqual([
+      { version: 1, client_account_id: null, events: 0, receipts: 0 },
+    ]);
+  });
+
+  it('rechecks the public Client owner fence after a relationship change wins the lock race', async () => {
+    const setup = await prepared(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Racing relationship Client' },
+        'relationship-race-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'relationship-race-request',
+        setup.company.id,
+      ),
+    );
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = blocker.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+        [client.id],
+      );
+      const pending = associateClient(
+        setup.company.id,
+        created.id,
+        { expectedVersion: 1, clientAccountId: client.id },
+        'relationship-race-association',
+      );
+      await waitForBlockedBy(backendPid);
+      await barrier.query(
+        "UPDATE client_company_relationships SET status = 'archived' WHERE workspace_id = $1 AND company_id = $2 AND client_account_id = $3",
+        [WORKSPACE_ID, setup.company.id, client.id],
+      );
+      await barrier.query('COMMIT');
+      released = true;
+      const response = await pending;
+      expect(response.status).toBe(404);
+      expect(await response.json()).toMatchObject({
+        code: 'CLIENT_REFERENCE_UNAVAILABLE',
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    expect(
+      (
+        await pool.query(
+          `SELECT version, client_account_id,
+             (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events,
+             (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts
+           FROM client_requests WHERE id = $1`,
+          [created.id],
+        )
+      ).rows,
+    ).toEqual([
+      { version: 1, client_account_id: null, events: 0, receipts: 0 },
+    ]);
+  });
+
+  it.each<'client-first' | 'association-first'>([
+    'client-first',
+    'association-first',
+  ])(
+    'orders post-capture association against a real Client union (%s)',
+    async (order) => {
+      const setup = await unionSetup();
+      const ownerHeaders = await independentClientOwner([
+        setup.company.id,
+        setup.other.id,
+      ]);
+      const reviewReference = await setup.beginUnion();
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          representativeBody(),
+          'union-race-unassociated-request',
+          setup.other.id,
+        ),
+      );
+      const { ownerResponse, associationResponse } =
+        await raceClientAssociation({
+          order,
+          clientId: setup.second.id,
+          owner: () => setup.confirmUnion(reviewReference, ownerHeaders),
+          association: () =>
+            associateClient(
+              setup.other.id,
+              created.id,
+              { expectedVersion: 1, clientAccountId: setup.second.id },
+              'union-race-association',
+            ),
+        });
+      if (order === 'client-first') {
+        expect(ownerResponse.status).toBe(201);
+        expect(associationResponse.status).toBe(404);
+        expect(await associationResponse.json()).toMatchObject({
+          code: 'CLIENT_REFERENCE_UNAVAILABLE',
+        });
+        await expectAssociationState(created.id, {
+          version: 1,
+          client_account_id: null,
+          receipts: 0,
+          events: 0,
+        });
+        expect(
+          detail(
+            await (
+              await request(
+                `/commercial-intake/requests/${created.id}`,
+                setup.other.id,
+              )
+            ).json(),
+          ),
+        ).toEqual(created);
+      } else {
+        expect(associationResponse.status).toBe(200);
+        // The new operational reference changes the review's snapshot fence.
+        expect(ownerResponse.status).toBe(404);
+        const associated = record(await associationResponse.json());
+        expect(record(associated.request)).toMatchObject({
+          version: 2,
+          initialOpportunity: created.initialOpportunity,
+          clientReference: {
+            originalClientId: setup.second.id,
+            currentClientId: setup.second.id,
+          },
+        });
+        await expectAssociationState(created.id, {
+          version: 2,
+          client_account_id: setup.second.id,
+          receipts: 1,
+          events: 1,
+        });
+        // A fresh review may still unite these identities; it changes only the
+        // Client-owned projection, never the original Request reference.
+        await setup.unite();
+        expect(
+          detail(
+            await (
+              await request(
+                `/commercial-intake/requests/${created.id}`,
+                setup.other.id,
+              )
+            ).json(),
+          ),
+        ).toMatchObject({
+          version: 2,
+          initialOpportunity: created.initialOpportunity,
+          clientReference: {
+            originalClientId: setup.second.id,
+            currentClientId: setup.client.id,
+          },
+        });
+        await expectAssociationState(created.id, {
+          version: 2,
+          client_account_id: setup.second.id,
+          receipts: 1,
+          events: 1,
+        });
+      }
+    },
+  );
+
+  it.each<'client-first' | 'association-first'>([
+    'client-first',
+    'association-first',
+  ])(
+    'orders post-capture association against a real Client union reversal (%s)',
+    async (order) => {
+      const setup = await unionSetup();
+      const ownerHeaders = await independentClientOwner([
+        setup.company.id,
+        setup.other.id,
+      ]);
+      const reference = await setup.unite();
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          representativeBody(),
+          'reversal-race-unassociated-request',
+          setup.other.id,
+        ),
+      );
+      const { ownerResponse, associationResponse } =
+        await raceClientAssociation({
+          order,
+          clientId: setup.client.id,
+          owner: () => setup.reverse(reference, ownerHeaders),
+          association: () =>
+            associateClient(
+              setup.other.id,
+              created.id,
+              { expectedVersion: 1, clientAccountId: setup.client.id },
+              'reversal-race-association',
+            ),
+        });
+      if (order === 'client-first') {
+        expect(ownerResponse.status).toBe(201);
+        // Reversal removed the relationship introduced in this Company by union.
+        expect(associationResponse.status).toBe(404);
+        expect(await associationResponse.json()).toMatchObject({
+          code: 'CLIENT_REFERENCE_UNAVAILABLE',
+        });
+        await expectAssociationState(created.id, {
+          version: 1,
+          client_account_id: null,
+          receipts: 0,
+          events: 0,
+        });
+        expect(
+          detail(
+            await (
+              await request(
+                `/commercial-intake/requests/${created.id}`,
+                setup.other.id,
+              )
+            ).json(),
+          ),
+        ).toEqual(created);
+      } else {
+        expect(associationResponse.status).toBe(200);
+        // Reference use advances the Client owner's fence before reversal checks.
+        expect(ownerResponse.status).toBe(409);
+        await expectAssociationState(created.id, {
+          version: 2,
+          client_account_id: setup.client.id,
+          receipts: 1,
+          events: 1,
+        });
+        expect(
+          detail(
+            await (
+              await request(
+                `/commercial-intake/requests/${created.id}`,
+                setup.other.id,
+              )
+            ).json(),
+          ),
+        ).toMatchObject({
+          version: 2,
+          initialOpportunity: created.initialOpportunity,
+          clientReference: {
+            originalClientId: setup.client.id,
+            currentClientId: setup.client.id,
+          },
+        });
+      }
+    },
+  );
+
+  it.each<'client-first' | 'association-first'>([
+    'client-first',
+    'association-first',
+  ])(
+    'permits a harmless real Client correction alongside post-capture association (%s)',
+    async (order) => {
+      const setup = await prepared(true);
+      const ownerHeaders = await independentClientOwner([setup.company.id]);
+      const client = entity(
+        await command(
+          '/clients',
+          { displayName: 'Client before correction' },
+          'correction-race-client',
+          setup.company.id,
+        ),
+      );
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          representativeBody(),
+          'correction-race-unassociated-request',
+          setup.company.id,
+        ),
+      );
+      const { ownerResponse, associationResponse } =
+        await raceClientAssociation({
+          order,
+          clientId: client.id,
+          ownerWait: 'correction-receipt',
+          owner: () =>
+            request(`/clients/${client.id}`, setup.company.id, {
+              method: 'PATCH',
+              headers: {
+                ...ownerHeaders,
+                'content-type': 'application/json',
+                'idempotency-key': 'correction-race-owner',
+              },
+              body: JSON.stringify({
+                // Both commands keep the Client owner's optimistic version rule.
+                expectedVersion: order === 'client-first' ? 1 : 2,
+                displayName: 'Corrected Client label',
+              }),
+            }),
+          association: () =>
+            associateClient(
+              setup.company.id,
+              created.id,
+              { expectedVersion: 1, clientAccountId: client.id },
+              'correction-race-association',
+            ),
+        });
+      expect(ownerResponse.status).toBe(200);
+      expect(associationResponse.status).toBe(200);
+      expect(record(await ownerResponse.json())).toMatchObject({
+        id: client.id,
+        displayName: 'Corrected Client label',
+        version: order === 'client-first' ? 2 : 3,
+      });
+      expect(
+        record(record(await associationResponse.json()).request),
+      ).toMatchObject({
+        version: 2,
+        initialOpportunity: created.initialOpportunity,
+        clientReference: {
+          originalClientId: client.id,
+          displayName:
+            order === 'client-first'
+              ? 'Corrected Client label'
+              : 'Client before correction',
+        },
+      });
+      const reloaded = detail(
+        await (
+          await request(
+            `/commercial-intake/requests/${created.id}`,
+            setup.company.id,
+          )
+        ).json(),
+      );
+      expect(reloaded).toEqual({
+        ...created,
+        version: 2,
+        clientAssociationStatus: 'visible',
+        clientReference: {
+          originalClientId: client.id,
+          currentClientId: client.id,
+          displayName: 'Corrected Client label',
+        },
+      });
+      await expectAssociationState(created.id, {
+        version: 2,
+        client_account_id: client.id,
+        receipts: 1,
+        events: 1,
+      });
+    },
+  );
+
+  it('drains both public commands after a barrier observation fails before the next Request', async () => {
+    const setup = await unionSetup();
+    const ownerHeaders = await independentClientOwner([
+      setup.company.id,
+      setup.other.id,
+    ]);
+    const reviewReference = await setup.beginUnion();
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'cleanup-race-unassociated-request',
+        setup.other.id,
+      ),
+    );
+    const completed = new Map<'owner' | 'association', number>();
+    await expect(
+      raceClientAssociation({
+        order: 'association-first',
+        clientId: setup.second.id,
+        owner: async () => {
+          const response = await setup.confirmUnion(
+            reviewReference,
+            ownerHeaders,
+          );
+          completed.set('owner', response.status);
+          return response;
+        },
+        association: async () => {
+          const response = await associateClient(
+            setup.other.id,
+            created.id,
+            { expectedVersion: 1, clientAccountId: setup.second.id },
+            'cleanup-race-association',
+          );
+          completed.set('association', response.status);
+          return response;
+        },
+        onOwnerFenceObserved: () => {
+          throw new Error('Forced Client barrier observation failure.');
+        },
+      }),
+    ).rejects.toThrow('Forced Client barrier observation failure.');
+    // Rejection is delivered only after rollback releases the barrier and both
+    // real HTTP commands have finished, not while they still own transactions.
+    expect(completed.get('association')).toBe(200);
+    expect(completed.get('owner')).toBe(404);
+    await expectAssociationState(created.id, {
+      version: 2,
+      client_account_id: setup.second.id,
+      receipts: 1,
+      events: 1,
+    });
+    const following = await postIntake(
+      setup.other.id,
+      { ...representativeBody(), subject: 'Request after drained race' },
+      'request-after-drained-race',
+    );
+    expect(following.status).toBe(201);
+  });
+
+  it('answers an association under its authority locks, so a racing revocation orders after the success', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Ordered answer Client' },
+        'ordered-answer-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'ordered-answer-request',
+        setup.company.id,
+      ),
+    );
+    const body = { expectedVersion: 1, clientAccountId: client.id };
+    const projection = await holdClientProjection();
+    let released = false;
+    let answered = false;
+    try {
+      const associating = associateClientAs(
+        setup.company.id,
+        created.id,
+        body,
+        'ordered-answer',
+        setup.memberHeaders,
+      ).then(async (response) => {
+        const value: unknown = await response.json();
+        answered = true;
+        return { status: response.status, body: value };
+      });
+      const associationPid = await blockedBackend(projection.backendPid);
+      expect(await holdsAssociationReceipt(associationPid)).toBe(true);
+      const revoking = revokeCommercialIntake(setup);
+      // The revocation queues behind the authority lock the answering
+      // transaction still holds, so it cannot commit between write and answer.
+      await waitForBlockedBy(associationPid);
+      expect(answered).toBe(false);
+      await projection.connection.query('COMMIT');
+      released = true;
+
+      expect(await associating).toEqual({
+        status: 200,
+        body: {
+          receipt: {
+            requestId: created.id,
+            version: 2,
+            outcome: 'associated',
+          },
+          request: {
+            ...created,
+            version: 2,
+            clientAssociationStatus: 'visible',
+            clientReference: {
+              originalClientId: client.id,
+              currentClientId: client.id,
+              displayName: 'Ordered answer Client',
+            },
+          },
+        },
+      });
+      expect((await revoking).rowCount).toBe(1);
+    } finally {
+      if (!released) await projection.connection.query('ROLLBACK');
+      projection.connection.release();
+    }
+
+    expect(
+      (
+        await request(
+          `/commercial-intake/requests/${created.id}`,
+          setup.company.id,
+          { headers: setup.memberHeaders },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await associateClientAs(
+          setup.company.id,
+          created.id,
+          body,
+          'ordered-answer',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    await expectAssociationState(created.id, {
+      version: 2,
+      client_account_id: client.id,
+      receipts: 1,
+      events: 1,
+    });
+  }, 30_000);
+
+  it('answers an exact replay under current authority locks, then refuses it once a racing revocation commits', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Replayed answer Client' },
+        'replayed-answer-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'replayed-answer-request',
+        setup.company.id,
+      ),
+    );
+    const body = { expectedVersion: 1, clientAccountId: client.id };
+    const first = await associateClientAs(
+      setup.company.id,
+      created.id,
+      body,
+      'replayed-answer',
+      setup.memberHeaders,
+    );
+    expect(first.status).toBe(200);
+    const firstBody: unknown = await first.json();
+
+    const projection = await holdClientProjection();
+    let released = false;
+    let answered = false;
+    try {
+      const replaying = associateClientAs(
+        setup.company.id,
+        created.id,
+        body,
+        'replayed-answer',
+        setup.memberHeaders,
+      ).then(async (response) => {
+        const value: unknown = await response.json();
+        answered = true;
+        return { status: response.status, body: value };
+      });
+      const replayPid = await blockedBackend(projection.backendPid);
+      const revoking = revokeCommercialIntake(setup);
+      // The replay answers while it still holds the current authority it
+      // revalidated, so the revocation waits for that answer.
+      await waitForBlockedBy(replayPid);
+      expect(answered).toBe(false);
+      await projection.connection.query('COMMIT');
+      released = true;
+
+      expect(await replaying).toEqual({ status: 200, body: firstBody });
+      expect((await revoking).rowCount).toBe(1);
+    } finally {
+      if (!released) await projection.connection.query('ROLLBACK');
+      projection.connection.release();
+    }
+
+    expect(
+      (
+        await associateClientAs(
+          setup.company.id,
+          created.id,
+          body,
+          'replayed-answer',
+          setup.memberHeaders,
+        )
+      ).status,
+    ).toBe(403);
+    await expectAssociationState(created.id, {
+      version: 2,
+      client_account_id: client.id,
+      receipts: 1,
+      events: 1,
+    });
+  }, 30_000);
+
+  it('rolls the association and Client fence back when its answer fails, leaving the key for an exact retry', async () => {
+    const setup = await prepared(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Failed answer Client' },
+        'failed-answer-client',
+        setup.company.id,
+      ),
+    );
+    const created = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'failed-answer-request',
+        setup.company.id,
+      ),
+    );
+    const body = { expectedVersion: 1, clientAccountId: client.id };
+    const clientRow = async () =>
+      (
+        await pool.query<JsonRow>(
+          'SELECT to_jsonb(client) AS row FROM client_accounts AS client WHERE id = $1',
+          [client.id],
+        )
+      ).rows;
+    const clientBefore = await clientRow();
+
+    const projection = await holdClientProjection();
+    try {
+      const associating = associateClient(
+        setup.company.id,
+        created.id,
+        body,
+        'failed-answer',
+      );
+      const associationPid = await blockedBackend(projection.backendPid);
+      expect(await holdsAssociationReceipt(associationPid)).toBe(true);
+      // Fail the answer itself, after every write of the association.
+      expect(
+        (
+          await pool.query<{ canceled: boolean }>(
+            'SELECT pg_cancel_backend($1) AS canceled',
+            [associationPid],
+          )
+        ).rows,
+      ).toEqual([{ canceled: true }]);
+      expect((await associating).status).toBe(500);
+    } finally {
+      await projection.connection.query('ROLLBACK');
+      projection.connection.release();
+    }
+    await expectAssociationState(created.id, {
+      version: 1,
+      client_account_id: null,
+      receipts: 0,
+      events: 0,
+    });
+    expect(await clientRow()).toEqual(clientBefore);
+
+    const retried = await associateClient(
+      setup.company.id,
+      created.id,
+      body,
+      'failed-answer',
+    );
+    expect(retried.status).toBe(200);
+    expect(record(await retried.json()).receipt).toEqual({
+      requestId: created.id,
+      version: 2,
+      outcome: 'associated',
+    });
+    await expectAssociationState(created.id, {
+      version: 2,
+      client_account_id: client.id,
+      receipts: 1,
+      events: 1,
+    });
+  }, 30_000);
+
+  function associateClient(
+    companyId: string,
+    clientRequestId: string,
+    body: unknown,
+    key: string,
+  ) {
+    return associateClientAs(companyId, clientRequestId, body, key, {});
+  }
+
+  function associateClientAs(
+    companyId: string,
+    clientRequestId: string,
+    body: unknown,
+    key: string,
+    headers: Record<string, string>,
+  ) {
+    return request(
+      `/commercial-intake/requests/${clientRequestId}/client-association`,
+      companyId,
+      {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
   function updateNextAction(
     companyId: string,
     opportunityId: string,
@@ -2369,7 +3706,7 @@ withPostgres('Company commercial intake REST', () => {
            FROM pg_stat_activity
           WHERE datname = current_database()
             AND wait_event_type = 'Lock'
-            AND query ILIKE '%from "opportunities"%for update%'`,
+            AND query ILIKE '%from "opportunities"%for no key update%'`,
       );
       if (Number(waiting.rows[0]?.count) >= expected) return;
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -2548,6 +3885,356 @@ withPostgres('Company commercial intake REST', () => {
     throw new Error('The intake transaction did not reach the lock barrier.');
   }
 
+  // PostgreSQL queues later tuple lockers behind the first waiter. Follow
+  // that chain, but count only commands already waiting on the Request row.
+  async function waitForBlockedCount(
+    backendPid: number,
+    expected: number,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ count: string }>(
+        `WITH RECURSIVE request_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND query ILIKE '%"client_requests"%'
+              AND (query ILIKE '%for update%' OR query ILIKE '%for share%')
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM request_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
+        [backendPid],
+      );
+      if (Number(blocked.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    const activity = await pool.query(
+      `SELECT pid, wait_event, pg_blocking_pids(pid) AS blockers, query
+         FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    throw new Error(
+      `The association commands did not reach the Request lock barrier behind ${backendPid}: ${JSON.stringify(activity.rows)}`,
+    );
+  }
+
+  // Actor resolution synchronizes internal_users before entering the Client
+  // owner. Association share-locks its own actor for live authority, so the
+  // competing Client command must use a distinct, explicitly authorized member
+  // to reach the Client fence rather than serialize at that profile write.
+  async function independentClientOwner(companyIds: readonly string[]) {
+    const headers = {
+      'x-test-external-subject': 'commercial-only-member',
+      'x-test-display-name': 'Commercial Member',
+      'x-test-email': 'commercial-member@example.test',
+    };
+    const response = await request('/access/current-actor', undefined, {
+      headers,
+    });
+    expect(response.status).toBe(200);
+    const member = actorRecord(await response.json());
+    for (const companyId of companyIds) {
+      const grant = record(
+        await command(
+          '/company-director-client-assignments',
+          {
+            companyId,
+            workspaceMembershipId: member.workspaceMembershipId,
+          },
+          `independent-client-owner-${crypto.randomUUID()}`,
+        ),
+      );
+      expect(grant.permissionSetVersion).toBe('v2');
+    }
+    return headers;
+  }
+
+  // Client-first queues its real owner mutation before association on the Client
+  // row. Association-first holds its event write after the Client fence advance,
+  // then observes the owner command blocked by that association's transaction.
+  async function raceClientAssociation({
+    order,
+    clientId,
+    owner,
+    association,
+    ownerWait = 'mutation',
+    onOwnerFenceObserved,
+  }: {
+    order: 'client-first' | 'association-first';
+    clientId: string;
+    owner: () => Promise<Response>;
+    association: () => Promise<Response>;
+    ownerWait?: 'mutation' | 'correction-receipt';
+    onOwnerFenceObserved?: () => void;
+  }): Promise<{ ownerResponse: Response; associationResponse: Response }> {
+    const barrier = await pool.connect();
+    let released = false;
+    const pendingCommands: Promise<Response>[] = [];
+    function start(command: () => Promise<Response>): Promise<Response> {
+      const pending = command();
+      pendingCommands.push(pending);
+      // Observe rejection immediately while the barrier assertions run. The
+      // original promise still carries its error to the result and final drain.
+      void pending.catch(() => undefined);
+      return pending;
+    }
+    try {
+      await barrier.query('BEGIN');
+      const backend = await barrier.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = backend.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      if (order === 'association-first') {
+        await barrier.query(
+          'LOCK TABLE commercial_intake_events IN ACCESS EXCLUSIVE MODE',
+        );
+        const pendingAssociation = start(association);
+        const associationPid = await blockedBackend(backendPid);
+        const stoppedAssociation = await pool.query<{ waiting: boolean }>(
+          `SELECT EXISTS (
+             SELECT 1 FROM pg_locks
+              WHERE pid = $1 AND NOT granted AND locktype = 'relation'
+                AND relation = 'commercial_intake_events'::regclass
+                AND mode = 'RowExclusiveLock'
+           ) AS waiting`,
+          [associationPid],
+        );
+        expect(stoppedAssociation.rows).toEqual([{ waiting: true }]);
+        const pendingOwner = start(owner);
+        await waitForOwnerClientFence(associationPid, ownerWait);
+        onOwnerFenceObserved?.();
+        await barrier.query('COMMIT');
+        released = true;
+        const [associationResponse, ownerResponse] = await Promise.all([
+          pendingAssociation,
+          pendingOwner,
+        ]);
+        return { ownerResponse, associationResponse };
+      }
+      // Allow receipt foreign-key KEY SHARE checks to finish, so the observed
+      // waiter is the owner's mutation lock rather than its key reservation.
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE workspace_id = $1 AND id = $2 FOR NO KEY UPDATE',
+        [WORKSPACE_ID, clientId],
+      );
+      const first = start(owner);
+      await waitForBlockedBy(backendPid);
+      const second = start(association);
+      await waitForClientMutationWaiters(backendPid, 2);
+      await barrier.query('COMMIT');
+      released = true;
+      const [firstResponse, secondResponse] = await Promise.all([
+        first,
+        second,
+      ]);
+      return {
+        ownerResponse: firstResponse,
+        associationResponse: secondResponse,
+      };
+    } finally {
+      try {
+        if (!released) await barrier.query('ROLLBACK');
+      } finally {
+        // Even a failed barrier observation has already launched HTTP commands.
+        // Let every one finish after releasing the blocker before TRUNCATE in
+        // the next test can compete with their still-open transactions.
+        try {
+          barrier.release();
+        } finally {
+          await Promise.allSettled(pendingCommands);
+        }
+      }
+    }
+  }
+
+  async function waitForOwnerClientFence(
+    associationPid: number,
+    ownerWait: 'mutation' | 'correction-receipt',
+  ): Promise<void> {
+    // The access guard never row-locks client_accounts. Union/reversal acquire
+    // this relation's RowShareLock through snapshot FOR UPDATE; correction's
+    // receipt FK acquires it through Client KEY SHARE. Their transaction-id
+    // wait on association proves the Client owner has reached that reference
+    // fence. The receipt variant also proves its correction INSERT has begun.
+    // Catalog locks do not depend on pg_stat_activity's truncated SQL text.
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ waiting: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1 FROM pg_stat_activity owner
+            WHERE owner.datname = current_database()
+              AND owner.wait_event_type = 'Lock'
+              AND $1::integer = ANY(pg_blocking_pids(owner.pid))
+              AND EXISTS (
+                SELECT 1 FROM pg_locks client_lock
+                 WHERE client_lock.pid = owner.pid AND client_lock.granted
+                   AND client_lock.locktype = 'relation'
+                   AND client_lock.relation = 'client_accounts'::regclass
+                   AND client_lock.mode = 'RowShareLock'
+              )
+              AND EXISTS (
+                SELECT 1 FROM pg_locks waiting JOIN pg_locks held
+                  ON held.locktype = 'transactionid'
+                    AND held.transactionid = waiting.transactionid
+                    AND held.pid = $1 AND held.granted
+                 WHERE waiting.pid = owner.pid AND NOT waiting.granted
+                   AND waiting.locktype = 'transactionid'
+              )
+              AND ($2::text = 'mutation' OR EXISTS (
+                SELECT 1 FROM pg_locks receipt_lock
+                 WHERE receipt_lock.pid = owner.pid AND receipt_lock.granted
+                   AND receipt_lock.locktype = 'relation'
+                   AND receipt_lock.relation = 'client_account_correction_commands'::regclass
+                   AND receipt_lock.mode = 'RowExclusiveLock'
+              ))
+         ) AS waiting`,
+        [associationPid, ownerWait],
+      );
+      if (blocked.rows[0]?.waiting) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(
+      'The Client owner did not reach its named reference fence behind association.',
+    );
+  }
+
+  async function waitForClientMutationWaiters(
+    backendPid: number,
+    expected: number,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ count: string }>(
+        `WITH RECURSIVE client_waiters AS (
+           SELECT pid, pg_blocking_pids(pid) AS blockers
+             FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND wait_event_type = 'Lock'
+              AND EXISTS (
+                SELECT 1 FROM pg_locks client_lock
+                 WHERE client_lock.pid = pg_stat_activity.pid
+                   AND client_lock.granted AND client_lock.locktype = 'relation'
+                   AND client_lock.relation = 'client_accounts'::regclass
+                   AND client_lock.mode = 'RowShareLock'
+              )
+         ), blocked_tree(pid) AS (
+           SELECT $1::integer
+           UNION
+           SELECT waiter.pid
+             FROM client_waiters waiter
+             JOIN blocked_tree blocker ON blocker.pid = ANY(waiter.blockers)
+         )
+         SELECT count(*) AS count FROM blocked_tree WHERE pid <> $1::integer`,
+        [backendPid],
+      );
+      if (Number(blocked.rows[0]?.count) >= expected) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(
+      'Both public commands did not reach the Client mutation lock queue.',
+    );
+  }
+
+  // Only the Client owner's current projection reads union operations, so an
+  // exclusive lock on them holds an association at its answer, after every
+  // authority check and write of the command.
+  async function holdClientProjection(): Promise<{
+    connection: PoolClient;
+    backendPid: number;
+  }> {
+    const connection = await pool.connect();
+    try {
+      await connection.query('BEGIN');
+      const backend = await connection.query<{ backendPid: number }>(
+        'SELECT pg_backend_pid() AS "backendPid"',
+      );
+      const backendPid = backend.rows[0]?.backendPid;
+      if (backendPid === undefined) throw new Error('Missing blocker backend.');
+      await connection.query(
+        'LOCK TABLE client_union_operations IN ACCESS EXCLUSIVE MODE',
+      );
+      return { connection, backendPid };
+    } catch (error) {
+      await connection.query('ROLLBACK');
+      connection.release();
+      throw error;
+    }
+  }
+
+  async function blockedBackend(blockerPid: number): Promise<number> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const blocked = await pool.query<{ pid: number }>(
+        `SELECT pid
+           FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND $1::integer = ANY(pg_blocking_pids(pid))`,
+        [blockerPid],
+      );
+      if (blocked.rows.length > 1)
+        throw new Error('Expected one association behind the barrier.');
+      const waiter = blocked.rows[0];
+      if (waiter) return waiter.pid;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error('The association did not reach its answer barrier.');
+  }
+
+  // A granted row-exclusive lock on the receipt table shows the command is
+  // still inside the transaction that recorded its receipt.
+  async function holdsAssociationReceipt(backendPid: number): Promise<boolean> {
+    const held = await pool.query<{ held: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+           FROM pg_locks
+          WHERE pid = $1
+            AND granted
+            AND mode = 'RowExclusiveLock'
+            AND relation = 'commercial_intake_client_association_commands'::regclass
+       ) AS held`,
+      [backendPid],
+    );
+    return held.rows[0]?.held === true;
+  }
+
+  function revokeCommercialIntake(setup: {
+    company: { id: string };
+    member: { workspaceMembershipId: string };
+  }) {
+    return pool.query(
+      `UPDATE company_role_assignments
+          SET revoked_at = clock_timestamp()
+        WHERE workspace_id = $1
+          AND workspace_membership_id = $2
+          AND company_id = $3
+          AND bundle = 'company_commercial_intake'
+          AND revoked_at IS NULL`,
+      [WORKSPACE_ID, setup.member.workspaceMembershipId, setup.company.id],
+    );
+  }
+
+  async function expectAssociationState(
+    clientRequestId: string,
+    expected: {
+      version: number;
+      client_account_id: string | null;
+      receipts: number;
+      events: number;
+    },
+  ): Promise<void> {
+    const state = await pool.query(
+      `SELECT version, client_account_id,
+         (SELECT count(*)::integer FROM commercial_intake_client_association_commands WHERE client_request_id = $1) AS receipts,
+         (SELECT count(*)::integer FROM commercial_intake_events WHERE client_request_id = $1 AND action = 'client_request.client_associated') AS events
+       FROM client_requests WHERE id = $1`,
+      [clientRequestId],
+    );
+    expect(state.rows).toEqual([expected]);
+  }
+
   async function expectCommercialIntakeCount(expected: number): Promise<void> {
     const count = await pool.query<{ count: string }>(
       'SELECT count(*) AS count FROM client_requests',
@@ -2596,7 +4283,7 @@ withPostgres('Company commercial intake REST', () => {
       'UPDATE client_accounts SET tax_id = $1 WHERE id IN ($2, $3)',
       ['COMMERCIAL-UNION', client.id, second.id],
     );
-    async function unite(): Promise<string> {
+    async function beginUnion(): Promise<string> {
       const review = record(
         await command(
           `/clients/${client.id}/union-reviews`,
@@ -2605,10 +4292,23 @@ withPostgres('Company commercial intake REST', () => {
           setup.company.id,
         ),
       );
-      const result = record(
-        await command(
-          `/client-union-reviews/${stringField(review, 'reviewReference')}/confirm`,
-          {
+      return stringField(review, 'reviewReference');
+    }
+    function confirmUnion(
+      reviewReference: string,
+      headers: Record<string, string> = {},
+    ) {
+      return request(
+        `/client-union-reviews/${reviewReference}/confirm`,
+        setup.company.id,
+        {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'content-type': 'application/json',
+            'idempotency-key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({
             canonicalClientId: client.id,
             fields: {
               displayName: client.id,
@@ -2621,20 +4321,24 @@ withPostgres('Company commercial intake REST', () => {
             companyIds: [setup.company.id, other.id],
             reviewedDifferences: true,
             reason: 'Same synthetic identity.',
-          },
-          crypto.randomUUID(),
-          setup.company.id,
-        ),
+          }),
+        },
       );
+    }
+    async function unite(): Promise<string> {
+      const response = await confirmUnion(await beginUnion());
+      expect(response.status).toBe(201);
+      const result = record(await response.json());
       return stringField(result, 'projectionReference');
     }
-    function reverse(reference: string) {
+    function reverse(reference: string, headers: Record<string, string> = {}) {
       return request(
         `/client-union-operations/${reference}/reversal`,
         setup.company.id,
         {
           method: 'POST',
           headers: {
+            ...headers,
             'content-type': 'application/json',
             'idempotency-key': crypto.randomUUID(),
           },
@@ -2645,7 +4349,16 @@ withPostgres('Company commercial intake REST', () => {
         },
       );
     }
-    return { ...setup, client, other, second, unite, reverse };
+    return {
+      ...setup,
+      client,
+      other,
+      second,
+      beginUnion,
+      confirmUnion,
+      unite,
+      reverse,
+    };
   }
 });
 
@@ -2708,7 +4421,11 @@ function listedResponsibleActor(value: unknown, requestId: string): unknown {
 
 function listPage(value: unknown): {
   items: Array<
-    Record<string, unknown> & { id: string; clientDossierId?: string }
+    Record<string, unknown> & {
+      id: string;
+      clientDossierId?: string;
+      clientDisplayName?: string;
+    }
   >;
   nextCursor?: string;
 } {
@@ -2722,10 +4439,15 @@ function listPage(value: unknown): {
         row.clientDossierId === undefined
           ? undefined
           : stringField(row, 'clientDossierId');
+      const clientDisplayName =
+        row.clientDisplayName === undefined
+          ? undefined
+          : stringField(row, 'clientDisplayName');
       return {
         ...row,
         id: stringField(row, 'id'),
         ...(clientDossierId === undefined ? {} : { clientDossierId }),
+        ...(clientDisplayName === undefined ? {} : { clientDisplayName }),
       };
     }),
     ...(page.nextCursor === undefined

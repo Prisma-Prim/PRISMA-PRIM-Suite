@@ -207,6 +207,7 @@ test('opens the Request of a commercial event from the Classic Activity Log with
             actorContextFixture.workspaceMembershipId,
           capturedAt: '2026-09-24T10:05:00.000Z',
           version: 1,
+          clientAssociationStatus: 'absent',
           initialOpportunity: {
             id: '00000000-0000-4000-8000-000000000360',
             title: 'Audit readiness',
