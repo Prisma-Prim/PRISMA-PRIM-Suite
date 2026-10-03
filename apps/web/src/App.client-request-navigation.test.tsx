@@ -96,7 +96,9 @@ function requestRow(id: string, subject: string, clientDossierId?: string) {
     id,
     subject,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    ...(clientDossierId === undefined ? {} : { clientDossierId }),
+    ...(clientDossierId === undefined
+      ? {}
+      : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
@@ -124,6 +126,7 @@ function requestDetail(
     capturedByWorkspaceMembershipId: membershipId,
     capturedAt: '2026-09-20T10:00:00.000Z',
     version: 1,
+    clientAssociationStatus: clientReference ? 'visible' : 'absent',
     ...(clientReference
       ? { clientReference: { ...clientReference, displayName: sharedName } }
       : {}),

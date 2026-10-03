@@ -62,9 +62,15 @@ export const COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS = [
   ...COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS,
   'commercial.opportunity.next_action.update',
 ] as const;
+// Captured v3 adds the one-time post-capture Client association. Existing v1
+// and v2 assignments keep their captured permissions.
+export const COMPANY_COMMERCIAL_INTAKE_V3_PERMISSIONS = [
+  ...COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS,
+  'commercial.request.client.associate',
+] as const;
 export type CompanyCommercialIntakePermission =
-  (typeof COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS)[number];
-export type CompanyCommercialIntakePermissionSetVersion = 'v1' | 'v2';
+  (typeof COMPANY_COMMERCIAL_INTAKE_V3_PERMISSIONS)[number];
+export type CompanyCommercialIntakePermissionSetVersion = 'v1' | 'v2' | 'v3';
 export function commercialIntakePermissionsFor(
   version: unknown,
 ): readonly CompanyCommercialIntakePermission[] {
@@ -73,6 +79,8 @@ export function commercialIntakePermissionsFor(
       return COMPANY_COMMERCIAL_INTAKE_V1_PERMISSIONS;
     case 'v2':
       return COMPANY_COMMERCIAL_INTAKE_V2_PERMISSIONS;
+    case 'v3':
+      return COMPANY_COMMERCIAL_INTAKE_V3_PERMISSIONS;
     default:
       return [];
   }
@@ -80,11 +88,12 @@ export function commercialIntakePermissionsFor(
 export function isCommercialIntakePermissionSetVersion(
   version: unknown,
 ): version is CompanyCommercialIntakePermissionSetVersion {
-  return version === 'v1' || version === 'v2';
+  return version === 'v1' || version === 'v2' || version === 'v3';
 }
 const COMPANY_COMMERCIAL_INTAKE_PERMISSION_SET_VERSIONS = [
   'v1',
   'v2',
+  'v3',
 ] as const satisfies readonly CompanyCommercialIntakePermissionSetVersion[];
 /**
  * Every captured Commercial Intake version whose permission set includes all

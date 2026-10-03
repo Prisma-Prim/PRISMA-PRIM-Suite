@@ -66,6 +66,23 @@ function actorWith(
 }
 const manager = actorWith({ assignmentId: 'manager-assignment-1' });
 const reader = actorWith(null);
+const associationManager: ActorContext = {
+  ...manager,
+  activeCompany: {
+    id: 'company-1',
+    displayName: 'PRISMA-PRIM',
+    clientPermissions: ['client.read'],
+    commercialIntakePermissions: [
+      ...intakePermissions,
+      'commercial.request.client.associate',
+    ],
+    commercialIntakePermissionAssignmentId: 'intake-assignment',
+    commercialIntakePermissionSetVersion: 'v3',
+    opportunityManagerPermissions: ['commercial.opportunity.assign'],
+    opportunityManagerPermissionAssignmentId: 'manager-assignment-1',
+    opportunityManagerPermissionSetVersion: 'v1',
+  },
+};
 
 function requestDetail(
   id: string,
@@ -83,6 +100,7 @@ function requestDetail(
     capturedByWorkspaceMembershipId: ada.workspaceMembershipId,
     capturedAt: '2026-09-26T08:00:00.000Z',
     version: 1,
+    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `Prepare ${id}`,
@@ -241,6 +259,265 @@ function keyOf(init: RequestInit | undefined): string | undefined {
 
 describe('CommercialIntakeWorkspace responsible actor', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it.each<'next-action' | 'responsible'>(['next-action', 'responsible'])(
+    'protects a saving and uncertain %s command from Client association, then preserves its confirmed result',
+    async (editor) => {
+      const save = deferred();
+      const nextActionPath =
+        'POST /api/commercial-intake/opportunities/opportunity-request-1/next-action';
+      const associationPath =
+        'POST /api/commercial-intake/requests/request-1/client-association';
+      const client = {
+        id: 'client-1',
+        displayName: 'Existing Client',
+        relatedToActiveCompany: true,
+      };
+      const updated =
+        editor === 'responsible'
+          ? requestDetail('request-1', ion, 2)
+          : {
+              ...requestDetail('request-1', ada, 2),
+              initialOpportunity: {
+                ...requestDetail('request-1', ada, 2).initialOpportunity,
+                nextAction: 'Send the confirmed documents',
+              },
+            };
+      const receipt =
+        editor === 'responsible'
+          ? changeResult(ion, 2).receipt
+          : {
+              opportunityId: 'opportunity-request-1',
+              nextAction: 'Send the confirmed documents',
+              version: 2,
+              outcome: 'updated',
+            };
+      const associated = {
+        ...updated,
+        version: 2,
+        clientAssociationStatus: 'visible',
+        clientReference: {
+          originalClientId: client.id,
+          currentClientId: client.id,
+          displayName: client.displayName,
+        },
+      };
+      const commandPath =
+        editor === 'responsible' ? changePath : nextActionPath;
+      const transport = stubRoutes({
+        [listPath]: [
+          reply(listPage()),
+          reply(listPage(editor === 'responsible' ? ion : ada)),
+        ],
+        [detailPath('request-1')]: [reply(requestDetail('request-1'))],
+        [membersPath]: [reply({ members: [adaCandidate, ionCandidate] })],
+        ['GET /api/clients/search?query=Existing']: [reply([client])],
+        [commandPath]: [save.responder, reply({ receipt, request: updated })],
+        [associationPath]: [
+          reply({
+            receipt: {
+              requestId: 'request-1',
+              version: 2,
+              outcome: 'associated',
+            },
+            request: associated,
+          }),
+        ],
+      });
+      renderWorkspace(associationManager);
+      await openRequest();
+      fireEvent.change(screen.getByLabelText(copy.clientSearch), {
+        target: { value: 'Existing' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+      changeValue(
+        await screen.findByRole('combobox', { name: copy.existingClient }),
+        client.id,
+      );
+      if (editor === 'responsible') {
+        fireEvent.click(
+          screen.getByRole('button', { name: copy.changeResponsible }),
+        );
+        changeValue(
+          await screen.findByRole('combobox', { name: copy.responsibleChoice }),
+          ion.workspaceMembershipId,
+        );
+      } else {
+        fireEvent.click(
+          screen.getByRole('button', { name: copy.editNextAction }),
+        );
+        fireEvent.change(screen.getByLabelText(copy.nextAction), {
+          target: { value: 'Send the confirmed documents' },
+        });
+      }
+      expect(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      ).toBeDisabled();
+      expect(screen.getByLabelText(copy.clientSearch)).toBeDisabled();
+      expect(
+        screen.getByRole('combobox', { name: copy.existingClient }),
+      ).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name:
+            editor === 'responsible'
+              ? copy.saveResponsible
+              : copy.saveNextAction,
+        }),
+      );
+      expect(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      ).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      expect(transport.calls(associationPath)).toHaveLength(0);
+      await save.settle({}, 503);
+      expect(
+        await screen.findByText(
+          editor === 'responsible'
+            ? copy.responsibleUncertain
+            : copy.nextActionUncertain,
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      ).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      expect(transport.calls(associationPath)).toHaveLength(0);
+      fireEvent.click(
+        screen.getByRole('button', {
+          name:
+            editor === 'responsible'
+              ? copy.retryResponsible
+              : copy.retryNextAction,
+        }),
+      );
+      expect(
+        await screen.findByText(
+          editor === 'responsible'
+            ? copy.responsibleChanged
+            : copy.nextActionSaved,
+        ),
+      ).toBeVisible();
+      const [first, retried] = transport.calls(commandPath);
+      expect(transport.calls(commandPath)).toHaveLength(2);
+      expect(keyOf(first?.[1])).toEqual(expect.any(String));
+      expect(first?.[1]?.body).toEqual(retried?.[1]?.body);
+      expect(keyOf(first?.[1])).toEqual(keyOf(retried?.[1]));
+      expect(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      ).toBeEnabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      expect(
+        await screen.findByText(copy.clientAssociationSuccess),
+      ).toBeVisible();
+      expect(screen.getByText(`${copy.opportunityVersion}: 2`)).toBeVisible();
+      expect(
+        screen.getByText(
+          editor === 'responsible'
+            ? `${copy.responsible}: ${ion.displayName}`
+            : `${copy.nextAction}: Send the confirmed documents`,
+        ),
+      ).toBeVisible();
+      expect(screen.getByText(client.displayName)).toBeVisible();
+      expect(transport.calls(associationPath)).toHaveLength(1);
+      expect(transport.unexpected).toEqual([]);
+    },
+  );
+
+  it('protects a saving and uncertain Client association from both Opportunity editors and keeps its exact retry', async () => {
+    const save = deferred();
+    const associationPath =
+      'POST /api/commercial-intake/requests/request-1/client-association';
+    const client = {
+      id: 'client-1',
+      displayName: 'Existing Client',
+      relatedToActiveCompany: true,
+    };
+    const associated = {
+      ...requestDetail('request-1'),
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: client.id,
+        currentClientId: client.id,
+        displayName: client.displayName,
+      },
+    };
+    const transport = stubRoutes({
+      [listPath]: [reply(listPage())],
+      [detailPath('request-1')]: [reply(requestDetail('request-1'))],
+      ['GET /api/clients/search?query=Existing']: [reply([client])],
+      [associationPath]: [
+        save.responder,
+        reply({
+          receipt: {
+            requestId: 'request-1',
+            version: 2,
+            outcome: 'associated',
+          },
+          request: associated,
+        }),
+      ],
+    });
+    renderWorkspace(associationManager);
+    await openRequest();
+    fireEvent.change(screen.getByLabelText(copy.clientSearch), {
+      target: { value: 'Existing' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
+    changeValue(
+      await screen.findByRole('combobox', { name: copy.existingClient }),
+      client.id,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.confirmClientAssociation }),
+    );
+    for (const name of [copy.editNextAction, copy.changeResponsible]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name }));
+    }
+    expect(transport.calls(membersPath)).toHaveLength(0);
+    expect(screen.queryByLabelText(copy.nextAction)).not.toBeInTheDocument();
+    await save.settle({}, 503);
+    expect(
+      await screen.findByText(copy.clientAssociationUncertain),
+    ).toBeVisible();
+    for (const name of [copy.editNextAction, copy.changeResponsible]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name }));
+    }
+    expect(transport.calls(membersPath)).toHaveLength(0);
+    expect(screen.queryByLabelText(copy.nextAction)).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: copy.retryClientAssociation }),
+    );
+    expect(
+      await screen.findByText(copy.clientAssociationSuccess),
+    ).toBeVisible();
+    const [first, retried] = transport.calls(associationPath);
+    expect(transport.calls(associationPath)).toHaveLength(2);
+    expect(keyOf(first?.[1])).toEqual(expect.any(String));
+    expect(first?.[1]?.body).toBe(
+      JSON.stringify({ expectedVersion: 1, clientAccountId: client.id }),
+    );
+    expect(first?.[1]?.body).toEqual(retried?.[1]?.body);
+    expect(keyOf(first?.[1])).toEqual(keyOf(retried?.[1]));
+    expect(screen.getByText(client.displayName)).toBeVisible();
+    expect(screen.getByText(`${copy.opportunityVersion}: 1`)).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: copy.editNextAction }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: copy.changeResponsible }),
+    ).toBeEnabled();
+    expect(transport.unexpected).toEqual([]);
+  });
 
   it('offers the change only with the manager bundle, and reads no member before it is opened', async () => {
     const transport = stubRoutes({

@@ -49,6 +49,7 @@ const createdRequest = {
   capturedByWorkspaceMembershipId: 'membership-1',
   capturedAt: '2026-09-20T10:00:00.000Z',
   version: 1,
+  clientAssociationStatus: 'absent',
   initialOpportunity: {
     id: 'opportunity-1',
     title: 'Prepare quality process review',
@@ -70,6 +71,8 @@ type WorkspaceProps = {
   onCompanyContextRejected?: (companyContextId: string) => void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onOpenClientDossier?: (clientDossierId: string) => void;
+  clientIdentityRevision?: number;
 };
 
 function workspaceElement(
@@ -85,6 +88,8 @@ function workspaceElement(
       onCompanyContextRejected={props.onCompanyContextRejected ?? vi.fn()}
       onWorkspaceAccessRejected={props.onWorkspaceAccessRejected}
       onActorRevalidated={props.onActorRevalidated}
+      onOpenClientDossier={props.onOpenClientDossier}
+      clientIdentityRevision={props.clientIdentityRevision}
     />
   );
 }
@@ -1021,6 +1026,7 @@ describe('CommercialIntakeWorkspace', () => {
         .mockResolvedValueOnce(
           Response.json({
             ...createdRequest,
+            clientAssociationStatus: 'visible',
             clientReference: {
               originalClientId: 'managed-client',
               displayName: 'Managed Client',
@@ -1064,6 +1070,7 @@ describe('CommercialIntakeWorkspace', () => {
         .mockResolvedValueOnce(
           Response.json({
             ...createdRequest,
+            clientAssociationStatus: 'visible',
             clientReference: {
               originalClientId: 'managed-client',
               displayName: 'Managed Client',
@@ -1710,6 +1717,149 @@ describe('CommercialIntakeWorkspace', () => {
       '/api/commercial-intake/requests/request-26',
       expect.anything(),
     );
+  });
+
+  it('associates an older loaded Request without replacing either loaded page', async () => {
+    const onOpenClientDossier = vi.fn();
+    const olderRequest = {
+      ...createdRequest,
+      id: 'request-26',
+      subject: 'Client Request 26',
+    };
+    const associatedRequest = {
+      ...olderRequest,
+      version: 2,
+      clientAssociationStatus: 'visible',
+      clientReference: {
+        originalClientId: 'client-1',
+        currentClientId: 'client-1',
+        displayName: 'Associated Client',
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({ items: newestPage, nextCursor: 'cursor-page-2' }),
+        )
+        .mockResolvedValueOnce(Response.json({ items: olderPage }))
+        .mockResolvedValueOnce(Response.json(olderRequest))
+        .mockResolvedValueOnce(
+          Response.json([
+            {
+              id: 'client-1',
+              displayName: 'Associated Client',
+              relatedToActiveCompany: true,
+            },
+          ]),
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            receipt: {
+              requestId: 'request-26',
+              version: 2,
+              outcome: 'associated',
+            },
+            request: associatedRequest,
+          }),
+        ),
+    );
+
+    render(
+      workspaceElement(
+        {
+          ...actor,
+          activeCompany: actor.activeCompany
+            ? {
+                ...actor.activeCompany,
+                commercialIntakePermissions: [
+                  ...(actor.activeCompany.commercialIntakePermissions ?? []),
+                  'commercial.request.client.associate',
+                ],
+              }
+            : undefined,
+        },
+        { onOpenClientDossier },
+      ),
+    );
+    await screen.findByRole('button', { name: requestButton(0) });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: requestButton(26) }),
+    );
+    await screen.findByRole('heading', { name: 'Associate a Client' });
+    changeValue(screen.getByLabelText('Search Clients by name'), 'Associated');
+    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+    changeValue(await screen.findByLabelText('Existing Client'), 'client-1');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm Client association' }),
+    );
+    await screen.findByText('Client associated.', {
+      selector: '[role="alert"]',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
+
+    expect(visibleRequests()).toBe(28);
+    expect(screen.getByText('Client: Associated Client')).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: commercialIntakeCopy.openClientDossier,
+      }),
+    );
+    expect(onOpenClientDossier).toHaveBeenCalledWith('client-1');
+  });
+
+  it('keeps dossier navigation on a reloaded associated list row', async () => {
+    const onOpenClientDossier = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          items: [
+            {
+              ...listItem(0),
+              clientDossierId: 'client-1',
+              clientDisplayName: 'Associated Client',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWorkspace({ onOpenClientDossier });
+    expect(await screen.findByText('Client: Associated Client')).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: commercialIntakeCopy.openClientDossier,
+      }),
+    );
+
+    expect(onOpenClientDossier).toHaveBeenCalledWith('client-1');
+  });
+
+  it('rejects a list dossier identifier without its Client-owned display name', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          items: [{ ...listItem(0), clientDossierId: 'client-1' }],
+        }),
+      ),
+    );
+
+    renderWorkspace({ onOpenClientDossier: vi.fn() });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: commercialIntakeCopy.openClientDossier,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the first page visible when an older page cannot be loaded', async () => {

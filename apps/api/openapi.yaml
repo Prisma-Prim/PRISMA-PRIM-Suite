@@ -2646,10 +2646,33 @@ components:
     ActivityLogEvent:
       oneOf:
         - $ref: '#/components/schemas/OrdinaryActivityLogEvent'
+        - $ref: '#/components/schemas/ClientRequestClientAssociatedActivityEvent'
         - $ref: '#/components/schemas/ClientUnionProjection'
         - $ref: '#/components/schemas/ProjectLifecycleChangedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationAddedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationRemovedActivityEvent'
+    ClientRequestClientAssociatedActivityEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, occurredAt, actor, target, metadata]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, const: client_request.client_associated }
+        occurredAt: { type: string, format: date-time }
+        actor:
+          $ref: '#/components/schemas/ActivityLogInternalUserReference'
+        target:
+          type: object
+          additionalProperties: false
+          required: [type, clientRequestId, companyId]
+          properties:
+            type: { type: string, const: client_request }
+            clientRequestId: { type: string, format: uuid }
+            companyId: { type: string, format: uuid }
+        metadata:
+          description: Recorded Request version metadata is omitted from the public projection.
+          type: object
+          additionalProperties: false
     DocumentRepresentationAddedActivityEvent:
       type: object
       additionalProperties: false

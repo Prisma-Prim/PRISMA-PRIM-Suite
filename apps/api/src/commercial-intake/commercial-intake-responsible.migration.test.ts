@@ -94,7 +94,7 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, 'Preserved Company', $3, $4, 'preserved-reassignment-company')`,
         [COMPANY, WORKSPACE, USER, MEMBERSHIP],
       );
-      // One active assignment per bundle and captured version on main.
+      // One active assignment per bundle and captured version before 0041.
       await query(
         `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version)
          VALUES ($1, $2, $3, 'company_context_access', NULL),
@@ -148,7 +148,19 @@ it.skipIf(!databaseUrl)(
         );
       const before = await snapshot();
 
-      await migrate(connection, { migrationsFolder: resolve('drizzle') });
+      // Prove the historical 0041 boundary before later migrations expand it.
+      await cp(
+        join('drizzle', tags[target] + '.sql'),
+        join(previous, tags[target] + '.sql'),
+      );
+      await writeFile(
+        join(previous, 'meta/_journal.json'),
+        JSON.stringify({
+          ...journal,
+          entries: journal.entries.slice(0, target + 1),
+        }),
+      );
+      await migrate(connection, { migrationsFolder: previous });
 
       // Additive only: no backfill, no row rewrite and no implicit grant.
       expect(await snapshot()).toEqual(before);
@@ -166,7 +178,7 @@ it.skipIf(!databaseUrl)(
       ).toEqual([]);
 
       // The manager bundle accepts only captured v1; every bundle and version
-      // on main stays accepted.
+      // before 0041 stays accepted.
       const insertAssignment = (bundle: string, version: string | null) =>
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
@@ -322,7 +334,35 @@ it.skipIf(!databaseUrl)(
           insertReceipt(key, outcome, expectedVersion, resultVersion),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });
 
+      // The current schema adds Intake v3 through 0045, preserving the 0041
+      // rows and its independent Opportunity Manager contract.
+      const beforeLatest = await snapshot();
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
+      expect(await snapshot()).toEqual(beforeLatest);
+      await insertAssignment('company_commercial_intake', 'v3');
+      for (const version of [null, 'v0', 'V3', 'v4'])
+        await expect(
+          insertAssignment('company_commercial_intake', version),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      for (const bundle of [
+        'company_context_access',
+        'company_director_client_access',
+        'company_project_access',
+        'company_task_manager',
+        'company_document_project_organizer',
+        'company_document_approver',
+        'company_service_catalogue',
+        'company_pricing_configuration',
+        'company_pricing_user',
+        'company_pricing_adjustment',
+        'company_offer_preparer',
+        'company_commercial_activity_reader',
+        'company_opportunity_manager',
+        'company_project_approver',
+      ])
+        await expect(insertAssignment(bundle, 'v3')).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
     } finally {
       await database.close();
       if (

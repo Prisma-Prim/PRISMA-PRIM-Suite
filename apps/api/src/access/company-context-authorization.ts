@@ -1246,38 +1246,35 @@ export type CompanyContextVisibility =
   | { kind: 'assigned-active'; companyIds: readonly string[] };
 
 export type CommercialIntakeAccessMode =
-  'read' | 'create' | 'update-next-action';
+  'read' | 'create' | 'update-next-action' | 'associate-client';
 
 // Runtime authorization evaluates the captured assignment version. Reads and
-// creates accept every captured version that carries them; the next-action
-// update exists only in captured v2, so a legacy v1 assignment fails closed.
+// creates accept every captured version that carries them. Later mutations
+// require every captured version that carries their permission.
 function commercialIntakeRequirement(mode: CommercialIntakeAccessMode): {
   required: readonly CompanyCommercialIntakePermission[];
   capturedVersions: readonly CompanyCommercialIntakePermissionSetVersion[];
 } {
+  const required = commercialIntakeRequiredPermissions(mode);
+  return { required, capturedVersions: commercialIntakeVersionsWith(required) };
+}
+
+function commercialIntakeRequiredPermissions(
+  mode: CommercialIntakeAccessMode,
+): readonly CompanyCommercialIntakePermission[] {
   switch (mode) {
     case 'read':
-      return {
-        required: ['commercial.request.read', 'commercial.opportunity.read'],
-        capturedVersions: ['v1', 'v2'],
-      };
+      return ['commercial.request.read', 'commercial.opportunity.read'];
     case 'create':
-      return {
-        required: [
-          'commercial.request.create',
-          'commercial.opportunity.create',
-        ],
-        capturedVersions: ['v1', 'v2'],
-      };
+      return ['commercial.request.create', 'commercial.opportunity.create'];
     case 'update-next-action':
-      return {
-        required: [
-          'commercial.request.read',
-          'commercial.opportunity.read',
-          'commercial.opportunity.next_action.update',
-        ],
-        capturedVersions: ['v2'],
-      };
+      return [
+        'commercial.request.read',
+        'commercial.opportunity.read',
+        'commercial.opportunity.next_action.update',
+      ];
+    case 'associate-client':
+      return ['commercial.request.read', 'commercial.request.client.associate'];
     default:
       return assertNeverMode(mode);
   }
