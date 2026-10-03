@@ -242,9 +242,12 @@ function renderWorkspace(
 }
 
 async function openRequest() {
-  fireEvent.click(
-    await screen.findByRole('button', { name: /^Solicitare audit request-1/u }),
-  );
+  const open = await screen.findByRole('button', {
+    name: /^Solicitare audit request-1/u,
+  });
+  await act(async () => {
+    fireEvent.click(open);
+  });
   return screen.findByRole('article', { name: 'Solicitare audit request-1' });
 }
 function responsibleSelect(): HTMLElement {
