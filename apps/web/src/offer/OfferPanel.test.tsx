@@ -12,6 +12,130 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it('runs all checks and shows the warning result stored on the exact version', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/quality-checks')) {
+        expect(init?.body).toBe('{}');
+        expect(new Headers(init?.headers).get('idempotency-key')).toBeTruthy();
+        return response(qualityRun());
+      }
+      return response({ offer: offerView() });
+    });
+    renderPanel(actor('company-one'));
+    expect(await screen.findByText('No Quality Check run yet.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Run Quality Checks' }));
+    expect(
+      await screen.findByText('Checks completed with warnings.'),
+    ).toBeVisible();
+    expect(screen.getByText('Recipient tax ID recorded')).toBeVisible();
+    expect(screen.getByText('WARNING')).toBeVisible();
+  });
+
+  it('keeps one identical Quality Check attempt after an uncertain response and reopens the stored result', async () => {
+    const attempts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/quality-checks')) {
+        if (!init) throw new Error('Expected command');
+        attempts.push(init);
+        return attempts.length === 1
+          ? response({}, 503)
+          : response(qualityRun());
+      }
+      return response({ offer: offerView() });
+    });
+    const rendered = renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Run Quality Checks' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Retry the same Quality Checks',
+      }),
+    );
+    expect(
+      await screen.findByText('Checks completed with warnings.'),
+    ).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]?.body).toBe(attempts[0]?.body);
+    expect(new Headers(attempts[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(attempts[0]?.headers).get('idempotency-key'),
+    );
+    rendered.unmount();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offerView(),
+          version: { ...offerView().version, latestQualityRun: qualityRun() },
+        },
+      }),
+    );
+    renderPanel(actor('company-one'));
+    expect(
+      await screen.findByText('Checks completed with warnings.'),
+    ).toBeVisible();
+  });
+
+  it('discards a late Quality Check response after authority is removed', async () => {
+    let release: ((response: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/quality-checks')
+        ? new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+        : response({ offer: offerView() }),
+    );
+    const rendered = renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Run Quality Checks' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Running Quality Checks…' }),
+    ).toBeDisabled();
+    await waitFor(() => expect(release).toBeTypeOf('function'));
+    const revoked = actor('company-one');
+    if (!revoked.activeCompany) throw new Error('Expected active Company');
+    revoked.activeCompany.offerPermissions = [];
+    rendered.rerender(
+      <OfferPanel
+        actor={revoked}
+        identity={identity}
+        opportunityId="opportunity-one"
+        currentClientId="client-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    expect(
+      await screen.findByText(
+        'Offer access is not available for this Opportunity.',
+      ),
+    ).toBeVisible();
+    release?.(response(qualityRun()));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Checks completed with warnings.'),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('shows errors without changing the version representation', async () => {
+    const run = qualityRun();
+    run.results[2] = { code: 'VALIDITY_OPEN', status: 'ERROR' };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offerView(),
+          version: { ...offerView().version, latestQualityRun: run },
+        },
+      }),
+    );
+    renderPanel(actor('company-one'));
+    expect(
+      await screen.findByText('Checks completed with errors.'),
+    ).toBeVisible();
+    expect(
+      screen.getByTitle('Illustrative Offer representation'),
+    ).toHaveAttribute('srcdoc', offerView().version.representation.html);
+  });
   it('shows loading and then the explicit empty Snapshot state', async () => {
     let release: ((value: Response) => void) | undefined;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -541,6 +665,8 @@ function offerView(company = 'Illustrative Company') {
     illustrativeReference: 1,
     revision: 1,
     version: {
+      id: 'version-one',
+      latestQualityRun: null,
       versionNumber: 1,
       pricingSnapshotId: 'snapshot-one',
       pricingSnapshot: snapshot(),
@@ -568,6 +694,27 @@ function offerView(company = 'Illustrative Company') {
           '1161a98c95f65605a37e3c82383cd044335e9be41e00ce8a8559dd553db0c865',
       },
     },
+  };
+}
+
+function qualityRun() {
+  return {
+    id: 'run-one',
+    offerVersionId: 'version-one',
+    ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+    ruleSetVersion: 1,
+    actorWorkspaceMembershipId: 'membership-one',
+    evaluatedAt: '2026-10-03T12:00:00.000Z',
+    results: [
+      { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+      { code: 'CURRENCY_UNCHANGED', status: 'PASS' },
+      { code: 'VALIDITY_OPEN', status: 'PASS' },
+      { code: 'RECIPIENT_AVAILABLE', status: 'PASS' },
+      { code: 'RECIPIENT_IDENTITY_CURRENT', status: 'PASS' },
+      { code: 'RECIPIENT_TAX_ID_RECORDED', status: 'WARNING' },
+      { code: 'PRICING_CLIENT_CONTEXT_COHERENT', status: 'PASS' },
+      { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+    ],
   };
 }
 

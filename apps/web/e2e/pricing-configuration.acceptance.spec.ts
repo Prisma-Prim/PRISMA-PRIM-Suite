@@ -1162,6 +1162,94 @@ test.describe('Pricing Snapshot and Offer journey', () => {
       ),
     });
 
+    const quality = offer.locator('.offer-quality');
+    await expect(
+      quality.getByText('No Quality Check run yet.', { exact: true }),
+    ).toBeVisible();
+    await quality.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-quality-empty-${suffix}.png`),
+      fullPage: true,
+    });
+    const qualityResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/quality-checks'),
+    );
+    const checkButton = quality.getByRole('button', {
+      name: 'Run Quality Checks',
+      exact: true,
+    });
+    await checkButton.focus();
+    await expect(checkButton).toBeFocused();
+    await page.keyboard.press('Enter');
+    const checked = await qualityResponse;
+    expect(checked.status()).toBe(201);
+    const storedRun: unknown = await checked.json();
+    expect(storedRun).toMatchObject({
+      ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+      ruleSetVersion: 1,
+      actorWorkspaceMembershipId: target.workspaceMembershipId,
+    });
+    await expect(
+      quality.getByText('Checks completed with warnings.', { exact: true }),
+    ).toBeVisible();
+    await expect(quality.locator('li')).toHaveCount(8);
+    await expect(
+      quality.locator('li').filter({ hasText: 'Recipient tax ID recorded' }),
+    ).toContainText('WARNING');
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-quality-warning-${suffix}.png`),
+      fullPage: true,
+    });
+
+    // A permitted Client correction changes only live identity. Offer's recorded
+    // copy and representation remain byte-identical; the new run records a warning.
+    const clientHeaders = {
+      ...primaryMemberHeaders,
+      'x-company-context-id': target.companyId,
+    };
+    const clientRead = await page.request.get(
+      `${apiOrigin}/api/clients/${clientId}`,
+      { headers: clientHeaders },
+    );
+    expect(clientRead.status()).toBe(200);
+    const liveClient: unknown = await clientRead.json();
+    if (
+      typeof liveClient !== 'object' ||
+      liveClient === null ||
+      !('version' in liveClient) ||
+      typeof liveClient.version !== 'number'
+    )
+      throw new Error('Expected current Client version.');
+    const corrected = await page.request.patch(
+      `${apiOrigin}/api/clients/${clientId}`,
+      {
+        headers: {
+          ...clientHeaders,
+          'idempotency-key': `quality-client-correction-${crypto.randomUUID()}`,
+        },
+        data: {
+          expectedVersion: liveClient.version,
+          displayName: `${clientDisplayName} corrected`,
+        },
+      },
+    );
+    expect(corrected.status()).toBe(200);
+    await checkButton.click();
+    await expect(
+      quality.locator('li').filter({ hasText: 'Recipient identity current' }),
+    ).toContainText('WARNING');
+    await expect(createdFrameElement).toHaveAttribute('srcdoc', createdHtml);
+    await expect(
+      createdOffer.getByText(clientDisplayName, { exact: true }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-quality-identity-warning-${suffix}.png`),
+      fullPage: true,
+    });
+
     await page.reload();
     await selectCompany(page, companySelect, companyName, narrow);
     await navigate(page, navigation, 'Client Requests', narrow);
@@ -1170,6 +1258,23 @@ test.describe('Pricing Snapshot and Offer journey', () => {
       .getByRole('button', { name: new RegExp(request.subject, 'u') })
       .click();
     const reopenedOffer = page.locator('.offer-panel .offer-summary');
+    const reopenedQuality = page.locator('.offer-panel .offer-quality');
+    await expect(
+      reopenedQuality.getByText('Checks completed with warnings.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      reopenedQuality
+        .locator('li')
+        .filter({ hasText: 'Recipient identity current' }),
+    ).toContainText('WARNING');
+    await expectNoHorizontalOverflow(page);
+    await reopenedQuality.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-quality-reopened-${suffix}.png`),
+      fullPage: true,
+    });
     await expect(
       reopenedOffer.getByText('Illustrative reference', { exact: true }),
     ).toBeVisible();
@@ -1222,9 +1327,10 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     await requests.getByRole('button', { name: 'Open Client dossier' }).click();
     await expect(page.locator('#clients')).toBeFocused();
     await expect(
-      page
-        .locator('.client-dossier-detail')
-        .getByRole('heading', { name: clientDisplayName, exact: true }),
+      page.locator('.client-dossier-detail').getByRole('heading', {
+        name: `${clientDisplayName} corrected`,
+        exact: true,
+      }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
@@ -1352,7 +1458,7 @@ async function createClient(
     },
     data: {
       displayName,
-      taxId: `SYNTHETIC-OFFER-${companyId}`,
+      taxId: null,
       address: '1 Synthetic Offer Street',
     },
   });

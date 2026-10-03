@@ -1,6 +1,7 @@
 import type { CommercialClientProjection } from '../commercial-intake/commercial-intake.types.js';
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
 import type { OfferRepresentation } from './offer-representation.js';
+import type { OfferQualityRun } from './offer-quality.js';
 
 export type OfferRecipientSelection =
   | { readonly kind: 'PRIMARY' }
@@ -42,6 +43,7 @@ export interface OfferVersionRecord {
   readonly createdByWorkspaceMembershipId: string;
   readonly createdAt: string;
   readonly representation: OfferRepresentation;
+  readonly latestQualityRun: OfferQualityRun | null;
 }
 
 export interface OfferRecord {

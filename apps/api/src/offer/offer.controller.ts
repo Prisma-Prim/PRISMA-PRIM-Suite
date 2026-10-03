@@ -42,6 +42,23 @@ export class OfferController {
   ) {
     return { offer: await this.offers.read(actorFrom(request), opportunityId) };
   }
+
+  @Post('versions/:offerVersionId/quality-checks')
+  runQualityChecks(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('offerVersionId') offerVersionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.offers.runQualityChecks({
+      actor: actorFrom(request),
+      opportunityId,
+      offerVersionId,
+      payload,
+      idempotencyKey,
+    });
+  }
 }
 
 function actorFrom(request: ActorContextRequest) {
