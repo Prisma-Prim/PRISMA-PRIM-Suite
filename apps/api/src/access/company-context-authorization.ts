@@ -46,8 +46,12 @@ import {
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
   COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_OFFER_APPROVER_BUNDLE,
   offerPreparerPermissionsFor,
-  type CompanyOfferPreparerPermission,
+  type CompanyOfferPermission,
+  COMPANY_OFFER_PREPARER_V1_PERMISSIONS,
+  COMPANY_OFFER_APPROVER_V1_PERMISSIONS,
+  offerApproverPermissionsFor,
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
@@ -741,28 +745,55 @@ export class CompanyContextAuthorization {
 
   async requireOfferAccess(
     actor: ActorContext,
-    required: readonly CompanyOfferPreparerPermission[],
+    required: readonly CompanyOfferPermission[],
     lock = false,
   ): Promise<string> {
     const company = actor.activeCompany;
     if (!company || !carriesEvery(company.offerPermissions, required))
       throw new ForbiddenException();
+    const grants: SQL[] = [];
+    if (
+      required.every((p) =>
+        COMPANY_OFFER_PREPARER_V1_PERMISSIONS.some((own) => own === p),
+      )
+    )
+      grants.push(capturedGrant(COMPANY_OFFER_PREPARER_BUNDLE));
+    if (
+      required.every((p) =>
+        COMPANY_OFFER_APPROVER_V1_PERMISSIONS.some((own) => own === p),
+      )
+    )
+      grants.push(capturedGrant(COMPANY_OFFER_APPROVER_BUNDLE));
+    if (!grants.length) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
-      capturedGrant(COMPANY_OFFER_PREPARER_BUNDLE),
+      anyCapturedGrant(grants),
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
     return company.id;
   }
 
-  /** O3's command seam; O4 adds its genuine captured approver grant here. */
   async requireOfferQualityAccess(
     actor: ActorContext,
     lock = false,
   ): Promise<string> {
-    return this.requireOfferAccess(actor, ['commercial.offer.prepare'], lock);
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (company?.offerPermissions?.includes('commercial.offer.prepare'))
+      grants.push(capturedGrant(COMPANY_OFFER_PREPARER_BUNDLE));
+    if (company?.offerPermissions?.includes('commercial.offer.approve'))
+      grants.push(capturedGrant(COMPANY_OFFER_APPROVER_BUNDLE));
+    if (!company || !grants.length) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      anyCapturedGrant(grants),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
   }
 
   // Applying an adjustment requires its own captured v1 assignment. It does
@@ -992,6 +1023,7 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
+        COMPANY_OFFER_APPROVER_BUNDLE,
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
@@ -1191,10 +1223,22 @@ export class CompanyContextAuthorization {
         row.permissionSetVersion === 'v1'
       ) {
         company.offerPermissions = [
+          ...(company.offerPermissions ?? []),
           ...offerPreparerPermissionsFor(row.permissionSetVersion),
         ];
         company.offerPermissionAssignmentId = row.assignmentId;
         company.offerPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_OFFER_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.offerPermissions = [
+          ...(company.offerPermissions ?? []),
+          ...offerApproverPermissionsFor(row.permissionSetVersion),
+        ];
+        company.offerApproverAssignmentId = row.assignmentId;
+        company.offerApproverPermissionSetVersion = 'v1';
       }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
@@ -1225,7 +1269,8 @@ function capturedGrant(
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
-    | typeof COMPANY_OFFER_PREPARER_BUNDLE,
+    | typeof COMPANY_OFFER_PREPARER_BUNDLE
+    | typeof COMPANY_OFFER_APPROVER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,

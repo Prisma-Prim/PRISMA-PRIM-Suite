@@ -36,6 +36,7 @@ type AssignmentBundle =
   | 'pricing-configuration'
   | 'pricing-user'
   | 'offer-preparer'
+  | 'offer-approver'
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
   | 'opportunity-manager'
@@ -56,6 +57,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'pricing-user': '/company-pricing-user-assignments',
   'offer-preparer': '/company-offer-preparer-assignments',
+  'offer-approver': '/company-offer-approver-assignments',
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
@@ -476,6 +478,7 @@ export function CompanyContextAccess({
               },
               { value: 'pricing-user', label: copy.pricingUserBundle },
               { value: 'offer-preparer', label: copy.offerPreparerBundle },
+              { value: 'offer-approver', label: copy.offerApproverBundle },
               {
                 value: 'pricing-adjustment',
                 label: copy.pricingAdjustmentBundle,
@@ -514,6 +517,7 @@ export function CompanyContextAccess({
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
+                value === 'offer-approver' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
                 value === 'opportunity-manager' ||
@@ -545,6 +549,9 @@ export function CompanyContextAccess({
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
           {bundle === 'offer-preparer' && (
             <p>{copy.offerPreparerPrerequisites}</p>
+          )}
+          {bundle === 'offer-approver' && (
+            <p>{copy.offerApproverPrerequisites}</p>
           )}
           {bundle === 'opportunity-manager' && (
             <p>{copy.opportunityManagerPrerequisites}</p>
@@ -633,6 +640,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-configuration': copy.pricingConfigurationBundle,
     'pricing-user': copy.pricingUserBundle,
     'offer-preparer': copy.offerPreparerBundle,
+    'offer-approver': copy.offerApproverBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,

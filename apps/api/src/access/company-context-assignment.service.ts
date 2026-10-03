@@ -55,7 +55,9 @@ import {
   COMPANY_PRICING_USER_BUNDLE,
   COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_OFFER_APPROVER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+  COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
@@ -96,6 +98,7 @@ type BundleDefinition = {
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
     | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
     | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
+    | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
@@ -175,6 +178,11 @@ const OFFER_PREPARER_BUNDLE: BundleDefinition = {
   label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const OFFER_APPROVER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OFFER_APPROVER_BUNDLE,
+  label: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   label: COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
@@ -209,6 +217,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
   COMPANY_PRICING_USER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_OFFER_APPROVER_BUNDLE,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
@@ -522,6 +531,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       OFFER_PREPARER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantOfferApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OFFER_APPROVER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeOfferApprover(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OFFER_APPROVER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1166,6 +1205,10 @@ function assignmentAction(
       return granted
         ? 'company_offer_preparer_assignment.granted'
         : 'company_offer_preparer_assignment.revoked';
+    case COMPANY_OFFER_APPROVER_BUNDLE:
+      return granted
+        ? 'company_offer_approver_assignment.granted'
+        : 'company_offer_approver_assignment.revoked';
     case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
       return granted
         ? 'company_pricing_adjustment_assignment.granted'
@@ -1329,6 +1372,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_OFFER_APPROVER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Offer Approver version.');
+      return {
+        ...base,
+        bundle: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_PRICING_ADJUSTMENT_BUNDLE:

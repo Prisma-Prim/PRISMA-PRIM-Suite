@@ -198,7 +198,7 @@ it.skipIf(!databaseUrl)(
               table === 'offer_versions'
                 ? " - ARRAY['template_code', 'template_version']::text[]"
                 : table === 'offer_commands'
-                  ? " - ARRAY['kind', 'result_quality_run_id']::text[]"
+                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id']::text[]"
                   : '';
             return (
               await query(
@@ -215,24 +215,32 @@ it.skipIf(!databaseUrl)(
       expect(
         (
           await query(
-            `SELECT kind, result_quality_run_id AS "resultQualityRunId"
+            `SELECT kind, result_quality_run_id AS "resultQualityRunId",
+                    result_decision_id AS "resultDecisionId"
                FROM offer_commands WHERE id = $1`,
             [COMMAND],
           )
         ).rows,
-      ).toEqual([{ kind: 'CREATE_OFFER', resultQualityRunId: null }]);
+      ).toEqual([
+        {
+          kind: 'CREATE_OFFER',
+          resultQualityRunId: null,
+          resultDecisionId: null,
+        },
+      ]);
       expect(
         (
           await query(
             `SELECT column_name AS "columnName", column_default AS "columnDefault"
                FROM information_schema.columns
               WHERE table_schema = 'public' AND table_name = 'offer_commands'
-                AND column_name IN ('kind', 'result_quality_run_id')
+                AND column_name IN ('kind', 'result_quality_run_id', 'result_decision_id')
               ORDER BY column_name`,
           )
         ).rows,
       ).toEqual([
         { columnName: 'kind', columnDefault: "'CREATE_OFFER'::text" },
+        { columnName: 'result_decision_id', columnDefault: null },
         { columnName: 'result_quality_run_id', columnDefault: null },
       ]);
       expect(

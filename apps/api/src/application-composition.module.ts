@@ -67,6 +67,7 @@ import { CompanyPricingUserAssignmentController } from './access/company-pricing
 import { CompanyPricingAdjustmentAssignmentController } from './access/company-pricing-adjustment-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 import { CompanyOfferPreparerAssignmentController } from './access/company-offer-preparer-assignment.controller.js';
+import { CompanyOfferApproverAssignmentController } from './access/company-offer-approver-assignment.controller.js';
 import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
 import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
@@ -129,6 +130,7 @@ import { OfferModule } from './offer/offer.module.js';
     CompanyPricingAdjustmentAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
     CompanyOfferPreparerAssignmentController,
+    CompanyOfferApproverAssignmentController,
     CompanyOpportunityManagerAssignmentController,
     OperationalHomeController,
     OfferController,

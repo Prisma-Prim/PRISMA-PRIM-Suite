@@ -1,4 +1,56 @@
 import { BadRequestException } from '@nestjs/common';
+import { OFFER_QUALITY_CODES, type OfferQualityCode } from './offer-quality.js';
+
+export type OfferDecisionCommand =
+  | {
+      kind: 'APPROVE';
+      expectedOfferRevision: number;
+      acknowledgedWarningCodes: OfferQualityCode[];
+    }
+  | { kind: 'REJECT'; expectedOfferRevision: number; reason: string };
+
+export function readOfferWarningCodes(value: unknown): OfferQualityCode[] {
+  if (!Array.isArray(value)) throw invalid('acknowledgedWarningCodes');
+  const result: OfferQualityCode[] = [];
+  for (const item of value) {
+    const code = OFFER_QUALITY_CODES.find((code) => code === item);
+    if (!code || result.includes(code))
+      throw invalid('acknowledgedWarningCodes');
+    result.push(code);
+  }
+  return result;
+}
+
+export function readOfferDecisionCommand(
+  value: unknown,
+  kind: 'APPROVE' | 'REJECT',
+): OfferDecisionCommand {
+  const input = record(value, 'body');
+  const expectedOfferRevision = input.expectedOfferRevision;
+  if (
+    typeof expectedOfferRevision !== 'number' ||
+    !Number.isSafeInteger(expectedOfferRevision) ||
+    expectedOfferRevision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  if (kind === 'APPROVE')
+    return {
+      kind,
+      expectedOfferRevision,
+      acknowledgedWarningCodes: readOfferWarningCodes(
+        input.acknowledgedWarningCodes,
+      ),
+    };
+  const reason = input.reason;
+  if (
+    typeof reason !== 'string' ||
+    reason.trim().length === 0 ||
+    reason.length > 500 ||
+    reason.includes('\0')
+  )
+    throw invalid('reason');
+  return { kind, expectedOfferRevision, reason };
+}
 import type {
   CreateOfferCommand,
   OfferRecipientSelection,

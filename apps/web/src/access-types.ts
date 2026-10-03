@@ -62,11 +62,15 @@ export interface ActorContext {
     offerPermissions?: Array<
       | 'commercial.offer.read'
       | 'commercial.offer.prepare'
+      | 'commercial.offer.approve'
+      | 'commercial.offer.response.record'
       | 'commercial.offer.transmission.record'
       | 'commercial.pricing.snapshot.read'
     >;
     offerPermissionAssignmentId?: string;
     offerPermissionSetVersion?: 'v1';
+    offerApproverAssignmentId?: string;
+    offerApproverPermissionSetVersion?: 'v1';
     pricingAdjustmentPermissions?: Array<'commercial.pricing.adjustment.apply'>;
     pricingAdjustmentPermissionAssignmentId?: string;
     pricingAdjustmentPermissionSetVersion?: 'v1';

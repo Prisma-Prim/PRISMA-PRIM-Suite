@@ -30,6 +30,7 @@ export function OfferQualityPanel({
   initialRun,
   mayRun,
   reject,
+  onRun,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -37,6 +38,7 @@ export function OfferQualityPanel({
   offerVersionId: string;
   initialRun: OfferQualityRunView | null;
   mayRun: boolean;
+  onRun?: (run: OfferQualityRunView) => void;
   reject: (
     result: ApiResult<unknown>,
     signal: AbortSignal,
@@ -47,6 +49,7 @@ export function OfferQualityPanel({
   const pending = useRef<AbortController | undefined>(undefined);
   const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => setRun(initialRun), [initialRun]);
   async function execute() {
     if (!mayRun || state === 'running') return;
     const command = attempt.current ?? { body: '{}', key: crypto.randomUUID() };
@@ -79,7 +82,9 @@ export function OfferQualityPanel({
         setRun(null);
         setState('denied');
       } else if (result.status === 'ok') {
-        setRun(readOfferQualityRun(result.value, offerVersionId));
+        const recorded = readOfferQualityRun(result.value, offerVersionId);
+        setRun(recorded);
+        onRun?.(recorded);
         attempt.current = undefined;
         setState('idle');
       } else if (result.status === 'notFound') {

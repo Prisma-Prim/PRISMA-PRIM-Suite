@@ -330,6 +330,13 @@
       "when": 1791021719504,
       "tag": "0046_offer_quality_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791030972781,
+      "tag": "0047_offer_approval",
+      "breakpoints": true
     }
   ]
 }

@@ -64,3 +64,41 @@ export const offerQualityCopy = {
   actor: 'Checking membership',
   ruleSet: 'Rule set',
 } as const;
+
+export const offerDecisionCopy = {
+  title: 'Internal decision',
+  approve: 'Approve this version',
+  reject: 'Reject this version',
+  reason: 'Rejection reason',
+  acknowledge: 'Acknowledge current warnings',
+  explanation:
+    'Approval checks this exact version again now. Each current warning must be acknowledged. The illustrative representation stays unchanged.',
+  running: 'Recording decision…',
+  retry: 'Retry the same decision',
+  uncertain:
+    'The outcome is uncertain. Retry sends the exact same decision, values and key.',
+  invalid:
+    'Enter a rejection reason of 1–500 characters, or check the warning acknowledgements.',
+  denied: 'Decision access is no longer available.',
+  unavailable: 'The Offer Version is no longer available. Reload the Request.',
+  stale: 'The Offer changed. Reload the Request before deciding.',
+  superseded: 'This version has been superseded. Reload the Request.',
+  alreadyDecided: 'This version already has a decision. Reload the Request.',
+  conflict: 'This retry no longer matches. Reload the Request.',
+  qualityErrors:
+    'Current Quality Check errors prevent approval. Run Quality Checks to review them.',
+  warningsChanged:
+    'Acknowledge exactly the current warnings. Run Quality Checks to refresh them.',
+  approved: 'Version approved.',
+  rejected: 'Version rejected.',
+  actor: 'Deciding membership',
+  decidedAt: 'Decided at',
+  decisionRun: 'Approval Quality Check run',
+  approvedChecksum: 'Approved representation checksum',
+  acknowledgedWarnings: 'Acknowledged warnings',
+  noWarnings: 'No warnings',
+  approvedState: 'Approved · not transmitted · no Client response',
+  rejectedState: 'Rejected · not transmitted · no Client response',
+  approvedViewer: 'Approved internally',
+  rejectedViewer: 'Rejected internally',
+} as const;

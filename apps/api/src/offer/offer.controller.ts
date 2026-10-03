@@ -59,6 +59,42 @@ export class OfferController {
       idempotencyKey,
     });
   }
+
+  @Post('versions/:offerVersionId/approve')
+  approve(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('offerVersionId') offerVersionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.offers.decide({
+      actor: actorFrom(request),
+      opportunityId,
+      offerVersionId,
+      payload,
+      idempotencyKey,
+      kind: 'APPROVE',
+    });
+  }
+
+  @Post('versions/:offerVersionId/reject')
+  reject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('offerVersionId') offerVersionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.offers.decide({
+      actor: actorFrom(request),
+      opportunityId,
+      offerVersionId,
+      payload,
+      idempotencyKey,
+      kind: 'REJECT',
+    });
+  }
 }
 
 function actorFrom(request: ActorContextRequest) {

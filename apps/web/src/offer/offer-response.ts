@@ -8,7 +8,7 @@ export type OfferSnapshotSummary = {
 export type OfferView = {
   id: string;
   illustrativeReference: number;
-  revision: 1;
+  revision: number;
   version: {
     id: string;
     latestQualityRun: OfferQualityRunView | null;
@@ -26,7 +26,8 @@ export type OfferView = {
     validUntil: string;
     scopeNote: string | null;
     commercialConditions: string | null;
-    decisionState: 'PENDING';
+    decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
+    decision: OfferDecisionView | null;
     transmissionState: 'NOT_TRANSMITTED';
     clientResponseState: 'NONE';
     provenance: 'ILLUSTRATIVE';
@@ -52,7 +53,7 @@ export function readOffer(value: unknown): OfferView {
   if (
     typeof root.id !== 'string' ||
     !positiveInteger(root.illustrativeReference) ||
-    root.revision !== 1 ||
+    !positiveInteger(root.revision) ||
     version.versionNumber !== 1 ||
     typeof version.id !== 'string' ||
     typeof version.pricingSnapshotId !== 'string' ||
@@ -61,17 +62,35 @@ export function readOffer(value: unknown): OfferView {
     typeof version.issuingCompanyLabel !== 'string' ||
     !positiveInteger(version.validityDays) ||
     typeof version.validUntil !== 'string' ||
-    version.decisionState !== 'PENDING' ||
+    (version.decisionState !== 'PENDING' &&
+      version.decisionState !== 'APPROVED' &&
+      version.decisionState !== 'REJECTED') ||
     version.transmissionState !== 'NOT_TRANSMITTED' ||
     version.clientResponseState !== 'NONE' ||
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true
   )
     invalid();
+  const decision =
+    version.decision === null ||
+    (version.decision === undefined && version.decisionState === 'PENDING')
+      ? null
+      : readOfferDecision(version.decision, version.id);
+  if (
+    version.decisionState !== (decision?.state ?? 'PENDING') ||
+    (decision && decision.offerRevision > root.revision)
+  )
+    invalid();
+  const representation = readRepresentation(version.representation);
+  if (
+    decision?.state === 'APPROVED' &&
+    decision.representationSha256 !== representation.sha256
+  )
+    invalid();
   return {
     id: root.id,
     illustrativeReference: root.illustrativeReference,
-    revision: 1,
+    revision: root.revision,
     version: {
       id: version.id,
       latestQualityRun:
@@ -92,13 +111,92 @@ export function readOffer(value: unknown): OfferView {
       validUntil: version.validUntil,
       scopeNote: optionalText(version.scopeNote),
       commercialConditions: optionalText(version.commercialConditions),
-      decisionState: 'PENDING',
+      decisionState: version.decisionState,
+      decision,
       transmissionState: 'NOT_TRANSMITTED',
       clientResponseState: 'NONE',
       provenance: 'ILLUSTRATIVE',
       provisional: true,
-      representation: readRepresentation(version.representation),
+      representation,
     },
+  };
+}
+
+export type OfferDecisionView = {
+  id: string;
+  offerVersionId: string;
+  offerRevision: number;
+  actorWorkspaceMembershipId: string;
+  decidedAt: string;
+} & (
+  | {
+      state: 'APPROVED';
+      qualityRun: OfferQualityRunView;
+      acknowledgedWarningCodes: Array<keyof typeof offerQualityLabels>;
+      representationSha256: string;
+    }
+  | { state: 'REJECTED'; reason: string }
+);
+
+export function readOfferDecision(
+  value: unknown,
+  offerVersionId: string,
+): OfferDecisionView {
+  const row = record(value);
+  if (
+    typeof row.id !== 'string' ||
+    row.offerVersionId !== offerVersionId ||
+    !positiveInteger(row.offerRevision) ||
+    row.offerRevision < 2 ||
+    typeof row.actorWorkspaceMembershipId !== 'string' ||
+    typeof row.decidedAt !== 'string'
+  )
+    invalid();
+  const base = {
+    id: row.id,
+    offerVersionId,
+    offerRevision: row.offerRevision,
+    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+    decidedAt: row.decidedAt,
+  };
+  if (
+    row.state === 'REJECTED' &&
+    typeof row.reason === 'string' &&
+    row.reason.trim().length > 0 &&
+    row.reason.length <= 500
+  )
+    return { ...base, state: 'REJECTED', reason: row.reason };
+  if (
+    row.state !== 'APPROVED' ||
+    !Array.isArray(row.acknowledgedWarningCodes) ||
+    typeof row.representationSha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(row.representationSha256)
+  )
+    invalid();
+  const acknowledgedWarningCodes: Array<keyof typeof offerQualityLabels> = [];
+  for (const item of row.acknowledgedWarningCodes) {
+    if (!isQualityCode(item) || acknowledgedWarningCodes.includes(item))
+      invalid();
+    acknowledgedWarningCodes.push(item);
+  }
+  const qualityRun = readOfferQualityRun(row.qualityRun, offerVersionId);
+  const warnings = qualityRun.results
+    .filter((result) => result.status === 'WARNING')
+    .map((result) => result.code);
+  if (
+    qualityRun.actorWorkspaceMembershipId !== row.actorWorkspaceMembershipId ||
+    qualityRun.evaluatedAt !== row.decidedAt ||
+    qualityRun.results.some((result) => result.status === 'ERROR') ||
+    warnings.length !== acknowledgedWarningCodes.length ||
+    !warnings.every((code) => acknowledgedWarningCodes.includes(code))
+  )
+    invalid();
+  return {
+    ...base,
+    state: 'APPROVED',
+    qualityRun,
+    acknowledgedWarningCodes,
+    representationSha256: row.representationSha256,
   };
 }
 

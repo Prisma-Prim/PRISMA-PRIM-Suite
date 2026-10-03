@@ -26,6 +26,9 @@ export const companyContextAccessCopy = {
   pricingUserPrerequisites:
     'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
   offerPreparerBundle: 'Company Offer Preparer',
+  offerApproverBundle: 'Company Offer Approver',
+  offerApproverPrerequisites:
+    'Company Offer Approver v1 grants Offer read and decisions only. Company context and Opportunity read must be authorized separately. It grants no preparation or Client read.',
   offerPreparerPrerequisites:
     'Company Offer Preparer v1 grants Offer read and preparation plus Pricing Snapshot read. Company context, Commercial Intake read and Client read must already be authorized separately.',
   opportunityManagerBundle: 'Company Opportunity Manager',
@@ -99,6 +102,10 @@ export const companyContextAccessCopy = {
     'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
     'company_offer_preparer_assignment.granted':
       'granted Company Offer Preparer',
+    'company_offer_approver_assignment.granted':
+      'granted Company Offer Approver',
+    'company_offer_approver_assignment.revoked':
+      'revoked Company Offer Approver',
     'company_offer_preparer_assignment.revoked':
       'revoked Company Offer Preparer',
     'company_opportunity_manager_assignment.granted':
