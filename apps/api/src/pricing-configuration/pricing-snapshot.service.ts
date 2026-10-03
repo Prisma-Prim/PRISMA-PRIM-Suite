@@ -21,6 +21,7 @@ import {
   pricingSnapshotLines,
   pricingSnapshots,
   tariffVersions,
+  offerVersions,
 } from '../database/schema/index.js';
 import { calculatePricingLines } from './pricing-calculation.js';
 import { applyPricingAdjustments } from './pricing-adjustment.js';
@@ -67,6 +68,42 @@ interface SelectedLine {
 
 @Injectable()
 export class PricingSnapshotService {
+  /** Offer read exposes only the Snapshot referenced by this exact version. */
+  async resolveOfferVersionSnapshot(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    offerVersionId: string;
+  }): Promise<PricingSnapshotRecord> {
+    const companyId = await this.authorization.requireOfferAccess(
+      input.actor,
+      ['commercial.offer.read'],
+      true,
+    );
+    if (companyId !== input.companyId) throw new NotFoundException();
+    const [row] = await this.databaseContext.connection
+      .select({ snapshot: pricingSnapshots })
+      .from(offerVersions)
+      .innerJoin(
+        pricingSnapshots,
+        and(
+          eq(pricingSnapshots.workspaceId, offerVersions.workspaceId),
+          eq(pricingSnapshots.companyId, offerVersions.companyId),
+          eq(pricingSnapshots.opportunityId, offerVersions.opportunityId),
+          eq(pricingSnapshots.id, offerVersions.pricingSnapshotId),
+        ),
+      )
+      .where(
+        and(
+          eq(offerVersions.workspaceId, input.actor.workspaceId),
+          eq(offerVersions.companyId, companyId),
+          eq(offerVersions.opportunityId, input.opportunityId),
+          eq(offerVersions.id, input.offerVersionId),
+        ),
+      );
+    if (!row) throw new NotFoundException();
+    return this.snapshotView(input.actor, row.snapshot);
+  }
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,

@@ -71,6 +71,42 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 
 @Injectable()
 export class AccountabilityService {
+  async recordOfferDecision(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    occurredAt: Date;
+    state: 'APPROVED' | 'REJECTED';
+    acknowledgedWarningCodes?: readonly string[];
+  }) {
+    await this.databaseContext.connection.insert(offerEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      offerId: input.offerId,
+      offerVersionId: input.offerVersionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      action:
+        input.state === 'APPROVED'
+          ? 'offer_version.approved'
+          : 'offer_version.rejected',
+      metadata: {
+        offerId: input.offerId,
+        offerVersionId: input.offerVersionId,
+        versionNumber: 1,
+        outcome: input.state,
+        provenance: 'ILLUSTRATIVE',
+        ...(input.state === 'APPROVED'
+          ? {
+              ruleSetVersion: 1,
+              acknowledgedWarningCodes: input.acknowledgedWarningCodes,
+            }
+          : {}),
+      },
+    });
+  }
   constructor(private readonly databaseContext: DatabaseContext) {}
 
   async recordOfferCreated(input: {
@@ -1921,7 +1957,9 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
     case 'company_offer_preparer_assignment.granted':
+    case 'company_offer_approver_assignment.granted':
     case 'company_offer_preparer_assignment.revoked':
+    case 'company_offer_approver_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':
     case 'company_pricing_adjustment_assignment.revoked':
     case 'company_commercial_activity_reader_assignment.granted':

@@ -11,6 +11,7 @@ import {
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
   offerPreparerPermissionsFor,
+  offerApproverPermissionsFor,
   pricingAdjustmentPermissionsFor,
   pricingConfigurationPermissionsFor,
   projectApproverPermissionsFor,
@@ -40,6 +41,23 @@ describe('Company Offer Preparer permission sets', () => {
   it.each([null, undefined, '', 'V1', 'v2', 1])(
     'fails closed for an unsupported version: %s',
     (version) => expect(offerPreparerPermissionsFor(version)).toEqual([]),
+  );
+});
+
+describe('Company Offer Approver permission sets', () => {
+  it('captures only Offer read, approval and response authority', () => {
+    expect(offerApproverPermissionsFor('v1')).toEqual([
+      'commercial.offer.read',
+      'commercial.offer.approve',
+      'commercial.offer.response.record',
+    ]);
+    expect(offerPreparerPermissionsFor('v1')).not.toContain(
+      'commercial.offer.approve',
+    );
+  });
+  it.each([null, undefined, '', 'v2', 'V1', 1])(
+    'fails closed for version %s',
+    (version) => expect(offerApproverPermissionsFor(version)).toEqual([]),
   );
 });
 

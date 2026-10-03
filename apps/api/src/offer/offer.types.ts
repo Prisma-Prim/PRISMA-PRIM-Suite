@@ -2,6 +2,23 @@ import type { CommercialClientProjection } from '../commercial-intake/commercial
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
 import type { OfferRepresentation } from './offer-representation.js';
 import type { OfferQualityRun } from './offer-quality.js';
+import type { OfferQualityCode } from './offer-quality.js';
+
+export type OfferDecision = {
+  readonly id: string;
+  readonly offerVersionId: string;
+  readonly offerRevision: number;
+  readonly actorWorkspaceMembershipId: string;
+  readonly decidedAt: string;
+} & (
+  | {
+      readonly state: 'APPROVED';
+      readonly qualityRun: OfferQualityRun;
+      readonly acknowledgedWarningCodes: readonly OfferQualityCode[];
+      readonly representationSha256: string;
+    }
+  | { readonly state: 'REJECTED'; readonly reason: string }
+);
 
 export type OfferRecipientSelection =
   | { readonly kind: 'PRIMARY' }
@@ -35,7 +52,8 @@ export interface OfferVersionRecord {
   readonly validUntil: string;
   readonly scopeNote: string | null;
   readonly commercialConditions: string | null;
-  readonly decisionState: 'PENDING';
+  readonly decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
+  readonly decision: OfferDecision | null;
   readonly transmissionState: 'NOT_TRANSMITTED';
   readonly clientResponseState: 'NONE';
   readonly provenance: 'ILLUSTRATIVE';
@@ -53,7 +71,7 @@ export interface OfferRecord {
   readonly clientRequestId: string;
   readonly originalClientAccountId: string;
   readonly illustrativeReference: number;
-  readonly revision: 1;
+  readonly revision: number;
   readonly provisional: true;
   readonly createdByWorkspaceMembershipId: string;
   readonly createdAt: string;

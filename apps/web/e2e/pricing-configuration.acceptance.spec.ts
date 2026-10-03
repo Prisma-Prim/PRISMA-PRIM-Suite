@@ -1342,6 +1342,224 @@ test.describe('Pricing Snapshot and Offer journey', () => {
   });
 });
 
+test('approves and rejects exact illustrative Offer Versions with explicit Company authority', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const companyName = `Offer decision ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
+  const companyId = await createCompany(page, companyName);
+  const workspaceMembershipId = requiredEnvironment(
+    'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+  );
+  const target = { companyId, workspaceMembershipId };
+  const bundles = [
+    'company-context',
+    'company-commercial-intake',
+    'company-director-client',
+    'company-service-catalogue',
+    'company-pricing-configuration',
+    'company-pricing-user',
+    'company-offer-preparer',
+  ] as const;
+  for (const bundle of bundles)
+    await changeAssignment(page, { operation: 'grant', bundle, ...target });
+  const offering = await createOffering(page, companyId, `O4-${suffix}`);
+  const effectiveFrom = new Date(
+    Math.ceil((Date.now() + 5_000) / 1_000) * 1_000,
+  ).toISOString();
+  expect(
+    await publishThroughApi(page, companyId, {
+      label: 'Synthetic O4 rule',
+      effectiveFrom,
+      expectedActiveVersionNumber: null,
+    }),
+  ).toBe(201);
+  await publishTariffThroughApi(page, companyId, offering.id, {
+    unitAmount: '300.0000',
+    taxRatePercent: '15.00',
+    effectiveFrom,
+  });
+  const clientId = await createClient(
+    page,
+    companyId,
+    `Synthetic O4 recipient ${suffix}`,
+  );
+  async function prepare(suffix: string) {
+    const request = await createCommercialRequest(
+      page,
+      companyId,
+      suffix,
+      clientId,
+    );
+    const headers = {
+      ...primaryMemberHeaders,
+      'x-company-context-id': companyId,
+      'idempotency-key': crypto.randomUUID(),
+    };
+    const snapshot = await page.request.post(
+      `${apiOrigin}/api/pricing/opportunities/${request.opportunityId}/snapshots`,
+      {
+        headers,
+        data: {
+          pricingRuleVersionNumber: 1,
+          lines: [
+            { offeringId: offering.id, tariffVersionNumber: 1, quantity: '1' },
+          ],
+        },
+      },
+    );
+    expect(snapshot.status()).toBe(201);
+    const snapshotId = rootId(await snapshot.json());
+    const offer = await page.request.post(
+      `${apiOrigin}/api/offers/opportunities/${request.opportunityId}`,
+      {
+        headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
+        data: { pricingSnapshotId: snapshotId, recipient: { kind: 'PRIMARY' } },
+      },
+    );
+    expect(offer.status()).toBe(201);
+    return request;
+  }
+  await page.waitForTimeout(
+    Math.max(0, new Date(effectiveFrom).getTime() - Date.now() + 1_500),
+  );
+  const approvedRequest = await prepare(`approve-${suffix}`);
+  const rejectedRequest = await prepare(`reject-${suffix}`);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  async function open(subject: string) {
+    await page.goto('/');
+    await selectCompany(
+      page,
+      page.getByLabel('Active Company', { exact: true }),
+      companyName,
+      narrow,
+    );
+    await navigate(
+      page,
+      page.getByRole('navigation', { name: 'Primary navigation' }),
+      'Client Requests',
+      narrow,
+    );
+    await page
+      .locator('.commercial-intake-workspace')
+      .getByRole('button', { name: new RegExp(subject, 'u') })
+      .click();
+  }
+  await open(approvedRequest.subject);
+  const offer = page.locator('.offer-panel');
+  await expect(
+    offer.getByText('Draft — not approved', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    offer.getByRole('button', { name: 'Approve this version' }),
+  ).toHaveCount(0);
+  await changeAssignment(page, {
+    operation: 'grant',
+    bundle: 'company-offer-approver',
+    ...target,
+  });
+  await open(approvedRequest.subject);
+  const frame = offer.getByTitle('Illustrative Offer representation');
+  const documentFrame = offer.frameLocator(
+    'iframe[title="Illustrative Offer representation"]',
+  );
+  async function captureDecision(name: string) {
+    await frame.scrollIntoViewIfNeeded();
+    const heading = documentFrame.getByRole('heading', {
+      name: 'Illustrative Offer',
+      exact: true,
+    });
+    await heading.scrollIntoViewIfNeeded();
+    await expect(heading).toBeInViewport({ ratio: 1 });
+    await expectNoFrameHorizontalOverflow(documentFrame);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}-${suffix}.png`),
+      fullPage: true,
+    });
+  }
+  const html = await frame.getAttribute('srcdoc');
+  const checksum = await offer
+    .locator('.offer-representation code')
+    .textContent();
+  const run = offer.getByRole('button', {
+    name: 'Run Quality Checks',
+    exact: true,
+  });
+  await run.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    offer.getByText('Checks completed with warnings.', { exact: true }),
+  ).toBeVisible();
+  await offer.getByRole('button', { name: 'Approve this version' }).click();
+  await expect(offer.getByRole('alert')).toHaveText(
+    'Acknowledge exactly the current warnings. Run Quality Checks to refresh them.',
+  );
+  const ack = offer.getByRole('checkbox', {
+    name: 'Recipient tax ID recorded',
+  });
+  await ack.focus();
+  await page.keyboard.press('Space');
+  await expect(ack).toBeChecked();
+  const approve = offer.getByRole('button', { name: 'Approve this version' });
+  await approve.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    offer.getByText('Version approved.', { exact: true }),
+  ).toBeVisible();
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await expect(
+    offer.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await captureDecision('offer-approved');
+  await open(approvedRequest.subject);
+  await expect(
+    offer.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await expect(offer.locator('.offer-representation code')).toHaveText(
+    checksum ?? '',
+  );
+  await expect(
+    offer
+      .locator('.offer-summary')
+      .getByText(workspaceMembershipId, { exact: true }),
+  ).toBeVisible();
+  await captureDecision('offer-approved-reopened');
+  await open(rejectedRequest.subject);
+  const reason = 'Synthetic rejection: clarify the illustrative conditions.';
+  await offer.getByLabel('Rejection reason', { exact: true }).fill(reason);
+  const reject = offer.getByRole('button', { name: 'Reject this version' });
+  await reject.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    offer.getByText('Version rejected.', { exact: true }),
+  ).toBeVisible();
+  await expect(offer.getByText(reason, { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await captureDecision('offer-rejected');
+  await open(rejectedRequest.subject);
+  await expect(
+    offer.getByText('Rejected internally', { exact: true }),
+  ).toBeVisible();
+  await expect(offer.getByText(reason, { exact: true })).toBeVisible();
+  await captureDecision('offer-rejected-reopened');
+});
+
+function rootId(value: unknown): string {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('id' in value) ||
+    typeof value.id !== 'string'
+  )
+    throw new Error('Expected synthetic record id');
+  return value.id;
+}
+
 async function publishThroughApi(
   page: Page,
   companyId: string,
@@ -1512,6 +1730,7 @@ async function changeAssignment(
       | 'company-service-catalogue'
       | 'company-director-client'
       | 'company-offer-preparer'
+      | 'company-offer-approver'
       | 'company-pricing-adjustment';
     workspaceMembershipId: string;
     companyId: string;

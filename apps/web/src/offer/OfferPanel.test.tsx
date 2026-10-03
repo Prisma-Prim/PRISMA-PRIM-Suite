@@ -12,6 +12,230 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it.each([
+    [
+      'QUALITY_CHECK_ERRORS',
+      'Current Quality Check errors prevent approval. Run Quality Checks to review them.',
+    ],
+    [
+      'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+      'Acknowledge exactly the current warnings. Run Quality Checks to refresh them.',
+    ],
+    [
+      'STALE_OFFER_REVISION',
+      'The Offer changed. Reload the Request before deciding.',
+    ],
+    [
+      'OFFER_VERSION_ALREADY_DECIDED',
+      'This version already has a decision. Reload the Request.',
+    ],
+  ])('shows safe %s decision feedback', async (code, message) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/approve')
+        ? response({ code }, 409)
+        : response({ offer: offerView() }),
+    );
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Approve this version' }),
+    );
+    expect(await screen.findByText(message)).toBeVisible();
+    if (
+      code === 'STALE_OFFER_REVISION' ||
+      code === 'OFFER_VERSION_ALREADY_DECIDED'
+    )
+      expect(
+        screen.queryByRole('button', { name: 'Approve this version' }),
+      ).not.toBeInTheDocument();
+  });
+  it('preserves the rejection reason after a correctable server validation and records the decision separately', async () => {
+    let calls = 0;
+    const reason = 'Synthetic reason to revise';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (input.toString().endsWith('/reject'))
+        return ++calls === 1
+          ? response({ field: 'reason' }, 400)
+          : response({
+              id: 'decision',
+              offerVersionId: 'version-one',
+              offerRevision: 2,
+              state: 'REJECTED',
+              reason,
+              actorWorkspaceMembershipId: 'membership-one',
+              decidedAt: '2026-10-03T12:00:00.000Z',
+            });
+      return response({ offer: offerView() });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.change(await screen.findByLabelText('Rejection reason'), {
+      target: { value: reason },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reject this version' }),
+    );
+    expect(
+      await screen.findByText(
+        'Enter a rejection reason of 1–500 characters, or check the warning acknowledgements.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Rejection reason')).toHaveValue(reason);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reject this version' }),
+    );
+    expect(await screen.findByText('Version rejected.')).toBeVisible();
+    expect(screen.getByText(reason)).toBeVisible();
+  });
+  it('discards a late decision after Company context changes', async () => {
+    let release: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/approve')
+        ? new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+        : response({ offer: offerView() }),
+    );
+    const rendered = renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Approve this version' }),
+    );
+    await waitFor(() => expect(release).toBeTypeOf('function'));
+    rendered.rerender(panel(actor('company-two'), 'opportunity-two'));
+    release?.(
+      response({
+        id: 'late',
+        state: 'REJECTED',
+        offerVersionId: 'version-one',
+        offerRevision: 2,
+        actorWorkspaceMembershipId: 'old-member',
+        decidedAt: '2026-10-03T12:00:00.000Z',
+        reason: 'Old decision',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText('Old decision')).not.toBeInTheDocument(),
+    );
+  });
+  it('preserves an identical rejection retry after an invalid decision timestamp response', async () => {
+    const attempts: RequestInit[] = [];
+    const reason = 'Synthetic revision requested';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/reject')) {
+        if (!init) throw new Error('Expected rejection');
+        attempts.push(init);
+        return response({
+          id: 'decision-one',
+          offerVersionId: 'version-one',
+          offerRevision: 2,
+          state: 'REJECTED',
+          reason,
+          actorWorkspaceMembershipId: 'membership-one',
+          decidedAt:
+            attempts.length === 1 ? 'not-a-date' : '2026-10-03T12:00:00.000Z',
+        });
+      }
+      return response({ offer: offerView() });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.change(await screen.findByLabelText('Rejection reason'), {
+      target: { value: reason },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reject this version' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry the same decision' }),
+    );
+    expect(await screen.findByText('Version rejected.')).toBeVisible();
+    expect(screen.getByText(reason)).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]?.body).toBe(
+      JSON.stringify({ expectedOfferRevision: 1, reason }),
+    );
+    expect(attempts[1]?.body).toBe(attempts[0]?.body);
+    expect(new Headers(attempts[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(attempts[0]?.headers).get('idempotency-key'),
+    );
+  });
+  it('lets an approver acknowledge current warnings and preserves an identical uncertain approval retry', async () => {
+    const attempts: RequestInit[] = [];
+    const decision = {
+      id: 'decision-one',
+      state: 'APPROVED',
+      offerVersionId: 'version-one',
+      offerRevision: 2,
+      actorWorkspaceMembershipId: 'membership-one',
+      decidedAt: '2026-10-03T12:00:00.000Z',
+      qualityRun: qualityRun(),
+      acknowledgedWarningCodes: ['RECIPIENT_TAX_ID_RECORDED'],
+      representationSha256: offerView().version.representation.sha256,
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/approve')) {
+        if (!init) throw new Error('Expected approval');
+        attempts.push(init);
+        return attempts.length === 1 ? response({}, 503) : response(decision);
+      }
+      return response({
+        offer: {
+          ...offerView(),
+          version: { ...offerView().version, latestQualityRun: qualityRun() },
+        },
+      });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: 'Recipient tax ID recorded',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Approve this version' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry the same decision' }),
+    );
+    expect(await screen.findByText('Version approved.')).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]?.body).toBe(
+      JSON.stringify({
+        expectedOfferRevision: 1,
+        acknowledgedWarningCodes: ['RECIPIENT_TAX_ID_RECORDED'],
+      }),
+    );
+    expect(attempts[1]?.body).toBe(attempts[0]?.body);
+    expect(new Headers(attempts[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(attempts[0]?.headers).get('idempotency-key'),
+    );
+    expect(
+      screen.getByTitle('Illustrative Offer representation'),
+    ).toHaveAttribute('srcdoc', offerView().version.representation.html);
+  });
   it('runs all checks and shows the warning result stored on the exact version', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       if (input.toString().endsWith('/quality-checks')) {
@@ -241,6 +465,40 @@ describe('OfferPanel', () => {
       'srcdoc',
       '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1></body></html>',
     );
+  });
+
+  it('shows unavailable when a rejected Offer has an invalid decision timestamp', async () => {
+    const offer = offerView();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offer,
+          revision: 2,
+          version: {
+            ...offer.version,
+            decisionState: 'REJECTED',
+            decision: {
+              id: 'decision-one',
+              offerVersionId: offer.version.id,
+              offerRevision: 2,
+              state: 'REJECTED',
+              reason: 'Synthetic revision requested',
+              actorWorkspaceMembershipId: 'membership-one',
+              decidedAt: 'not-a-date',
+            },
+          },
+        },
+      }),
+    );
+
+    renderPanel(actor('company-one'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Offer could not be loaded. Try again.',
+    );
+    expect(
+      screen.queryByTitle('Illustrative Offer representation'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows unavailable when an Offer representation is malformed', async () => {
@@ -682,6 +940,7 @@ function offerView(company = 'Illustrative Company') {
       scopeNote: null,
       commercialConditions: null,
       decisionState: 'PENDING',
+      decision: null,
       transmissionState: 'NOT_TRANSMITTED',
       clientResponseState: 'NONE',
       provenance: 'ILLUSTRATIVE',

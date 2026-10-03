@@ -4,7 +4,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { and, desc, DrizzleQueryError, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
@@ -20,6 +23,7 @@ import {
   offerVersions,
   offers,
   offerQualityRuns,
+  offerDecisions,
   OFFER_TEMPLATE_CODE,
   OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
@@ -30,8 +34,13 @@ import type {
   OfferRecord,
   OfferVersionRecord,
   OfferRecipientCopy,
+  OfferDecision,
 } from './offer.types.js';
-import { readCreateOfferCommand } from './offer.validation.js';
+import {
+  readCreateOfferCommand,
+  readOfferDecisionCommand,
+  readOfferWarningCodes,
+} from './offer.validation.js';
 import { renderOfferRepresentation } from './offer-representation.js';
 import {
   evaluateOfferQuality,
@@ -273,11 +282,11 @@ export class OfferService {
               companyId,
               offer.id,
             );
-            const snapshot = await this.pricing.resolveOfferSnapshot({
+            const snapshot = await this.pricing.resolveOfferVersionSnapshot({
               actor,
               companyId,
               opportunityId: opportunity.id,
-              snapshotId: stored.version.pricingSnapshotId,
+              offerVersionId: stored.version.id,
             });
             return this.offerView(
               actor,
@@ -484,6 +493,332 @@ export class OfferService {
     });
   }
 
+  async decide(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    payload: unknown;
+    idempotencyKey: string | undefined;
+    kind: 'APPROVE' | 'REJECT';
+  }): Promise<OfferDecision> {
+    const { actor } = input;
+    await this.authorization.requireOfferAccess(actor, [
+      'commercial.offer.approve',
+    ]);
+    const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+    return this.databaseContext
+      .transaction(async () => {
+        const companyId = await this.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.approve'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          actor,
+          input.opportunityId,
+          true,
+        );
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            input.offerVersionId,
+          )
+        )
+          throw new NotFoundException();
+        const existing = await this.findOffer(
+          actor.workspaceId,
+          companyId,
+          opportunity.id,
+        );
+        if (!existing) throw new NotFoundException();
+        const [target] = await this.databaseContext.connection
+          .select()
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, existing.id),
+              eq(offerVersions.id, input.offerVersionId),
+            ),
+          );
+        if (!target) throw new NotFoundException();
+        const fingerprint = commandFingerprint({
+          kind: input.kind,
+          opportunityId: opportunity.id,
+          offerVersionId: input.offerVersionId,
+          payload: input.payload,
+        });
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const receipt = await this.findCommand(
+          actor,
+          companyId,
+          idempotencyKey,
+        );
+        if (receipt) {
+          if (
+            receipt.kind !== input.kind ||
+            receipt.fingerprint !== fingerprint ||
+            receipt.resultOfferId !== existing.id ||
+            !receipt.resultDecisionId
+          )
+            throw namedConflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was already used for another Offer command.',
+            );
+          const decision = await this.findDecision(
+            actor.workspaceId,
+            companyId,
+            target.id,
+          );
+          if (!decision || decision.id !== receipt.resultDecisionId)
+            throw new Error('The recorded Offer decision is missing.');
+          return this.decisionView(decision);
+        }
+        const command = readOfferDecisionCommand(input.payload, input.kind);
+        const [offer] = await this.databaseContext.connection
+          .select()
+          .from(offers)
+          .where(
+            and(
+              eq(offers.workspaceId, actor.workspaceId),
+              eq(offers.companyId, companyId),
+              eq(offers.id, existing.id),
+            ),
+          )
+          .for('update');
+        if (!offer) throw new NotFoundException();
+        const [head] = await this.databaseContext.connection
+          .select({ id: offerVersions.id })
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, offer.id),
+            ),
+          )
+          .orderBy(desc(offerVersions.versionNumber))
+          .limit(1);
+        requireHeadOfferVersion({
+          offerVersionId: target.id,
+          headVersionId: head?.id,
+        });
+        if (offer.revision !== command.expectedOfferRevision)
+          throw namedConflict(
+            'STALE_OFFER_REVISION',
+            'The Offer changed. Reload it before deciding.',
+          );
+        if (await this.findDecision(actor.workspaceId, companyId, target.id))
+          throw namedConflict(
+            'OFFER_VERSION_ALREADY_DECIDED',
+            'The Offer Version already has a decision.',
+          );
+        let approval:
+          | {
+              qualityRunId: string;
+              acknowledgedWarningCodes: readonly string[];
+              representationSha256: string;
+            }
+          | undefined;
+        let decidedAt: Date;
+        if (command.kind === 'APPROVE') {
+          const pricing = await this.pricing.inspectOfferQualitySnapshot({
+            actor,
+            companyId,
+            opportunityId: offer.opportunityId,
+            snapshotId: target.pricingSnapshotId,
+          });
+          const recipient = offerRecipientCopy(target);
+          const context = await this.clients.inspectOfferQualityContext({
+            actor,
+            companyId,
+            originalClientAccountId: offer.originalClientAccountId,
+            snapshotOriginalClientAccountId: pricing.originalClientAccountId,
+            recipient:
+              recipient.kind === 'PRIMARY'
+                ? { kind: 'PRIMARY' }
+                : {
+                    kind: 'ADDITIONAL',
+                    legalEntityId: recipient.additionalLegalEntityId,
+                  },
+            recordedIdentity: recipient,
+          });
+          decidedAt = this.clock.now();
+          const results = evaluateOfferQuality({
+            instant: decidedAt,
+            validUntil: target.validUntil,
+            snapshot: {
+              ...pricing.snapshot,
+              belongsToOffer:
+                pricing.snapshot.opportunityId === offer.opportunityId,
+            },
+            previousTransmittedCurrency: null,
+            ...context,
+            recipientTaxId: target.recipientTaxId,
+            provenance: target.provenance,
+            provisional: target.provenance === 'ILLUSTRATIVE',
+          });
+          if (results.some((result) => result.status === 'ERROR'))
+            throw namedConflict(
+              'QUALITY_CHECK_ERRORS',
+              'Current Quality Check errors prevent approval.',
+            );
+          const warnings = results
+            .filter((result) => result.status === 'WARNING')
+            .map((result) => result.code);
+          if (
+            warnings.length !== command.acknowledgedWarningCodes.length ||
+            !warnings.every((code) =>
+              command.acknowledgedWarningCodes.includes(code),
+            )
+          )
+            throw namedConflict(
+              'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+              'Acknowledge exactly the current Quality Check warnings.',
+            );
+          const representation = offerVersionView(
+            offer.illustrativeReference,
+            target,
+            pricing.snapshot,
+          ).representation;
+          const [run] = await this.databaseContext.connection
+            .insert(offerQualityRuns)
+            .values({
+              workspaceId: actor.workspaceId,
+              companyId,
+              offerId: offer.id,
+              offerVersionId: target.id,
+              actorInternalUserId: actor.internalUserId,
+              actorWorkspaceMembershipId: actor.workspaceMembershipId,
+              evaluatedAt: decidedAt,
+              results,
+            })
+            .returning();
+          if (!run)
+            throw new Error('The approval Quality Check run was not recorded.');
+          approval = {
+            qualityRunId: run.id,
+            acknowledgedWarningCodes: command.acknowledgedWarningCodes,
+            representationSha256: representation.sha256,
+          };
+        } else decidedAt = this.clock.now();
+        const [decision] = await this.databaseContext.connection
+          .insert(offerDecisions)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: target.id,
+            state: command.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+            offerRevision: offer.revision + 1,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            decidedAt,
+            ...approval,
+            reason: command.kind === 'REJECT' ? command.reason : null,
+          })
+          .returning();
+        if (!decision) throw new Error('The Offer decision was not recorded.');
+        await this.databaseContext.connection
+          .update(offers)
+          .set({ revision: decision.offerRevision })
+          .where(eq(offers.id, offer.id));
+        await this.databaseContext.connection.insert(offerCommands).values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          idempotencyKey,
+          fingerprint,
+          opportunityId: opportunity.id,
+          resultOfferId: offer.id,
+          kind: command.kind,
+          resultDecisionId: decision.id,
+          createdAt: decidedAt,
+        });
+        await this.accountability.recordOfferDecision({
+          actor,
+          companyId,
+          offerId: offer.id,
+          offerVersionId: target.id,
+          occurredAt: decidedAt,
+          state: decision.state,
+          acknowledgedWarningCodes: approval?.acknowledgedWarningCodes,
+        });
+        return this.decisionView(decision);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof HttpException) throw error;
+        // Never pass SQL parameters (including rejection reasons) to Nest's
+        // default exception logger. Commit uncertainty requires an explicit retry.
+        throw new InternalServerErrorException({
+          code: 'OFFER_DECISION_UNCERTAIN',
+          correlationId: randomUUID(),
+          message:
+            'The decision outcome is uncertain. Retry the identical command.',
+        });
+      });
+  }
+
+  private async findDecision(
+    workspaceId: string,
+    companyId: string,
+    offerVersionId: string,
+  ) {
+    const [decision] = await this.databaseContext.connection
+      .select()
+      .from(offerDecisions)
+      .where(
+        and(
+          eq(offerDecisions.workspaceId, workspaceId),
+          eq(offerDecisions.companyId, companyId),
+          eq(offerDecisions.offerVersionId, offerVersionId),
+        ),
+      );
+    return decision;
+  }
+
+  private async decisionView(
+    row: typeof offerDecisions.$inferSelect,
+  ): Promise<OfferDecision> {
+    const base = {
+      id: row.id,
+      offerVersionId: row.offerVersionId,
+      offerRevision: row.offerRevision,
+      actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+      decidedAt: row.decidedAt.toISOString(),
+    };
+    if (row.state === 'REJECTED' && row.reason !== null)
+      return { ...base, state: 'REJECTED', reason: row.reason };
+    if (
+      row.state !== 'APPROVED' ||
+      !row.qualityRunId ||
+      !row.representationSha256
+    )
+      throw new Error('Invalid stored Offer decision.');
+    const [run] = await this.databaseContext.connection
+      .select()
+      .from(offerQualityRuns)
+      .where(
+        and(
+          eq(offerQualityRuns.workspaceId, row.workspaceId),
+          eq(offerQualityRuns.companyId, row.companyId),
+          eq(offerQualityRuns.offerId, row.offerId),
+          eq(offerQualityRuns.offerVersionId, row.offerVersionId),
+          eq(offerQualityRuns.id, row.qualityRunId),
+        ),
+      );
+    if (!run) throw new Error('The approval Quality Check run is missing.');
+    return {
+      ...base,
+      state: 'APPROVED',
+      qualityRun: qualityRunView(run),
+      acknowledgedWarningCodes: readOfferWarningCodes(
+        row.acknowledgedWarningCodes,
+      ),
+      representationSha256: row.representationSha256,
+    };
+  }
+
   private async offerView(
     actor: ActorContext,
     offer: OfferRow,
@@ -506,6 +841,12 @@ export class OfferService {
       )
       .orderBy(desc(offerQualityRuns.sequence))
       .limit(1);
+    const decisionRow = await this.findDecision(
+      actor.workspaceId,
+      offer.companyId,
+      version.id,
+    );
+    const decision = decisionRow ? await this.decisionView(decisionRow) : null;
     return {
       id: offer.id,
       companyId: offer.companyId,
@@ -513,7 +854,7 @@ export class OfferService {
       clientRequestId: offer.clientRequestId,
       originalClientAccountId: offer.originalClientAccountId,
       illustrativeReference: offer.illustrativeReference,
-      revision: 1,
+      revision: offer.revision,
       provisional: true,
       createdByWorkspaceMembershipId: offer.createdByWorkspaceMembershipId,
       createdAt: offer.createdAt.toISOString(),
@@ -521,6 +862,8 @@ export class OfferService {
       version: {
         ...offerVersionView(offer.illustrativeReference, version, snapshot),
         latestQualityRun: latestRun ? qualityRunView(latestRun) : null,
+        decision,
+        decisionState: decision?.state ?? 'PENDING',
       },
     };
   }
@@ -636,7 +979,7 @@ function offerVersionView(
   illustrativeReference: number,
   row: OfferVersionRow,
   pricingSnapshot: PricingSnapshotRecord,
-): Omit<OfferVersionRecord, 'latestQualityRun'> {
+): Omit<OfferVersionRecord, 'latestQualityRun' | 'decision'> {
   if (
     row.versionNumber !== 1 ||
     row.decisionState !== 'PENDING' ||

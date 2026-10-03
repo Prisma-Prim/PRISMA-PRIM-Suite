@@ -23,11 +23,14 @@ import {
   readOffer,
   readOfferDetail,
   readOfferSnapshotPage,
+  offerQualityLabels,
   type OfferSnapshotSummary,
   type OfferView,
 } from './offer-response';
 import './offer.css';
 import { OfferQualityPanel } from './OfferQualityPanel';
+import { OfferDecisionPanel } from './OfferDecisionPanel';
+import { offerDecisionCopy } from './offer.copy';
 
 type Ready = {
   kind: 'empty';
@@ -65,11 +68,13 @@ export function OfferPanel({
   const permissions = actor.activeCompany?.offerPermissions ?? [];
   const mayRead = permissions.includes('commercial.offer.read');
   const mayPrepare = permissions.includes('commercial.offer.prepare');
+  const mayApprove = permissions.includes('commercial.offer.approve');
   const authorityStamp = JSON.stringify([
     actor.workspaceId,
     actor.workspaceMembershipId,
     actor.internalUserId,
     actor.activeCompany?.offerPermissionAssignmentId,
+    actor.activeCompany?.offerApproverAssignmentId,
     permissions,
     actor.activeCompany?.commercialIntakePermissions,
   ]);
@@ -398,8 +403,56 @@ export function OfferPanel({
               opportunityId={opportunityId}
               offerVersionId={view.offer.version.id}
               initialRun={view.offer.version.latestQualityRun}
-              mayRun={mayPrepare}
+              mayRun={mayPrepare || mayApprove}
               reject={reject}
+              onRun={(run) =>
+                setView((current) =>
+                  current.kind === 'offer'
+                    ? {
+                        kind: 'offer',
+                        offer: {
+                          ...current.offer,
+                          version: {
+                            ...current.offer.version,
+                            latestQualityRun: run,
+                          },
+                        },
+                      }
+                    : current,
+                )
+              }
+            />
+          )}
+          {companyId && mayApprove && (
+            <OfferDecisionPanel
+              key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              offer={view.offer}
+              reject={reject}
+              onDecision={(decision) =>
+                setView((current) =>
+                  current.kind === 'offer'
+                    ? {
+                        kind: 'offer',
+                        offer: {
+                          ...current.offer,
+                          revision: decision.offerRevision,
+                          version: {
+                            ...current.offer.version,
+                            decision,
+                            decisionState: decision.state,
+                            latestQualityRun:
+                              decision.state === 'APPROVED'
+                                ? decision.qualityRun
+                                : current.offer.version.latestQualityRun,
+                          },
+                        },
+                      }
+                    : current,
+                )
+              }
             />
           )}
         </>
@@ -436,7 +489,13 @@ function OfferSummary({ offer }: { offer: OfferView }) {
         </div>
         <div>
           <dt>{copy.states}</dt>
-          <dd>{copy.stateValue}</dd>
+          <dd>
+            {version.decisionState === 'PENDING'
+              ? copy.stateValue
+              : version.decisionState === 'APPROVED'
+                ? offerDecisionCopy.approvedState
+                : offerDecisionCopy.rejectedState}
+          </dd>
         </div>
         <div>
           <dt>{copy.snapshotTotal}</dt>
@@ -447,13 +506,67 @@ function OfferSummary({ offer }: { offer: OfferView }) {
       </dl>
       {version.scopeNote && <p>{version.scopeNote}</p>}
       {version.commercialConditions && <p>{version.commercialConditions}</p>}
+      {version.decision && (
+        <dl>
+          <div>
+            <dt>{offerDecisionCopy.actor}</dt>
+            <dd>
+              <code>{version.decision.actorWorkspaceMembershipId}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>{offerDecisionCopy.decidedAt}</dt>
+            <dd>{formatApplicationDateTime(version.decision.decidedAt)}</dd>
+          </div>
+          {version.decision.state === 'REJECTED' && (
+            <div>
+              <dt>{offerDecisionCopy.reason}</dt>
+              <dd>{version.decision.reason}</dd>
+            </div>
+          )}
+          {version.decision.state === 'APPROVED' && (
+            <>
+              <div>
+                <dt>{offerDecisionCopy.decisionRun}</dt>
+                <dd>
+                  <code>{version.decision.qualityRun.id}</code> ·{' '}
+                  {version.decision.qualityRun.ruleSet} v
+                  {version.decision.qualityRun.ruleSetVersion}
+                </dd>
+              </div>
+              <div>
+                <dt>{offerDecisionCopy.acknowledgedWarnings}</dt>
+                <dd>
+                  {version.decision.acknowledgedWarningCodes.length
+                    ? version.decision.acknowledgedWarningCodes
+                        .map((code) => offerQualityLabels[code])
+                        .join(', ')
+                    : offerDecisionCopy.noWarnings}
+                </dd>
+              </div>
+              <div>
+                <dt>{offerDecisionCopy.approvedChecksum}</dt>
+                <dd>
+                  <code>{version.decision.representationSha256}</code>
+                </dd>
+              </div>
+            </>
+          )}
+        </dl>
+      )}
       <section
         className="offer-representation"
         aria-labelledby="offer-representation-title"
       >
         <h5 id="offer-representation-title">{copy.representation}</h5>
         <p>
-          <strong>{copy.draftState}</strong>
+          <strong>
+            {version.decisionState === 'PENDING'
+              ? copy.draftState
+              : version.decisionState === 'APPROVED'
+                ? offerDecisionCopy.approvedViewer
+                : offerDecisionCopy.rejectedViewer}
+          </strong>
         </p>
         <dl>
           <div>
