@@ -130,6 +130,52 @@ describe('OfferPanel', () => {
       expect(screen.queryByText('Old decision')).not.toBeInTheDocument(),
     );
   });
+  it('preserves an identical rejection retry after an invalid decision timestamp response', async () => {
+    const attempts: RequestInit[] = [];
+    const reason = 'Synthetic revision requested';
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/reject')) {
+        if (!init) throw new Error('Expected rejection');
+        attempts.push(init);
+        return response({
+          id: 'decision-one',
+          offerVersionId: 'version-one',
+          offerRevision: 2,
+          state: 'REJECTED',
+          reason,
+          actorWorkspaceMembershipId: 'membership-one',
+          decidedAt:
+            attempts.length === 1 ? 'not-a-date' : '2026-10-03T12:00:00.000Z',
+        });
+      }
+      return response({ offer: offerView() });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.change(await screen.findByLabelText('Rejection reason'), {
+      target: { value: reason },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reject this version' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry the same decision' }),
+    );
+    expect(await screen.findByText('Version rejected.')).toBeVisible();
+    expect(screen.getByText(reason)).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]?.body).toBe(
+      JSON.stringify({ expectedOfferRevision: 1, reason }),
+    );
+    expect(attempts[1]?.body).toBe(attempts[0]?.body);
+    expect(new Headers(attempts[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(attempts[0]?.headers).get('idempotency-key'),
+    );
+  });
   it('lets an approver acknowledge current warnings and preserves an identical uncertain approval retry', async () => {
     const attempts: RequestInit[] = [];
     const decision = {
@@ -419,6 +465,40 @@ describe('OfferPanel', () => {
       'srcdoc',
       '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1></body></html>',
     );
+  });
+
+  it('shows unavailable when a rejected Offer has an invalid decision timestamp', async () => {
+    const offer = offerView();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offer,
+          revision: 2,
+          version: {
+            ...offer.version,
+            decisionState: 'REJECTED',
+            decision: {
+              id: 'decision-one',
+              offerVersionId: offer.version.id,
+              offerRevision: 2,
+              state: 'REJECTED',
+              reason: 'Synthetic revision requested',
+              actorWorkspaceMembershipId: 'membership-one',
+              decidedAt: 'not-a-date',
+            },
+          },
+        },
+      }),
+    );
+
+    renderPanel(actor('company-one'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The Offer could not be loaded. Try again.',
+    );
+    expect(
+      screen.queryByTitle('Illustrative Offer representation'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows unavailable when an Offer representation is malformed', async () => {

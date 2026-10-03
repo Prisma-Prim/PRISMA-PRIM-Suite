@@ -149,7 +149,8 @@ export function readOfferDecision(
     !positiveInteger(row.offerRevision) ||
     row.offerRevision < 2 ||
     typeof row.actorWorkspaceMembershipId !== 'string' ||
-    typeof row.decidedAt !== 'string'
+    typeof row.decidedAt !== 'string' ||
+    !Number.isFinite(Date.parse(row.decidedAt))
   )
     invalid();
   const base = {
