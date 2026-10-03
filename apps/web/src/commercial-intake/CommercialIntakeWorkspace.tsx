@@ -191,6 +191,7 @@ export function CommercialIntakeWorkspace({
   onActivityRecorded = () => undefined,
   clientRestriction,
   clientIdentityRevision = 0,
+  clientAuthorityRevision = 0,
   onOpenClientDossier,
   requestedRequest,
 }: {
@@ -204,6 +205,8 @@ export function CommercialIntakeWorkspace({
   clientRestriction?: ClientRestriction;
   /** Increases when a Client union or reversal changes current identities. */
   clientIdentityRevision?: number;
+  /** Increases when App observes a change in Client authority. */
+  clientAuthorityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
   /**
    * A new object requests that Request's detail again and supersedes an older
@@ -299,6 +302,21 @@ export function CommercialIntakeWorkspace({
     actor.activeCompany?.commercialIntakePermissions?.includes(
       'commercial.request.client.associate',
     ) === true;
+  // Only association work belongs to this captured Client read authority.
+  // A replacement grant remains readable, but retires selection, retry and
+  // pending replies without discarding this Request or its Opportunity edits.
+  const clientAssociationAuthority = JSON.stringify([
+    actor.workspaceId,
+    actor.internalUserId,
+    actor.workspaceMembershipId,
+    companyId,
+    clientAuthorityRevision,
+    actor.activeCompany?.clientPermissionAssignmentId,
+    actor.activeCompany?.clientPermissionSetVersion,
+    actor.activeCompany?.commercialIntakePermissionAssignmentId,
+    actor.activeCompany?.commercialIntakePermissionSetVersion,
+    canAssociateClient,
+  ]);
   // Reassignment needs the manager bundle and both Intake reads; the server
   // also requires live Company context.
   const intakePermissions =
@@ -1334,6 +1352,7 @@ export function CommercialIntakeWorkspace({
             canAssociateClient &&
             selected.request.clientAssociationStatus === 'absent' ? (
               <RequestClientAssociation
+                key={clientAssociationAuthority}
                 identity={identity}
                 companyId={companyId}
                 requestId={selected.request.id}
