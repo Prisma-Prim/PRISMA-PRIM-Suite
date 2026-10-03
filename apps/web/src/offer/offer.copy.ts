@@ -49,6 +49,7 @@ export const offerTransmissionCopy = {
     'Record a provisional simulation of this approved version. No message is sent. This does not confirm Client acceptance.',
   record: 'Record simulated transmission',
   note: 'Simulation note',
+  noNote: 'No simulation note',
   acknowledge: 'Acknowledge warnings not acknowledged at approval',
   running: 'Recording simulated transmission…',
   retry: 'Retry the same transmission',

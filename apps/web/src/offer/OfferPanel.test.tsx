@@ -12,6 +12,34 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it.each([null, 'Synthetic recorded note'])(
+    'shows the recorded simulation note or its own absent-note label for %s',
+    async (note) => {
+      const approved = approvedOfferView();
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          offer: {
+            ...approved,
+            revision: 3,
+            version: {
+              ...approved.version,
+              transmissionState: 'TRANSMITTED',
+              clientResponseState: 'PENDING',
+              transmission: { ...transmissionView(), note },
+            },
+          },
+        }),
+      );
+      renderPanel(actor('company-one'));
+      await screen.findByText(
+        'Simulated transmission recorded · Client response pending',
+      );
+      expect(
+        screen.getByText('Simulation note').nextElementSibling,
+      ).toHaveTextContent(note ?? 'No simulation note');
+    },
+  );
+
   it.each([
     [
       'QUALITY_CHECK_ERRORS',

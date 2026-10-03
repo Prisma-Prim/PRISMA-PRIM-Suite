@@ -570,7 +570,7 @@ function OfferSummary({ offer }: { offer: OfferView }) {
             <div>
               <dt>{offerTransmissionCopy.note}</dt>
               <dd>
-                {version.transmission.note ?? offerDecisionCopy.noWarnings}
+                {version.transmission.note ?? offerTransmissionCopy.noNote}
               </dd>
             </div>
             <div>
