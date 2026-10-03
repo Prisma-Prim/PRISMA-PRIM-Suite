@@ -17,11 +17,15 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { CommercialIntakeService } from './commercial-intake.service.js';
+import { RequestClientAssociationService } from './request-client-association.service.js';
 
 @Controller('commercial-intake/requests')
 @UseGuards(ActorContextAdapter)
 export class CommercialIntakeController {
-  constructor(private readonly intake: CommercialIntakeService) {}
+  constructor(
+    private readonly intake: CommercialIntakeService,
+    private readonly clientAssociation: RequestClientAssociationService,
+  ) {}
 
   @Post()
   create(
@@ -47,6 +51,22 @@ export class CommercialIntakeController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ) {
     return this.intake.read(actorFrom(request), requestId);
+  }
+
+  @Post(':requestId/client-association')
+  @HttpCode(200)
+  associateClient(
+    @Req() request: ActorContextRequest,
+    @Param('requestId') requestId: string,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.clientAssociation.associate(
+      actorFrom(request),
+      requestId,
+      body,
+      idempotencyKey,
+    );
   }
 }
 

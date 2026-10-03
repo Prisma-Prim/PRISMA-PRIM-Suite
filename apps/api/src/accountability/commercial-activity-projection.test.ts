@@ -49,7 +49,7 @@ describe('commercial Activity projection rules', () => {
           commercialIntakePermissions: ['commercial.request.read'],
         }),
       ),
-    ).toEqual(['client_request.created']);
+    ).toEqual(['client_request.created', 'client_request.client_associated']);
     expect(
       eligibleCommercialActions(
         company({
@@ -79,6 +79,7 @@ describe('commercial Activity projection rules', () => {
       ),
     ).toEqual([
       'client_request.created',
+      'client_request.client_associated',
       'opportunity.created',
       'opportunity.next_action.updated',
       'opportunity.responsible.changed',
@@ -92,6 +93,12 @@ describe('commercial Activity projection rules', () => {
         metadata: { requestVersion: 1 },
       }),
     ).toBe('client_request.created');
+    expect(
+      readCommercialActivityAction({
+        action: 'client_request.client_associated',
+        metadata: { requestVersion: 2 },
+      }),
+    ).toBe('client_request.client_associated');
     expect(
       readCommercialActivityAction({
         action: 'opportunity.created',

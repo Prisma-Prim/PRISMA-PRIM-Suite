@@ -776,16 +776,17 @@ test.describe('Pricing Snapshot and Offer journey', () => {
       taxRatePercent: '0',
       effectiveFrom,
     });
+    const clientDisplayName = `Synthetic Offer Recipient ${suffix}`;
     const clientId = await createClient(
       page,
       target.companyId,
-      `Synthetic Offer Recipient ${suffix}`,
+      clientDisplayName,
     );
     const request = await createCommercialRequest(
       page,
       target.companyId,
       suffix,
-      clientId,
+      undefined,
     );
     // The Pricing User bundle is sufficient for configuration reads. The
     // separate Intake bundle remains the sole owner of Opportunity visibility.
@@ -811,6 +812,31 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     await requests
       .getByRole('button', { name: new RegExp(request.subject, 'u') })
       .click();
+    await expect(
+      requests.getByText('No Client associated', { exact: true }),
+    ).toBeVisible();
+    await requests
+      .getByLabel('Search Clients by name', { exact: true })
+      .fill(clientDisplayName);
+    await requests.getByRole('button', { name: 'Search Clients' }).click();
+    await selectOption(
+      requests.getByLabel('Existing Client', { exact: true }),
+      clientId,
+    );
+    const associationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/commercial-intake\/requests\/[^/]+\/client-association$/u.test(
+          new URL(response.url()).pathname,
+        ),
+    );
+    await requests
+      .getByRole('button', { name: 'Confirm Client association' })
+      .click();
+    expect((await associationResponse).status()).toBe(200);
+    await expect(requests.locator(':scope > [role="alert"]')).toHaveText(
+      'Client associated.',
+    );
     const panel = requests.locator('.pricing-snapshot-panel');
     await expect(
       panel.getByText('Illustrative pricing', { exact: true }),
@@ -1192,6 +1218,20 @@ test.describe('Pricing Snapshot and Offer journey', () => {
       documentScreenshotPath: testInfo.outputPath(
         `offer-document-reopened-${suffix}.png`,
       ),
+    });
+    await requests.getByRole('button', { name: 'Open Client dossier' }).click();
+    await expect(page.locator('#clients')).toBeFocused();
+    await expect(
+      page
+        .locator('.client-dossier-detail')
+        .getByRole('heading', { name: clientDisplayName, exact: true }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `pricing-associated-client-dossier-${suffix}.png`,
+      ),
+      fullPage: true,
     });
   });
 });

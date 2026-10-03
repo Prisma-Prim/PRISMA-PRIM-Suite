@@ -61,6 +61,7 @@ describe('Company Opportunity Manager permission sets', () => {
     const others: ReadonlyArray<readonly string[]> = [
       commercialIntakePermissionsFor('v1'),
       commercialIntakePermissionsFor('v2'),
+      commercialIntakePermissionsFor('v3'),
       commercialActivityPermissionsFor('v1'),
       pricingConfigurationPermissionsFor('v1'),
       pricingAdjustmentPermissionsFor('v1'),
@@ -80,12 +81,15 @@ describe('Company Opportunity Manager permission sets', () => {
   it('accepts every captured Commercial Intake version carrying both reads as the read prerequisite', () => {
     expect(
       commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
-    ).toEqual(['v1', 'v2']);
+    ).toEqual(['v1', 'v2', 'v3']);
     expect(
       commercialIntakeVersionsWith([
         'commercial.opportunity.next_action.update',
       ]),
-    ).toEqual(['v2']);
+    ).toEqual(['v2', 'v3']);
+    expect(
+      commercialIntakeVersionsWith(['commercial.request.client.associate']),
+    ).toEqual(['v3']);
   });
 });
 
@@ -228,6 +232,17 @@ describe('Company Commercial Intake permission sets', () => {
         'commercial.opportunity.next_action.update',
       ],
     ],
+    [
+      'v3',
+      [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+        'commercial.request.client.associate',
+      ],
+    ],
   ] satisfies Array<
     [CompanyCommercialIntakePermissionSetVersion, readonly string[]]
   >)('resolves immutable %s permissions', (version, expected) => {
@@ -235,7 +250,7 @@ describe('Company Commercial Intake permission sets', () => {
     expect(isCommercialIntakePermissionSetVersion(version)).toBe(true);
   });
 
-  it.each([null, undefined, '', 'V2', 'v3'])(
+  it.each([null, undefined, '', 'V3', 'v4'])(
     'fails closed for an unsupported captured version: %s',
     (version) => {
       expect(commercialIntakePermissionsFor(version)).toEqual([]);

@@ -342,6 +342,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               : undefined
           }
           clientIdentityRevision={clientIdentityGeneration}
+          clientAuthorityRevision={clientAuthorityGeneration}
           onOpenClientDossier={
             canReadCompanyClients ? openClientDossier : undefined
           }

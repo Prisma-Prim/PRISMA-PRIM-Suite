@@ -351,6 +351,26 @@ export class AccountabilityService {
       });
   }
 
+  async recordClientRequestClientAssociated(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'client_request.client_associated',
+        metadata: { requestVersion: 2 },
+      });
+  }
+
   // Records one material responsible-actor change. Metadata carries the
   // resulting version and the previous and new responsible actor, each a
   // membership identifier and the label captured now; the caller commits it
