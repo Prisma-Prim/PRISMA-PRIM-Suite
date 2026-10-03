@@ -10,6 +10,8 @@ export type OfferView = {
   illustrativeReference: number;
   revision: 1;
   version: {
+    id: string;
+    latestQualityRun: OfferQualityRunView | null;
     versionNumber: 1;
     pricingSnapshotId: string;
     pricingSnapshot: OfferSnapshotSummary;
@@ -52,6 +54,7 @@ export function readOffer(value: unknown): OfferView {
     !positiveInteger(root.illustrativeReference) ||
     root.revision !== 1 ||
     version.versionNumber !== 1 ||
+    typeof version.id !== 'string' ||
     typeof version.pricingSnapshotId !== 'string' ||
     (recipient.kind !== 'PRIMARY' && recipient.kind !== 'ADDITIONAL') ||
     typeof recipient.legalName !== 'string' ||
@@ -70,6 +73,11 @@ export function readOffer(value: unknown): OfferView {
     illustrativeReference: root.illustrativeReference,
     revision: 1,
     version: {
+      id: version.id,
+      latestQualityRun:
+        version.latestQualityRun === null
+          ? null
+          : readOfferQualityRun(version.latestQualityRun, version.id),
       versionNumber: 1,
       pricingSnapshotId: version.pricingSnapshotId,
       pricingSnapshot: readSnapshot(version.pricingSnapshot),
@@ -92,6 +100,87 @@ export function readOffer(value: unknown): OfferView {
       representation: readRepresentation(version.representation),
     },
   };
+}
+
+export const offerQualityLabels = {
+  PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot coherent',
+  CURRENCY_UNCHANGED: 'Currency unchanged',
+  VALIDITY_OPEN: 'Validity open',
+  RECIPIENT_AVAILABLE: 'Recipient available',
+  RECIPIENT_IDENTITY_CURRENT: 'Recipient identity current',
+  RECIPIENT_TAX_ID_RECORDED: 'Recipient tax ID recorded',
+  PRICING_CLIENT_CONTEXT_COHERENT: 'Pricing Client context coherent',
+  PROVISIONAL_MARKER_PRESENT: 'Provisional marker present',
+} as const;
+export type OfferQualityRunView = {
+  id: string;
+  offerVersionId: string;
+  ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
+  ruleSetVersion: 1;
+  actorWorkspaceMembershipId: string;
+  evaluatedAt: string;
+  results: Array<{
+    code: keyof typeof offerQualityLabels;
+    status: 'PASS' | 'WARNING' | 'ERROR';
+  }>;
+};
+
+export function readOfferQualityRun(
+  value: unknown,
+  offerVersionId: string,
+): OfferQualityRunView {
+  const run = record(value);
+  if (
+    typeof run.id !== 'string' ||
+    run.offerVersionId !== offerVersionId ||
+    run.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
+    run.ruleSetVersion !== 1 ||
+    typeof run.actorWorkspaceMembershipId !== 'string' ||
+    typeof run.evaluatedAt !== 'string' ||
+    !Number.isFinite(Date.parse(run.evaluatedAt)) ||
+    !Array.isArray(run.results) ||
+    run.results.length !== 8
+  )
+    invalid();
+  const expectedCodes = Object.keys(offerQualityLabels);
+  const results = run.results.map(
+    (value: unknown, index): OfferQualityRunView['results'][number] => {
+      const item = record(value);
+      const code = item.code;
+      if (
+        !isQualityCode(code) ||
+        code !== expectedCodes[index] ||
+        (item.status !== 'PASS' &&
+          item.status !== 'WARNING' &&
+          item.status !== 'ERROR')
+      )
+        invalid();
+      const severity =
+        code === 'PRICING_SNAPSHOT_COHERENT' ||
+        code === 'VALIDITY_OPEN' ||
+        code === 'RECIPIENT_AVAILABLE' ||
+        code === 'PROVISIONAL_MARKER_PRESENT'
+          ? 'ERROR'
+          : 'WARNING';
+      if (item.status !== 'PASS' && item.status !== severity) invalid();
+      return { code, status: item.status };
+    },
+  );
+  return {
+    id: run.id,
+    offerVersionId,
+    ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+    ruleSetVersion: 1,
+    actorWorkspaceMembershipId: run.actorWorkspaceMembershipId,
+    evaluatedAt: run.evaluatedAt,
+    results,
+  };
+}
+
+function isQualityCode(
+  value: unknown,
+): value is keyof typeof offerQualityLabels {
+  return typeof value === 'string' && Object.hasOwn(offerQualityLabels, value);
 }
 
 function readRepresentation(

@@ -42,3 +42,25 @@ export const offerCopy = {
   checksum: 'SHA-256 checksum',
   representationFrame: 'Illustrative Offer representation',
 } as const;
+
+export const offerQualityCopy = {
+  title: 'Quality Checks',
+  empty: 'No Quality Check run yet.',
+  run: 'Run Quality Checks',
+  running: 'Running Quality Checks…',
+  retry: 'Retry the same Quality Checks',
+  uncertain:
+    'The outcome is uncertain. Retry sends the exact same command and key.',
+  denied: 'Quality Check access is no longer available.',
+  unavailable: 'The Offer Version is no longer available. Reload the Request.',
+  superseded: 'This Offer Version has been superseded. Reload the Request.',
+  conflict:
+    'This retry no longer matches its recorded command. Reload the Request.',
+  invalid: 'The Quality Check command was refused. Reload the Request.',
+  errors: 'Checks completed with errors.',
+  warnings: 'Checks completed with warnings.',
+  success: 'All Quality Checks passed.',
+  evaluatedAt: 'Evaluated at',
+  actor: 'Checking membership',
+  ruleSet: 'Rule set',
+} as const;

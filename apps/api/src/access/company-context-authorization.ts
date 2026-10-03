@@ -757,6 +757,14 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
+  /** O3's command seam; O4 adds its genuine captured approver grant here. */
+  async requireOfferQualityAccess(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    return this.requireOfferAccess(actor, ['commercial.offer.prepare'], lock);
+  }
+
   // Applying an adjustment requires its own captured v1 assignment. It does
   // not lend calculation, Snapshot read or Company context authority.
   async requirePricingAdjustmentAccess(

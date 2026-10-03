@@ -182,6 +182,450 @@ withPostgres('First illustrative Offer REST', () => {
     await database?.close();
   });
 
+  it('stores an immutable Quality Check run, reopens its latest result and replays without evaluating again', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    const versionId = stringField(record(offer.version), 'id');
+    const path = `/offers/opportunities/${fixture.opportunityId}/versions/${versionId}/quality-checks`;
+    const run = identifiedRecord(
+      await command(path, {}, 'quality-run', fixture.companyId),
+    );
+    expect(run).toMatchObject({
+      offerVersionId: versionId,
+      ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+      ruleSetVersion: 1,
+      actorWorkspaceMembershipId: fixture.actorMembershipId,
+      evaluatedAt: instant.toISOString(),
+    });
+    expect(run.results).toEqual([
+      { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+      { code: 'CURRENCY_UNCHANGED', status: 'PASS' },
+      { code: 'VALIDITY_OPEN', status: 'PASS' },
+      { code: 'RECIPIENT_AVAILABLE', status: 'PASS' },
+      { code: 'RECIPIENT_IDENTITY_CURRENT', status: 'PASS' },
+      { code: 'RECIPIENT_TAX_ID_RECORDED', status: 'PASS' },
+      { code: 'PRICING_CLIENT_CONTEXT_COHERENT', status: 'PASS' },
+      { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+    ]);
+    instant = new Date('2027-01-01T00:00:00.000Z');
+    expect(await command(path, {}, 'quality-run', fixture.companyId)).toEqual(
+      run,
+    );
+    const next = identifiedRecord(
+      await command(path, {}, 'quality-run-new', fixture.companyId),
+    );
+    expect(next.id).not.toBe(run.id);
+    expect(next.results).toContainEqual({
+      code: 'VALIDITY_OPEN',
+      status: 'ERROR',
+    });
+    const reopened = record(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(reopened.revision).toBe(1);
+    expect(record(reopened.version).latestQualityRun).toEqual(next);
+    expect(record(reopened.version).representation).toEqual(
+      record(offer.version).representation,
+    );
+    expect(
+      (await pool.query('SELECT count(*)::integer AS count FROM offer_events'))
+        .rows,
+    ).toEqual([{ count: 2 }]);
+  });
+
+  it('checks corrected hidden recipient identity without lending Client visibility or changing recorded content', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    await pool.query(
+      "UPDATE client_accounts SET display_name = 'Hidden corrected recipient', tax_id = 'HIDDEN-TAX', address = 'Hidden address' WHERE id = $1",
+      [fixture.clientId],
+    );
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle = 'company_director_client_access'",
+      [fixture.companyId],
+    );
+    const run = record(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}/quality-checks`,
+        {},
+        'hidden-identity-check',
+        fixture.companyId,
+      ),
+    );
+    expect(run.results).toContainEqual({
+      code: 'RECIPIENT_IDENTITY_CURRENT',
+      status: 'WARNING',
+    });
+    expect(run.results).toContainEqual({
+      code: 'RECIPIENT_AVAILABLE',
+      status: 'PASS',
+    });
+    expect(JSON.stringify(run)).not.toContain('Hidden');
+    expect(JSON.stringify(run)).not.toContain('HIDDEN-TAX');
+    const reopened = record(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(record(reopened.version).recipient).toEqual(
+      record(offer.version).recipient,
+    );
+    expect(record(reopened.version).representation).toEqual(
+      record(offer.version).representation,
+    );
+    expect(
+      (
+        await request(
+          `/clients/${fixture.clientId}/legal-entities`,
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it.each(['company_offer_preparer', 'company_commercial_intake'])(
+    'denies Quality Check replay after %s authority revocation',
+    async (bundle) => {
+      const fixture = await preparedOffer();
+      const offer = identifiedRecord(
+        await command(
+          `/offers/opportunities/${fixture.opportunityId}`,
+          {
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'quality-offer',
+          fixture.companyId,
+        ),
+      );
+      const path = `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}/quality-checks`;
+      await command(path, {}, 'quality-revoke', fixture.companyId);
+      await pool.query(
+        'UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = $2',
+        [fixture.companyId, bundle],
+      );
+      const denied = await request(path, fixture.companyId, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'quality-revoke',
+        },
+        body: '{}',
+      });
+      expect(denied.status).toBe(403);
+      expect(JSON.stringify(await json(denied))).not.toContain('results');
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_quality_runs',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_events',
+          )
+        ).rows,
+      ).toEqual([{ count: 2 }]);
+    },
+  );
+
+  it('conflicts on changed input and creates only one immutable run for concurrent identical Quality Check requests', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    const path = `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}/quality-checks`;
+    const results = await Promise.all([
+      command(path, {}, 'quality-concurrent', fixture.companyId),
+      command(path, {}, 'quality-concurrent', fixture.companyId),
+    ]);
+    expect(results[0]).toEqual(results[1]);
+    const changed = await request(path, fixture.companyId, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'quality-concurrent',
+      },
+      body: '{"expectedOfferRevision":1}',
+    });
+    expect(changed.status).toBe(409);
+    expect(await json(changed)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    const invalid = await request(path, fixture.companyId, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'quality-invalid',
+      },
+      body: '{"expectedOfferRevision":1}',
+    });
+    expect(invalid.status).toBe(400);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_quality_runs',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    await expect(
+      pool.query('UPDATE offer_quality_runs SET evaluated_at = now()'),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM offer_quality_runs'),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('rolls back a Quality Check run when its receipt fails and accepts the identical retry', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    const path = `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}/quality-checks`;
+    await pool.query(
+      `CREATE FUNCTION reject_quality_receipt_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic receipt failure'; END $$; CREATE TRIGGER reject_quality_receipt_test BEFORE INSERT ON offer_commands FOR EACH ROW EXECUTE FUNCTION reject_quality_receipt_test()`,
+    );
+    try {
+      const response = await request(path, fixture.companyId, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'quality-rollback',
+        },
+        body: '{}',
+      });
+      expect(response.status).toBe(500);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_quality_runs',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_commands',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await pool.query(
+        'DROP TRIGGER reject_quality_receipt_test ON offer_commands; DROP FUNCTION reject_quality_receipt_test()',
+      );
+    }
+    const retried = record(
+      await command(path, {}, 'quality-rollback', fixture.companyId),
+    );
+    expect(retried.ruleSetVersion).toBe(1);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_quality_runs',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (await pool.query('SELECT count(*)::integer AS count FROM offer_events'))
+        .rows,
+    ).toEqual([{ count: 2 }]);
+  });
+
+  it('keeps resolved Client identity while recording recipient unavailability after the relationship changes behind its owner fence', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    const path = `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}/quality-checks`;
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const [backend] = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows;
+      if (!backend) throw new Error('Expected barrier backend.');
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      const pending = command(
+        path,
+        {},
+        'quality-owner-fence',
+        fixture.companyId,
+      );
+      await waitForBlockedRequests(backend.pid, 1);
+      await barrier.query(
+        "UPDATE client_company_relationships SET status = 'archived' WHERE company_id = $1 AND client_account_id = $2",
+        [fixture.companyId, fixture.clientId],
+      );
+      await barrier.query('COMMIT');
+      released = true;
+      const run = record(await pending);
+      expect(run.results).toContainEqual({
+        code: 'RECIPIENT_AVAILABLE',
+        status: 'ERROR',
+      });
+      expect(run.results).toContainEqual({
+        code: 'PRICING_CLIENT_CONTEXT_COHERENT',
+        status: 'PASS',
+      });
+      expect(run.results).toContainEqual({
+        code: 'RECIPIENT_IDENTITY_CURRENT',
+        status: 'PASS',
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+  });
+
+  it('does not reveal a Quality Check target from another Company, Workspace or unknown version', async () => {
+    const fixture = await preparedOffer();
+    const offer = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'quality-offer',
+        fixture.companyId,
+      ),
+    );
+    const versionId = stringField(record(offer.version), 'id');
+    const other = entity(
+      await command(
+        '/companies',
+        { displayName: 'Other Quality Company' },
+        'quality-other-company',
+      ),
+    );
+    for (const path of [
+      '/company-offer-preparer-assignments',
+      '/company-commercial-intake-assignments',
+    ])
+      await command(
+        path,
+        {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: other.id,
+        },
+        `quality-other-${path}`,
+      );
+    const unknownId = '00000000-0000-4000-8000-999999999999';
+    const payload = {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'quality-unavailable',
+      },
+      body: '{}',
+    };
+    const responses = [
+      await request(
+        `/offers/opportunities/${fixture.opportunityId}/versions/${versionId}/quality-checks`,
+        other.id,
+        payload,
+      ),
+      await request(
+        `/offers/opportunities/${unknownId}/versions/${versionId}/quality-checks`,
+        fixture.companyId,
+        payload,
+      ),
+      await request(
+        `/offers/opportunities/${fixture.opportunityId}/versions/${unknownId}/quality-checks`,
+        fixture.companyId,
+        payload,
+      ),
+      await request(
+        `/offers/opportunities/${fixture.opportunityId}/versions/not-a-uuid/quality-checks`,
+        fixture.companyId,
+        payload,
+      ),
+    ];
+    const bodies: unknown[] = [];
+    for (const response of responses) {
+      expect(response.status).toBe(404);
+      bodies.push(await json(response));
+    }
+    expect(bodies).toEqual(Array.from({ length: 4 }, () => bodies[0]));
+    const { offers: service, actor } = await offerServiceContext(fixture);
+    await expect(
+      service.runQualityChecks({
+        actor: { ...actor, workspaceId: unknownId },
+        opportunityId: fixture.opportunityId,
+        offerVersionId: versionId,
+        payload: {},
+        idempotencyKey: 'quality-cross-workspace',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_quality_runs',
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+  });
+
   it('creates PRIMARY version 1 from one Snapshot and reopens the same immutable Offer after restart', async () => {
     const fixture = await preparedOffer();
     expect(

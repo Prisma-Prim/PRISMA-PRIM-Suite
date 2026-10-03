@@ -179,6 +179,12 @@ export const offerVersions = pgTable(
       table.companyId,
       table.id,
     ),
+    uniqueIndex('offer_versions_offer_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerId,
+      table.id,
+    ),
     uniqueIndex('offer_versions_number_unique').on(
       table.workspaceId,
       table.companyId,
@@ -307,7 +313,79 @@ export const offerReferenceCounters = pgTable(
   ],
 );
 
-/** Durable receipt for Create Offer, scoped to actor and active Company. */
+/** Immutable results; sequence orders runs even when the server clock ties. */
+export const offerQualityRuns = pgTable(
+  'offer_quality_runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sequence: integer('sequence').generatedAlwaysAsIdentity(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    offerId: uuid('offer_id').notNull(),
+    offerVersionId: uuid('offer_version_id').notNull(),
+    ruleSet: text('rule_set').default('OFFER_QUALITY_ILLUSTRATIVE').notNull(),
+    ruleSetVersion: integer('rule_set_version').default(1).notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    evaluatedAt: timestamp('evaluated_at', { withTimezone: true }).notNull(),
+    results: jsonb('results').$type<unknown>().notNull(),
+  },
+  (table) => [
+    uniqueIndex('offer_quality_runs_scope_id_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'offer_quality_runs_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.offerVersionId,
+      ],
+      foreignColumns: [
+        offerVersions.workspaceId,
+        offerVersions.companyId,
+        offerVersions.offerId,
+        offerVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_quality_runs_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offer_quality_runs_rule_set_check',
+      sql`${table.ruleSet} = 'OFFER_QUALITY_ILLUSTRATIVE' AND ${table.ruleSetVersion} = 1`,
+    ),
+    check(
+      'offer_quality_runs_results_check',
+      sql`(CASE WHEN jsonb_typeof(${table.results}) <> 'array' THEN false ELSE
+    jsonb_array_length(${table.results}) = 8
+    AND ${table.results}->0->>'code' = 'PRICING_SNAPSHOT_COHERENT' AND ${table.results}->0->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->1->>'code' = 'CURRENCY_UNCHANGED' AND ${table.results}->1->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->2->>'code' = 'VALIDITY_OPEN' AND ${table.results}->2->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->3->>'code' = 'RECIPIENT_AVAILABLE' AND ${table.results}->3->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->4->>'code' = 'RECIPIENT_IDENTITY_CURRENT' AND ${table.results}->4->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->5->>'code' = 'RECIPIENT_TAX_ID_RECORDED' AND ${table.results}->5->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->6->>'code' = 'PRICING_CLIENT_CONTEXT_COHERENT' AND ${table.results}->6->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->7->>'code' = 'PROVISIONAL_MARKER_PRESENT' AND ${table.results}->7->>'status' IN ('PASS','ERROR') END) IS TRUE`,
+    ),
+  ],
+);
+
+/** Durable Offer receipts share one actor/Company key namespace. */
 export const offerCommands = pgTable(
   'offer_commands',
   {
@@ -319,6 +397,10 @@ export const offerCommands = pgTable(
     fingerprint: text('fingerprint').notNull(),
     opportunityId: uuid('opportunity_id').notNull(),
     resultOfferId: uuid('result_offer_id').notNull(),
+    kind: text('kind', { enum: ['CREATE_OFFER', 'RUN_QUALITY_CHECKS'] })
+      .default('CREATE_OFFER')
+      .notNull(),
+    resultQualityRunId: uuid('result_quality_run_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -350,6 +432,25 @@ export const offerCommands = pgTable(
       columns: [table.workspaceId, table.companyId, table.resultOfferId],
       foreignColumns: [offers.workspaceId, offers.companyId, offers.id],
     }),
+    foreignKey({
+      name: 'offer_commands_quality_result_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.resultOfferId,
+        table.resultQualityRunId,
+      ],
+      foreignColumns: [
+        offerQualityRuns.workspaceId,
+        offerQualityRuns.companyId,
+        offerQualityRuns.offerId,
+        offerQualityRuns.id,
+      ],
+    }),
+    check(
+      'offer_commands_kind_result_check',
+      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL) OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL)`,
+    ),
   ],
 );
 

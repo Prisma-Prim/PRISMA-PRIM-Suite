@@ -27,6 +27,7 @@ import {
   type OfferView,
 } from './offer-response';
 import './offer.css';
+import { OfferQualityPanel } from './OfferQualityPanel';
 
 type Ready = {
   kind: 'empty';
@@ -64,6 +65,14 @@ export function OfferPanel({
   const permissions = actor.activeCompany?.offerPermissions ?? [];
   const mayRead = permissions.includes('commercial.offer.read');
   const mayPrepare = permissions.includes('commercial.offer.prepare');
+  const authorityStamp = JSON.stringify([
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    actor.internalUserId,
+    actor.activeCompany?.offerPermissionAssignmentId,
+    permissions,
+    actor.activeCompany?.commercialIntakePermissions,
+  ]);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [snapshotId, setSnapshotId] = useState('');
   const [recipient, setRecipient] = useState('PRIMARY');
@@ -189,7 +198,7 @@ export function OfferPanel({
     setFeedback(undefined);
     void load();
     return () => pendingRequest.current?.abort();
-  }, [load]);
+  }, [load, authorityStamp]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -378,7 +387,23 @@ export function OfferPanel({
             {feedback && <p role="alert">{copy[feedback]}</p>}
           </form>
         )}
-      {view.kind === 'offer' && <OfferSummary offer={view.offer} />}
+      {view.kind === 'offer' && (
+        <>
+          <OfferSummary offer={view.offer} />
+          {companyId && (
+            <OfferQualityPanel
+              key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              offerVersionId={view.offer.version.id}
+              initialRun={view.offer.version.latestQualityRun}
+              mayRun={mayPrepare}
+              reject={reject}
+            />
+          )}
+        </>
+      )}
     </section>
   );
 }

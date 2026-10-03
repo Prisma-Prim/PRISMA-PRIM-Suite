@@ -197,7 +197,9 @@ it.skipIf(!databaseUrl)(
             const omitted =
               table === 'offer_versions'
                 ? " - ARRAY['template_code', 'template_version']::text[]"
-                : '';
+                : table === 'offer_commands'
+                  ? " - ARRAY['kind', 'result_quality_run_id']::text[]"
+                  : '';
             return (
               await query(
                 `SELECT to_jsonb(row_value)${omitted} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
@@ -210,6 +212,29 @@ it.skipIf(!databaseUrl)(
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
 
       expect(await preserved()).toEqual(before);
+      expect(
+        (
+          await query(
+            `SELECT kind, result_quality_run_id AS "resultQualityRunId"
+               FROM offer_commands WHERE id = $1`,
+            [COMMAND],
+          )
+        ).rows,
+      ).toEqual([{ kind: 'CREATE_OFFER', resultQualityRunId: null }]);
+      expect(
+        (
+          await query(
+            `SELECT column_name AS "columnName", column_default AS "columnDefault"
+               FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'offer_commands'
+                AND column_name IN ('kind', 'result_quality_run_id')
+              ORDER BY column_name`,
+          )
+        ).rows,
+      ).toEqual([
+        { columnName: 'kind', columnDefault: "'CREATE_OFFER'::text" },
+        { columnName: 'result_quality_run_id', columnDefault: null },
+      ]);
       expect(
         (
           await query(

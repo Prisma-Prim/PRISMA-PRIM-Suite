@@ -3,8 +3,9 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
-import { and, DrizzleQueryError, eq, sql } from 'drizzle-orm';
+import { and, desc, DrizzleQueryError, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -18,6 +19,7 @@ import {
   offerReferenceCounters,
   offerVersions,
   offers,
+  offerQualityRuns,
   OFFER_TEMPLATE_CODE,
   OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
@@ -31,6 +33,12 @@ import type {
 } from './offer.types.js';
 import { readCreateOfferCommand } from './offer.validation.js';
 import { renderOfferRepresentation } from './offer-representation.js';
+import {
+  evaluateOfferQuality,
+  readOfferQualityResults,
+  requireHeadOfferVersion,
+  type OfferQualityRun,
+} from './offer-quality.js';
 
 type OfferRow = typeof offers.$inferSelect;
 type OfferVersionRow = typeof offerVersions.$inferSelect;
@@ -89,6 +97,7 @@ export class OfferService {
       const receipt = await this.findCommand(actor, companyId, idempotencyKey);
       if (receipt) {
         if (
+          receipt.kind !== 'CREATE_OFFER' ||
           receipt.opportunityId !== opportunity.id ||
           receipt.fingerprint !== fingerprint
         )
@@ -293,6 +302,188 @@ export class OfferService {
     }
   }
 
+  async runQualityChecks(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    payload: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<OfferQualityRun> {
+    const { actor } = input;
+    await this.authorization.requireOfferQualityAccess(actor);
+    const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+    return this.databaseContext.transaction(async () => {
+      const companyId = await this.authorization.requireOfferQualityAccess(
+        actor,
+        true,
+      );
+      const opportunity = await this.intake.requireReadableOfferOpportunity(
+        actor,
+        input.opportunityId,
+        true,
+      );
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+          input.offerVersionId,
+        )
+      )
+        throw new NotFoundException();
+      const offer = await this.findOffer(
+        actor.workspaceId,
+        companyId,
+        opportunity.id,
+      );
+      if (!offer) throw new NotFoundException();
+      const [target] = await this.databaseContext.connection
+        .select()
+        .from(offerVersions)
+        .where(
+          and(
+            eq(offerVersions.workspaceId, actor.workspaceId),
+            eq(offerVersions.companyId, companyId),
+            eq(offerVersions.offerId, offer.id),
+            eq(offerVersions.id, input.offerVersionId),
+          ),
+        );
+      if (!target) throw new NotFoundException();
+      const fingerprint = commandFingerprint({
+        kind: 'RUN_QUALITY_CHECKS',
+        opportunityId: opportunity.id,
+        offerVersionId: input.offerVersionId,
+        payload: input.payload,
+      });
+      await this.lockCommand(actor, companyId, idempotencyKey);
+      const receipt = await this.findCommand(actor, companyId, idempotencyKey);
+      if (receipt) {
+        if (
+          receipt.kind !== 'RUN_QUALITY_CHECKS' ||
+          receipt.fingerprint !== fingerprint ||
+          receipt.resultOfferId !== offer.id ||
+          !receipt.resultQualityRunId
+        )
+          throw namedConflict(
+            'IDEMPOTENCY_CONFLICT',
+            'Idempotency-Key was already used for another Offer command.',
+          );
+        const [run] = await this.databaseContext.connection
+          .select()
+          .from(offerQualityRuns)
+          .where(
+            and(
+              eq(offerQualityRuns.workspaceId, actor.workspaceId),
+              eq(offerQualityRuns.companyId, companyId),
+              eq(offerQualityRuns.offerVersionId, target.id),
+              eq(offerQualityRuns.id, receipt.resultQualityRunId),
+            ),
+          );
+        if (!run) throw new Error('The recorded Quality Check run is missing.');
+        return qualityRunView(run);
+      }
+      if (
+        typeof input.payload !== 'object' ||
+        input.payload === null ||
+        Array.isArray(input.payload) ||
+        Object.keys(input.payload).length !== 0
+      )
+        throw new BadRequestException({
+          fields: { command: 'Quality Checks accept an empty command only.' },
+        });
+      // Serialize with all Offer commands; this command never changes revision.
+      await this.databaseContext.connection
+        .select({ id: offers.id })
+        .from(offers)
+        .where(
+          and(
+            eq(offers.workspaceId, actor.workspaceId),
+            eq(offers.companyId, companyId),
+            eq(offers.id, offer.id),
+          ),
+        )
+        .for('update');
+      const [head] = await this.databaseContext.connection
+        .select({ id: offerVersions.id })
+        .from(offerVersions)
+        .where(
+          and(
+            eq(offerVersions.workspaceId, actor.workspaceId),
+            eq(offerVersions.companyId, companyId),
+            eq(offerVersions.offerId, offer.id),
+          ),
+        )
+        .orderBy(desc(offerVersions.versionNumber))
+        .limit(1);
+      requireHeadOfferVersion({
+        offerVersionId: target.id,
+        headVersionId: head?.id,
+      });
+      const pricing = await this.pricing.inspectOfferQualitySnapshot({
+        actor,
+        companyId,
+        opportunityId: opportunity.id,
+        snapshotId: target.pricingSnapshotId,
+      });
+      const recipient = offerRecipientCopy(target);
+      const context = await this.clients.inspectOfferQualityContext({
+        actor,
+        companyId,
+        originalClientAccountId: offer.originalClientAccountId,
+        snapshotOriginalClientAccountId: pricing.originalClientAccountId,
+        recipient:
+          recipient.kind === 'PRIMARY'
+            ? { kind: 'PRIMARY' }
+            : {
+                kind: 'ADDITIONAL',
+                legalEntityId: recipient.additionalLegalEntityId,
+              },
+        recordedIdentity: recipient,
+      });
+      const evaluatedAt = this.clock.now();
+      const results = evaluateOfferQuality({
+        instant: evaluatedAt,
+        validUntil: target.validUntil,
+        snapshot: {
+          ...pricing.snapshot,
+          belongsToOffer:
+            pricing.snapshot.opportunityId === offer.opportunityId,
+        },
+        previousTransmittedCurrency: null,
+        ...context,
+        recipientTaxId: target.recipientTaxId,
+        provenance: target.provenance,
+        provisional: target.provenance === 'ILLUSTRATIVE',
+      });
+      // O1 permits only version 1 and no transmissions. O5/O7 supply the earlier
+      // transmitted version when their actual persisted states are introduced.
+      const [run] = await this.databaseContext.connection
+        .insert(offerQualityRuns)
+        .values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          offerId: offer.id,
+          offerVersionId: target.id,
+          actorInternalUserId: actor.internalUserId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          evaluatedAt,
+          results,
+        })
+        .returning();
+      if (!run) throw new Error('The Quality Check run was not recorded.');
+      await this.databaseContext.connection.insert(offerCommands).values({
+        workspaceId: actor.workspaceId,
+        companyId,
+        actorWorkspaceMembershipId: actor.workspaceMembershipId,
+        idempotencyKey,
+        fingerprint,
+        opportunityId: opportunity.id,
+        resultOfferId: offer.id,
+        kind: 'RUN_QUALITY_CHECKS',
+        resultQualityRunId: run.id,
+        createdAt: evaluatedAt,
+      });
+      return qualityRunView(run);
+    });
+  }
+
   private async offerView(
     actor: ActorContext,
     offer: OfferRow,
@@ -303,6 +494,18 @@ export class OfferService {
       actor,
       offer.originalClientAccountId,
     );
+    const [latestRun] = await this.databaseContext.connection
+      .select()
+      .from(offerQualityRuns)
+      .where(
+        and(
+          eq(offerQualityRuns.workspaceId, actor.workspaceId),
+          eq(offerQualityRuns.companyId, offer.companyId),
+          eq(offerQualityRuns.offerVersionId, version.id),
+        ),
+      )
+      .orderBy(desc(offerQualityRuns.sequence))
+      .limit(1);
     return {
       id: offer.id,
       companyId: offer.companyId,
@@ -315,7 +518,10 @@ export class OfferService {
       createdByWorkspaceMembershipId: offer.createdByWorkspaceMembershipId,
       createdAt: offer.createdAt.toISOString(),
       ...(clientReference ? { clientReference } : {}),
-      version: offerVersionView(offer.illustrativeReference, version, snapshot),
+      version: {
+        ...offerVersionView(offer.illustrativeReference, version, snapshot),
+        latestQualityRun: latestRun ? qualityRunView(latestRun) : null,
+      },
     };
   }
 
@@ -430,7 +636,7 @@ function offerVersionView(
   illustrativeReference: number,
   row: OfferVersionRow,
   pricingSnapshot: PricingSnapshotRecord,
-): OfferVersionRecord {
+): Omit<OfferVersionRecord, 'latestQualityRun'> {
   if (
     row.versionNumber !== 1 ||
     row.decisionState !== 'PENDING' ||
@@ -505,6 +711,22 @@ function offerRecipientCopy(row: OfferVersionRow): OfferRecipientCopy {
 
 function namedConflict(code: string, message: string): ConflictException {
   return new ConflictException({ code, message });
+}
+
+function qualityRunView(
+  row: typeof offerQualityRuns.$inferSelect,
+): OfferQualityRun {
+  if (row.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' || row.ruleSetVersion !== 1)
+    throw new Error('Unsupported stored Offer Quality Check rule set.');
+  return {
+    id: row.id,
+    offerVersionId: row.offerVersionId,
+    ruleSet: row.ruleSet,
+    ruleSetVersion: 1,
+    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+    evaluatedAt: row.evaluatedAt.toISOString(),
+    results: readOfferQualityResults(row.results),
+  };
 }
 
 function requireUnadjustedOfferSnapshot(snapshot: PricingSnapshotRecord): void {

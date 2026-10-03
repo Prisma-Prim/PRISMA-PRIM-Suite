@@ -469,6 +469,39 @@ export class PricingSnapshotService {
     return this.snapshotView(actor, snapshot);
   }
 
+  /** Exact immutable Offer input, never a grant to browse other Snapshots. */
+  async inspectOfferQualitySnapshot(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    snapshotId: string;
+  }): Promise<{
+    snapshot: PricingSnapshotRecord;
+    originalClientAccountId: string | null;
+  }> {
+    const companyId = await this.authorization.requireOfferQualityAccess(
+      input.actor,
+      true,
+    );
+    if (companyId !== input.companyId) throw new NotFoundException();
+    const [row] = await this.databaseContext.connection
+      .select()
+      .from(pricingSnapshots)
+      .where(
+        and(
+          eq(pricingSnapshots.workspaceId, input.actor.workspaceId),
+          eq(pricingSnapshots.companyId, companyId),
+          eq(pricingSnapshots.opportunityId, input.opportunityId),
+          eq(pricingSnapshots.id, input.snapshotId),
+        ),
+      );
+    if (!row) throw new NotFoundException();
+    return {
+      snapshot: await this.snapshotView(input.actor, row, false),
+      originalClientAccountId: row.originalClientAccountId,
+    };
+  }
+
   private async requireRule(
     actor: ActorContext,
     companyId: string,
@@ -599,6 +632,7 @@ export class PricingSnapshotService {
   private async snapshotView(
     actor: ActorContext,
     snapshot: SnapshotRow,
+    includeClientProjection = true,
   ): Promise<PricingSnapshotRecord> {
     const lines = await this.databaseContext.connection
       .select({
@@ -635,12 +669,13 @@ export class PricingSnapshotService {
         ),
       )
       .orderBy(asc(pricingSnapshotLines.lineNumber));
-    const clientReference = snapshot.originalClientAccountId
-      ? await this.intake.readPricingClientProjection(
-          actor,
-          snapshot.originalClientAccountId,
-        )
-      : undefined;
+    const clientReference =
+      includeClientProjection && snapshot.originalClientAccountId
+        ? await this.intake.readPricingClientProjection(
+            actor,
+            snapshot.originalClientAccountId,
+          )
+        : undefined;
     return {
       id: snapshot.id,
       opportunityId: snapshot.opportunityId,

@@ -291,6 +291,129 @@ export class ClientOperationalReferenceService {
     };
   }
 
+  /**
+   * Offer has its own authority to evaluate recorded content. This inspection
+   * lends no Client read permission and returns no live identity or dossier id.
+   * Call only inside the authorized Offer transaction. Client owns resolution
+   * and uses the same identity-before-relationship fence as union and reversal.
+   */
+  async inspectOfferQualityContext(input: {
+    actor: ActorContext;
+    companyId: string;
+    originalClientAccountId: string;
+    snapshotOriginalClientAccountId: string | null;
+    recipient: ClientLegalRecipientSelection;
+    recordedIdentity: {
+      legalName: string;
+      taxId: string | null;
+      legalAddress: string | null;
+    };
+  }): Promise<{
+    recipientAvailable: boolean;
+    recipientIdentityCurrent: boolean;
+    pricingClientContextCoherent: boolean;
+  }> {
+    const { actor, companyId } = input;
+    if (actor.activeCompany?.id !== companyId) throw new ForbiddenException();
+    const originals = [
+      ...new Set([
+        input.originalClientAccountId,
+        ...(input.snapshotOriginalClientAccountId
+          ? [input.snapshotOriginalClientAccountId]
+          : []),
+      ]),
+    ];
+    const before = await this.resolveCurrentDossiers(actor, originals);
+    const traversed = [
+      ...new Set([
+        ...originals,
+        ...[...before.visitedByOriginal.values()].flatMap((ids) => [...ids]),
+      ]),
+    ].sort();
+    const clients = await this.databaseContext.connection
+      .select()
+      .from(clientAccounts)
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          inArray(clientAccounts.id, traversed),
+        ),
+      )
+      .orderBy(asc(clientAccounts.id))
+      .for('update');
+    const relationships = await this.databaseContext.connection
+      .select()
+      .from(clientCompanyRelationships)
+      .where(
+        and(
+          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
+          eq(clientCompanyRelationships.companyId, companyId),
+          inArray(clientCompanyRelationships.clientAccountId, traversed),
+        ),
+      )
+      .orderBy(asc(clientCompanyRelationships.id))
+      .for('share');
+    const after = await this.resolveCurrentDossiers(actor, originals);
+    // Reference equality and recorded identity are independent of recipient
+    // availability. Archiving a relationship does not change either identity.
+    const fencedClientId = (original: string): string | undefined => {
+      const id = after.currentDossierByOriginal.get(original);
+      if (
+        !id ||
+        before.invalidOriginalIds.has(original) ||
+        after.invalidOriginalIds.has(original) ||
+        before.currentDossierByOriginal.get(original) !== id ||
+        !clients.some((client) => client.id === id)
+      )
+        return undefined;
+      return id;
+    };
+    const clientId = fencedClientId(input.originalClientAccountId);
+    const client = clients.find((row) => row.id === clientId);
+    let identity:
+      | { legalName: string; taxId: string | null; legalAddress: string | null }
+      | undefined;
+    if (client && input.recipient.kind === 'PRIMARY')
+      identity = {
+        legalName: client.displayName,
+        taxId: client.taxId,
+        legalAddress: client.address,
+      };
+    if (client && input.recipient.kind === 'ADDITIONAL') {
+      const [entity] = await this.databaseContext.connection
+        .select()
+        .from(clientLegalEntities)
+        .where(
+          and(
+            eq(clientLegalEntities.workspaceId, actor.workspaceId),
+            eq(clientLegalEntities.clientAccountId, client.id),
+            eq(clientLegalEntities.id, input.recipient.legalEntityId),
+          ),
+        )
+        .for('share');
+      identity = entity;
+    }
+    return {
+      recipientAvailable:
+        identity !== undefined &&
+        client?.status === 'active' &&
+        relationships.some(
+          (relationship) =>
+            relationship.clientAccountId === clientId &&
+            relationship.status === 'active',
+        ),
+      recipientIdentityCurrent:
+        identity !== undefined &&
+        identity.legalName === input.recordedIdentity.legalName &&
+        identity.taxId === input.recordedIdentity.taxId &&
+        identity.legalAddress === input.recordedIdentity.legalAddress,
+      pricingClientContextCoherent:
+        clientId !== undefined &&
+        input.snapshotOriginalClientAccountId !== null &&
+        fencedClientId(input.snapshotOriginalClientAccountId) === clientId,
+    };
+  }
+
   /** Advance the union/reversal fence only after a new Offer will commit. */
   async recordLockedReferenceUse(
     actor: ActorContext,
