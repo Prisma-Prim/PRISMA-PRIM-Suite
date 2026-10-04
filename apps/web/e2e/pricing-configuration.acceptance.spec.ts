@@ -1068,7 +1068,7 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(offer.getByRole('alert')).toHaveText(
-      'The selected Pricing Snapshot contains an adjustment and cannot be used for Offer version 1.',
+      'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
     );
     await expect(offer.getByText('Illustrative reference')).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
