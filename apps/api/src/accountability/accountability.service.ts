@@ -71,11 +71,43 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 
 @Injectable()
 export class AccountabilityService {
+  async recordOfferVersionCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    versionNumber: number;
+    predecessorVersionNumber: number;
+    pricingSnapshotId: string;
+    recipientKind: 'PRIMARY' | 'ADDITIONAL';
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(offerEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      offerId: input.offerId,
+      offerVersionId: input.offerVersionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      action: 'offer_version.created',
+      metadata: {
+        offerId: input.offerId,
+        offerVersionId: input.offerVersionId,
+        versionNumber: input.versionNumber,
+        predecessorVersionNumber: input.predecessorVersionNumber,
+        pricingSnapshotId: input.pricingSnapshotId,
+        recipientKind: input.recipientKind,
+        provenance: 'ILLUSTRATIVE',
+      },
+    });
+  }
   async recordOfferClientResponse(input: {
     actor: ActorContext;
     companyId: string;
     offerId: string;
     offerVersionId: string;
+    versionNumber: number;
     occurredAt: Date;
     outcome: 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
   }): Promise<void> {
@@ -91,7 +123,7 @@ export class AccountabilityService {
       metadata: {
         offerId: input.offerId,
         offerVersionId: input.offerVersionId,
-        versionNumber: 1,
+        versionNumber: input.versionNumber,
         evidenceKind: 'SIMULATED',
         outcome: input.outcome,
         provenance: 'ILLUSTRATIVE',
@@ -104,6 +136,7 @@ export class AccountabilityService {
     companyId: string;
     offerId: string;
     offerVersionId: string;
+    versionNumber: number;
     occurredAt: Date;
     acknowledgedWarningCodes: readonly string[];
   }): Promise<void> {
@@ -119,7 +152,7 @@ export class AccountabilityService {
       metadata: {
         offerId: input.offerId,
         offerVersionId: input.offerVersionId,
-        versionNumber: 1,
+        versionNumber: input.versionNumber,
         channel: 'SIMULATED',
         provenance: 'ILLUSTRATIVE',
         ruleSetVersion: 1,
@@ -133,6 +166,7 @@ export class AccountabilityService {
     companyId: string;
     offerId: string;
     offerVersionId: string;
+    versionNumber: number;
     occurredAt: Date;
     state: 'APPROVED' | 'REJECTED';
     acknowledgedWarningCodes?: readonly string[];
@@ -152,7 +186,7 @@ export class AccountabilityService {
       metadata: {
         offerId: input.offerId,
         offerVersionId: input.offerVersionId,
-        versionNumber: 1,
+        versionNumber: input.versionNumber,
         outcome: input.state,
         provenance: 'ILLUSTRATIVE',
         ...(input.state === 'APPROVED'

@@ -184,6 +184,951 @@ withPostgres('First illustrative Offer REST', () => {
     await database?.close();
   });
 
+  it('creates a complete successor of a transmitted Offer and preserves historical evidence', async () => {
+    const { fixture, offer } = await transmittedResponseOffer();
+    const path = `/offers/opportunities/${fixture.opportunityId}`;
+    const before = record(
+      record(await json(await request(path, fixture.companyId))).offer,
+    );
+    const oldVersion = record(before.version);
+    const successor = record(
+      await command(
+        path + '/versions',
+        {
+          expectedOfferRevision: 3,
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+          commercialConditions: 'Revised illustrative conditions',
+        },
+        'successor',
+        fixture.companyId,
+      ),
+    );
+    expect(successor).toMatchObject({ id: offer.id, revision: 4 });
+    const version = record(successor.version);
+    expect(version).toMatchObject({
+      versionNumber: 2,
+      predecessorVersionId: oldVersion.id,
+      decisionState: 'PENDING',
+      transmissionState: 'NOT_TRANSMITTED',
+      clientResponseState: 'NONE',
+      decision: null,
+      transmission: null,
+      clientResponse: null,
+      latestQualityRun: null,
+      provisional: true,
+      differences: expect.arrayContaining([
+        {
+          field: 'commercialConditions',
+          previous: null,
+          current: 'Revised illustrative conditions',
+          changed: true,
+        },
+      ]),
+    });
+    const previous = record(
+      record(
+        await json(
+          await request(
+            path + '/versions/' + stringField(oldVersion, 'id'),
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(record(previous.version)).toMatchObject({
+      representation: oldVersion.representation,
+      decision: oldVersion.decision,
+      transmission: oldVersion.transmission,
+      latestQualityRun: oldVersion.latestQualityRun,
+      clientResponseState: 'PENDING',
+      supersededByVersionId: version.id,
+    });
+    const history = record(
+      await json(await request(path + '/versions', fixture.companyId)),
+    );
+    expect(history.versions).toMatchObject([
+      { versionNumber: 2 },
+      { versionNumber: 1 },
+    ]);
+  });
+
+  it('revalidates, approves, transmits and accepts the successor with its own evidence', async () => {
+    const { fixture, offer } = await transmittedResponseOffer();
+    const path = `/offers/opportunities/${fixture.opportunityId}`;
+    const body = {
+      expectedOfferRevision: 3,
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+      commercialConditions: '',
+    };
+    const created = record(
+      await command(path + '/versions', body, 'successor', fixture.companyId),
+    );
+    const version = record(created.version);
+    const base = path + '/versions/' + stringField(version, 'id');
+    const run = record(
+      await command(
+        base + '/quality-checks',
+        {},
+        'v2-check',
+        fixture.companyId,
+      ),
+    );
+    expect(run.offerVersionId).toBe(version.id);
+    const approval = await command(
+      base + '/approve',
+      { expectedOfferRevision: 4, acknowledgedWarningCodes: [] },
+      'v2-approve',
+      fixture.companyId,
+    );
+    const transmission = await command(
+      base + '/transmission',
+      { expectedOfferRevision: 5, acknowledgedWarningCodes: [] },
+      'v2-transmit',
+      fixture.companyId,
+    );
+    const response = await command(
+      base + '/client-response',
+      {
+        expectedOfferRevision: 6,
+        outcome: 'ACCEPTED',
+        receivedAt: instant.toISOString(),
+      },
+      'v2-accept',
+      fixture.companyId,
+    );
+    expect(
+      record(record(await json(await request(path, fixture.companyId))).offer),
+    ).toMatchObject({
+      id: offer.id,
+      revision: 7,
+      version: {
+        versionNumber: 2,
+        decision: approval,
+        transmission,
+        clientResponse: response,
+        clientResponseState: 'ACCEPTED',
+      },
+    });
+    const denied = await decisionRequest(
+      fixture,
+      path + '/versions',
+      { ...body, expectedOfferRevision: 7 },
+      'v3',
+    );
+    expect(denied.status).toBe(409);
+    expect(await json(denied)).toMatchObject({ code: 'OFFER_ACCEPTED' });
+    instant = new Date('2028-01-01T00:00:00.000Z');
+    expect(
+      await command(path + '/versions', body, 'successor', fixture.companyId),
+    ).toEqual(created);
+  });
+
+  it.each(['PENDING', 'APPROVED', 'REJECTED', 'CLIENT_REJECTED', 'EXPIRED'])(
+    'creates a fresh successor after %s without inheriting evidence',
+    async (state) => {
+      const { fixture, offer, base } =
+        state === 'CLIENT_REJECTED' || state === 'EXPIRED'
+          ? await transmittedResponseOffer()
+          : await decisionOffer();
+      let revision = 1;
+      if (state === 'APPROVED') {
+        await command(
+          base + '/approve',
+          { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+          'approve',
+          fixture.companyId,
+        );
+        revision = 2;
+      }
+      if (state === 'REJECTED') {
+        await command(
+          base + '/reject',
+          { expectedOfferRevision: 1, reason: 'Internal refusal' },
+          'reject',
+          fixture.companyId,
+        );
+        revision = 2;
+      }
+      if (state === 'CLIENT_REJECTED' || state === 'EXPIRED') {
+        if (state === 'EXPIRED')
+          instant = new Date(stringField(record(offer.version), 'validUntil'));
+        await command(
+          base + '/client-response',
+          state === 'EXPIRED'
+            ? { expectedOfferRevision: 3, outcome: 'EXPIRED' }
+            : {
+                expectedOfferRevision: 3,
+                outcome: 'REJECTED',
+                receivedAt: instant.toISOString(),
+                reason: 'Client refusal',
+              },
+          'response',
+          fixture.companyId,
+        );
+        revision = 4;
+      }
+      const path = `/offers/opportunities/${fixture.opportunityId}`;
+      const created = record(
+        await command(
+          path + '/versions',
+          {
+            expectedOfferRevision: revision,
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'successor',
+          fixture.companyId,
+        ),
+      );
+      expect(created).toMatchObject({
+        revision: revision + 1,
+        version: {
+          versionNumber: 2,
+          decision: null,
+          latestQualityRun: null,
+          transmission: null,
+          clientResponse: null,
+        },
+      });
+      for (const action of [
+        'approve',
+        'reject',
+        'transmission',
+        'client-response',
+        'quality-checks',
+      ]) {
+        const payload =
+          action === 'quality-checks'
+            ? {}
+            : action === 'reject'
+              ? { expectedOfferRevision: revision + 1, reason: 'Refusal' }
+              : action === 'client-response'
+                ? { expectedOfferRevision: revision + 1, outcome: 'EXPIRED' }
+                : {
+                    expectedOfferRevision: revision + 1,
+                    acknowledgedWarningCodes: [],
+                  };
+        const refused = await decisionRequest(
+          fixture,
+          base + '/' + action,
+          payload,
+          'superseded-' + action,
+        );
+        expect(refused.status).toBe(409);
+        expect(await json(refused)).toMatchObject({
+          code: 'OFFER_VERSION_SUPERSEDED',
+        });
+      }
+    },
+  );
+
+  it('replays a recorded creation after later heads, preserves exact payload and pages history stably', async () => {
+    const { fixture } = await decisionOffer();
+    const path = `/offers/opportunities/${fixture.opportunityId}`;
+    const body = {
+      expectedOfferRevision: 1,
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+      scopeNote: '',
+      commercialConditions: null,
+    };
+    const first = await command(
+      path + '/versions',
+      body,
+      'v2',
+      fixture.companyId,
+    );
+    await command(
+      path + '/versions',
+      { ...body, expectedOfferRevision: 2 },
+      'v3',
+      fixture.companyId,
+    );
+    expect(
+      await command(path + '/versions', body, 'v2', fixture.companyId),
+    ).toEqual(first);
+    const conflict = await decisionRequest(
+      fixture,
+      path + '/versions',
+      { ...body, scopeNote: null },
+      'v2',
+    );
+    expect(conflict.status).toBe(409);
+    expect(await json(conflict)).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    const page = record(
+      await json(await request(path + '/versions?limit=1', fixture.companyId)),
+    );
+    expect(page.versions).toMatchObject([{ versionNumber: 3 }]);
+    const next = record(
+      await json(
+        await request(
+          path +
+            '/versions?limit=1&cursor=' +
+            encodeURIComponent(stringField(page, 'nextCursor')),
+          fixture.companyId,
+        ),
+      ),
+    );
+    expect(next.versions).toMatchObject([{ versionNumber: 2 }]);
+    expect(
+      (await request(path + '/versions?limit=51', fixture.companyId)).status,
+    ).toBe(400);
+    await expect(
+      pool.query("UPDATE offer_versions SET scope_note = 'Changed'"),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM offer_versions'),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query(
+        'UPDATE offer_versions SET superseded_at = superseded_at WHERE superseded_by_version_id IS NOT NULL',
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it.each(
+    [
+      'approve',
+      'reject',
+      'transmission',
+      'client-response',
+      'versions',
+    ].flatMap((action) => [
+      { action, first: 'version' },
+      { action, first: 'other' },
+    ]),
+  )(
+    'serializes new version versus $action with $first committing first',
+    async ({ action, first }) => {
+      const prepared =
+        action === 'transmission'
+          ? await approvedTransmissionOffer()
+          : action === 'client-response'
+            ? await transmittedResponseOffer()
+            : await decisionOffer();
+      const { fixture, offer, base } = prepared;
+      const revision =
+        action === 'transmission' ? 2 : action === 'client-response' ? 3 : 1;
+      const path = `/offers/opportunities/${fixture.opportunityId}/versions`;
+      const versionBody = {
+        expectedOfferRevision: revision,
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+      };
+      const otherBody =
+        action === 'versions'
+          ? versionBody
+          : action === 'reject'
+            ? { expectedOfferRevision: revision, reason: 'Internal refusal' }
+            : action === 'client-response'
+              ? {
+                  expectedOfferRevision: revision,
+                  outcome: 'ACCEPTED',
+                  receivedAt: instant.toISOString(),
+                }
+              : {
+                  expectedOfferRevision: revision,
+                  acknowledgedWarningCodes: [],
+                };
+      const barrier = await pool.connect();
+      const pending: Promise<Response>[] = [];
+      try {
+        await barrier.query('BEGIN');
+        const backend = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0];
+        if (!backend) throw new Error('Expected backend');
+        await barrier.query('SELECT id FROM offers WHERE id = $1 FOR UPDATE', [
+          offer.id,
+        ]);
+        const create = () =>
+          decisionRequest(fixture, path, versionBody, 'new-version');
+        const other = () =>
+          decisionRequest(
+            fixture,
+            action === 'versions' ? path : base + '/' + action,
+            otherBody,
+            'other',
+          );
+        pending.push(first === 'version' ? create() : other());
+        await waitForBlockedRequests(backend.pid, 1);
+        pending.push(first === 'version' ? other() : create());
+        await waitForBlockedRequests(backend.pid, 2);
+        await barrier.query('COMMIT');
+        const [winner, loser] = await Promise.all(pending);
+        expect(winner?.status).toBe(201);
+        expect(loser?.status).toBe(409);
+        if (!loser) throw new Error('Expected losing response');
+        expect(await json(loser)).toMatchObject({
+          code: 'STALE_OFFER_REVISION',
+        });
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        await Promise.allSettled(pending);
+      }
+    },
+  );
+
+  it.each([
+    'offer_versions',
+    'offers',
+    'client_accounts',
+    'offer_commands',
+    'offer_events',
+  ])(
+    'rolls back the entire successor when %s fails and retries identical input',
+    async (table) => {
+      const { fixture } = await decisionOffer();
+      const path = `/offers/opportunities/${fixture.opportunityId}`;
+      const body = {
+        expectedOfferRevision: 1,
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'Private illustrative text',
+      };
+      const before = await successorEffects();
+      await pool.query(
+        `CREATE FUNCTION fail_successor() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic successor failure'; END $$; CREATE TRIGGER fail_successor BEFORE INSERT OR UPDATE ON ${table} FOR EACH ROW EXECUTE FUNCTION fail_successor()`,
+      );
+      try {
+        const failed = await decisionRequest(
+          fixture,
+          path + '/versions',
+          body,
+          'retry-successor',
+        );
+        expect(failed.status).toBe(500);
+        const failure = await json(failed);
+        expect(failure).toMatchObject({
+          code: 'OFFER_VERSION_UNCERTAIN',
+          correlationId: expect.any(String),
+        });
+        expect(JSON.stringify(failure)).not.toContain(body.scopeNote);
+        expect(await successorEffects()).toEqual(before);
+      } finally {
+        await pool.query(`DROP TRIGGER fail_successor ON ${table}`);
+        await pool.query('DROP FUNCTION fail_successor()');
+      }
+      await command(
+        path + '/versions',
+        body,
+        'retry-successor',
+        fixture.companyId,
+      );
+    },
+  );
+
+  it.each([
+    'company_offer_preparer',
+    'company_commercial_intake',
+    'company_director_client_access',
+  ])(
+    'denies successor creation and exact replay after %s revocation',
+    async (bundle) => {
+      const { fixture } = await decisionOffer();
+      const path = `/offers/opportunities/${fixture.opportunityId}/versions`;
+      const body = {
+        expectedOfferRevision: 1,
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+      };
+      await command(path, body, 'revoke-replay', fixture.companyId);
+      const before = await successorEffects();
+      await pool.query(
+        'UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = $2',
+        [fixture.companyId, bundle],
+      );
+      for (const key of ['revoke-replay', 'fresh-after-revoke'])
+        expect((await decisionRequest(fixture, path, body, key)).status).toBe(
+          403,
+        );
+      expect(await successorEffects()).toEqual(before);
+      if (bundle === 'company_director_client_access') {
+        const read = record(
+          record(
+            await json(await request(path.slice(0, -9), fixture.companyId)),
+          ).offer,
+        );
+        expect(record(read.clientReference).currentClientId).toBeUndefined();
+        expect(record(read.version).recipient).toMatchObject({
+          legalName: 'Synthetic Recipient SA',
+        });
+      }
+    },
+  );
+
+  it.each([
+    'company_offer_preparer',
+    'company_commercial_intake',
+    'company_director_client_access',
+  ])(
+    'denies a successor waiting behind committed %s revocation',
+    async (bundle) => {
+      const { fixture } = await decisionOffer();
+      const before = await successorEffects();
+      const barrier = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        const backend = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0];
+        if (!backend) throw new Error('Expected backend');
+        await barrier.query(
+          'SELECT id FROM company_role_assignments WHERE company_id = $1 AND bundle::text = $2 FOR UPDATE',
+          [fixture.companyId, bundle],
+        );
+        pending = decisionRequest(
+          fixture,
+          `/offers/opportunities/${fixture.opportunityId}/versions`,
+          {
+            expectedOfferRevision: 1,
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'revocation-race',
+        );
+        await waitForBlockedRequests(backend.pid, 1);
+        await barrier.query(
+          'UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = $2',
+          [fixture.companyId, bundle],
+        );
+        await barrier.query('COMMIT');
+        expect((await pending).status).toBe(403);
+        expect(await successorEffects()).toEqual(before);
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        if (pending) await Promise.allSettled([pending]);
+      }
+    },
+  );
+
+  it('denies a concurrently invalidated recipient and converges concurrent exact retries', async () => {
+    const { fixture } = await decisionOffer();
+    const path = `/offers/opportunities/${fixture.opportunityId}/versions`;
+    const body = {
+      expectedOfferRevision: 1,
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+    };
+    const before = await successorEffects();
+    const barrier = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const backend = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0];
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query(
+        'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      pending = decisionRequest(fixture, path, body, 'invalidated-client');
+      await waitForBlockedRequests(backend.pid, 1);
+      await barrier.query(
+        "UPDATE client_company_relationships SET status = 'archived' WHERE company_id = $1 AND client_account_id = $2",
+        [fixture.companyId, fixture.clientId],
+      );
+      await barrier.query('COMMIT');
+      expect((await pending).status).toBe(404);
+      expect(await successorEffects()).toEqual(before);
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+    await pool.query(
+      "UPDATE client_company_relationships SET status = 'active' WHERE company_id = $1 AND client_account_id = $2",
+      [fixture.companyId, fixture.clientId],
+    );
+    const retries = await Promise.all([
+      decisionRequest(fixture, path, body, 'identical'),
+      decisionRequest(fixture, path, body, 'identical'),
+    ]);
+    expect(retries.map((result) => result.status)).toEqual([201, 201]);
+    expect(await json(retries[0])).toEqual(await json(retries[1]));
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_versions',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+  });
+
+  it('compares every recorded successor field and keeps corrected identity separate from frozen history', async () => {
+    const { fixture, offer } = await transmittedResponseOffer();
+    const path = `/offers/opportunities/${fixture.opportunityId}`;
+    const entity = record(
+      record(
+        await command(
+          `/clients/${fixture.clientId}/legal-entities`,
+          {
+            expectedClientVersion: await readClientVersion(fixture),
+            legalName: 'Current synthetic branch',
+            taxId: 'BRANCH-520',
+            legalAddress: '520 Branch Street',
+          },
+          'new-branch',
+          fixture.companyId,
+        ),
+      ).legalEntity,
+    );
+    instant = new Date('2026-09-28T09:00:00.000Z');
+    const effectiveFrom = instant.toISOString();
+    const tariff = record(
+      await command(
+        `/pricing-configuration/offerings/${fixture.offeringId}/tariff-versions`,
+        {
+          unit: 'illustrative-unit',
+          unitAmount: '100.0000',
+          currency: 'USD',
+          taxRatePercent: '0.00',
+          taxLabel: 'Illustrative tax',
+          effectiveFrom,
+          expectedActiveVersionNumber: fixture.tariffVersionNumber,
+        },
+        'new-currency',
+        fixture.companyId,
+      ),
+    );
+    const snapshot = record(
+      await command(
+        `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
+        {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: [
+            {
+              offeringId: fixture.offeringId,
+              tariffVersionNumber: record(tariff.version).versionNumber,
+              quantity: '2',
+            },
+          ],
+        },
+        'new-snapshot',
+        fixture.companyId,
+      ),
+    );
+    const body = {
+      expectedOfferRevision: 3,
+      pricingSnapshotId: snapshot.id,
+      recipient: { kind: 'ADDITIONAL', legalEntityId: entity.id },
+      validityDays: 45,
+      scopeNote: '',
+      commercialConditions: 'Negotiated synthetic conditions',
+    };
+    const created = record(
+      await command(path + '/versions', body, 'all-fields', fixture.companyId),
+    );
+    const differences = record(created.version).differences;
+    expect(differences).toEqual([
+      {
+        field: 'recipientKind',
+        previous: 'PRIMARY',
+        current: 'ADDITIONAL',
+        changed: true,
+      },
+      {
+        field: 'recipientAdditionalLegalEntityId',
+        previous: null,
+        current: entity.id,
+        changed: true,
+      },
+      {
+        field: 'recipientLegalName',
+        previous: 'Synthetic Recipient SA',
+        current: 'Current synthetic branch',
+        changed: true,
+      },
+      {
+        field: 'recipientTaxId',
+        previous: record(record(offer.version).recipient).taxId,
+        current: 'BRANCH-520',
+        changed: true,
+      },
+      {
+        field: 'recipientLegalAddress',
+        previous: record(record(offer.version).recipient).legalAddress,
+        current: '520 Branch Street',
+        changed: true,
+      },
+      {
+        field: 'pricingSnapshotId',
+        previous: fixture.snapshotId,
+        current: snapshot.id,
+        changed: true,
+      },
+      { field: 'currency', previous: 'EUR', current: 'USD', changed: true },
+      {
+        field: 'total',
+        previous: record(record(offer.version).pricingSnapshot).total,
+        current: snapshot.total,
+        changed: true,
+      },
+      { field: 'validityDays', previous: 30, current: 45, changed: true },
+      {
+        field: 'validUntil',
+        previous: record(offer.version).validUntil,
+        current: record(created.version).validUntil,
+        changed: true,
+      },
+      { field: 'scopeNote', previous: null, current: '', changed: true },
+      {
+        field: 'commercialConditions',
+        previous: null,
+        current: 'Negotiated synthetic conditions',
+        changed: true,
+      },
+    ]);
+    const base =
+      path + '/versions/' + stringField(record(created.version), 'id');
+    expect(
+      await command(
+        base + '/quality-checks',
+        {},
+        'currency-check',
+        fixture.companyId,
+      ),
+    ).toMatchObject({
+      results: expect.arrayContaining([
+        { code: 'CURRENCY_UNCHANGED', status: 'WARNING' },
+      ]),
+    });
+    const correction = await request(
+      `/clients/${fixture.clientId}/legal-entities/${stringField(entity, 'id')}`,
+      fixture.companyId,
+      {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'correct-successor-entity',
+        },
+        body: JSON.stringify({
+          expectedClientVersion: await readClientVersion(fixture),
+          changes: { legalName: 'Later corrected branch' },
+        }),
+      },
+    );
+    expect(correction.status).toBe(200);
+    expect(
+      await command(path + '/versions', body, 'all-fields', fixture.companyId),
+    ).toEqual(created);
+    const next = record(
+      await command(
+        path + '/versions',
+        { ...body, expectedOfferRevision: 4 },
+        'corrected-successor',
+        fixture.companyId,
+      ),
+    );
+    expect(record(next.version).recipient).toMatchObject({
+      legalName: 'Later corrected branch',
+    });
+    expect(record(next.version).differences).toEqual(
+      expect.arrayContaining([
+        {
+          field: 'recipientLegalName',
+          previous: 'Current synthetic branch',
+          current: 'Later corrected branch',
+          changed: true,
+        },
+        { field: 'scopeNote', previous: '', current: '', changed: false },
+      ]),
+    );
+    const old = record(
+      record(await json(await request(base, fixture.companyId))).offer,
+    );
+    expect(record(old.version)).toMatchObject({
+      representation: record(created.version).representation,
+      differences,
+    });
+  });
+
+  it('keeps exact-version detail and history unavailable across Company and unknown targets', async () => {
+    const { fixture, offer } = await decisionOffer();
+    const other = await preparedOffer('-O7OTHER');
+    const path = `/offers/opportunities/${fixture.opportunityId}`;
+    for (const suffix of [
+      '/versions',
+      '/versions/' + stringField(record(offer.version), 'id'),
+    ]) {
+      const denied = await request(path + suffix, other.companyId);
+      expect(denied.status).toBe(404);
+      expect(JSON.stringify(await json(denied))).not.toContain(offer.id);
+    }
+    expect(
+      (
+        await request(
+          path + '/versions/00000000-0000-4000-8000-000000000520',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(
+          path + '/versions?cursor=' + stringField(offer, 'id') + ':0',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(400);
+  });
+
+  it.each([
+    'company_offer_preparer',
+    'company_commercial_intake',
+    'company_director_client_access',
+    'Client relationship',
+  ])(
+    'commits the successor before a waiting %s change and then denies replay',
+    async (fence) => {
+      const { fixture, offer } = await decisionOffer();
+      const path = `/offers/opportunities/${fixture.opportunityId}/versions`;
+      const body = {
+        expectedOfferRevision: 1,
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+      };
+      const barrier = await pool.connect();
+      const writer = await pool.connect();
+      let creation: Promise<Response> | undefined;
+      let mutation: Promise<unknown> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        const backend = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0];
+        if (!backend) throw new Error('Expected barrier backend.');
+        await barrier.query('SELECT id FROM offers WHERE id = $1 FOR UPDATE', [
+          offer.id,
+        ]);
+        creation = decisionRequest(fixture, path, body, 'command-first');
+        await waitForBlockedRequests(backend.pid, 1);
+        mutation =
+          fence === 'Client relationship'
+            ? (async () => {
+                await writer.query('BEGIN');
+                await writer.query(
+                  'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+                  [fixture.clientId],
+                );
+                await writer.query(
+                  "UPDATE client_company_relationships SET status = 'archived' WHERE company_id = $1 AND client_account_id = $2",
+                  [fixture.companyId, fixture.clientId],
+                );
+                await writer.query('COMMIT');
+              })()
+            : writer.query(
+                'UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = $2',
+                [fixture.companyId, fence],
+              );
+        await waitForBlockedRequests(backend.pid, 2);
+        await barrier.query('COMMIT');
+        expect((await creation).status).toBe(201);
+        await mutation;
+        expect(
+          (await decisionRequest(fixture, path, body, 'command-first')).status,
+        ).toBe(fence === 'Client relationship' ? 404 : 403);
+        expect(
+          (
+            await pool.query(
+              'SELECT count(*)::integer AS count FROM offer_versions',
+            )
+          ).rows,
+        ).toEqual([{ count: 2 }]);
+        expect(
+          (
+            await pool.query(
+              'SELECT count(*)::integer AS count FROM offer_commands',
+            )
+          ).rows,
+        ).toEqual([{ count: 2 }]);
+        expect(
+          (
+            await pool.query(
+              'SELECT count(*)::integer AS count FROM offer_events',
+            )
+          ).rows,
+        ).toEqual([{ count: 3 }]);
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        if (creation) await Promise.allSettled([creation]);
+        if (mutation) await Promise.allSettled([mutation]);
+        await writer.query('ROLLBACK');
+        writer.release();
+      }
+    },
+  );
+
+  it('refuses unknown and another Client additional recipients without successor side effects', async () => {
+    const { fixture } = await decisionOffer();
+    const foreign = await preparedOffer('-O7ENTITY');
+    const additional = record(
+      record(
+        await command(
+          `/clients/${foreign.clientId}/legal-entities`,
+          {
+            expectedClientVersion: await readClientVersion(foreign),
+            legalName: 'Other synthetic entity',
+          },
+          'foreign-entity',
+          foreign.companyId,
+        ),
+      ).legalEntity,
+    );
+    const before = await successorEffects();
+    const payload = {
+      expectedOfferRevision: 1,
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'ADDITIONAL', legalEntityId: additional.id },
+    };
+    for (const legalEntityId of [
+      additional.id,
+      '00000000-0000-4000-8000-000000000520',
+    ]) {
+      const refused = await decisionRequest(
+        fixture,
+        `/offers/opportunities/${fixture.opportunityId}/versions`,
+        { ...payload, recipient: { kind: 'ADDITIONAL', legalEntityId } },
+        String(legalEntityId),
+      );
+      expect(refused.status).toBe(404);
+      expect(JSON.stringify(await json(refused))).not.toContain(additional.id);
+      expect(await successorEffects()).toEqual(before);
+    }
+  });
+
+  async function successorEffects() {
+    const rows = [];
+    for (const table of [
+      'offers',
+      'offer_versions',
+      'offer_commands',
+      'offer_events',
+      'offer_quality_runs',
+      'offer_decisions',
+      'offer_transmissions',
+      'offer_client_responses',
+      'client_accounts',
+    ])
+      rows.push(
+        (
+          await pool.query(
+            `SELECT to_jsonb(t) AS value FROM ${table} t ORDER BY id`,
+          )
+        ).rows,
+      );
+    return rows;
+  }
+
   it('records an attributed simulated Client acceptance and reopens immutable evidence', async () => {
     const { fixture, offer, base } = await approvedTransmissionOffer();
     const transmission = await command(
@@ -953,41 +1898,32 @@ withPostgres('First illustrative Offer REST', () => {
   });
   it('refuses a response to a superseded immutable version through REST', async () => {
     const { fixture, base } = await transmittedResponseOffer();
-    const [constraint] = (
-      await pool.query<{ definition: string }>(
-        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'offer_versions_initial_state_check'",
-      )
-    ).rows;
-    if (!constraint) throw new Error('Expected version constraint');
-    // A synthetic future head proves this fence without adding the O7 command.
-    await pool.query(
-      'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
+    await command(
+      `/offers/opportunities/${fixture.opportunityId}/versions`,
+      {
+        expectedOfferRevision: 3,
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+      },
+      'superseding-version',
+      fixture.companyId,
     );
-    try {
-      await pool.query(
-        "INSERT INTO offer_versions SELECT (jsonb_populate_record(NULL::offer_versions, to_jsonb(v) || jsonb_build_object('id',gen_random_uuid(),'version_number',2))).* FROM offer_versions v WHERE v.id = $1",
-        [base.split('/').at(-1)],
-      );
-      const r = await decisionRequest(
-        fixture,
-        base + '/client-response',
-        {
-          expectedOfferRevision: 3,
-          outcome: 'ACCEPTED',
-          receivedAt: instant.toISOString(),
-        },
-        'superseded',
-      );
-      expect(r.status).toBe(409);
-      expect(await json(r)).toMatchObject({ code: 'OFFER_VERSION_SUPERSEDED' });
-      await expectNoResponseEffects();
-    } finally {
-      await pool.query('TRUNCATE workspaces CASCADE');
-      await pool.query(
-        'ALTER TABLE offer_versions ADD CONSTRAINT offer_versions_initial_state_check ' +
-          constraint.definition,
-      );
-    }
+    const before = await successorEffects();
+    const refused = await decisionRequest(
+      fixture,
+      base + '/client-response',
+      {
+        expectedOfferRevision: 4,
+        outcome: 'ACCEPTED',
+        receivedAt: instant.toISOString(),
+      },
+      'superseded',
+    );
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'OFFER_VERSION_SUPERSEDED',
+    });
+    expect(await successorEffects()).toEqual(before);
   });
   async function transmittedResponseOffer() {
     const prepared = await approvedTransmissionOffer();
@@ -1542,7 +2478,7 @@ withPostgres('First illustrative Offer REST', () => {
 
   it('requires exactly new warning codes and preserves warnings acknowledged at approval', async () => {
     const { fixture, offer, base } = await decisionOffer();
-    await pool.query(
+    await corruptSyntheticVersion(
       'UPDATE offer_versions SET recipient_tax_id = NULL WHERE offer_id = $1',
       [offer.id],
     );
@@ -1666,7 +2602,7 @@ withPostgres('First illustrative Offer REST', () => {
         await pool.query(
           'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
         );
-        await pool.query(
+        await corruptSyntheticVersion(
           "UPDATE offer_versions SET provenance = 'INVALID_SYNTHETIC'",
         );
       }
@@ -1684,7 +2620,7 @@ withPostgres('First illustrative Offer REST', () => {
         await expectNoTransmissionEffects();
       } finally {
         if (constraint) {
-          await pool.query(
+          await corruptSyntheticVersion(
             "UPDATE offer_versions SET provenance = 'ILLUSTRATIVE'",
           );
           await pool.query(
@@ -1911,7 +2847,7 @@ withPostgres('First illustrative Offer REST', () => {
         await pool.query(
           'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
         );
-        await pool.query(
+        await corruptSyntheticVersion(
           "UPDATE offer_versions SET provenance = 'INVALID_SYNTHETIC' WHERE company_id = $1",
           [fixture.companyId],
         );
@@ -1953,7 +2889,7 @@ withPostgres('First illustrative Offer REST', () => {
         ).toEqual([{ count: 2 }]);
       } finally {
         if (constraint) {
-          await pool.query(
+          await corruptSyntheticVersion(
             "UPDATE offer_versions SET provenance = 'ILLUSTRATIVE' WHERE company_id = $1",
             [fixture.companyId],
           );
@@ -3622,148 +4558,188 @@ withPostgres('First illustrative Offer REST', () => {
     },
   );
 
-  it('rejects a Snapshot from another Opportunity with the canonical conflict and no Offer writes', async () => {
-    const fixture = await preparedOffer();
-    const secondIntake = record(
-      await command(
-        '/commercial-intake/requests',
-        {
-          originalText: 'A second synthetic Request.',
-          subject: 'Second Opportunity',
-          clientAccountId: fixture.clientId,
-          opportunity: FOLLOW_ON_OPPORTUNITIES.mismatch,
-        },
-        'second-request-456',
-        fixture.companyId,
-      ),
-    );
-    const secondOpportunityId = stringField(
-      record(secondIntake.initialOpportunity),
-      'id',
-    );
-    const secondSnapshot = identifiedRecord(
-      await command(
-        `/pricing/opportunities/${secondOpportunityId}/snapshots`,
-        {
-          pricingRuleVersionNumber: fixture.ruleVersionNumber,
-          lines: [
-            {
-              offeringId: fixture.offeringId,
-              tariffVersionNumber: fixture.tariffVersionNumber,
-              quantity: '1',
-            },
-          ],
-        },
-        'second-snapshot-456',
-        fixture.companyId,
-      ),
-    );
-    const rejected = await request(
-      `/offers/opportunities/${fixture.opportunityId}`,
-      fixture.companyId,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'idempotency-key': 'mismatched-snapshot-offer',
-        },
-        body: JSON.stringify({
-          pricingSnapshotId: secondSnapshot.id,
-          recipient: { kind: 'PRIMARY' },
-        }),
-      },
-    );
-    expect(rejected.status).toBe(409);
-    expect(await json(rejected)).toMatchObject({
-      code: 'PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY',
-    });
-    const writes = await pool.query<{
-      offers: string;
-      receipts: string;
-      events: string;
-    }>(
-      `SELECT (SELECT count(*) FROM offers) AS offers,
-              (SELECT count(*) FROM offer_commands) AS receipts,
-              (SELECT count(*) FROM offer_events) AS events`,
-    );
-    expect(writes.rows[0]).toEqual({ offers: '0', receipts: '0', events: '0' });
-  });
-
-  it('rejects an adjusted Snapshot with the canonical conflict and no Offer writes', async () => {
-    const fixture = await preparedOffer();
-    await command(
-      '/company-pricing-adjustment-assignments',
-      {
-        workspaceMembershipId: fixture.actorMembershipId,
-        companyId: fixture.companyId,
-      },
-      'grant-adjustment-456',
-    );
-    const adjustedSnapshot = identifiedRecord(
-      await command(
-        `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
-        {
-          pricingRuleVersionNumber: fixture.ruleVersionNumber,
-          lines: [
-            {
-              offeringId: fixture.offeringId,
-              tariffVersionNumber: fixture.tariffVersionNumber,
-              quantity: '1',
-              adjustment: {
-                type: 'FIXED_NET_DISCOUNT',
-                netReduction: '8.63',
-                reason: 'Synthetic Offer compatibility proof',
+  it.each(['initial', 'successor'])(
+    'rejects a Snapshot from another Opportunity for %s with the canonical conflict and no Offer writes',
+    async (phase) => {
+      const fixture = await preparedOffer();
+      if (phase === 'successor')
+        await postOffer(
+          fixture,
+          {
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'before-mismatch',
+        );
+      const secondIntake = record(
+        await command(
+          '/commercial-intake/requests',
+          {
+            originalText: 'A second synthetic Request.',
+            subject: 'Second Opportunity',
+            clientAccountId: fixture.clientId,
+            opportunity: FOLLOW_ON_OPPORTUNITIES.mismatch,
+          },
+          'second-request-456',
+          fixture.companyId,
+        ),
+      );
+      const secondOpportunityId = stringField(
+        record(secondIntake.initialOpportunity),
+        'id',
+      );
+      const secondSnapshot = identifiedRecord(
+        await command(
+          `/pricing/opportunities/${secondOpportunityId}/snapshots`,
+          {
+            pricingRuleVersionNumber: fixture.ruleVersionNumber,
+            lines: [
+              {
+                offeringId: fixture.offeringId,
+                tariffVersionNumber: fixture.tariffVersionNumber,
+                quantity: '1',
               },
-            },
-          ],
-        },
-        'adjusted-snapshot-456',
-        fixture.companyId,
-      ),
-    );
-    const body = JSON.stringify({
-      pricingSnapshotId: adjustedSnapshot.id,
-      recipient: { kind: 'PRIMARY' },
-    });
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+            ],
+          },
+          'second-snapshot-456',
+          fixture.companyId,
+        ),
+      );
       const rejected = await request(
-        `/offers/opportunities/${fixture.opportunityId}`,
+        `/offers/opportunities/${fixture.opportunityId}${phase === 'successor' ? '/versions' : ''}`,
         fixture.companyId,
         {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
-            'idempotency-key': 'adjusted-snapshot-offer',
+            'idempotency-key': 'mismatched-snapshot-offer',
           },
-          body,
+          body: JSON.stringify({
+            ...(phase === 'successor' ? { expectedOfferRevision: 1 } : {}),
+            pricingSnapshotId: secondSnapshot.id,
+            recipient: { kind: 'PRIMARY' },
+          }),
         },
       );
       expect(rejected.status).toBe(409);
       expect(await json(rejected)).toMatchObject({
-        code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
+        code: 'PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY',
       });
-    }
-    const writes = await pool.query<{
-      offers: string;
-      versions: string;
-      receipts: string;
-      events: string;
-      references: string;
-    }>(
-      `SELECT (SELECT count(*) FROM offers) AS offers,
+      const writes = await pool.query<{
+        offers: string;
+        receipts: string;
+        events: string;
+      }>(
+        `SELECT (SELECT count(*) FROM offers) AS offers,
+              (SELECT count(*) FROM offer_commands) AS receipts,
+              (SELECT count(*) FROM offer_events) AS events`,
+      );
+      expect(writes.rows[0]).toEqual(
+        phase === 'successor'
+          ? { offers: '1', receipts: '1', events: '2' }
+          : { offers: '0', receipts: '0', events: '0' },
+      );
+    },
+  );
+
+  it.each(['initial', 'successor'])(
+    'rejects an adjusted Snapshot for %s with the canonical conflict and no Offer writes',
+    async (phase) => {
+      const fixture = await preparedOffer();
+      if (phase === 'successor')
+        await postOffer(
+          fixture,
+          {
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'before-adjustment',
+        );
+      await command(
+        '/company-pricing-adjustment-assignments',
+        {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: fixture.companyId,
+        },
+        'grant-adjustment-456',
+      );
+      const adjustedSnapshot = identifiedRecord(
+        await command(
+          `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
+          {
+            pricingRuleVersionNumber: fixture.ruleVersionNumber,
+            lines: [
+              {
+                offeringId: fixture.offeringId,
+                tariffVersionNumber: fixture.tariffVersionNumber,
+                quantity: '1',
+                adjustment: {
+                  type: 'FIXED_NET_DISCOUNT',
+                  netReduction: '8.63',
+                  reason: 'Synthetic Offer compatibility proof',
+                },
+              },
+            ],
+          },
+          'adjusted-snapshot-456',
+          fixture.companyId,
+        ),
+      );
+      const body = JSON.stringify({
+        ...(phase === 'successor' ? { expectedOfferRevision: 1 } : {}),
+        pricingSnapshotId: adjustedSnapshot.id,
+        recipient: { kind: 'PRIMARY' },
+      });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const rejected = await request(
+          `/offers/opportunities/${fixture.opportunityId}${phase === 'successor' ? '/versions' : ''}`,
+          fixture.companyId,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'adjusted-snapshot-offer',
+            },
+            body,
+          },
+        );
+        expect(rejected.status).toBe(409);
+        expect(await json(rejected)).toMatchObject({
+          code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
+        });
+      }
+      const writes = await pool.query<{
+        offers: string;
+        versions: string;
+        receipts: string;
+        events: string;
+        references: string;
+      }>(
+        `SELECT (SELECT count(*) FROM offers) AS offers,
               (SELECT count(*) FROM offer_versions) AS versions,
               (SELECT count(*) FROM offer_commands) AS receipts,
               (SELECT count(*) FROM offer_events) AS events,
               (SELECT count(*) FROM offer_reference_counters) AS references`,
-    );
-    expect(writes.rows[0]).toEqual({
-      offers: '0',
-      versions: '0',
-      receipts: '0',
-      events: '0',
-      references: '0',
-    });
-  });
+      );
+      expect(writes.rows[0]).toEqual(
+        phase === 'successor'
+          ? {
+              offers: '1',
+              versions: '1',
+              receipts: '1',
+              events: '2',
+              references: '1',
+            }
+          : {
+              offers: '0',
+              versions: '0',
+              receipts: '0',
+              events: '0',
+              references: '0',
+            },
+      );
+    },
+  );
 
   it.each(['profile refresh', 'Offer revocation'])(
     'restarts a coherent Offer read after a concurrent %s commits',
@@ -4742,6 +5718,28 @@ withPostgres('First illustrative Offer REST', () => {
         ...Object.fromEntries(new Headers(init.headers).entries()),
       },
     });
+  }
+
+  // Deliberate corruption of disposable synthetic content, under an exclusive
+  // table lock. The production guard is restored before this transaction commits.
+  async function corruptSyntheticVersion(text: string, values: string[] = []) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'ALTER TABLE offer_versions DISABLE TRIGGER offer_versions_immutable',
+      );
+      await client.query(text, values);
+      await client.query(
+        'ALTER TABLE offer_versions ENABLE TRIGGER offer_versions_immutable',
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async function command(

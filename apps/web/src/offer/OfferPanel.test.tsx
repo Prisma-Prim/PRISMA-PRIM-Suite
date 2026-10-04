@@ -12,6 +12,240 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it.each([
+    {
+      status: 400,
+      code: 'OFFER_VALIDATION_ERROR',
+      message: 'Check the selected Snapshot and the entered values.',
+    },
+    {
+      status: 404,
+      code: '',
+      message:
+        'The Opportunity, Snapshot or recipient is no longer available. Reload the Request.',
+    },
+    {
+      status: 409,
+      code: 'STALE_OFFER_REVISION',
+      message:
+        'The Offer changed. Reload the Request before creating a version.',
+    },
+    {
+      status: 409,
+      code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
+      message:
+        'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
+    },
+  ])(
+    'keeps correctable successor input after $code ($status)',
+    async ({ status, code, message }) => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (init?.method === 'POST') return response({ code }, status);
+        return versionPreparationFetch(input);
+      });
+      renderPanel(
+        actorWithOfferPermissions('company-one', [
+          'commercial.offer.read',
+          'commercial.offer.prepare',
+        ]),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Prepare a new version' }),
+      );
+      fireEvent.change(await screen.findByLabelText('Commercial conditions'), {
+        target: { value: ' Retained conditions ' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Create new version' }),
+      );
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(screen.getByLabelText('Commercial conditions')).toHaveValue(
+        ' Retained conditions ',
+      );
+      expect(screen.getByLabelText('Commercial conditions')).toBeEnabled();
+    },
+  );
+
+  it('retries an uncertain successor with the exact payload, revision and key', async () => {
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method !== 'POST') return versionPreparationFetch(input);
+      posts.push(init);
+      return response({}, 500);
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Prepare a new version' }),
+    );
+    fireEvent.change(await screen.findByLabelText('Commercial conditions'), {
+      target: { value: ' Exact conditions ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create new version' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry the same preparation' }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1]?.body).toBe(posts[0]?.body);
+    expect(posts[1]?.headers).toEqual(posts[0]?.headers);
+    expect(JSON.parse(String(posts[0]?.body))).toMatchObject({
+      expectedOfferRevision: 1,
+      commercialConditions: ' Exact conditions ',
+    });
+    expect(screen.getByLabelText('Commercial conditions')).toBeDisabled();
+  });
+
+  it('hides successor creation without independent current Client authority', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(versionPreparationFetch);
+    const authorized = actorWithOfferPermissions('company-one', [
+      'commercial.offer.read',
+      'commercial.offer.prepare',
+    ]);
+    if (!authorized.activeCompany) throw new Error('Expected Company.');
+    renderPanel({
+      ...authorized,
+      activeCompany: { ...authorized.activeCompany, clientPermissions: [] },
+    });
+    await screen.findByText('Current version');
+    expect(
+      screen.queryByRole('button', { name: 'Prepare a new version' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Run Quality Checks' }),
+    ).toBeVisible();
+  });
+
+  it('discards a late successor response after Company and Opportunity change', async () => {
+    let complete: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST')
+        return new Promise<Response>((resolve) => {
+          complete = resolve;
+        });
+      return versionPreparationFetch(input);
+    });
+    const rendered = renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Prepare a new version' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create new version' }),
+    );
+    await waitFor(() => expect(complete).toBeDefined());
+    rendered.rerender(panel(actor('company-two'), 'opportunity-two'));
+    const first = offerView();
+    complete?.(
+      response({
+        ...first,
+        version: {
+          ...first.version,
+          id: 'late-successor',
+          versionNumber: 2,
+          predecessorVersionId: first.version.id,
+          supersededByVersionId: null,
+          supersededAt: null,
+          differences: [],
+          commercialConditions: 'Late leaked conditions',
+        },
+      }),
+    );
+    await screen.findByText('Current version');
+    expect(
+      screen.queryByText('Late leaked conditions'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('creates a successor with fresh states and visible recorded differences', async () => {
+    const first = offerView();
+    const successor = {
+      ...first,
+      revision: 2,
+      version: {
+        ...first.version,
+        id: 'version-two',
+        versionNumber: 2,
+        predecessorVersionId: first.version.id,
+        supersededByVersionId: null,
+        supersededAt: null,
+        commercialConditions: 'Changed conditions',
+        differences: [
+          {
+            field: 'commercialConditions',
+            previous: null,
+            current: 'Changed conditions',
+            changed: true,
+          },
+        ],
+      },
+    };
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (path.endsWith('/versions') && init?.method === 'POST') {
+        posts.push(init);
+        return response(successor);
+      }
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: first.version.pricingSnapshotId,
+              currency: 'EUR',
+              total: '346.72',
+              committedAt: '2026-09-27T09:00:00.000Z',
+            },
+          ],
+          nextCursor: null,
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      if (path.endsWith('/versions'))
+        return response({
+          versions: [
+            {
+              id: first.version.id,
+              versionNumber: 1,
+              createdAt: '2026-09-27T09:00:00.000Z',
+              supersededByVersionId: null,
+            },
+          ],
+          nextCursor: null,
+        });
+      return response({ offer: first });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Prepare a new version' }),
+    );
+    fireEvent.change(await screen.findByLabelText('Commercial conditions'), {
+      target: { value: 'Changed conditions' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create new version' }));
+    expect(
+      await screen.findByText('Differences from previous version'),
+    ).toBeVisible();
+    expect(screen.getByText('Current value: Changed conditions')).toBeVisible();
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(String(posts[0]?.body))).toMatchObject({
+      expectedOfferRevision: 1,
+      commercialConditions: 'Changed conditions',
+    });
+  });
+
   it('records simulated Client acceptance and removes mutable controls', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       input.toString().endsWith('/client-response')
@@ -424,6 +658,8 @@ describe('OfferPanel', () => {
   it('preserves a correctable simulation note and requires a fresh key after validation', async () => {
     const posts: RequestInit[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/versions'))
+        return response({ versions: [], nextCursor: null });
       if (!input.toString().endsWith('/transmission'))
         return response({ offer: approvedOfferView() });
       if (init) posts.push(init);
@@ -456,8 +692,10 @@ describe('OfferPanel', () => {
   });
 
   it('withholds transmission from a pending version or an approver without preparer authority', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      response({ offer: approvedOfferView() }),
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/versions')
+        ? response({ versions: [], nextCursor: null })
+        : response({ offer: approvedOfferView() }),
     );
     const rendered = renderPanel(
       actorWithOfferPermissions('company-one', [
@@ -469,8 +707,10 @@ describe('OfferPanel', () => {
     expect(
       screen.queryByRole('button', { name: 'Record simulated transmission' }),
     ).not.toBeInTheDocument();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      response({ offer: offerView() }),
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/versions')
+        ? response({ versions: [], nextCursor: null })
+        : response({ offer: offerView() }),
     );
     rendered.rerender(panel(actor('company-two'), 'opportunity-two'));
     await screen.findByText('Draft — not approved');
@@ -1334,7 +1574,7 @@ describe('OfferPanel', () => {
       await screen.findByRole('button', { name: 'Prepare version 1' }),
     );
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The selected Pricing Snapshot contains an adjustment and cannot be used for Offer version 1.',
+      'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
     );
     expect(
       screen.queryByRole('button', { name: 'Retry the same preparation' }),
@@ -1644,6 +1884,29 @@ async function emptyOfferFetch(input: RequestInfo | URL): Promise<Response> {
   if (url.includes('/legal-entities'))
     return response({ clientVersion: 1, legalEntities: [] });
   throw new Error(`Unexpected request ${url}`);
+}
+
+async function versionPreparationFetch(
+  input: RequestInfo | URL,
+): Promise<Response> {
+  const url = input.toString();
+  if (url.includes('/snapshots'))
+    return response({
+      items: [
+        {
+          id: 'snapshot-one',
+          currency: 'EUR',
+          total: '345.00',
+          committedAt: '2026-09-27T09:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    });
+  if (url.endsWith('/legal-entities'))
+    return response({ clientVersion: 1, legalEntities: [] });
+  if (url.endsWith('/versions'))
+    return response({ versions: [], nextCursor: null });
+  return response({ offer: offerView() });
 }
 
 function response(value: unknown, status = 200): Response {

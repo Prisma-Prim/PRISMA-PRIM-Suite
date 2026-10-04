@@ -33,6 +33,8 @@ import { OfferQualityPanel } from './OfferQualityPanel';
 import { OfferDecisionPanel } from './OfferDecisionPanel';
 import { OfferTransmissionPanel } from './OfferTransmissionPanel';
 import { OfferClientResponsePanel } from './OfferClientResponsePanel';
+import { OfferVersionHistory } from './OfferVersionHistory';
+import { offerVersionCopy } from './offer.copy';
 import {
   offerDecisionCopy,
   offerTransmissionCopy,
@@ -47,6 +49,12 @@ type Ready = {
 type View =
   | { kind: 'loading' | 'denied' | 'error' }
   | Ready
+  | {
+      kind: 'version';
+      offer: OfferView;
+      snapshots: OfferSnapshotSummary[];
+      legalEntities: ClientLegalEntity[];
+    }
   | { kind: 'offer'; offer: OfferView };
 type Attempt = { body: string; idempotencyKey: string };
 const ignoreActor = (): void => undefined;
@@ -74,7 +82,12 @@ export function OfferPanel({
   const companyId = actor.activeCompany?.id;
   const permissions = actor.activeCompany?.offerPermissions ?? [];
   const mayRead = permissions.includes('commercial.offer.read');
-  const mayPrepare = permissions.includes('commercial.offer.prepare');
+  const mayPrepare =
+    permissions.includes('commercial.offer.prepare') &&
+    actor.activeCompany?.clientPermissions?.includes('client.read') &&
+    actor.activeCompany?.commercialIntakePermissions?.includes(
+      'commercial.opportunity.read',
+    );
   const mayApprove = permissions.includes('commercial.offer.approve');
   const mayTransmit = permissions.includes(
     'commercial.offer.transmission.record',
@@ -90,6 +103,8 @@ export function OfferPanel({
     actor.internalUserId,
     actor.activeCompany?.offerPermissionAssignmentId,
     actor.activeCompany?.offerApproverAssignmentId,
+    actor.activeCompany?.commercialIntakePermissionAssignmentId,
+    actor.activeCompany?.clientPermissionAssignmentId,
     permissions,
     actor.activeCompany?.commercialIntakePermissions,
     actor.activeCompany?.clientPermissions,
@@ -107,6 +122,9 @@ export function OfferPanel({
     | 'uncertain'
     | 'unsupportedAdjustment'
     | 'targetUnavailable'
+    | 'stale'
+    | 'accepted'
+    | 'created'
   >();
   const contentLocked = pending || feedback === 'uncertain';
   const pendingRequest = useRef<AbortController | undefined>(undefined);
@@ -221,9 +239,64 @@ export function OfferPanel({
     return () => pendingRequest.current?.abort();
   }, [load, authorityStamp]);
 
+  async function beginVersion() {
+    if (view.kind !== 'offer' || !companyId || !currentClientId || !mayPrepare)
+      return;
+    const offer = view.offer;
+    pendingRequest.current?.abort();
+    const request = new AbortController();
+    pendingRequest.current = request;
+    setPending(true);
+    setFeedback(undefined);
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      const [snapshots, entities] = await Promise.all([
+        api.request<unknown>(
+          `/pricing/opportunities/${encodeURIComponent(opportunityId)}/snapshots?limit=25`,
+          { companyContextId: companyId, signal: request.signal },
+        ),
+        api.request<unknown>(
+          `/clients/${encodeURIComponent(currentClientId)}/legal-entities`,
+          { companyContextId: companyId, signal: request.signal },
+        ),
+      ]);
+      if (request.signal.aborted) return;
+      if (
+        (await reject(snapshots, request.signal)) ||
+        (await reject(entities, request.signal))
+      ) {
+        setView({ kind: 'denied' });
+        return;
+      }
+      if (snapshots.status !== 'ok' || entities.status !== 'ok') {
+        setFeedback('targetUnavailable');
+        return;
+      }
+      setSnapshotId(offer.version.pricingSnapshotId);
+      setRecipient(
+        offer.version.recipient.additionalLegalEntityId ?? 'PRIMARY',
+      );
+      setValidityDays(String(offer.version.validityDays));
+      setScopeNote(offer.version.scopeNote ?? '');
+      setCommercialConditions(offer.version.commercialConditions ?? '');
+      attempt.current = undefined;
+      setView({
+        kind: 'version',
+        offer,
+        snapshots: readOfferSnapshotPage(snapshots.value),
+        legalEntities: readClientLegalEntityList(entities.value).legalEntities,
+      });
+    } catch {
+      if (!request.signal.aborted) setFeedback('targetUnavailable');
+    } finally {
+      if (!request.signal.aborted) setPending(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (view.kind !== 'empty' || !companyId) return;
+    if ((view.kind !== 'empty' && view.kind !== 'version') || !companyId)
+      return;
     const days = Number(validityDays);
     if (!snapshotId || !Number.isSafeInteger(days) || days < 1 || days > 365) {
       setFeedback('invalid');
@@ -232,6 +305,9 @@ export function OfferPanel({
     const command = attempt.current ?? {
       idempotencyKey: crypto.randomUUID(),
       body: JSON.stringify({
+        ...(view.kind === 'version'
+          ? { expectedOfferRevision: view.offer.revision }
+          : {}),
         pricingSnapshotId: snapshotId,
         recipient:
           recipient === 'PRIMARY'
@@ -250,7 +326,7 @@ export function OfferPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       const result = await api.request<unknown>(
-        `/offers/opportunities/${encodeURIComponent(opportunityId)}`,
+        `/offers/opportunities/${encodeURIComponent(opportunityId)}${view.kind === 'version' ? '/versions' : ''}`,
         {
           method: 'POST',
           companyContextId: companyId,
@@ -268,6 +344,7 @@ export function OfferPanel({
       } else if (result.status === 'ok') {
         attempt.current = undefined;
         setView({ kind: 'offer', offer: readOffer(result.value) });
+        if (view.kind === 'version') setFeedback('created');
       } else if (result.status === 'notFound') {
         attempt.current = undefined;
         setFeedback('targetUnavailable');
@@ -279,7 +356,11 @@ export function OfferPanel({
         setFeedback(
           conflictCode(result) === 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED'
             ? 'unsupportedAdjustment'
-            : 'conflict',
+            : conflictCode(result) === 'STALE_OFFER_REVISION'
+              ? 'stale'
+              : conflictCode(result) === 'OFFER_ACCEPTED'
+                ? 'accepted'
+                : 'conflict',
         );
       } else {
         setFeedback('uncertain');
@@ -311,15 +392,20 @@ export function OfferPanel({
       {view.kind === 'empty' && mayPrepare && !currentClientId && (
         <p>{copy.noClient}</p>
       )}
-      {view.kind === 'empty' &&
+      {(view.kind === 'empty' || view.kind === 'version') &&
         mayPrepare &&
         currentClientId &&
         view.snapshots.length === 0 && <p>{copy.noSnapshot}</p>}
-      {view.kind === 'empty' &&
+      {(view.kind === 'empty' || view.kind === 'version') &&
         mayPrepare &&
         currentClientId &&
         view.snapshots.length > 0 && (
           <form noValidate onSubmit={(event) => void submit(event)}>
+            {view.kind === 'version' && (
+              <p>
+                {offerVersionCopy.predecessor(view.offer.version.versionNumber)}
+              </p>
+            )}
             <label>
               {copy.pricingSnapshot}
               <Select
@@ -403,14 +489,58 @@ export function OfferPanel({
                 ? copy.preparing
                 : feedback === 'uncertain'
                   ? copy.retry
-                  : copy.prepare}
+                  : view.kind === 'version'
+                    ? offerVersionCopy.create
+                    : copy.prepare}
             </button>
             {feedback && <p role="alert">{copy[feedback]}</p>}
+            {view.kind === 'version' && (
+              <button
+                type="button"
+                disabled={contentLocked}
+                onClick={() => setView({ kind: 'offer', offer: view.offer })}
+              >
+                {offerVersionCopy.cancel}
+              </button>
+            )}
           </form>
         )}
       {view.kind === 'offer' && (
         <>
           <OfferSummary offer={view.offer} />
+          {companyId && (
+            <OfferVersionHistory
+              key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.id}:${view.offer.version.id}`}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              offer={view.offer}
+              reject={reject}
+              onSelect={(offer) => {
+                pendingRequest.current?.abort();
+                attempt.current = undefined;
+                setFeedback(undefined);
+                setView({ kind: 'offer', offer });
+              }}
+            />
+          )}
+          {mayPrepare &&
+            currentClientId &&
+            !view.offer.version.supersededByVersionId &&
+            view.offer.version.clientResponseState !== 'ACCEPTED' && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void beginVersion()}
+              >
+                {offerVersionCopy.prepare}
+              </button>
+            )}
+          {feedback && (
+            <p role={feedback === 'created' ? 'status' : 'alert'}>
+              {copy[feedback]}
+            </p>
+          )}
           {companyId && (
             <OfferQualityPanel
               key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
@@ -419,7 +549,10 @@ export function OfferPanel({
               opportunityId={opportunityId}
               offerVersionId={view.offer.version.id}
               initialRun={view.offer.version.latestQualityRun}
-              mayRun={mayPrepare || mayApprove}
+              mayRun={
+                !view.offer.version.supersededByVersionId &&
+                (permissions.includes('commercial.offer.prepare') || mayApprove)
+              }
               reject={reject}
               onRun={(run) =>
                 setView((current) =>
@@ -439,40 +572,43 @@ export function OfferPanel({
               }
             />
           )}
-          {companyId && mayApprove && (
-            <OfferDecisionPanel
-              key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
-              identity={identity}
-              companyId={companyId}
-              opportunityId={opportunityId}
-              offer={view.offer}
-              reject={reject}
-              onDecision={(decision) =>
-                setView((current) =>
-                  current.kind === 'offer'
-                    ? {
-                        kind: 'offer',
-                        offer: {
-                          ...current.offer,
-                          revision: decision.offerRevision,
-                          version: {
-                            ...current.offer.version,
-                            decision,
-                            decisionState: decision.state,
-                            latestQualityRun:
-                              decision.state === 'APPROVED'
-                                ? decision.qualityRun
-                                : current.offer.version.latestQualityRun,
+          {companyId &&
+            mayApprove &&
+            !view.offer.version.supersededByVersionId && (
+              <OfferDecisionPanel
+                key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                offer={view.offer}
+                reject={reject}
+                onDecision={(decision) =>
+                  setView((current) =>
+                    current.kind === 'offer'
+                      ? {
+                          kind: 'offer',
+                          offer: {
+                            ...current.offer,
+                            revision: decision.offerRevision,
+                            version: {
+                              ...current.offer.version,
+                              decision,
+                              decisionState: decision.state,
+                              latestQualityRun:
+                                decision.state === 'APPROVED'
+                                  ? decision.qualityRun
+                                  : current.offer.version.latestQualityRun,
+                            },
                           },
-                        },
-                      }
-                    : current,
-                )
-              }
-            />
-          )}
+                        }
+                      : current,
+                  )
+                }
+              />
+            )}
           {companyId &&
             mayTransmit &&
+            !view.offer.version.supersededByVersionId &&
             view.offer.version.decisionState === 'APPROVED' &&
             view.offer.version.transmissionState === 'NOT_TRANSMITTED' && (
               <OfferTransmissionPanel
@@ -507,6 +643,7 @@ export function OfferPanel({
             )}
           {companyId &&
             mayRespond &&
+            !view.offer.version.supersededByVersionId &&
             view.offer.version.clientResponseState === 'PENDING' && (
               <OfferClientResponsePanel
                 key={`response:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}

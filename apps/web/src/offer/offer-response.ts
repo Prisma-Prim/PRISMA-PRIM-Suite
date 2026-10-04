@@ -12,7 +12,11 @@ export type OfferView = {
   version: {
     id: string;
     latestQualityRun: OfferQualityRunView | null;
-    versionNumber: 1;
+    versionNumber: number;
+    predecessorVersionId: string | null;
+    supersededByVersionId: string | null;
+    supersededAt: string | null;
+    differences: OfferDifferenceView[];
     pricingSnapshotId: string;
     pricingSnapshot: OfferSnapshotSummary;
     recipient: {
@@ -20,6 +24,7 @@ export type OfferView = {
       legalName: string;
       taxId: string | null;
       legalAddress: string | null;
+      additionalLegalEntityId: string | null;
     };
     issuingCompanyLabel: string;
     validityDays: number;
@@ -104,7 +109,7 @@ export function readOffer(value: unknown): OfferView {
     typeof root.id !== 'string' ||
     !positiveInteger(root.illustrativeReference) ||
     !positiveInteger(root.revision) ||
-    version.versionNumber !== 1 ||
+    !positiveInteger(version.versionNumber) ||
     typeof version.id !== 'string' ||
     typeof version.pricingSnapshotId !== 'string' ||
     (recipient.kind !== 'PRIMARY' && recipient.kind !== 'ADDITIONAL') ||
@@ -126,6 +131,20 @@ export function readOffer(value: unknown): OfferView {
     (version.decision === undefined && version.decisionState === 'PENDING')
       ? null
       : readOfferDecision(version.decision, version.id);
+  const predecessorVersionId = optionalText(
+    version.predecessorVersionId ??
+      (version.versionNumber === 1 ? null : undefined),
+  );
+  const supersededByVersionId = optionalText(
+    version.supersededByVersionId ?? null,
+  );
+  const supersededAt = optionalText(version.supersededAt ?? null);
+  if (
+    (version.versionNumber === 1) !== (predecessorVersionId === null) ||
+    (supersededByVersionId === null) !== (supersededAt === null) ||
+    (supersededAt !== null && !Number.isFinite(Date.parse(supersededAt)))
+  )
+    invalid();
   if (
     version.decisionState !== (decision?.state ?? 'PENDING') ||
     (decision && decision.offerRevision > root.revision)
@@ -196,7 +215,14 @@ export function readOffer(value: unknown): OfferView {
         version.latestQualityRun === null
           ? null
           : readOfferQualityRun(version.latestQualityRun, version.id),
-      versionNumber: 1,
+      versionNumber: version.versionNumber,
+      predecessorVersionId,
+      supersededByVersionId,
+      supersededAt,
+      differences: readOfferDifferences(
+        version.differences,
+        version.versionNumber,
+      ),
       pricingSnapshotId: version.pricingSnapshotId,
       pricingSnapshot: readSnapshot(version.pricingSnapshot),
       recipient: {
@@ -204,6 +230,9 @@ export function readOffer(value: unknown): OfferView {
         legalName: recipient.legalName,
         taxId: optionalText(recipient.taxId),
         legalAddress: optionalText(recipient.legalAddress),
+        additionalLegalEntityId: optionalText(
+          recipient.additionalLegalEntityId ?? null,
+        ),
       },
       issuingCompanyLabel: version.issuingCompanyLabel,
       validityDays: version.validityDays,
@@ -218,6 +247,86 @@ export function readOffer(value: unknown): OfferView {
       provisional: true,
       representation,
     },
+  };
+}
+
+export const offerDifferenceFields = [
+  'recipientKind',
+  'recipientAdditionalLegalEntityId',
+  'recipientLegalName',
+  'recipientTaxId',
+  'recipientLegalAddress',
+  'pricingSnapshotId',
+  'currency',
+  'total',
+  'validityDays',
+  'validUntil',
+  'scopeNote',
+  'commercialConditions',
+] as const;
+export type OfferDifferenceView = {
+  field: (typeof offerDifferenceFields)[number];
+  previous: string | number | null;
+  current: string | number | null;
+  changed: boolean;
+};
+function readOfferDifferences(
+  value: unknown,
+  versionNumber: number,
+): OfferDifferenceView[] {
+  if (value === undefined && versionNumber === 1) return [];
+  if (!Array.isArray(value)) invalid();
+  return value.map((entry: unknown) => {
+    const item = record(entry);
+    const field = offerDifferenceFields.find((field) => field === item.field);
+    const previous = item.previous;
+    const current = item.current;
+    if (
+      !field ||
+      (previous !== null &&
+        typeof previous !== 'string' &&
+        typeof previous !== 'number') ||
+      (current !== null &&
+        typeof current !== 'string' &&
+        typeof current !== 'number') ||
+      typeof item.changed !== 'boolean' ||
+      item.changed !== (previous !== current)
+    )
+      invalid();
+    return { field, previous, current, changed: item.changed };
+  });
+}
+
+export type OfferVersionPage = {
+  versions: Array<{
+    id: string;
+    versionNumber: number;
+    createdAt: string;
+    supersededByVersionId: string | null;
+  }>;
+  nextCursor: string | null;
+};
+export function readOfferVersionPage(value: unknown): OfferVersionPage {
+  const page = record(value);
+  if (!Array.isArray(page.versions)) invalid();
+  return {
+    versions: page.versions.map((entry: unknown) => {
+      const version = record(entry);
+      if (
+        typeof version.id !== 'string' ||
+        !positiveInteger(version.versionNumber) ||
+        typeof version.createdAt !== 'string' ||
+        !Number.isFinite(Date.parse(version.createdAt))
+      )
+        invalid();
+      return {
+        id: version.id,
+        versionNumber: version.versionNumber,
+        createdAt: version.createdAt,
+        supersededByVersionId: optionalText(version.supersededByVersionId),
+      };
+    }),
+    nextCursor: optionalText(page.nextCursor),
   };
 }
 

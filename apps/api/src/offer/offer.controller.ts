@@ -6,6 +6,7 @@ import {
   Headers,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -58,6 +59,51 @@ export class OfferController {
       payload,
       idempotencyKey,
     });
+  }
+
+  @Post('versions')
+  createVersion(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.offers.createVersion({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
+
+  @Get('versions')
+  listVersions(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Query('cursor') cursor: string | undefined,
+    @Query('limit') limit: string | undefined,
+  ) {
+    return this.offers.listVersions({
+      actor: actorFrom(request),
+      opportunityId,
+      cursor,
+      limit,
+    });
+  }
+
+  @Get('versions/:offerVersionId')
+  async readVersion(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('offerVersionId') offerVersionId: string,
+  ) {
+    return {
+      offer: await this.offers.read(
+        actorFrom(request),
+        opportunityId,
+        offerVersionId,
+      ),
+    };
   }
 
   @Post('versions/:offerVersionId/approve')

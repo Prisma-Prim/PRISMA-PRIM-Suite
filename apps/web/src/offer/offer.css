@@ -5,6 +5,31 @@
   border-radius: 0.75rem;
 }
 
+.offer-version-history {
+  margin-top: 1rem;
+  min-width: 0;
+}
+.offer-version-history ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.offer-version-history li {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.offer-version-history dl {
+  display: grid;
+  gap: 0.75rem;
+}
+.offer-version-history dd {
+  margin-left: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .offer-decision,
 .offer-transmission,
 .offer-client-response {
