@@ -133,6 +133,9 @@ export const offerVersions = pgTable(
     clientRequestId: uuid('client_request_id').notNull(),
     originalClientAccountId: uuid('original_client_account_id').notNull(),
     versionNumber: integer('version_number').default(1).notNull(),
+    predecessorVersionId: uuid('predecessor_version_id'),
+    supersededByVersionId: uuid('superseded_by_version_id'),
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
     pricingSnapshotId: uuid('pricing_snapshot_id').notNull(),
     recipientClientAccountId: uuid('recipient_client_account_id').notNull(),
     recipientKind: text('recipient_kind', {
@@ -258,11 +261,50 @@ export const offerVersions = pgTable(
     }),
     check(
       'offer_versions_initial_state_check',
-      sql`${table.versionNumber} = 1
+      sql`${table.versionNumber} >= 1
         AND ${table.decisionState} = 'PENDING'
         AND ${table.transmissionState} = 'NOT_TRANSMITTED'
         AND ${table.clientResponseState} = 'NONE'
         AND ${table.provenance} = 'ILLUSTRATIVE'`,
+    ),
+    check(
+      'offer_versions_lineage_check',
+      sql`((${table.versionNumber} = 1 AND ${table.predecessorVersionId} IS NULL) OR (${table.versionNumber} > 1 AND ${table.predecessorVersionId} IS NOT NULL)) AND ((${table.supersededByVersionId} IS NULL AND ${table.supersededAt} IS NULL) OR (${table.supersededByVersionId} IS NOT NULL AND ${table.supersededAt} IS NOT NULL))`,
+    ),
+    foreignKey({
+      name: 'offer_versions_predecessor_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.predecessorVersionId,
+      ],
+      foreignColumns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_successor_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.supersededByVersionId,
+      ],
+      foreignColumns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.id,
+      ],
+    }),
+    uniqueIndex('offer_versions_predecessor_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.predecessorVersionId,
     ),
     check(
       'offer_versions_recipient_kind_check',
@@ -407,6 +449,7 @@ export const offerCommands = pgTable(
     kind: text('kind', {
       enum: [
         'CREATE_OFFER',
+        'CREATE_OFFER_VERSION',
         'RUN_QUALITY_CHECKS',
         'APPROVE',
         'REJECT',
@@ -420,6 +463,8 @@ export const offerCommands = pgTable(
     resultDecisionId: uuid('result_decision_id'),
     resultTransmissionId: uuid('result_transmission_id'),
     resultClientResponseId: uuid('result_client_response_id'),
+    resultVersionId: uuid('result_version_id'),
+    resultOfferRevision: integer('result_offer_revision'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -468,12 +513,27 @@ export const offerCommands = pgTable(
     }),
     check(
       'offer_commands_kind_result_check',
-      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      sql`((${table.kind} = 'CREATE_OFFER_VERSION' AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} > 1) OR (${table.kind} <> 'CREATE_OFFER_VERSION' AND ${table.resultVersionId} IS NULL AND ${table.resultOfferRevision} IS NULL)) AND ((${table.kind} IN ('CREATE_OFFER', 'CREATE_OFFER_VERSION') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL AND ${table.resultClientResponseId} IS NULL)
-      OR (${table.kind} = 'RECORD_CLIENT_RESPONSE' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NOT NULL)`,
+      OR (${table.kind} = 'RECORD_CLIENT_RESPONSE' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NOT NULL))`,
     ),
+    foreignKey({
+      name: 'offer_commands_version_result_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.resultOfferId,
+        table.resultVersionId,
+      ],
+      foreignColumns: [
+        offerVersions.workspaceId,
+        offerVersions.companyId,
+        offerVersions.offerId,
+        offerVersions.id,
+      ],
+    }),
     foreignKey({
       name: 'offer_commands_decision_result_fk',
       columns: [
@@ -603,11 +663,12 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
         WHEN ${table.action} = 'offer_version.created' THEN
           ${table.metadata} ?& ARRAY['offerId', 'offerVersionId', 'versionNumber', 'pricingSnapshotId', 'recipientKind', 'provenance']
-          AND (${table.metadata} - ARRAY['offerId', 'offerVersionId', 'versionNumber', 'pricingSnapshotId', 'recipientKind', 'provenance']::text[]) = '{}'::jsonb
+          AND (${table.metadata} - ARRAY['offerId', 'offerVersionId', 'versionNumber', 'predecessorVersionNumber', 'pricingSnapshotId', 'recipientKind', 'provenance']::text[]) = '{}'::jsonb
           AND ${table.metadata}->>'offerId' = ${table.offerId}::text
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
-          AND ${table.metadata}->>'versionNumber' = '1'
+          AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
+          AND ((${table.metadata}->>'versionNumber' = '1' AND NOT (${table.metadata} ? 'predecessorVersionNumber')) OR ((${table.metadata}->>'versionNumber')::numeric > 1 AND jsonb_typeof(${table.metadata}->'predecessorVersionNumber') = 'number' AND (${table.metadata}->>'predecessorVersionNumber')::numeric = (${table.metadata}->>'versionNumber')::numeric - 1))
           AND jsonb_typeof(${table.metadata}->'pricingSnapshotId') = 'string'
           AND ${table.metadata}->>'pricingSnapshotId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
           AND ${table.metadata}->>'recipientKind' IN ('PRIMARY', 'ADDITIONAL')
@@ -617,7 +678,7 @@ export const offerEvents = pgTable(
           AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','outcome','provenance','ruleSetVersion','acknowledgedWarningCodes']::text[]) = '{}'::jsonb
           AND ${table.metadata}->>'offerId' = ${table.offerId}::text
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
-          AND ${table.metadata}->>'versionNumber' = '1'
+          AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
           AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND ${table.metadata}->>'ruleSetVersion' = '1' AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
           OR (${table.action} = 'offer_version.rejected' AND ${table.metadata}->>'outcome' = 'REJECTED' AND NOT (${table.metadata} ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
@@ -626,7 +687,7 @@ export const offerEvents = pgTable(
           AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']::text[]) = '{}'::jsonb
           AND ${table.metadata}->>'offerId' = ${table.offerId}::text
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
-          AND ${table.metadata}->>'versionNumber' = '1'
+          AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'channel' = 'SIMULATED'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
           AND ${table.metadata}->>'ruleSetVersion' = '1'
@@ -637,7 +698,7 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'offerId' = ${table.offerId}::text
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
-          AND ${table.metadata}->>'versionNumber' = '1'
+          AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'evidenceKind' = 'SIMULATED'
           AND ${table.metadata}->>'outcome' IN ('ACCEPTED','REJECTED','EXPIRED')
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'

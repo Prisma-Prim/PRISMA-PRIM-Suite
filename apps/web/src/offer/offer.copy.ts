@@ -1,7 +1,7 @@
 export const offerCopy = {
   title: 'Illustrative Offer',
   explanation:
-    'This first version is illustrative and provisional. It is not a contract, approval, invoice, tax decision, or evidence of ability to perform.',
+    'This Offer is illustrative and provisional. It is not a contract, approval, invoice, tax decision, or evidence of ability to perform.',
   loading: 'Loading Offer…',
   denied: 'Offer access is not available for this Opportunity.',
   unavailable: 'The Offer could not be loaded. Try again.',
@@ -26,8 +26,11 @@ export const offerCopy = {
   conflict: 'An Offer already exists or this retry no longer matches.',
   targetUnavailable:
     'The Opportunity, Snapshot or recipient is no longer available. Reload the Request.',
+  stale: 'The Offer changed. Reload the Request before creating a version.',
+  accepted: 'This Offer has been accepted and cannot receive another version.',
+  created: 'New Offer version created.',
   unsupportedAdjustment:
-    'The selected Pricing Snapshot contains an adjustment and cannot be used for Offer version 1.',
+    'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
   reference: 'Illustrative reference',
   version: 'Version',
   issuingCompany: 'Issuing Company',
@@ -41,6 +44,44 @@ export const offerCopy = {
   templateVersion: 'Template Version',
   checksum: 'SHA-256 checksum',
   representationFrame: 'Illustrative Offer representation',
+} as const;
+
+export const offerVersionCopy = {
+  prepare: 'Prepare a new version',
+  create: 'Create new version',
+  cancel: 'Cancel',
+  title: 'Version history',
+  loading: 'Loading versions…',
+  empty: 'No versions recorded.',
+  unavailable: 'Version history is unavailable. Try again.',
+  more: 'Show older versions',
+  open: (number: number) => `Open version ${number}`,
+  predecessor: (number: number) => `Previous version: ${number}`,
+  differences: 'Differences from previous version',
+  noPredecessor: 'Version 1 has no previous version.',
+  noDifferences: 'No recorded field differences.',
+  previous: 'Previous value',
+  current: 'Current value',
+  absent: 'Not recorded',
+  emptyText: 'Empty text',
+  unchanged: 'Unchanged',
+  changed: 'Changed',
+  historical: 'Historical version · read only',
+  currentHead: 'Current version',
+  fields: {
+    recipientKind: 'Recipient kind',
+    recipientAdditionalLegalEntityId: 'Named additional entity',
+    recipientLegalName: 'Legal name',
+    recipientTaxId: 'Tax ID',
+    recipientLegalAddress: 'Legal address',
+    pricingSnapshotId: 'Pricing Snapshot',
+    currency: 'Currency',
+    total: 'Recorded total',
+    validityDays: 'Validity in days',
+    validUntil: 'Valid until',
+    scopeNote: 'Scope note',
+    commercialConditions: 'Commercial conditions',
+  },
 } as const;
 
 export const offerTransmissionCopy = {

@@ -196,9 +196,9 @@ it.skipIf(!databaseUrl)(
           ].map(async (table) => {
             const omitted =
               table === 'offer_versions'
-                ? " - ARRAY['template_code', 'template_version']::text[]"
+                ? " - ARRAY['template_code', 'template_version', 'predecessor_version_id', 'superseded_by_version_id', 'superseded_at']::text[]"
                 : table === 'offer_commands'
-                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id', 'result_client_response_id']::text[]"
+                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id', 'result_client_response_id', 'result_version_id', 'result_offer_revision']::text[]"
                   : '';
             return (
               await query(
@@ -207,11 +207,185 @@ it.skipIf(!databaseUrl)(
             ).rows;
           }),
         );
-      const before = await preserved();
+      let before = await preserved();
+
+      const negotiationIndex = tags.indexOf('0050_offer_version_negotiation');
+      expect(negotiationIndex).toBeGreaterThan(bindingIndex);
+      await writeFile(
+        join(previous, 'meta/_journal.json'),
+        JSON.stringify({
+          ...journal,
+          entries: journal.entries.slice(0, negotiationIndex),
+        }),
+      );
+      for (const tag of tags.slice(bindingIndex, negotiationIndex))
+        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
+      await migrate(connection, { migrationsFolder: previous });
+      expect(await preserved()).toEqual(before);
+
+      // Synthetic delivered O3–O6 evidence exists before the O7 upgrade.
+      const quality = '00000000-0000-4000-8000-000000005030';
+      const decision = '00000000-0000-4000-8000-000000005031';
+      const transmission = '00000000-0000-4000-8000-000000005032';
+      const response = '00000000-0000-4000-8000-000000005033';
+      const results = [
+        'PRICING_SNAPSHOT_COHERENT',
+        'CURRENCY_UNCHANGED',
+        'VALIDITY_OPEN',
+        'RECIPIENT_AVAILABLE',
+        'RECIPIENT_IDENTITY_CURRENT',
+        'RECIPIENT_TAX_ID_RECORDED',
+        'PRICING_CLIENT_CONTEXT_COHERENT',
+        'PROVISIONAL_MARKER_PRESENT',
+      ].map((code) => ({ code, status: 'PASS' }));
+      await query(
+        `INSERT INTO offer_quality_runs (id, workspace_id, company_id, offer_id, offer_version_id, actor_internal_user_id, actor_workspace_membership_id, evaluated_at, results)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [
+          quality,
+          WORKSPACE,
+          COMPANY,
+          OFFER,
+          VERSION,
+          USER,
+          MEMBERSHIP,
+          CREATED_AT,
+          JSON.stringify(results),
+        ],
+      );
+      await query(
+        `INSERT INTO offer_decisions (id, workspace_id, company_id, offer_id, offer_version_id, state, offer_revision, actor_internal_user_id, actor_workspace_membership_id, decided_at, quality_run_id, acknowledged_warning_codes, representation_sha256)
+        VALUES ($1,$2,$3,$4,$5,'APPROVED',2,$6,$7,$8,$9,'[]',$10)`,
+        [
+          decision,
+          WORKSPACE,
+          COMPANY,
+          OFFER,
+          VERSION,
+          USER,
+          MEMBERSHIP,
+          CREATED_AT,
+          quality,
+          GOLDEN_SHA256,
+        ],
+      );
+      await query(
+        `INSERT INTO offer_transmissions (id, workspace_id, company_id, offer_id, offer_version_id, offer_revision, actor_internal_user_id, actor_workspace_membership_id, transmitted_at, quality_run_id, acknowledged_warning_codes, representation_sha256, note)
+        VALUES ($1,$2,$3,$4,$5,3,$6,$7,$8,$9,'[]',$10,'Preserved synthetic transmission')`,
+        [
+          transmission,
+          WORKSPACE,
+          COMPANY,
+          OFFER,
+          VERSION,
+          USER,
+          MEMBERSHIP,
+          CREATED_AT,
+          quality,
+          GOLDEN_SHA256,
+        ],
+      );
+      await query(
+        `INSERT INTO offer_client_responses (id, workspace_id, company_id, offer_id, offer_version_id, outcome, offer_revision, actor_internal_user_id, actor_workspace_membership_id, decided_at, received_at, reason)
+        VALUES ($1,$2,$3,$4,$5,'REJECTED',4,$6,$7,$8,$8,'Preserved synthetic refusal')`,
+        [
+          response,
+          WORKSPACE,
+          COMPANY,
+          OFFER,
+          VERSION,
+          USER,
+          MEMBERSHIP,
+          CREATED_AT,
+        ],
+      );
+      for (const [kind, column, id] of [
+        ['RUN_QUALITY_CHECKS', 'result_quality_run_id', quality],
+        ['APPROVE', 'result_decision_id', decision],
+        ['RECORD_TRANSMISSION', 'result_transmission_id', transmission],
+        ['RECORD_CLIENT_RESPONSE', 'result_client_response_id', response],
+      ]) {
+        await query(
+          `INSERT INTO offer_commands (workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_offer_id,created_at,kind,${column}) VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9)`,
+          [
+            WORKSPACE,
+            COMPANY,
+            MEMBERSHIP,
+            'preserved-' + kind,
+            OPPORTUNITY,
+            OFFER,
+            CREATED_AT,
+            kind,
+            id,
+          ],
+        );
+      }
+      for (const { action, metadata } of [
+        {
+          action: 'offer_version.approved',
+          metadata: {
+            outcome: 'APPROVED',
+            ruleSetVersion: 1,
+            acknowledgedWarningCodes: [],
+          },
+        },
+        {
+          action: 'offer_version.transmission_recorded',
+          metadata: {
+            channel: 'SIMULATED',
+            ruleSetVersion: 1,
+            acknowledgedWarningCodes: [],
+          },
+        },
+        {
+          action: 'offer_version.client_response_recorded',
+          metadata: { evidenceKind: 'SIMULATED', outcome: 'REJECTED' },
+        },
+      ])
+        await query(
+          `INSERT INTO offer_events (workspace_id,company_id,offer_id,offer_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,action,metadata) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            WORKSPACE,
+            COMPANY,
+            OFFER,
+            VERSION,
+            USER,
+            MEMBERSHIP,
+            CREATED_AT,
+            action,
+            JSON.stringify({
+              offerId: OFFER,
+              offerVersionId: VERSION,
+              versionNumber: 1,
+              provenance: 'ILLUSTRATIVE',
+              ...metadata,
+            }),
+          ],
+        );
+      await query('UPDATE offers SET revision = 4 WHERE id = $1', [OFFER]);
+      before = await preserved();
+      const deliveredEvidence = () =>
+        Promise.all(
+          [
+            'offer_quality_runs',
+            'offer_decisions',
+            'offer_transmissions',
+            'offer_client_responses',
+          ].map(
+            async (table) =>
+              (
+                await query(
+                  `SELECT to_jsonb(t) AS value FROM ${table} t ORDER BY id`,
+                )
+              ).rows,
+          ),
+        );
+      const beforeEvidence = await deliveredEvidence();
 
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
 
       expect(await preserved()).toEqual(before);
+      expect(await deliveredEvidence()).toEqual(beforeEvidence);
       expect(
         (
           await query(

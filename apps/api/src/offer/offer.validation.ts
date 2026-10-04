@@ -151,6 +151,40 @@ export function readCreateOfferCommand(value: unknown): CreateOfferCommand {
   };
 }
 
+export function readCreateOfferVersionCommand(
+  value: unknown,
+): CreateOfferCommand & { expectedOfferRevision: number } {
+  const input = record(value, 'body');
+  for (const field of Object.keys(input))
+    if (
+      ![
+        'expectedOfferRevision',
+        'pricingSnapshotId',
+        'recipient',
+        'validityDays',
+        'scopeNote',
+        'commercialConditions',
+      ].includes(field)
+    )
+      throw invalid(field);
+  const expectedOfferRevision = input.expectedOfferRevision;
+  if (
+    typeof expectedOfferRevision !== 'number' ||
+    !Number.isSafeInteger(expectedOfferRevision) ||
+    expectedOfferRevision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  const recipient = record(input.recipient, 'recipient');
+  for (const field of Object.keys(recipient))
+    if (
+      !(
+        recipient.kind === 'PRIMARY' ? ['kind'] : ['kind', 'legalEntityId']
+      ).includes(field)
+    )
+      throw invalid('recipient.' + field);
+  return { ...readCreateOfferCommand(value), expectedOfferRevision };
+}
+
 function readRecipient(value: unknown): OfferRecipientSelection {
   const recipient = record(value, 'recipient');
   if (recipient.kind === 'PRIMARY') return { kind: 'PRIMARY' };

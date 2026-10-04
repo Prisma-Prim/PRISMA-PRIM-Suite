@@ -1068,7 +1068,7 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(offer.getByRole('alert')).toHaveText(
-      'The selected Pricing Snapshot contains an adjustment and cannot be used for Offer version 1.',
+      'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
     );
     await expect(offer.getByText('Illustrative reference')).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
@@ -1485,8 +1485,8 @@ test('approves, transmits and records immutable simulated Client outcomes with e
       fullPage: true,
     });
   }
-  const html = await frame.getAttribute('srcdoc');
-  const checksum = await offer
+  let html = await frame.getAttribute('srcdoc');
+  let checksum = await offer
     .locator('.offer-representation code')
     .textContent();
   const run = offer.getByRole('button', {
@@ -1595,6 +1595,103 @@ test('approves, transmits and records immutable simulated Client outcomes with e
     checksum ?? '',
   );
   await captureDecision('offer-transmission-reopened');
+  // Negotiation creates a complete successor and leaves the transmitted
+  // predecessor pending, with its original representation and evidence.
+  const firstHtml = html;
+  const firstChecksum = checksum;
+  const versionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.endsWith('/versions'),
+  );
+  const prepareVersion = offer.getByRole('button', {
+    name: 'Prepare a new version',
+    exact: true,
+  });
+  await prepareVersion.focus();
+  await page.keyboard.press('Enter');
+  await offer
+    .getByLabel('Commercial conditions', { exact: true })
+    .fill('Synthetic negotiated conditions');
+  await offer
+    .getByRole('button', { name: 'Create new version', exact: true })
+    .click();
+  const successorResponse = await versionResponse;
+  expect(successorResponse.status()).toBe(201);
+  const successor: unknown = await successorResponse.json();
+  expect(successor).toMatchObject({
+    revision: 4,
+    version: {
+      versionNumber: 2,
+      decisionState: 'PENDING',
+      transmissionState: 'NOT_TRANSMITTED',
+      clientResponseState: 'NONE',
+      latestQualityRun: null,
+    },
+  });
+  await expect(
+    offer.getByText('Current value: Synthetic negotiated conditions', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    offer.getByText('Draft — not approved', { exact: true }),
+  ).toBeVisible();
+  html = await frame.getAttribute('srcdoc');
+  checksum = await offer.locator('.offer-representation code').textContent();
+  expect(html).not.toBe(firstHtml);
+  expect(checksum).not.toBe(firstChecksum);
+  await captureDecision('offer-version-two-differences');
+  await offer
+    .getByRole('button', { name: 'Open version 1', exact: true })
+    .click();
+  await expect(
+    offer.getByText('Historical version · read only', { exact: true }),
+  ).toBeVisible();
+  await expect(frame).toHaveAttribute('srcdoc', firstHtml ?? '');
+  await expect(offer.locator('.offer-representation code')).toHaveText(
+    firstChecksum ?? '',
+  );
+  await expect(
+    offer.getByRole('button', { name: 'Run Quality Checks', exact: true }),
+  ).toHaveCount(0);
+  await expect(offer.locator('.offer-client-response')).toHaveCount(0);
+  await expect(
+    offer.getByText(
+      'Simulated transmission recorded · Client response pending',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await captureDecision('offer-version-one-frozen');
+  await offer
+    .getByRole('button', { name: 'Open version 2', exact: true })
+    .click();
+  await expect(
+    offer.getByText('Current version', { exact: true }),
+  ).toBeVisible();
+  await run.click();
+  await expect(
+    offer.getByText('Checks completed with warnings.', { exact: true }),
+  ).toBeVisible();
+  await offer
+    .getByRole('checkbox', { name: 'Recipient tax ID recorded' })
+    .check();
+  await offer
+    .getByRole('button', { name: 'Approve this version', exact: true })
+    .click();
+  await expect(
+    offer.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  await offer
+    .getByRole('button', { name: 'Record simulated transmission', exact: true })
+    .click();
+  await expect(
+    offer.getByText(
+      'Simulated transmission recorded · Client response pending',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
   const responsePanel = offer.locator('.offer-client-response');
   await responsePanel
     .getByLabel('Reported received time (UTC)')
@@ -1620,6 +1717,44 @@ test('approves, transmits and records immutable simulated Client outcomes with e
   );
   await expect(frame).toHaveAttribute('srcdoc', html ?? '');
   await captureDecision('offer-client-accepted-reopened');
+  await expect(
+    offer.getByRole('button', { name: 'Prepare a new version', exact: true }),
+  ).toHaveCount(0);
+  const finalRead = await page.request.get(
+    `${apiOrigin}/api/offers/opportunities/${approvedRequest.opportunityId}`,
+    { headers: { ...primaryMemberHeaders, 'x-company-context-id': companyId } },
+  );
+  const final: unknown = await finalRead.json();
+  if (
+    typeof final !== 'object' ||
+    final === null ||
+    !('offer' in final) ||
+    typeof final.offer !== 'object' ||
+    final.offer === null ||
+    !('version' in final.offer) ||
+    typeof final.offer.version !== 'object' ||
+    final.offer.version === null ||
+    !('pricingSnapshotId' in final.offer.version) ||
+    typeof final.offer.version.pricingSnapshotId !== 'string'
+  )
+    throw new Error('Expected accepted synthetic Offer.');
+  const refusedVersion = await page.request.post(
+    `${apiOrigin}/api/offers/opportunities/${approvedRequest.opportunityId}/versions`,
+    {
+      headers: {
+        ...primaryMemberHeaders,
+        'x-company-context-id': companyId,
+        'idempotency-key': crypto.randomUUID(),
+      },
+      data: {
+        expectedOfferRevision: 7,
+        pricingSnapshotId: final.offer.version.pricingSnapshotId,
+        recipient: { kind: 'PRIMARY' },
+      },
+    },
+  );
+  expect(refusedVersion.status()).toBe(409);
+  expect(await refusedVersion.json()).toMatchObject({ code: 'OFFER_ACCEPTED' });
   async function approveAndTransmit(request: { opportunityId: string }) {
     const headers = {
       ...primaryMemberHeaders,

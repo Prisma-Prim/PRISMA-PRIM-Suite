@@ -1,0 +1,170 @@
+import { useEffect, useRef, useState } from 'react';
+import type { BrowserIdentity } from '../access-composition';
+import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import type { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { formatApplicationDateTime } from '../presentation/date-time';
+import { offerVersionCopy as copy } from './offer.copy';
+import {
+  readOfferDetail,
+  readOfferVersionPage,
+  type OfferView,
+  type OfferVersionPage,
+} from './offer-response';
+
+export function OfferVersionHistory({
+  identity,
+  companyId,
+  opportunityId,
+  offer,
+  reject,
+  onSelect,
+}: {
+  identity: BrowserIdentity;
+  companyId: string;
+  opportunityId: string;
+  offer: OfferView;
+  reject: (
+    result: Parameters<typeof handleAuthenticatedAccessRejection>[0]['result'],
+    signal: AbortSignal,
+  ) => ReturnType<typeof handleAuthenticatedAccessRejection>;
+  onSelect: (offer: OfferView) => void;
+}) {
+  const [page, setPage] = useState<OfferVersionPage>({
+    versions: [],
+    nextCursor: null,
+  });
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const active = useRef<AbortController | undefined>(undefined);
+  const base = `/offers/opportunities/${encodeURIComponent(opportunityId)}`;
+  async function load(cursor?: string) {
+    active.current?.abort();
+    const request = new AbortController();
+    active.current = request;
+    setState('loading');
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      const result = await api.request<unknown>(
+        `${base}/versions${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
+        { companyContextId: companyId, signal: request.signal },
+      );
+      if (request.signal.aborted) return;
+      if ((await reject(result, request.signal)) || result.status !== 'ok') {
+        setState('error');
+        return;
+      }
+      const next = readOfferVersionPage(result.value);
+      setPage((previous) => ({
+        versions: cursor
+          ? [...previous.versions, ...next.versions]
+          : next.versions,
+        nextCursor: next.nextCursor,
+      }));
+      setState('ready');
+    } catch {
+      if (!request.signal.aborted) setState('error');
+    }
+  }
+  useEffect(() => {
+    void load();
+    return () => active.current?.abort();
+  }, [identity, companyId, opportunityId, offer.id, offer.version.id, reject]);
+  async function open(id: string) {
+    active.current?.abort();
+    const request = new AbortController();
+    active.current = request;
+    setState('loading');
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      const result = await api.request<unknown>(
+        `${base}/versions/${encodeURIComponent(id)}`,
+        { companyContextId: companyId, signal: request.signal },
+      );
+      if (request.signal.aborted) return;
+      if ((await reject(result, request.signal)) || result.status !== 'ok') {
+        setState('error');
+        return;
+      }
+      const selected = readOfferDetail(result.value);
+      if (!selected || selected.id !== offer.id || selected.version.id !== id)
+        throw new Error('Invalid selected Offer Version.');
+      onSelect(selected);
+    } catch {
+      if (!request.signal.aborted) setState('error');
+    }
+  }
+  const differenceValue = (value: string | number | null) =>
+    value === null
+      ? copy.absent
+      : value === ''
+        ? copy.emptyText
+        : String(value);
+  return (
+    <div className="offer-version-history">
+      <h5>{copy.title}</h5>
+      <p>
+        {offer.version.supersededByVersionId
+          ? copy.historical
+          : copy.currentHead}
+      </p>
+      {state === 'loading' && <p role="status">{copy.loading}</p>}
+      {state === 'error' && (
+        <>
+          <p role="alert">{copy.unavailable}</p>
+          <button type="button" onClick={() => void load()}>
+            {copy.title}
+          </button>
+        </>
+      )}
+      {state === 'ready' && page.versions.length === 0 && <p>{copy.empty}</p>}
+      <ul>
+        {page.versions.map((version) => (
+          <li key={version.id}>
+            <button
+              type="button"
+              disabled={state === 'loading' || version.id === offer.version.id}
+              onClick={() => void open(version.id)}
+            >
+              {copy.open(version.versionNumber)}
+            </button>{' '}
+            <span>{formatApplicationDateTime(version.createdAt)}</span>
+          </li>
+        ))}
+      </ul>
+      {page.nextCursor && (
+        <button
+          type="button"
+          disabled={state === 'loading'}
+          onClick={() => void load(page.nextCursor ?? undefined)}
+        >
+          {copy.more}
+        </button>
+      )}
+      <h5>{copy.differences}</h5>
+      {offer.version.predecessorVersionId === null ? (
+        <p>{copy.noPredecessor}</p>
+      ) : (
+        <>
+          {offer.version.differences.every((field) => !field.changed) && (
+            <p>{copy.noDifferences}</p>
+          )}
+          <dl>
+            {offer.version.differences.map((field) => (
+              <div key={field.field}>
+                <dt>
+                  {copy.fields[field.field]} ·{' '}
+                  {field.changed ? copy.changed : copy.unchanged}
+                </dt>
+                <dd>
+                  {copy.previous}: {differenceValue(field.previous)}
+                </dd>
+                <dd>
+                  {copy.current}: {differenceValue(field.current)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+    </div>
+  );
+}

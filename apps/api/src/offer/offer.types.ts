@@ -115,7 +115,11 @@ export type OfferClientResponse = {
 
 export type OfferVersionRecord = {
   readonly id: string;
-  readonly versionNumber: 1;
+  readonly versionNumber: number;
+  readonly predecessorVersionId: string | null;
+  readonly supersededByVersionId: string | null;
+  readonly supersededAt: string | null;
+  readonly differences: readonly OfferVersionDifference[];
   readonly pricingSnapshotId: string;
   readonly pricingSnapshot: PricingSnapshotRecord;
   readonly recipient: OfferRecipientCopy;
@@ -148,4 +152,11 @@ export interface OfferRecord {
   readonly createdAt: string;
   readonly clientReference?: CommercialClientProjection;
   readonly version: OfferVersionRecord;
+}
+
+export interface OfferVersionDifference {
+  readonly field: string;
+  readonly previous: string | number | null;
+  readonly current: string | number | null;
+  readonly changed: boolean;
 }

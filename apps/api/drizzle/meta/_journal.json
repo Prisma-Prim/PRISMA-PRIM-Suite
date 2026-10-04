@@ -351,6 +351,13 @@
       "when": 1791061251085,
       "tag": "0049_offer_simulated_client_response",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791115733985,
+      "tag": "0050_offer_version_negotiation",
+      "breakpoints": true
     }
   ]
 }
