@@ -95,6 +95,23 @@ export class OfferController {
     });
   }
 
+  @Post('versions/:offerVersionId/client-response')
+  recordClientResponse(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('offerVersionId') offerVersionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.offers.recordClientResponse({
+      actor: actorFrom(request),
+      opportunityId,
+      offerVersionId,
+      payload,
+      idempotencyKey,
+    });
+  }
+
   @Post('versions/:offerVersionId/reject')
   reject(
     @Req() request: ActorContextRequest,

@@ -10,6 +10,7 @@ import {
   type Response,
 } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 
 import { canonicalDateTimeLocalValue } from '../src/pricing-configuration/datetime-local-test-helper';
 
@@ -1342,10 +1343,12 @@ test.describe('Pricing Snapshot and Offer journey', () => {
   });
 });
 
-test('approves, simulates transmission and rejects exact illustrative Offer Versions with explicit Company authority', async ({
+test('approves, transmits and records immutable simulated Client outcomes with explicit Company authority', async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
+  const clockFile = requiredEnvironment('ACCEPTANCE_CLOCK_OFFSET_FILE');
+  expect(await readFile(clockFile, 'utf8')).toBe('0');
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'narrow' : 'desktop';
   const companyName = `Offer decision ${suffix} ${crypto.randomUUID().slice(0, 8)}`;
@@ -1427,6 +1430,8 @@ test('approves, simulates transmission and rejects exact illustrative Offer Vers
   );
   const approvedRequest = await prepare(`approve-${suffix}`);
   const rejectedRequest = await prepare(`reject-${suffix}`);
+  const clientRejectedRequest = await prepare(`client-reject-${suffix}`);
+  const expiredRequest = await prepare(`expired-${suffix}`);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   async function open(subject: string) {
     await page.goto('/');
@@ -1590,6 +1595,91 @@ test('approves, simulates transmission and rejects exact illustrative Offer Vers
     checksum ?? '',
   );
   await captureDecision('offer-transmission-reopened');
+  const responsePanel = offer.locator('.offer-client-response');
+  await responsePanel
+    .getByLabel('Reported received time (UTC)')
+    .fill(new Date().toISOString());
+  const accept = responsePanel.getByRole('button', {
+    name: 'Record simulated acceptance',
+    exact: true,
+  });
+  await accept.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    offer.getByText('Simulated Client acceptance recorded', { exact: true }),
+  ).toBeVisible();
+  await expect(responsePanel).toHaveCount(0);
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await captureDecision('offer-client-accepted');
+  await open(approvedRequest.subject);
+  await expect(
+    offer.getByText('Simulated Client acceptance recorded', { exact: true }),
+  ).toBeVisible();
+  await expect(offer.locator('.offer-client-response-evidence')).toContainText(
+    workspaceMembershipId,
+  );
+  await expect(frame).toHaveAttribute('srcdoc', html ?? '');
+  await captureDecision('offer-client-accepted-reopened');
+  async function approveAndTransmit(request: { opportunityId: string }) {
+    const headers = {
+      ...primaryMemberHeaders,
+      'x-company-context-id': companyId,
+    };
+    const detail = await page.request.get(
+      apiOrigin + '/api/offers/opportunities/' + request.opportunityId,
+      { headers },
+    );
+    expect(detail.status()).toBe(200);
+    const versionId = nestedId(offerRoot(await detail.json()), 'version');
+    const base =
+      apiOrigin +
+      '/api/offers/opportunities/' +
+      request.opportunityId +
+      '/versions/' +
+      versionId;
+    for (const [path, data] of [
+      [
+        '/approve',
+        {
+          expectedOfferRevision: 1,
+          acknowledgedWarningCodes: ['RECIPIENT_TAX_ID_RECORDED'],
+        },
+      ],
+      [
+        '/transmission',
+        { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      ],
+    ] satisfies Array<[string, unknown]>) {
+      const r = await page.request.post(base + path, {
+        headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
+        data,
+      });
+      expect(r.status()).toBe(201);
+    }
+  }
+  await approveAndTransmit(clientRejectedRequest);
+  await open(clientRejectedRequest.subject);
+  await responsePanel
+    .getByLabel('Reported received time (UTC)')
+    .fill(new Date().toISOString());
+  const clientReason = 'Synthetic Client refusal: revised scope needed.';
+  await responsePanel.getByLabel('Client rejection reason').fill(clientReason);
+  await responsePanel
+    .getByRole('button', {
+      name: 'Record simulated Client rejection',
+      exact: true,
+    })
+    .click();
+  await expect(
+    offer.getByText('Simulated Client rejection recorded', { exact: true }),
+  ).toBeVisible();
+  await expect(offer.getByText(clientReason, { exact: true })).toBeVisible();
+  await captureDecision('offer-client-rejected');
+  await open(clientRejectedRequest.subject);
+  await expect(offer.getByText(clientReason, { exact: true })).toBeVisible();
+  await captureDecision('offer-client-rejected-reopened');
+  await approveAndTransmit(expiredRequest);
+
   await open(rejectedRequest.subject);
   const reason = 'Synthetic rejection: clarify the illustrative conditions.';
   await offer.getByLabel('Rejection reason', { exact: true }).fill(reason);
@@ -1608,6 +1698,39 @@ test('approves, simulates transmission and rejects exact illustrative Offer Vers
   ).toBeVisible();
   await expect(offer.getByText(reason, { exact: true })).toBeVisible();
   await captureDecision('offer-rejected-reopened');
+  try {
+    await writeFile(clockFile, JSON.stringify(31 * 24 * 60 * 60 * 1000));
+    await open(expiredRequest.subject);
+    await expect(
+      offer
+        .getByText(
+          'Validity elapsed · Client response pending. Nothing expires automatically.',
+        )
+        .first(),
+    ).toBeVisible();
+    const expire = responsePanel.getByRole('button', {
+      name: 'Record simulated expiry',
+      exact: true,
+    });
+    await expire.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      offer.getByText('Simulated expiry recorded', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      offer.locator('.offer-client-response-evidence'),
+    ).not.toContainText('Reported received time');
+    await expectNoHorizontalOverflow(page);
+    await captureDecision('offer-client-expired');
+    await open(expiredRequest.subject);
+    await expect(
+      offer.getByText('Simulated expiry recorded', { exact: true }),
+    ).toBeVisible();
+    await captureDecision('offer-client-expired-reopened');
+  } finally {
+    await writeFile(clockFile, '0');
+    expect(await readFile(clockFile, 'utf8')).toBe('0');
+  }
 });
 
 function rootId(value: unknown): string {
@@ -2053,4 +2176,10 @@ async function captureOfferRepresentation({
   ).toBeInViewport({ ratio: 1 });
   await page.screenshot({ path: viewportScreenshotPath, fullPage: false });
   await frameElement.screenshot({ path: documentScreenshotPath });
+}
+
+function offerRoot(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || !('offer' in value))
+    throw new Error('Expected Offer detail');
+  return value.offer;
 }

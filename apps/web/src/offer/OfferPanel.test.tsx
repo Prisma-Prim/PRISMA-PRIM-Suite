@@ -12,6 +12,333 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it('records simulated Client acceptance and removes mutable controls', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/client-response')
+        ? response(clientResponseView())
+        : response({ offer: transmittedOfferView() }),
+    );
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Reported received time (UTC)'),
+      { target: { value: qualityRun().evaluatedAt } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated acceptance' }),
+    );
+    expect(
+      await screen.findByText('Simulated Client acceptance recorded'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Reported received time', { exact: true }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated acceptance' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(['REJECTED', 'EXPIRED'])(
+    'reopens immutable simulated %s evidence',
+    async (outcome) => {
+      const offer = transmittedOfferView();
+      const responseEvidence = {
+        ...clientResponseView(),
+        outcome,
+        ...(outcome === 'REJECTED'
+          ? { reason: ' Synthetic Client refusal ' }
+          : { receivedAt: undefined, decidedAt: offer.version.validUntil }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          offer: {
+            ...offer,
+            revision: 4,
+            version: {
+              ...offer.version,
+              clientResponseState: outcome,
+              clientResponse: responseEvidence,
+            },
+          },
+        }),
+      );
+      renderPanel(
+        actorWithOfferPermissions('company-one', [
+          'commercial.offer.read',
+          'commercial.offer.response.record',
+        ]),
+      );
+      expect(
+        await screen.findByText(
+          outcome === 'REJECTED'
+            ? 'Simulated Client rejection recorded'
+            : 'Simulated expiry recorded',
+        ),
+      ).toBeVisible();
+      if (outcome === 'REJECTED')
+        expect(screen.getByText('Synthetic Client refusal')).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Record simulated acceptance' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('keeps the exact response values, revision and key after an uncertain rejection', async () => {
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (!input.toString().endsWith('/client-response'))
+        return response({ offer: transmittedOfferView() });
+      if (init) posts.push(init);
+      return posts.length === 1
+        ? response({}, 500)
+        : response({
+            ...clientResponseView(),
+            outcome: 'REJECTED',
+            reason: ' Exact entered reason ',
+          });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Reported received time (UTC)'),
+      { target: { value: qualityRun().evaluatedAt } },
+    );
+    fireEvent.change(screen.getByLabelText('Client rejection reason'), {
+      target: { value: ' Exact entered reason ' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated Client rejection' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Retry the same Client response',
+      }),
+    );
+    await screen.findByText('Simulated Client rejection recorded');
+    expect(posts).toHaveLength(2);
+    expect(posts[1]?.body).toBe(posts[0]?.body);
+    expect(JSON.parse(String(posts[1]?.body))).toEqual({
+      expectedOfferRevision: 3,
+      outcome: 'REJECTED',
+      receivedAt: qualityRun().evaluatedAt,
+      reason: ' Exact entered reason ',
+    });
+    expect(new Headers(posts[1]?.headers).get('idempotency-key')).toBe(
+      new Headers(posts[0]?.headers).get('idempotency-key'),
+    );
+  });
+  it.each([
+    [
+      'STALE_OFFER_REVISION',
+      'The Offer changed. Reload the Request before recording a Client response.',
+    ],
+    [
+      'CLIENT_RESPONSE_ALREADY_RECORDED',
+      'This version already has a Client response. Reload the Request.',
+    ],
+    [
+      'OFFER_VERSION_SUPERSEDED',
+      'This version has been superseded. Reload the Request.',
+    ],
+    [
+      'OFFER_VERSION_NOT_TRANSMITTED',
+      'This version is not transmitted. Reload the Request.',
+    ],
+    [
+      'IDEMPOTENCY_CONFLICT',
+      'This retry no longer matches. Reload the Request.',
+    ],
+    [
+      'OFFER_VALIDITY_ELAPSED',
+      'The reported response was received after validity ended. Correct the received time or record expiry.',
+    ],
+    [
+      'OFFER_VALIDITY_NOT_ELAPSED',
+      'The validity has not ended. Expiry cannot be recorded yet.',
+    ],
+  ])(
+    'explains %s response refusal and retains entered values',
+    async (code, message) => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().endsWith('/client-response')
+          ? response({ code }, 409)
+          : response({ offer: transmittedOfferView() }),
+      );
+      renderPanel(
+        actorWithOfferPermissions('company-one', [
+          'commercial.offer.read',
+          'commercial.offer.response.record',
+        ]),
+      );
+      fireEvent.change(
+        await screen.findByLabelText('Reported received time (UTC)'),
+        { target: { value: qualityRun().evaluatedAt } },
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Record simulated acceptance' }),
+      );
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(screen.getByLabelText('Reported received time (UTC)')).toHaveValue(
+        qualityRun().evaluatedAt,
+      );
+      expect(
+        screen.queryByRole('button', {
+          name: 'Retry the same Client response',
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('retains response input after validation and gives the corrected command a fresh key', async () => {
+    const posts: RequestInit[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (!input.toString().endsWith('/client-response'))
+        return response({ offer: transmittedOfferView() });
+      if (init) posts.push(init);
+      return posts.length === 1
+        ? response({ field: 'receivedAt' }, 400)
+        : response(clientResponseView());
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Reported received time (UTC)'),
+      { target: { value: qualityRun().evaluatedAt } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated acceptance' }),
+    );
+    await screen.findByText(
+      'Check the received time. A rejection needs a reason of 1–500 characters.',
+    );
+    expect(screen.getByLabelText('Reported received time (UTC)')).toHaveValue(
+      qualityRun().evaluatedAt,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record simulated acceptance' }),
+    );
+    await screen.findByText('Simulated Client acceptance recorded');
+    expect(new Headers(posts[1]?.headers).get('idempotency-key')).not.toBe(
+      new Headers(posts[0]?.headers).get('idempotency-key'),
+    );
+  });
+  it('denies response after live actor revalidation', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/client-response')
+        ? response({}, 403)
+        : input.toString().includes('/access/current-actor')
+          ? response(actor('company-one'))
+          : response({ offer: transmittedOfferView() }),
+    );
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Record simulated expiry' }),
+    );
+    expect(
+      await screen.findByText('Client response access is no longer available.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Retry the same Client response' }),
+    ).not.toBeInTheDocument();
+  });
+  it('discards a late response after Company or response authority changes', async () => {
+    let release: ((value: Response) => void) | undefined;
+    const result = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/client-response')
+        ? result
+        : response({ offer: transmittedOfferView() }),
+    );
+    const rendered = renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.response.record',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Record simulated expiry' }),
+    );
+    await screen.findByText('Recording simulated Client response…');
+    rendered.rerender(
+      panel(
+        actorWithOfferPermissions('company-two', ['commercial.offer.read']),
+        'opportunity-two',
+      ),
+    );
+    release?.(response(clientResponseView()));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Recording simulated Client response…'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText('Simulated Client acceptance recorded'),
+    ).not.toBeInTheDocument();
+  });
+  it.each(['REAL', 'late', 'missing', 'wrong-outcome'])(
+    'fails closed on malformed reopened response %s',
+    async (kind) => {
+      const current = transmittedOfferView();
+      const evidence = {
+        ...clientResponseView(),
+        ...(kind === 'REAL'
+          ? { evidenceKind: 'REAL' }
+          : kind === 'late'
+            ? { receivedAt: current.version.validUntil }
+            : kind === 'wrong-outcome'
+              ? { outcome: 'REJECTED' }
+              : {}),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          offer: {
+            ...current,
+            revision: 4,
+            version: {
+              ...current.version,
+              clientResponseState: 'ACCEPTED',
+              clientResponse: kind === 'missing' ? null : evidence,
+            },
+          },
+        }),
+      );
+      renderPanel(actor('company-one'));
+      await screen.findByText('The Offer could not be loaded. Try again.');
+      expect(
+        screen.queryByText('Simulated Client acceptance recorded'),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('withholds Client response actions without response permission', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({ offer: transmittedOfferView() }),
+    );
+    renderPanel(actor('company-one'));
+    await screen.findByText(
+      'Simulated transmission recorded · Client response pending',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Record simulated acceptance' }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([null, 'Synthetic recorded note'])(
     'shows the recorded simulation note or its own absent-note label for %s',
     async (note) => {
@@ -1171,6 +1498,8 @@ function actor(companyId: string): ActorContext {
     activeCompany: {
       id: companyId,
       displayName: companyId,
+      commercialIntakePermissions: ['commercial.opportunity.read'],
+      clientPermissions: ['client.read'],
       offerPermissions: [
         'commercial.offer.read',
         'commercial.offer.prepare',
@@ -1232,6 +1561,8 @@ function offerView(company = 'Illustrative Company') {
       decision: null,
       transmissionState: 'NOT_TRANSMITTED',
       clientResponseState: 'NONE',
+      clientResponse: null,
+      validityElapsed: false,
       provenance: 'ILLUSTRATIVE',
       provisional: true,
       representation: {
@@ -1320,4 +1651,31 @@ function response(value: unknown, status = 200): Response {
     status,
     headers: { 'content-type': 'application/json' },
   });
+}
+
+function transmittedOfferView() {
+  const offer = approvedOfferView();
+  return {
+    ...offer,
+    revision: 3,
+    version: {
+      ...offer.version,
+      transmissionState: 'TRANSMITTED',
+      clientResponseState: 'PENDING',
+      transmission: transmissionView(),
+      clientResponse: null,
+    },
+  };
+}
+function clientResponseView() {
+  return {
+    id: 'response',
+    offerVersionId: 'version-one',
+    offerRevision: 4,
+    actorWorkspaceMembershipId: 'membership-one',
+    decidedAt: qualityRun().evaluatedAt,
+    evidenceKind: 'SIMULATED',
+    outcome: 'ACCEPTED',
+    receivedAt: qualityRun().evaluatedAt,
+  };
 }

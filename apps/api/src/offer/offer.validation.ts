@@ -1,6 +1,53 @@
 import { BadRequestException } from '@nestjs/common';
 import { OFFER_QUALITY_CODES, type OfferQualityCode } from './offer-quality.js';
 
+export type OfferClientResponseCommand = { expectedOfferRevision: number } & (
+  | { outcome: 'ACCEPTED'; receivedAt: Date }
+  | { outcome: 'REJECTED'; receivedAt: Date; reason: string }
+  | { outcome: 'EXPIRED' }
+);
+
+export function readOfferClientResponseCommand(
+  value: unknown,
+): OfferClientResponseCommand {
+  const input = record(value, 'body');
+  const expectedOfferRevision = input.expectedOfferRevision;
+  if (
+    typeof expectedOfferRevision !== 'number' ||
+    !Number.isSafeInteger(expectedOfferRevision) ||
+    expectedOfferRevision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  const outcome = input.outcome;
+  if (outcome !== 'ACCEPTED' && outcome !== 'REJECTED' && outcome !== 'EXPIRED')
+    throw invalid('outcome');
+  const fields =
+    outcome === 'EXPIRED'
+      ? ['expectedOfferRevision', 'outcome']
+      : outcome === 'REJECTED'
+        ? ['expectedOfferRevision', 'outcome', 'receivedAt', 'reason']
+        : ['expectedOfferRevision', 'outcome', 'receivedAt'];
+  for (const field of Object.keys(input))
+    if (!fields.includes(field)) throw invalid(field);
+  if (outcome === 'EXPIRED') return { expectedOfferRevision, outcome };
+  const received = input.receivedAt;
+  if (typeof received !== 'string' || !validReceivedTimestamp(received))
+    throw invalid('receivedAt');
+  const receivedAt = new Date(received);
+  if (!Number.isFinite(receivedAt.getTime())) throw invalid('receivedAt');
+  if (outcome === 'ACCEPTED')
+    return { expectedOfferRevision, outcome, receivedAt };
+  const reason = input.reason;
+  if (
+    typeof reason !== 'string' ||
+    !reason.trim() ||
+    reason.length > 500 ||
+    reason.includes('\0')
+  )
+    throw invalid('reason');
+  return { expectedOfferRevision, outcome, receivedAt, reason };
+}
+
 export type OfferDecisionCommand =
   | {
       kind: 'APPROVE';
@@ -181,4 +228,19 @@ function invalid(field: string): BadRequestException {
     field,
     message: `The Offer field ${field} is invalid.`,
   });
+}
+
+function validReceivedTimestamp(value: string): boolean {
+  const match =
+    /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u.exec(
+      value,
+    );
+  const day = match?.[1];
+  if (!day || day.startsWith('0000-')) return false;
+  const calendar = new Date(day + 'T00:00:00.000Z');
+  return (
+    Number.isFinite(calendar.getTime()) &&
+    calendar.toISOString().slice(0, 10) === day &&
+    Number.isFinite(Date.parse(value))
+  );
 }

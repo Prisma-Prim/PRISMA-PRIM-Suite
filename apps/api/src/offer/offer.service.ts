@@ -25,18 +25,21 @@ import {
   offerQualityRuns,
   offerDecisions,
   offerTransmissions,
+  offerClientResponses,
   OFFER_TEMPLATE_CODE,
   OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
+import { offerClientResponseState } from './offer.types.js';
 import type {
   OfferRecord,
   OfferVersionRecord,
   OfferRecipientCopy,
   OfferDecision,
   OfferTransmission,
+  OfferClientResponse,
   OfferTransmissionState,
 } from './offer.types.js';
 import {
@@ -44,6 +47,7 @@ import {
   readOfferDecisionCommand,
   readOfferWarningCodes,
   readOfferTransmissionCommand,
+  readOfferClientResponseCommand,
 } from './offer.validation.js';
 import { renderOfferRepresentation } from './offer-representation.js';
 import {
@@ -763,6 +767,294 @@ export class OfferService {
       });
   }
 
+  async recordClientResponse(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    payload: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<OfferClientResponse> {
+    const { actor } = input;
+    await this.authorization.requireOfferAccess(actor, [
+      'commercial.offer.response.record',
+    ]);
+    const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+    return this.databaseContext
+      .transaction(async () => {
+        const companyId = await this.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.response.record'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          actor,
+          input.opportunityId,
+          true,
+        );
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            input.offerVersionId,
+          )
+        )
+          throw new NotFoundException();
+        const existing = await this.findOffer(
+          actor.workspaceId,
+          companyId,
+          opportunity.id,
+        );
+        if (!existing) throw new NotFoundException();
+        const [target] = await this.databaseContext.connection
+          .select()
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, existing.id),
+              eq(offerVersions.id, input.offerVersionId),
+            ),
+          );
+        if (!target) throw new NotFoundException();
+        const recipient = offerRecipientCopy(target);
+        // The response selects no new entity. Fence recorded references through
+        // Client without lending dossier read authority or adding Quality Checks.
+        await this.clients.inspectOfferQualityContext({
+          actor,
+          companyId,
+          originalClientAccountId: existing.originalClientAccountId,
+          snapshotOriginalClientAccountId: null,
+          recipient:
+            recipient.kind === 'PRIMARY'
+              ? { kind: 'PRIMARY' }
+              : {
+                  kind: 'ADDITIONAL',
+                  legalEntityId: recipient.additionalLegalEntityId,
+                },
+          recordedIdentity: recipient,
+        });
+        const fingerprint = commandFingerprint({
+          kind: 'RECORD_CLIENT_RESPONSE',
+          opportunityId: opportunity.id,
+          offerVersionId: input.offerVersionId,
+          payload: input.payload,
+        });
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const receipt = await this.findCommand(
+          actor,
+          companyId,
+          idempotencyKey,
+        );
+        if (receipt) {
+          if (
+            receipt.kind !== 'RECORD_CLIENT_RESPONSE' ||
+            receipt.fingerprint !== fingerprint ||
+            receipt.resultOfferId !== existing.id ||
+            !receipt.resultClientResponseId
+          )
+            throw namedConflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was already used for another Offer command.',
+            );
+          const row = await this.findClientResponse({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerVersionId: target.id,
+          });
+          if (!row || row.id !== receipt.resultClientResponseId)
+            throw new Error('The recorded Offer Client response is missing.');
+          return this.clientResponseView(row);
+        }
+        const command = readOfferClientResponseCommand(input.payload);
+        const [offer] = await this.databaseContext.connection
+          .select()
+          .from(offers)
+          .where(
+            and(
+              eq(offers.workspaceId, actor.workspaceId),
+              eq(offers.companyId, companyId),
+              eq(offers.id, existing.id),
+            ),
+          )
+          .for('update');
+        if (!offer) throw new NotFoundException();
+        const [head] = await this.databaseContext.connection
+          .select({ id: offerVersions.id })
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, offer.id),
+            ),
+          )
+          .orderBy(desc(offerVersions.versionNumber))
+          .limit(1);
+        requireHeadOfferVersion({
+          offerVersionId: target.id,
+          headVersionId: head?.id,
+        });
+        if (offer.revision !== command.expectedOfferRevision)
+          throw namedConflict(
+            'STALE_OFFER_REVISION',
+            'The Offer changed. Reload it before recording a Client response.',
+          );
+        const transmission = await this.findTransmission(
+          actor.workspaceId,
+          companyId,
+          target.id,
+        );
+        if (!transmission)
+          throw namedConflict(
+            'OFFER_VERSION_NOT_TRANSMITTED',
+            'The Offer Version is not transmitted.',
+          );
+        if (
+          await this.findClientResponse({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerVersionId: target.id,
+          })
+        )
+          throw namedConflict(
+            'CLIENT_RESPONSE_ALREADY_RECORDED',
+            'The Offer Version already has a Client response.',
+          );
+        const decidedAt = this.clock.now();
+        if (!Number.isFinite(decidedAt.getTime()))
+          throw new Error('Invalid server instant.');
+        if (command.outcome === 'EXPIRED') {
+          if (decidedAt < target.validUntil)
+            throw namedConflict(
+              'OFFER_VALIDITY_NOT_ELAPSED',
+              'The Offer validity has not elapsed.',
+            );
+        } else {
+          if (
+            command.receivedAt < transmission.transmittedAt ||
+            command.receivedAt > decidedAt
+          )
+            throw new BadRequestException({
+              code: 'OFFER_VALIDATION_ERROR',
+              field: 'receivedAt',
+              message:
+                'Received time must be between transmission and the recording instant.',
+            });
+          if (command.receivedAt >= target.validUntil)
+            throw namedConflict(
+              'OFFER_VALIDITY_ELAPSED',
+              'The reported Client response was received after validity elapsed.',
+            );
+        }
+        const [response] = await this.databaseContext.connection
+          .insert(offerClientResponses)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: target.id,
+            offerRevision: offer.revision + 1,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            decidedAt,
+            outcome: command.outcome,
+            receivedAt:
+              command.outcome === 'EXPIRED' ? null : command.receivedAt,
+            reason: command.outcome === 'REJECTED' ? command.reason : null,
+          })
+          .returning();
+        if (!response)
+          throw new Error('The Offer Client response was not recorded.');
+        await this.databaseContext.connection
+          .update(offers)
+          .set({ revision: response.offerRevision })
+          .where(eq(offers.id, offer.id));
+        await this.databaseContext.connection.insert(offerCommands).values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          idempotencyKey,
+          fingerprint,
+          opportunityId: opportunity.id,
+          resultOfferId: offer.id,
+          kind: 'RECORD_CLIENT_RESPONSE',
+          resultClientResponseId: response.id,
+          createdAt: decidedAt,
+        });
+        await this.accountability.recordOfferClientResponse({
+          actor,
+          companyId,
+          offerId: offer.id,
+          offerVersionId: target.id,
+          occurredAt: decidedAt,
+          outcome: command.outcome,
+        });
+        return this.clientResponseView(response);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof HttpException) throw error;
+        throw new InternalServerErrorException({
+          code: 'OFFER_CLIENT_RESPONSE_UNCERTAIN',
+          correlationId: randomUUID(),
+          message:
+            'The Client response outcome is uncertain. Retry the identical command.',
+        });
+      });
+  }
+
+  private async findClientResponse(input: {
+    workspaceId: string;
+    companyId: string;
+    offerVersionId: string;
+  }) {
+    const { workspaceId, companyId, offerVersionId } = input;
+    const [row] = await this.databaseContext.connection
+      .select()
+      .from(offerClientResponses)
+      .where(
+        and(
+          eq(offerClientResponses.workspaceId, workspaceId),
+          eq(offerClientResponses.companyId, companyId),
+          eq(offerClientResponses.offerVersionId, offerVersionId),
+        ),
+      );
+    return row;
+  }
+
+  private clientResponseView(
+    row: typeof offerClientResponses.$inferSelect,
+  ): OfferClientResponse {
+    if (row.evidenceKind !== 'SIMULATED')
+      throw new Error('Invalid stored Client response evidence.');
+    const base = {
+      id: row.id,
+      offerVersionId: row.offerVersionId,
+      offerRevision: row.offerRevision,
+      actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+      decidedAt: row.decidedAt.toISOString(),
+      evidenceKind: row.evidenceKind,
+    };
+    if (
+      row.outcome === 'EXPIRED' &&
+      row.receivedAt === null &&
+      row.reason === null
+    )
+      return { ...base, outcome: 'EXPIRED' };
+    if (row.outcome === 'ACCEPTED' && row.receivedAt && row.reason === null)
+      return {
+        ...base,
+        outcome: 'ACCEPTED',
+        receivedAt: row.receivedAt.toISOString(),
+      };
+    if (row.outcome === 'REJECTED' && row.receivedAt && row.reason !== null)
+      return {
+        ...base,
+        outcome: 'REJECTED',
+        receivedAt: row.receivedAt.toISOString(),
+        reason: row.reason,
+      };
+    throw new Error('Invalid stored Client response.');
+  }
+
   async recordTransmission(input: {
     actor: ActorContext;
     opportunityId: string;
@@ -1189,15 +1481,24 @@ export class OfferService {
       offer.companyId,
       version.id,
     );
+    const responseRow = await this.findClientResponse({
+      workspaceId: actor.workspaceId,
+      companyId: offer.companyId,
+      offerVersionId: version.id,
+    });
+    const clientResponse = responseRow
+      ? this.clientResponseView(responseRow)
+      : null;
     const transmissionState: OfferTransmissionState = transmissionRow
       ? {
           transmissionState: 'TRANSMITTED',
-          clientResponseState: 'PENDING',
+          ...offerClientResponseState(clientResponse),
           transmission: await this.transmissionView(transmissionRow),
         }
       : {
           transmissionState: 'NOT_TRANSMITTED',
           clientResponseState: 'NONE',
+          clientResponse: null,
           transmission: null,
         };
     return {
@@ -1218,6 +1519,7 @@ export class OfferService {
         decision,
         decisionState: decision?.state ?? 'PENDING',
         ...transmissionState,
+        validityElapsed: this.clock.now() >= version.validUntil,
       },
     };
   }
@@ -1356,6 +1658,8 @@ function offerVersionView(
     decisionState: 'PENDING',
     transmissionState: 'NOT_TRANSMITTED',
     clientResponseState: 'NONE',
+    clientResponse: null,
+    validityElapsed: false,
     transmission: null,
     provenance: 'ILLUSTRATIVE',
     provisional: true,

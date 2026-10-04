@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { ActorContext } from '../access/access.types.js';
@@ -181,6 +183,845 @@ withPostgres('First illustrative Offer REST', () => {
     await harness?.close();
     await database?.close();
   });
+
+  it('records an attributed simulated Client acceptance and reopens immutable evidence', async () => {
+    const { fixture, offer, base } = await approvedTransmissionOffer();
+    const transmission = await command(
+      base + '/transmission',
+      { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      'transmission',
+      fixture.companyId,
+    );
+    const body = {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: instant.toISOString(),
+    };
+    const response = await command(
+      base + '/client-response',
+      body,
+      'client-response',
+      fixture.companyId,
+    );
+    expect(response).toMatchObject({
+      outcome: 'ACCEPTED',
+      evidenceKind: 'SIMULATED',
+      offerRevision: 4,
+      actorWorkspaceMembershipId: fixture.actorMembershipId,
+      decidedAt: instant.toISOString(),
+      receivedAt: instant.toISOString(),
+    });
+    expect(
+      await command(
+        base + '/client-response',
+        body,
+        'client-response',
+        fixture.companyId,
+      ),
+    ).toEqual(response);
+    const reopened = record(
+      record(
+        await json(
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(reopened.revision).toBe(4);
+    expect(record(reopened.version)).toMatchObject({
+      clientResponseState: 'ACCEPTED',
+      clientResponse: response,
+      transmission,
+      representation: record(offer.version).representation,
+    });
+  });
+
+  it.each(['ACCEPTED', 'REJECTED'])(
+    'records timely %s even after validity elapsed and never resamples exact replay',
+    async (outcome) => {
+      const { fixture, base, offer } = await transmittedResponseOffer();
+      const version = record(offer.version);
+      const receivedAt = new Date(
+        Date.parse(stringField(version, 'validUntil')) - 1,
+      ).toISOString();
+      instant = new Date(stringField(version, 'validUntil'));
+      const body = {
+        expectedOfferRevision: 3,
+        outcome,
+        receivedAt,
+        ...(outcome === 'REJECTED'
+          ? { reason: ' Synthetic Client refusal ' }
+          : {}),
+      };
+      const evidence = await command(
+        base + '/client-response',
+        body,
+        'response',
+        fixture.companyId,
+      );
+      expect(evidence).toMatchObject({
+        outcome,
+        receivedAt,
+        offerRevision: 4,
+        evidenceKind: 'SIMULATED',
+      });
+      instant = new Date('2028-01-01T00:00:00.000Z');
+      expect(
+        await command(
+          base + '/client-response',
+          body,
+          'response',
+          fixture.companyId,
+        ),
+      ).toEqual(evidence);
+      const changed = await decisionRequest(
+        fixture,
+        base + '/client-response',
+        { ...body, receivedAt: '2026-09-27T09:00:00.000Z' },
+        'response',
+      );
+      expect(changed.status).toBe(409);
+      expect(await json(changed)).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+      const repeated = await decisionRequest(
+        fixture,
+        base + '/client-response',
+        { ...body, expectedOfferRevision: 4 },
+        'other',
+      );
+      expect(repeated.status).toBe(409);
+      expect(await json(repeated)).toMatchObject({
+        code: 'CLIENT_RESPONSE_ALREADY_RECORDED',
+      });
+      const events = await pool.query(
+        'SELECT metadata FROM offer_events WHERE action = $1',
+        ['offer_version.client_response_recorded'],
+      );
+      expect(events.rows).toEqual([
+        {
+          metadata: {
+            offerId: offer.id,
+            offerVersionId: stringField(version, 'id'),
+            versionNumber: 1,
+            evidenceKind: 'SIMULATED',
+            outcome,
+            provenance: 'ILLUSTRATIVE',
+          },
+        },
+      ]);
+      expect(
+        (await pool.query('SELECT status FROM opportunities')).rows,
+      ).toEqual([{ status: 'OPEN' }]);
+      await expect(
+        pool.query("UPDATE offer_client_responses SET outcome = 'EXPIRED'"),
+      ).rejects.toThrow();
+      await expect(
+        pool.query('DELETE FROM offer_client_responses'),
+      ).rejects.toThrow();
+      await harness.close();
+      await openHarness();
+      const read = record(
+        record(
+          await json(
+            await request(
+              '/offers/opportunities/' + fixture.opportunityId,
+              fixture.companyId,
+            ),
+          ),
+        ).offer,
+      );
+      expect(record(read.version)).toMatchObject({
+        clientResponseState: outcome,
+        clientResponse: evidence,
+        representation: version.representation,
+      });
+    },
+  );
+
+  it('derives pending elapsed validity without writes and records EXPIRED exactly at validity', async () => {
+    const { fixture, base, offer } = await transmittedResponseOffer();
+    const early = await decisionRequest(
+      fixture,
+      base + '/client-response',
+      { expectedOfferRevision: 3, outcome: 'EXPIRED' },
+      'early',
+    );
+    expect(early.status).toBe(409);
+    expect(await json(early)).toMatchObject({
+      code: 'OFFER_VALIDITY_NOT_ELAPSED',
+    });
+    instant = new Date(stringField(record(offer.version), 'validUntil'));
+    const read = record(
+      record(
+        await json(
+          await request(
+            '/offers/opportunities/' + fixture.opportunityId,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(record(read.version)).toMatchObject({
+      validityElapsed: true,
+      clientResponseState: 'PENDING',
+      clientResponse: null,
+    });
+    await expectNoResponseEffects();
+    const evidence = await command(
+      base + '/client-response',
+      { expectedOfferRevision: 3, outcome: 'EXPIRED' },
+      'expiry',
+      fixture.companyId,
+    );
+    expect(evidence).toMatchObject({
+      outcome: 'EXPIRED',
+      decidedAt: instant.toISOString(),
+    });
+    expect(evidence).not.toHaveProperty('receivedAt');
+  });
+
+  it.each(['ACCEPTED', 'REJECTED'])(
+    'enforces transmission and decision equality and strict validity for %s',
+    async (outcome) => {
+      const { fixture, base, offer } = await transmittedResponseOffer();
+      const validUntil = stringField(record(offer.version), 'validUntil');
+      const extra = outcome === 'REJECTED' ? { reason: 'Client reason' } : {};
+      for (const receivedAt of [
+        '2026-09-27T08:59:59.999Z',
+        '2026-09-27T09:00:00.001Z',
+      ]) {
+        const invalid = await decisionRequest(
+          fixture,
+          base + '/client-response',
+          { expectedOfferRevision: 3, outcome, receivedAt, ...extra },
+          crypto.randomUUID(),
+        );
+        expect(invalid.status).toBe(400);
+        expect(await json(invalid)).toMatchObject({
+          code: 'OFFER_VALIDATION_ERROR',
+          field: 'receivedAt',
+        });
+      }
+      instant = new Date(validUntil);
+      const elapsed = await decisionRequest(
+        fixture,
+        base + '/client-response',
+        { expectedOfferRevision: 3, outcome, receivedAt: validUntil, ...extra },
+        'elapsed',
+      );
+      expect(elapsed.status).toBe(409);
+      expect(await json(elapsed)).toMatchObject({
+        code: 'OFFER_VALIDITY_ELAPSED',
+      });
+      instant = new Date('2026-09-27T09:00:00.000Z');
+      await command(
+        base + '/client-response',
+        {
+          expectedOfferRevision: 3,
+          outcome,
+          receivedAt: instant.toISOString(),
+          ...extra,
+        },
+        'equality',
+        fixture.companyId,
+      );
+    },
+  );
+
+  it('refuses malformed response fields, missing transmission and stale observed revision without writes', async () => {
+    const { fixture, base } = await decisionOffer();
+    const body = {
+      expectedOfferRevision: 1,
+      outcome: 'ACCEPTED',
+      receivedAt: instant.toISOString(),
+    };
+    const missing = await decisionRequest(
+      fixture,
+      base + '/client-response',
+      body,
+      'missing',
+    );
+    expect(missing.status).toBe(409);
+    expect(await json(missing)).toMatchObject({
+      code: 'OFFER_VERSION_NOT_TRANSMITTED',
+    });
+    await command(
+      base + '/approve',
+      { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+      'approval',
+      fixture.companyId,
+    );
+    await command(
+      base + '/transmission',
+      { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      'transmission',
+      fixture.companyId,
+    );
+    const bad = [
+      null,
+      {},
+      { ...body, expectedOfferRevision: 3.5 },
+      { ...body, outcome: 'WITHDRAWN' },
+      { ...body, receivedAt: '2026-02-30T09:00:00.000Z' },
+      { ...body, receivedAt: 'Infinity' },
+      { ...body, outcome: 'EXPIRED' },
+      { ...body, evidenceKind: 'REAL' },
+      { ...body, outcome: 'REJECTED' },
+      { ...body, outcome: 'REJECTED', reason: ' ' },
+      { ...body, outcome: 'REJECTED', reason: 'a'.repeat(501) },
+      { ...body, outcome: 'REJECTED', reason: 'bad\0reason' },
+      { ...body, reason: 'unsolicited' },
+    ];
+    for (const payload of bad) {
+      const r = await decisionRequest(
+        fixture,
+        base + '/client-response',
+        payload,
+        crypto.randomUUID(),
+      );
+      expect(r.status, JSON.stringify(payload)).toBe(400);
+    }
+    const stale = await decisionRequest(
+      fixture,
+      base + '/client-response',
+      body,
+      'stale',
+    );
+    expect(stale.status).toBe(409);
+    expect(await json(stale)).toMatchObject({ code: 'STALE_OFFER_REVISION' });
+    await expectNoResponseEffects();
+  });
+
+  it.each(['company_offer_approver', 'company_commercial_intake'])(
+    'denies response and exact replay after %s revocation',
+    async (bundle) => {
+      const { fixture, base } = await transmittedResponseOffer();
+      const body = {
+        expectedOfferRevision: 3,
+        outcome: 'ACCEPTED',
+        receivedAt: instant.toISOString(),
+      };
+      await command(
+        base + '/client-response',
+        body,
+        'exact',
+        fixture.companyId,
+      );
+      await pool.query(
+        'UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = $2',
+        [fixture.companyId, bundle],
+      );
+      for (const key of ['exact', 'new'])
+        expect(
+          (await decisionRequest(fixture, base + '/client-response', body, key))
+            .status,
+        ).toBe(403);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_client_responses',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    },
+  );
+
+  it('fails closed on null and unknown approver permission versions', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    const [constraint] = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'company_role_assignments_permission_set_version_check'",
+      )
+    ).rows;
+    if (!constraint) throw new Error('Expected constraint');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v999']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version = $1 WHERE company_id = $2 AND bundle::text = 'company_offer_approver'",
+          [version, fixture.companyId],
+        );
+        expect(
+          (
+            await decisionRequest(
+              fixture,
+              base + '/client-response',
+              {
+                expectedOfferRevision: 3,
+                outcome: 'ACCEPTED',
+                receivedAt: instant.toISOString(),
+              },
+              'denied',
+            )
+          ).status,
+        ).toBe(403);
+      }
+      await expectNoResponseEffects();
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version = 'v1' WHERE company_id = $1 AND bundle::text = 'company_offer_approver'",
+        [fixture.companyId],
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          constraint.definition,
+      );
+    }
+  });
+
+  it.each(['offer_commands', 'offer_events', 'offer_client_responses'])(
+    'atomically rolls back response/revision/receipt/event when %s fails',
+    async (table) => {
+      const { fixture, base } = await transmittedResponseOffer();
+      const body = {
+        expectedOfferRevision: 3,
+        outcome: 'REJECTED',
+        receivedAt: instant.toISOString(),
+        reason: 'Private synthetic reason',
+      };
+      const diagnostic = vi.spyOn(Logger.prototype, 'error');
+      await pool.query(
+        "CREATE FUNCTION fail_response() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic failure'; END; $$",
+      );
+      await pool.query(
+        'CREATE TRIGGER fail_response BEFORE INSERT ON ' +
+          table +
+          ' FOR EACH ROW EXECUTE FUNCTION fail_response()',
+      );
+      try {
+        const r = await decisionRequest(
+          fixture,
+          base + '/client-response',
+          body,
+          'retry',
+        );
+        expect(r.status).toBe(500);
+        const error = await json(r);
+        expect(error).toMatchObject({
+          code: 'OFFER_CLIENT_RESPONSE_UNCERTAIN',
+        });
+        expect(JSON.stringify(error)).not.toContain(body.reason);
+        await expectNoResponseEffects();
+      } finally {
+        expect(JSON.stringify(diagnostic.mock.calls)).not.toContain(
+          body.reason,
+        );
+        diagnostic.mockRestore();
+        await pool.query('DROP TRIGGER fail_response ON ' + table);
+        await pool.query('DROP FUNCTION fail_response()');
+      }
+      await command(
+        base + '/client-response',
+        body,
+        'retry',
+        fixture.companyId,
+      );
+    },
+  );
+
+  it('serializes competing Client outcomes at the observed Offer revision', async () => {
+    const { fixture, base, offer } = await transmittedResponseOffer();
+    const barrier = await pool.connect();
+    let pending;
+    try {
+      await barrier.query('BEGIN');
+      const backend = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0];
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query('SELECT id FROM offers WHERE id = $1 FOR UPDATE', [
+        offer.id,
+      ]);
+      pending = Promise.all(
+        ['ACCEPTED', 'REJECTED'].map((outcome) =>
+          decisionRequest(
+            fixture,
+            base + '/client-response',
+            {
+              expectedOfferRevision: 3,
+              outcome,
+              receivedAt: instant.toISOString(),
+              ...(outcome === 'REJECTED' ? { reason: 'Client refusal' } : {}),
+            },
+            outcome,
+          ),
+        ),
+      );
+      await waitForBlockedRequests(backend.pid, 2);
+      await barrier.query('COMMIT');
+      const results = await pending;
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM offer_client_responses',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+
+  it('denies Client response waiting behind a committed approver revocation', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    const { offers: service, actor } = await offerServiceContext(fixture);
+    const offerVersionId = base.split('/').at(-1);
+    if (!offerVersionId) throw new Error('Expected version');
+    const barrier = await pool.connect();
+    let pending: Promise<unknown> | undefined;
+    try {
+      await barrier.query('BEGIN');
+      const [backend] = (
+        await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows;
+      if (!backend) throw new Error('Expected backend');
+      await barrier.query(
+        "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_offer_approver'",
+        [fixture.companyId],
+      );
+      pending = service.recordClientResponse({
+        actor,
+        opportunityId: fixture.opportunityId,
+        offerVersionId,
+        payload: {
+          expectedOfferRevision: 3,
+          outcome: 'ACCEPTED',
+          receivedAt: instant.toISOString(),
+        },
+        idempotencyKey: 'race',
+      });
+      const settled = pending.then(
+        (value) => ({ value, error: undefined }),
+        (error: unknown) => ({ value: undefined, error }),
+      );
+      await waitForBlockedRequests(backend.pid, 1);
+      await barrier.query('COMMIT');
+      expect((await settled).error).toMatchObject({ status: 403 });
+      await expectNoResponseEffects();
+    } finally {
+      await barrier.query('ROLLBACK');
+      barrier.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+
+  it('uses uniform unavailable responses for unknown and cross-Company targets and denies cross-Workspace identity', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    const other = entity(
+      await command(
+        '/companies',
+        { displayName: 'Other response Company' },
+        'other-response-company',
+      ),
+    );
+    for (const path of [
+      '/company-offer-approver-assignments',
+      '/company-commercial-intake-assignments',
+    ])
+      await command(
+        path,
+        {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: other.id,
+        },
+        'other-' + path,
+      );
+    const unknown = '00000000-0000-4000-8000-999999999999';
+    const body = {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: instant.toISOString(),
+    };
+    const payload = {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'hidden',
+      },
+      body: JSON.stringify(body),
+    };
+    const responses = [
+      await request(base + '/client-response', other.id, payload),
+      await request(
+        '/offers/opportunities/' +
+          unknown +
+          '/versions/' +
+          base.split('/').at(-1) +
+          '/client-response',
+        fixture.companyId,
+        payload,
+      ),
+      await request(
+        '/offers/opportunities/' +
+          fixture.opportunityId +
+          '/versions/' +
+          unknown +
+          '/client-response',
+        fixture.companyId,
+        payload,
+      ),
+      await request(
+        '/offers/opportunities/' +
+          fixture.opportunityId +
+          '/versions/not-a-uuid/client-response',
+        fixture.companyId,
+        payload,
+      ),
+    ];
+    const bodies: unknown[] = [];
+    for (const r of responses) {
+      expect(r.status).toBe(404);
+      bodies.push(await json(r));
+    }
+    expect(bodies).toEqual(Array.from({ length: 4 }, () => bodies[0]));
+    const { offers: service, actor } = await offerServiceContext(fixture);
+    const offerVersionId = base.split('/').at(-1);
+    if (!offerVersionId) throw new Error('Expected version');
+    await expect(
+      service.recordClientResponse({
+        actor: { ...actor, workspaceId: unknown },
+        opportunityId: fixture.opportunityId,
+        offerVersionId,
+        payload: body,
+        idempotencyKey: 'hidden',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expectNoResponseEffects();
+  });
+  it('converges concurrent exact response retries and replays without sampling time', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    const body = {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: '2026-09-27T11:00:00+02:00',
+    };
+    const evidence = await Promise.all([
+      command(base + '/client-response', body, 'exact', fixture.companyId),
+      command(base + '/client-response', body, 'exact', fixture.companyId),
+    ]);
+    expect(evidence[1]).toEqual(evidence[0]);
+    const sampled = vi.spyOn(serverClock, 'now').mockImplementation(() => {
+      throw new Error('Exact replay must not sample time');
+    });
+    try {
+      expect(
+        await command(
+          base + '/client-response',
+          body,
+          'exact',
+          fixture.companyId,
+        ),
+      ).toEqual(evidence[0]);
+    } finally {
+      sampled.mockRestore();
+    }
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_client_responses',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::integer AS count FROM offer_events WHERE action = 'offer_version.client_response_recorded'",
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  });
+  it.each([1, 500])(
+    'records exact Client rejection reason length %s',
+    async (length) => {
+      const { fixture, base } = await transmittedResponseOffer();
+      const reason = 'R'.repeat(length);
+      const evidence = await command(
+        base + '/client-response',
+        {
+          expectedOfferRevision: 3,
+          outcome: 'REJECTED',
+          receivedAt: instant.toISOString(),
+          reason,
+        },
+        'reason',
+        fixture.companyId,
+      );
+      expect(evidence).toMatchObject({ outcome: 'REJECTED', reason });
+    },
+  );
+
+  it('allows the minimal approver to confirm the recorded recipient without Client read or extra visibility', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text IN ('company_offer_preparer','company_pricing_user','company_director_client_access')",
+      [fixture.companyId],
+    );
+    const body = {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: instant.toISOString(),
+    };
+    const evidence = await command(
+      base + '/client-response',
+      body,
+      'minimal',
+      fixture.companyId,
+    );
+    expect(evidence).toMatchObject({ outcome: 'ACCEPTED', offerRevision: 4 });
+    expect(
+      await command(
+        base + '/client-response',
+        body,
+        'minimal',
+        fixture.companyId,
+      ),
+    ).toEqual(evidence);
+    expect(
+      (
+        await request(
+          '/clients/' + fixture.clientId + '/legal-entities',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(
+          '/pricing/opportunities/' + fixture.opportunityId + '/snapshots',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
+    const read = record(
+      record(
+        await json(
+          await request(
+            '/offers/opportunities/' + fixture.opportunityId,
+            fixture.companyId,
+          ),
+        ),
+      ).offer,
+    );
+    expect(record(read.version)).toMatchObject({
+      clientResponseState: 'ACCEPTED',
+      recipient: { legalName: 'Synthetic Recipient SA' },
+    });
+  });
+
+  it('records and replays a response after Client read alone is revoked', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_director_client_access'",
+      [fixture.companyId],
+    );
+    const body = {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: instant.toISOString(),
+    };
+    const evidence = await command(
+      base + '/client-response',
+      body,
+      'without-client-read',
+      fixture.companyId,
+    );
+    expect(evidence).toMatchObject({ outcome: 'ACCEPTED', offerRevision: 4 });
+    expect(
+      await command(
+        base + '/client-response',
+        body,
+        'without-client-read',
+        fixture.companyId,
+      ),
+    ).toEqual(evidence);
+    expect(
+      (
+        await request(
+          '/clients/' + fixture.clientId + '/legal-entities',
+          fixture.companyId,
+        )
+      ).status,
+    ).toBe(403);
+  });
+  it('refuses a response to a superseded immutable version through REST', async () => {
+    const { fixture, base } = await transmittedResponseOffer();
+    const [constraint] = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'offer_versions_initial_state_check'",
+      )
+    ).rows;
+    if (!constraint) throw new Error('Expected version constraint');
+    // A synthetic future head proves this fence without adding the O7 command.
+    await pool.query(
+      'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
+    );
+    try {
+      await pool.query(
+        "INSERT INTO offer_versions SELECT (jsonb_populate_record(NULL::offer_versions, to_jsonb(v) || jsonb_build_object('id',gen_random_uuid(),'version_number',2))).* FROM offer_versions v WHERE v.id = $1",
+        [base.split('/').at(-1)],
+      );
+      const r = await decisionRequest(
+        fixture,
+        base + '/client-response',
+        {
+          expectedOfferRevision: 3,
+          outcome: 'ACCEPTED',
+          receivedAt: instant.toISOString(),
+        },
+        'superseded',
+      );
+      expect(r.status).toBe(409);
+      expect(await json(r)).toMatchObject({ code: 'OFFER_VERSION_SUPERSEDED' });
+      await expectNoResponseEffects();
+    } finally {
+      await pool.query('TRUNCATE workspaces CASCADE');
+      await pool.query(
+        'ALTER TABLE offer_versions ADD CONSTRAINT offer_versions_initial_state_check ' +
+          constraint.definition,
+      );
+    }
+  });
+  async function transmittedResponseOffer() {
+    const prepared = await approvedTransmissionOffer();
+    await command(
+      prepared.base + '/transmission',
+      { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      'transmission',
+      prepared.fixture.companyId,
+    );
+    return prepared;
+  }
+  async function expectNoResponseEffects() {
+    expect((await pool.query('SELECT revision FROM offers')).rows).toEqual([
+      { revision: 3 },
+    ]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_client_responses',
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM offer_commands',
+        )
+      ).rows,
+    ).toEqual([{ count: 3 }]);
+    expect(
+      (await pool.query('SELECT count(*)::integer AS count FROM offer_events'))
+        .rows,
+    ).toEqual([{ count: 4 }]);
+  }
 
   it('records one simulated transmission of the approved bytes and reopens pending response evidence', async () => {
     const { fixture, offer, base } = await decisionOffer();

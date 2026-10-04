@@ -71,6 +71,34 @@ const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
 
 @Injectable()
 export class AccountabilityService {
+  async recordOfferClientResponse(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    occurredAt: Date;
+    outcome: 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(offerEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      offerId: input.offerId,
+      offerVersionId: input.offerVersionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      action: 'offer_version.client_response_recorded',
+      metadata: {
+        offerId: input.offerId,
+        offerVersionId: input.offerVersionId,
+        versionNumber: 1,
+        evidenceKind: 'SIMULATED',
+        outcome: input.outcome,
+        provenance: 'ILLUSTRATIVE',
+      },
+    });
+  }
+
   async recordOfferTransmission(input: {
     actor: ActorContext;
     companyId: string;
