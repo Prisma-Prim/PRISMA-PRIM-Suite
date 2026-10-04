@@ -23,6 +23,7 @@ import {
   readOffer,
   readOfferDetail,
   readOfferSnapshotPage,
+  offerClientResponseState,
   offerQualityLabels,
   type OfferSnapshotSummary,
   type OfferView,
@@ -31,7 +32,12 @@ import './offer.css';
 import { OfferQualityPanel } from './OfferQualityPanel';
 import { OfferDecisionPanel } from './OfferDecisionPanel';
 import { OfferTransmissionPanel } from './OfferTransmissionPanel';
-import { offerDecisionCopy, offerTransmissionCopy } from './offer.copy';
+import { OfferClientResponsePanel } from './OfferClientResponsePanel';
+import {
+  offerDecisionCopy,
+  offerTransmissionCopy,
+  offerClientResponseCopy,
+} from './offer.copy';
 
 type Ready = {
   kind: 'empty';
@@ -73,6 +79,11 @@ export function OfferPanel({
   const mayTransmit = permissions.includes(
     'commercial.offer.transmission.record',
   );
+  const mayRespond =
+    permissions.includes('commercial.offer.response.record') &&
+    actor.activeCompany?.commercialIntakePermissions?.includes(
+      'commercial.opportunity.read',
+    );
   const authorityStamp = JSON.stringify([
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -81,6 +92,7 @@ export function OfferPanel({
     actor.activeCompany?.offerApproverAssignmentId,
     permissions,
     actor.activeCompany?.commercialIntakePermissions,
+    actor.activeCompany?.clientPermissions,
   ]);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [snapshotId, setSnapshotId] = useState('');
@@ -482,8 +494,41 @@ export function OfferPanel({
                               ...current.offer.version,
                               transmissionState: 'TRANSMITTED',
                               clientResponseState: 'PENDING',
+                              clientResponse: null,
                               transmission,
                               latestQualityRun: transmission.qualityRun,
+                            },
+                          },
+                        }
+                      : current,
+                  )
+                }
+              />
+            )}
+          {companyId &&
+            mayRespond &&
+            view.offer.version.clientResponseState === 'PENDING' && (
+              <OfferClientResponsePanel
+                key={`response:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                offer={view.offer}
+                reject={reject}
+                onResponse={(response) =>
+                  setView((current) =>
+                    current.kind === 'offer' &&
+                    current.offer.version.transmission
+                      ? {
+                          kind: 'offer',
+                          offer: {
+                            ...current.offer,
+                            revision: response.offerRevision,
+                            version: {
+                              ...current.offer.version,
+                              transmissionState: 'TRANSMITTED',
+                              transmission: current.offer.version.transmission,
+                              ...offerClientResponseState(response),
                             },
                           },
                         }
@@ -527,13 +572,15 @@ function OfferSummary({ offer }: { offer: OfferView }) {
         <div>
           <dt>{copy.states}</dt>
           <dd>
-            {version.transmissionState === 'TRANSMITTED'
-              ? offerTransmissionCopy.success
-              : version.decisionState === 'PENDING'
-                ? copy.stateValue
-                : version.decisionState === 'APPROVED'
-                  ? offerDecisionCopy.approvedState
-                  : offerDecisionCopy.rejectedState}
+            {version.clientResponse
+              ? offerClientResponseCopy[version.clientResponse.outcome]
+              : version.transmissionState === 'TRANSMITTED'
+                ? offerTransmissionCopy.success
+                : version.decisionState === 'PENDING'
+                  ? copy.stateValue
+                  : version.decisionState === 'APPROVED'
+                    ? offerDecisionCopy.approvedState
+                    : offerDecisionCopy.rejectedState}
           </dd>
         </div>
         <div>
@@ -597,6 +644,48 @@ function OfferSummary({ offer }: { offer: OfferView }) {
             </div>
           </dl>
         </section>
+      )}
+      {version.clientResponse && (
+        <section
+          className="offer-client-response-evidence"
+          aria-labelledby="offer-client-response-evidence-title"
+        >
+          <h5 id="offer-client-response-evidence-title">
+            {offerClientResponseCopy.title}
+          </h5>
+          <p>{offerClientResponseCopy.explanation}</p>
+          <dl>
+            <div>
+              <dt>{offerClientResponseCopy.actor}</dt>
+              <dd>
+                <code>{version.clientResponse.actorWorkspaceMembershipId}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{offerClientResponseCopy.decidedAt}</dt>
+              <dd>
+                {formatApplicationDateTime(version.clientResponse.decidedAt)}
+              </dd>
+            </div>
+            {version.clientResponse.outcome !== 'EXPIRED' && (
+              <div>
+                <dt>{offerClientResponseCopy.recordedReceivedAt}</dt>
+                <dd>
+                  {formatApplicationDateTime(version.clientResponse.receivedAt)}
+                </dd>
+              </div>
+            )}
+            {version.clientResponse.outcome === 'REJECTED' && (
+              <div>
+                <dt>{offerClientResponseCopy.reason}</dt>
+                <dd>{version.clientResponse.reason}</dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+      {version.clientResponseState === 'PENDING' && version.validityElapsed && (
+        <p>{offerClientResponseCopy.pendingElapsed}</p>
       )}
       {version.decision && (
         <dl>

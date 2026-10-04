@@ -411,6 +411,7 @@ export const offerCommands = pgTable(
         'APPROVE',
         'REJECT',
         'RECORD_TRANSMISSION',
+        'RECORD_CLIENT_RESPONSE',
       ],
     })
       .default('CREATE_OFFER')
@@ -418,6 +419,7 @@ export const offerCommands = pgTable(
     resultQualityRunId: uuid('result_quality_run_id'),
     resultDecisionId: uuid('result_decision_id'),
     resultTransmissionId: uuid('result_transmission_id'),
+    resultClientResponseId: uuid('result_client_response_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -466,10 +468,11 @@ export const offerCommands = pgTable(
     }),
     check(
       'offer_commands_kind_result_check',
-      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL)
-      OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL)
-      OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL)
-      OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL)`,
+      sql`(${table.kind} = 'CREATE_OFFER' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL AND ${table.resultClientResponseId} IS NULL)
+      OR (${table.kind} = 'RECORD_CLIENT_RESPONSE' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NOT NULL)`,
     ),
     foreignKey({
       name: 'offer_commands_decision_result_fk',
@@ -484,6 +487,21 @@ export const offerCommands = pgTable(
         offerDecisions.companyId,
         offerDecisions.offerId,
         offerDecisions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_commands_response_result_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.resultOfferId,
+        table.resultClientResponseId,
+      ],
+      foreignColumns: [
+        offerClientResponses.workspaceId,
+        offerClientResponses.companyId,
+        offerClientResponses.offerId,
+        offerClientResponses.id,
       ],
     }),
     foreignKey({
@@ -518,6 +536,7 @@ export const offerEvents = pgTable(
         'offer_version.approved',
         'offer_version.rejected',
         'offer_version.transmission_recorded',
+        'offer_version.client_response_recorded',
       ],
     }).notNull(),
     offerId: uuid('offer_id').notNull(),
@@ -569,7 +588,7 @@ export const offerEvents = pgTable(
     check(
       'offer_events_target_check',
       sql`(${table.action} = 'offer.created' AND ${table.offerVersionId} IS NULL)
-        OR (${table.action} IN ('offer_version.created','offer_version.approved','offer_version.rejected','offer_version.transmission_recorded') AND ${table.offerVersionId} IS NOT NULL)`,
+        OR (${table.action} IN ('offer_version.created','offer_version.approved','offer_version.rejected','offer_version.transmission_recorded','offer_version.client_response_recorded') AND ${table.offerVersionId} IS NOT NULL)`,
     ),
     check(
       'offer_events_metadata_check',
@@ -612,6 +631,16 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
           AND ${table.metadata}->>'ruleSetVersion' = '1'
           AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array'
+        WHEN ${table.action} = 'offer_version.client_response_recorded' THEN
+          ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']
+          AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']::text[]) = '{}'::jsonb
+          AND ${table.metadata}->>'offerId' = ${table.offerId}::text
+          AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+          AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
+          AND ${table.metadata}->>'versionNumber' = '1'
+          AND ${table.metadata}->>'evidenceKind' = 'SIMULATED'
+          AND ${table.metadata}->>'outcome' IN ('ACCEPTED','REJECTED','EXPIRED')
+          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
         ELSE false
       END) IS TRUE`,
     ),
@@ -788,6 +817,75 @@ export const offerTransmissions = pgTable(
     check(
       'offer_transmissions_state_check',
       sql`${table.offerRevision} > 2 AND ${table.channel} = 'SIMULATED' AND jsonb_typeof(${table.acknowledgedWarningCodes}) = 'array' AND ${table.representationSha256} ~ '^[0-9a-f]{64}$' AND (${table.note} IS NULL OR char_length(${table.note}) <= 500)`,
+    ),
+  ],
+);
+
+/** Immutable simulated human confirmation against one transmitted version. */
+export const offerClientResponses = pgTable(
+  'offer_client_responses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    offerId: uuid('offer_id').notNull(),
+    offerVersionId: uuid('offer_version_id').notNull(),
+    outcome: text('outcome', {
+      enum: ['ACCEPTED', 'REJECTED', 'EXPIRED'],
+    }).notNull(),
+    evidenceKind: text('evidence_kind', { enum: ['SIMULATED'] })
+      .default('SIMULATED')
+      .notNull(),
+    offerRevision: integer('offer_revision').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }),
+    reason: text('reason'),
+  },
+  (table) => [
+    uniqueIndex('offer_client_responses_version_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerVersionId,
+    ),
+    uniqueIndex('offer_client_responses_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.offerId,
+      table.id,
+    ),
+    foreignKey({
+      name: 'offer_client_responses_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.offerId,
+        table.offerVersionId,
+      ],
+      foreignColumns: [
+        offerVersions.workspaceId,
+        offerVersions.companyId,
+        offerVersions.offerId,
+        offerVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_client_responses_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'offer_client_responses_state_check',
+      sql`${table.offerRevision} > 3 AND ${table.evidenceKind} = 'SIMULATED' AND ((${table.outcome} = 'EXPIRED' AND ${table.receivedAt} IS NULL AND ${table.reason} IS NULL) OR (${table.outcome} = 'ACCEPTED' AND ${table.receivedAt} IS NOT NULL AND ${table.receivedAt} <= ${table.decidedAt} AND ${table.reason} IS NULL) OR (${table.outcome} = 'REJECTED' AND ${table.receivedAt} IS NOT NULL AND ${table.receivedAt} <= ${table.decidedAt} AND ${table.reason} IS NOT NULL AND char_length(btrim(${table.reason})) BETWEEN 1 AND 500 AND char_length(${table.reason}) <= 500))`,
     ),
   ],
 );

@@ -1,6 +1,10 @@
 /* global URL, fetch, process */
 
 import { fileURLToPath } from 'node:url';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const apiPort = 4174;
 const workspaceId = '00000000-0000-4000-8000-000000000281';
@@ -46,10 +50,32 @@ export default async function globalSetup() {
     baseDatabaseUrl,
     namePrefix: 'operational_acceptance',
   });
+  const clockDirectory = await mkdtemp(
+    join(tmpdir(), 'prisma-acceptance-clock-'),
+  );
+  if (
+    dirname(clockDirectory) !== resolve(tmpdir()) ||
+    !basename(clockDirectory).startsWith('prisma-acceptance-clock-')
+  )
+    throw new Error(
+      'Synthetic clock directory must stay inside the temporary directory.',
+    );
+  const clockFile = join(clockDirectory, 'offset.json');
+  await writeFile(clockFile, '0');
+  process.env.ACCEPTANCE_CLOCK_OFFSET_FILE = clockFile;
+  const serverClock = {
+    now: () => {
+      const offset = JSON.parse(readFileSync(clockFile, 'utf8'));
+      if (typeof offset !== 'number' || !Number.isSafeInteger(offset))
+        throw new Error('Invalid synthetic acceptance clock offset');
+      return new Date(Date.now() + offset);
+    },
+  };
   let harness;
   try {
     harness = await harnessModule.createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
+      serverClock,
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
@@ -85,6 +111,9 @@ export default async function globalSetup() {
     await Promise.allSettled([
       Promise.resolve().then(() => harness?.close()),
       Promise.resolve().then(() => database.close()),
+      Promise.resolve().then(() =>
+        rm(clockDirectory, { recursive: true, force: true }),
+      ),
     ]);
     throw error;
   }
@@ -94,6 +123,7 @@ export default async function globalSetup() {
       await harness.close();
     } finally {
       await database.close();
+      await rm(clockDirectory, { recursive: true, force: true });
     }
   };
 }

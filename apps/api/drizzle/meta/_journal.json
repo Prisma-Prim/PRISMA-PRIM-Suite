@@ -344,6 +344,13 @@
       "when": 1791052039497,
       "tag": "0048_offer_simulated_transmission",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791061251085,
+      "tag": "0049_offer_simulated_client_response",
+      "breakpoints": true
     }
   ]
 }

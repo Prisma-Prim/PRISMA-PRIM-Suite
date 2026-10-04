@@ -54,17 +54,64 @@ export interface OfferTransmission {
   readonly representationSha256: string;
 }
 
+export type OfferClientResponseState =
+  | { readonly clientResponseState: 'PENDING'; readonly clientResponse: null }
+  | {
+      [Outcome in OfferClientResponse['outcome']]: {
+        readonly clientResponseState: Outcome;
+        readonly clientResponse: Extract<
+          OfferClientResponse,
+          { outcome: Outcome }
+        >;
+      };
+    }[OfferClientResponse['outcome']];
 export type OfferTransmissionState =
   | {
       readonly transmissionState: 'NOT_TRANSMITTED';
       readonly clientResponseState: 'NONE';
       readonly transmission: null;
+      readonly clientResponse: null;
     }
-  | {
+  | ({
       readonly transmissionState: 'TRANSMITTED';
-      readonly clientResponseState: 'PENDING';
       readonly transmission: OfferTransmission;
-    };
+    } & OfferClientResponseState);
+
+export function offerClientResponseState(
+  response: OfferClientResponse | null,
+): OfferClientResponseState {
+  if (!response)
+    return { clientResponseState: 'PENDING', clientResponse: null };
+  switch (response.outcome) {
+    case 'ACCEPTED':
+      return { clientResponseState: 'ACCEPTED', clientResponse: response };
+    case 'REJECTED':
+      return { clientResponseState: 'REJECTED', clientResponse: response };
+    case 'EXPIRED':
+      return { clientResponseState: 'EXPIRED', clientResponse: response };
+    default: {
+      const exhaustive: never = response;
+      return exhaustive;
+    }
+  }
+}
+
+export type OfferClientResponse = {
+  readonly id: string;
+  readonly offerVersionId: string;
+  readonly offerRevision: number;
+  readonly actorWorkspaceMembershipId: string;
+  readonly decidedAt: string;
+  readonly evidenceKind: 'SIMULATED';
+} & (
+  | { readonly outcome: 'ACCEPTED'; readonly receivedAt: string }
+  | {
+      readonly outcome: 'REJECTED';
+      readonly receivedAt: string;
+      readonly reason: string;
+    }
+  | { readonly outcome: 'EXPIRED' }
+);
 
 export type OfferVersionRecord = {
   readonly id: string;
@@ -85,6 +132,7 @@ export type OfferVersionRecord = {
   readonly createdAt: string;
   readonly representation: OfferRepresentation;
   readonly latestQualityRun: OfferQualityRun | null;
+  readonly validityElapsed: boolean;
 } & OfferTransmissionState;
 
 export interface OfferRecord {

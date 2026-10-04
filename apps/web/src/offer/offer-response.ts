@@ -23,6 +23,7 @@ export type OfferView = {
     };
     issuingCompanyLabel: string;
     validityDays: number;
+    validityElapsed: boolean;
     validUntil: string;
     scopeNote: string | null;
     commercialConditions: string | null;
@@ -51,17 +52,44 @@ export type OfferTransmissionView = {
   acknowledgedWarningCodes: Array<keyof typeof offerQualityLabels>;
   representationSha256: string;
 };
-type OfferTransmissionState =
+export type OfferClientResponseState =
+  | { clientResponseState: 'PENDING'; clientResponse: null }
+  | {
+      [Outcome in OfferClientResponseView['outcome']]: {
+        clientResponseState: Outcome;
+        clientResponse: Extract<OfferClientResponseView, { outcome: Outcome }>;
+      };
+    }[OfferClientResponseView['outcome']];
+export type OfferTransmissionState =
   | {
       transmissionState: 'NOT_TRANSMITTED';
       clientResponseState: 'NONE';
       transmission: null;
+      clientResponse: null;
     }
-  | {
+  | ({
       transmissionState: 'TRANSMITTED';
-      clientResponseState: 'PENDING';
       transmission: OfferTransmissionView;
-    };
+    } & OfferClientResponseState);
+
+export function offerClientResponseState(
+  response: OfferClientResponseView | null,
+): OfferClientResponseState {
+  if (!response)
+    return { clientResponseState: 'PENDING', clientResponse: null };
+  switch (response.outcome) {
+    case 'ACCEPTED':
+      return { clientResponseState: 'ACCEPTED', clientResponse: response };
+    case 'REJECTED':
+      return { clientResponseState: 'REJECTED', clientResponse: response };
+    case 'EXPIRED':
+      return { clientResponseState: 'EXPIRED', clientResponse: response };
+    default: {
+      const exhaustive: never = response;
+      return exhaustive;
+    }
+  }
+}
 
 export function readOfferDetail(value: unknown): OfferView | null {
   const detail = record(value);
@@ -83,6 +111,7 @@ export function readOffer(value: unknown): OfferView {
     typeof recipient.legalName !== 'string' ||
     typeof version.issuingCompanyLabel !== 'string' ||
     !positiveInteger(version.validityDays) ||
+    typeof version.validityElapsed !== 'boolean' ||
     typeof version.validUntil !== 'string' ||
     !Number.isFinite(Date.parse(version.validUntil)) ||
     (version.decisionState !== 'PENDING' &&
@@ -107,16 +136,20 @@ export function readOffer(value: unknown): OfferView {
   if (
     version.transmissionState === 'NOT_TRANSMITTED' &&
     version.clientResponseState === 'NONE' &&
-    (version.transmission === null || version.transmission === undefined)
+    (version.transmission === null || version.transmission === undefined) &&
+    (version.clientResponse === null || version.clientResponse === undefined)
   )
     transmissionState = {
       transmissionState: 'NOT_TRANSMITTED',
       clientResponseState: 'NONE',
       transmission: null,
+      clientResponse: null,
     };
   else if (
     version.transmissionState === 'TRANSMITTED' &&
-    version.clientResponseState === 'PENDING'
+    ['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'].includes(
+      String(version.clientResponseState),
+    )
   ) {
     const transmission = readOfferTransmission(
       version.transmission,
@@ -128,10 +161,24 @@ export function readOffer(value: unknown): OfferView {
       Date.parse(transmission.transmittedAt) >= Date.parse(version.validUntil)
     )
       invalid();
+    const clientResponse =
+      version.clientResponse === null || version.clientResponse === undefined
+        ? null
+        : readOfferClientResponse({
+            value: version.clientResponse,
+            offerVersionId: version.id,
+            transmission,
+            validUntil: version.validUntil,
+          });
+    if (
+      version.clientResponseState !== (clientResponse?.outcome ?? 'PENDING') ||
+      (clientResponse && clientResponse.offerRevision > root.revision)
+    )
+      invalid();
     transmissionState = {
       transmissionState: 'TRANSMITTED',
-      clientResponseState: 'PENDING',
       transmission,
+      ...offerClientResponseState(clientResponse),
     };
   } else invalid();
   if (
@@ -160,6 +207,7 @@ export function readOffer(value: unknown): OfferView {
       },
       issuingCompanyLabel: version.issuingCompanyLabel,
       validityDays: version.validityDays,
+      validityElapsed: version.validityElapsed,
       validUntil: version.validUntil,
       scopeNote: optionalText(version.scopeNote),
       commercialConditions: optionalText(version.commercialConditions),
@@ -456,4 +504,92 @@ function positiveInteger(value: unknown): value is number {
 
 function invalid(): never {
   throw new Error('Invalid Offer response.');
+}
+
+export type OfferClientResponseView = {
+  id: string;
+  offerVersionId: string;
+  offerRevision: number;
+  actorWorkspaceMembershipId: string;
+  decidedAt: string;
+  evidenceKind: 'SIMULATED';
+} & (
+  | { outcome: 'ACCEPTED'; receivedAt: string }
+  | { outcome: 'REJECTED'; receivedAt: string; reason: string }
+  | { outcome: 'EXPIRED' }
+);
+
+export function readOfferClientResponse({
+  value,
+  offerVersionId,
+  transmission,
+  validUntil,
+}: {
+  value: unknown;
+  offerVersionId: string;
+  transmission: OfferTransmissionView;
+  validUntil: string;
+}): OfferClientResponseView {
+  const row = record(value);
+  if (
+    typeof row.id !== 'string' ||
+    row.offerVersionId !== offerVersionId ||
+    !positiveInteger(row.offerRevision) ||
+    row.offerRevision <= transmission.offerRevision ||
+    typeof row.actorWorkspaceMembershipId !== 'string' ||
+    typeof row.decidedAt !== 'string' ||
+    !Number.isFinite(Date.parse(row.decidedAt)) ||
+    Date.parse(row.decidedAt) < Date.parse(transmission.transmittedAt) ||
+    row.evidenceKind !== 'SIMULATED'
+  )
+    invalid();
+  const base = {
+    id: row.id,
+    offerVersionId,
+    offerRevision: row.offerRevision,
+    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+    decidedAt: row.decidedAt,
+    evidenceKind: row.evidenceKind,
+  } satisfies Pick<
+    OfferClientResponseView,
+    | 'id'
+    | 'offerVersionId'
+    | 'offerRevision'
+    | 'actorWorkspaceMembershipId'
+    | 'decidedAt'
+    | 'evidenceKind'
+  >;
+  if (row.outcome === 'EXPIRED') {
+    if (
+      row.receivedAt !== undefined ||
+      row.reason !== undefined ||
+      Date.parse(row.decidedAt) < Date.parse(validUntil)
+    )
+      invalid();
+    return { ...base, outcome: 'EXPIRED' };
+  }
+  if (
+    typeof row.receivedAt !== 'string' ||
+    !Number.isFinite(Date.parse(row.receivedAt)) ||
+    Date.parse(row.receivedAt) < Date.parse(transmission.transmittedAt) ||
+    Date.parse(row.receivedAt) > Date.parse(row.decidedAt) ||
+    Date.parse(row.receivedAt) >= Date.parse(validUntil)
+  )
+    invalid();
+  if (row.outcome === 'ACCEPTED' && row.reason === undefined)
+    return { ...base, outcome: 'ACCEPTED', receivedAt: row.receivedAt };
+  if (
+    row.outcome === 'REJECTED' &&
+    typeof row.reason === 'string' &&
+    row.reason.trim().length > 0 &&
+    row.reason.length <= 500 &&
+    !row.reason.includes('\0')
+  )
+    return {
+      ...base,
+      outcome: 'REJECTED',
+      receivedAt: row.receivedAt,
+      reason: row.reason,
+    };
+  return invalid();
 }

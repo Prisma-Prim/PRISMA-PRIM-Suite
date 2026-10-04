@@ -79,6 +79,46 @@ export const offerTransmissionCopy = {
   warnings: 'Warnings acknowledged at transmission',
 } as const;
 
+export const offerClientResponseCopy = {
+  title: 'Simulated Client response',
+  explanation:
+    'Record a provisional simulated outcome for this exact transmitted version. This evidence has no legal effect.',
+  receivedAt: 'Reported received time (UTC)',
+  recordedReceivedAt: 'Reported received time',
+  timeExample: '2026-10-03T14:30:00.000Z',
+  receivedHelp:
+    'Use a UTC time between transmission and now, strictly before validity ends. A timely response can be recorded later.',
+  reason: 'Client rejection reason',
+  accept: 'Record simulated acceptance',
+  reject: 'Record simulated Client rejection',
+  expire: 'Record simulated expiry',
+  running: 'Recording simulated Client response…',
+  retry: 'Retry the same Client response',
+  uncertain:
+    'The outcome is uncertain. Retry sends the exact same outcome, values, revision and key.',
+  invalid:
+    'Check the received time. A rejection needs a reason of 1–500 characters.',
+  denied: 'Client response access is no longer available.',
+  unavailable: 'The Offer Version is no longer available. Reload the Request.',
+  stale:
+    'The Offer changed. Reload the Request before recording a Client response.',
+  superseded: 'This version has been superseded. Reload the Request.',
+  alreadyRecorded:
+    'This version already has a Client response. Reload the Request.',
+  notTransmitted: 'This version is not transmitted. Reload the Request.',
+  elapsed:
+    'The reported response was received after validity ended. Correct the received time or record expiry.',
+  notElapsed: 'The validity has not ended. Expiry cannot be recorded yet.',
+  conflict: 'This retry no longer matches. Reload the Request.',
+  pendingElapsed:
+    'Validity elapsed · Client response pending. Nothing expires automatically.',
+  ACCEPTED: 'Simulated Client acceptance recorded',
+  REJECTED: 'Simulated Client rejection recorded',
+  EXPIRED: 'Simulated expiry recorded',
+  actor: 'Response recording membership',
+  decidedAt: 'Client response recorded at',
+} as const;
+
 export const offerQualityCopy = {
   title: 'Quality Checks',
   empty: 'No Quality Check run yet.',

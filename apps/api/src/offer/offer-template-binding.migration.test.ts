@@ -198,7 +198,7 @@ it.skipIf(!databaseUrl)(
               table === 'offer_versions'
                 ? " - ARRAY['template_code', 'template_version']::text[]"
                 : table === 'offer_commands'
-                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id']::text[]"
+                  ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id', 'result_client_response_id']::text[]"
                   : '';
             return (
               await query(
@@ -217,7 +217,8 @@ it.skipIf(!databaseUrl)(
           await query(
             `SELECT kind, result_quality_run_id AS "resultQualityRunId",
                     result_decision_id AS "resultDecisionId",
-                    result_transmission_id AS "resultTransmissionId"
+                    result_transmission_id AS "resultTransmissionId",
+                    result_client_response_id AS "resultClientResponseId"
                FROM offer_commands WHERE id = $1`,
             [COMMAND],
           )
@@ -228,6 +229,7 @@ it.skipIf(!databaseUrl)(
           resultQualityRunId: null,
           resultDecisionId: null,
           resultTransmissionId: null,
+          resultClientResponseId: null,
         },
       ]);
       expect(
