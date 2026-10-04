@@ -518,6 +518,7 @@ export function OfferPanel({
               reject={reject}
               onSelect={(offer) => {
                 pendingRequest.current?.abort();
+                setPending(false);
                 attempt.current = undefined;
                 setFeedback(undefined);
                 setView({ kind: 'offer', offer });

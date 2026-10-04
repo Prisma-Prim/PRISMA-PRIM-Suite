@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -12,6 +18,109 @@ const identity = deterministicBrowserIdentity({
 afterEach(() => vi.restoreAllMocks());
 
 describe('OfferPanel', () => {
+  it('re-enables preparation after switching versions and ignores its aborted late reply', async () => {
+    const first = offerView();
+    const head = {
+      ...first,
+      revision: 2,
+      version: {
+        ...first.version,
+        id: 'version-two',
+        versionNumber: 2,
+        predecessorVersionId: first.version.id,
+        supersededByVersionId: null,
+        supersededAt: null,
+        differences: [],
+        commercialConditions: 'Current head conditions',
+      },
+    };
+    const historical = {
+      ...first,
+      revision: 2,
+      version: {
+        ...first.version,
+        supersededByVersionId: head.version.id,
+        supersededAt: '2026-09-28T09:00:00.000Z',
+      },
+    };
+    let completePreparation: ((value: Response) => void) | undefined;
+    let preparationReads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = input.toString();
+      if (path.includes('/snapshots')) {
+        preparationReads += 1;
+        if (preparationReads === 1)
+          return new Promise<Response>((resolve) => {
+            completePreparation = resolve;
+          });
+        return versionPreparationFetch(input);
+      }
+      if (path.endsWith('/legal-entities'))
+        return versionPreparationFetch(input);
+      if (path.endsWith('/versions/version-one'))
+        return response({ offer: historical });
+      if (path.endsWith('/versions/version-two'))
+        return response({ offer: head });
+      if (path.endsWith('/versions'))
+        return response({
+          versions: [
+            {
+              id: head.version.id,
+              versionNumber: 2,
+              createdAt: '2026-09-28T09:00:00.000Z',
+              supersededByVersionId: null,
+            },
+            {
+              id: first.version.id,
+              versionNumber: 1,
+              createdAt: '2026-09-27T09:00:00.000Z',
+              supersededByVersionId: head.version.id,
+            },
+          ],
+          nextCursor: null,
+        });
+      return response({ offer: head });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Prepare a new version' }),
+    );
+    await waitFor(() => expect(completePreparation).toBeDefined());
+    expect(
+      screen.getByRole('button', { name: 'Prepare a new version' }),
+    ).toBeDisabled();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open version 1' }),
+    );
+    await screen.findByText('Historical version · read only');
+    await act(async () => {
+      completePreparation?.(await versionPreparationFetch('/snapshots'));
+    });
+    expect(screen.getByText('Historical version · read only')).toBeVisible();
+    expect(
+      screen.queryByLabelText('Commercial conditions'),
+    ).not.toBeInTheDocument();
+    const openHead = await screen.findByRole('button', {
+      name: 'Open version 2',
+    });
+    await waitFor(() => expect(openHead).toBeEnabled());
+    fireEvent.click(openHead);
+    const prepare = await screen.findByRole('button', {
+      name: 'Prepare a new version',
+    });
+    expect(prepare).toBeEnabled();
+    fireEvent.click(prepare);
+    expect(await screen.findByLabelText('Commercial conditions')).toHaveValue(
+      'Current head conditions',
+    );
+    expect(preparationReads).toBe(2);
+  });
+
   it.each([
     {
       status: 400,
