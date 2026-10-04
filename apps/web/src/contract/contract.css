@@ -1,0 +1,54 @@
+.contract-panel {
+  min-width: 0;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d9d8e8;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.contract-banner {
+  padding: 0.75rem;
+  border-left: 3px solid #8266bc;
+  background: #f5f1fa;
+}
+.contract-panel form {
+  display: grid;
+  gap: 0.75rem;
+}
+.contract-panel label {
+  display: grid;
+  gap: 0.25rem;
+}
+.contract-panel input,
+.contract-panel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem;
+}
+.contract-panel dd {
+  margin-inline-start: 0;
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+}
+.contract-price {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.contract-price table {
+  min-width: 24rem;
+  width: 100%;
+  text-align: start;
+}
+.contract-price th {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.contract-price td:not(:first-child) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.contract-price th,
+.contract-price td {
+  padding: 0.4rem;
+}

@@ -22,6 +22,7 @@ import {
   pricingSnapshots,
   tariffVersions,
   offerVersions,
+  contractVersions,
 } from '../database/schema/index.js';
 import { calculatePricingLines } from './pricing-calculation.js';
 import { applyPricingAdjustments } from './pricing-adjustment.js';
@@ -104,6 +105,43 @@ export class PricingSnapshotService {
     if (!row) throw new NotFoundException();
     return this.snapshotView(input.actor, row.snapshot);
   }
+  /** Contract permission exposes only its exact immutable version price. */
+  async resolveContractVersionSnapshot(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    contractVersionId: string;
+  }): Promise<PricingSnapshotRecord> {
+    const companyId = await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.read'],
+      true,
+    );
+    if (companyId !== input.companyId) throw new NotFoundException();
+    const [row] = await this.databaseContext.connection
+      .select({ snapshot: pricingSnapshots })
+      .from(contractVersions)
+      .innerJoin(
+        pricingSnapshots,
+        and(
+          eq(pricingSnapshots.workspaceId, contractVersions.workspaceId),
+          eq(pricingSnapshots.companyId, contractVersions.companyId),
+          eq(pricingSnapshots.opportunityId, contractVersions.opportunityId),
+          eq(pricingSnapshots.id, contractVersions.pricingSnapshotId),
+        ),
+      )
+      .where(
+        and(
+          eq(contractVersions.workspaceId, input.actor.workspaceId),
+          eq(contractVersions.companyId, companyId),
+          eq(contractVersions.opportunityId, input.opportunityId),
+          eq(contractVersions.id, input.contractVersionId),
+        ),
+      );
+    if (!row) throw new NotFoundException();
+    return this.snapshotView(input.actor, row.snapshot, false);
+  }
+
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,

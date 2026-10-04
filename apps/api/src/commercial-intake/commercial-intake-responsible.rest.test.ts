@@ -1245,8 +1245,23 @@ describe.skipIf(!databaseUrl)(
         responsible_workspace_membership_id: ion,
       });
       expect(
-        (await receipts(opportunityId)).map((receipt) => receipt.outcome),
-      ).toEqual(['unchanged', 'updated']);
+        (await receipts(opportunityId)).sort(
+          (left, right) => left.expected_version - right.expected_version,
+        ),
+      ).toEqual([
+        {
+          outcome: 'unchanged',
+          expected_version: 1,
+          result_version: 1,
+          responsible_workspace_membership_id: ada,
+        },
+        {
+          outcome: 'updated',
+          expected_version: 2,
+          result_version: 3,
+          responsible_workspace_membership_id: ion,
+        },
+      ]);
       expect(await responsibleEvents(opportunityId)).toHaveLength(1);
       expect(await nextActionEvents(opportunityId)).toHaveLength(1);
     });

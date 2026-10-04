@@ -270,7 +270,7 @@ withPostgres('demonstration runner through the public REST API', () => {
         );
         const opportunity = object(detail.initialOpportunity);
         requests.push({
-          subject: detail.subject,
+          subject: text(detail.subject),
           client:
             detail.clientReference === undefined
               ? null
@@ -302,7 +302,11 @@ withPostgres('demonstration runner through the public REST API', () => {
           (client) => client.displayName,
         ),
         projects: projectModels,
-        requests,
+        // Fixed capture times leave UUIDs as list tie-breakers across fresh runs.
+        // Convergence compares business content, not regenerated identifier order.
+        requests: requests.sort((left, right) =>
+          left.subject.localeCompare(right.subject),
+        ),
         offerings,
         rules: [rules.headVersionNumber, rules.provisional],
       };

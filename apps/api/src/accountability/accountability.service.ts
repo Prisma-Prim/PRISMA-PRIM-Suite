@@ -39,6 +39,7 @@ import {
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
   offerEvents,
+  contractEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -199,6 +200,55 @@ export class AccountabilityService {
     });
   }
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async recordContractCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    illustrativeReference: number;
+    offerVersionId: string;
+    pricingSnapshotId: string;
+    occurredAt: Date;
+  }): Promise<void> {
+    const base = {
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+    };
+    const metadata = {
+      contractId: input.contractId,
+      kind: 'CONTRACT',
+      origin: 'ACCEPTED_OFFER',
+      provenance: 'ILLUSTRATIVE',
+      offerVersionId: input.offerVersionId,
+    };
+    await this.databaseContext.connection.insert(contractEvents).values([
+      {
+        ...base,
+        action: 'contract.created',
+        contractVersionId: null,
+        metadata: {
+          ...metadata,
+          illustrativeReference: input.illustrativeReference,
+        },
+      },
+      {
+        ...base,
+        action: 'contract_version.created',
+        contractVersionId: input.contractVersionId,
+        metadata: {
+          ...metadata,
+          contractVersionId: input.contractVersionId,
+          versionNumber: 1,
+          pricingSnapshotId: input.pricingSnapshotId,
+        },
+      },
+    ]);
+  }
 
   async recordOfferCreated(input: {
     actor: ActorContext;
@@ -2048,8 +2098,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
     case 'company_offer_preparer_assignment.granted':
+    case 'company_contract_preparer_assignment.granted':
     case 'company_offer_approver_assignment.granted':
     case 'company_offer_preparer_assignment.revoked':
+    case 'company_contract_preparer_assignment.revoked':
     case 'company_offer_approver_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':
     case 'company_pricing_adjustment_assignment.revoked':

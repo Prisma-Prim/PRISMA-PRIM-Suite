@@ -18,3 +18,5 @@ export * from './commercial-catalogue.js';
 export * from './pricing-configuration.js';
 
 export * from './offer.js';
+
+export * from './contract.js';
