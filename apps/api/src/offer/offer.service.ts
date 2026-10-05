@@ -822,6 +822,8 @@ export class OfferService {
           cause.code !== '40001'
         )
           throw error;
+        // Let concurrent identity-profile writes settle before taking a fresh snapshot.
+        await new Promise<void>((resolve) => setTimeout(resolve, 25 * attempt));
       }
     }
   }
