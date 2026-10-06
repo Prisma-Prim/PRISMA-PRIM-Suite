@@ -1,3 +1,4 @@
+import { ContractPanel } from '../contract/ContractPanel';
 import {
   useCallback,
   useEffect,
@@ -2116,6 +2117,21 @@ function RequestDetail({
         opportunityId={request.initialOpportunity.id}
         currentClientId={request.clientReference?.currentClientId}
         clientDisplayName={request.clientReference?.displayName}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
+      <ContractPanel
+        key={
+          clientAuthority +
+          ':' +
+          request.id +
+          ':' +
+          request.initialOpportunity.id
+        }
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}

@@ -1,6 +1,6 @@
 import { Client, Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
@@ -35,6 +35,68 @@ const actor: ActorContext = {
 };
 
 describe('Offer read transaction recovery', () => {
+  afterEach(async () => {
+    if (vi.isFakeTimers()) {
+      try {
+        await vi.runAllTimersAsync();
+      } finally {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+      }
+    }
+  });
+
+  it('reads successfully after concurrent profile writes settle', async () => {
+    vi.useFakeTimers();
+    const fixture = reader({
+      failures: 10,
+      code: '40001',
+      contentionUntil: Date.now() + 25,
+    });
+    const outcome = fixture.service.read(actor, opportunityId).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fixture.transactions()).toEqual([
+      'begin isolation level repeatable read',
+      'rollback',
+    ]);
+    await vi.advanceTimersByTimeAsync(24);
+    expect(fixture.transactions()).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await outcome).toEqual({ value: null });
+    expect(fixture.transactions()).toEqual([
+      'begin isolation level repeatable read',
+      'rollback',
+      'begin isolation level repeatable read',
+      'commit',
+    ]);
+  });
+
+  it('denies access when Offer authority is revoked during the retry wait', async () => {
+    vi.useFakeTimers();
+    const fixture = reader({ failures: 1, code: '40001' });
+    const outcome = fixture.service.read(actor, opportunityId).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fixture.transactions()).toEqual([
+      'begin isolation level repeatable read',
+      'rollback',
+    ]);
+    fixture.revokeAuthority();
+    await vi.advanceTimersByTimeAsync(25);
+    expect(await outcome).toMatchObject({ error: { status: 403 } });
+    expect(fixture.transactions()).toEqual([
+      'begin isolation level repeatable read',
+      'rollback',
+      'begin isolation level repeatable read',
+      'rollback',
+    ]);
+  });
+
   it('restarts the whole coherent read after a serialization failure', async () => {
     const fixture = reader({ failures: 1, code: '40001' });
     await expect(
@@ -96,10 +158,12 @@ function reader({
   failures,
   code,
   revokeAfterFailure = false,
+  contentionUntil,
 }: {
   failures: number;
   code: string;
   revokeAfterFailure?: boolean;
+  contentionUntil?: number;
 }) {
   const pool = new Pool();
   const client = Object.assign(new Client(), { release: () => undefined });
@@ -121,7 +185,11 @@ function reader({
       return { rows: [] };
     }
     if (text.includes('from "company_role_assignments"')) {
-      if (text.endsWith('for share') && failures > 0) {
+      if (
+        text.endsWith('for share') &&
+        failures > 0 &&
+        (contentionUntil === undefined || Date.now() < contentionUntil)
+      ) {
         failures -= 1;
         revoked = revokeAfterFailure;
         throw Object.assign(new Error('Synthetic database failure'), { code });
@@ -168,5 +236,8 @@ function reader({
       clock,
     ),
     transactions: () => transactions,
+    revokeAuthority: () => {
+      revoked = true;
+    },
   };
 }

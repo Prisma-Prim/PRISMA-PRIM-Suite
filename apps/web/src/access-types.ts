@@ -59,6 +59,13 @@ export interface ActorContext {
     >;
     pricingUserPermissionAssignmentId?: string;
     pricingUserPermissionSetVersion?: 'v1';
+    contractPermissions?: Array<
+      | 'commercial.contract.read'
+      | 'commercial.contract.prepare'
+      | 'commercial.contract.project.link'
+    >;
+    contractPermissionAssignmentId?: string;
+    contractPermissionSetVersion?: 'v1';
     offerPermissions?: Array<
       | 'commercial.offer.read'
       | 'commercial.offer.prepare'

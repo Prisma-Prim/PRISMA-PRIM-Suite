@@ -1,3 +1,6 @@
+import { ContractModule } from './contract/contract.module.js';
+import { ContractController } from './contract/contract.controller.js';
+import { CompanyContractPreparerAssignmentController } from './access/company-contract-preparer-assignment.controller.js';
 import { TaskModule } from './task/task.module.js';
 import { TaskController } from './task/task.controller.js';
 import { CompanyTaskManagerAssignmentController } from './access/company-task-manager-assignment.controller.js';
@@ -91,6 +94,7 @@ import { OfferModule } from './offer/offer.module.js';
     PricingConfigurationModule,
     OperationalHomeModule,
     OfferModule,
+    ContractModule,
   ],
   controllers: [
     TaskController,
@@ -130,10 +134,12 @@ import { OfferModule } from './offer/offer.module.js';
     CompanyPricingAdjustmentAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
     CompanyOfferPreparerAssignmentController,
+    CompanyContractPreparerAssignmentController,
     CompanyOfferApproverAssignmentController,
     CompanyOpportunityManagerAssignmentController,
     OperationalHomeController,
     OfferController,
+    ContractController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

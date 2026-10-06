@@ -379,3 +379,20 @@ export function taskPermissionsFor(
 ): readonly TaskPermission[] {
   return version === 'v1' ? COMPANY_TASK_V1_PERMISSIONS : [];
 }
+
+export const COMPANY_CONTRACT_PREPARER_BUNDLE =
+  'company_contract_preparer' as const;
+export const COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL =
+  'Company Contract Preparer' as const;
+export const COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS = [
+  'commercial.contract.read',
+  'commercial.contract.prepare',
+  'commercial.contract.project.link',
+] as const;
+export type CompanyContractPermission =
+  (typeof COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS)[number];
+export function contractPreparerPermissionsFor(
+  version: unknown,
+): readonly CompanyContractPermission[] {
+  return version === 'v1' ? COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS : [];
+}

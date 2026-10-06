@@ -36,6 +36,7 @@ type AssignmentBundle =
   | 'pricing-configuration'
   | 'pricing-user'
   | 'offer-preparer'
+  | 'contract-preparer'
   | 'offer-approver'
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
@@ -57,6 +58,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'pricing-user': '/company-pricing-user-assignments',
   'offer-preparer': '/company-offer-preparer-assignments',
+  'contract-preparer': '/company-contract-preparer-assignments',
   'offer-approver': '/company-offer-approver-assignments',
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
@@ -478,6 +480,10 @@ export function CompanyContextAccess({
               },
               { value: 'pricing-user', label: copy.pricingUserBundle },
               { value: 'offer-preparer', label: copy.offerPreparerBundle },
+              {
+                value: 'contract-preparer',
+                label: copy.contractPreparerBundle,
+              },
               { value: 'offer-approver', label: copy.offerApproverBundle },
               {
                 value: 'pricing-adjustment',
@@ -517,6 +523,7 @@ export function CompanyContextAccess({
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
+                value === 'contract-preparer' ||
                 value === 'offer-approver' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
@@ -547,6 +554,9 @@ export function CompanyContextAccess({
             <p>{copy.documentApproverPrerequisites}</p>
           )}
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {bundle === 'contract-preparer' && (
+            <p>{copy.contractPreparerPrerequisites}</p>
+          )}
           {bundle === 'offer-preparer' && (
             <p>{copy.offerPreparerPrerequisites}</p>
           )}
@@ -640,6 +650,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-configuration': copy.pricingConfigurationBundle,
     'pricing-user': copy.pricingUserBundle,
     'offer-preparer': copy.offerPreparerBundle,
+    'contract-preparer': copy.contractPreparerBundle,
     'offer-approver': copy.offerApproverBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,

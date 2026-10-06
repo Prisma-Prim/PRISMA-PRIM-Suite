@@ -875,6 +875,8 @@ describe.skipIf(!databaseUrl)(
       expect(response.status).toBe(403);
       expect(await response.text()).not.toContain(registered.id);
     });
+    // Fifty sequential REST registrations can exceed the default five seconds.
+    // Keep the real writes and pagination assertions under a local bound.
     it('shares the 50-event dated page between Document registrations and older ordinary events', async () => {
       await grant();
       // Isolated fixture default: preserve the append-only event rows while
@@ -912,6 +914,6 @@ describe.skipIf(!databaseUrl)(
           'ALTER TABLE document_registration_events ALTER COLUMN occurred_at SET DEFAULT now()',
         );
       }
-    });
+    }, 15_000);
   },
 );
