@@ -1,3 +1,8 @@
+import {
+  COMPANY_CONTRACT_PREPARER_BUNDLE,
+  contractPreparerPermissionsFor,
+  type CompanyContractPermission,
+} from './company-permissions.js';
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
@@ -743,6 +748,24 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
+  async requireContractAccess(
+    actor: ActorContext,
+    required: readonly CompanyContractPermission[],
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (!company || !carriesEvery(company.contractPermissions, required))
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      capturedGrant(COMPANY_CONTRACT_PREPARER_BUNDLE),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
   async requireOfferAccess(
     actor: ActorContext,
     required: readonly CompanyOfferPermission[],
@@ -1023,6 +1046,7 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
+        COMPANY_CONTRACT_PREPARER_BUNDLE,
         COMPANY_OFFER_APPROVER_BUNDLE,
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
@@ -1230,6 +1254,17 @@ export class CompanyContextAuthorization {
         company.offerPermissionSetVersion = 'v1';
       }
       if (
+        row.bundle === COMPANY_CONTRACT_PREPARER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.contractPermissions = [
+          ...(company.contractPermissions ?? []),
+          ...contractPreparerPermissionsFor(row.permissionSetVersion),
+        ];
+        company.contractPermissionAssignmentId = row.assignmentId;
+        company.contractPermissionSetVersion = 'v1';
+      }
+      if (
         row.bundle === COMPANY_OFFER_APPROVER_BUNDLE &&
         row.permissionSetVersion === 'v1'
       ) {
@@ -1270,6 +1305,7 @@ function capturedGrant(
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
     | typeof COMPANY_OFFER_PREPARER_BUNDLE
+    | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
     | typeof COMPANY_OFFER_APPROVER_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(

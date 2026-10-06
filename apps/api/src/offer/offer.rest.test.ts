@@ -4270,83 +4270,112 @@ withPostgres('First illustrative Offer REST', () => {
   });
 
   it('replays exactly, conflicts a changed payload and denies replay after revocation without new success events', async () => {
-    const fixture = await preparedOffer();
-    const path = `/offers/opportunities/${fixture.opportunityId}`;
-    const body = {
-      pricingSnapshotId: fixture.snapshotId,
-      recipient: { kind: 'PRIMARY' },
-    };
-    const created = identifiedRecord(
-      await command(path, body, 'stable-offer-command', fixture.companyId),
+    // Assignment events use database time, independently of the Offer clock.
+    // Pin their chronology without rewriting the recorded audit rows.
+    await pool.query(
+      "ALTER TABLE activity_log_events ALTER COLUMN occurred_at SET DEFAULT '2026-09-27T09:00:00Z'::timestamptz",
     );
-    const replayed = identifiedRecord(
-      await command(path, body, 'stable-offer-command', fixture.companyId),
-    );
-    expect(replayed).toEqual(created);
-    const changed = await request(path, fixture.companyId, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'idempotency-key': 'stable-offer-command',
-      },
-      body: JSON.stringify({ ...body, validityDays: 31 }),
-    });
-    expect(changed.status).toBe(409);
-    expect(await json(changed)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
-    expect(
-      (
-        await pool.query<{ count: string }>(
-          'SELECT count(*) FROM offer_events WHERE offer_id = $1',
-          [created.id],
-        )
-      ).rows[0]?.count,
-    ).toBe('2');
+    try {
+      const fixture = await preparedOffer();
+      const path = `/offers/opportunities/${fixture.opportunityId}`;
+      const body = {
+        pricingSnapshotId: fixture.snapshotId,
+        recipient: { kind: 'PRIMARY' },
+      };
+      const created = identifiedRecord(
+        await command(path, body, 'stable-offer-command', fixture.companyId),
+      );
+      const replayed = identifiedRecord(
+        await command(path, body, 'stable-offer-command', fixture.companyId),
+      );
+      expect(replayed).toEqual(created);
+      const changed = await request(path, fixture.companyId, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'stable-offer-command',
+        },
+        body: JSON.stringify({ ...body, validityDays: 31 }),
+      });
+      expect(changed.status).toBe(409);
+      expect(await json(changed)).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            'SELECT count(*) FROM offer_events WHERE offer_id = $1',
+            [created.id],
+          )
+        ).rows[0]?.count,
+      ).toBe('2');
 
-    const revoked = await request(
-      `/company-offer-preparer-assignments/${fixture.actorMembershipId}/${fixture.companyId}`,
-      undefined,
-      {
-        method: 'DELETE',
-        headers: { 'idempotency-key': 'revoke-offer-preparer' },
-      },
-    );
-    expect(revoked.status).toBe(200);
-    expect(
-      (
-        await pool.query<{ action: string; metadata: unknown }>(
-          `SELECT action::text AS action, metadata
+      await pool.query(
+        "ALTER TABLE activity_log_events ALTER COLUMN occurred_at SET DEFAULT '2026-09-27T09:00:01Z'::timestamptz",
+      );
+      const revoked = await request(
+        `/company-offer-preparer-assignments/${fixture.actorMembershipId}/${fixture.companyId}`,
+        undefined,
+        {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'revoke-offer-preparer' },
+        },
+      );
+      expect(revoked.status).toBe(200);
+      expect(
+        (
+          await pool.query<{ action: string; metadata: unknown }>(
+            `SELECT action::text AS action, metadata
              FROM activity_log_events
             WHERE action::text LIKE 'company_offer_preparer_assignment.%'
             ORDER BY occurred_at, id`,
-        )
-      ).rows,
-    ).toEqual([
-      {
-        action: 'company_offer_preparer_assignment.granted',
-        metadata: { bundle: 'Company Offer Preparer' },
-      },
-      {
-        action: 'company_offer_preparer_assignment.revoked',
-        metadata: { bundle: 'Company Offer Preparer' },
-      },
-    ]);
-    const deniedReplay = await request(path, fixture.companyId, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'idempotency-key': 'stable-offer-command',
-      },
-      body: JSON.stringify(body),
-    });
-    expect(deniedReplay.status).toBe(403);
-    expect(
-      (
-        await pool.query<{ count: string }>(
-          'SELECT count(*) FROM offer_events WHERE offer_id = $1',
-          [created.id],
-        )
-      ).rows[0]?.count,
-    ).toBe('2');
+          )
+        ).rows,
+      ).toEqual([
+        {
+          action: 'company_offer_preparer_assignment.granted',
+          metadata: { bundle: 'Company Offer Preparer' },
+        },
+        {
+          action: 'company_offer_preparer_assignment.revoked',
+          metadata: { bundle: 'Company Offer Preparer' },
+        },
+      ]);
+      expect(
+        (
+          await pool.query<{ occurredAt: Date }>(
+            `SELECT occurred_at AS "occurredAt"
+               FROM activity_log_events
+              WHERE action::text LIKE 'company_offer_preparer_assignment.%'
+              ORDER BY occurred_at, id`,
+          )
+        ).rows.map((event) => event.occurredAt),
+      ).toEqual([
+        new Date('2026-09-27T09:00:00Z'),
+        new Date('2026-09-27T09:00:01Z'),
+      ]);
+      const deniedReplay = await request(path, fixture.companyId, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'stable-offer-command',
+        },
+        body: JSON.stringify(body),
+      });
+      expect(deniedReplay.status).toBe(403);
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            'SELECT count(*) FROM offer_events WHERE offer_id = $1',
+            [created.id],
+          )
+        ).rows[0]?.count,
+      ).toBe('2');
+    } finally {
+      await pool.query(
+        'ALTER TABLE activity_log_events ALTER COLUMN occurred_at SET DEFAULT now()',
+      );
+    }
   });
 
   it('serializes concurrent creations on the Opportunity and leaves no losing writes', async () => {

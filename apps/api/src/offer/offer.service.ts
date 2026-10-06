@@ -18,6 +18,7 @@ import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
+  contracts,
   offerCommands,
   offerReferenceCounters,
   offerVersions,
@@ -74,6 +75,112 @@ export class OfferService {
     private readonly pricing: PricingSnapshotService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
+
+  /** Only the immutable source reference bound to a readable Contract. */
+  async readContractSourceReference(input: {
+    actor: ActorContext;
+    contractId: string;
+    opportunityId: string;
+  }) {
+    const companyId = await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.read'],
+      true,
+    );
+    await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      false,
+    );
+    const [source] = await this.databaseContext.connection
+      .select({
+        illustrativeReference: offers.illustrativeReference,
+        versionNumber: offerVersions.versionNumber,
+      })
+      .from(contracts)
+      .innerJoin(
+        offers,
+        and(
+          eq(offers.id, contracts.sourceOfferId),
+          eq(offers.workspaceId, contracts.workspaceId),
+          eq(offers.companyId, contracts.companyId),
+          eq(offers.opportunityId, contracts.opportunityId),
+        ),
+      )
+      .innerJoin(
+        offerVersions,
+        and(
+          eq(offerVersions.id, contracts.sourceOfferVersionId),
+          eq(offerVersions.offerId, offers.id),
+          eq(offerVersions.workspaceId, contracts.workspaceId),
+          eq(offerVersions.companyId, contracts.companyId),
+        ),
+      )
+      .where(
+        and(
+          eq(contracts.workspaceId, input.actor.workspaceId),
+          eq(contracts.companyId, companyId),
+          eq(contracts.opportunityId, input.opportunityId),
+          eq(contracts.id, input.contractId),
+        ),
+      );
+    if (!source) throw new NotFoundException();
+    return source;
+  }
+
+  /** Recorded accepted source only; no pricing or live-Client projection locks. */
+  async resolveAcceptedContractSource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    lock: boolean;
+  }) {
+    const companyId = await this.authorization.requireOfferAccess(
+      input.actor,
+      ['commercial.offer.read'],
+      true,
+    );
+    const query = this.databaseContext.connection
+      .select()
+      .from(offers)
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+        ),
+      );
+    const [offer] = input.lock ? await query.for('share') : await query;
+    if (!offer) throw new NotFoundException();
+    const { version } = await this.requireOfferById(
+      input.actor,
+      companyId,
+      offer.id,
+      input.offerVersionId,
+    );
+    const response = await this.findClientResponse({
+      workspaceId: input.actor.workspaceId,
+      companyId,
+      offerVersionId: version.id,
+    });
+    if (version.supersededByVersionId || response?.outcome !== 'ACCEPTED')
+      throw namedConflict(
+        'OFFER_NOT_ACCEPTED',
+        'The Offer Version is not accepted.',
+      );
+    if (version.provenance !== 'ILLUSTRATIVE')
+      throw new Error('Invalid accepted Offer provenance.');
+    return {
+      offerId: offer.id,
+      offerVersionId: version.id,
+      originalClientAccountId: offer.originalClientAccountId,
+      clientRequestId: offer.clientRequestId,
+      pricingSnapshotId: version.pricingSnapshotId,
+      recipient: offerRecipientCopy(version),
+      scopeNote: version.scopeNote,
+      commercialConditions: version.commercialConditions,
+    };
+  }
 
   async create(
     actor: ActorContext,
@@ -715,6 +822,8 @@ export class OfferService {
           cause.code !== '40001'
         )
           throw error;
+        // Let concurrent identity-profile writes settle before taking a fresh snapshot.
+        await new Promise<void>((resolve) => setTimeout(resolve, 25 * attempt));
       }
     }
   }

@@ -9,6 +9,7 @@ import type {
   CompanyPricingConfigurationPermission,
   CompanyPricingUserPermission,
   CompanyOfferPermission,
+  CompanyContractPermission,
   CompanyPricingAdjustmentPermission,
   CompanyCommercialActivityPermission,
   CompanyOpportunityManagerPermission,
@@ -57,6 +58,9 @@ export interface ActiveCompanyContext {
   pricingUserPermissions?: CompanyPricingUserPermission[];
   pricingUserPermissionAssignmentId?: string;
   pricingUserPermissionSetVersion?: 'v1';
+  contractPermissions?: CompanyContractPermission[];
+  contractPermissionAssignmentId?: string;
+  contractPermissionSetVersion?: 'v1';
   offerPermissions?: CompanyOfferPermission[];
   offerPermissionAssignmentId?: string;
   offerPermissionSetVersion?: 'v1';

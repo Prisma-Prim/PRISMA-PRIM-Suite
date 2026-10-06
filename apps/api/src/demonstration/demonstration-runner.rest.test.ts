@@ -187,7 +187,10 @@ withPostgres('demonstration runner through the public REST API', () => {
   }
 
   /** The seeded business state as the owner and each persona read it. */
-  async function readModel(result: DemonstrationRunResult) {
+  async function readModel(
+    result: DemonstrationRunResult,
+    { normalizeTaskOrder = false }: { normalizeTaskOrder?: boolean } = {},
+  ) {
     const ids = recordIds(result);
     const memberKeys = new Map(
       DEMONSTRATION_PERSONAS.map((definition) => [
@@ -220,13 +223,15 @@ withPostgres('demonstration runner through the public REST API', () => {
             await read(principal, `/projects/${projectId}/tasks`, companyId),
           ).tasks,
         ).map((task) => ({
-          title: task.title,
+          title: text(task.title),
           status: task.status,
           priority: task.priority,
           dueDate: task.dueDate,
           version: task.version,
           assignee: memberKey(task.assignee),
         }));
+        if (normalizeTaskOrder)
+          tasks.sort((left, right) => left.title.localeCompare(right.title));
         const documents = objects(
           object(
             await read(
@@ -270,7 +275,7 @@ withPostgres('demonstration runner through the public REST API', () => {
         );
         const opportunity = object(detail.initialOpportunity);
         requests.push({
-          subject: detail.subject,
+          subject: text(detail.subject),
           client:
             detail.clientReference === undefined
               ? null
@@ -302,7 +307,11 @@ withPostgres('demonstration runner through the public REST API', () => {
           (client) => client.displayName,
         ),
         projects: projectModels,
-        requests,
+        // Fixed capture times leave UUIDs as list tie-breakers across fresh runs.
+        // Convergence compares business content, not regenerated identifier order.
+        requests: requests.sort((left, right) =>
+          left.subject.localeCompare(right.subject),
+        ),
         offerings,
         rules: [rules.headVersionNumber, rules.provisional],
       };
@@ -363,7 +372,22 @@ withPostgres('demonstration runner through the public REST API', () => {
   });
 
   it('seeds demo-v1 through the public commands with normal, attributed events and isolated personas', async () => {
-    const result = await run();
+    // This case asserts the API's creation-time order. Task creation uses the
+    // database default rather than RUN_CLOCK, so give each real write a distinct
+    // increasing fixture date before that clock's later state transitions.
+    await pool.query('CREATE SEQUENCE demonstration_task_creation_clock');
+    let result: DemonstrationRunResult;
+    try {
+      await pool.query(
+        "ALTER TABLE tasks ALTER COLUMN created_at SET DEFAULT (TIMESTAMPTZ '2026-09-26T11:00:00Z' + nextval('demonstration_task_creation_clock') * interval '1 second')",
+      );
+      result = await run();
+    } finally {
+      await pool.query(
+        'ALTER TABLE tasks ALTER COLUMN created_at SET DEFAULT now()',
+      );
+      await pool.query('DROP SEQUENCE demonstration_task_creation_clock');
+    }
     expect(result.kind).toBe('converged');
     if (result.kind !== 'converged') return;
     expect(result.workspace).toEqual({
@@ -744,7 +768,10 @@ withPostgres('demonstration runner through the public REST API', () => {
     const uninterrupted = await run();
     expect(uninterrupted.kind).toBe('converged');
     const expectedCounts = await tableCounts();
-    const expectedModel = await readModel(uninterrupted);
+    // Fresh runs compare Task content independently of creation-time ordering.
+    const expectedModel = await readModel(uninterrupted, {
+      normalizeTaskOrder: true,
+    });
     // Cut points: inside the grants, between a Task and its transition, and
     // between the two rule publications.
     for (const lastStep of [
@@ -767,7 +794,10 @@ withPostgres('demonstration runner through the public REST API', () => {
           `${lastStep}: ${entry.step} ${entry.outcome}`,
         ).toBe(!resumedSteps.has(entry.step));
       expect(await tableCounts(), lastStep).toEqual(expectedCounts);
-      expect(await readModel(resumed), lastStep).toEqual(expectedModel);
+      expect(
+        await readModel(resumed, { normalizeTaskOrder: true }),
+        lastStep,
+      ).toEqual(expectedModel);
     }
   }, 600_000);
 

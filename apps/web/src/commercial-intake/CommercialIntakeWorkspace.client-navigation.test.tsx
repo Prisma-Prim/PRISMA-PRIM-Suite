@@ -662,6 +662,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
   });
 
   it('holds Back and a requested Request through an in-flight and uncertain Client association retry', async () => {
+    const pendingDetail = deferred();
     const pendingAssociation = deferred();
     const original = detail('request-unlinked', 'Unlinked follow-up');
     const associated = {
@@ -678,7 +679,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       'POST /api/commercial-intake/requests/request-unlinked/client-association';
     const transport = stubRoutes({
       [`GET ${listPath}`]: [reply({ items: dossierRows() })],
-      [`GET ${detailPath('request-unlinked')}`]: [reply(original)],
+      [`GET ${detailPath('request-unlinked')}`]: [pendingDetail.responder],
       [`GET ${detailPath('request-second')}`]: [
         reply(detail('request-second', 'Second Client follow-up')),
       ],
@@ -706,6 +707,7 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     const view = renderNavigation({}, associationEditor);
     await waitFor(() => expect(listedSubjects()).toHaveLength(4));
     openRow('Unlinked follow-up');
+    await pendingDetail.settle(original);
     await screen.findByRole('heading', { name: copy.associateClient });
     changeValue(screen.getByLabelText(copy.clientSearch), 'Accessible');
     fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
