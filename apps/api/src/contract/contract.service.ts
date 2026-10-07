@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -22,11 +22,19 @@ import {
   contractVersions,
   contractCommands,
   contractReferenceCounters,
+  contractQualityRuns,
 } from '../database/schema/index.js';
 import { OfferService } from '../offer/offer.service.js';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
+import {
+  evaluateContractQuality,
+  requireHeadContractVersion,
+  readContractQualityResults,
+  contractQualityCodes,
+  type ContractQualityRun,
+} from './contract-quality.js';
 import { readCreateContractCommand } from './contract.validation.js';
 import {
   CONTRACT_TEMPLATE_CODE,
@@ -123,6 +131,7 @@ export class ContractService {
           );
         if (receipt) {
           if (
+            receipt.kind !== 'CREATE' ||
             receipt.fingerprint !== fingerprint ||
             receipt.opportunityId !== opportunity.id
           )
@@ -249,6 +258,355 @@ export class ContractService {
       });
   }
 
+  async runQualityChecks(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+    payload: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<ContractQualityRun> {
+    await this.authorization.requireContractAccess(input.actor, [
+      'commercial.contract.prepare',
+      'commercial.contract.read',
+    ]);
+    const key = requireIdempotencyKey(input.idempotencyKey);
+    return this.databaseContext
+      .transaction(async () => {
+        const { actor } = input;
+        const companyId = await this.authorization.requireContractAccess(
+          actor,
+          ['commercial.contract.prepare', 'commercial.contract.read'],
+          true,
+        );
+        await this.intake.requireReadableOfferOpportunity(
+          actor,
+          input.opportunityId,
+          true,
+        );
+        const found = await this.find({
+          actor,
+          companyId,
+          opportunityId: input.opportunityId,
+        });
+        if (!found || found.version.id !== input.versionId)
+          throw new NotFoundException();
+        const { contract, version } = found;
+        const fingerprint = commandFingerprint({
+          kind: 'RUN_QUALITY_CHECKS',
+          opportunityId: input.opportunityId,
+          versionId: input.versionId,
+          payload: input.payload,
+        });
+        await this.databaseContext.connection.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
+        );
+        const [receipt] = await this.databaseContext.connection
+          .select()
+          .from(contractCommands)
+          .where(
+            and(
+              eq(contractCommands.workspaceId, actor.workspaceId),
+              eq(contractCommands.companyId, companyId),
+              eq(
+                contractCommands.actorWorkspaceMembershipId,
+                actor.workspaceMembershipId,
+              ),
+              eq(contractCommands.idempotencyKey, key),
+            ),
+          );
+        if (receipt) {
+          if (
+            receipt.kind !== 'RUN_QUALITY_CHECKS' ||
+            receipt.fingerprint !== fingerprint ||
+            receipt.resultContractId !== contract.id ||
+            !receipt.resultQualityRunId
+          )
+            throw conflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was used for another Contract command.',
+            );
+          const [recorded] = await this.databaseContext.connection
+            .select()
+            .from(contractQualityRuns)
+            .where(
+              and(
+                eq(contractQualityRuns.workspaceId, actor.workspaceId),
+                eq(contractQualityRuns.companyId, companyId),
+                eq(contractQualityRuns.contractId, contract.id),
+                eq(contractQualityRuns.contractVersionId, version.id),
+                eq(contractQualityRuns.id, receipt.resultQualityRunId),
+              ),
+            );
+          if (!recorded)
+            throw new Error(
+              'The recorded Contract Quality Check run is missing.',
+            );
+          return qualityRunView(recorded, version);
+        }
+        if (
+          typeof input.payload !== 'object' ||
+          input.payload === null ||
+          Array.isArray(input.payload) ||
+          Object.keys(input.payload).length !== 0
+        )
+          throw new BadRequestException({
+            code: 'INVALID_CONTRACT_INPUT',
+            field: 'body',
+          });
+        const source = await this.offers.inspectContractQualitySource({
+          actor,
+          opportunityId: input.opportunityId,
+          contractId: contract.id,
+        });
+        const pricing = await this.pricing.resolveContractVersionSnapshot({
+          actor,
+          companyId,
+          opportunityId: input.opportunityId,
+          contractVersionId: version.id,
+        });
+        const recipient = recordedRecipient(version);
+        // The Client owner fences current identity, relationship and union resolution
+        // without requiring or granting dossier-read permission.
+        const current = await this.clients.inspectOfferQualityContext({
+          actor,
+          companyId,
+          originalClientAccountId: contract.originalClientAccountId,
+          snapshotOriginalClientAccountId: null,
+          recipient:
+            recipient.kind === 'PRIMARY'
+              ? { kind: 'PRIMARY' }
+              : {
+                  kind: 'ADDITIONAL',
+                  legalEntityId: recipient.additionalLegalEntityId,
+                },
+          recordedIdentity: recipient,
+        });
+        await this.databaseContext.connection
+          .select({ id: contracts.id })
+          .from(contracts)
+          .where(
+            and(
+              eq(contracts.workspaceId, actor.workspaceId),
+              eq(contracts.companyId, companyId),
+              eq(contracts.id, contract.id),
+            ),
+          )
+          .for('update');
+        const [head] = await this.databaseContext.connection
+          .select({ id: contractVersions.id })
+          .from(contractVersions)
+          .where(
+            and(
+              eq(contractVersions.workspaceId, actor.workspaceId),
+              eq(contractVersions.companyId, companyId),
+              eq(contractVersions.contractId, contract.id),
+            ),
+          )
+          .orderBy(desc(contractVersions.versionNumber))
+          .limit(1);
+        requireHeadContractVersion({
+          versionId: version.id,
+          headVersionId: head?.id,
+        });
+        const evaluatedAt = this.clock.now();
+        const results = evaluateContractQuality({
+          instant: evaluatedAt,
+          companyId,
+          partyKey: partyKey(contract.originalClientAccountId, recipient),
+          identity: recipient,
+          partyAvailable: current.recipientAvailable,
+          partyIdentityCurrent: current.recipientIdentityCurrent,
+          snapshotId: version.pricingSnapshotId,
+          snapshot: {
+            ...pricing,
+            belongsToOffer: pricing.opportunityId === contract.opportunityId,
+          },
+          scopeNote: version.scopeNote,
+          commercialConditions: version.commercialConditions,
+          termStartsOn: version.termStartsOn,
+          termEndsOn: version.termEndsOn,
+          specialConditions: version.specialConditions,
+          preliminaryWork: null,
+          provenance: version.provenance,
+          provisional: version.provenance === 'ILLUSTRATIVE',
+          source: {
+            kind: 'ACCEPTED_OFFER',
+            companyId: source.companyId,
+            partyKey: partyKey(
+              source.originalClientAccountId,
+              source.recipient,
+            ),
+            identity: source.recipient,
+            snapshotId: source.pricingSnapshotId,
+            scopeNote: source.scopeNote,
+            commercialConditions: source.commercialConditions,
+          },
+        });
+        const [run] = await this.databaseContext.connection
+          .insert(contractQualityRuns)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            contractId: contract.id,
+            contractVersionId: version.id,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            evaluatedAt,
+            results,
+          })
+          .returning();
+        if (!run)
+          throw new Error('The Contract Quality Check run was not recorded.');
+        const response = qualityRunView(run, version);
+        await this.databaseContext.connection.insert(contractCommands).values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          idempotencyKey: key,
+          fingerprint,
+          opportunityId: contract.opportunityId,
+          resultContractId: contract.id,
+          kind: 'RUN_QUALITY_CHECKS',
+          resultQualityRunId: run.id,
+          createdAt: evaluatedAt,
+        });
+        return response;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof HttpException) throw error;
+        throw new InternalServerErrorException({
+          code: 'CONTRACT_QUALITY_UNCERTAIN',
+          correlationId: randomUUID(),
+          message:
+            'The Quality Check outcome is uncertain. Retry the identical command.',
+        });
+      });
+  }
+
+  async listQualityRuns(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+    limit: string | undefined;
+    cursor: string | undefined;
+  }) {
+    return this.databaseContext.transaction(async () => {
+      const companyId = await this.authorization.requireContractAccess(
+        input.actor,
+        ['commercial.contract.read'],
+        true,
+      );
+      await this.intake.requireReadableOfferOpportunity(
+        input.actor,
+        input.opportunityId,
+        false,
+      );
+      const found = await this.find({
+        actor: input.actor,
+        companyId,
+        opportunityId: input.opportunityId,
+      });
+      if (!found || found.version.id !== input.versionId)
+        throw new NotFoundException();
+      const limit = input.limit === undefined ? 25 : Number(input.limit);
+      if (
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > 50 ||
+        (input.limit !== undefined && !/^\d+$/u.test(input.limit))
+      )
+        throw new BadRequestException({ field: 'limit' });
+      const scope = and(
+        eq(contractQualityRuns.workspaceId, input.actor.workspaceId),
+        eq(contractQualityRuns.companyId, companyId),
+        eq(contractQualityRuns.contractId, found.contract.id),
+        eq(contractQualityRuns.contractVersionId, input.versionId),
+      );
+      let before: number | undefined;
+      if (input.cursor !== undefined) {
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            input.cursor,
+          )
+        )
+          throw new BadRequestException({ field: 'cursor' });
+        const [cursor] = await this.databaseContext.connection
+          .select({ sequence: contractQualityRuns.sequence })
+          .from(contractQualityRuns)
+          .where(and(scope, eq(contractQualityRuns.id, input.cursor)));
+        if (!cursor) throw new BadRequestException({ field: 'cursor' });
+        before = cursor.sequence;
+      }
+      const rows = await this.databaseContext.connection
+        .select()
+        .from(contractQualityRuns)
+        .where(
+          and(
+            scope,
+            before === undefined
+              ? undefined
+              : lt(contractQualityRuns.sequence, before),
+          ),
+        )
+        .orderBy(desc(contractQualityRuns.sequence))
+        .limit(limit + 1);
+      const items = rows
+        .slice(0, limit)
+        .map((row) => qualityRunView(row, found.version));
+      return {
+        items,
+        nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
+      };
+    });
+  }
+
+  async readQualityRun(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+    runId: string;
+  }): Promise<ContractQualityRun> {
+    return this.databaseContext.transaction(async () => {
+      const companyId = await this.authorization.requireContractAccess(
+        input.actor,
+        ['commercial.contract.read'],
+        true,
+      );
+      await this.intake.requireReadableOfferOpportunity(
+        input.actor,
+        input.opportunityId,
+        false,
+      );
+      const found = await this.find({
+        actor: input.actor,
+        companyId,
+        opportunityId: input.opportunityId,
+      });
+      if (
+        !found ||
+        found.version.id !== input.versionId ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+          input.runId,
+        )
+      )
+        throw new NotFoundException();
+      const [run] = await this.databaseContext.connection
+        .select()
+        .from(contractQualityRuns)
+        .where(
+          and(
+            eq(contractQualityRuns.workspaceId, input.actor.workspaceId),
+            eq(contractQualityRuns.companyId, companyId),
+            eq(contractQualityRuns.contractId, found.contract.id),
+            eq(contractQualityRuns.contractVersionId, input.versionId),
+            eq(contractQualityRuns.id, input.runId),
+          ),
+        );
+      if (!run) throw new NotFoundException();
+      return qualityRunView(run, found.version);
+    });
+  }
+
   async read(input: {
     actor: ActorContext;
     opportunityId: string;
@@ -351,27 +709,20 @@ export class ContractService {
       version.provenance !== 'ILLUSTRATIVE'
     )
       throw new Error('Invalid stored Contract state.');
-    const party = {
-      legalName: version.recipientLegalName,
-      taxId: version.recipientTaxId,
-      legalAddress: version.recipientLegalAddress,
-    };
-    let recipient: OfferRecipientCopy;
-    if (
-      version.recipientKind === 'PRIMARY' &&
-      version.recipientAdditionalLegalEntityId === null
-    )
-      recipient = { ...party, kind: 'PRIMARY' };
-    else if (
-      version.recipientKind === 'ADDITIONAL' &&
-      version.recipientAdditionalLegalEntityId
-    )
-      recipient = {
-        ...party,
-        kind: 'ADDITIONAL',
-        additionalLegalEntityId: version.recipientAdditionalLegalEntityId,
-      };
-    else throw new Error('Invalid recorded Contract party.');
+    const recipient = recordedRecipient(version);
+    const [latestRun] = await this.databaseContext.connection
+      .select()
+      .from(contractQualityRuns)
+      .where(
+        and(
+          eq(contractQualityRuns.workspaceId, actor.workspaceId),
+          eq(contractQualityRuns.companyId, contract.companyId),
+          eq(contractQualityRuns.contractId, contract.id),
+          eq(contractQualityRuns.contractVersionId, version.id),
+        ),
+      )
+      .orderBy(desc(contractQualityRuns.sequence))
+      .limit(1);
     const pricingSnapshot = await this.pricing.resolveContractVersionSnapshot({
       actor,
       companyId: contract.companyId,
@@ -429,6 +780,7 @@ export class ContractService {
           specialConditions: version.specialConditions,
           provenance: 'ILLUSTRATIVE',
         }),
+        latestQualityRun: latestRun ? qualityRunView(latestRun, version) : null,
         versionNumber: version.versionNumber,
         recipient,
         issuingCompanyLabel: version.issuingCompanyLabel,
@@ -451,4 +803,55 @@ export class ContractService {
 }
 function conflict(code: string, message: string) {
   return new ConflictException({ code, message });
+}
+
+function recordedRecipient(version: VersionRow): OfferRecipientCopy {
+  const party = {
+    legalName: version.recipientLegalName,
+    taxId: version.recipientTaxId,
+    legalAddress: version.recipientLegalAddress,
+  };
+  if (
+    version.recipientKind === 'PRIMARY' &&
+    version.recipientAdditionalLegalEntityId === null
+  )
+    return { ...party, kind: 'PRIMARY' };
+  if (
+    version.recipientKind === 'ADDITIONAL' &&
+    version.recipientAdditionalLegalEntityId
+  )
+    return {
+      ...party,
+      kind: 'ADDITIONAL',
+      additionalLegalEntityId: version.recipientAdditionalLegalEntityId,
+    };
+  throw new Error('Invalid recorded Contract party.');
+}
+function partyKey(clientId: string, recipient: OfferRecipientCopy): string {
+  return recipient.kind === 'PRIMARY'
+    ? `PRIMARY:${clientId}`
+    : `ADDITIONAL:${recipient.additionalLegalEntityId}`;
+}
+function qualityRunView(
+  row: typeof contractQualityRuns.$inferSelect,
+  version: VersionRow,
+): ContractQualityRun {
+  if (
+    row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
+    row.ruleSetVersion !== 1 ||
+    row.contractVersionId !== version.id
+  )
+    throw new Error('Unsupported stored Contract Quality Check rule set.');
+  return {
+    id: row.id,
+    contractVersionId: row.contractVersionId,
+    ruleSet: row.ruleSet,
+    ruleSetVersion: row.ruleSetVersion,
+    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+    evaluatedAt: row.evaluatedAt.toISOString(),
+    results: readContractQualityResults(
+      row.results,
+      contractQualityCodes(version.termEndsOn),
+    ),
+  };
 }

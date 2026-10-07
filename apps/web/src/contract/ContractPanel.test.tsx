@@ -328,6 +328,88 @@ describe('ContractPanel', () => {
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toEqual(bodies[0]);
   });
+  it('runs without Offer or Client read, preserves uncertain retry and reopens immutable attribution', async () => {
+    const commands: Array<{ body: unknown; key: string | null }> = [];
+    const run = qualityRun();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST') {
+        commands.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return commands.length === 1 ? response({}, 500) : response(run, 201);
+      }
+      if (input.toString().endsWith('/quality-checks'))
+        return response({ items: [run], nextCursor: null });
+      if (input.toString().endsWith('/quality-checks/run-one'))
+        return response(run);
+      return response({ contract: fixture() });
+    });
+    render(
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Run Contract Quality Checks',
+      }),
+    );
+    const retryQuality = await screen.findByRole('button', {
+      name: 'Retry the same Contract Quality Checks',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Reload Contract' }),
+    ).toBeDisabled();
+    fireEvent.click(retryQuality);
+    expect(
+      await screen.findByText('Contract checks completed with warnings.'),
+    ).toBeVisible();
+    expect(commands[1]).toEqual(commands[0]);
+    expect(screen.getByText('2026-10-07T09:00:00.000Z')).toBeVisible();
+    expect(screen.getByText('member-one')).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reopen recorded checks' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /Reopen run/u }));
+    expect(
+      await screen.findByText('Contract checks completed with warnings.'),
+    ).toBeVisible();
+    expect(screen.getAllByText('WARNING')).toHaveLength(1);
+  });
+  it('retires a run after the Company or Contract Version context is replaced', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        contract: {
+          ...fixture(),
+          version: { ...fixture().version, latestQualityRun: qualityRun() },
+        },
+      }),
+    );
+    const view = render(
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    await screen.findByText('member-one');
+    view.rerender(
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-two"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryByText('member-one')).not.toBeInTheDocument(),
+    );
+  });
   it('hides Contract content after Contract authority is revoked', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       response({ contract: fixture() }),
@@ -428,6 +510,7 @@ function fixture() {
       termStartsOn: null,
       termEndsOn: null,
       specialConditions: 'Synthetic added conditions',
+      latestQualityRun: null,
       decisionState: 'PENDING',
       executionState: 'NOT_EXECUTED',
       provenance: 'ILLUSTRATIVE',
@@ -466,5 +549,29 @@ function representation() {
     ],
     html: '<!doctype html><html lang="en"><body><p>Illustrative exact document</p></body></html>',
     sha256: '1'.repeat(64),
+  };
+}
+
+function qualityRun() {
+  return {
+    id: 'run-one',
+    contractVersionId: 'version-one',
+    ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+    ruleSetVersion: 1,
+    actorWorkspaceMembershipId: 'member-one',
+    evaluatedAt: '2026-10-07T09:00:00.000Z',
+    results: [
+      { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
+      { code: 'PARTY_AVAILABLE', status: 'PASS' },
+      { code: 'PARTY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
+      { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
+      { code: 'PRICE_MATCHES_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+      { code: 'CONDITIONS_MATCH_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'ADDED_CONDITIONS_CONFIRMED', status: 'WARNING' },
+      { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+    ],
   };
 }
