@@ -1,4 +1,10 @@
 import type { Pool } from 'pg';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createIsolatedPostgresTestDatabase,
@@ -74,6 +80,321 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('requires current Contract and Opportunity authority for exact bytes without Offer, Pricing or Client prerequisites', async () => {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'representation-grant');
+    const created = record(
+      await json(
+        await sendContract(
+          fixture,
+          await contractPayload(fixture),
+          'representation-create',
+        ),
+      ),
+    );
+    const versionId = stringField(record(created.version), 'id');
+    const path =
+      '/contracts/opportunities/' +
+      fixture.opportunityId +
+      '/versions/' +
+      versionId +
+      '/representation';
+    const reader = record(
+      await json(
+        await request({
+          path: '/access/current-actor',
+          init: { headers: memberHeaders('contract-reader') },
+        }),
+      ),
+    );
+    const membership = stringField(reader, 'workspaceMembershipId');
+    for (const bundle of [
+      'company-context',
+      'company-commercial-intake',
+      'company-contract-preparer',
+    ]) {
+      await command({
+        path: '/' + bundle + '-assignments',
+        body: {
+          workspaceMembershipId: membership,
+          companyId: fixture.companyId,
+        },
+        key: 'representation-reader-' + bundle,
+      });
+    }
+    const readerRequest = () =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: { headers: memberHeaders('contract-reader') },
+      });
+    const counts = () =>
+      pool.query(
+        `SELECT (SELECT count(*) FROM contract_events)::text AS events, (SELECT count(*) FROM contract_commands)::text AS commands, (SELECT count(*) FROM activity_log_events)::text AS activity`,
+      );
+    const before = (await counts()).rows;
+    const allowed = await readerRequest();
+    expect(allowed.status).toBe(200);
+    const representation = await json(allowed);
+    expect(representation).toEqual({
+      contractId: created.id,
+      contractVersionId: versionId,
+      ...record(record(created.version).representation),
+    });
+    expect(await json(await readerRequest())).toEqual(representation);
+    expect((await counts()).rows).toEqual(before);
+    await expect(
+      pool.query(
+        'UPDATE contract_versions SET template_version=2 WHERE id=$1',
+        [versionId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    const other = await acceptedOffer({ suffix: 'representation-other' });
+    await grantContract(other, 'representation-other-grant');
+    for (const refused of [
+      { path, companyId: undefined, status: 403 },
+      { path, companyId: other.companyId, status: 404 },
+      {
+        path:
+          '/contracts/opportunities/' +
+          other.opportunityId +
+          '/versions/' +
+          versionId +
+          '/representation',
+        companyId: other.companyId,
+        status: 404,
+      },
+      {
+        path:
+          '/contracts/opportunities/' +
+          fixture.opportunityId +
+          '/versions/' +
+          other.snapshotId +
+          '/representation',
+        companyId: fixture.companyId,
+        status: 404,
+      },
+      { path, companyId: '00000000-0000-4000-8000-000000000987', status: 403 },
+    ]) {
+      const response = await request(refused);
+      expect(response.status).toBe(refused.status);
+      const denied = JSON.stringify(await json(response));
+      for (const field of [
+        created.id,
+        versionId,
+        record(representation).sha256,
+        'Accepted scope',
+        'CONTRACT_ILLUSTRATIVE',
+      ])
+        expect(denied).not.toContain(field);
+    }
+    expect((await fetch(origin + '/api' + path)).status).toBe(401);
+    const hiddenWorkspace = await request({
+      path,
+      companyId: fixture.companyId,
+      init: { headers: memberHeaders('uninvited-other-workspace') },
+    });
+    expect(hiddenWorkspace.status).toBe(403);
+    expect(JSON.stringify(await json(hiddenWorkspace))).not.toContain(
+      versionId,
+    );
+    for (const bundle of [
+      'company-commercial-intake',
+      'company-contract-preparer',
+    ]) {
+      expect(
+        (
+          await request({
+            path:
+              '/' +
+              bundle +
+              '-assignments/' +
+              membership +
+              '/' +
+              fixture.companyId,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': 'representation-revoke-' + bundle },
+            },
+          })
+        ).status,
+      ).toBe(200);
+      const denied = await readerRequest();
+      expect(denied.status).toBe(403);
+      expect(JSON.stringify(await json(denied))).not.toContain(
+        record(representation).sha256,
+      );
+      if (bundle === 'company-commercial-intake')
+        await command({
+          path: '/' + bundle + '-assignments',
+          body: {
+            workspaceMembershipId: membership,
+            companyId: fixture.companyId,
+          },
+          key: 'representation-restore-opportunity',
+        });
+    }
+  });
+  it('upgrades actual C1 versions and receipts without changing any historic field or immutable guard', async () => {
+    if (!databaseUrl) throw new Error('Missing safe test database');
+    const journal = record(
+      JSON.parse(await readFile('drizzle/meta/_journal.json', 'utf8')),
+    );
+    if (!Array.isArray(journal.entries)) throw new Error('Invalid journal');
+    const entries = journal.entries.map(record);
+    const index = entries.findIndex(
+      (entry) => entry.tag === '0053_contract_template_binding',
+    );
+    expect(index).toBe(53);
+    expect(entries[index - 1]?.tag).toBe(
+      '0052_confirmed_cost_profitability_estimate',
+    );
+    const previous = await mkdtemp(join(tmpdir(), 'prisma-c2-upgrade-'));
+    if (
+      dirname(previous) !== resolve(tmpdir()) ||
+      !basename(previous).startsWith('prisma-c2-upgrade-')
+    )
+      throw new Error('Unsafe migration fixture path');
+    const priorDatabase = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl,
+      namePrefix: 'contract_c2_upgrade',
+    });
+    let priorHarness: PostgresRestTestHarness | undefined;
+    const original = { origin, pool };
+    try {
+      await mkdir(join(previous, 'meta'));
+      await writeFile(
+        join(previous, 'meta/_journal.json'),
+        JSON.stringify({ ...journal, entries: entries.slice(0, index) }),
+      );
+      for (const entry of entries.slice(0, index)) {
+        const tag = stringField(entry, 'tag');
+        if (!/^\d{4}_[a-z0-9_-]+$/u.test(tag))
+          throw new Error('Invalid migration tag');
+        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
+      }
+      priorHarness = await createPostgresRestTestHarness({
+        databaseUrl: priorDatabase.targetUrl,
+        migrationsFolder: previous,
+        serverClock: { now: () => new Date(instant) },
+        environment: {
+          NODE_ENV: 'test',
+          ACCESS_IDENTITY_MODE: 'test',
+          ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
+          ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
+          ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
+          ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Contract Workspace',
+        },
+      });
+      ({ origin, pool } = priorHarness);
+      const fixture = await acceptedOffer();
+      await grantContract(fixture, 'historic-grant');
+      const payload = {
+        ...(await contractPayload(fixture)),
+        termStartsOn: '2026-10-01',
+        termEndsOn: '2026-12-31',
+        specialConditions: 'Historic conditions\nkept exactly',
+      };
+      // Only delivered C1 columns exist: synthesize a pre-slice persisted creation.
+      const inserted = await pool.query<{ id: string }>(
+        `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,source_offer_id,source_offer_version_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+        SELECT workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,offer_id,id,1,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM offer_versions WHERE id=$1 RETURNING id`,
+        [payload.acceptedOfferVersionId],
+      );
+      const contractId = inserted.rows[0]?.id;
+      if (!contractId) throw new Error('Missing historic Contract');
+      await pool.query(
+        `INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,term_starts_on,term_ends_on,special_conditions,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+        SELECT workspace_id,company_id,$2,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,$3,$4,$5,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM offer_versions WHERE id=$1`,
+        [
+          payload.acceptedOfferVersionId,
+          contractId,
+          payload.termStartsOn,
+          payload.termEndsOn,
+          payload.specialConditions,
+        ],
+      );
+      await pool.query(
+        `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-command',$2,opportunity_id,id,created_at FROM contracts WHERE id=$1`,
+        [
+          contractId,
+          commandFingerprint({ opportunityId: fixture.opportunityId, payload }),
+        ],
+      );
+      await pool.query(
+        `INSERT INTO contract_reference_counters(workspace_id,company_id,kind,current_reference) SELECT workspace_id,company_id,kind,illustrative_reference FROM contracts WHERE id=$1`,
+        [contractId],
+      );
+      await pool.query(
+        `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
+        SELECT c.workspace_id,c.company_id,e.action,c.id,e.version_id,c.created_by_internal_user_id,c.created_by_workspace_membership_id,c.created_at,
+          jsonb_build_object('contractId',c.id,'kind',c.kind,'origin',c.origin,'provenance','ILLUSTRATIVE','illustrativeReference',c.illustrative_reference,'offerVersionId',c.source_offer_version_id,'pricingSnapshotId',v.pricing_snapshot_id) || CASE WHEN e.version_id IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('contractVersionId',v.id,'versionNumber',v.version_number) END
+        FROM contracts c JOIN contract_versions v ON v.contract_id=c.id
+        CROSS JOIN LATERAL (VALUES ('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
+        [contractId],
+      );
+      const evidence = () =>
+        pool.query<{
+          contracts: unknown;
+          versions: unknown;
+          commands: unknown;
+          events: unknown;
+          guards: unknown;
+        }>(`SELECT
+        (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
+        (SELECT jsonb_agg(to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
+        (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
+        (SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid IN ('contracts'::regclass,'contract_versions'::regclass,'contract_commands'::regclass,'contract_events'::regclass,'contract_reference_counters'::regclass) AND conname <> 'contract_versions_template_binding_check') AS constraints,
+        (SELECT jsonb_agg(pg_get_triggerdef(oid) ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`);
+      const before = (await evidence()).rows;
+      await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
+      expect((await evidence()).rows).toEqual(before);
+      const path = '/contracts/opportunities/' + fixture.opportunityId;
+      const stored = record(
+        record(
+          await json(await request({ path, companyId: fixture.companyId })),
+        ).contract,
+      );
+      const version = record(stored.version);
+      expect(record(version.representation)).toMatchObject({
+        templateCode: 'CONTRACT_ILLUSTRATIVE',
+        templateVersion: 1,
+        clauseVersions: [
+          { code: 'CL_SUBJECT', version: 1 },
+          { code: 'CL_PRICE', version: 1 },
+          { code: 'CL_TERM', version: 1 },
+          { code: 'CL_CONDITIONS', version: 1 },
+          { code: 'CL_GENERAL', version: 1 },
+        ],
+      });
+      expect(
+        await json(await sendContract(fixture, payload, 'historic-command')),
+      ).toEqual(stored);
+      expect((await evidence()).rows).toEqual(before);
+      for (const table of [
+        'contracts',
+        'contract_versions',
+        'contract_commands',
+        'contract_events',
+      ]) {
+        const timeColumn =
+          table === 'contract_events' ? 'occurred_at' : 'created_at';
+        await expect(
+          pool.query(`UPDATE ${table} SET ${timeColumn}=${timeColumn}`),
+        ).rejects.toMatchObject({ code: '23514' });
+        await expect(pool.query(`DELETE FROM ${table}`)).rejects.toMatchObject({
+          code: '23514',
+        });
+      }
+    } finally {
+      ({ origin, pool } = original);
+      await priorHarness?.close();
+      await priorDatabase.close();
+      await rm(previous, { recursive: true, force: true });
+    }
+  }, 60000);
   it('creates and reloads version one from the exact Accepted Offer without re-entry', async () => {
     const fixture = await acceptedOffer();
     await command({
@@ -148,6 +469,22 @@ withPostgres('First illustrative Contract REST', () => {
     expect(record(await json(read)).contract).toEqual(created);
     const path = `/contracts/opportunities/${fixture.opportunityId}`;
     const versionId = stringField(record(created.version), 'id');
+    const representationRead = await request({
+      path: path + '/versions/' + versionId + '/representation',
+      companyId: fixture.companyId,
+    });
+    expect(representationRead.status).toBe(200);
+    const representation = record(await json(representationRead));
+    expect(representation).toMatchObject({
+      contractId: created.id,
+      contractVersionId: versionId,
+      templateCode: 'CONTRACT_ILLUSTRATIVE',
+      templateVersion: 1,
+    });
+    expect(stringField(representation, 'html')).toContain(
+      'clauses are placeholders',
+    );
+    expect(stringField(representation, 'sha256')).toMatch(/^[a-f0-9]{64}$/u);
     expect(
       record(
         await json(
@@ -629,6 +966,9 @@ withPostgres('First illustrative Contract REST', () => {
       record(
         await json(await request({ path: path, companyId: first.companyId })),
       ).contract,
+    );
+    expect(record(reloaded.version).representation).toEqual(
+      record(saved.version).representation,
     );
     expect(record(reloaded.version).recipient).toEqual(
       record(saved.version).recipient,

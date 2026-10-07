@@ -9,6 +9,247 @@ const identity = deterministicBrowserIdentity({
 });
 afterEach(() => vi.restoreAllMocks());
 describe('ContractPanel', () => {
+  it.each([
+    'opportunity',
+    'identity',
+    'contract-authority',
+    'opportunity-authority',
+  ])(
+    'hides a currently visible exact document on %s replacement',
+    async (replacement) => {
+      let calls = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        calls++;
+        if (calls > 2) return new Promise<Response>(() => undefined);
+        return response(
+          input.toString().endsWith('/representation')
+            ? representation()
+            : { contract: fixture() },
+        );
+      });
+      const current = actor(false);
+      const properties = {
+        actor: current,
+        identity,
+        opportunityId: 'opportunity-one',
+        onCompanyContextRejected: () => undefined,
+      };
+      const view = render(<ContractPanel {...properties} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open exact Contract document',
+        }),
+      );
+      expect(
+        await screen.findByTitle('Illustrative Contract document'),
+      ).toBeInTheDocument();
+      view.rerender(
+        <ContractPanel
+          {...properties}
+          opportunityId={
+            replacement === 'opportunity'
+              ? 'opportunity-two'
+              : properties.opportunityId
+          }
+          identity={
+            replacement === 'identity'
+              ? deterministicBrowserIdentity({
+                  'x-test-external-subject': 'replacement-reader',
+                })
+              : identity
+          }
+          actor={
+            replacement.endsWith('authority')
+              ? {
+                  ...current,
+                  activeCompany: {
+                    ...current.activeCompany,
+                    id: 'company-one',
+                    displayName: 'Company',
+                    ...(replacement === 'contract-authority'
+                      ? { contractPermissions: [] }
+                      : { commercialIntakePermissions: [] }),
+                  },
+                }
+              : current
+          }
+        />,
+      );
+      expect(
+        screen.queryByTitle('Illustrative Contract document'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(representation().sha256),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('opens and reloads the exact isolated document with its checksum', async () => {
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) =>
+        response(
+          input.toString().endsWith('/representation')
+            ? representation()
+            : { contract: fixture() },
+        ),
+      );
+    render(
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open exact Contract document',
+      }),
+    );
+    expect(await screen.findByText('Draft — not approved')).toBeVisible();
+    const document = screen.getByTitle('Illustrative Contract document');
+    expect(document).toHaveAttribute('srcdoc', representation().html);
+    expect(document).toHaveAttribute('sandbox', '');
+    expect(document).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(screen.getByText(representation().sha256)).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload exact Contract document' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTitle('Illustrative Contract document'),
+      ).toHaveAttribute('srcdoc', representation().html),
+    );
+    expect(
+      fetch.mock.calls.filter(([path]) =>
+        path.toString().endsWith('/representation'),
+      ),
+    ).toHaveLength(2);
+  });
+  it.each([
+    'opportunity',
+    'identity',
+    'contract-authority',
+    'opportunity-authority',
+  ])(
+    'removes an open document immediately on %s replacement and suppresses late responses',
+    async (replacement) => {
+      let resolveLate: ((response: Response) => void) | undefined;
+      let documentRequests = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        if (input.toString().endsWith('/representation')) {
+          documentRequests++;
+          if (documentRequests === 1) return response(representation());
+          return new Promise<Response>((resolve) => {
+            resolveLate = resolve;
+          });
+        }
+        if (input.toString().includes('opportunity-two'))
+          return response({ contract: null });
+        return response({ contract: fixture() });
+      });
+      const current = actor(false);
+      const properties = {
+        actor: current,
+        identity,
+        opportunityId: 'opportunity-one',
+        onCompanyContextRejected: () => undefined,
+      };
+      const view = render(<ContractPanel {...properties} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open exact Contract document',
+        }),
+      );
+      await screen.findByTitle('Illustrative Contract document');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Reload exact Contract document' }),
+      );
+      await waitFor(() => expect(resolveLate).toBeDefined());
+      view.rerender(
+        <ContractPanel
+          {...properties}
+          opportunityId={
+            replacement === 'opportunity'
+              ? 'opportunity-two'
+              : properties.opportunityId
+          }
+          identity={
+            replacement === 'identity'
+              ? deterministicBrowserIdentity({
+                  'x-test-external-subject': 'replacement-reader',
+                })
+              : identity
+          }
+          actor={
+            replacement.endsWith('authority')
+              ? {
+                  ...current,
+                  activeCompany: {
+                    ...current.activeCompany,
+                    id: 'company-one',
+                    displayName: 'Company',
+                    ...(replacement === 'contract-authority'
+                      ? { contractPermissions: [] }
+                      : { commercialIntakePermissions: [] }),
+                  },
+                }
+              : current
+          }
+        />,
+      );
+      expect(
+        screen.queryByTitle('Illustrative Contract document'),
+      ).not.toBeInTheDocument();
+      resolveLate?.(response(representation()));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(representation().sha256),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByTitle('Illustrative Contract document'),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it.each([
+    { contractVersionId: 'other-version' },
+    { contractId: 'other-contract' },
+    { templateVersion: 2 },
+    { clauseVersions: [] },
+    { clauseVersions: [{ code: 'CL_GENERAL', version: 1 }] },
+    { sha256: 'invalid' },
+    { html: '' },
+  ])('refuses incompatible exact document responses %j', async (invalid) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      response(
+        input.toString().endsWith('/representation')
+          ? { ...representation(), ...invalid }
+          : { contract: fixture() },
+      ),
+    );
+    render(
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open exact Contract document',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'The exact Contract document could not be loaded. Try again.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByTitle('Illustrative Contract document'),
+    ).not.toBeInTheDocument();
+  });
   it('reads the recorded Contract without any Offer or live Client read', async () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')
@@ -208,5 +449,22 @@ function fixture() {
         ],
       },
     },
+  };
+}
+function representation() {
+  return {
+    contractId: 'contract-one',
+    contractVersionId: 'version-one',
+    templateCode: 'CONTRACT_ILLUSTRATIVE',
+    templateVersion: 1,
+    clauseVersions: [
+      { code: 'CL_SUBJECT', version: 1 },
+      { code: 'CL_PRICE', version: 1 },
+      { code: 'CL_TERM', version: 1 },
+      { code: 'CL_CONDITIONS', version: 1 },
+      { code: 'CL_GENERAL', version: 1 },
+    ],
+    html: '<!doctype html><html lang="en"><body><p>Illustrative exact document</p></body></html>',
+    sha256: '1'.repeat(64),
   };
 }

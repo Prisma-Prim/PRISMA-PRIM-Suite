@@ -1,5 +1,12 @@
 export const contractCopy = {
   title: 'Contract',
+  document: 'Illustrative Contract document',
+  openDocument: 'Open exact Contract document',
+  reloadDocument: 'Reload exact Contract document',
+  documentLoading: 'Loading exact Contract document…',
+  documentError: 'The exact Contract document could not be loaded. Try again.',
+  draft: 'Draft — not approved',
+  checksum: 'SHA-256 checksum',
   banner:
     'Illustrative only — not approved for real use; not a signed agreement.',
   loading: 'Loading Contract…',

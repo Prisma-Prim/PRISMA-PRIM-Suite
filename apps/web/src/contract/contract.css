@@ -52,3 +52,18 @@
 .contract-price td {
   padding: 0.4rem;
 }
+.contract-representation {
+  min-width: 0;
+  margin-block: 1rem;
+}
+.contract-representation iframe {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 36rem;
+  border: 1px solid #d9d8e8;
+  border-radius: 0.5rem;
+}
+.contract-representation code {
+  overflow-wrap: anywhere;
+}

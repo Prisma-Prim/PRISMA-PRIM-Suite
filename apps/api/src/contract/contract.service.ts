@@ -28,6 +28,12 @@ import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { readCreateContractCommand } from './contract.validation.js';
+import {
+  CONTRACT_TEMPLATE_CODE,
+  CONTRACT_TEMPLATE_VERSION,
+  CONTRACT_CLAUSE_VERSIONS,
+  renderContractRepresentation,
+} from './contract-representation.js';
 
 type ContractRow = typeof contracts.$inferSelect;
 type VersionRow = typeof contractVersions.$inferSelect;
@@ -203,6 +209,9 @@ export class ContractService {
             termStartsOn: command.termStartsOn,
             termEndsOn: command.termEndsOn,
             specialConditions: command.specialConditions,
+            templateCode: CONTRACT_TEMPLATE_CODE,
+            templateVersion: CONTRACT_TEMPLATE_VERSION,
+            clauseVersions: CONTRACT_CLAUSE_VERSIONS,
           })
           .returning();
         if (!version) throw new Error('Contract Version was not recorded.');
@@ -397,6 +406,29 @@ export class ContractService {
       ...(clientReference ? { clientReference } : {}),
       version: {
         id: version.id,
+        representation: renderContractRepresentation({
+          templateCode: version.templateCode,
+          templateVersion: version.templateVersion,
+          clauseVersions: version.clauseVersions,
+          illustrativeReference: contract.illustrativeReference,
+          versionNumber: version.versionNumber,
+          issuingCompanyLabel: version.issuingCompanyLabel,
+          recipient,
+          createdAt: version.createdAt.toISOString(),
+          sourceOffer,
+          pricingSnapshotId: version.pricingSnapshotId,
+          lines: pricingSnapshot.lines,
+          subtotal: pricingSnapshot.subtotal,
+          taxTotal: pricingSnapshot.taxTotal,
+          total: pricingSnapshot.total,
+          currency: pricingSnapshot.currency,
+          scopeNote: version.scopeNote,
+          commercialConditions: version.commercialConditions,
+          termStartsOn: version.termStartsOn,
+          termEndsOn: version.termEndsOn,
+          specialConditions: version.specialConditions,
+          provenance: 'ILLUSTRATIVE',
+        }),
         versionNumber: version.versionNumber,
         recipient,
         issuingCompanyLabel: version.issuingCompanyLabel,

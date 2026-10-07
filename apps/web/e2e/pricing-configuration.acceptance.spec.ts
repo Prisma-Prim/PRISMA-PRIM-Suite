@@ -77,6 +77,7 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
   page,
 }, testInfo) => {
   test.setTimeout(240_000);
+  const activationDeadline = performance.now() + 240_000;
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'narrow' : 'desktop';
   // Each viewport configures its own synthetic Company so both runs start
@@ -386,12 +387,15 @@ test('publishes illustrative Pricing Rule and Tariff Versions through the real A
     });
 
     // 6. After v1's start, a reload shows v1 current and v2 scheduled.
-    await page.waitForTimeout(
-      Math.max(
-        0,
-        Math.max(startA.epoch, tariffStartA.epoch) - Date.now() + 1_500,
-      ),
-    );
+    await waitForCurrentConfiguration({
+      page,
+      companyId,
+      offeringId: offeringA.id,
+      ruleEffectiveFrom: startA.epoch,
+      tariffEffectiveFrom: tariffStartA.epoch,
+      expectedHeadVersionNumber: 2,
+      deadline: activationDeadline,
+    });
     await configuration
       .getByRole('button', { name: 'Reload Pricing Rule Versions' })
       .click();
@@ -1347,6 +1351,7 @@ test('approves, transmits and records immutable simulated Client outcomes with e
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
+  const activationDeadline = performance.now() + 180_000;
   const clockFile = requiredEnvironment('ACCEPTANCE_CLOCK_OFFSET_FILE');
   expect(await readFile(clockFile, 'utf8')).toBe('0');
   const narrow = testInfo.project.name.endsWith('narrow');
@@ -1425,9 +1430,15 @@ test('approves, transmits and records immutable simulated Client outcomes with e
     expect(offer.status()).toBe(201);
     return request;
   }
-  await page.waitForTimeout(
-    Math.max(0, new Date(effectiveFrom).getTime() - Date.now() + 1_500),
-  );
+  await waitForCurrentConfiguration({
+    page,
+    companyId,
+    offeringId: offering.id,
+    ruleEffectiveFrom: Date.parse(effectiveFrom),
+    tariffEffectiveFrom: Date.parse(effectiveFrom),
+    expectedHeadVersionNumber: 1,
+    deadline: activationDeadline,
+  });
   const approvedRequest = await prepare(`approve-${suffix}`);
   const rejectedRequest = await prepare(`reject-${suffix}`);
   const clientRejectedRequest = await prepare(`client-reject-${suffix}`);
@@ -1499,7 +1510,11 @@ test('approves, transmits and records immutable simulated Client outcomes with e
     offer.getByText('Checks completed with warnings.', { exact: true }),
   ).toBeVisible();
   await offer.getByRole('button', { name: 'Approve this version' }).click();
-  await expect(offer.getByRole('alert')).toHaveText(
+  await expect(
+    offer
+      .getByRole('region', { name: 'Internal decision', exact: true })
+      .getByRole('alert'),
+  ).toHaveText(
     'Acknowledge exactly the current warnings. Run Quality Checks to refresh them.',
   );
   const ack = offer.getByRole('checkbox', {
@@ -1755,7 +1770,9 @@ test('approves, transmits and records immutable simulated Client outcomes with e
   );
   expect(refusedVersion.status()).toBe(409);
   expect(await refusedVersion.json()).toMatchObject({ code: 'OFFER_ACCEPTED' });
-  async function approveAndTransmit(request: { opportunityId: string }) {
+  async function approveAndTransmit(request: {
+    opportunityId: string;
+  }): Promise<string> {
     const headers = {
       ...primaryMemberHeaders,
       'x-company-context-id': companyId,
@@ -1790,13 +1807,28 @@ test('approves, transmits and records immutable simulated Client outcomes with e
         data,
       });
       expect(r.status()).toBe(201);
+      if (path === '/transmission') {
+        const transmission: unknown = await r.json();
+        if (
+          typeof transmission !== 'object' ||
+          transmission === null ||
+          !('transmittedAt' in transmission) ||
+          typeof transmission.transmittedAt !== 'string' ||
+          !Number.isFinite(Date.parse(transmission.transmittedAt))
+        )
+          throw new Error('Expected recorded transmission time.');
+        return transmission.transmittedAt;
+      }
     }
+    throw new Error('Expected simulated transmission.');
   }
-  await approveAndTransmit(clientRejectedRequest);
+  const rejectedTransmissionTime = await approveAndTransmit(
+    clientRejectedRequest,
+  );
   await open(clientRejectedRequest.subject);
   await responsePanel
     .getByLabel('Reported received time (UTC)')
-    .fill(new Date().toISOString());
+    .fill(rejectedTransmissionTime);
   const clientReason = 'Synthetic Client refusal: revised scope needed.';
   await responsePanel.getByLabel('Client rejection reason').fill(clientReason);
   await responsePanel
@@ -1867,6 +1899,94 @@ test('approves, transmits and records immutable simulated Client outcomes with e
     expect(await readFile(clockFile, 'utf8')).toBe('0');
   }
 });
+
+async function waitForCurrentConfiguration({
+  page,
+  companyId,
+  offeringId,
+  ruleEffectiveFrom,
+  tariffEffectiveFrom,
+  expectedHeadVersionNumber,
+  deadline,
+}: {
+  page: Page;
+  companyId: string;
+  offeringId: string;
+  ruleEffectiveFrom: number;
+  tariffEffectiveFrom: number;
+  expectedHeadVersionNumber: 1 | 2;
+  deadline: number;
+}): Promise<void> {
+  // A relative sleep cannot establish a server-clock boundary. Read both
+  // real scopes within this case's existing deadline before reloading the UI.
+  while (performance.now() < deadline) {
+    const current: boolean[] = [];
+    for (const scope of [
+      {
+        path: '/pricing-configuration/rule-scope',
+        effectiveFrom: ruleEffectiveFrom,
+      },
+      {
+        path: `/pricing-configuration/offerings/${offeringId}/tariff-scope`,
+        effectiveFrom: tariffEffectiveFrom,
+        offeringId,
+      },
+    ]) {
+      const remaining = deadline - performance.now();
+      if (remaining <= 0)
+        throw new Error('Configuration activation timed out.');
+      const response = await page.request.get(`${apiOrigin}/api${scope.path}`, {
+        headers: {
+          ...primaryMemberHeaders,
+          'x-company-context-id': companyId,
+        },
+        timeout: remaining,
+      });
+      if (response.status() !== 200)
+        throw new Error(`Scope read failed with HTTP ${response.status()}.`);
+      const body: unknown = await response.json();
+      if (
+        typeof body !== 'object' ||
+        body === null ||
+        !('provisional' in body) ||
+        body.provisional !== true ||
+        !('headVersionNumber' in body) ||
+        body.headVersionNumber !== expectedHeadVersionNumber ||
+        !('current' in body) ||
+        ('offeringId' in scope &&
+          (!('offeringId' in body) || body.offeringId !== scope.offeringId))
+      )
+        throw new Error(
+          'Expected the published synthetic configuration scope.',
+        );
+      const version = body.current;
+      if (version === null) {
+        current.push(false);
+        continue;
+      }
+      if (
+        typeof version !== 'object' ||
+        version === null ||
+        !('id' in version) ||
+        typeof version.id !== 'string' ||
+        version.id.length === 0 ||
+        !('versionNumber' in version) ||
+        version.versionNumber !== 1 ||
+        !('state' in version) ||
+        version.state !== 'CURRENT' ||
+        !('effectiveFrom' in version) ||
+        typeof version.effectiveFrom !== 'string' ||
+        Date.parse(version.effectiveFrom) !== scope.effectiveFrom
+      )
+        throw new Error('Expected the exact first published version current.');
+      current.push(true);
+    }
+    if (current.every(Boolean)) return;
+    const remaining = deadline - performance.now();
+    if (remaining > 0) await page.waitForTimeout(Math.min(500, remaining));
+  }
+  throw new Error('Configuration activation timed out.');
+}
 
 function rootId(value: unknown): string {
   if (

@@ -14,10 +14,16 @@ import {
   type ContractView,
 } from './contract-response';
 import './contract.css';
+import { ContractRepresentationViewer } from './ContractRepresentationViewer';
 type View =
   | { kind: 'loading' }
   | { kind: 'empty'; acceptedVersionId: string | null }
-  | { kind: 'ready'; contract: ContractView }
+  | {
+      kind: 'ready';
+      contract: ContractView;
+      stamp: string;
+      identity: BrowserIdentity;
+    }
   | { kind: 'denied' | 'error' };
 type Feedback =
   | 'invalid'
@@ -60,6 +66,7 @@ export function ContractPanel({
     context?.clientPermissions?.includes('client.read'),
   );
   const stamp = JSON.stringify([
+    opportunityId,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -127,7 +134,7 @@ export function ContractPanel({
           contract.opportunityId !== opportunityId
         )
           throw new Error('Mismatched Contract.');
-        setView({ kind: 'ready', contract });
+        setView({ kind: 'ready', contract, stamp, identity });
         return;
       }
       let acceptedVersionId: string | null = null;
@@ -235,7 +242,7 @@ export function ContractPanel({
         )
           throw new Error('Mismatched Contract result.');
         attempt.current = undefined;
-        setView({ kind: 'ready', contract });
+        setView({ kind: 'ready', contract, stamp, identity });
         setFeedback('success');
       } else if (result.status === 'validation') {
         attempt.current = undefined;
@@ -268,7 +275,25 @@ export function ContractPanel({
           {!view.acceptedVersionId && <p>{copy.awaiting}</p>}
         </>
       )}
-      {view.kind === 'ready' && <ContractSummary contract={view.contract} />}
+      {view.kind === 'ready' &&
+        view.stamp === stamp &&
+        view.identity === identity &&
+        companyId && (
+          <>
+            <ContractSummary contract={view.contract} />
+            <ContractRepresentationViewer
+              key={stamp + opportunityId + view.contract.version.id}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contractId={view.contract.id}
+              versionId={view.contract.version.id}
+              onCompanyContextRejected={onCompanyContextRejected}
+              onActorRevalidated={onActorRevalidated}
+              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            />
+          </>
+        )}
       {view.kind === 'empty' && view.acceptedVersionId && mayPrepare && (
         <form onSubmit={(event) => void submit(event)}>
           <label>
