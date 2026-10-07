@@ -1,0 +1,16 @@
+{
+  "name": "prisma-prim-railway-config",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "scripts": {
+    "test": "node --test config.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "railway": "3.13.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
