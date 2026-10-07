@@ -23,6 +23,22 @@ withPostgres('Company commercial Activity read REST', () => {
   let origin: string;
   let pool: Pool;
 
+  async function withEventTime<T>(
+    instant: Date,
+    command: () => Promise<T>,
+  ): Promise<T> {
+    await pool.query(
+      `ALTER TABLE commercial_intake_events ALTER COLUMN occurred_at SET DEFAULT '${instant.toISOString()}'::timestamptz`,
+    );
+    try {
+      return await command();
+    } finally {
+      await pool.query(
+        'ALTER TABLE commercial_intake_events ALTER COLUMN occurred_at SET DEFAULT now()',
+      );
+    }
+  }
+
   const memberHeaders = {
     'x-test-external-subject': 'commercial-reader-member',
     'x-test-display-name': 'Commercial Reader',
@@ -141,22 +157,32 @@ withPostgres('Company commercial Activity read REST', () => {
 
   it('names the containing Request of each Opportunity event without changing the Company page', async () => {
     const setup = await preparedReader();
-    const older = await captureRequest(setup.company.id, 'derived-older');
-    const newer = await captureRequest(setup.company.id, 'derived-newer');
-    const updated = await request(
-      `/commercial-intake/opportunities/${older.initialOpportunity.id}/next-action`,
-      setup.company.id,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'idempotency-key': `next-action-${crypto.randomUUID()}`,
-        },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          nextAction: 'Confirm the derived Request link',
-        }),
-      },
+    const older = await withEventTime(
+      new Date('2035-01-01T00:00:00.000Z'),
+      () => captureRequest(setup.company.id, 'derived-older'),
+    );
+    const newer = await withEventTime(
+      new Date('2036-01-01T00:00:00.000Z'),
+      () => captureRequest(setup.company.id, 'derived-newer'),
+    );
+    const updated = await withEventTime(
+      new Date('2037-01-01T00:00:00.000Z'),
+      () =>
+        request(
+          `/commercial-intake/opportunities/${older.initialOpportunity.id}/next-action`,
+          setup.company.id,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': `next-action-${crypto.randomUUID()}`,
+            },
+            body: JSON.stringify({
+              expectedVersion: 1,
+              nextAction: 'Confirm the derived Request link',
+            }),
+          },
+        ),
     );
     expect(updated.status).toBe(200);
     const other = entity(

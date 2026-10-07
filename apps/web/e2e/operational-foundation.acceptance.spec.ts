@@ -514,10 +514,8 @@ test('operates the delivered Client, Project, Task and working Document journey 
   const activityBody: unknown = await activityResponse.json();
   const ids = { clientId, projectId, taskId, documentId };
   const serverActions = readJourneyActions(activityBody, ids);
-  expect(serverActions.slice(0, 9)).toEqual(requiredActions.slice(0, 9));
-  expect(serverActions.slice(9).sort()).toEqual(
-    requiredActions.slice(9).sort(),
-  );
+  expect([...serverActions].sort()).toEqual([...requiredActions].sort());
+  expectJourneyChronology(activityBody, ids);
   expect(
     responsibleChanges(activityBody, ids.projectId).map((change) => [
       change.before?.displayLabel.split(' · ')[0] ?? null,
@@ -571,6 +569,8 @@ type JourneyIds = {
 };
 
 type ActivityRecord = {
+  id: string;
+  occurredAt: number | null;
   action: string;
   actorDisplayName: string;
   target: Record<string, unknown>;
@@ -766,6 +766,8 @@ function activityRecords(value: unknown): ActivityRecord[] {
     if (
       typeof event !== 'object' ||
       event === null ||
+      !('id' in event) ||
+      typeof event.id !== 'string' ||
       !('action' in event) ||
       typeof event.action !== 'string' ||
       !('target' in event) ||
@@ -782,7 +784,15 @@ function activityRecords(value: unknown): ActivityRecord[] {
       typeof event.actor.displayName !== 'string'
     )
       throw new Error('Expected an attributable Activity Log event.');
+    const occurredAt =
+      'occurredAt' in event && typeof event.occurredAt === 'string'
+        ? Date.parse(event.occurredAt)
+        : null;
+    if (occurredAt !== null && !Number.isFinite(occurredAt))
+      throw new Error('Expected a valid Activity Log timestamp.');
     return {
+      id: event.id,
+      occurredAt,
       action: event.action,
       actorDisplayName: event.actor.displayName,
       target: event.target,
@@ -798,6 +808,22 @@ function readJourneyActions(value: unknown, ids: JourneyIds): RequiredAction[] {
         throw new Error(`Unexpected journey action: ${event.action}`);
       return event.action;
     });
+}
+
+function expectJourneyChronology(value: unknown, ids: JourneyIds): void {
+  let previous: { id: string; occurredAt: number } | undefined;
+  for (const event of activityRecords(value).filter((record) =>
+    belongsToJourney(record, ids),
+  )) {
+    if (event.occurredAt === null)
+      throw new Error('Expected a timestamp for each journey event.');
+    if (previous)
+      expect(
+        previous.occurredAt - event.occurredAt ||
+          previous.id.localeCompare(event.id),
+      ).toBeGreaterThanOrEqual(0);
+    previous = { id: event.id, occurredAt: event.occurredAt };
+  }
 }
 
 function belongsToJourney(event: ActivityRecord, ids: JourneyIds): boolean {

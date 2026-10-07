@@ -1,3 +1,4 @@
+import { useContractDecisionCopy } from '../contract/contract-decision.copy';
 import {
   type FormEvent,
   useCallback,
@@ -38,6 +39,7 @@ type AssignmentBundle =
   | 'pricing-user'
   | 'offer-preparer'
   | 'contract-preparer'
+  | 'contract-approver'
   | 'offer-approver'
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
@@ -64,6 +66,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-user': '/company-pricing-user-assignments',
   'offer-preparer': '/company-offer-preparer-assignments',
   'contract-preparer': '/company-contract-preparer-assignments',
+  'contract-approver': '/company-contract-approver-assignments',
   'offer-approver': '/company-offer-approver-assignments',
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
   'commercial-activity-reader':
@@ -102,6 +105,7 @@ export function CompanyContextAccess({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const profitabilityCopy = useProfitabilityCopy();
+  const decisionCopy = useContractDecisionCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -498,6 +502,7 @@ export function CompanyContextAccess({
                 value: 'contract-preparer',
                 label: copy.contractPreparerBundle,
               },
+              { value: 'contract-approver', label: decisionCopy('bundle') },
               { value: 'offer-approver', label: copy.offerApproverBundle },
               {
                 value: 'pricing-adjustment',
@@ -540,6 +545,7 @@ export function CompanyContextAccess({
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
                 value === 'contract-preparer' ||
+                value === 'contract-approver' ||
                 value === 'offer-approver' ||
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
@@ -578,6 +584,9 @@ export function CompanyContextAccess({
           {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
           {bundle === 'contract-preparer' && (
             <p>{copy.contractPreparerPrerequisites}</p>
+          )}
+          {bundle === 'contract-approver' && (
+            <p>{decisionCopy('prerequisites')}</p>
           )}
           {bundle === 'offer-preparer' && (
             <p>{copy.offerPreparerPrerequisites}</p>
@@ -675,6 +684,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-user': copy.pricingUserBundle,
     'offer-preparer': copy.offerPreparerBundle,
     'contract-preparer': copy.contractPreparerBundle,
+    'contract-approver': 'Company Contract Approver',
     'offer-approver': copy.offerApproverBundle,
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,

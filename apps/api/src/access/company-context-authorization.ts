@@ -1,6 +1,10 @@
 import {
   COMPANY_CONTRACT_PREPARER_BUNDLE,
   contractPreparerPermissionsFor,
+  contractApproverPermissionsFor,
+  COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS,
+  COMPANY_CONTRACT_APPROVER_V1_PERMISSIONS,
+  COMPANY_CONTRACT_APPROVER_BUNDLE,
   type CompanyContractPermission,
 } from './company-permissions.js';
 import { Injectable, ForbiddenException } from '@nestjs/common';
@@ -760,10 +764,45 @@ export class CompanyContextAuthorization {
     const company = actor.activeCompany;
     if (!company || !carriesEvery(company.contractPermissions, required))
       throw new ForbiddenException();
+    const grants: SQL[] = [];
+    if (
+      required.every((p) =>
+        COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS.some((own) => own === p),
+      )
+    )
+      grants.push(capturedGrant(COMPANY_CONTRACT_PREPARER_BUNDLE));
+    if (
+      required.every((p) =>
+        COMPANY_CONTRACT_APPROVER_V1_PERMISSIONS.some((own) => own === p),
+      )
+    )
+      grants.push(capturedGrant(COMPANY_CONTRACT_APPROVER_BUNDLE));
+    if (!grants.length) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
-      capturedGrant(COMPANY_CONTRACT_PREPARER_BUNDLE),
+      anyCapturedGrant(grants),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  async requireContractQualityAccess(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (company?.contractPermissions?.includes('commercial.contract.prepare'))
+      grants.push(capturedGrant(COMPANY_CONTRACT_PREPARER_BUNDLE));
+    if (company?.contractPermissions?.includes('commercial.contract.approve'))
+      grants.push(capturedGrant(COMPANY_CONTRACT_APPROVER_BUNDLE));
+    if (!company || !grants.length) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      anyCapturedGrant(grants),
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
@@ -1085,7 +1124,7 @@ export class CompanyContextAuthorization {
         companyRoleAssignments.workspaceMembershipId,
         actor.workspaceMembershipId,
       ),
-      inArray(companyRoleAssignments.bundle, [
+      inArray(sql`${companyRoleAssignments.bundle}::text`, [
         ...COMPANY_CONTEXT_AUTHORIZING_BUNDLES,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
@@ -1093,6 +1132,7 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
         COMPANY_CONTRACT_PREPARER_BUNDLE,
+        COMPANY_CONTRACT_APPROVER_BUNDLE,
         COMPANY_OFFER_APPROVER_BUNDLE,
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
@@ -1334,6 +1374,17 @@ export class CompanyContextAuthorization {
         company.contractPermissionSetVersion = 'v1';
       }
       if (
+        row.bundle === COMPANY_CONTRACT_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.contractPermissions = [
+          ...(company.contractPermissions ?? []),
+          ...contractApproverPermissionsFor(row.permissionSetVersion),
+        ];
+        company.contractApproverAssignmentId = row.assignmentId;
+        company.contractApproverPermissionSetVersion = 'v1';
+      }
+      if (
         row.bundle === COMPANY_OFFER_APPROVER_BUNDLE &&
         row.permissionSetVersion === 'v1'
       ) {
@@ -1375,11 +1426,12 @@ function capturedGrant(
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
     | typeof COMPANY_OFFER_PREPARER_BUNDLE
     | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
+    | typeof COMPANY_CONTRACT_APPROVER_BUNDLE
     | typeof COMPANY_OFFER_APPROVER_BUNDLE
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE
     | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
 ): SQL {
-  return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
+  return sql`(${sql`${companyRoleAssignments.bundle}::text = ${bundle}`} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
     'v1',
   )})`;

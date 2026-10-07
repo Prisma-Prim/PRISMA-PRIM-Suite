@@ -251,6 +251,48 @@ export class AccountabilityService {
     ]);
   }
 
+  async recordContractDecision(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    kind: 'APPROVE' | 'REJECT';
+    offerVersionId: string;
+    pricingSnapshotId: string;
+    acknowledgedWarningCodes: readonly string[];
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      contractVersionId: input.contractVersionId,
+      action:
+        input.kind === 'APPROVE'
+          ? 'contract_version.approved'
+          : 'contract_version.rejected',
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: {
+        contractId: input.contractId,
+        contractVersionId: input.contractVersionId,
+        versionNumber: 1,
+        kind: 'CONTRACT',
+        origin: 'ACCEPTED_OFFER',
+        provenance: 'ILLUSTRATIVE',
+        offerVersionId: input.offerVersionId,
+        pricingSnapshotId: input.pricingSnapshotId,
+        ...(input.kind === 'APPROVE'
+          ? {
+              ruleSetVersion: 1,
+              acknowledgedWarningCodes: input.acknowledgedWarningCodes,
+            }
+          : {}),
+      },
+    });
+  }
+
   async recordOfferCreated(input: {
     actor: ActorContext;
     companyId: string;
@@ -2147,9 +2189,11 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
     case 'company_offer_preparer_assignment.granted':
+    case 'company_contract_approver_assignment.granted':
     case 'company_contract_preparer_assignment.granted':
     case 'company_offer_approver_assignment.granted':
     case 'company_offer_preparer_assignment.revoked':
+    case 'company_contract_approver_assignment.revoked':
     case 'company_contract_preparer_assignment.revoked':
     case 'company_offer_approver_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':

@@ -357,7 +357,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     panel.getByText('Recorded accepted scope ' + suffix, { exact: true }),
   ).toBeVisible();
   await expect(
-    panel.getByText('Pending approval', { exact: false }),
+    panel.getByText('Pending approval · Not executed', { exact: true }),
   ).toBeVisible();
   await expect(panel.getByText('Source Offer', { exact: true })).toBeVisible();
   await expect(
@@ -614,6 +614,128 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     recordedChecksum ?? '',
   );
   await page.waitForLoadState('networkidle');
+  const rejectionIntake = object(
+    await command({
+      request,
+      path: '/commercial-intake/requests',
+      data: {
+        originalText: 'Synthetic rejection source',
+        subject: 'Rejection Request ' + suffix,
+        clientAccountId: text(client.id),
+        opportunity: {
+          title: 'Reject Contract ' + suffix,
+          nextAction: 'Decide exact Contract',
+        },
+      },
+      key: 'c4-reject-intake-' + suffix,
+      companyId,
+    }),
+  );
+  const rejectionOpportunityId = text(
+    object(rejectionIntake.initialOpportunity).id,
+  );
+  const rejectionSnapshot = object(
+    await command({
+      request,
+      path: '/pricing/opportunities/' + rejectionOpportunityId + '/snapshots',
+      data: {
+        pricingRuleVersionNumber: rule.versionNumber,
+        lines: [
+          {
+            offeringId: text(offering.id),
+            tariffVersionNumber: tariff.versionNumber,
+            quantity: '1',
+          },
+        ],
+      },
+      key: 'c4-reject-snapshot-' + suffix,
+      companyId,
+    }),
+  );
+  const rejectionOffer = object(
+    await command({
+      request,
+      path: '/offers/opportunities/' + rejectionOpportunityId,
+      data: {
+        pricingSnapshotId: text(rejectionSnapshot.id),
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'Synthetic rejection scope',
+        commercialConditions: 'Synthetic rejection conditions',
+      },
+      key: 'c4-reject-offer-' + suffix,
+      companyId,
+    }),
+  );
+  const rejectionOfferPath =
+    '/offers/opportunities/' +
+    rejectionOpportunityId +
+    '/versions/' +
+    text(object(rejectionOffer.version).id);
+  // The live Client has changed since the first acceptance; this second Offer
+  // captures the current identity and therefore starts without identity warnings.
+  await command({
+    request,
+    path: rejectionOfferPath + '/approve',
+    data: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+    key: 'c4-reject-offer-approve-' + suffix,
+    companyId,
+  });
+  const rejectionTransmission = object(
+    await command({
+      request,
+      path: rejectionOfferPath + '/transmission',
+      data: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      key: 'c4-reject-transmit-' + suffix,
+      companyId,
+    }),
+  );
+  await command({
+    request,
+    path: rejectionOfferPath + '/client-response',
+    data: {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: rejectionTransmission.transmittedAt,
+    },
+    key: 'c4-reject-accept-' + suffix,
+    companyId,
+  });
+  const beforeIncompleteIdentity = object(
+    await body(
+      await request.get(api + '/clients/' + text(client.id), {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  expect(
+    (
+      await request.patch(api + '/clients/' + text(client.id), {
+        headers: {
+          ...preparer,
+          'x-company-context-id': companyId,
+          'idempotency-key': 'c4-incomplete-party-' + suffix,
+        },
+        data: {
+          expectedVersion: beforeIncompleteIdentity.version,
+          taxId: null,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  // C1 records the current available party without inventing a missing tax ID.
+  // C3 therefore reports a real recorded-identity error on this second Contract.
+  await command({
+    request,
+    path: '/contracts/opportunities/' + rejectionOpportunityId,
+    data: {
+      acceptedOfferVersionId: text(object(rejectionOffer.version).id),
+      specialConditions: null,
+      termStartsOn: null,
+      termEndsOn: null,
+    },
+    key: 'c4-reject-contract-' + suffix,
+    companyId,
+  });
   for (const bundle of [
     'company-offer-preparer',
     'company-offer-approver',
@@ -711,6 +833,140 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(
     page.locator('iframe[title="Illustrative Contract document"]'),
   ).toHaveCount(0);
+  await command({
+    request,
+    path: '/company-contract-approver-assignments',
+    data: { workspaceMembershipId: membership, companyId },
+    key: 'c4-real-approver-' + suffix,
+    administrator: true,
+  });
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  await expect(
+    panel.getByRole('button', { name: 'Create Contract', exact: true }),
+  ).toHaveCount(0);
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  const decision = panel.getByRole('region', {
+    name: 'Contract decision',
+    exact: true,
+  });
+  const acknowledgementBoxes = decision.getByRole('checkbox');
+  await expect(acknowledgementBoxes).toHaveCount(2);
+  for (const box of await acknowledgementBoxes.all()) await box.check();
+  const approvalPath =
+    '/contracts/opportunities/' +
+    opportunityId +
+    '/versions/' +
+    versionId +
+    '/approve';
+  const approvalAttempts: Array<{
+    body: string | null;
+    key: string | undefined;
+  }> = [];
+  await page.route('**/api' + approvalPath, async (route) => {
+    approvalAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (approvalAttempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await decision
+    .getByRole('button', { name: 'Retry the same decision', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  expect(approvalAttempts[1]).toEqual(approvalAttempts[0]);
+  await page.unroute('**/api' + approvalPath);
+  await expect(decision.locator('.contract-checksum')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await decision.screenshot({
+    path: testInfo.outputPath(
+      'contract-approved-real-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'contract-approved-context-real-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  await expect(decision.locator('.contract-checksum')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  await expect(
+    decision.getByRole('button', { name: 'Approve exact Contract Version' }),
+  ).toHaveCount(0);
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Rejection Request ' + suffix, { exact: true }),
+    })
+    .click();
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(
+    checks.getByText('Contract checks completed with errors.', { exact: true }),
+  ).toBeVisible();
+  const rejectionReason = 'Synthetic rejection despite current quality errors';
+  await decision
+    .getByRole('textbox', { name: 'Rejection reason', exact: true })
+    .fill(rejectionReason);
+  await decision
+    .getByRole('button', { name: 'Reject exact Contract Version', exact: true })
+    .click();
+  await expect(
+    decision.getByText('Rejected internally', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    decision.getByText(rejectionReason, { exact: true }),
+  ).toBeVisible();
+  await decision.screenshot({
+    path: testInfo.outputPath(
+      'contract-rejected-real-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'contract-rejected-context-real-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });
 async function command({
   request,

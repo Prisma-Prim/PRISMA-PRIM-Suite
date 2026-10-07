@@ -75,6 +75,22 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
   let ana: string;
   let ion: string;
 
+  async function withEventTime<T>(
+    instant: Date,
+    command: () => Promise<T>,
+  ): Promise<T> {
+    await harness.pool.query(
+      `ALTER TABLE activity_log_events ALTER COLUMN occurred_at SET DEFAULT '${instant.toISOString()}'::timestamptz`,
+    );
+    try {
+      return await command();
+    } finally {
+      await harness.pool.query(
+        'ALTER TABLE activity_log_events ALTER COLUMN occurred_at SET DEFAULT now()',
+      );
+    }
+  }
+
   beforeAll(async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     database = await createIsolatedPostgresTestDatabase({
@@ -1322,10 +1338,14 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
       },
     ]);
     const key = randomUUID();
-    const granted = await command(
-      assignments.approver,
-      { workspaceMembershipId: ion, companyId },
-      { key },
+    const granted = await withEventTime(
+      new Date('2035-01-01T00:00:00.000Z'),
+      () =>
+        command(
+          assignments.approver,
+          { workspaceMembershipId: ion, companyId },
+          { key },
+        ),
     );
     expect(granted).toMatchObject({
       bundle: 'Company Project Approver',
@@ -1339,9 +1359,13 @@ describe.skipIf(!databaseUrl)('Project lifecycle REST contract', () => {
     );
     await grant('approver', ion);
     const revokeKey = randomUUID();
-    expect((await revoke('approver', ion, companyId, revokeKey)).status).toBe(
-      200,
-    );
+    expect(
+      (
+        await withEventTime(new Date('2037-01-01T00:00:00.000Z'), () =>
+          revoke('approver', ion, companyId, revokeKey),
+        )
+      ).status,
+    ).toBe(200);
     expect((await revoke('approver', ion, companyId, revokeKey)).status).toBe(
       200,
     );

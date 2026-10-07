@@ -31,10 +31,15 @@ import { PricingSnapshotService } from '../pricing-configuration/pricing-snapsho
 import {
   evaluateContractQuality,
   requireHeadContractVersion,
-  readContractQualityResults,
-  contractQualityCodes,
   type ContractQualityRun,
 } from './contract-quality.js';
+import { type ContractDecision } from './contract-decision.js';
+import {
+  decideContractVersion,
+  readContractDecision,
+  type DecideContractVersionInput,
+} from './contract-decision-command.js';
+import { qualityRunView } from './contract-quality-view.js';
 import { readCreateContractCommand } from './contract.validation.js';
 import {
   CONTRACT_TEMPLATE_CODE,
@@ -258,6 +263,21 @@ export class ContractService {
       });
   }
 
+  async decide(input: DecideContractVersionInput): Promise<ContractDecision> {
+    return decideContractVersion(input, {
+      databaseContext: this.databaseContext,
+      authorization: this.authorization,
+      accountability: this.accountability,
+      intake: this.intake,
+      clock: this.clock,
+      find: (target) => this.find(target),
+      evaluateFreshQuality: (target) => this.evaluateFreshQuality(target),
+      representationChecksum: async (actor, contract, version) =>
+        (await this.view(actor, contract, version)).version.representation
+          .sha256,
+    });
+  }
+
   async runQualityChecks(input: {
     actor: ActorContext;
     opportunityId: string;
@@ -265,17 +285,13 @@ export class ContractService {
     payload: unknown;
     idempotencyKey: string | undefined;
   }): Promise<ContractQualityRun> {
-    await this.authorization.requireContractAccess(input.actor, [
-      'commercial.contract.prepare',
-      'commercial.contract.read',
-    ]);
+    await this.authorization.requireContractQualityAccess(input.actor);
     const key = requireIdempotencyKey(input.idempotencyKey);
     return this.databaseContext
       .transaction(async () => {
         const { actor } = input;
-        const companyId = await this.authorization.requireContractAccess(
+        const companyId = await this.authorization.requireContractQualityAccess(
           actor,
-          ['commercial.contract.prepare', 'commercial.contract.read'],
           true,
         );
         await this.intake.requireReadableOfferOpportunity(
@@ -353,94 +369,11 @@ export class ContractService {
             code: 'INVALID_CONTRACT_INPUT',
             field: 'body',
           });
-        const source = await this.offers.inspectContractQualitySource({
-          actor,
-          opportunityId: input.opportunityId,
-          contractId: contract.id,
-        });
-        const pricing = await this.pricing.resolveContractVersionSnapshot({
+        const { evaluatedAt, results } = await this.evaluateFreshQuality({
           actor,
           companyId,
-          opportunityId: input.opportunityId,
-          contractVersionId: version.id,
-        });
-        const recipient = recordedRecipient(version);
-        // The Client owner fences current identity, relationship and union resolution
-        // without requiring or granting dossier-read permission.
-        const current = await this.clients.inspectOfferQualityContext({
-          actor,
-          companyId,
-          originalClientAccountId: contract.originalClientAccountId,
-          snapshotOriginalClientAccountId: null,
-          recipient:
-            recipient.kind === 'PRIMARY'
-              ? { kind: 'PRIMARY' }
-              : {
-                  kind: 'ADDITIONAL',
-                  legalEntityId: recipient.additionalLegalEntityId,
-                },
-          recordedIdentity: recipient,
-        });
-        await this.databaseContext.connection
-          .select({ id: contracts.id })
-          .from(contracts)
-          .where(
-            and(
-              eq(contracts.workspaceId, actor.workspaceId),
-              eq(contracts.companyId, companyId),
-              eq(contracts.id, contract.id),
-            ),
-          )
-          .for('update');
-        const [head] = await this.databaseContext.connection
-          .select({ id: contractVersions.id })
-          .from(contractVersions)
-          .where(
-            and(
-              eq(contractVersions.workspaceId, actor.workspaceId),
-              eq(contractVersions.companyId, companyId),
-              eq(contractVersions.contractId, contract.id),
-            ),
-          )
-          .orderBy(desc(contractVersions.versionNumber))
-          .limit(1);
-        requireHeadContractVersion({
-          versionId: version.id,
-          headVersionId: head?.id,
-        });
-        const evaluatedAt = this.clock.now();
-        const results = evaluateContractQuality({
-          instant: evaluatedAt,
-          companyId,
-          partyKey: partyKey(contract.originalClientAccountId, recipient),
-          identity: recipient,
-          partyAvailable: current.recipientAvailable,
-          partyIdentityCurrent: current.recipientIdentityCurrent,
-          snapshotId: version.pricingSnapshotId,
-          snapshot: {
-            ...pricing,
-            belongsToOffer: pricing.opportunityId === contract.opportunityId,
-          },
-          scopeNote: version.scopeNote,
-          commercialConditions: version.commercialConditions,
-          termStartsOn: version.termStartsOn,
-          termEndsOn: version.termEndsOn,
-          specialConditions: version.specialConditions,
-          preliminaryWork: null,
-          provenance: version.provenance,
-          provisional: version.provenance === 'ILLUSTRATIVE',
-          source: {
-            kind: 'ACCEPTED_OFFER',
-            companyId: source.companyId,
-            partyKey: partyKey(
-              source.originalClientAccountId,
-              source.recipient,
-            ),
-            identity: source.recipient,
-            snapshotId: source.pricingSnapshotId,
-            scopeNote: source.scopeNote,
-            commercialConditions: source.commercialConditions,
-          },
+          contract,
+          version,
         });
         const [run] = await this.databaseContext.connection
           .insert(contractQualityRuns)
@@ -481,6 +414,106 @@ export class ContractService {
             'The Quality Check outcome is uncertain. Retry the identical command.',
         });
       });
+  }
+
+  private async evaluateFreshQuality({
+    actor,
+    companyId,
+    contract,
+    version,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    contract: ContractRow;
+    version: VersionRow;
+  }) {
+    const source = await this.offers.inspectContractQualitySource({
+      actor,
+      opportunityId: contract.opportunityId,
+      contractId: contract.id,
+    });
+    const pricing = await this.pricing.resolveContractVersionSnapshot({
+      actor,
+      companyId,
+      opportunityId: contract.opportunityId,
+      contractVersionId: version.id,
+    });
+    const recipient = recordedRecipient(version);
+    // The Client owner fences current identity, relationship and union resolution
+    // without requiring or granting dossier-read permission.
+    const current = await this.clients.inspectOfferQualityContext({
+      actor,
+      companyId,
+      originalClientAccountId: contract.originalClientAccountId,
+      snapshotOriginalClientAccountId: null,
+      recipient:
+        recipient.kind === 'PRIMARY'
+          ? { kind: 'PRIMARY' }
+          : {
+              kind: 'ADDITIONAL',
+              legalEntityId: recipient.additionalLegalEntityId,
+            },
+      recordedIdentity: recipient,
+    });
+    await this.databaseContext.connection
+      .select({ id: contracts.id })
+      .from(contracts)
+      .where(
+        and(
+          eq(contracts.workspaceId, actor.workspaceId),
+          eq(contracts.companyId, companyId),
+          eq(contracts.id, contract.id),
+        ),
+      )
+      .for('update');
+    const [head] = await this.databaseContext.connection
+      .select({ id: contractVersions.id })
+      .from(contractVersions)
+      .where(
+        and(
+          eq(contractVersions.workspaceId, actor.workspaceId),
+          eq(contractVersions.companyId, companyId),
+          eq(contractVersions.contractId, contract.id),
+        ),
+      )
+      .orderBy(desc(contractVersions.versionNumber))
+      .limit(1);
+    requireHeadContractVersion({
+      versionId: version.id,
+      headVersionId: head?.id,
+    });
+    const evaluatedAt = this.clock.now();
+    const results = evaluateContractQuality({
+      instant: evaluatedAt,
+      companyId,
+      partyKey: partyKey(contract.originalClientAccountId, recipient),
+      identity: recipient,
+      partyAvailable: current.recipientAvailable,
+      partyIdentityCurrent: current.recipientIdentityCurrent,
+      snapshotId: version.pricingSnapshotId,
+      snapshot: {
+        ...pricing,
+        belongsToOffer: pricing.opportunityId === contract.opportunityId,
+      },
+      scopeNote: version.scopeNote,
+      commercialConditions: version.commercialConditions,
+      termStartsOn: version.termStartsOn,
+      termEndsOn: version.termEndsOn,
+      specialConditions: version.specialConditions,
+      preliminaryWork: null,
+      provenance: version.provenance,
+      provisional: version.provenance === 'ILLUSTRATIVE',
+      source: {
+        kind: 'ACCEPTED_OFFER',
+        companyId: source.companyId,
+        partyKey: partyKey(source.originalClientAccountId, source.recipient),
+        identity: source.recipient,
+        snapshotId: source.pricingSnapshotId,
+        scopeNote: source.scopeNote,
+        commercialConditions: source.commercialConditions,
+      },
+    });
+    return { evaluatedAt, results };
   }
 
   async listQualityRuns(input: {
@@ -702,13 +735,29 @@ export class ContractService {
     if (
       contract.kind !== 'CONTRACT' ||
       contract.origin !== 'ACCEPTED_OFFER' ||
-      contract.revision !== 1 ||
+      ![1, 2].includes(contract.revision) ||
       version.versionNumber !== 1 ||
-      version.decisionState !== 'PENDING' ||
+      !['PENDING', 'APPROVED', 'REJECTED'].includes(version.decisionState) ||
       version.executionState !== 'NOT_EXECUTED' ||
       version.provenance !== 'ILLUSTRATIVE'
     )
       throw new Error('Invalid stored Contract state.');
+    const decision = await readContractDecision(
+      this.databaseContext,
+      actor,
+      contract,
+      version,
+    );
+    if (
+      (version.decisionState === 'PENDING' &&
+        (decision !== null || contract.revision !== 1)) ||
+      (version.decisionState !== 'PENDING' &&
+        (!decision ||
+          decision.revision !== contract.revision ||
+          version.decisionState !==
+            (decision.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED')))
+    )
+      throw new Error('Invalid stored Contract decision state.');
     const recipient = recordedRecipient(version);
     const [latestRun] = await this.databaseContext.connection
       .select()
@@ -780,6 +829,7 @@ export class ContractService {
           specialConditions: version.specialConditions,
           provenance: 'ILLUSTRATIVE',
         }),
+        decision,
         latestQualityRun: latestRun ? qualityRunView(latestRun, version) : null,
         versionNumber: version.versionNumber,
         recipient,
@@ -831,27 +881,4 @@ function partyKey(clientId: string, recipient: OfferRecipientCopy): string {
   return recipient.kind === 'PRIMARY'
     ? `PRIMARY:${clientId}`
     : `ADDITIONAL:${recipient.additionalLegalEntityId}`;
-}
-function qualityRunView(
-  row: typeof contractQualityRuns.$inferSelect,
-  version: VersionRow,
-): ContractQualityRun {
-  if (
-    row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
-    row.ruleSetVersion !== 1 ||
-    row.contractVersionId !== version.id
-  )
-    throw new Error('Unsupported stored Contract Quality Check rule set.');
-  return {
-    id: row.id,
-    contractVersionId: row.contractVersionId,
-    ruleSet: row.ruleSet,
-    ruleSetVersion: row.ruleSetVersion,
-    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
-    evaluatedAt: row.evaluatedAt.toISOString(),
-    results: readContractQualityResults(
-      row.results,
-      contractQualityCodes(version.termEndsOn),
-    ),
-  };
 }

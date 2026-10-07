@@ -189,7 +189,9 @@ withPostgres('demonstration runner through the public REST API', () => {
   /** The seeded business state as the owner and each persona read it. */
   async function readModel(
     result: DemonstrationRunResult,
-    { normalizeTaskOrder = false }: { normalizeTaskOrder?: boolean } = {},
+    {
+      normalizeConvergenceOrder = false,
+    }: { normalizeConvergenceOrder?: boolean } = {},
   ) {
     const ids = recordIds(result);
     const memberKeys = new Map(
@@ -230,7 +232,7 @@ withPostgres('demonstration runner through the public REST API', () => {
           version: task.version,
           assignee: memberKey(task.assignee),
         }));
-        if (normalizeTaskOrder)
+        if (normalizeConvergenceOrder)
           tasks.sort((left, right) => left.title.localeCompare(right.title));
         const documents = objects(
           object(
@@ -295,10 +297,15 @@ withPostgres('demonstration runner through the public REST API', () => {
             companyId,
           ),
         ).items,
-      ).map((offering) => [
-        object(offering.serviceDefinition).code,
-        offering.provisional,
-      ]);
+      ).map(
+        (offering) =>
+          [
+            text(object(offering.serviceDefinition).code),
+            offering.provisional,
+          ] satisfies [string, unknown],
+      );
+      if (normalizeConvergenceOrder)
+        offerings.sort((left, right) => left[0].localeCompare(right[0]));
       const rules = object(
         await read(principal, '/pricing-configuration/rule-scope', companyId),
       );
@@ -768,9 +775,9 @@ withPostgres('demonstration runner through the public REST API', () => {
     const uninterrupted = await run();
     expect(uninterrupted.kind).toBe('converged');
     const expectedCounts = await tableCounts();
-    // Fresh runs compare Task content independently of creation-time ordering.
+    // Fresh runs compare Task and Offering content independently of creation-time order.
     const expectedModel = await readModel(uninterrupted, {
-      normalizeTaskOrder: true,
+      normalizeConvergenceOrder: true,
     });
     // Cut points: inside the grants, between a Task and its transition, and
     // between the two rule publications.
@@ -795,7 +802,7 @@ withPostgres('demonstration runner through the public REST API', () => {
         ).toBe(!resumedSteps.has(entry.step));
       expect(await tableCounts(), lastStep).toEqual(expectedCounts);
       expect(
-        await readModel(resumed, { normalizeTaskOrder: true }),
+        await readModel(resumed, { normalizeConvergenceOrder: true }),
         lastStep,
       ).toEqual(expectedModel);
     }

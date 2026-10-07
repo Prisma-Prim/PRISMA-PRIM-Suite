@@ -1,3 +1,5 @@
+import { ContractDecisionPanel } from './ContractDecisionPanel';
+import { useContractDecisionCopy } from './contract-decision.copy';
 import { ContractQualityPanel } from './ContractQualityPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -53,8 +55,10 @@ export function ContractPanel({
   const companyId = actor.activeCompany?.id;
   const context = actor.activeCompany;
   const mayRead = Boolean(
-    context?.contractPermissionSetVersion === 'v1' &&
-    Boolean(context.contractPermissionAssignmentId) &&
+    ((context?.contractPermissionSetVersion === 'v1' &&
+      Boolean(context.contractPermissionAssignmentId)) ||
+      (context?.contractApproverPermissionSetVersion === 'v1' &&
+        Boolean(context.contractApproverAssignmentId))) &&
     context.contractPermissions?.includes('commercial.contract.read') &&
     context.commercialIntakePermissions?.includes(
       'commercial.opportunity.read',
@@ -74,6 +78,8 @@ export function ContractPanel({
     companyId,
     context?.contractPermissionAssignmentId,
     context?.contractPermissionSetVersion,
+    context?.contractApproverAssignmentId,
+    context?.contractApproverPermissionSetVersion,
     context?.contractPermissions,
     context?.commercialIntakePermissionAssignmentId,
     context?.commercialIntakePermissionSetVersion,
@@ -89,12 +95,17 @@ export function ContractPanel({
     [feedback, setFeedback] = useState<Feedback>(null),
     [running, setRunning] = useState(false),
     [qualityProtected, setQualityProtected] = useState(false),
+    [decisionProtected, setDecisionProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
   const request = useRef<AbortController | undefined>(undefined),
     attempt = useRef<{ body: string; key: string } | undefined>(undefined);
-  const locked = running || feedback === 'uncertain' || qualityProtected;
+  const locked =
+    running ||
+    decisionProtected ||
+    feedback === 'uncertain' ||
+    qualityProtected;
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     return handleAuthenticatedAccessRejection({
       result,
@@ -296,19 +307,92 @@ export function ContractPanel({
               onActorRevalidated={onActorRevalidated}
               onWorkspaceAccessRejected={onWorkspaceAccessRejected}
             />
+            <ContractDecisionPanel
+              key={stamp + ':decision:' + view.contract.version.id}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contract={view.contract}
+              mayDecide={Boolean(
+                context?.contractPermissions?.includes(
+                  'commercial.contract.approve',
+                ),
+              )}
+              protectedChecks={qualityProtected}
+              reject={reject}
+              onProtectionChange={setDecisionProtected}
+              onDecision={(decision) =>
+                setView((current) =>
+                  current.kind === 'ready'
+                    ? {
+                        ...current,
+                        contract: {
+                          ...current.contract,
+                          revision: decision.revision,
+                          version: {
+                            ...current.contract.version,
+                            decision,
+                            decisionState:
+                              decision.kind === 'APPROVE'
+                                ? 'APPROVED'
+                                : 'REJECTED',
+                            latestQualityRun:
+                              decision.kind === 'APPROVE'
+                                ? decision.qualityRun
+                                : current.contract.version.latestQualityRun,
+                          },
+                        },
+                      }
+                    : current,
+                )
+              }
+            />
             <ContractQualityPanel
-              key={stamp + ':' + opportunityId + ':' + view.contract.version.id}
+              key={
+                stamp +
+                ':' +
+                opportunityId +
+                ':' +
+                view.contract.version.id +
+                ':' +
+                (view.contract.version.decision?.kind === 'APPROVE'
+                  ? view.contract.version.decision.qualityRun.id
+                  : 'review')
+              }
               identity={identity}
               companyId={companyId}
               opportunityId={opportunityId}
               versionId={view.contract.version.id}
               termEndsOn={view.contract.version.termEndsOn}
               initialRun={view.contract.version.latestQualityRun}
-              mayRun={Boolean(
-                context?.contractPermissions?.includes(
-                  'commercial.contract.prepare',
-                ),
-              )}
+              mayRun={
+                !decisionProtected &&
+                Boolean(
+                  context?.contractPermissions?.includes(
+                    'commercial.contract.prepare',
+                  ) ||
+                  context?.contractPermissions?.includes(
+                    'commercial.contract.approve',
+                  ),
+                )
+              }
+              protectedDecision={decisionProtected}
+              onRun={(run) =>
+                setView((current) =>
+                  current.kind === 'ready'
+                    ? {
+                        ...current,
+                        contract: {
+                          ...current.contract,
+                          version: {
+                            ...current.contract.version,
+                            latestQualityRun: run,
+                          },
+                        },
+                      }
+                    : current,
+                )
+              }
               reject={reject}
               onProtectionChange={setQualityProtected}
             />
@@ -375,13 +459,21 @@ export function ContractPanel({
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
+  const decisionCopy = useContractDecisionCopy();
   return (
     <>
       <p>
         {copy.reference} {contract.illustrativeReference} · {copy.version}
       </p>
       <p>
-        {copy.decision} · {copy.execution}
+        {decisionCopy(
+          version.decisionState === 'APPROVED'
+            ? 'approved'
+            : version.decisionState === 'REJECTED'
+              ? 'rejected'
+              : 'pending',
+        )}{' '}
+        · {copy.execution}
       </p>
       <dl>
         <dt>{copy.source}</dt>
