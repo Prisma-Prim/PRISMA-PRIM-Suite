@@ -10,6 +10,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useProfitabilityCopy } from '../profitability-estimate/profitability.copy';
 import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
@@ -42,10 +43,14 @@ type AssignmentBundle =
   | 'commercial-activity-reader'
   | 'opportunity-manager'
   | 'project'
-  | 'project-approver';
+  | 'project-approver'
+  | 'profitability-contributor'
+  | 'profitability-director';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'profitability-contributor': '/company-profitability-contributor-assignments',
+  'profitability-director': '/company-profitability-director-assignments',
   'task-manager': '/company-task-manager-assignments',
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
@@ -96,6 +101,7 @@ export function CompanyContextAccess({
   onClientAuthorityChanged?: () => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const profitabilityCopy = useProfitabilityCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -478,6 +484,14 @@ export function CompanyContextAccess({
                 value: 'pricing-configuration',
                 label: copy.pricingConfigurationBundle,
               },
+              {
+                value: 'profitability-contributor',
+                label: profitabilityCopy('contributorBundle'),
+              },
+              {
+                value: 'profitability-director',
+                label: profitabilityCopy('directorBundle'),
+              },
               { value: 'pricing-user', label: copy.pricingUserBundle },
               { value: 'offer-preparer', label: copy.offerPreparerBundle },
               {
@@ -517,6 +531,8 @@ export function CompanyContextAccess({
             onValueChange={(value) => {
               resetCommand();
               if (
+                value === 'profitability-contributor' ||
+                value === 'profitability-director' ||
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
@@ -540,6 +556,12 @@ export function CompanyContextAccess({
             }}
           />
 
+          {bundle === 'profitability-contributor' && (
+            <p>{profitabilityCopy('contributorPrerequisites')}</p>
+          )}
+          {bundle === 'profitability-director' && (
+            <p>{profitabilityCopy('directorPrerequisites')}</p>
+          )}
           {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
           {bundle === 'commercial-activity-reader' && (
             <p>{copy.commercialActivityReaderPrerequisites}</p>
@@ -645,6 +667,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels: Record<AssignmentBundle, AssignmentBundleLabel> = {
+    'profitability-contributor': 'Company Profitability Contributor',
+    'profitability-director': 'Company Profitability Director',
     'commercial-intake': copy.commercialIntakeBundle,
     'service-catalogue': copy.serviceCatalogueBundle,
     'pricing-configuration': copy.pricingConfigurationBundle,

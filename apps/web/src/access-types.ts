@@ -66,6 +66,18 @@ export interface ActorContext {
     >;
     contractPermissionAssignmentId?: string;
     contractPermissionSetVersion?: 'v1';
+    profitabilityContributorPermissions?: Array<
+      | 'commercial.profitability_estimate.read'
+      | 'commercial.profitability_estimate.create'
+    >;
+    profitabilityContributorPermissionAssignmentId?: string;
+    profitabilityContributorPermissionSetVersion?: 'v1';
+    profitabilityDirectorPermissions?: Array<
+      | 'commercial.profitability_estimate.read'
+      | 'commercial.profitability_estimate.decide'
+    >;
+    profitabilityDirectorPermissionAssignmentId?: string;
+    profitabilityDirectorPermissionSetVersion?: 'v1';
     offerPermissions?: Array<
       | 'commercial.offer.read'
       | 'commercial.offer.prepare'

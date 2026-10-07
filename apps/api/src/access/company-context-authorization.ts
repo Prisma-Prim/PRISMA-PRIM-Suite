@@ -64,6 +64,10 @@ import {
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   pricingAdjustmentPermissionsFor,
   type CompanyPricingAdjustmentPermission,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+  profitabilityContributorPermissionsFor,
+  profitabilityDirectorPermissionsFor,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -766,6 +770,48 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
+  // The bundles are independent from Company context and Opportunity read.
+  // The Opportunity owner must separately prove target readability.
+  async requireProfitabilityEstimateAccess(
+    actor: ActorContext,
+    operation: 'read' | 'create' | 'decide',
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    const grants: SQL[] = [];
+    if (
+      company?.profitabilityContributorPermissions?.includes(
+        'commercial.profitability_estimate.read',
+      ) &&
+      (operation === 'read' ||
+        (operation === 'create' &&
+          company.profitabilityContributorPermissions.includes(
+            'commercial.profitability_estimate.create',
+          )))
+    )
+      grants.push(capturedGrant(COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE));
+    if (
+      company?.profitabilityDirectorPermissions?.includes(
+        'commercial.profitability_estimate.read',
+      ) &&
+      (operation === 'read' ||
+        (operation === 'decide' &&
+          company.profitabilityDirectorPermissions.includes(
+            'commercial.profitability_estimate.decide',
+          )))
+    )
+      grants.push(capturedGrant(COMPANY_PROFITABILITY_DIRECTOR_BUNDLE));
+    if (!company || grants.length === 0) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      anyCapturedGrant(grants),
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
   async requireOfferAccess(
     actor: ActorContext,
     required: readonly CompanyOfferPermission[],
@@ -1051,6 +1097,8 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+        COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
+        COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -1160,6 +1208,27 @@ export class CompanyContextAuthorization {
         ];
         company.commercialIntakePermissionAssignmentId = row.assignmentId;
         company.commercialIntakePermissionSetVersion = row.permissionSetVersion;
+      }
+      if (
+        row.bundle === COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.profitabilityContributorPermissions = [
+          ...profitabilityContributorPermissionsFor(row.permissionSetVersion),
+        ];
+        company.profitabilityContributorPermissionAssignmentId =
+          row.assignmentId;
+        company.profitabilityContributorPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_PROFITABILITY_DIRECTOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.profitabilityDirectorPermissions = [
+          ...profitabilityDirectorPermissionsFor(row.permissionSetVersion),
+        ];
+        company.profitabilityDirectorPermissionAssignmentId = row.assignmentId;
+        company.profitabilityDirectorPermissionSetVersion = 'v1';
       }
       // The reader bundle carries Activity read only. It never contributes
       // Company context, so it is resolved but not authorizing.
@@ -1306,7 +1375,9 @@ function capturedGrant(
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
     | typeof COMPANY_OFFER_PREPARER_BUNDLE
     | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
-    | typeof COMPANY_OFFER_APPROVER_BUNDLE,
+    | typeof COMPANY_OFFER_APPROVER_BUNDLE
+    | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE
+    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
 ): SQL {
   return sql`(${eq(companyRoleAssignments.bundle, bundle)} AND ${eq(
     companyRoleAssignments.permissionSetVersion,

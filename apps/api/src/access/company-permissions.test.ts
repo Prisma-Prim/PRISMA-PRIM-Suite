@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialActivityPermissionsFor,
+  profitabilityContributorPermissionsFor,
+  profitabilityDirectorPermissionsFor,
   commercialIntakePermissionsFor,
   commercialIntakeVersionsWith,
   opportunityManagerPermissionsFor,
@@ -437,4 +439,51 @@ describe('Company Project Approver permission sets', () => {
       expect(projectApproverPermissionsFor(version)).toEqual([]);
     },
   );
+});
+
+describe('Company Profitability permission sets', () => {
+  it('keeps contributor creation and director decision independent', () => {
+    expect(profitabilityContributorPermissionsFor('v1')).toEqual([
+      'commercial.profitability_estimate.read',
+      'commercial.profitability_estimate.create',
+    ]);
+    expect(profitabilityDirectorPermissionsFor('v1')).toEqual([
+      'commercial.profitability_estimate.read',
+      'commercial.profitability_estimate.decide',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported captured version: %s',
+    (version) => {
+      expect(profitabilityContributorPermissionsFor(version)).toEqual([]);
+      expect(profitabilityDirectorPermissionsFor(version)).toEqual([]);
+    },
+  );
+
+  it('never expands any existing captured assignment', () => {
+    const existing: ReadonlyArray<readonly string[]> = [
+      commercialIntakePermissionsFor('v1'),
+      commercialIntakePermissionsFor('v2'),
+      commercialActivityPermissionsFor('v1'),
+      opportunityManagerPermissionsFor('v1'),
+      pricingConfigurationPermissionsFor('v1'),
+      pricingUserPermissionsFor('v1'),
+      pricingAdjustmentPermissionsFor('v1'),
+      offerPreparerPermissionsFor('v1'),
+      serviceCataloguePermissionsFor('v1'),
+      companyDirectorClientPermissionsFor('v2'),
+      projectPermissionsFor('v2'),
+      projectApproverPermissionsFor('v1'),
+      taskPermissionsFor('v1'),
+      documentPermissionsFor('v3'),
+      documentApproverPermissionsFor('v1'),
+    ];
+    for (const permissions of existing)
+      for (const permission of [
+        ...profitabilityContributorPermissionsFor('v1'),
+        ...profitabilityDirectorPermissionsFor('v1'),
+      ])
+        expect(permissions).not.toContain(permission);
+  });
 });

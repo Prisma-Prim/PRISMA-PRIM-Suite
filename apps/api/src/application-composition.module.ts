@@ -68,6 +68,8 @@ import { PricingSnapshotController } from './pricing-configuration/pricing-snaps
 import { CompanyPricingConfigurationAssignmentController } from './access/company-pricing-configuration-assignment.controller.js';
 import { CompanyPricingUserAssignmentController } from './access/company-pricing-user-assignment.controller.js';
 import { CompanyPricingAdjustmentAssignmentController } from './access/company-pricing-adjustment-assignment.controller.js';
+import { CompanyProfitabilityContributorAssignmentController } from './access/company-profitability-contributor-assignment.controller.js';
+import { CompanyProfitabilityDirectorAssignmentController } from './access/company-profitability-director-assignment.controller.js';
 import { CompanyCommercialActivityReaderAssignmentController } from './access/company-commercial-activity-reader-assignment.controller.js';
 import { CompanyOfferPreparerAssignmentController } from './access/company-offer-preparer-assignment.controller.js';
 import { CompanyOfferApproverAssignmentController } from './access/company-offer-approver-assignment.controller.js';
@@ -77,6 +79,8 @@ import { OperationalHomeModule } from './operational-home/operational-home.modul
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
+import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
+import { ProfitabilityEstimateController } from './profitability-estimate/profitability-estimate.controller.js';
 
 @Module({
   imports: [
@@ -95,6 +99,7 @@ import { OfferModule } from './offer/offer.module.js';
     OperationalHomeModule,
     OfferModule,
     ContractModule,
+    ProfitabilityEstimateModule,
   ],
   controllers: [
     TaskController,
@@ -133,6 +138,8 @@ import { OfferModule } from './offer/offer.module.js';
     CompanyPricingUserAssignmentController,
     CompanyPricingAdjustmentAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
+    CompanyProfitabilityContributorAssignmentController,
+    CompanyProfitabilityDirectorAssignmentController,
     CompanyOfferPreparerAssignmentController,
     CompanyContractPreparerAssignmentController,
     CompanyOfferApproverAssignmentController,
@@ -140,6 +147,7 @@ import { OfferModule } from './offer/offer.module.js';
     OperationalHomeController,
     OfferController,
     ContractController,
+    ProfitabilityEstimateController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

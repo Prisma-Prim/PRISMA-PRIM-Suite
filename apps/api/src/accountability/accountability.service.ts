@@ -40,6 +40,7 @@ import {
   pricingConfigurationEvents,
   offerEvents,
   contractEvents,
+  profitabilityEstimateEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -678,6 +679,54 @@ export class AccountabilityService {
           provenance: PRICING_PROVENANCE,
           currency: input.currency,
         },
+      });
+  }
+
+  // Confidential profitability events have no Activity read projection.
+  // Only these typed correlation fields enter the restricted envelope.
+  async recordProfitabilityEstimateEvent(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      estimateId: string;
+      versionId: string;
+      versionNumber: number;
+      opportunityId: string;
+      clientRequestId: string;
+      occurredAt: Date;
+    } & (
+      | { action: 'profitability_estimate_version.created' }
+      | {
+          action: 'profitability_estimate_version.decided';
+          decisionCode: 'APPROVE' | 'MODIFY' | 'REJECT';
+        }
+    ),
+  ): Promise<void> {
+    await this.databaseContext.connection
+      .insert(profitabilityEstimateEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        estimateId: input.estimateId,
+        versionId: input.versionId,
+        versionNumber: input.versionNumber,
+        opportunityId: input.opportunityId,
+        clientRequestId: input.clientRequestId,
+        action: input.action,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata:
+          input.action === 'profitability_estimate_version.created'
+            ? {
+                estimateId: input.estimateId,
+                versionNumber: input.versionNumber,
+              }
+            : {
+                estimateId: input.estimateId,
+                versionNumber: input.versionNumber,
+                decisionCode: input.decisionCode,
+              },
       });
   }
 
@@ -2109,6 +2158,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_commercial_activity_reader_assignment.revoked':
     case 'company_opportunity_manager_assignment.granted':
     case 'company_opportunity_manager_assignment.revoked':
+    case 'company_profitability_contributor_assignment.granted':
+    case 'company_profitability_contributor_assignment.revoked':
+    case 'company_profitability_director_assignment.granted':
+    case 'company_profitability_director_assignment.revoked':
     case 'company_project_approver_assignment.granted':
     case 'company_project_approver_assignment.revoked':
       return {

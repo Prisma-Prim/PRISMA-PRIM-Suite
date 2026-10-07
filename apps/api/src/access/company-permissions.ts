@@ -396,3 +396,36 @@ export function contractPreparerPermissionsFor(
 ): readonly CompanyContractPermission[] {
   return version === 'v1' ? COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS : [];
 }
+
+export const COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE =
+  'company_profitability_contributor';
+export const COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL =
+  'Company Profitability Contributor';
+export const COMPANY_PROFITABILITY_CONTRIBUTOR_V1_PERMISSIONS = [
+  'commercial.profitability_estimate.read',
+  'commercial.profitability_estimate.create',
+] as const;
+export type CompanyProfitabilityContributorPermission =
+  (typeof COMPANY_PROFITABILITY_CONTRIBUTOR_V1_PERMISSIONS)[number];
+export function profitabilityContributorPermissionsFor(
+  version: unknown,
+): readonly CompanyProfitabilityContributorPermission[] {
+  return version === 'v1'
+    ? COMPANY_PROFITABILITY_CONTRIBUTOR_V1_PERMISSIONS
+    : [];
+}
+export const COMPANY_PROFITABILITY_DIRECTOR_BUNDLE =
+  'company_profitability_director';
+export const COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL =
+  'Company Profitability Director';
+export const COMPANY_PROFITABILITY_DIRECTOR_V1_PERMISSIONS = [
+  'commercial.profitability_estimate.read',
+  'commercial.profitability_estimate.decide',
+] as const;
+export type CompanyProfitabilityDirectorPermission =
+  (typeof COMPANY_PROFITABILITY_DIRECTOR_V1_PERMISSIONS)[number];
+export function profitabilityDirectorPermissionsFor(
+  version: unknown,
+): readonly CompanyProfitabilityDirectorPermission[] {
+  return version === 'v1' ? COMPANY_PROFITABILITY_DIRECTOR_V1_PERMISSIONS : [];
+}
