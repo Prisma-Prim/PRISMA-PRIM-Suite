@@ -169,8 +169,14 @@ describe.skipIf(!databaseUrl)(
       await pool().query(
         `INSERT INTO companies
       (id,workspace_id,display_name,created_by_internal_user_id,created_by_workspace_membership_id,registration_idempotency_key)
-      VALUES ($1,$2,'Synthetic preserved Company',$3,$4,$1::text)`,
-        [value.companyId, value.workspaceId, value.userId, value.membershipId],
+      VALUES ($1,$2,'Synthetic preserved Company',$3,$4,$5)`,
+        [
+          value.companyId,
+          value.workspaceId,
+          value.userId,
+          value.membershipId,
+          value.companyId,
+        ],
       );
       await seedOpportunity(value);
     }
@@ -263,12 +269,13 @@ describe.skipIf(!databaseUrl)(
         await pool().query(
           `INSERT INTO companies
         (id,workspace_id,display_name,created_by_internal_user_id,created_by_workspace_membership_id,registration_idempotency_key)
-        VALUES ($1,$2,'Synthetic other Company',$3,$4,$1::text)`,
+        VALUES ($1,$2,'Synthetic other Company',$3,$4,$5)`,
           [
             otherCompany.companyId,
             scope.workspaceId,
             scope.userId,
             scope.membershipId,
+            otherCompany.companyId,
           ],
         );
         await seedOpportunity(otherCompany);
